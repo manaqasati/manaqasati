@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مناقصتي – لوحة المزود</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f5ff;
+    --white: #ffffff;
+    --sidebar: #1e3a8a;
+    --accent: #1d4ed8;
+    --accent2: #1e40af;
+    --accent-light: #dbeafe;
+    --text: #1e3a8a;
+    --muted: #64748b;
+    --border: rgba(37,99,235,0.12);
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: #1e293b;
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 250px; background: var(--sidebar);
+    min-height: 100vh; display: flex; flex-direction: column;
+    position: fixed; top: 0; right: 0; z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 26px 22px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .logo-text {
+    font-family: 'Cairo', sans-serif;
+    font-size: 22px; font-weight: 900; color: #fff;
+  }
+
+  .logo-text span { color: #93c5fd; }
+
+  .logo-badge {
+    display: inline-block; background: rgba(255,255,255,0.1);
+    color: #93c5fd; font-size: 11px;
+    padding: 2px 8px; border-radius: 100px; margin-top: 4px;
+  }
+
+  .sidebar-menu { flex: 1; padding: 14px 10px; }
+
+  .menu-label {
+    font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px; padding: 10px 12px 5px;
+  }
+
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 13px; border-radius: 10px; cursor: pointer;
+    transition: all 0.2s; color: rgba(255,255,255,0.6);
+    font-size: 14px; font-weight: 500; margin-bottom: 2px;
+    text-decoration: none;
+  }
+
+  .menu-item:hover { background: rgba(255,255,255,0.08); color: white; }
+  .menu-item.active { background: rgba(255,255,255,0.14); color: white; font-weight: 700; }
+  .menu-icon { font-size: 17px; width: 20px; text-align: center; }
+
+  .menu-badge {
+    margin-right: auto; background: #ef4444; color: white;
+    font-size: 11px; font-weight: 700;
+    padding: 1px 7px; border-radius: 100px;
+  }
+
+  .sidebar-footer {
+    padding: 14px 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .user-info {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.07);
+  }
+
+  .user-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+
+  .user-name { font-size: 13px; font-weight: 600; color: white; }
+  .user-role { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+  /* MAIN */
+  .main { margin-right: 250px; flex: 1; display: flex; flex-direction: column; }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--white); border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 62px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 1px 8px rgba(37,99,235,0.06);
+  }
+
+  .page-title {
+    font-family: 'Cairo', sans-serif;
+    font-size: 19px; font-weight: 800; color: var(--text);
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  .notif-btn {
+    position: relative; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 17px; transition: all 0.2s;
+  }
+
+  .notif-btn:hover { background: var(--accent-light); }
+
+  .notif-dot {
+    position: absolute; top: 6px; left: 6px;
+    width: 8px; height: 8px; background: #ef4444;
+    border-radius: 50%; border: 2px solid white;
+  }
+
+  /* CONTENT */
+  .content { padding: 28px; flex: 1; }
+
+  .page-section { display: none; }
+  .page-section.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--white); border-radius: 14px;
+    padding: 20px; border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.05); transition: all 0.25s;
+  }
+
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.1); }
+
+  .stat-icon {
+    width: 44px; height: 44px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 14px;
+  }
+
+  .si-blue { background: #dbeafe; }
+  .si-green { background: #dcfce7; }
+  .si-orange { background: #fef3c7; }
+  .si-purple { background: #ede9fe; }
+
+  .stat-num {
+    font-family: 'Cairo', sans-serif;
+    font-size: 28px; font-weight: 900; color: var(--text); line-height: 1;
+  }
+
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* CARD */
+  .card {
+    background: var(--white); border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.05);
+    overflow: hidden; margin-bottom: 20px;
+  }
+
+  .card-header {
+    padding: 18px 22px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .card-title {
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px; font-weight: 700; color: var(--text);
+  }
+
+  .card-body { padding: 20px 22px; }
+
+  /* BADGE */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 10px; border-radius: 100px;
+    font-size: 12px; font-weight: 600;
+  }
+
+  .badge-open { background: #dbeafe; color: #1d4ed8; }
+  .badge-pending { background: #fef3c7; color: #d97706; }
+  .badge-accepted { background: #dcfce7; color: #16a34a; }
+  .badge-rejected { background: #fee2e2; color: #dc2626; }
+
+  /* AVAILABLE REQUESTS */
+  .req-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .req-card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+    transition: all 0.25s;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.04);
+  }
+
+  .req-card:hover {
+    border-color: rgba(37,99,235,0.3);
+    box-shadow: 0 8px 24px rgba(37,99,235,0.1);
+    transform: translateY(-2px);
+  }
+
+  .req-cat {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent-light); color: var(--accent);
+    font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 100px; margin-bottom: 12px;
+  }
+
+  .req-title {
+    font-family: 'Cairo', sans-serif;
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 8px; line-height: 1.4;
+  }
+
+  .req-desc {
+    font-size: 13px; color: var(--muted);
+    line-height: 1.6; margin-bottom: 14px;
+  }
+
+  .req-meta {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .req-meta span { display: flex; align-items: center; gap: 3px; }
+
+  .req-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 14px; border-top: 1px solid rgba(37,99,235,0.06);
+  }
+
+  .bids-num {
+    font-size: 13px; color: var(--muted);
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* BID MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 200; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; animation: fadeIn 0.25s ease; }
+
+  .modal {
+    background: var(--white); border-radius: 20px;
+    padding: 36px; width: 100%; max-width: 480px;
+    box-shadow: 0 24px 64px rgba(37,99,235,0.2);
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .modal-title {
+    font-family: 'Cairo', sans-serif;
+    font-size: 20px; font-weight: 800; color: var(--text);
+  }
+
+  .modal-close {
+    background: var(--bg); border: none; border-radius: 8px;
+    width: 34px; height: 34px; cursor: pointer;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); transition: all 0.2s;
+  }
+
+  .modal-close:hover { background: #fee2e2; color: var(--danger); }
+
+  .modal-req-preview {
+    background: var(--bg); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .modal-req-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .modal-req-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block; font-size: 14px; font-weight: 600;
+    color: var(--text); margin-bottom: 7px;
+  }
+
+  .form-input, .form-textarea {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Tajawal', sans-serif; font-size: 14px;
+    color: #1e293b; background: var(--white); outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus, .form-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .form-textarea { min-height: 80px; resize: vertical; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .btn-submit {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white; border: none; border-radius: 11px;
+    font-family: 'Tajawal', sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all 0.25s;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.25); margin-top: 6px;
+  }
+
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.3); }
+
+  .btn-offer {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white; border: none; padding: 9px 16px;
+    border-radius: 9px; font-family: 'Tajawal', sans-serif;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 10px rgba(37,99,235,0.2);
+  }
+
+  .btn-offer:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,0.3); }
+
+  /* MY BIDS TABLE */
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    text-align: right; padding: 12px 16px;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 14px 16px; font-size: 14px;
+    border-bottom: 1px solid rgba(37,99,235,0.05);
+    color: #334155; vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8faff; }
+
+  /* RATING STARS */
+  .stars { color: var(--warning); font-size: 14px; }
+
+  /* PROFILE */
+  .profile-section {
+    background: var(--white); border-radius: 16px;
+    border: 1px solid var(--border); padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.05);
+  }
+
+  .profile-top {
+    display: flex; align-items: center; gap: 20px; margin-bottom: 28px;
+  }
+
+  .profile-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #0ea5e9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 700; color: white;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.25);
+  }
+
+  .profile-name { font-family: 'Cairo', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); }
+  .profile-rating { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+
+  /* SKILLS TAGS */
+  .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+  .skill-tag {
+    background: var(--accent-light); color: var(--accent);
+    border: 1px solid rgba(37,99,235,0.2);
+    padding: 5px 12px; border-radius: 100px;
+    font-size: 13px; font-weight: 600;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1e293b; color: white;
+    padding: 14px 24px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 300; transition: transform 0.3s ease;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: var(--white); border: 1.5px solid var(--border);
+    color: var(--muted); padding: 8px 16px; border-radius: 100px;
+    font-family: 'Tajawal', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent-light); color: var(--accent);
+    border-color: rgba(37,99,235,0.3);
+  }
+
+  .search-input {
+    flex: 1; min-width: 200px; padding: 9px 16px;
+    border: 1.5px solid var(--border); border-radius: 100px;
+    font-family: 'Tajawal', sans-serif; font-size: 13px;
+    outline: none; transition: border-color 0.2s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+
+  /* MESSAGES */
+  .chat-wrap {
+    display: flex; height: 500px; overflow: hidden;
+  }
+
+  .chat-contacts {
+    width: 230px; border-left: 1px solid var(--border);
+    overflow-y: auto; flex-shrink: 0;
+  }
+
+  .chat-contact {
+    padding: 12px 14px; display: flex; align-items: center;
+    gap: 10px; cursor: pointer; border-bottom: 1px solid rgba(37,99,235,0.06);
+    transition: background 0.15s;
+  }
+
+  .chat-contact:hover, .chat-contact.active { background: var(--accent-light); }
+
+  .chat-area { flex: 1; display: flex; flex-direction: column; }
+
+  .chat-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .msg {
+    display: flex;
+  }
+
+  .msg-bubble {
+    padding: 10px 14px; border-radius: 14px;
+    max-width: 70%; font-size: 14px; line-height: 1.5;
+  }
+
+  .msg-in .msg-bubble { background: var(--bg); color: #1e293b; border-radius: 14px 14px 14px 4px; }
+  .msg-out { justify-content: flex-end; }
+  .msg-out .msg-bubble { background: var(--accent); color: white; border-radius: 14px 14px 4px 14px; }
+
+  .chat-input-area {
+    padding: 12px 16px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+  }
+
+  .chat-input {
+    flex: 1; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Tajawal', sans-serif; font-size: 14px; outline: none;
+  }
+
+  .chat-input:focus { border-color: var(--accent); }
+
+  .chat-send {
+    background: var(--accent); color: white; border: none;
+    border-radius: 10px; padding: 0 16px; cursor: pointer; font-size: 18px;
+  }
+
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { display: none; }
+    .main { margin-right: 0; }
+    .req-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">مناقصتي<span>.</span></div>
+    <div class="logo-badge">🔧 حساب المزود</div>
+  </div>
+
+  <nav class="sidebar-menu">
+    <div class="menu-label">الرئيسية</div>
+    <a class="menu-item active" onclick="showPage('home', this)">
+      <span class="menu-icon">🏠</span> الرئيسية
+    </a>
+
+    <div class="menu-label">العمل</div>
+    <a class="menu-item" onclick="showPage('available', this)">
+      <span class="menu-icon">🔍</span> الطلبات المتاحة
+      <span class="menu-badge">18</span>
+    </a>
+    <a class="menu-item" onclick="showPage('mybids', this)">
+      <span class="menu-icon">💰</span> عروضي
+    </a>
+    <a class="menu-item" onclick="showPage('deals', this)">
+      <span class="menu-icon">🤝</span> صفقاتي
+    </a>
+
+    <div class="menu-label">التواصل</div>
+    <a class="menu-item" onclick="showPage('messages', this)">
+      <span class="menu-icon">💬</span> الرسائل
+      <span class="menu-badge">2</span>
+    </a>
+    <a class="menu-item" onclick="showPage('notifications', this)">
+      <span class="menu-icon">🔔</span> الإشعارات
+      <span class="menu-badge">4</span>
+    </a>
+
+    <div class="menu-label">الحساب</div>
+    <a class="menu-item" onclick="showPage('profile', this)">
+      <span class="menu-icon">👤</span> ملفي المهني
+    </a>
+    <a class="menu-item" href="auth.html" style="color:rgba(239,68,68,0.7);">
+      <span class="menu-icon">🚪</span> تسجيل الخروج
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">م</div>
+      <div>
+        <div class="user-name">مؤسسة الرائد</div>
+        <div class="user-role">مزود خدمة · ⭐ 4.9</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="topbar">
+    <div class="page-title" id="pageTitle">مرحباً، مؤسسة الرائد 👋</div>
+    <div class="topbar-right">
+      <div class="notif-btn" onclick="showPage('notifications', document.querySelector('[onclick*=notifications]'))">
+        🔔 <div class="notif-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ============================
+         الرئيسية
+    ============================ -->
+    <div class="page-section active" id="page-home">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon si-blue">💰</div>
+          <div class="stat-num">24</div>
+          <div class="stat-label">عرض مقدّم</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-green">✅</div>
+          <div class="stat-num">18</div>
+          <div class="stat-label">صفقة مكتملة</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-orange">⭐</div>
+          <div class="stat-num">4.9</div>
+          <div class="stat-label">تقييمي العام</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon si-purple">📈</div>
+          <div class="stat-num">%75</div>
+          <div class="stat-label">معدل القبول</div>
+        </div>
+      </div>
+
+      <!-- طلبات جديدة + عروضي الأخيرة -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔍 طلبات جديدة تناسبك</span>
+            <a style="font-size:13px; color:var(--accent); font-weight:600; cursor:pointer;" onclick="showPage('available', document.querySelectorAll('.menu-item')[2])">عرض الكل</a>
+          </div>
+          <div class="card-body" style="padding:14px;">
+            <div id="homeReqList"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">💰 آخر عروضي</span>
+            <a style="font-size:13px; color:var(--accent); font-weight:600; cursor:pointer;" onclick="showPage('mybids', document.querySelectorAll('.menu-item')[3])">عرض الكل</a>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>الطلب</th>
+                  <th>سعري</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>تركيب مكيف 2 طن</strong><br><small style="color:var(--muted)">الرياض</small></td>
+                  <td style="font-weight:800;color:var(--success);">450 ر.س</td>
+                  <td><span class="badge badge-accepted">مقبول ✅</span></td>
+                </tr>
+                <tr>
+                  <td><strong>صيانة مكيف مركزي</strong><br><small style="color:var(--muted)">جدة</small></td>
+                  <td style="font-weight:800;color:var(--accent);">380 ر.س</td>
+                  <td><span class="badge badge-open">قيد المراجعة</span></td>
+                </tr>
+                <tr>
+                  <td><strong>تركيب 3 مكيفات</strong><br><small style="color:var(--muted)">الدمام</small></td>
+                  <td style="font-weight:800;color:var(--accent);">900 ر.س</td>
+                  <td><span class="badge badge-pending">انتظار</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============================
+         الطلبات المتاحة
+    ============================ -->
+    <div class="page-section" id="page-available">
+
+      <div class="filter-bar">
+        <input type="text" class="search-input" placeholder="🔍 ابحث في الطلبات...">
+        <button class="filter-btn active" onclick="filterCat(this, 'all')">الكل</button>
+        <button class="filter-btn" onclick="filterCat(this, 'تكييف')">🌡️ تكييف</button>
+        <button class="filter-btn" onclick="filterCat(this, 'كهرباء')">⚡ كهرباء</button>
+        <button class="filter-btn" onclick="filterCat(this, 'سباكة')">🚿 سباكة</button>
+        <button class="filter-btn" onclick="filterCat(this, 'حدادة')">🔧 حدادة</button>
+      </div>
+
+      <div class="req-grid" id="availableReqGrid"></div>
+
+    </div>
+
+    <!-- ============================
+         عروضي
+    ============================ -->
+    <div class="page-section" id="page-mybids">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">💰 جميع عروضي</span>
+          <span style="color:var(--muted);font-size:13px;">24 عرض</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>الطلب</th>
+                <th>الفئة</th>
+                <th>المدينة</th>
+                <th>سعري</th>
+                <th>مدة التنفيذ</th>
+                <th>حالة العرض</th>
+                <th>التاريخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>تركيب مكيف سبليت 2 طن</strong></td>
+                <td>🌡️ تكييف</td><td>الرياض</td>
+                <td style="font-weight:800;color:var(--success);">450 ر.س</td>
+                <td>يومان</td>
+                <td><span class="badge badge-accepted">مقبول ✅</span></td>
+                <td>22 فبراير</td>
+              </tr>
+              <tr>
+                <td><strong>صيانة مكيف مركزي</strong></td>
+                <td>🌡️ تكييف</td><td>جدة</td>
+                <td style="font-weight:800;color:var(--accent);">380 ر.س</td>
+                <td>يوم واحد</td>
+                <td><span class="badge badge-open">قيد المراجعة</span></td>
+                <td>21 فبراير</td>
+              </tr>
+              <tr>
+                <td><strong>تركيب 3 مكيفات شقة</strong></td>
+                <td>🌡️ تكييف</td><td>الدمام</td>
+                <td style="font-weight:800;color:var(--accent);">900 ر.س</td>
+                <td>3 أيام</td>
+                <td><span class="badge badge-pending">انتظار</span></td>
+                <td>20 فبراير</td>
+              </tr>
+              <tr>
+                <td><strong>فحص وصيانة مكيف مركزي</strong></td>
+                <td>🌡️ تكييف</td><td>الرياض</td>
+                <td style="font-weight:800;color:var(--muted);">250 ر.س</td>
+                <td>يوم واحد</td>
+                <td><span class="badge badge-rejected">مرفوض</span></td>
+                <td>18 فبراير</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================
+         صفقاتي
+    ============================ -->
+    <div class="page-section" id="page-deals">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🤝 صفقاتي المكتملة</span>
+          <span style="color:var(--muted);font-size:13px;">18 صفقة</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>الطلب</th>
+                <th>العميل</th>
+                <th>المبلغ</th>
+                <th>تقييم العميل</th>
+                <th>تاريخ الإنجاز</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>تركيب مكيف سبليت 2 طن</strong></td>
+                <td>أحمد العمري</td>
+                <td style="font-weight:800;color:var(--success);">450 ر.س</td>
+                <td><span class="stars">★★★★★</span></td>
+                <td>10 فبراير 2026</td>
+              </tr>
+              <tr>
+                <td><strong>تركيب مكيف غرفة نوم</strong></td>
+                <td>نورة السبيعي</td>
+                <td style="font-weight:800;color:var(--success);">320 ر.س</td>
+                <td><span class="stars">★★★★★</span></td>
+                <td>5 فبراير 2026</td>
+              </tr>
+              <tr>
+                <td><strong>صيانة مكيف مكتب</strong></td>
+                <td>فهد الحربي</td>
+                <td style="font-weight:800;color:var(--success);">180 ر.س</td>
+                <td><span class="stars">★★★★☆</span></td>
+                <td>1 فبراير 2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================
+         الرسائل
+    ============================ -->
+    <div class="page-section" id="page-messages">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">💬 الرسائل</span>
+        </div>
+        <div class="chat-wrap">
+          <div class="chat-contacts" id="chatContacts"></div>
+          <div class="chat-area">
+            <div class="chat-header">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);">أ</div>
+              <div>
+                <div style="font-weight:700;font-size:14px;">أحمد العمري</div>
+                <div style="font-size:12px;color:var(--success);">● متصل الآن</div>
+              </div>
+            </div>
+            <div class="chat-messages" id="chatMsgs"></div>
+            <div class="chat-input-area">
+              <input type="text" class="chat-input" id="chatInput" placeholder="اكتب رسالتك...">
+              <button class="chat-send" onclick="sendChatMsg()">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================
+         الإشعارات
+    ============================ -->
+    <div class="page-section" id="page-notifications">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔔 الإشعارات</span>
+          <a style="font-size:13px; color:var(--accent); font-weight:600; cursor:pointer;">تحديد الكل كمقروء</a>
+        </div>
+        <div>
+          <div style="padding:16px 22px; display:flex; gap:12px; align-items:flex-start; background:#f0f5ff; border-bottom:1px solid var(--border);">
+            <div style="width:40px;height:40px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:18px;">✅</div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#334155;">تهانينا! تم قبول عرضك على طلب <strong>تركيب مكيف سبليت 2 طن</strong></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;">منذ 10 دقائق</div>
+            </div>
+            <div style="width:8px;height:8px;background:var(--accent);border-radius:50%;margin-top:6px;"></div>
+          </div>
+          <div style="padding:16px 22px; display:flex; gap:12px; align-items:flex-start; background:#f0f5ff; border-bottom:1px solid var(--border);">
+            <div style="width:40px;height:40px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;">📝</div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#334155;">طلب جديد في فئة <strong>تكييف وتبريد</strong> – الرياض</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;">منذ 30 دقيقة</div>
+            </div>
+            <div style="width:8px;height:8px;background:var(--accent);border-radius:50%;margin-top:6px;"></div>
+          </div>
+          <div style="padding:16px 22px; display:flex; gap:12px; align-items:flex-start; border-bottom:1px solid var(--border);">
+            <div style="width:40px;height:40px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px;">💬</div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#334155;">رسالة جديدة من <strong>أحمد العمري</strong></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;">منذ ساعة</div>
+            </div>
+          </div>
+          <div style="padding:16px 22px; display:flex; gap:12px; align-items:flex-start;">
+            <div style="width:40px;height:40px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:18px;">⭐</div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#334155;">أحمد العمري أعطاك تقييم <strong>5 نجوم</strong> 🎉</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px;">أمس</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================
+         الملف المهني
+    ============================ -->
+    <div class="page-section" id="page-profile">
+
+      <div class="profile-section">
+        <div class="profile-top">
+          <div class="profile-avatar">م</div>
+          <div>
+            <div class="profile-name">مؤسسة الرائد للتكييف</div>
+            <div class="profile-rating">
+              <span class="stars">★★★★★</span>
+              <span style="font-weight:700;font-size:14px;">4.9</span>
+              <span style="color:var(--muted);font-size:13px;">(120 تقييم)</span>
+            </div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">📍 الرياض · عضو منذ 2024</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:520px;">
+          <div>
+            <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:7px;">اسم المؤسسة</label>
+            <input type="text" class="form-input" value="مؤسسة الرائد للتكييف">
+          </div>
+          <div>
+            <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:7px;">رقم الجوال</label>
+            <input type="text" class="form-input" value="0557654321">
+          </div>
+          <div>
+            <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:7px;">المدينة</label>
+            <input type="text" class="form-input" value="الرياض">
+          </div>
+          <div>
+            <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:7px;">سنوات الخبرة</label>
+            <input type="number" class="form-input" value="8">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:7px;">نبذة عن نشاطك</label>
+            <textarea class="form-textarea" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;resize:vertical;outline:none;">متخصصون في تركيب وصيانة جميع أنواع المكيفات مع ضمان على جميع الأعمال</textarea>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label style="font-size:14px;font-weight:600;color:var(--text);display:block;margin-bottom:8px;">تخصصاتي</label>
+          <div class="skills">
+            <span class="skill-tag">🌡️ تكييف سبليت</span>
+            <span class="skill-tag">🌡️ تكييف مركزي</span>
+            <span class="skill-tag">🔧 صيانة</span>
+            <span class="skill-tag">❄️ تبريد</span>
+            <span class="skill-tag">⚡ كهرباء خفيفة</span>
+          </div>
+        </div>
+
+        <button class="btn-submit" style="width:fit-content;padding:11px 28px;margin-top:20px;">حفظ التغييرات</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: تقديم عرض -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOut(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💰 تقديم عرض سعر</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-req-preview" id="modalReqPreview"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">السعر المقترح (ر.س) *</label>
+        <input type="number" class="form-input" id="bidPrice" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">مدة التنفيذ (أيام)</label>
+        <input type="number" class="form-input" id="bidDays" placeholder="1">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ملاحظات على عرضك</label>
+      <textarea class="form-textarea" id="bidNote" placeholder="مثال: السعر شامل القطع والعمالة والضمان لسنة..."></textarea>
+    </div>
+
+    <button class="btn-submit" onclick="submitBid()">🚀 إرسال العرض</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // بيانات تجريبية
+  const availableReqs = [
+    { id: 1, cat: 'تكييف', icon: '🌡️', title: 'تركيب مكيف سبليت 2 طن في غرفة النوم', desc: 'أحتاج تركيب مكيف سبليت شامل التوصيلات، الطابق الثالث.', city: 'الرياض', bids: 5, date: 'منذ 2 ساعة' },
+    { id: 2, cat: 'تكييف', icon: '🌡️', title: 'صيانة مكيف مركزي للمكتب', desc: 'المكيف يعمل ببطء ويحتاج فحص وتنظيف شامل.', city: 'جدة', bids: 3, date: 'منذ 5 ساعات' },
+    { id: 3, cat: 'كهرباء', icon: '⚡', title: 'تمديد كهرباء إضافي للمطبخ', desc: 'أحتاج إضافة 3 بوابيز ونقطة إضاءة في المطبخ.', city: 'الرياض', bids: 7, date: 'منذ يوم' },
+    { id: 4, cat: 'تكييف', icon: '🌡️', title: 'تركيب 3 مكيفات لشقة جديدة', desc: 'شقة 3 غرف، أحتاج تركيب 3 مكيفات سبليت.', city: 'الدمام', bids: 4, date: 'منذ 3 ساعات' },
+    { id: 5, cat: 'سباكة', icon: '🚿', title: 'إصلاح تسريب ماء في الحمام', desc: 'يوجد تسريب تحت المغسلة، أحتاج إصلاح عاجل.', city: 'الرياض', bids: 6, date: 'منذ ساعة' },
+    { id: 6, cat: 'حدادة', icon: '🔧', title: 'بوابة حديد كبيرة للمستودع', desc: 'أحتاج تصنيع وتركيب بوابة حديد 4 متر.', city: 'جدة', bids: 2, date: 'منذ 6 ساعات' },
+  ];
+
+  let currentReq = null;
+
+  function renderAvailable(filter = 'all') {
+    const grid = document.getElementById('availableReqGrid');
+    const filtered = filter === 'all' ? availableReqs : availableReqs.filter(r => r.cat === filter);
+    grid.innerHTML = filtered.map(r => `
+      <div class="req-card">
+        <div class="req-cat">${r.icon} ${r.cat}</div>
+        <div class="req-title">${r.title}</div>
+        <div class="req-desc">${r.desc}</div>
+        <div class="req-meta">
+          <span>📍 ${r.city}</span>
+          <span>🕐 ${r.date}</span>
+          <span>💬 ${r.bids} عروض</span>
+        </div>
+        <div class="req-footer">
+          <div></div>
+          <button class="btn-offer" onclick="openModal(${r.id})">تقديم عرض 💰</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Home preview
+    const homeList = document.getElementById('homeReqList');
+    if (homeList) {
+      homeList.innerHTML = availableReqs.slice(0, 3).map(r => `
+        <div style="padding:12px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <strong style="font-size:14px;">${r.title}</strong>
+            <span style="font-size:11px; background:var(--accent-light); color:var(--accent); padding:2px 8px; border-radius:100px; font-weight:700;">${r.icon} ${r.cat}</span>
+          </div>
+          <div style="font-size:12px; color:var(--muted);">📍 ${r.city} · ${r.bids} عروض · ${r.date}</div>
+        </div>
+      `).join('');
+    }
+  }
+
+  function filterCat(el, cat) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderAvailable(cat);
+  }
+
+  let selectedReqId = null;
+
+  function openModal(reqId) {
+    selectedReqId = reqId;
+    const req = availableReqs.find(r => r.id === reqId);
+    document.getElementById('modalReqPreview').innerHTML = `
+      <div class="modal-req-title">${req.icon} ${req.title}</div>
+      <div class="modal-req-meta">📍 ${req.city} · ${req.bids} عروض مقدّمة حتى الآن</div>
+    `;
+    document.getElementById('bidPrice').value = '';
+    document.getElementById('bidDays').value = '';
+    document.getElementById('bidNote').value = '';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+  function closeModalOut(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+  function submitBid() {
+    const price = document.getElementById('bidPrice').value;
+    if (!price) { showToast('⚠️ يرجى إدخال السعر'); return; }
+    closeModal();
+    showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س بنجاح!`);
+    const req = availableReqs.find(r => r.id === selectedReqId);
+    if (req) req.bids++;
+    renderAvailable();
+  }
+
+  // PAGE NAV
+  function showPage(page, el) {
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    if (el) el.classList.add('active');
+    const titles = {
+      home: 'مرحباً، مؤسسة الرائد 👋',
+      available: 'الطلبات المتاحة', mybids: 'عروضي',
+      deals: 'صفقاتي', messages: 'الرسائل',
+      notifications: 'الإشعارات', profile: 'ملفي المهني'
+    };
+    document.getElementById('pageTitle').textContent = titles[page] || '';
+  }
+
+  // TOAST
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // CHAT
+  const contacts = [
+    { name: 'أحمد العمري', last: 'متى يناسبك التركيب؟', unread: 2 },
+    { name: 'نورة السبيعي', last: 'شكراً على الخدمة', unread: 0 },
+  ];
+
+  const msgs = [
+    { from: 'other', text: 'مرحباً، متى تقدر تيجي للتركيب؟' },
+    { from: 'me', text: 'صباح الخير، أقدر أكون عندك غداً الساعة 9' },
+    { from: 'other', text: 'ممتاز! بانتظارك' },
+    { from: 'me', text: 'إن شاء الله، شكراً' },
+  ];
+
+  function initChat() {
+    const contactsEl = document.getElementById('chatContacts');
+    contactsEl.innerHTML = contacts.map((c, i) => `
+      <div class="chat-contact ${i===0?'active':''}">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);">${c.name[0]}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;">${c.name}</div>
+          <div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.last}</div>
+        </div>
+        ${c.unread ? `<span style="background:var(--accent);color:white;font-size:11px;font-weight:700;padding:1px 6px;border-radius:100px;">${c.unread}</span>` : ''}
+      </div>
+    `).join('');
+
+    const msgsEl = document.getElementById('chatMsgs');
+    msgsEl.innerHTML = msgs.map(m => `
+      <div class="msg ${m.from==='me'?'msg-out':'msg-in'}">
+        <div class="msg-bubble">${m.text}</div>
+      </div>
+    `).join('');
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function sendChatMsg() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+    msgs.push({ from: 'me', text });
+    input.value = '';
+    const msgsEl = document.getElementById('chatMsgs');
+    msgsEl.innerHTML += `<div class="msg msg-out"><div class="msg-bubble" style="background:var(--accent);color:white;border-radius:14px 14px 4px 14px;">${text}</div></div>`;
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMsg(); });
+
+  // INIT
+  renderAvailable();
+  initChat();
+</script>
+
+</body>
+</html>
