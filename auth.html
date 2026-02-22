@@ -388,7 +388,7 @@
 <div class="circle c3"></div>
 
 <!-- رجوع للرئيسية -->
-<a href="platform-ui.html" class="back-home">← الرئيسية</a>
+<a href='index.html' class="back-home">← الرئيسية</a>
 
 <!-- البطاقة -->
 <div class="card">
@@ -590,7 +590,11 @@
           if (data.user.role === 'admin') {
             window.location.href = 'dashboard-admin.html';
           } else {
-            window.location.href = 'dashboard.html';
+            // توجيه حسب نوع الحساب
+          const role = data.user ? data.user.role : 'client';
+          if (role === 'admin') window.location.href = 'dashboard-admin.html';
+          else if (role === 'provider') window.location.href = 'dashboard-provider.html';
+          else window.location.href = 'dashboard-client.html';
           }
         }, 1200);
       } else {
@@ -599,7 +603,11 @@
     } catch (err) {
       // وضع تجريبي بدون خادم
       showAlert('تسجيل دخول تجريبي – الخادم غير متصل حالياً', 'success');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+      setTimeout(() => { // توجيه حسب نوع الحساب
+          const role = data.user ? data.user.role : 'client';
+          if (role === 'admin') window.location.href = 'dashboard-admin.html';
+          else if (role === 'provider') window.location.href = 'dashboard-provider.html';
+          else window.location.href = 'dashboard-client.html'; }, 1500);
     }
 
     btn.textContent = 'تسجيل الدخول';
@@ -640,14 +648,22 @@
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         showAlert('تم إنشاء حسابك بنجاح! مرحباً بك 🎉', 'success');
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+        setTimeout(() => { // توجيه حسب نوع الحساب
+          const role = data.user ? data.user.role : 'client';
+          if (role === 'admin') window.location.href = 'dashboard-admin.html';
+          else if (role === 'provider') window.location.href = 'dashboard-provider.html';
+          else window.location.href = 'dashboard-client.html'; }, 1500);
       } else {
         showAlert(data.message || 'حدث خطأ، حاول مرة أخرى', 'error');
       }
     } catch (err) {
       // وضع تجريبي
       showAlert('تم إنشاء الحساب تجريبياً – الخادم غير متصل حالياً 🎉', 'success');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+      setTimeout(() => { // توجيه حسب نوع الحساب
+          const role = data.user ? data.user.role : 'client';
+          if (role === 'admin') window.location.href = 'dashboard-admin.html';
+          else if (role === 'provider') window.location.href = 'dashboard-provider.html';
+          else window.location.href = 'dashboard-client.html'; }, 1500);
     }
 
     btn.textContent = 'إنشاء الحساب مجاناً 🚀';
