@@ -3,813 +3,206 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مناقصة – منصة العطاءات</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<title>مناقصة – بوابة المناقصات الرقمية</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #ffffff;
-    --bg2: #eff6ff;
-    --card: #ffffff;
-    --card2: #dbeafe;
-    --accent: #1d4ed8;
-    --accent2: #1e40af;
-    --blue: #2563eb;
-    --teal: #0284c7;
-    --text: #1e3a8a;
-    --muted: #3b82f6;
-    --border: rgba(37,99,235,0.15);
-    --glow: rgba(37,99,235,0.06);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Tajawal', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: 
-      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(37,99,235,0.05) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(37,99,235,0.03) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(14,165,233,0.03) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* NAV */
-  nav {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 40px;
-    height: 68px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-
-  .logo {
-    font-family: 'Cairo', sans-serif;
-    font-weight: 900;
-    font-size: 24px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
-  }
-
-  .logo span { color: var(--teal); -webkit-text-fill-color: var(--teal); }
-
-  nav .links { display: flex; gap: 32px; align-items: center; }
-  nav .links a {
-    color: var(--muted); text-decoration: none;
-    font-size: 15px; font-weight: 500;
-    transition: color 0.2s;
-  }
-  nav .links a:hover { color: var(--text); }
-
-  .nav-btns { display: flex; gap: 12px; align-items: center; }
-
-  .btn-ghost {
-    background: none; border: 1px solid var(--border);
-    color: var(--text); padding: 8px 20px;
-    border-radius: 8px; cursor: pointer;
-    font-family: 'Tajawal', sans-serif;
-    font-size: 14px; font-weight: 500;
-    transition: all 0.2s;
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; color: #ffffff;
-    padding: 9px 22px; border-radius: 8px;
-    cursor: pointer; font-family: 'Tajawal', sans-serif;
-    font-size: 14px; font-weight: 700;
-    transition: all 0.2s; box-shadow: 0 4px 20px rgba(37,99,235,0.25);
-  }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(37,99,235,0.35); }
-
-  /* SECTIONS */
-  section { position: relative; z-index: 1; }
-
-  /* HERO */
-  .hero {
-    padding: 100px 40px 80px;
-    text-align: center;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .hero-badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(37,99,235,0.08);
-    border: 1px solid rgba(37,99,235,0.2);
-    padding: 6px 16px; border-radius: 100px;
-    font-size: 13px; color: var(--accent);
-    margin-bottom: 32px;
-    animation: fadeUp 0.6s ease both;
-  }
-
-  .hero-badge::before {
-    content: '●'; font-size: 8px;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
-  }
-
-  .hero h1 {
-    font-family: 'Cairo', sans-serif;
-    font-size: clamp(40px, 6vw, 72px);
-    font-weight: 900;
-    line-height: 1.1;
-    letter-spacing: -1px;
-    margin-bottom: 24px;
-    animation: fadeUp 0.6s 0.1s ease both;
-  }
-
-  .hero h1 .highlight {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .hero p {
-    font-size: 19px; color: var(--muted);
-    line-height: 1.7; max-width: 600px;
-    margin: 0 auto 40px;
-    animation: fadeUp 0.6s 0.2s ease both;
-  }
-
-  .hero-btns {
-    display: flex; gap: 16px; justify-content: center;
-    flex-wrap: wrap;
-    animation: fadeUp 0.6s 0.3s ease both;
-  }
-
-  .btn-lg {
-    padding: 14px 32px; font-size: 16px;
-    border-radius: 10px; font-weight: 700;
-  }
-
-  .btn-outline {
-    background: none; border: 1px solid var(--border);
-    color: var(--text); padding: 14px 32px;
-    border-radius: 10px; cursor: pointer;
-    font-family: 'Tajawal', sans-serif;
-    font-size: 16px; font-weight: 500;
-    transition: all 0.2s;
-  }
-  .btn-outline:hover { border-color: rgba(255,255,255,0.3); }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* STATS */
-  .stats {
-    display: flex; justify-content: center; gap: 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    margin: 0 40px;
-    animation: fadeUp 0.6s 0.4s ease both;
-  }
-
-  .stat-item {
-    flex: 1; max-width: 220px;
-    padding: 32px 20px; text-align: center;
-    border-left: 1px solid var(--border);
-  }
-  .stat-item:last-child { border-left: none; }
-
-  .stat-num {
-    font-family: 'Cairo', sans-serif;
-    font-size: 36px; font-weight: 900;
-    -webkit-background-clip: text; background: linear-gradient(135deg, var(--accent), var(--teal));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .stat-label { color: var(--muted); font-size: 14px; margin-top: 4px; }
-
-  /* HOW IT WORKS */
-  .how {
-    padding: 80px 40px;
-    max-width: 1100px; margin: 0 auto;
-  }
-
-  .section-title {
-    text-align: center; margin-bottom: 60px;
-  }
-
-  .section-title h2 {
-    font-family: 'Cairo', sans-serif;
-    font-size: 36px; font-weight: 800;
-    margin-bottom: 12px;
-  }
-
-  .section-title p { color: var(--muted); font-size: 16px; }
-
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 24px;
-    position: relative;
-  }
-
-  .step-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px; padding: 32px 24px;
-    position: relative; overflow: hidden;
-    transition: all 0.3s;
-  }
-
-  .step-card:hover {
-    border-color: rgba(37,99,235,0.25);
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-  }
-
-  .step-card::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, var(--glow), transparent);
-    opacity: 0; transition: opacity 0.3s;
-  }
-  .step-card:hover::before { opacity: 1; }
-
-  .step-num {
-    font-family: 'Cairo', sans-serif;
-    font-size: 48px; font-weight: 900;
-    color: rgba(37,99,235,0.12);
-    position: absolute; top: 16px; left: 20px;
-    line-height: 1;
-  }
-
-  .step-icon {
-    width: 52px; height: 52px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; margin-bottom: 20px;
-    position: relative; z-index: 1;
-  }
-
-  .icon-blue { background: rgba(61,127,255,0.15); }
-  .icon-orange { background: rgba(37,99,235,0.12); }
-  .icon-teal { background: rgba(0,212,170,0.15); }
-  .icon-red { background: rgba(255,107,53,0.15); }
-
-  .step-card h3 {
-    font-family: 'Cairo', sans-serif;
-    font-size: 18px; font-weight: 700;
-    margin-bottom: 10px; position: relative; z-index: 1;
-  }
-
-  .step-card p {
-    color: var(--muted); font-size: 14px;
-    line-height: 1.7; position: relative; z-index: 1;
-  }
-
-  /* DEMO SECTION */
-  .demo {
-    padding: 80px 40px;
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .demo-inner {
-    max-width: 1100px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 40px; align-items: start;
-  }
-
-  /* REQUEST FORM */
-  .form-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px; padding: 32px;
-  }
-
-  .form-card h3 {
-    font-family: 'Cairo', sans-serif;
-    font-size: 20px; font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .form-card .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
-
-  .form-group { margin-bottom: 18px; }
-
-  .form-group label {
-    display: block; font-size: 14px;
-    font-weight: 500; margin-bottom: 8px;
-    color: var(--muted);
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 16px;
-    color: var(--text);
-    font-family: 'Tajawal', sans-serif;
-    font-size: 14px;
-    transition: border-color 0.2s;
-    outline: none;
-  }
-
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
-  }
-
-  .form-group textarea { min-height: 100px; resize: vertical; }
-  .form-group select { appearance: none; cursor: pointer; }
-  .form-group select option { background: #fff; color: var(--text); }
-
-  /* BIDS LIST */
-  .bids-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px; padding: 32px;
-  }
-
-  .bids-card h3 {
-    font-family: 'Cairo', sans-serif;
-    font-size: 20px; font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .bids-card .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
-
-  .request-preview {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 20px;
-    margin-bottom: 20px;
-  }
-
-  .req-title {
-    font-weight: 600; font-size: 15px; margin-bottom: 4px;
-  }
-
-  .req-tags {
-    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
-  }
-
-  .tag {
-    background: rgba(61,127,255,0.12);
-    color: var(--blue); border: 1px solid rgba(61,127,255,0.2);
-    padding: 3px 10px; border-radius: 100px; font-size: 12px;
-  }
-
-  .bids-list { display: flex; flex-direction: column; gap: 12px; }
-
-  .bid-item {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 20px;
-    display: flex; align-items: center;
-    justify-content: space-between;
-    transition: all 0.2s; cursor: pointer;
-  }
-
-  .bid-item:hover {
-    border-color: rgba(37,99,235,0.25);
-    background: var(--card2);
-  }
-
-  .bid-item.best {
-    border-color: rgba(0,212,170,0.4);
-    background: rgba(0,212,170,0.05);
-  }
-
-  .best-badge {
-    background: var(--teal); color: #ffffff;
-    font-size: 11px; font-weight: 700;
-    padding: 2px 8px; border-radius: 100px;
-    margin-right: 8px;
-  }
-
-  .bid-provider {
-    display: flex; align-items: center; gap: 12px;
-  }
-
-  .avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .av1 { background: rgba(61,127,255,0.2); color: var(--blue); }
-  .av2 { background: rgba(0,212,170,0.2); color: var(--teal); }
-  .av3 { background: rgba(37,99,235,0.12); color: var(--accent); }
-
-  .bid-name { font-size: 14px; font-weight: 600; }
-  .bid-rating { color: var(--accent); font-size: 12px; }
-
-  .bid-price {
-    text-align: left;
-  }
-
-  .price-num {
-    font-family: 'Cairo', sans-serif;
-    font-size: 20px; font-weight: 800;
-    color: var(--accent);
-  }
-
-  .price-label { color: var(--muted); font-size: 12px; }
-
-  .btn-choose {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; color: #ffffff;
-    padding: 8px 18px; border-radius: 8px;
-    cursor: pointer; font-family: 'Tajawal', sans-serif;
-    font-size: 13px; font-weight: 700;
-    margin-top: 8px; transition: all 0.2s;
-  }
-  .btn-choose:hover { opacity: 0.9; transform: scale(1.02); }
-
-  /* CATEGORIES */
-  .categories {
-    padding: 80px 40px;
-    max-width: 1100px; margin: 0 auto;
-  }
-
-  .cats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 16px;
-  }
-
-  .cat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px; padding: 24px 16px;
-    text-align: center; cursor: pointer;
-    transition: all 0.25s;
-  }
-
-  .cat-card:hover {
-    border-color: rgba(245,166,35,0.35);
-    transform: translateY(-3px);
-    background: var(--card2);
-  }
-
-  .cat-icon { font-size: 32px; margin-bottom: 10px; }
-  .cat-name { font-size: 14px; font-weight: 600; }
-  .cat-count { color: var(--muted); font-size: 12px; margin-top: 4px; }
-
-  /* CTA */
-  .cta {
-    padding: 100px 40px;
-    text-align: center;
-    background: linear-gradient(135deg, rgba(61,127,255,0.05), rgba(37,99,235,0.03));
-    border-top: 1px solid var(--border);
-  }
-
-  .cta h2 {
-    font-family: 'Cairo', sans-serif;
-    font-size: 44px; font-weight: 900;
-    margin-bottom: 16px;
-  }
-
-  .cta p { color: var(--muted); font-size: 18px; margin-bottom: 40px; }
-
-  /* FOOTER */
-  footer {
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    padding: 40px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  /* TABS */
-  .tabs {
-    display: flex; gap: 4px;
-    background: var(--bg);
-    border-radius: 10px; padding: 4px;
-    margin-bottom: 24px;
-  }
-
-  .tab {
-    flex: 1; padding: 10px; border: none;
-    border-radius: 8px; cursor: pointer;
-    font-family: 'Tajawal', sans-serif;
-    font-size: 14px; font-weight: 500;
-    transition: all 0.2s;
-    background: none; color: var(--muted);
-  }
-
-  .tab.active {
-    background: var(--card2);
-    color: var(--text);
-    font-weight: 700;
-  }
-
-  .form-card, .bids-card {
-    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
-  }
-
-  .step-card {
-    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-  }
-  @media (max-width: 768px) {
-    nav { padding: 0 20px; }
-    nav .links { display: none; }
-    .hero { padding: 60px 20px 50px; }
-    .stats { margin: 0 20px; flex-wrap: wrap; }
-    .stat-item { max-width: none; border-left: none; border-bottom: 1px solid var(--border); }
-    .demo-inner { grid-template-columns: 1fr; }
-    .demo { padding: 50px 20px; }
-    .how, .categories { padding: 60px 20px; }
-  }
+:root{
+  --p:#7c3aed;--p2:#6d28d9;--p-light:#ede9fe;--p-mid:#ddd6fe;
+  --text:#1e1b4b;--muted:#6b7280;--light:#f9fafb;--border:#e5e7eb;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Tajawal',sans-serif;background:#fff;color:var(--text);overflow-x:hidden}
+nav{position:fixed;top:0;right:0;left:0;z-index:100;padding:0 5%;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);box-shadow:0 1px 12px rgba(0,0,0,0.06)}
+.nav-logo{font-size:24px;font-weight:900;color:var(--p)}
+.nav-logo span{color:#f59e0b}
+.nav-links{display:flex;gap:32px}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:15px;font-weight:600;transition:.2s}
+.nav-links a:hover{color:var(--p)}
+.nav-btns{display:flex;gap:10px}
+.btn-ghost{padding:8px 20px;border:1.5px solid var(--border);border-radius:10px;color:var(--text);background:#fff;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-ghost:hover{border-color:var(--p);color:var(--p)}
+.btn-primary{padding:8px 22px;background:var(--p);border:none;border-radius:10px;color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.2s;box-shadow:0 2px 12px rgba(124,58,237,0.3)}
+.btn-primary:hover{background:var(--p2);transform:translateY(-1px)}
+.hero{padding:120px 5% 80px;background:linear-gradient(160deg,#fff 60%,var(--p-light) 100%);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:-200px;left:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(124,58,237,0.07),transparent 70%);pointer-events:none}
+.hero-inner{display:flex;align-items:center;justify-content:space-between;gap:40px;max-width:1200px;margin:0 auto}
+.hero-content{flex:1;max-width:580px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--p-light);border:1px solid var(--p-mid);border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;color:var(--p);margin-bottom:24px}
+.hero h1{font-size:clamp(32px,5vw,58px);font-weight:900;line-height:1.15;margin-bottom:20px;color:var(--text)}
+.hero h1 span{color:var(--p)}
+.hero p{font-size:17px;color:var(--muted);line-height:1.8;margin-bottom:36px}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn-hero{padding:13px 30px;background:var(--p);border:none;border-radius:12px;color:#fff;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;box-shadow:0 4px 20px rgba(124,58,237,0.35);text-decoration:none;display:inline-block}
+.btn-hero:hover{background:var(--p2);transform:translateY(-2px)}
+.btn-hero2{padding:13px 30px;background:#fff;border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+.btn-hero2:hover{border-color:var(--p);color:var(--p);transform:translateY(-2px)}
+.hero-stats{display:flex;gap:32px;margin-top:48px;padding-top:36px;border-top:1px solid var(--border)}
+.hero-stat-n{font-size:26px;font-weight:900;color:var(--p)}
+.hero-stat-t{font-size:13px;color:var(--muted);margin-top:2px}
+.hero-visual{flex:0 0 340px;display:grid;gap:12px}
+.float-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.06);transition:.2s}
+.float-card:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(124,58,237,0.12);border-color:var(--p-mid)}
+.float-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.float-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.av1{background:var(--p-light)}.av2{background:#fef3c7}.av3{background:#dcfce7}
+.float-name{font-size:14px;font-weight:800;color:var(--text)}
+.float-city{font-size:11px;color:var(--muted)}
+.float-bottom{display:flex;justify-content:space-between;align-items:center}
+.float-price{font-size:18px;font-weight:900;color:var(--p)}
+.fbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.fb-g{background:#dcfce7;color:#16a34a}.fb-y{background:#fef3c7;color:#d97706}.fb-p{background:var(--p-light);color:var(--p)}
+.section{padding:80px 5%}
+.section-inner{max-width:1200px;margin:0 auto}
+.sec-label{display:inline-block;background:var(--p-light);border-radius:100px;padding:5px 16px;font-size:13px;font-weight:700;color:var(--p);margin-bottom:14px}
+.sec-title{font-size:clamp(26px,4vw,40px);font-weight:900;margin-bottom:12px;color:var(--text)}
+.sec-sub{font-size:16px;color:var(--muted);line-height:1.7}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px}
+.step{background:#fff;border:1px solid var(--border);border-radius:20px;padding:28px 24px;position:relative;overflow:hidden;transition:.3s}
+.step::before{content:'';position:absolute;top:0;right:0;width:4px;height:100%;background:linear-gradient(var(--p),var(--p2))}
+.step:hover{border-color:var(--p-mid);box-shadow:0 8px 30px rgba(124,58,237,0.1);transform:translateY(-3px)}
+.step-num{font-size:42px;font-weight:900;color:var(--p-mid);margin-bottom:12px;line-height:1}
+.step-ic{font-size:36px;margin-bottom:14px}
+.step h3{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--text)}
+.step p{font-size:14px;color:var(--muted);line-height:1.7}
+.cats-bg{background:var(--light)}
+.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:44px}
+.cat{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px 16px;text-align:center;cursor:pointer;transition:.3s;text-decoration:none;color:var(--text)}
+.cat:hover{border-color:var(--p);box-shadow:0 6px 24px rgba(124,58,237,0.12);transform:translateY(-3px)}
+.cat-ic{font-size:34px;margin-bottom:10px;display:block}
+.cat-name{font-size:15px;font-weight:800}
+.cat-count{font-size:12px;color:var(--muted);margin-top:3px}
+.why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:44px}
+.why-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:24px;display:flex;gap:16px;align-items:flex-start;transition:.3s}
+.why-card:hover{border-color:var(--p-mid);box-shadow:0 6px 24px rgba(124,58,237,0.08)}
+.why-ic{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.wi1{background:var(--p-light)}.wi2{background:#fef3c7}.wi3{background:#dcfce7}.wi4{background:#fee2e2}
+.why-card h3{font-size:16px;font-weight:800;margin-bottom:6px;color:var(--text)}
+.why-card p{font-size:14px;color:var(--muted);line-height:1.6}
+.cta-wrap{padding:0 5% 80px}
+.cta{max-width:1200px;margin:0 auto;background:linear-gradient(135deg,var(--p),var(--p2));border-radius:24px;padding:60px 48px;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;top:-60px;right:-60px;width:300px;height:300px;background:rgba(255,255,255,0.06);border-radius:50%}
+.cta h2{font-size:clamp(22px,4vw,38px);font-weight:900;color:#fff;margin-bottom:14px;position:relative}
+.cta p{font-size:16px;color:rgba(255,255,255,0.8);margin-bottom:32px;position:relative}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;position:relative}
+.btn-cta1{padding:13px 30px;background:#fff;border:none;border-radius:12px;color:var(--p);font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+.btn-cta1:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.15)}
+.btn-cta2{padding:13px 30px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:12px;color:#fff;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+.btn-cta2:hover{background:rgba(255,255,255,0.25);transform:translateY(-2px)}
+footer{background:var(--text);padding:36px 5%;text-align:center}
+footer p{color:rgba(255,255,255,0.5);font-size:14px}
+footer span{color:#a78bfa;font-weight:700}
+@media(max-width:900px){
+  .hero-visual{display:none}.steps{grid-template-columns:1fr}
+  .cats{grid-template-columns:repeat(2,1fr)}.why-grid{grid-template-columns:1fr}
+  .hero-stats{gap:20px}.nav-links{display:none}
+}
 </style>
 </head>
 <body>
-
-<!-- NAV -->
 <nav>
-  <div class="logo">مناقصة<span>.</span></div>
-  <div class="links">
-    <a href='auth.html'>كيف تعمل؟</a>
-    <a href='auth.html'>الفئات</a>
-    <a href='auth.html'>للأعمال</a>
-    <a href='auth.html'>تواصل معنا</a>
+  <div class="nav-logo">مناقصة<span>.</span></div>
+  <div class="nav-links">
+    <a href="#how">كيف تعمل</a>
+    <a href="#cats">الخدمات</a>
+    <a href="#why">لماذا مناقصة</a>
   </div>
   <div class="nav-btns">
-    <button class="btn-ghost" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">تسجيل الدخول</button>
-    <button class="btn-primary" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">ابدأ مجاناً</button>
+    <button class="btn-ghost" onclick="location.href='auth.html'">تسجيل الدخول</button>
+    <button class="btn-primary" onclick="location.href='auth.html'">ابدأ مجاناً</button>
   </div>
 </nav>
-
-<!-- HERO -->
 <section class="hero">
-  <div class="hero-badge">🚀 المنصة الأولى للعطاءات في المنطقة</div>
-  <h1>احصل على <span class="highlight">أفضل سعر</span><br>لأي خدمة تحتاجها</h1>
-  <p>انشر طلبك واستقبل عروض أسعار من عشرات المزودين، قارن واختر الأفضل لك بكل سهولة وشفافية.</p>
-  <div class="hero-btns">
-    <button class="btn-primary btn-lg" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">انشر طلبك الآن</button>
-    <button class="btn-outline" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">أنا مزود خدمة</button>
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-badge">✦ بوابة المناقصات الرقمية</div>
+      <h1>أنشر طلبك واستقبل<br><span>أفضل العروض</span></h1>
+      <p>تواصل مع مزودي الخدمات المعتمدين، قارن الأسعار واختر الأنسب لك بكل سهولة وأمان.</p>
+      <div class="hero-btns">
+        <a href="auth.html" class="btn-hero">أنشر طلبك الآن 🚀</a>
+        <a href="auth.html" class="btn-hero2">أنا مزود خدمة</a>
+      </div>
+      <div class="hero-stats">
+        <div><div class="hero-stat-n">+500</div><div class="hero-stat-t">مزود معتمد</div></div>
+        <div><div class="hero-stat-n">+1,200</div><div class="hero-stat-t">طلب منجز</div></div>
+        <div><div class="hero-stat-n">98%</div><div class="hero-stat-t">نسبة الرضا</div></div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="float-card">
+        <div class="float-head"><div class="float-av av1">🌡️</div><div><div class="float-name">تركيب مكيف سبليت</div><div class="float-city">📍 الرياض • منذ ساعة</div></div></div>
+        <div class="float-bottom"><div class="float-price">450 ر.س</div><span class="fbadge fb-g">✓ 5 عروض</span></div>
+      </div>
+      <div class="float-card">
+        <div class="float-head"><div class="float-av av2">⚡</div><div><div class="float-name">صيانة كهربائية منزلية</div><div class="float-city">📍 جدة • منذ 3 ساعات</div></div></div>
+        <div class="float-bottom"><div class="float-price">280 ر.س</div><span class="fbadge fb-y">⏳ 3 عروض</span></div>
+      </div>
+      <div class="float-card">
+        <div class="float-head"><div class="float-av av3">🎨</div><div><div class="float-name">دهان شقة 4 غرف</div><div class="float-city">📍 الدمام • منذ 5 ساعات</div></div></div>
+        <div class="float-bottom"><div class="float-price">1,200 ر.س</div><span class="fbadge fb-p">★ مميز</span></div>
+      </div>
+    </div>
   </div>
 </section>
-
-<!-- STATS -->
-<div class="stats">
-  <div class="stat-item">
-    <div class="stat-num">+2,500</div>
-    <div class="stat-label">مزود خدمة معتمد</div>
+<section class="section" id="how">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="sec-label">كيف تعمل المنصة</div>
+      <div class="sec-title">ثلاث خطوات بسيطة</div>
+      <div class="sec-sub" style="margin:0 auto;max-width:480px">من نشر الطلب إلى إنجاز المشروع في أقل وقت ممكن</div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-num">01</div><div class="step-ic">📝</div><h3>انشر طلبك</h3><p>صف احتياجك وحدد ميزانيتك، النشر مجاني ويستغرق دقيقة واحدة فقط.</p></div>
+      <div class="step"><div class="step-num">02</div><div class="step-ic">💰</div><h3>استقبل العروض</h3><p>يتنافس مزودو الخدمات المعتمدون على تقديم أفضل عرض لك.</p></div>
+      <div class="step"><div class="step-num">03</div><div class="step-ic">✅</div><h3>اختر الأنسب</h3><p>قارن العروض واختر المزود المناسب وأنجز مشروعك بأمان.</p></div>
+    </div>
   </div>
-  <div class="stat-item">
-    <div class="stat-num">+8,000</div>
-    <div class="stat-label">طلب مكتمل</div>
+</section>
+<section class="section cats-bg" id="cats">
+  <div class="section-inner">
+    <div style="text-align:center">
+      <div class="sec-label">تصنيفات الخدمات</div>
+      <div class="sec-title">كل الخدمات في مكان واحد</div>
+    </div>
+    <div class="cats">
+      <a href="auth.html" class="cat"><span class="cat-ic">🌡️</span><div class="cat-name">تكييف وتبريد</div><div class="cat-count">+120 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">⚡</span><div class="cat-name">كهرباء</div><div class="cat-count">+98 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">🔧</span><div class="cat-name">سباكة</div><div class="cat-count">+85 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">🎨</span><div class="cat-name">دهانات</div><div class="cat-count">+74 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">🪑</span><div class="cat-name">نجارة</div><div class="cat-count">+62 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">🧹</span><div class="cat-name">تنظيف</div><div class="cat-count">+110 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">🚚</span><div class="cat-name">نقل عفش</div><div class="cat-count">+55 مزود</div></a>
+      <a href="auth.html" class="cat"><span class="cat-ic">➕</span><div class="cat-name">خدمات أخرى</div><div class="cat-count">+200 مزود</div></a>
+    </div>
   </div>
-  <div class="stat-item">
-    <div class="stat-num">%40</div>
-    <div class="stat-label">متوسط التوفير</div>
+</section>
+<section class="section" id="why">
+  <div class="section-inner">
+    <div>
+      <div class="sec-label">لماذا مناقصة؟</div>
+      <div class="sec-title">منصة تضمن حقوقك</div>
+      <div class="sec-sub">بيئة آمنة وموثوقة لجميع أطراف العملية</div>
+    </div>
+    <div class="why-grid">
+      <div class="why-card"><div class="why-ic wi1">🛡️</div><div><h3>مزودون معتمدون</h3><p>جميع مزودي الخدمة موثقون ومراجعون قبل القبول في المنصة.</p></div></div>
+      <div class="why-card"><div class="why-ic wi2">💰</div><div><h3>أسعار تنافسية</h3><p>التنافس بين المزودين يضمن لك أفضل سعر ممكن لخدمتك.</p></div></div>
+      <div class="why-card"><div class="why-ic wi3">⚡</div><div><h3>سرعة الاستجابة</h3><p>استقبل عروضاً في دقائق من أفضل المزودين في منطقتك.</p></div></div>
+      <div class="why-card"><div class="why-ic wi4">⭐</div><div><h3>نظام تقييم شفاف</h3><p>تقييمات حقيقية من عملاء سابقين تساعدك في اختيار الأفضل.</p></div></div>
+    </div>
   </div>
-  <div class="stat-item">
-    <div class="stat-num">4.9 ★</div>
-    <div class="stat-label">تقييم المستخدمين</div>
+</section>
+<div class="cta-wrap">
+  <div class="cta">
+    <h2>جاهز تبدأ؟ 🚀</h2>
+    <p>انضم لآلاف العملاء ومزودي الخدمات على منصة مناقصة اليوم</p>
+    <div class="cta-btns">
+      <a href="auth.html" class="btn-cta1">أنشر طلبك مجاناً</a>
+      <a href="auth.html" class="btn-cta2">سجّل كمزود خدمة</a>
+    </div>
   </div>
 </div>
-
-<!-- HOW IT WORKS -->
-<section class="how">
-  <div class="section-title">
-    <h2>كيف تعمل المنصة؟</h2>
-    <p>أربع خطوات بسيطة تفصلك عن أفضل سعر</p>
-  </div>
-  <div class="steps">
-    <div class="step-card">
-      <div class="step-num">01</div>
-      <div class="step-icon icon-blue">📝</div>
-      <h3>انشر طلبك</h3>
-      <p>اكتب ما تحتاجه بالتفصيل – مواصفات، موقعك، ميزانيتك المتوقعة.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">02</div>
-      <div class="step-icon icon-orange">💬</div>
-      <h3>استقبل العروض</h3>
-      <p>مزودو الخدمة يرون طلبك ويرسلون عروض أسعار تنافسية خلال ساعات.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">03</div>
-      <div class="step-icon icon-teal">⚖️</div>
-      <h3>قارن واختر</h3>
-      <p>شاهد كل العروض جنباً إلى جنب مع التقييمات وسجل الأعمال.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">04</div>
-      <div class="step-icon icon-red">🤝</div>
-      <h3>تعامل مباشرة</h3>
-      <p>تواصل مع المزود المختار وأتم الاتفاق بينكما بكل حرية.</p>
-    </div>
-  </div>
-</section>
-
-<!-- DEMO -->
-<section class="demo">
-  <div class="section-title">
-    <h2>جرّب المنصة</h2>
-    <p>شاهد كيف يعمل النظام بشكل مباشر</p>
-  </div>
-  <div class="demo-inner">
-
-    <!-- FORM -->
-    <div class="form-card">
-      <h3>🔍 انشر طلبك</h3>
-      <p class="sub">أخبرنا ماذا تحتاج وسنجلب لك أفضل العروض</p>
-
-      <div class="tabs">
-        <button class="tab active">طلب جديد</button>
-        <button class="tab">طلباتي</button>
-        <button class="tab">الرسائل</button>
-      </div>
-
-      <div class="form-group">
-        <label>الفئة</label>
-        <select>
-          <option>🌡️ تكييف وتبريد</option>
-          <option>🔧 حدادة ومعادن</option>
-          <option>⚡ كهرباء</option>
-          <option>🚿 سباكة</option>
-          <option>🎨 دهانات وديكور</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>عنوان الطلب</label>
-        <input type="text" placeholder="مثال: تركيب مكيف سبليت 2 طن في غرفة النوم">
-      </div>
-      <div class="form-group">
-        <label>التفاصيل والمواصفات</label>
-        <textarea placeholder="اذكر كل التفاصيل... المساحة، الطابق، أي تفاصيل مهمة للحصول على سعر دقيق"></textarea>
-      </div>
-      <div class="form-group">
-        <label>الموقع</label>
-        <input type="text" placeholder="المدينة، الحي">
-      </div>
-      <button class="btn-primary" style="width:100%; padding:14px; font-size:16px; border-radius:10px;">
-        🚀 انشر الطلب واستقبل العروض
-      </button>
-    </div>
-
-    <!-- BIDS -->
-    <div class="bids-card">
-      <h3>📊 العروض المستلمة</h3>
-      <p class="sub">طلب: تركيب مكيف سبليت – الرياض</p>
-
-      <div class="request-preview">
-        <div class="req-title">تركيب مكيف سبليت 2 طن في غرفة النوم</div>
-        <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">الرياض – حي النزهة · نُشر منذ 3 ساعات</div>
-        <div class="req-tags">
-          <span class="tag">تكييف</span>
-          <span class="tag">تركيب</span>
-          <span class="tag">2 طن</span>
-          <span class="tag">5 عروض</span>
-        </div>
-      </div>
-
-      <div class="bids-list">
-        <div class="bid-item best">
-          <div class="bid-provider">
-            <div class="avatar av2">م</div>
-            <div>
-              <div class="bid-name">مؤسسة الرائد للتكييف <span class="best-badge">الأفضل</span></div>
-              <div class="bid-rating">★★★★★ (4.9) · 120 عملية</div>
-            </div>
-          </div>
-          <div style="text-align:left">
-            <div class="price-num">450 ر.س</div>
-            <div class="price-label">شامل القطع والعمالة</div>
-            <button class="btn-choose">اختيار هذا العرض</button>
-          </div>
-        </div>
-
-        <div class="bid-item">
-          <div class="bid-provider">
-            <div class="avatar av1">أ</div>
-            <div>
-              <div class="bid-name">أحمد للصيانة والتكييف</div>
-              <div class="bid-rating">★★★★☆ (4.5) · 87 عملية</div>
-            </div>
-          </div>
-          <div style="text-align:left">
-            <div class="price-num">520 ر.س</div>
-            <div class="price-label">شامل الضمان سنة</div>
-            <button class="btn-choose">اختيار هذا العرض</button>
-          </div>
-        </div>
-
-        <div class="bid-item">
-          <div class="bid-provider">
-            <div class="avatar av3">ب</div>
-            <div>
-              <div class="bid-name">برودة للتكييف والتبريد</div>
-              <div class="bid-rating">★★★★☆ (4.3) · 54 عملية</div>
-            </div>
-          </div>
-          <div style="text-align:left">
-            <div class="price-num">480 ر.س</div>
-            <div class="price-label">العمالة فقط</div>
-            <button class="btn-choose">اختيار هذا العرض</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- CATEGORIES -->
-<section class="categories">
-  <div class="section-title">
-    <h2>الفئات المتاحة</h2>
-    <p>من التكييف للحدادة، وجد ما تحتاج</p>
-  </div>
-  <div class="cats-grid">
-    <div class="cat-card">
-      <div class="cat-icon">🌡️</div>
-      <div class="cat-name">تكييف وتبريد</div>
-      <div class="cat-count">342 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🔧</div>
-      <div class="cat-name">حدادة ومعادن</div>
-      <div class="cat-count">187 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">⚡</div>
-      <div class="cat-name">كهرباء</div>
-      <div class="cat-count">256 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🚿</div>
-      <div class="cat-name">سباكة</div>
-      <div class="cat-count">198 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🎨</div>
-      <div class="cat-name">دهانات</div>
-      <div class="cat-count">143 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🏗️</div>
-      <div class="cat-name">مقاولات</div>
-      <div class="cat-count">89 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🪟</div>
-      <div class="cat-name">ألمنيوم وزجاج</div>
-      <div class="cat-count">112 مزود</div>
-    </div>
-    <div class="cat-card">
-      <div class="cat-icon">🛋️</div>
-      <div class="cat-name">أثاث وديكور</div>
-      <div class="cat-count">167 مزود</div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="cta">
-  <h2>جاهز تبدأ؟</h2>
-  <p>انشر أول طلب مجاناً واحصل على عروض خلال ساعات</p>
-  <div class="hero-btns">
-    <button class="btn-primary btn-lg" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">ابدأ مجاناً الآن</button>
-    <button class="btn-outline" onclick="location.href='auth.html'"auth.html'" onclick="location.href='auth.html'">أنا مزود خدمة – سجّلني</button>
-  </div>
-</section>
-
-<!-- FOOTER -->
 <footer>
-  <div class="logo" style="margin-bottom: 16px; font-size: 20px;">مناقصة<span>.</span></div>
-  <p>© 2025 مناقصة – جميع الحقوق محفوظة</p>
-  <p style="margin-top: 8px;">
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">سياسة الخصوصية</a>
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">شروط الاستخدام</a>
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">تواصل معنا</a>
-  </p>
+  <p>© 2025 <span>مناقصة</span> – جميع الحقوق محفوظة</p>
 </footer>
-
 </body>
 </html>
