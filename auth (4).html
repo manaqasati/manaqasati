@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مناقصة – الدخول</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Tajawal',sans-serif;background:#f0f5ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:20px;padding:36px 32px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(37,99,235,0.13)}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:30px;font-weight:900;color:#1d4ed8}
+.logo h1 span{color:#0ea5e9}
+.logo p{font-size:13px;color:#64748b;margin-top:3px}
+.tabs{display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:24px}
+.tab{flex:1;padding:9px;border:none;background:none;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;color:#64748b;cursor:pointer;border-radius:7px;transition:.2s}
+.tab.on{background:#fff;color:#1d4ed8;box-shadow:0 2px 8px rgba(37,99,235,0.13)}
+.box{display:none}
+.box.on{display:block}
+.msg{padding:11px 14px;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:16px;display:none}
+.msg.ok{background:#dcfce7;color:#16a34a;display:block}
+.msg.err{background:#fee2e2;color:#dc2626;display:block}
+.g{margin-bottom:15px}
+.g label{display:block;font-size:14px;font-weight:700;color:#1e3a8a;margin-bottom:6px}
+.g input{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:14px;color:#1e293b;outline:none}
+.g input:focus{border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.roles{display:flex;gap:10px;margin-bottom:15px}
+.role{flex:1;border:2px solid #e2e8f0;border-radius:11px;padding:13px 8px;text-align:center;cursor:pointer;transition:.2s}
+.role.on{border-color:#1d4ed8;background:#eff6ff}
+.role-ic{font-size:22px;margin-bottom:5px}
+.role-t{font-size:13px;font-weight:700;color:#1e3a8a}
+.role-s{font-size:11px;color:#64748b}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:800;cursor:pointer;margin-top:4px;transition:.2s;box-shadow:0 4px 14px rgba(37,99,235,0.3)}
+.btn:hover{transform:translateY(-2px)}
+.btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+.back{display:block;text-align:center;margin-top:18px;color:#64748b;text-decoration:none;font-size:13px}
+.back:hover{color:#1d4ed8}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>مناقصة<span>.</span></h1>
+    <p>منصة العطاءات الأولى</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="t1" onclick="go('login')">تسجيل الدخول</button>
+    <button class="tab" id="t2" onclick="go('reg')">حساب جديد</button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <!-- تسجيل الدخول -->
+  <div class="box on" id="login">
+    <div class="g">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="le" placeholder="example@email.com">
+    </div>
+    <div class="g">
+      <label>كلمة المرور</label>
+      <input type="password" id="lp" placeholder="••••••••">
+    </div>
+    <button class="btn" id="lb" onclick="doLogin()">تسجيل الدخول</button>
+  </div>
+
+  <!-- حساب جديد -->
+  <div class="box" id="reg">
+    <div class="roles">
+      <div class="role on" id="rc" onclick="setRole('client',this)">
+        <div class="role-ic">🔍</div>
+        <div class="role-t">باحث عن خدمة</div>
+        <div class="role-s">أنشر طلبك</div>
+      </div>
+      <div class="role" id="rp" onclick="setRole('provider',this)">
+        <div class="role-ic">🔧</div>
+        <div class="role-t">مزود خدمة</div>
+        <div class="role-s">قدّم عروضك</div>
+      </div>
+    </div>
+    <div class="g">
+      <label>الاسم الكامل</label>
+      <input type="text" id="rn" placeholder="أحمد العمري">
+    </div>
+    <div class="g">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="re" placeholder="example@email.com">
+    </div>
+    <div class="g">
+      <label>رقم الجوال</label>
+      <input type="tel" id="rph" placeholder="05xxxxxxxx">
+    </div>
+    <div class="g">
+      <label>كلمة المرور</label>
+      <input type="password" id="rp2" placeholder="8 أحرف على الأقل">
+    </div>
+    <button class="btn" id="rb" onclick="doReg()">إنشاء الحساب مجاناً 🚀</button>
+  </div>
+
+  <a href="index.html" class="back">← الرئيسية</a>
+</div>
+
+<script>
+var API = 'https://manaqasati-production.up.railway.app';
+var role = 'client';
+
+function go(tab) {
+  document.getElementById('t1').className = tab==='login' ? 'tab on' : 'tab';
+  document.getElementById('t2').className = tab==='reg' ? 'tab on' : 'tab';
+  document.getElementById('login').className = tab==='login' ? 'box on' : 'box';
+  document.getElementById('reg').className = tab==='reg' ? 'box on' : 'box';
+  hideMsg();
+}
+
+function setRole(r, el) {
+  role = r;
+  document.getElementById('rc').className = 'role';
+  document.getElementById('rp').className = 'role';
+  el.className = 'role on';
+}
+
+function showMsg(txt, type) {
+  var el = document.getElementById('msg');
+  el.textContent = txt;
+  el.className = 'msg ' + type;
+}
+
+function hideMsg() {
+  document.getElementById('msg').className = 'msg';
+}
+
+function redirect(userRole) {
+  if (userRole === 'admin') window.location.href = 'dashboard-admin.html';
+  else if (userRole === 'provider') window.location.href = 'dashboard-provider.html';
+  else window.location.href = 'dashboard-client.html';
+}
+
+function doLogin() {
+  var email = document.getElementById('le').value.trim();
+  var pass = document.getElementById('lp').value;
+  if (!email || !pass) { showMsg('يرجى تعبئة جميع الحقول', 'err'); return; }
+  var btn = document.getElementById('lb');
+  btn.disabled = true; btn.textContent = 'جاري تسجيل الدخول...';
+  fetch(API + '/api/auth/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, password: pass})
+  }).then(function(res) {
+    return res.json().then(function(data) { return {ok: res.ok, data: data}; });
+  }).then(function(r) {
+    if (r.ok) {
+      localStorage.setItem('token', r.data.token);
+      localStorage.setItem('user', JSON.stringify(r.data.user));
+      showMsg('تم تسجيل الدخول! جاري التحويل...', 'ok');
+      setTimeout(function(){ redirect(r.data.user.role); }, 1200);
+    } else {
+      showMsg(r.data.message || 'البريد أو كلمة المرور غير صحيحة', 'err');
+      btn.disabled = false; btn.textContent = 'تسجيل الدخول';
+    }
+  }).catch(function() {
+    showMsg('تعذر الاتصال بالخادم', 'err');
+    btn.disabled = false; btn.textContent = 'تسجيل الدخول';
+  });
+}
+
+function doReg() {
+  var name = document.getElementById('rn').value.trim();
+  var email = document.getElementById('re').value.trim();
+  var phone = document.getElementById('rph').value.trim();
+  var pass = document.getElementById('rp2').value;
+  if (!name || !email || !pass) { showMsg('يرجى تعبئة جميع الحقول المطلوبة', 'err'); return; }
+  if (pass.length < 8) { showMsg('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'err'); return; }
+  var btn = document.getElementById('rb');
+  btn.disabled = true; btn.textContent = 'جاري إنشاء الحساب...';
+  fetch(API + '/api/auth/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, email: email, phone: phone, password: pass, role: role})
+  }).then(function(res) {
+    return res.json().then(function(data) { return {ok: res.ok, data: data}; });
+  }).then(function(r) {
+    if (r.ok) {
+      localStorage.setItem('token', r.data.token);
+      localStorage.setItem('user', JSON.stringify(r.data.user));
+      showMsg('تم إنشاء حسابك! مرحباً بك 🎉', 'ok');
+      setTimeout(function(){ redirect(r.data.user.role); }, 1500);
+    } else {
+      showMsg(r.data.message || 'حدث خطأ، حاول مرة أخرى', 'err');
+      btn.disabled = false; btn.textContent = 'إنشاء الحساب مجاناً 🚀';
+    }
+  }).catch(function() {
+    showMsg('تعذر الاتصال بالخادم', 'err');
+    btn.disabled = false; btn.textContent = 'إنشاء الحساب مجاناً 🚀';
+  });
+}
+</script>
+</body>
+</html>
