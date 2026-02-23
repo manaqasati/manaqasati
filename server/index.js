@@ -8,7 +8,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS - السماح لجميع الطلبات
+// CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -23,7 +23,7 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// إنشاء الجداول تلقائياً
+// إنشاء الجداول
 async function createTables() {
   try {
     await pool.query(`
@@ -61,7 +61,7 @@ async function createTables() {
     `);
     console.log('✅ الجداول جاهزة');
   } catch(e) {
-    console.log('خطأ في إنشاء الجداول:', e.message);
+    console.log('خطأ:', e.message);
   }
 }
 
@@ -170,19 +170,33 @@ app.post('/api/bids', async (req, res) => {
   }
 });
 
+// جميع المستخدمين (للمدير)
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, phone, role, created_at FROM users ORDER BY created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
 // إحصائيات المدير
 app.get('/api/admin/stats', async (req, res) => {
   try {
     const users = await pool.query('SELECT COUNT(*) FROM users');
     const requests = await pool.query('SELECT COUNT(*) FROM requests');
     const bids = await pool.query('SELECT COUNT(*) FROM bids');
+    const providers = await pool.query("SELECT COUNT(*) FROM users WHERE role='provider'");
     res.json({
       users: users.rows[0].count,
       requests: requests.rows[0].count,
-      bids: bids.rows[0].count
+      bids: bids.rows[0].count,
+      providers: providers.rows[0].count
     });
   } catch (err) {
-    res.json({ users: 0, requests: 0, bids: 0 });
+    res.json({ users: 0, requests: 0, bids: 0, providers: 0 });
   }
 });
 
