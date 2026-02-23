@@ -601,7 +601,22 @@
         showAlert(data.message || 'حدث خطأ، حاول مرة أخرى', 'error');
       }
     } catch (err) {
-      // وضع تجريبي بدون خادم
+      // استدعاء الخادم الحقيقي
+      try {
+        const res = await fetch('https://manaqasati-production.up.railway.app/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.message || 'خطأ في تسجيل الدخول'); return; }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.user.role === 'admin') window.location.href = 'dashboard-admin.html';
+        else if (data.user.role === 'provider') window.location.href = 'dashboard-provider.html';
+        else window.location.href = 'dashboard-client.html';
+      } catch(e) {
+        // وضع تجريبي بدون خادم
       showAlert('تسجيل دخول تجريبي – الخادم غير متصل حالياً', 'success');
       setTimeout(() => { // توجيه حسب نوع الحساب
           const role = data.user ? data.user.role : 'client';
@@ -657,7 +672,22 @@
         showAlert(data.message || 'حدث خطأ، حاول مرة أخرى', 'error');
       }
     } catch (err) {
-      // وضع تجريبي
+      // استدعاء الخادم الحقيقي
+      try {
+        const res = await fetch('https://manaqasati-production.up.railway.app/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.message || 'خطأ في تسجيل الدخول'); return; }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.user.role === 'admin') window.location.href = 'dashboard-admin.html';
+        else if (data.user.role === 'provider') window.location.href = 'dashboard-provider.html';
+        else window.location.href = 'dashboard-client.html';
+      } catch(e) {
+        // وضع تجريبي
       showAlert('تم إنشاء الحساب تجريبياً – الخادم غير متصل حالياً 🎉', 'success');
       setTimeout(() => { // توجيه حسب نوع الحساب
           const role = data.user ? data.user.role : 'client';
