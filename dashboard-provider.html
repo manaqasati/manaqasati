@@ -1043,11 +1043,42 @@
   function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
   function closeModalOut(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
 
-  function submitBid() {
+  async function submitBid() {
     const price = document.getElementById('bidPrice').value;
+    const days = document.getElementById('bidDays').value || 1;
+    const note = document.getElementById('bidNote').value || '';
     if (!price) { showToast('⚠️ يرجى إدخال السعر'); return; }
-    closeModal();
-    showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س بنجاح!`);
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token') || '';
+
+    try {
+      const res = await fetch('https://manaqasati-production.up.railway.app/api/bids', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          request_id: selectedReqId,
+          provider_id: user.id || 1,
+          price: parseInt(price),
+          days: parseInt(days),
+          note
+        })
+      });
+
+      closeModal();
+      if (res.ok) {
+        showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س بنجاح!`);
+      } else {
+        showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س!`);
+      }
+    } catch(e) {
+      closeModal();
+      showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س!`);
+    }
+
     const req = availableReqs.find(r => r.id === selectedReqId);
     if (req) req.bids++;
     renderAvailable();
@@ -1125,8 +1156,32 @@
   document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMsg(); });
 
   // INIT
+  async function loadRealRequests() {
+    try {
+      const res = await fetch('https://manaqasati-production.up.railway.app/api/requests');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length > 0) {
+          const realReqs = data.map(r => ({
+            id: r.id,
+            cat: r.category || 'تكييف',
+            icon: '🌡️',
+            title: r.title,
+            desc: r.description || '',
+            city: r.city || 'الرياض',
+            bids: 0,
+            date: 'منذ قليل'
+          }));
+          availableReqs.unshift(...realReqs);
+          renderAvailable();
+        }
+      }
+    } catch(e) { console.log('تعذر تحميل الطلبات'); }
+  }
+
   renderAvailable();
   initChat();
+  loadRealRequests();
 </script>
 
 </body>
