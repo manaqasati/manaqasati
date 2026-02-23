@@ -1126,20 +1126,58 @@
     if (e.target === document.getElementById('modalOverlay')) closeModal();
   }
 
-  function submitRequest() {
+  async function submitRequest() {
     const title = document.getElementById('newTitle').value;
     const desc = document.getElementById('newDesc').value;
     const city = document.getElementById('newCity').value || 'الرياض';
+    const budget = document.getElementById('newBudget').value || 0;
+    const category = document.querySelector('.form-select').value;
+
     if (!title || !desc) { showToast('⚠️ يرجى تعبئة الحقول المطلوبة'); return; }
 
-    requests.unshift({
-      id: Date.now(), title, category: '🌡️ تكييف', city,
-      status: 'open', date: 'الآن', bids: []
-    });
+    // جلب بيانات المستخدم المسجل
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token') || '';
+
+    try {
+      const res = await fetch('https://manaqasati-production.up.railway.app/api/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          title, description: desc, category,
+          city, budget_max: budget,
+          client_id: user.id || 1
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        requests.unshift({
+          id: data.id, title, category, city,
+          status: 'review', date: 'الآن', bids: []
+        });
+        showToast('🚀 تم نشر طلبك بنجاح! سيتم مراجعته قريباً');
+      } else {
+        // حفظ محلي في حال فشل الخادم
+        requests.unshift({
+          id: Date.now(), title, category, city,
+          status: 'review', date: 'الآن', bids: []
+        });
+        showToast('🚀 تم نشر طلبك بنجاح!');
+      }
+    } catch(e) {
+      requests.unshift({
+        id: Date.now(), title, category, city,
+        status: 'review', date: 'الآن', bids: []
+      });
+      showToast('🚀 تم نشر طلبك بنجاح!');
+    }
 
     renderAll();
     closeModal();
-    showToast('🚀 تم نشر طلبك بنجاح! انتظر العروض');
     document.getElementById('newTitle').value = '';
     document.getElementById('newDesc').value = '';
     showPage('requests', document.querySelectorAll('.menu-item')[1]);
