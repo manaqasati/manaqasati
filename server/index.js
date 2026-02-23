@@ -8,22 +8,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+app.use(cors({ origin: '*', methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json());
 
-// Database
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// إنشاء الجداول
 async function createTables() {
   try {
     await pool.query(`
@@ -60,87 +52,54 @@ async function createTables() {
       );
     `);
     console.log('✅ الجداول جاهزة');
-  } catch(e) {
-    console.log('خطأ:', e.message);
-  }
+  } catch(e) { console.log('خطأ:', e.message); }
 }
 
-// اختبار
 app.get('/', (req, res) => {
   res.json({ message: '🚀 مناقصة API تعمل بنجاح!', status: 'online' });
 });
 
-// تسجيل حساب جديد
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ message: 'يرجى تعبئة جميع الحقول' });
-
     const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (exists.rows.length > 0)
       return res.status(400).json({ message: 'البريد الإلكتروني مسجل مسبقاً' });
-
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
       'INSERT INTO users (name,email,phone,password_hash,role) VALUES ($1,$2,$3,$4,$5) RETURNING id,name,email,role',
       [name, email, phone || '', hash, role || 'client']
     );
-
     const user = result.rows[0];
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'manaqasa2026secret',
-      { expiresIn: '30d' }
-    );
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'manaqasa2026secret', { expiresIn: '30d' });
     res.json({ token, user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// تسجيل الدخول
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: 'يرجى إدخال البريد وكلمة المرور' });
-
     const result = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
     if (result.rows.length === 0)
       return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
-
     const user = result.rows[0];
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid)
       return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
-
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'manaqasa2026secret',
-      { expiresIn: '30d' }
-    );
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'manaqasa2026secret', { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// الطلبات
 app.get('/api/requests', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT r.*, u.name as client_name 
-       FROM requests r 
-       JOIN users u ON r.client_id=u.id 
-       ORDER BY r.created_at DESC`
-    );
+    const result = await pool.query('SELECT r.*, u.name as client_name FROM requests r JOIN users u ON r.client_id=u.id ORDER BY r.created_at DESC');
     res.json(result.rows);
-  } catch (err) {
-    res.json([]);
-  }
+  } catch (err) { res.json([]); }
 });
 
 app.post('/api/requests', async (req, res) => {
@@ -151,12 +110,16 @@ app.post('/api/requests', async (req, res) => {
       [client_id, title, description, category, city, budget_min || 0, budget_max || 0]
     );
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: 'حدث خطأ' });
-  }
+  } catch (err) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// العروض
+app.get('/api/bids', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM bids ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) { res.json([]); }
+});
+
 app.post('/api/bids', async (req, res) => {
   try {
     const { request_id, provider_id, price, days, note } = req.body;
@@ -165,42 +128,26 @@ app.post('/api/bids', async (req, res) => {
       [request_id, provider_id, price, days || 1, note || '']
     );
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: 'حدث خطأ' });
-  }
+  } catch (err) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// جميع المستخدمين (للمدير)
 app.get('/api/admin/users', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, name, email, phone, role, created_at FROM users ORDER BY created_at DESC'
-    );
+    const result = await pool.query('SELECT id,name,email,phone,role,created_at FROM users ORDER BY created_at DESC');
     res.json(result.rows);
-  } catch (err) {
-    res.json([]);
-  }
+  } catch (err) { res.json([]); }
 });
 
-// إحصائيات المدير
 app.get('/api/admin/stats', async (req, res) => {
   try {
     const users = await pool.query('SELECT COUNT(*) FROM users');
     const requests = await pool.query('SELECT COUNT(*) FROM requests');
     const bids = await pool.query('SELECT COUNT(*) FROM bids');
     const providers = await pool.query("SELECT COUNT(*) FROM users WHERE role='provider'");
-    res.json({
-      users: users.rows[0].count,
-      requests: requests.rows[0].count,
-      bids: bids.rows[0].count,
-      providers: providers.rows[0].count
-    });
-  } catch (err) {
-    res.json({ users: 0, requests: 0, bids: 0, providers: 0 });
-  }
+    res.json({ users: users.rows[0].count, requests: requests.rows[0].count, bids: bids.rows[0].count, providers: providers.rows[0].count });
+  } catch (err) { res.json({ users:0, requests:0, bids:0, providers:0 }); }
 });
 
-// تشغيل السيرفر
 createTables().then(() => {
   app.listen(PORT, () => console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`));
 });
