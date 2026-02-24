@@ -92,33 +92,36 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .msg{padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;margin-bottom:16px;display:none}
 .msg.ok{background:#dcfce7;color:#16a34a;display:block}
 .msg.err{background:#fee2e2;color:#dc2626;display:block}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
 .overlay.show{display:flex}
 .modal{background:#fff;border-radius:24px 24px 0 0;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 -10px 40px rgba(0,0,0,0.15)}
 .modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .modal-head h3{font-size:17px;font-weight:800;color:var(--text)}
 .modal-close{width:32px;height:32px;border-radius:8px;background:var(--bg);border:none;cursor:pointer;font-size:16px}
-.agree-modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
-.agree-header{background:linear-gradient(135deg,#1e3a5f,#2d5f8a);padding:20px 24px;text-align:center;flex-shrink:0}
-.agree-header h2{color:#fff;font-size:18px;font-weight:900;margin-bottom:4px}
-.agree-header p{color:rgba(255,255,255,0.7);font-size:12px}
+.agree-modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:560px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+.agree-header{background:linear-gradient(135deg,#1e3a5f,#2d5f8a);padding:18px 24px;text-align:center;flex-shrink:0}
+.agree-header h2{color:#fff;font-size:18px;font-weight:900;margin-bottom:3px}
+.agree-header p{color:rgba(255,255,255,0.65);font-size:12px}
 .agree-body{padding:20px 24px;overflow-y:auto;flex:1}
-.quran-box{background:linear-gradient(135deg,#fef9e7,#fef3c7);border:2px solid #f59e0b;border-radius:14px;padding:16px;margin-bottom:16px;text-align:center}
-.quran-title{font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px}
-.quran-text{font-size:14px;font-weight:700;color:#78350f;line-height:1.8}
-.quran-source{font-size:12px;color:#92400e;font-weight:600;margin-top:8px}
-.agree-text{background:#f8f7ff;border:1.5px solid var(--p-mid);border-radius:14px;padding:16px;margin-bottom:14px}
-.agree-text p{font-size:14px;color:var(--text);line-height:1.9;font-weight:500}
-.agree-text strong{color:var(--p);font-weight:800}
-.note-box{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:12px 16px;margin-bottom:16px}
-.note-box p{font-size:13px;color:#dc2626;font-weight:600;line-height:1.7}
-.agree-check{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding:12px;background:var(--p-light);border-radius:12px;cursor:pointer}
+.quran-box{background:linear-gradient(135deg,#fef9e7,#fef3c7);border:2px solid #f59e0b;border-radius:14px;padding:18px 20px;margin-bottom:18px;text-align:center}
+.quran-title{font-size:14px;font-weight:800;color:#92400e;margin-bottom:10px}
+.quran-text{font-size:15px;font-weight:700;color:#78350f;line-height:2}
+.quran-source{font-size:13px;color:#92400e;font-weight:700;margin-top:10px}
+.agree-section{background:#f8f7ff;border:1.5px solid var(--p-mid);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.agree-section-title{font-size:14px;font-weight:900;color:var(--p);margin-bottom:8px}
+.agree-section p{font-size:13px;color:var(--text);line-height:1.9;font-weight:500}
+.agree-section strong{color:var(--p);font-weight:800}
+.note-box{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:14px;padding:16px 18px;margin-bottom:18px}
+.note-box .agree-section-title{color:#dc2626}
+.note-box p{font-size:13px;color:#7f1d1d;font-weight:500;line-height:1.9}
+.agree-check{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--p-light);border-radius:12px;cursor:pointer}
 .agree-check input{width:20px;height:20px;cursor:pointer;margin-top:2px;accent-color:var(--p);flex-shrink:0}
 .agree-check label{font-size:13px;font-weight:700;color:var(--text);cursor:pointer;line-height:1.6}
-.agree-footer{padding:16px 24px;display:flex;gap:12px;border-top:1px solid var(--border);flex-shrink:0}
-.btn-agree{flex:1;padding:14px;background:var(--p);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer}
-.btn-agree:disabled{opacity:.4;cursor:not-allowed}
+.agree-footer{padding:16px 24px;display:flex;gap:12px;border-top:1px solid var(--border);flex-shrink:0;background:#fff}
+.btn-agree{flex:1;padding:14px;background:var(--p);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;box-shadow:0 4px 14px rgba(124,58,237,0.3)}
+.btn-agree:hover{background:var(--p2);transform:translateY(-1px)}
+.btn-agree:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
 .btn-back{padding:14px 18px;background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer}
 .stars{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
 .star{font-size:36px;cursor:pointer;transition:.2s;filter:grayscale(1);opacity:.4}
@@ -151,6 +154,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 </style>
 </head>
 <body>
+
 <div class="side">
   <div class="side-head">
     <div class="side-logo">مناقصة<span>.</span></div>
@@ -169,6 +173,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     <button class="logout-btn" onclick="logout()"><span>🚪</span> تسجيل الخروج</button>
   </div>
 </div>
+
 <div class="mobile-header">
   <div class="mobile-logo">مناقصة<span>.</span></div>
   <div style="display:flex;align-items:center;gap:10px">
@@ -176,12 +181,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     <button onclick="logout()" style="background:none;border:none;font-size:18px;cursor:pointer">🚪</button>
   </div>
 </div>
+
 <div class="main">
   <div class="topbar">
     <div class="topbar-title" id="pageTitle">الرئيسية</div>
     <button class="btn-new" onclick="showAgreement()">➕ طلب جديد</button>
   </div>
   <div class="content">
+
     <div class="page on" id="page-home">
       <div class="welcome-card">
         <div class="welcome-text">
@@ -203,12 +210,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
         <div id="recent-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
       </div>
     </div>
+
     <div class="page" id="page-requests">
       <div class="card">
         <div class="card-head"><h3>📋 جميع طلباتي</h3></div>
         <div id="all-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
       </div>
     </div>
+
     <div class="page" id="page-new">
       <div class="card">
         <div class="card-head"><h3>➕ نشر طلب جديد</h3></div>
@@ -232,8 +241,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
         </div>
       </div>
     </div>
+
   </div>
 </div>
+
 <div class="bottom-nav">
   <div class="bottom-nav-items">
     <button class="bn-item on" id="bn-home" onclick="show('home',null,'home')"><span class="bn-ic">🏠</span><span class="bn-txt">الرئيسية</span></button>
@@ -241,27 +252,35 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     <button class="bn-item" id="bn-new" onclick="showAgreement()"><span class="bn-ic">➕</span><span class="bn-txt">طلب جديد</span></button>
   </div>
 </div>
+
+<!-- AGREEMENT MODAL -->
 <div class="overlay" id="agreeOverlay">
   <div class="agree-modal">
     <div class="agree-header">
-      <h2>📜 اتفاقية رسوم المنصة</h2>
+      <h2>📜 اتفاقية الرسوم</h2>
       <p>يرجى قراءة الاتفاقية كاملةً قبل نشر طلبك</p>
     </div>
     <div class="agree-body">
       <div class="quran-box">
-        <div class="quran-title">﷽</div>
-        <div class="quran-text">"وَأَوْفُواْ بِعَهْدِ اللهِ إِذَا عَاهَدتُّمْ وَلاَ تَنقُضُواْ الأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللهَ عَلَيْكُمْ كَفِيلاً"</div>
+        <div class="quran-title">بسم الله الرحمن الرحيم</div>
+        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا ﴾</div>
         <div class="quran-source">صدق الله العظيم</div>
       </div>
-      <div class="agree-text">
-        <p>أتعهد وأُقسم بالله أنا المعلن أن أدفع رسوم الموقع وهي <strong>1% من قيمة البيع</strong> سواء تم البيع عن طريق الموقع أو بسببه.<br><br>كما أتعهد بدفع الرسوم خلال <strong>10 أيام</strong> من استلام كامل مبلغ المبايعة.</p>
+      <div class="agree-section">
+        <div class="agree-section-title">أولًا: التعهد والالتزام</div>
+        <p>أُقرّ وأتعهد أنا طالب الخدمة بدفع رسوم الموقع والبالغة <strong>(1%) واحد بالمائة</strong> من إجمالي قيمة العقد أو المبلغ المتفق عليه بين الأطراف، ويشمل ذلك أي اتفاق أو تعاقد تم أو تم التوصل إليه عبر الموقع أو بسببه أو نتيجةً للخدمات أو الوساطة أو العرض من خلاله، سواء كان الاتفاق مكتوبًا أو شفهيًا أو موثقًا أو غير موثق.</p>
+      </div>
+      <div class="agree-section">
+        <div class="agree-section-title">ثانيًا: استحقاق الرسوم وآلية السداد</div>
+        <p>تستحق الرسوم بمجرد إبرام العقد أو اكتمال الاتفاق النهائي بين الأطراف، ويلتزم طالب الخدمة بسدادها خلال مدة لا تتجاوز <strong>(10) عشرة أيام</strong> من تاريخ اكتمال الاتفاق النهائي بين الأطراف.</p>
       </div>
       <div class="note-box">
-        <p>⚠️ <strong>ملاحظة:</strong> رسوم الموقع على المعلن ولا تبرأ ذمة المعلن من الرسوم إلا في حال دفعها.</p>
+        <div class="agree-section-title">ثالثًا: مسؤولية السداد</div>
+        <p>⚠️ تُعد هذه الرسوم التزامًا ماليًا واجب السداد على طالب الخدمة، ولا تبرأ ذمته منها إلا بعد السداد الكامل، ويظل ملزمًا بها مهما كانت طريقة أو وسيلة إتمام الاتفاق.</p>
       </div>
       <div class="agree-check">
         <input type="checkbox" id="agreeCheck" onchange="toggleAgreeBtn()">
-        <label for="agreeCheck">أقر بأنني قرأت الاتفاقية وأتعهد بدفع رسوم المنصة 1% خلال 10 أيام من الاستلام</label>
+        <label for="agreeCheck">أُقرّ بأنني اطلعت على اتفاقية الرسوم كاملةً وفهمت بنودها، وأتعهد بسداد رسوم المنصة <strong>(1%)</strong> خلال عشرة أيام من تاريخ اكتمال الاتفاق النهائي</label>
       </div>
     </div>
     <div class="agree-footer">
@@ -270,6 +289,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     </div>
   </div>
 </div>
+
+<!-- RATING MODAL -->
 <div class="overlay" id="rateOverlay">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -293,6 +314,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     </div>
   </div>
 </div>
+
 <script>
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
@@ -317,14 +339,24 @@ function show(page,el,key){
   window.scrollTo(0,0);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
-function showAgreement(){document.getElementById('agreeCheck').checked=false;document.getElementById('agreeBtn').disabled=true;document.getElementById('agreeOverlay').className='overlay show';}
+function showAgreement(){
+  document.getElementById('agreeCheck').checked=false;
+  document.getElementById('agreeBtn').disabled=true;
+  document.getElementById('agreeOverlay').className='overlay show';
+}
 function closeAgreement(){document.getElementById('agreeOverlay').className='overlay';}
 function toggleAgreeBtn(){document.getElementById('agreeBtn').disabled=!document.getElementById('agreeCheck').checked;}
 function acceptAgreement(){closeAgreement();show('new',null,'new');}
-function statusTag(s){if(s==='open')return '<span class="tag t-open">✓ نشط</span>';if(s==='done')return '<span class="tag t-done">✅ مكتمل</span>';return '<span class="tag t-review">⏳ مراجعة</span>';}
+function statusTag(s){
+  if(s==='open')return '<span class="tag t-open">✓ نشط</span>';
+  if(s==='done')return '<span class="tag t-done">✅ مكتمل</span>';
+  return '<span class="tag t-review">⏳ مراجعة</span>';
+}
 function reqCard(r,withActions){
   var actions='';
-  if(withActions&&r.status==='open'){actions='<div class="req-actions"><button class="btn-sm btn-rate" onclick="openRate('+r.id+','+r.client_id+')">⭐ قيّم المزود</button><button class="btn-sm btn-done" onclick="markDone('+r.id+')">✅ تم الإنجاز</button></div>';}
+  if(withActions&&r.status==='open'){
+    actions='<div class="req-actions"><button class="btn-sm btn-rate" onclick="openRate('+r.id+','+r.client_id+')">⭐ قيّم المزود</button><button class="btn-sm btn-done" onclick="markDone('+r.id+')">✅ تم الإنجاز</button></div>';
+  }
   return '<div class="req-item"><div class="req-top"><div class="req-title">'+r.title+'</div>'+statusTag(r.status)+'</div><div class="req-meta"><span class="req-tag">📍 '+(r.city||'–')+'</span><span class="req-tag">&nbsp;🗂️ '+(r.category||'–')+'</span>'+(r.budget_max?'<span class="req-tag">&nbsp;💰 '+r.budget_max+' ر.س</span>':'')+'</div>'+actions+'</div>';
 }
 function loadHome(){
@@ -343,8 +375,16 @@ function loadAllReqs(){
     document.getElementById('all-reqs').innerHTML=mine.length?mine.map(function(r){return reqCard(r,true);}).join(''):'<div class="empty"><div class="empty-ic">📭</div><h4>لا يوجد طلبات بعد</h4></div>';
   }).catch(function(){document.getElementById('all-reqs').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h4>تعذر التحميل</h4></div>';});
 }
-function markDone(reqId){fetch(API+'/api/requests/'+reqId+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'done'})}).then(function(){loadAllReqs();});}
-function openRate(reqId,providerId){selectedReqId=reqId;selectedProviderId=providerId;selectedRating=0;document.querySelectorAll('.star').forEach(function(s){s.className='star';});document.getElementById('rate-comment').value='';document.getElementById('rate-msg').className='rate-msg';document.getElementById('rateOverlay').className='overlay show';}
+function markDone(reqId){
+  fetch(API+'/api/requests/'+reqId+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'done'})}).then(function(){loadAllReqs();});
+}
+function openRate(reqId,providerId){
+  selectedReqId=reqId;selectedProviderId=providerId;selectedRating=0;
+  document.querySelectorAll('.star').forEach(function(s){s.className='star';});
+  document.getElementById('rate-comment').value='';
+  document.getElementById('rate-msg').className='rate-msg';
+  document.getElementById('rateOverlay').className='overlay show';
+}
 function closeRate(){document.getElementById('rateOverlay').className='overlay';}
 function setRating(n){selectedRating=n;document.querySelectorAll('.star').forEach(function(s,i){s.className=i<n?'star on':'star';});}
 function submitRate(){
