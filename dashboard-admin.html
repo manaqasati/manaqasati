@@ -4,188 +4,257 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مناقصة – لوحة المدير</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
+:root{--p:#7c3aed;--p2:#6d28d9;--p-light:#ede9fe;--p-mid:#ddd6fe;--text:#1e1b4b;--muted:#6b7280;--border:#e5e7eb;--bg:#f8f7ff}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:#f1f5f9;min-height:100vh;display:flex}
-.side{width:240px;background:#1e3a8a;min-height:100vh;padding:24px 0;position:fixed;right:0;top:0}
-.side-logo{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,0.1)}
-.side-logo h1{font-size:22px;font-weight:900;color:#fff}
-.side-logo h1 span{color:#60a5fa}
-.side-logo p{font-size:11px;color:#93c5fd;margin-top:3px}
-.menu{padding:16px 0}
-.menu-item{display:flex;align-items:center;gap:10px;padding:12px 20px;color:#cbd5e1;cursor:pointer;transition:.2s;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif}
-.menu-item:hover{background:rgba(255,255,255,0.08);color:#fff}
-.menu-item.on{background:rgba(255,255,255,0.12);color:#fff;border-right:3px solid #60a5fa}
-.menu-item .ic{font-size:18px;width:24px}
-.main{margin-right:240px;flex:1;padding:24px}
-.topbar{background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-.topbar h2{font-size:18px;font-weight:800;color:#1e3a8a}
-.topbar-right{display:flex;gap:10px;align-items:center}
-.badge{background:#eff6ff;color:#1d4ed8;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:700}
-.logout{background:#fee2e2;color:#dc2626;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif}
-.page{display:none}
-.page.on{display:block}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-.stat{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);text-align:center}
-.stat-ic{font-size:32px;margin-bottom:8px}
-.stat-n{font-size:28px;font-weight:900;color:#1e3a8a}
-.stat-t{font-size:13px;color:#64748b;margin-top:4px;font-weight:600}
-.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:16px}
-.card h3{font-size:16px;font-weight:800;color:#1e3a8a;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f1f5f9}
-table{width:100%;border-collapse:collapse}
-th{text-align:right;padding:10px 12px;background:#f8fafc;font-size:13px;color:#64748b;font-weight:700}
-td{padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9}
-tr:last-child td{border-bottom:none}
-.tag{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
-.tag-client{background:#eff6ff;color:#1d4ed8}
-.tag-provider{background:#f0fdf4;color:#16a34a}
-.tag-admin{background:#fef3c7;color:#d97706}
-.tag-review{background:#fef3c7;color:#d97706}
-.empty{text-align:center;padding:40px;color:#94a3b8;font-size:15px}
-.loading{text-align:center;padding:30px;color:#64748b}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+.side{width:260px;background:#fff;border-left:1px solid var(--border);min-height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;box-shadow:2px 0 20px rgba(0,0,0,0.04)}
+.side-head{padding:24px 20px;border-bottom:1px solid var(--border)}
+.side-logo{font-size:22px;font-weight:900;color:var(--p);margin-bottom:16px}
+.side-logo span{color:#f59e0b}
+.admin-badge{background:linear-gradient(135deg,var(--p),var(--p2));border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px}
+.admin-av{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.admin-name{font-size:14px;font-weight:800;color:#fff}
+.admin-role{font-size:11px;color:rgba(255,255,255,0.7);font-weight:600;margin-top:2px}
+.menu{padding:16px 12px;flex:1}
+.menu-sec{font-size:11px;font-weight:700;color:var(--muted);padding:0 8px;margin:16px 0 8px}
+.menu-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;color:var(--muted);cursor:pointer;transition:.2s;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px}
+.menu-item:hover{background:var(--bg);color:var(--text)}
+.menu-item.on{background:var(--p-light);color:var(--p)}
+.menu-item .ic{font-size:18px;width:26px;text-align:center}
+.side-foot{padding:16px 20px;border-top:1px solid var(--border)}
+.logout-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#ef4444;cursor:pointer;font-size:14px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif}
+.logout-btn:hover{background:#fee2e2}
+.main{margin-right:260px;flex:1;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:18px;font-weight:800}
+.topbar-time{font-size:13px;color:var(--muted);font-weight:600}
+.content{padding:28px;flex:1}
+.page{display:none}.page.on{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;align-items:center;gap:14px;transition:.2s}
+.stat-card:hover{border-color:var(--p-mid);box-shadow:0 4px 20px rgba(124,58,237,0.08);transform:translateY(-2px)}
+.stat-ic{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.si1{background:var(--p-light)}.si2{background:#fef3c7}.si3{background:#dcfce7}.si4{background:#fce7f3}
+.stat-n{font-size:26px;font-weight:900}
+.stat-t{font-size:12px;color:var(--muted);margin-top:2px}
+.commission-banner{background:linear-gradient(135deg,#064e3b,#065f46);border-radius:20px;padding:24px 28px;margin-bottom:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;position:relative;overflow:hidden}
+.commission-banner::before{content:'';position:absolute;top:-40px;left:-40px;width:200px;height:200px;background:rgba(255,255,255,0.04);border-radius:50%}
+.comm-item{text-align:center;position:relative}
+.comm-item+.comm-item{border-right:1px solid rgba(255,255,255,0.1)}
+.comm-n{font-size:32px;font-weight:900;color:#fff}
+.comm-n span{font-size:16px}
+.comm-t{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
+.comm-label{display:inline-block;background:rgba(255,255,255,0.1);border-radius:20px;padding:3px 12px;font-size:11px;color:rgba(255,255,255,0.8);font-weight:700;margin-top:6px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.card-head h3{font-size:15px;font-weight:800}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:12px;font-weight:700;color:var(--muted);padding:10px 12px;text-align:right;background:var(--bg);border-bottom:1px solid var(--border)}
+.tbl td{font-size:13px;padding:12px;border-bottom:1px solid var(--border);color:var(--text);font-weight:500}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg)}
+.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.t-review{background:#fef3c7;color:#d97706}
+.t-open{background:#dcfce7;color:#16a34a}
+.t-done{background:var(--p-light);color:var(--p)}
+.t-client{background:#e0f2fe;color:#0369a1}
+.t-provider{background:#dcfce7;color:#16a34a}
+.t-admin{background:var(--p-light);color:var(--p)}
+.t-paid{background:#dcfce7;color:#16a34a}
+.comm-row-done td{background:#f0fdf4}
+.comm-amount{font-size:14px;font-weight:800;color:#059669}
+.btn-paid{padding:5px 12px;background:#dcfce7;color:#16a34a;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.2s}
+.btn-paid:hover{background:#bbf7d0}
+.empty{text-align:center;padding:40px;color:var(--muted)}
+.empty-ic{font-size:40px;margin-bottom:10px}
+.loading{text-align:center;padding:32px;color:var(--muted);font-size:14px}
+.search-bar{padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;outline:none;width:220px;transition:.2s}
+.search-bar:focus{border-color:var(--p)}
 </style>
 </head>
 <body>
 <div class="side">
-  <div class="side-logo">
-    <h1>مناقصة<span>.</span></h1>
-    <p>لوحة تحكم المدير</p>
+  <div class="side-head">
+    <div class="side-logo">مناقصة<span>.</span></div>
+    <div class="admin-badge">
+      <div class="admin-av">👑</div>
+      <div><div class="admin-name">لوحة المدير</div><div class="admin-role">صلاحيات كاملة</div></div>
+    </div>
   </div>
   <div class="menu">
+    <div class="menu-sec">الإدارة</div>
     <button class="menu-item on" onclick="show('home',this)"><span class="ic">🏠</span> الرئيسية</button>
-    <button class="menu-item" onclick="show('users',this)"><span class="ic">👥</span> المستخدمون</button>
+    <button class="menu-item" onclick="show('commissions',this)"><span class="ic">💰</span> العمولات</button>
     <button class="menu-item" onclick="show('requests',this)"><span class="ic">📋</span> الطلبات</button>
-    <button class="menu-item" onclick="show('bids',this)"><span class="ic">💰</span> العروض</button>
+    <button class="menu-item" onclick="show('users',this)"><span class="ic">👥</span> المستخدمون</button>
+    <button class="menu-item" onclick="show('reviews',this)"><span class="ic">⭐</span> التقييمات</button>
+  </div>
+  <div class="side-foot">
+    <button class="logout-btn" onclick="logout()"><span>🚪</span> تسجيل الخروج</button>
   </div>
 </div>
 <div class="main">
   <div class="topbar">
-    <h2 id="pageTitle">لوحة التحكم</h2>
-    <div class="topbar-right">
-      <span class="badge">👑 مدير النظام</span>
-      <button class="logout" onclick="logout()">تسجيل الخروج</button>
-    </div>
+    <div class="topbar-title">👑 لوحة تحكم المدير</div>
+    <div class="topbar-time" id="clock"></div>
   </div>
-  <div class="page on" id="page-home">
-    <div class="stats">
-      <div class="stat"><div class="stat-ic">👥</div><div class="stat-n" id="s-users">...</div><div class="stat-t">المستخدمون</div></div>
-      <div class="stat"><div class="stat-ic">📋</div><div class="stat-n" id="s-requests">...</div><div class="stat-t">الطلبات</div></div>
-      <div class="stat"><div class="stat-ic">💰</div><div class="stat-n" id="s-bids">...</div><div class="stat-t">العروض</div></div>
-      <div class="stat"><div class="stat-ic">🔧</div><div class="stat-n" id="s-providers">...</div><div class="stat-t">مزودو الخدمة</div></div>
+  <div class="content">
+    <div class="page on" id="page-home">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-ic si1">👥</div><div><div class="stat-n" id="st-users">–</div><div class="stat-t">إجمالي المستخدمين</div></div></div>
+        <div class="stat-card"><div class="stat-ic si2">📋</div><div><div class="stat-n" id="st-reqs">–</div><div class="stat-t">إجمالي الطلبات</div></div></div>
+        <div class="stat-card"><div class="stat-ic si3">🔧</div><div><div class="stat-n" id="st-providers">–</div><div class="stat-t">مزودو الخدمة</div></div></div>
+        <div class="stat-card"><div class="stat-ic si4">💰</div><div><div class="stat-n" id="st-bids">–</div><div class="stat-t">إجمالي العروض</div></div></div>
+      </div>
+      <div class="commission-banner">
+        <div class="comm-item"><div class="comm-n" id="comm-total">0 <span>ر.س</span></div><div class="comm-t">إجمالي قيمة الصفقات المكتملة</div><div class="comm-label">💼 الصفقات</div></div>
+        <div class="comm-item"><div class="comm-n" id="comm-due">0 <span>ر.س</span></div><div class="comm-t">العمولات المستحقة (1%)</div><div class="comm-label">💰 مستحقة</div></div>
+        <div class="comm-item"><div class="comm-n" id="comm-paid">0 <span>ر.س</span></div><div class="comm-t">العمولات المحصّلة</div><div class="comm-label">✅ محصّلة</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>📋 آخر الطلبات</h3></div>
+        <div id="home-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
     </div>
-    <div class="card">
-      <h3>آخر المستخدمين</h3>
-      <div id="recent-users"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-commissions">
+      <div class="commission-banner" style="margin-bottom:24px">
+        <div class="comm-item"><div class="comm-n" id="c-total">0 <span>ر.س</span></div><div class="comm-t">قيمة الصفقات المكتملة</div><div class="comm-label">💼 الإجمالي</div></div>
+        <div class="comm-item"><div class="comm-n" id="c-due">0 <span>ر.س</span></div><div class="comm-t">عمولات مستحقة (1%)</div><div class="comm-label">⏳ مستحقة</div></div>
+        <div class="comm-item"><div class="comm-n" id="c-pending-count">0</div><div class="comm-t">طلبات بانتظار العمولة</div><div class="comm-label">📊 معلّقة</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>💰 سجل العمولات – الطلبات المكتملة</h3></div>
+        <div id="comm-table"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
     </div>
-  </div>
-  <div class="page" id="page-users">
-    <div class="card">
-      <h3>جميع المستخدمين</h3>
-      <div id="all-users"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-requests">
+      <div class="card">
+        <div class="card-head"><h3>📋 جميع الطلبات</h3><input class="search-bar" id="req-search" placeholder="🔍 بحث..." oninput="filterReqs()"></div>
+        <div id="reqs-table"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
     </div>
-  </div>
-  <div class="page" id="page-requests">
-    <div class="card">
-      <h3>جميع الطلبات</h3>
-      <div id="all-requests"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-users">
+      <div class="card">
+        <div class="card-head"><h3>👥 جميع المستخدمين</h3><input class="search-bar" id="user-search" placeholder="🔍 بحث..." oninput="filterUsers()"></div>
+        <div id="users-table"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
     </div>
-  </div>
-  <div class="page" id="page-bids">
-    <div class="card">
-      <h3>جميع العروض</h3>
-      <div id="all-bids"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-reviews">
+      <div class="card">
+        <div class="card-head"><h3>⭐ جميع التقييمات</h3></div>
+        <div id="reviews-table"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
     </div>
   </div>
 </div>
 <script>
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
-if(!user.id){location.href='auth.html';}
+if(!user.id||user.role!=='admin'){location.href='auth.html';}
+var allReqs=[],allUsers=[],paidComms=JSON.parse(localStorage.getItem('paidComms')||'[]');
+function updateClock(){var n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('ar-SA')+' – '+n.toLocaleTimeString('ar-SA');}
+setInterval(updateClock,1000);updateClock();
 function show(page,el){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.menu-item').forEach(function(m){m.className='menu-item';});
   document.getElementById('page-'+page).className='page on';
-  el.className='menu-item on';
-  var titles={home:'لوحة التحكم',users:'المستخدمون',requests:'الطلبات',bids:'العروض'};
-  document.getElementById('pageTitle').textContent=titles[page];
-  if(page==='users')loadUsers();
+  if(el)el.className='menu-item on';
+  if(page==='home')loadHome();
+  if(page==='commissions')loadCommissions();
   if(page==='requests')loadRequests();
-  if(page==='bids')loadBids();
+  if(page==='users')loadUsers();
+  if(page==='reviews')loadReviews();
 }
 function logout(){localStorage.clear();location.href='auth.html';}
-function roleTag(r){
-  if(r==='admin')return '<span class="tag tag-admin">مدير</span>';
-  if(r==='provider')return '<span class="tag tag-provider">مزود</span>';
-  return '<span class="tag tag-client">عميل</span>';
-}
-function loadStats(){
-  fetch(API+'/api/admin/stats')
-  .then(function(r){return r.json();})
-  .then(function(d){
-    document.getElementById('s-users').textContent=d.users||0;
-    document.getElementById('s-requests').textContent=d.requests||0;
-    document.getElementById('s-bids').textContent=d.bids||0;
-    document.getElementById('s-providers').textContent=d.providers||0;
+function statusTag(s){if(s==='open')return '<span class="tag t-open">نشط</span>';if(s==='done')return '<span class="tag t-done">مكتمل</span>';return '<span class="tag t-review">مراجعة</span>';}
+function roleTag(r){if(r==='provider')return '<span class="tag t-provider">مزود</span>';if(r==='admin')return '<span class="tag t-admin">مدير</span>';return '<span class="tag t-client">عميل</span>';}
+function starsHtml(n){var s='';for(var i=1;i<=5;i++)s+=i<=n?'⭐':'☆';return s;}
+function loadHome(){
+  fetch(API+'/api/admin/stats').then(function(r){return r.json();}).then(function(s){
+    document.getElementById('st-users').textContent=s.users||0;
+    document.getElementById('st-reqs').textContent=s.requests||0;
+    document.getElementById('st-providers').textContent=s.providers||0;
+    document.getElementById('st-bids').textContent=s.bids||0;
+  }).catch(function(){});
+  fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
+    allReqs=reqs;
+    var done=reqs.filter(function(r){return r.status==='done';});
+    var total=done.reduce(function(s,r){return s+(r.budget_max||0);},0);
+    var due=Math.round(total*0.01);
+    var paid=paidComms.reduce(function(s,id){var r=done.find(function(x){return x.id==id;});return s+(r?Math.round((r.budget_max||0)*0.01):0);},0);
+    document.getElementById('comm-total').innerHTML=total.toLocaleString()+' <span>ر.س</span>';
+    document.getElementById('comm-due').innerHTML=due.toLocaleString()+' <span>ر.س</span>';
+    document.getElementById('comm-paid').innerHTML=paid.toLocaleString()+' <span>ر.س</span>';
+    if(!reqs.length){document.getElementById('home-reqs').innerHTML='<div class="empty"><div class="empty-ic">📭</div><p>لا يوجد طلبات بعد</p></div>';return;}
+    var html='<table class="tbl"><thead><tr><th>#</th><th>العنوان</th><th>العميل</th><th>التصنيف</th><th>الميزانية</th><th>الحالة</th></tr></thead><tbody>';
+    reqs.slice(0,8).forEach(function(r){html+='<tr><td>#'+r.id+'</td><td>'+r.title+'</td><td>'+(r.client_name||'–')+'</td><td>'+(r.category||'–')+'</td><td>'+(r.budget_max?r.budget_max+' ر.س':'–')+'</td><td>'+statusTag(r.status)+'</td></tr>';});
+    html+='</tbody></table>';
+    document.getElementById('home-reqs').innerHTML=html;
   }).catch(function(){});
 }
-function loadRecentUsers(){
-  fetch(API+'/api/admin/users')
-  .then(function(r){return r.json();})
-  .then(function(users){
-    if(!users.length){document.getElementById('recent-users').innerHTML='<div class="empty">لا يوجد مستخدمون بعد</div>';return;}
-    var html='<table><tr><th>الاسم</th><th>البريد</th><th>النوع</th><th>تاريخ التسجيل</th></tr>';
-    users.slice(0,5).forEach(function(u){
-      html+='<tr><td><strong>'+u.name+'</strong></td><td>'+u.email+'</td><td>'+roleTag(u.role)+'</td><td>'+new Date(u.created_at).toLocaleDateString('ar')+'</td></tr>';
+function loadCommissions(){
+  fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
+    var done=reqs.filter(function(r){return r.status==='done';});
+    var total=done.reduce(function(s,r){return s+(r.budget_max||0);},0);
+    var due=Math.round(total*0.01);
+    var pending=done.filter(function(r){return paidComms.indexOf(r.id)===-1;}).length;
+    document.getElementById('c-total').innerHTML=total.toLocaleString()+' <span>ر.س</span>';
+    document.getElementById('c-due').innerHTML=due.toLocaleString()+' <span>ر.س</span>';
+    document.getElementById('c-pending-count').textContent=pending;
+    if(!done.length){document.getElementById('comm-table').innerHTML='<div class="empty"><div class="empty-ic">💰</div><p>لا يوجد طلبات مكتملة بعد</p></div>';return;}
+    var html='<table class="tbl"><thead><tr><th>#</th><th>الطلب</th><th>العميل</th><th>قيمة الصفقة</th><th>العمولة 1%</th><th>موعد الدفع</th><th>الحالة</th></tr></thead><tbody>';
+    done.forEach(function(r){
+      var comm=Math.round((r.budget_max||0)*0.01);
+      var isPaid=paidComms.indexOf(r.id)!==-1;
+      var deadline=new Date(r.created_at);deadline.setDate(deadline.getDate()+10);
+      var isLate=!isPaid&&new Date()>deadline;
+      html+='<tr class="comm-row-done"><td>#'+r.id+'</td><td>'+r.title+'</td><td>'+(r.client_name||'–')+'</td><td>'+(r.budget_max||0).toLocaleString()+' ر.س</td><td class="comm-amount">'+comm.toLocaleString()+' ر.س</td><td style="color:'+(isLate?'#dc2626':'var(--muted)')+'">'+deadline.toLocaleDateString('ar')+'</td><td>'+(isPaid?'<span class="tag t-paid">✅ محصّلة</span>':'<button class="btn-paid" onclick="markPaid('+r.id+')">💰 تحصيل</button>')+'</td></tr>';
     });
-    html+='</table>';
-    document.getElementById('recent-users').innerHTML=html;
-  }).catch(function(){document.getElementById('recent-users').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
+    html+='</tbody></table>';
+    document.getElementById('comm-table').innerHTML=html;
+  }).catch(function(){document.getElementById('comm-table').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><p>تعذر التحميل</p></div>';});
 }
-function loadUsers(){
-  document.getElementById('all-users').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/admin/users')
-  .then(function(r){return r.json();})
-  .then(function(users){
-    if(!users.length){document.getElementById('all-users').innerHTML='<div class="empty">لا يوجد مستخدمون بعد</div>';return;}
-    var html='<table><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الجوال</th><th>النوع</th><th>تاريخ التسجيل</th></tr>';
-    users.forEach(function(u,i){
-      html+='<tr><td>'+(i+1)+'</td><td><strong>'+u.name+'</strong></td><td>'+u.email+'</td><td>'+(u.phone||'–')+'</td><td>'+roleTag(u.role)+'</td><td>'+new Date(u.created_at).toLocaleDateString('ar')+'</td></tr>';
-    });
-    html+='</table>';
-    document.getElementById('all-users').innerHTML=html;
-  }).catch(function(){document.getElementById('all-users').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
-}
+function markPaid(id){if(paidComms.indexOf(id)===-1){paidComms.push(id);localStorage.setItem('paidComms',JSON.stringify(paidComms));}loadCommissions();loadHome();}
 function loadRequests(){
-  document.getElementById('all-requests').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/requests')
-  .then(function(r){return r.json();})
-  .then(function(reqs){
-    if(!reqs.length){document.getElementById('all-requests').innerHTML='<div class="empty">لا يوجد طلبات بعد</div>';return;}
-    var html='<table><tr><th>#</th><th>العنوان</th><th>العميل</th><th>المدينة</th><th>الحالة</th><th>التاريخ</th></tr>';
-    reqs.forEach(function(r,i){
-      html+='<tr><td>'+(i+1)+'</td><td><strong>'+r.title+'</strong></td><td>'+(r.client_name||'–')+'</td><td>'+(r.city||'–')+'</td><td><span class="tag tag-review">'+(r.status||'قيد المراجعة')+'</span></td><td>'+new Date(r.created_at).toLocaleDateString('ar')+'</td></tr>';
-    });
-    html+='</table>';
-    document.getElementById('all-requests').innerHTML=html;
-  }).catch(function(){document.getElementById('all-requests').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
+  document.getElementById('reqs-table').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
+  fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){allReqs=reqs;renderReqs(reqs);}).catch(function(){document.getElementById('reqs-table').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><p>تعذر التحميل</p></div>';});
 }
-function loadBids(){
-  document.getElementById('all-bids').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/bids')
-  .then(function(r){return r.json();})
-  .then(function(bids){
-    if(!bids.length){document.getElementById('all-bids').innerHTML='<div class="empty">لا يوجد عروض بعد</div>';return;}
-    var html='<table><tr><th>#</th><th>رقم الطلب</th><th>السعر</th><th>المدة</th><th>الحالة</th><th>التاريخ</th></tr>';
-    bids.forEach(function(b,i){
-      html+='<tr><td>'+(i+1)+'</td><td>#'+b.request_id+'</td><td>'+b.price+' ر.س</td><td>'+(b.days||1)+' يوم</td><td><span class="tag tag-review">'+(b.status||'قيد الانتظار')+'</span></td><td>'+new Date(b.created_at).toLocaleDateString('ar')+'</td></tr>';
-    });
-    html+='</table>';
-    document.getElementById('all-bids').innerHTML=html;
-  }).catch(function(){document.getElementById('all-bids').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
+function renderReqs(reqs){
+  if(!reqs.length){document.getElementById('reqs-table').innerHTML='<div class="empty"><div class="empty-ic">📭</div><p>لا يوجد طلبات</p></div>';return;}
+  var html='<table class="tbl"><thead><tr><th>#</th><th>العنوان</th><th>العميل</th><th>التصنيف</th><th>المدينة</th><th>الميزانية</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>';
+  reqs.forEach(function(r){html+='<tr><td>#'+r.id+'</td><td>'+r.title+'</td><td>'+(r.client_name||'–')+'</td><td>'+(r.category||'–')+'</td><td>'+(r.city||'–')+'</td><td>'+(r.budget_max?r.budget_max+' ر.س':'–')+'</td><td>'+statusTag(r.status)+'</td><td>'+new Date(r.created_at).toLocaleDateString('ar')+'</td></tr>';});
+  html+='</tbody></table>';
+  document.getElementById('reqs-table').innerHTML=html;
 }
-loadStats();
-loadRecentUsers();
+function filterReqs(){var q=document.getElementById('req-search').value.toLowerCase();renderReqs(allReqs.filter(function(r){return r.title.toLowerCase().includes(q)||(r.client_name||'').toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q);}));}
+function loadUsers(){
+  document.getElementById('users-table').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
+  fetch(API+'/api/admin/users').then(function(r){return r.json();}).then(function(users){allUsers=users;renderUsers(users);}).catch(function(){document.getElementById('users-table').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><p>تعذر التحميل</p></div>';});
+}
+function renderUsers(users){
+  if(!users.length){document.getElementById('users-table').innerHTML='<div class="empty"><div class="empty-ic">👥</div><p>لا يوجد مستخدمين</p></div>';return;}
+  var html='<table class="tbl"><thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الجوال</th><th>الدور</th><th>تاريخ التسجيل</th></tr></thead><tbody>';
+  users.forEach(function(u){html+='<tr><td>#'+u.id+'</td><td>'+u.name+'</td><td>'+u.email+'</td><td>'+(u.phone||'–')+'</td><td>'+roleTag(u.role)+'</td><td>'+new Date(u.created_at).toLocaleDateString('ar')+'</td></tr>';});
+  html+='</tbody></table>';
+  document.getElementById('users-table').innerHTML=html;
+}
+function filterUsers(){var q=document.getElementById('user-search').value.toLowerCase();renderUsers(allUsers.filter(function(u){return u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q);}));}
+function loadReviews(){
+  document.getElementById('reviews-table').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
+  fetch(API+'/api/admin/users').then(function(r){return r.json();}).then(function(users){
+    var providers=users.filter(function(u){return u.role==='provider';});
+    if(!providers.length){document.getElementById('reviews-table').innerHTML='<div class="empty"><div class="empty-ic">⭐</div><p>لا يوجد مزودين بعد</p></div>';return;}
+    Promise.all(providers.map(function(p){return fetch(API+'/api/reviews/provider/'+p.id).then(function(r){return r.json();}).then(function(d){return{provider:p,data:d};});})).then(function(results){
+      var html='<table class="tbl"><thead><tr><th>المزود</th><th>عدد التقييمات</th><th>متوسط التقييم</th><th>النجوم</th></tr></thead><tbody>';
+      results.forEach(function(res){html+='<tr><td>'+res.provider.name+'</td><td>'+res.data.count+'</td><td><strong>'+(res.data.average||0)+'</strong></td><td>'+starsHtml(Math.round(res.data.average||0))+'</td></tr>';});
+      html+='</tbody></table>';
+      document.getElementById('reviews-table').innerHTML=html;
+    });
+  }).catch(function(){document.getElementById('reviews-table').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><p>تعذر التحميل</p></div>';});
+}
+loadHome();
 </script>
 </body>
 </html>
