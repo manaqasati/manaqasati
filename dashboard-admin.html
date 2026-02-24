@@ -2,14 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>مناقصة – لوحة المدير</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--p:#7c3aed;--p2:#6d28d9;--p-light:#ede9fe;--p-mid:#ddd6fe;--text:#1e1b4b;--muted:#6b7280;--border:#e5e7eb;--bg:#f8f7ff}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
-.side{width:260px;background:#fff;border-left:1px solid var(--border);min-height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;box-shadow:2px 0 20px rgba(0,0,0,0.04)}
+.side{width:260px;background:#fff;border-left:1px solid var(--border);min-height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;box-shadow:2px 0 20px rgba(0,0,0,0.04);z-index:100}
 .side-head{padding:24px 20px;border-bottom:1px solid var(--border)}
 .side-logo{font-size:22px;font-weight:900;color:var(--p);margin-bottom:16px}
 .side-logo span{color:#f59e0b}
@@ -26,12 +26,22 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .side-foot{padding:16px 20px;border-top:1px solid var(--border)}
 .logout-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:#ef4444;cursor:pointer;font-size:14px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif}
 .logout-btn:hover{background:#fee2e2}
-.main{margin-right:260px;flex:1;display:flex;flex-direction:column}
+.main{margin-right:260px;flex:1;display:flex;flex-direction:column;min-width:0}
 .topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .topbar-title{font-size:18px;font-weight:800}
 .topbar-time{font-size:13px;color:var(--muted);font-weight:600}
 .content{padding:28px;flex:1}
 .page{display:none}.page.on{display:block}
+.mobile-header{display:none;background:linear-gradient(135deg,var(--p),var(--p2));padding:14px 20px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.mobile-logo{font-size:18px;font-weight:900;color:#fff}
+.mobile-logo span{color:#fbbf24}
+.mobile-time{font-size:11px;color:rgba(255,255,255,0.7);font-weight:600}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);z-index:200;padding:6px 0 env(safe-area-inset-bottom,6px)}
+.bottom-nav-items{display:flex;justify-content:space-around}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;cursor:pointer;border:none;background:none;font-family:'Tajawal',sans-serif;color:var(--muted);flex:1}
+.bn-item .bn-ic{font-size:20px}
+.bn-item .bn-txt{font-size:9px;font-weight:700}
+.bn-item.on{color:var(--p)}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;align-items:center;gap:14px;transition:.2s}
 .stat-card:hover{border-color:var(--p-mid);box-shadow:0 4px 20px rgba(124,58,237,0.08);transform:translateY(-2px)}
@@ -43,16 +53,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .commission-banner::before{content:'';position:absolute;top:-40px;left:-40px;width:200px;height:200px;background:rgba(255,255,255,0.04);border-radius:50%}
 .comm-item{text-align:center;position:relative}
 .comm-item+.comm-item{border-right:1px solid rgba(255,255,255,0.1)}
-.comm-n{font-size:32px;font-weight:900;color:#fff}
-.comm-n span{font-size:16px}
-.comm-t{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
-.comm-label{display:inline-block;background:rgba(255,255,255,0.1);border-radius:20px;padding:3px 12px;font-size:11px;color:rgba(255,255,255,0.8);font-weight:700;margin-top:6px}
+.comm-n{font-size:28px;font-weight:900;color:#fff}
+.comm-n span{font-size:14px}
+.comm-t{font-size:12px;color:rgba(255,255,255,0.6);margin-top:4px}
+.comm-label{display:inline-block;background:rgba(255,255,255,0.1);border-radius:20px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,0.8);font-weight:700;margin-top:6px}
 .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .card-head h3{font-size:15px;font-weight:800}
-.tbl{width:100%;border-collapse:collapse}
-.tbl th{font-size:12px;font-weight:700;color:var(--muted);padding:10px 12px;text-align:right;background:var(--bg);border-bottom:1px solid var(--border)}
-.tbl td{font-size:13px;padding:12px;border-bottom:1px solid var(--border);color:var(--text);font-weight:500}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;min-width:500px}
+.tbl th{font-size:12px;font-weight:700;color:var(--muted);padding:10px 12px;text-align:right;background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{font-size:13px;padding:12px;border-bottom:1px solid var(--border);color:var(--text);font-weight:500;white-space:nowrap}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover td{background:var(--bg)}
 .tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
@@ -67,11 +78,29 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .comm-amount{font-size:14px;font-weight:800;color:#059669}
 .btn-paid{padding:5px 12px;background:#dcfce7;color:#16a34a;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.2s}
 .btn-paid:hover{background:#bbf7d0}
-.empty{text-align:center;padding:40px;color:var(--muted)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-ic{font-size:40px;margin-bottom:10px}
 .loading{text-align:center;padding:32px;color:var(--muted);font-size:14px}
-.search-bar{padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;outline:none;width:220px;transition:.2s}
+.search-bar{padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;outline:none;width:200px;transition:.2s}
 .search-bar:focus{border-color:var(--p)}
+@media(max-width:768px){
+  .side{display:none}
+  .main{margin-right:0}
+  .topbar{display:none}
+  .mobile-header{display:flex}
+  .bottom-nav{display:block}
+  .content{padding:16px;padding-bottom:80px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .stat-card{padding:14px;border-radius:14px}
+  .stat-ic{width:40px;height:40px;font-size:18px}
+  .stat-n{font-size:22px}
+  .commission-banner{grid-template-columns:1fr;gap:14px;padding:18px}
+  .comm-item+.comm-item{border-right:none;border-top:1px solid rgba(255,255,255,0.1);padding-top:14px}
+  .comm-n{font-size:24px}
+  .card{border-radius:14px;padding:14px}
+  .card-head{flex-direction:column;align-items:flex-start;gap:10px}
+  .search-bar{width:100%}
+}
 </style>
 </head>
 <body>
@@ -85,15 +114,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
   </div>
   <div class="menu">
     <div class="menu-sec">الإدارة</div>
-    <button class="menu-item on" onclick="show('home',this)"><span class="ic">🏠</span> الرئيسية</button>
-    <button class="menu-item" onclick="show('commissions',this)"><span class="ic">💰</span> العمولات</button>
-    <button class="menu-item" onclick="show('requests',this)"><span class="ic">📋</span> الطلبات</button>
-    <button class="menu-item" onclick="show('users',this)"><span class="ic">👥</span> المستخدمون</button>
-    <button class="menu-item" onclick="show('reviews',this)"><span class="ic">⭐</span> التقييمات</button>
+    <button class="menu-item on" onclick="show('home',this,'home')"><span class="ic">🏠</span> الرئيسية</button>
+    <button class="menu-item" onclick="show('commissions',this,'commissions')"><span class="ic">💰</span> العمولات</button>
+    <button class="menu-item" onclick="show('requests',this,'requests')"><span class="ic">📋</span> الطلبات</button>
+    <button class="menu-item" onclick="show('users',this,'users')"><span class="ic">👥</span> المستخدمون</button>
+    <button class="menu-item" onclick="show('reviews',this,'reviews')"><span class="ic">⭐</span> التقييمات</button>
   </div>
   <div class="side-foot">
     <button class="logout-btn" onclick="logout()"><span>🚪</span> تسجيل الخروج</button>
   </div>
+</div>
+<div class="mobile-header">
+  <div><div class="mobile-logo">مناقصة<span>.</span> 👑</div><div class="mobile-time" id="clock-m"></div></div>
+  <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:7px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif">خروج 🚪</button>
 </div>
 <div class="main">
   <div class="topbar">
@@ -103,19 +136,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
   <div class="content">
     <div class="page on" id="page-home">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-ic si1">👥</div><div><div class="stat-n" id="st-users">–</div><div class="stat-t">إجمالي المستخدمين</div></div></div>
-        <div class="stat-card"><div class="stat-ic si2">📋</div><div><div class="stat-n" id="st-reqs">–</div><div class="stat-t">إجمالي الطلبات</div></div></div>
-        <div class="stat-card"><div class="stat-ic si3">🔧</div><div><div class="stat-n" id="st-providers">–</div><div class="stat-t">مزودو الخدمة</div></div></div>
-        <div class="stat-card"><div class="stat-ic si4">💰</div><div><div class="stat-n" id="st-bids">–</div><div class="stat-t">إجمالي العروض</div></div></div>
+        <div class="stat-card"><div class="stat-ic si1">👥</div><div><div class="stat-n" id="st-users">–</div><div class="stat-t">المستخدمون</div></div></div>
+        <div class="stat-card"><div class="stat-ic si2">📋</div><div><div class="stat-n" id="st-reqs">–</div><div class="stat-t">الطلبات</div></div></div>
+        <div class="stat-card"><div class="stat-ic si3">🔧</div><div><div class="stat-n" id="st-providers">–</div><div class="stat-t">المزودون</div></div></div>
+        <div class="stat-card"><div class="stat-ic si4">💰</div><div><div class="stat-n" id="st-bids">–</div><div class="stat-t">العروض</div></div></div>
       </div>
       <div class="commission-banner">
-        <div class="comm-item"><div class="comm-n" id="comm-total">0 <span>ر.س</span></div><div class="comm-t">إجمالي قيمة الصفقات المكتملة</div><div class="comm-label">💼 الصفقات</div></div>
+        <div class="comm-item"><div class="comm-n" id="comm-total">0 <span>ر.س</span></div><div class="comm-t">إجمالي قيمة الصفقات</div><div class="comm-label">💼 الصفقات</div></div>
         <div class="comm-item"><div class="comm-n" id="comm-due">0 <span>ر.س</span></div><div class="comm-t">العمولات المستحقة (1%)</div><div class="comm-label">💰 مستحقة</div></div>
         <div class="comm-item"><div class="comm-n" id="comm-paid">0 <span>ر.س</span></div><div class="comm-t">العمولات المحصّلة</div><div class="comm-label">✅ محصّلة</div></div>
       </div>
       <div class="card">
         <div class="card-head"><h3>📋 آخر الطلبات</h3></div>
-        <div id="home-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
+        <div class="tbl-wrap"><div id="home-reqs"><div class="loading">⏳ جاري التحميل...</div></div></div>
       </div>
     </div>
     <div class="page" id="page-commissions">
@@ -125,28 +158,37 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
         <div class="comm-item"><div class="comm-n" id="c-pending-count">0</div><div class="comm-t">طلبات بانتظار العمولة</div><div class="comm-label">📊 معلّقة</div></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>💰 سجل العمولات – الطلبات المكتملة</h3></div>
-        <div id="comm-table"><div class="loading">⏳ جاري التحميل...</div></div>
+        <div class="card-head"><h3>💰 سجل العمولات</h3></div>
+        <div class="tbl-wrap"><div id="comm-table"><div class="loading">⏳ جاري التحميل...</div></div></div>
       </div>
     </div>
     <div class="page" id="page-requests">
       <div class="card">
         <div class="card-head"><h3>📋 جميع الطلبات</h3><input class="search-bar" id="req-search" placeholder="🔍 بحث..." oninput="filterReqs()"></div>
-        <div id="reqs-table"><div class="loading">⏳ جاري التحميل...</div></div>
+        <div class="tbl-wrap"><div id="reqs-table"><div class="loading">⏳ جاري التحميل...</div></div></div>
       </div>
     </div>
     <div class="page" id="page-users">
       <div class="card">
         <div class="card-head"><h3>👥 جميع المستخدمين</h3><input class="search-bar" id="user-search" placeholder="🔍 بحث..." oninput="filterUsers()"></div>
-        <div id="users-table"><div class="loading">⏳ جاري التحميل...</div></div>
+        <div class="tbl-wrap"><div id="users-table"><div class="loading">⏳ جاري التحميل...</div></div></div>
       </div>
     </div>
     <div class="page" id="page-reviews">
       <div class="card">
-        <div class="card-head"><h3>⭐ جميع التقييمات</h3></div>
-        <div id="reviews-table"><div class="loading">⏳ جاري التحميل...</div></div>
+        <div class="card-head"><h3>⭐ تقييمات المزودين</h3></div>
+        <div class="tbl-wrap"><div id="reviews-table"><div class="loading">⏳ جاري التحميل...</div></div></div>
       </div>
     </div>
+  </div>
+</div>
+<div class="bottom-nav">
+  <div class="bottom-nav-items">
+    <button class="bn-item on" id="bn-home" onclick="show('home',null,'home')"><span class="bn-ic">🏠</span><span class="bn-txt">الرئيسية</span></button>
+    <button class="bn-item" id="bn-commissions" onclick="show('commissions',null,'commissions')"><span class="bn-ic">💰</span><span class="bn-txt">العمولات</span></button>
+    <button class="bn-item" id="bn-requests" onclick="show('requests',null,'requests')"><span class="bn-ic">📋</span><span class="bn-txt">الطلبات</span></button>
+    <button class="bn-item" id="bn-users" onclick="show('users',null,'users')"><span class="bn-ic">👥</span><span class="bn-txt">المستخدمون</span></button>
+    <button class="bn-item" id="bn-reviews" onclick="show('reviews',null,'reviews')"><span class="bn-ic">⭐</span><span class="bn-txt">تقييمات</span></button>
   </div>
 </div>
 <script>
@@ -154,30 +196,28 @@ var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 if(!user.id||user.role!=='admin'){location.href='auth.html';}
 var allReqs=[],allUsers=[],paidComms=JSON.parse(localStorage.getItem('paidComms')||'[]');
-function updateClock(){var n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('ar-SA')+' – '+n.toLocaleTimeString('ar-SA');}
+function updateClock(){var n=new Date();var t=n.toLocaleDateString('ar-SA')+' – '+n.toLocaleTimeString('ar-SA');document.getElementById('clock').textContent=t;document.getElementById('clock-m').textContent=t;}
 setInterval(updateClock,1000);updateClock();
-function show(page,el){
+function show(page,el,key){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.menu-item').forEach(function(m){m.className='menu-item';});
+  document.querySelectorAll('.bn-item').forEach(function(m){m.className='bn-item';});
   document.getElementById('page-'+page).className='page on';
   if(el)el.className='menu-item on';
+  if(key){var bn=document.getElementById('bn-'+key);if(bn)bn.className='bn-item on';}
   if(page==='home')loadHome();
   if(page==='commissions')loadCommissions();
   if(page==='requests')loadRequests();
   if(page==='users')loadUsers();
   if(page==='reviews')loadReviews();
+  window.scrollTo(0,0);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
 function statusTag(s){if(s==='open')return '<span class="tag t-open">نشط</span>';if(s==='done')return '<span class="tag t-done">مكتمل</span>';return '<span class="tag t-review">مراجعة</span>';}
 function roleTag(r){if(r==='provider')return '<span class="tag t-provider">مزود</span>';if(r==='admin')return '<span class="tag t-admin">مدير</span>';return '<span class="tag t-client">عميل</span>';}
 function starsHtml(n){var s='';for(var i=1;i<=5;i++)s+=i<=n?'⭐':'☆';return s;}
 function loadHome(){
-  fetch(API+'/api/admin/stats').then(function(r){return r.json();}).then(function(s){
-    document.getElementById('st-users').textContent=s.users||0;
-    document.getElementById('st-reqs').textContent=s.requests||0;
-    document.getElementById('st-providers').textContent=s.providers||0;
-    document.getElementById('st-bids').textContent=s.bids||0;
-  }).catch(function(){});
+  fetch(API+'/api/admin/stats').then(function(r){return r.json();}).then(function(s){document.getElementById('st-users').textContent=s.users||0;document.getElementById('st-reqs').textContent=s.requests||0;document.getElementById('st-providers').textContent=s.providers||0;document.getElementById('st-bids').textContent=s.bids||0;}).catch(function(){});
   fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
     allReqs=reqs;
     var done=reqs.filter(function(r){return r.status==='done';});
@@ -188,8 +228,8 @@ function loadHome(){
     document.getElementById('comm-due').innerHTML=due.toLocaleString()+' <span>ر.س</span>';
     document.getElementById('comm-paid').innerHTML=paid.toLocaleString()+' <span>ر.س</span>';
     if(!reqs.length){document.getElementById('home-reqs').innerHTML='<div class="empty"><div class="empty-ic">📭</div><p>لا يوجد طلبات بعد</p></div>';return;}
-    var html='<table class="tbl"><thead><tr><th>#</th><th>العنوان</th><th>العميل</th><th>التصنيف</th><th>الميزانية</th><th>الحالة</th></tr></thead><tbody>';
-    reqs.slice(0,8).forEach(function(r){html+='<tr><td>#'+r.id+'</td><td>'+r.title+'</td><td>'+(r.client_name||'–')+'</td><td>'+(r.category||'–')+'</td><td>'+(r.budget_max?r.budget_max+' ر.س':'–')+'</td><td>'+statusTag(r.status)+'</td></tr>';});
+    var html='<table class="tbl"><thead><tr><th>#</th><th>العنوان</th><th>العميل</th><th>الميزانية</th><th>الحالة</th></tr></thead><tbody>';
+    reqs.slice(0,8).forEach(function(r){html+='<tr><td>#'+r.id+'</td><td>'+r.title+'</td><td>'+(r.client_name||'–')+'</td><td>'+(r.budget_max?r.budget_max+' ر.س':'–')+'</td><td>'+statusTag(r.status)+'</td></tr>';});
     html+='</tbody></table>';
     document.getElementById('home-reqs').innerHTML=html;
   }).catch(function(){});
@@ -247,7 +287,7 @@ function loadReviews(){
     var providers=users.filter(function(u){return u.role==='provider';});
     if(!providers.length){document.getElementById('reviews-table').innerHTML='<div class="empty"><div class="empty-ic">⭐</div><p>لا يوجد مزودين بعد</p></div>';return;}
     Promise.all(providers.map(function(p){return fetch(API+'/api/reviews/provider/'+p.id).then(function(r){return r.json();}).then(function(d){return{provider:p,data:d};});})).then(function(results){
-      var html='<table class="tbl"><thead><tr><th>المزود</th><th>عدد التقييمات</th><th>متوسط التقييم</th><th>النجوم</th></tr></thead><tbody>';
+      var html='<table class="tbl"><thead><tr><th>المزود</th><th>عدد التقييمات</th><th>المتوسط</th><th>النجوم</th></tr></thead><tbody>';
       results.forEach(function(res){html+='<tr><td>'+res.provider.name+'</td><td>'+res.data.count+'</td><td><strong>'+(res.data.average||0)+'</strong></td><td>'+starsHtml(Math.round(res.data.average||0))+'</td></tr>';});
       html+='</tbody></table>';
       document.getElementById('reviews-table').innerHTML=html;
