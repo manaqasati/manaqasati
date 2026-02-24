@@ -6,7 +6,7 @@
 <title>مناقصة – لوحة المزود</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#059669;--p2:#047857;--p-light:#d1fae5;--p-mid:#a7f3d0;--text:#064e3b;--muted:#6b7280;--border:#e5e7eb;--bg:#f0fdf8}
+:root{--p:#059669;--p2:#047857;--p-light:#d1fae5;--p-mid:#a7f3d0;--muted:#6b7280;--border:#e5e7eb;--bg:#f0fdf8}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display:flex;min-height:100vh}
 .side{width:260px;background:#fff;border-left:1px solid var(--border);min-height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;box-shadow:2px 0 20px rgba(0,0,0,0.04)}
@@ -31,13 +31,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
 .topbar-title{font-size:18px;font-weight:800;color:#1e293b}
 .content{padding:28px;flex:1}
 .page{display:none}.page.on{display:block}
-.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-.stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px;transition:.2s}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:14px;transition:.2s}
 .stat-card:hover{border-color:var(--p-mid);box-shadow:0 4px 20px rgba(5,150,105,0.08)}
-.stat-ic-wrap{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.si1{background:var(--p-light)}.si2{background:#fef3c7}.si3{background:#ede9fe}
-.stat-n{font-size:28px;font-weight:900;color:#1e293b}
-.stat-t{font-size:13px;color:var(--muted);margin-top:2px}
+.stat-ic-wrap{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.si1{background:var(--p-light)}.si2{background:#fef3c7}.si3{background:#ede9fe}.si4{background:#fce7f3}
+.stat-n{font-size:26px;font-weight:900;color:#1e293b}
+.stat-t{font-size:12px;color:var(--muted);margin-top:2px}
 .welcome-card{background:linear-gradient(135deg,var(--p),var(--p2));border-radius:20px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
 .welcome-card::before{content:'';position:absolute;top:-40px;left:-40px;width:200px;height:200px;background:rgba(255,255,255,0.06);border-radius:50%}
 .welcome-text h2{font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;position:relative}
@@ -59,6 +59,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
 .tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .t-pending{background:#fef3c7;color:#d97706}
 .t-accepted{background:var(--p-light);color:var(--p)}
+/* RATING DISPLAY */
+.rating-banner{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.rating-big{font-size:48px;font-weight:900;color:#d97706;line-height:1}
+.rating-stars{font-size:22px;margin-bottom:4px}
+.rating-count{font-size:13px;color:#92400e;font-weight:600}
+.review-item{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px}
+.review-item:last-child{margin-bottom:0}
+.review-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.review-name{font-size:14px;font-weight:800;color:#1e293b}
+.review-stars{color:#f59e0b;font-size:16px}
+.review-title{font-size:12px;color:var(--muted);margin-bottom:6px}
+.review-comment{font-size:13px;color:#475569;line-height:1.6}
 .empty{text-align:center;padding:48px 20px;color:var(--muted)}
 .empty-ic{font-size:48px;margin-bottom:12px}
 .empty h4{font-size:16px;font-weight:700;margin-bottom:6px;color:#1e293b}
@@ -98,6 +110,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
     <button class="menu-item on" onclick="show('home',this)"><span class="ic">🏠</span> الرئيسية</button>
     <button class="menu-item" onclick="show('available',this)"><span class="ic">📋</span> الطلبات المتاحة</button>
     <button class="menu-item" onclick="show('mybids',this)"><span class="ic">💰</span> عروضي</button>
+    <button class="menu-item" onclick="show('reviews',this)"><span class="ic">⭐</span> تقييماتي</button>
   </div>
   <div class="side-foot">
     <button class="logout-btn" onclick="logout()"><span>🚪</span> تسجيل الخروج</button>
@@ -108,6 +121,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
     <div class="topbar-title" id="pageTitle">الرئيسية</div>
   </div>
   <div class="content">
+
+    <!-- HOME -->
     <div class="page on" id="page-home">
       <div class="welcome-card">
         <div class="welcome-text">
@@ -119,27 +134,44 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-ic-wrap si1">📋</div><div><div class="stat-n" id="s-available">0</div><div class="stat-t">طلبات متاحة</div></div></div>
         <div class="stat-card"><div class="stat-ic-wrap si2">📤</div><div><div class="stat-n" id="s-mybids">0</div><div class="stat-t">عروضي</div></div></div>
-        <div class="stat-card"><div class="stat-ic-wrap si3">✅</div><div><div class="stat-n" id="s-accepted">0</div><div class="stat-t">عروض مقبولة</div></div></div>
+        <div class="stat-card"><div class="stat-ic-wrap si3">✅</div><div><div class="stat-n" id="s-accepted">0</div><div class="stat-t">مقبولة</div></div></div>
+        <div class="stat-card"><div class="stat-ic-wrap si4">⭐</div><div><div class="stat-n" id="s-rating">–</div><div class="stat-t">متوسط التقييم</div></div></div>
       </div>
       <div class="card">
         <div class="card-head"><h3>📋 آخر الطلبات المتاحة</h3><a style="font-size:13px;color:var(--p);font-weight:700;cursor:pointer" onclick="show('available',null)">عرض الكل ←</a></div>
         <div id="home-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
       </div>
     </div>
+
+    <!-- AVAILABLE -->
     <div class="page" id="page-available">
       <div class="card">
         <div class="card-head"><h3>📋 جميع الطلبات المتاحة</h3></div>
         <div id="all-reqs"><div class="loading">⏳ جاري التحميل...</div></div>
       </div>
     </div>
+
+    <!-- MY BIDS -->
     <div class="page" id="page-mybids">
       <div class="card">
         <div class="card-head"><h3>💰 عروضي المقدمة</h3></div>
         <div id="my-bids"><div class="loading">⏳ جاري التحميل...</div></div>
       </div>
     </div>
+
+    <!-- REVIEWS -->
+    <div class="page" id="page-reviews">
+      <div id="rating-banner"></div>
+      <div class="card">
+        <div class="card-head"><h3>⭐ تقييمات العملاء</h3></div>
+        <div id="my-reviews"><div class="loading">⏳ جاري التحميل...</div></div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<!-- BID MODAL -->
 <div class="overlay" id="bidOverlay">
   <div class="modal">
     <div class="modal-head">
@@ -156,6 +188,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:#1e293b;display
     </div>
   </div>
 </div>
+
 <script>
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
@@ -165,24 +198,35 @@ var name=user.name||'المزود';
 document.getElementById('userName').textContent=name;
 document.getElementById('welcomeName').textContent='مرحباً، '+name.split(' ')[0]+' 👋';
 document.getElementById('userAv').textContent=name.charAt(0);
+
 function show(page,el){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.menu-item').forEach(function(m){m.className='menu-item';});
   document.getElementById('page-'+page).className='page on';
   if(el)el.className='menu-item on';
-  var titles={home:'الرئيسية',available:'الطلبات المتاحة',mybids:'عروضي'};
+  var titles={home:'الرئيسية',available:'الطلبات المتاحة',mybids:'عروضي',reviews:'تقييماتي'};
   document.getElementById('pageTitle').textContent=titles[page]||'';
   if(page==='available')loadAvailable();
   if(page==='mybids')loadMyBids();
   if(page==='home')loadHome();
+  if(page==='reviews')loadReviews();
 }
+
 function logout(){localStorage.clear();location.href='auth.html';}
 function openBid(id){selectedReqId=id;document.getElementById('b-price').value='';document.getElementById('b-days').value='';document.getElementById('b-note').value='';document.getElementById('bid-msg').className='bid-msg';document.getElementById('bidOverlay').className='overlay show';}
 function closeModal(){document.getElementById('bidOverlay').className='overlay';}
+
 function reqCard(r){
-  var desc=r.description?'<div class="req-desc">'+r.description+'</div>':'';
-  return '<div class="req-item"><div class="req-top"><div class="req-title">'+r.title+'</div></div><div class="req-meta"><span class="req-tag">📍 '+(r.city||'–')+'</span><span class="req-tag"> &nbsp;🗂️ '+(r.category||'–')+'</span>'+(r.budget_max?'<span class="req-tag"> &nbsp;💰 '+r.budget_max+' ر.س</span>':'')+'<span class="req-tag"> &nbsp;👤 '+(r.client_name||'–')+'</span></div>'+desc+'<button class="btn-bid" onclick="openBid('+r.id+')">تقديم عرض 💰</button></div>';
+  var desc=r.description?'<div class="req-desc">'+r.description.substring(0,120)+'...</div>':'';
+  return '<div class="req-item"><div class="req-top"><div class="req-title">'+r.title+'</div></div><div class="req-meta"><span class="req-tag">📍 '+(r.city||'–')+'</span><span class="req-tag">&nbsp;🗂️ '+(r.category||'–')+'</span>'+(r.budget_max?'<span class="req-tag">&nbsp;💰 '+r.budget_max+' ر.س</span>':'')+'<span class="req-tag">&nbsp;👤 '+(r.client_name||'–')+'</span></div>'+desc+'<button class="btn-bid" onclick="openBid('+r.id+')">تقديم عرض 💰</button></div>';
 }
+
+function starsHtml(n){
+  var s='';
+  for(var i=1;i<=5;i++) s+=i<=n?'⭐':'☆';
+  return s;
+}
+
 function loadHome(){
   fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
     document.getElementById('s-available').textContent=reqs.length;
@@ -193,24 +237,49 @@ function loadHome(){
     document.getElementById('s-mybids').textContent=mine.length;
     document.getElementById('s-accepted').textContent=mine.filter(function(b){return b.status==='accepted';}).length;
   }).catch(function(){});
+  fetch(API+'/api/reviews/provider/'+user.id).then(function(r){return r.json();}).then(function(data){
+    document.getElementById('s-rating').textContent=data.average>0?data.average+'★':'–';
+  }).catch(function(){});
 }
+
 function loadAvailable(){
   document.getElementById('all-reqs').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
   fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
     document.getElementById('all-reqs').innerHTML=reqs.length?reqs.map(reqCard).join(''):'<div class="empty"><div class="empty-ic">📭</div><h4>لا يوجد طلبات بعد</h4></div>';
   }).catch(function(){document.getElementById('all-reqs').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h4>تعذر التحميل</h4></div>';});
 }
+
 function loadMyBids(){
   document.getElementById('my-bids').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
   fetch(API+'/api/bids').then(function(r){return r.json();}).then(function(bids){
     var mine=bids.filter(function(b){return b.provider_id==user.id;});
-    if(!mine.length){document.getElementById('my-bids').innerHTML='<div class="empty"><div class="empty-ic">📭</div><h4>لم تقدم أي عروض بعد</h4><p>تصفح الطلبات وقدم عرضك</p></div>';return;}
+    if(!mine.length){document.getElementById('my-bids').innerHTML='<div class="empty"><div class="empty-ic">📭</div><h4>لم تقدم أي عروض بعد</h4></div>';return;}
     document.getElementById('my-bids').innerHTML=mine.map(function(b){
       var tag=b.status==='accepted'?'<span class="tag t-accepted">✓ مقبول</span>':'<span class="tag t-pending">⏳ انتظار</span>';
-      return '<div class="req-item"><div class="req-top"><div class="req-title">طلب رقم #'+b.request_id+'</div>'+tag+'</div><div class="req-meta"><span class="req-tag">💰 '+b.price+' ر.س</span><span class="req-tag"> &nbsp;⏱️ '+b.days+' أيام</span><span class="req-tag"> &nbsp;📅 '+new Date(b.created_at).toLocaleDateString('ar')+'</span></div>'+(b.note?'<div class="req-desc">'+b.note+'</div>':'')+'</div>';
+      return '<div class="req-item"><div class="req-top"><div class="req-title">طلب رقم #'+b.request_id+'</div>'+tag+'</div><div class="req-meta"><span class="req-tag">💰 '+b.price+' ر.س</span><span class="req-tag">&nbsp;⏱️ '+b.days+' أيام</span><span class="req-tag">&nbsp;📅 '+new Date(b.created_at).toLocaleDateString('ar')+'</span></div>'+(b.note?'<div class="req-desc">'+b.note+'</div>':'')+'</div>';
     }).join('');
   }).catch(function(){document.getElementById('my-bids').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h4>تعذر التحميل</h4></div>';});
 }
+
+function loadReviews(){
+  document.getElementById('my-reviews').innerHTML='<div class="loading">⏳ جاري التحميل...</div>';
+  fetch(API+'/api/reviews/provider/'+user.id).then(function(r){return r.json();}).then(function(data){
+    // Banner
+    if(data.count>0){
+      document.getElementById('rating-banner').innerHTML='<div class="rating-banner"><div class="rating-big">'+data.average+'</div><div><div class="rating-stars">'+starsHtml(Math.round(data.average))+'</div><div class="rating-count">'+data.count+' تقييم من العملاء</div></div></div>';
+    } else {
+      document.getElementById('rating-banner').innerHTML='';
+    }
+    if(!data.reviews.length){
+      document.getElementById('my-reviews').innerHTML='<div class="empty"><div class="empty-ic">⭐</div><h4>لا يوجد تقييمات بعد</h4><p>أكمل طلبات لتحصل على تقييمات من العملاء</p></div>';
+      return;
+    }
+    document.getElementById('my-reviews').innerHTML=data.reviews.map(function(r){
+      return '<div class="review-item"><div class="review-top"><div class="review-name">👤 '+r.client_name+'</div><div class="review-stars">'+starsHtml(r.rating)+'</div></div><div class="review-title">📋 '+r.request_title+'</div>'+(r.comment?'<div class="review-comment">"'+r.comment+'"</div>':'')+'</div>';
+    }).join('');
+  }).catch(function(){document.getElementById('my-reviews').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h4>تعذر التحميل</h4></div>';});
+}
+
 function submitBid(){
   var price=document.getElementById('b-price').value;
   var days=document.getElementById('b-days').value;
@@ -225,6 +294,7 @@ function submitBid(){
     btn.disabled=false;btn.textContent='إرسال العرض 🚀';
   }).catch(function(){showBidMsg('تعذر الاتصال','err');btn.disabled=false;btn.textContent='إرسال العرض 🚀';});
 }
+
 function showBidMsg(t,c){var e=document.getElementById('bid-msg');e.textContent=t;e.className='bid-msg '+c;}
 loadHome();
 </script>
