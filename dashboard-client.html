@@ -4,191 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مناقصة – لوحة العميل</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
+:root{--p:#7c3aed;--p2:#6d28d9;--p-light:#ede9fe;--p-mid:#ddd6fe;--text:#1e1b4b;--muted:#6b7280;--border:#e5e7eb;--bg:#f8f7ff}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:#f1f5f9;min-height:100vh;display:flex}
-.side{width:240px;background:#1e3a8a;min-height:100vh;padding:24px 0;position:fixed;right:0;top:0}
-.side-logo{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,0.1)}
-.side-logo h1{font-size:22px;font-weight:900;color:#fff}
-.side-logo h1 span{color:#60a5fa}
-.side-logo p{font-size:11px;color:#93c5fd;margin-top:3px}
-.menu{padding:16px 0}
-.menu-item{display:flex;align-items:center;gap:10px;padding:12px 20px;color:#cbd5e1;cursor:pointer;transition:.2s;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif}
-.menu-item:hover{background:rgba(255,255,255,0.08);color:#fff}
-.menu-item.on{background:rgba(255,255,255,0.12);color:#fff;border-right:3px solid #60a5fa}
-.ic{font-size:18px;width:24px}
-.main{margin-right:240px;flex:1;padding:24px}
-.topbar{background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-.topbar h2{font-size:18px;font-weight:800;color:#1e3a8a}
-.topbar-right{display:flex;gap:10px;align-items:center}
-.btn-new{background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif}
-.logout{background:#fee2e2;color:#dc2626;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif}
-.page{display:none}
-.page.on{display:block}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
-.stat{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);text-align:center}
-.stat-ic{font-size:28px;margin-bottom:6px}
-.stat-n{font-size:26px;font-weight:900;color:#1e3a8a}
-.stat-t{font-size:13px;color:#64748b;margin-top:3px;font-weight:600}
-.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:16px}
-.card h3{font-size:16px;font-weight:800;color:#1e3a8a;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f1f5f9}
-.req-card{border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px}
-.req-title{font-size:15px;font-weight:800;color:#1e293b;margin-bottom:6px}
-.req-meta{display:flex;gap:12px;flex-wrap:wrap}
-.req-meta span{font-size:12px;color:#64748b}
-.tag{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
-.tag-review{background:#fef3c7;color:#d97706}
-.tag-open{background:#dcfce7;color:#16a34a}
-.tag-done{background:#eff6ff;color:#1d4ed8}
-.empty{text-align:center;padding:40px;color:#94a3b8;font-size:15px}
-.loading{text-align:center;padding:30px;color:#64748b}
-.g{margin-bottom:15px}
-.g label{display:block;font-size:14px;font-weight:700;color:#1e3a8a;margin-bottom:6px}
-.g input,.g textarea,.g select{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:14px;color:#1e293b;outline:none}
-.g input:focus,.g textarea:focus,.g select:focus{border-color:#1d4ed8}
-.g textarea{min-height:100px;resize:vertical}
-.btn-submit{width:100%;padding:13px;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;border:none;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px}
-.btn-submit:disabled{opacity:.65;cursor:not-allowed}
-.msg{padding:10px 14px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:14px;display:none}
-.msg.ok{background:#dcfce7;color:#16a34a;display:block}
-.msg.err{background:#fee2e2;color:#dc2626;display:block}
-</style>
-</head>
-<body>
-<div class="side">
-  <div class="side-logo">
-    <h1>مناقصة<span>.</span></h1>
-    <p id="userName">مرحباً بك</p>
-  </div>
-  <div class="menu">
-    <button class="menu-item on" onclick="show('home',this)"><span class="ic">🏠</span> الرئيسية</button>
-    <button class="menu-item" onclick="show('requests',this)"><span class="ic">📋</span> طلباتي</button>
-    <button class="menu-item" onclick="show('new',this)"><span class="ic">➕</span> طلب جديد</button>
-  </div>
-</div>
-<div class="main">
-  <div class="topbar">
-    <h2 id="pageTitle">الرئيسية</h2>
-    <div class="topbar-right">
-      <button class="btn-new" onclick="show('new',null)">➕ طلب جديد</button>
-      <button class="logout" onclick="logout()">خروج</button>
-    </div>
-  </div>
-  <div class="page on" id="page-home">
-    <div class="stats">
-      <div class="stat"><div class="stat-ic">📋</div><div class="stat-n" id="s-total">0</div><div class="stat-t">إجمالي طلباتي</div></div>
-      <div class="stat"><div class="stat-ic">⏳</div><div class="stat-n" id="s-review">0</div><div class="stat-t">قيد المراجعة</div></div>
-      <div class="stat"><div class="stat-ic">✅</div><div class="stat-n" id="s-open">0</div><div class="stat-t">نشطة</div></div>
-    </div>
-    <div class="card">
-      <h3>آخر طلباتي</h3>
-      <div id="recent-reqs"><div class="loading">جاري التحميل...</div></div>
-    </div>
-  </div>
-  <div class="page" id="page-requests">
-    <div class="card">
-      <h3>جميع طلباتي</h3>
-      <div id="all-reqs"><div class="loading">جاري التحميل...</div></div>
-    </div>
-  </div>
-  <div class="page" id="page-new">
-    <div class="card">
-      <h3>➕ نشر طلب جديد</h3>
-      <div class="msg" id="new-msg"></div>
-      <div class="g"><label>عنوان الطلب *</label><input type="text" id="n-title" placeholder="مثال: تركيب مكيف سبليت"></div>
-      <div class="g"><label>التصنيف</label>
-        <select id="n-cat">
-          <option>تكييف وتبريد</option>
-          <option>كهرباء</option>
-          <option>سباكة</option>
-          <option>نجارة</option>
-          <option>دهانات</option>
-          <option>تنظيف</option>
-          <option>نقل عفش</option>
-          <option>أخرى</option>
-        </select>
-      </div>
-      <div class="g"><label>المدينة</label><input type="text" id="n-city" placeholder="الرياض"></div>
-      <div class="g"><label>الميزانية (ر.س)</label><input type="number" id="n-budget" placeholder="500"></div>
-      <div class="g"><label>تفاصيل الطلب *</label><textarea id="n-desc" placeholder="اشرح طلبك بالتفصيل..."></textarea></div>
-      <button class="btn-submit" id="n-btn" onclick="submitReq()">🚀 نشر الطلب</button>
-    </div>
-  </div>
-</div>
-<script>
-var API='https://manaqasati-production.up.railway.app';
-var user=JSON.parse(localStorage.getItem('user')||'{}');
-if(!user.id){location.href='auth.html';}
-document.getElementById('userName').textContent='مرحباً، '+user.name;
-function show(page,el){
-  document.querySelectorAll('.page').forEach(function(p){p.className='page';});
-  document.querySelectorAll('.menu-item').forEach(function(m){m.className='menu-item';});
-  document.getElementById('page-'+page).className='page on';
-  if(el)el.className='menu-item on';
-  var titles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد'};
-  document.getElementById('pageTitle').textContent=titles[page]||'';
-  if(page==='requests')loadAllReqs();
-  if(page==='home')loadHome();
-}
-function logout(){localStorage.clear();location.href='auth.html';}
-function statusTag(s){
-  if(s==='open')return '<span class="tag tag-open">نشط</span>';
-  if(s==='done')return '<span class="tag tag-done">مكتمل</span>';
-  return '<span class="tag tag-review">قيد المراجعة</span>';
-}
-function loadHome(){
-  fetch(API+'/api/requests')
-  .then(function(r){return r.json();})
-  .then(function(all){
-    var mine=all.filter(function(r){return r.client_id==user.id;});
-    document.getElementById('s-total').textContent=mine.length;
-    document.getElementById('s-review').textContent=mine.filter(function(r){return r.status==='review';}).length;
-    document.getElementById('s-open').textContent=mine.filter(function(r){return r.status==='open';}).length;
-    if(!mine.length){
-      document.getElementById('recent-reqs').innerHTML='<div class="empty">لا يوجد طلبات بعد<br><br><button onclick="show(\'new\',null)" style="background:#1d4ed8;color:#fff;padding:10px 20px;border:none;border-radius:8px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:700;cursor:pointer">➕ أنشر أول طلب</button></div>';
-      return;
-    }
-    var html='';
-    mine.slice(0,3).forEach(function(r){
-      html+='<div class="req-card"><div class="req-title">'+r.title+'</div><div class="req-meta"><span>📍 '+(r.city||'–')+'</span><span>🗂️ '+(r.category||'–')+'</span>'+statusTag(r.status)+'</div></div>';
-    });
-    document.getElementById('recent-reqs').innerHTML=html;
-  }).catch(function(){document.getElementById('recent-reqs').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
-}
-function loadAllReqs(){
-  document.getElementById('all-reqs').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/requests')
-  .then(function(r){return r.json();})
-  .then(function(all){
-    var mine=all.filter(function(r){return r.client_id==user.id;});
-    if(!mine.length){document.getElementById('all-reqs').innerHTML='<div class="empty">لا يوجد طلبات بعد</div>';return;}
-    var html='';
-    mine.forEach(function(r){
-      html+='<div class="req-card"><div class="req-title">'+r.title+'</div><div class="req-meta"><span>📍 '+(r.city||'–')+'</span><span>🗂️ '+(r.category||'–')+'</span><span>💰 '+(r.budget_max||'–')+' ر.س</span>'+statusTag(r.status)+'<span>📅 '+new Date(r.created_at).toLocaleDateString('ar')+'</span></div></div>';
-    });
-    document.getElementById('all-reqs').innerHTML=html;
-  }).catch(function(){document.getElementById('all-reqs').innerHTML='<div class="empty">تعذر تحميل البيانات</div>';});
-}
-function submitReq(){
-  var title=document.getElementById('n-title').value.trim();
-  var desc=document.getElementById('n-desc').value.trim();
-  var city=document.getElementById('n-city').value.trim()||'الرياض';
-  var cat=document.getElementById('n-cat').value;
-  var budget=document.getElementById('n-budget').value||0;
-  if(!title||!desc){showMsg('يرجى تعبئة العنوان والتفاصيل','err');return;}
-  var btn=document.getElementById('n-btn');
-  btn.disabled=true;btn.textContent='جاري النشر...';
-  fetch(API+'/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,description:desc,category:cat,city:city,budget_max:parseInt(budget),client_id:user.id})})
-  .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-  .then(function(r){
-    if(r.ok){showMsg('✅ تم نشر طلبك بنجاح!','ok');document.getElementById('n-title').value='';document.getElementById('n-desc').value='';document.getElementById('n-budget').value='';}
-    else{showMsg(r.d.message||'حدث خطأ','err');}
-    btn.disabled=false;btn.textContent='🚀 نشر الطلب';
-  }).catch(function(){showMsg('تعذر الاتصال بالخادم','err');btn.disabled=false;btn.textContent='🚀 نشر الطلب';});
-}
-function showMsg(t,c){var e=document.getElementById('new-msg');e.textContent=t;e.className='msg '+c;setTimeout(function(){e.className='msg';},4000);}
-loadHome();
-</script>
-</body>
-</html>
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+.side{width:260px;background:#fff;border-left:1px solid var(--border);min-height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;box-shadow:2px 0 20px rgba(0,0,0,0.04)}
+.side-head{padding:24px 20px;border-bottom:1px solid var(--border)}
+.side-logo{font-size:22px;font-weight:900;color:var(--p);margin-bottom:16px}
+.side-logo span{color:#f59e0b}
+.user-card{background:var(--p-light);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px}
+.user-av{width:42px;height:42px;border-radius:12px;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0}
+.user-name{font-size:14px;font-weight:800;color:var(--text)}
+.user-role{font-size:11px;color:var(--p);font-weight:600;margin-top:2px}
+.menu{padding:16px 12px;flex:1}
+.menu-sec{font-size:11px;font-weight:700;color:var(--muted);padding:0 8px;margin:16px 0 8px}
+.menu-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;color:var(--muted);cursor:pointer;transition:.2s;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px}
+.menu-item:hover{background:var(
