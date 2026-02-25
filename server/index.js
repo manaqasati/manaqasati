@@ -24,7 +24,8 @@ async function initDB() {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
+      password VARCHAR(255),
+      password_hash VARCHAR(255),
       phone VARCHAR(20),
       role VARCHAR(20) DEFAULT 'client',
       specialties TEXT[],
@@ -90,6 +91,8 @@ async function initDB() {
     ALTER TABLE requests ADD COLUMN IF NOT EXISTS address TEXT;
     ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE;
     ALTER TABLE requests ADD COLUMN IF NOT EXISTS accepted_bid_id INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS specialties TEXT[];
     ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
@@ -119,7 +122,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (specialties || []) : null;
     const r = await pool.query(
-      'INSERT INTO users(name,email,password,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,name,email,role,specialties,bio,city',
+      'INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8) RETURNING id,name,email,role,specialties,bio,city',
       [name, email, hash, phone, role||'client', specs, bio, city]
     );
     const user = r.rows[0];
@@ -134,10 +137,11 @@ app.post('/api/auth/login', async (req, res) => {
     const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
     if (!r.rows.length) return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
     const user = r.rows[0];
-    const ok = await bcrypt.compare(password, user.password);
+    const ok = await bcrypt.compare(password, user.password || user.password_hash);
     if (!ok) return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     delete user.password;
+    delete user.password_hash;
     res.json({ user, token });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
