@@ -1053,3 +1053,494 @@ go('home',document.querySelector('.sbi.on'));
 </script>
 </body>
 </html>
+ned})">${r.pinned?'📌 إلغاء التثبيت':'📌 تثبيت'}</button>
+          <button class="btn btn-subtle btn-xs" onclick="toggleHideReview(${r.id},${!r.hidden})">${r.hidden?'👁 إظهار':'🙈 إخفاء'}</button>
+          ${r.reported?`<button class="btn btn-orange btn-xs" onclick="resolveReport(${r.id})">✓ حل الإبلاغ</button>`:''}
+          <button class="btn btn-danger btn-xs" onclick="deleteReview(${r.id})"><svg viewBox="0 0 24 24">${trashIcon()}</svg></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function replyReviewModal(id) {
+  const r = allReviews.find(x => x.id === id);
+  openModal('رد على التقييم',
+    `${r?.comment ? `<div class="review-text" style="margin-bottom:12px">${r.comment}</div>` : ''}
+     <div class="form-group"><label class="form-label">رد الإدارة <span class="form-label-hint">*</span></label>
+       <textarea class="form-textarea" id="replyBody" style="min-height:100px" placeholder="اكتب رد الإدارة الذي سيظهر للعموم…">${r?.admin_reply||''}</textarea>
+     </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+     <button class="btn btn-warning" onclick="saveReplyReview(${id})"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>نشر الرد</button>`,
+    `<svg viewBox="0 0 24 24" stroke="var(--amber-600)"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`, 'var(--amber-100)'
+  );
+}
+async function saveReplyReview(id) {
+  const reply = document.getElementById('replyBody')?.value?.trim();
+  if (!reply) { showToast('اكتب الرد','error'); return; }
+  await apiFetch(`/api/admin/reviews/${id}/reply`, {method:'PUT', body:JSON.stringify({reply})});
+  closeModal(); showToast('تم نشر الرد ✅','success');
+  addLog('رد على تقييم',`#${id}`,'#f59e0b'); renderReviews();
+}
+async function togglePinReview(id, pin) {
+  await apiFetch(`/api/admin/reviews/${id}/pin`, {method:'PUT', body:JSON.stringify({pinned:pin})});
+  showToast(pin ? 'تم التثبيت 📌' : 'تم إلغاء التثبيت','success'); renderReviews();
+}
+async function toggleHideReview(id, hide) {
+  await apiFetch(`/api/admin/reviews/${id}/hide`, {method:'PUT', body:JSON.stringify({hidden:hide})});
+  showToast(hide ? 'تم الإخفاء 🙈' : 'تم الإظهار 👁','success'); renderReviews();
+}
+async function resolveReport(id) {
+  await apiFetch(`/api/admin/reviews/${id}/resolve`, {method:'PUT'});
+  showToast('تم حل الإبلاغ ✅','success');
+  addLog('حل إبلاغ',`#${id}`,'#059669'); renderReviews();
+}
+async function deleteReview(id) {
+  if (!confirm('حذف هذا التقييم نهائياً؟')) return;
+  await apiFetch(`/api/admin/reviews/${id}`, {method:'DELETE'});
+  showToast('تم الحذف','error');
+  addLog('حذف تقييم',`#${id}`,'#ef4444'); renderReviews();
+}
+
+/* ════════════════════════════════════════
+   DISPUTES
+════════════════════════════════════════ */
+async function renderDisputes() {
+  showLoading();
+  const data = await apiFetch('/api/admin/disputes');
+  allDisputes = data || [];
+  const open = allDisputes.filter(d => d.status === 'open').length;
+  const navBadge = document.getElementById('navDisputeCount');
+  if (navBadge) navBadge.textContent = open;
+
+  setContent(`
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">النزاعات</div>
+        <div class="page-subtitle">${open} نزاع مفتوح</div>
+      </div>
+      <div class="page-header-right">
+        <select class="filter-select" id="dfStatus" onchange="filterDisputes()">
+          <option value="">كل الحالات</option>
+          <option value="open">مفتوحة</option>
+          <option value="resolved">محلولة</option>
+        </select>
+      </div>
+    </div>
+    <div id="disputesList">${renderDisputesList(allDisputes)}</div>
+  `);
+}
+
+function filterDisputes() {
+  const st = document.getElementById('dfStatus')?.value || '';
+  const filtered = st ? allDisputes.filter(d => d.status === st) : allDisputes;
+  const el = document.getElementById('disputesList');
+  if (el) el.innerHTML = renderDisputesList(filtered);
+}
+
+function renderDisputesList(list) {
+  if (!list.length) return `<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24">${alertIcon()}</svg></div><div class="empty-title">لا يوجد نزاعات ✅</div></div></div></div>`;
+  return list.map(d => {
+    const bg1 = avatarColor(d.client_id||1);
+    const bg2 = avatarColor(d.provider_id||2);
+    return `<div class="dispute-card ${d.status}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <div>
+          <div class="dispute-title">${d.title}</div>
+          <div class="dispute-meta">${d.project_number||'#'+d.request_id} • ${formatDate(d.created_at)}</div>
+        </div>
+        <span class="badge ${d.status==='open'?'badge-rejected':'badge-open'}">${d.status==='open'?'مفتوح':'محلول'}</span>
+      </div>
+      ${d.description ? `<div class="dispute-description">${d.description}</div>` : ''}
+      <div class="dispute-parties">
+        <div class="dispute-party">
+          <div class="dispute-party-avatar" style="background:${bg1}">${avatarLetter(d.client_name)}</div>
+          <div><div class="dispute-party-name">${d.client_name||'—'}</div><div class="dispute-party-role">العميل</div></div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 6px;color:var(--text-tertiary);font-size:18px">⇆</div>
+        <div class="dispute-party">
+          <div class="dispute-party-avatar" style="background:${bg2}">${avatarLetter(d.provider_name)}</div>
+          <div><div class="dispute-party-name">${d.provider_name||'—'}</div><div class="dispute-party-role">المزود</div></div>
+        </div>
+      </div>
+      ${d.resolution ? `<div class="dispute-resolution">✓ القرار: ${d.resolution}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${d.status==='open' ? `
+          <button class="btn btn-success btn-sm" onclick="resolveDisputeModal(${d.id})"><svg viewBox="0 0 24 24">${checkIcon()}</svg>حل النزاع</button>
+          <button class="btn btn-info btn-sm" onclick="notifyBothModal(${d.client_id},${d.provider_id})"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>إشعار الطرفين</button>
+        ` : ''}
+        <button class="btn btn-subtle btn-sm" onclick="viewProject(${d.request_id})"><svg viewBox="0 0 24 24">${projectIcon()}</svg>المشروع</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function resolveDisputeModal(id) {
+  openModal('حل النزاع',
+    `<div class="form-group"><label class="form-label">قرار الحل <span class="form-label-hint">*</span></label>
+       <select class="form-select" id="rdSide">
+         <option value="client">لصالح العميل</option>
+         <option value="provider">لصالح المزود</option>
+         <option value="mutual">تسوية مشتركة</option>
+       </select>
+     </div>
+     <div class="form-group"><label class="form-label">تفاصيل القرار</label>
+       <textarea class="form-textarea" id="rdResolution" placeholder="اكتب قرار الحل بوضوح…"></textarea>
+     </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+     <button class="btn btn-success" onclick="confirmResolveDispute(${id})"><svg viewBox="0 0 24 24">${checkIcon()}</svg>تأكيد الحل</button>`,
+    `<svg viewBox="0 0 24 24" stroke="var(--emerald-600)">${checkIcon()}</svg>`, 'var(--emerald-100)'
+  );
+}
+async function confirmResolveDispute(id) {
+  const side = document.getElementById('rdSide')?.value;
+  const resolution = document.getElementById('rdResolution')?.value?.trim() || side;
+  await apiFetch(`/api/admin/disputes/${id}/resolve`, {method:'PUT', body:JSON.stringify({resolution, decision:side})});
+  closeModal(); showToast('تم حل النزاع ✅','success');
+  addLog('حل نزاع',`#${id}`,'#059669'); renderDisputes();
+}
+
+function notifyBothModal(cId, pId) {
+  openModal('إشعار الطرفين',
+    `<div class="alert alert-info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>سيُرسَل الإشعار للعميل والمزود في آنٍ واحد</div>
+     <div class="form-group"><label class="form-label">العنوان <span class="form-label-hint">*</span></label><input type="text" class="form-input" id="nbTitle" placeholder="موضوع الإشعار"></div>
+     <div class="form-group"><label class="form-label">النص <span class="form-label-hint">*</span></label><textarea class="form-textarea" id="nbBody"></textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+     <button class="btn btn-primary" onclick="confirmNotifyBoth(${cId},${pId})"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>إرسال للطرفين</button>`,
+    `<svg viewBox="0 0 24 24" stroke="var(--violet-600)"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>`, 'var(--violet-100)'
+  );
+}
+async function confirmNotifyBoth(cId, pId) {
+  const title = document.getElementById('nbTitle')?.value?.trim();
+  const body = document.getElementById('nbBody')?.value?.trim();
+  if (!title||!body) { showToast('اكمل البيانات','error'); return; }
+  await Promise.all([
+    apiFetch('/api/admin/notify', {method:'POST', body:JSON.stringify({user_id:cId, title, body, type:'admin'})}),
+    apiFetch('/api/admin/notify', {method:'POST', body:JSON.stringify({user_id:pId, title, body, type:'admin'})})
+  ]);
+  closeModal(); showToast('تم الإرسال للطرفين ✅','success');
+}
+
+/* ════════════════════════════════════════
+   NOTIFICATIONS
+════════════════════════════════════════ */
+function renderNotifications() {
+  setContent(`
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">إرسال إشعارات</div>
+        <div class="page-subtitle">تواصل مع مستخدمي المنصة</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-icon" style="background:var(--violet-100)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--violet-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+          <div><div class="card-title">إشعار جماعي</div><div class="card-subtitle">يصل لكل المستخدمين المحددين فوراً</div></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">المستهدفون</label>
+          <div class="notif-targets">
+            <button class="notif-target active" onclick="setNotifTarget(this,'')">👥 الجميع</button>
+            <button class="notif-target" onclick="setNotifTarget(this,'provider')">🔧 مزودو الخدمة</button>
+            <button class="notif-target" onclick="setNotifTarget(this,'client')">👤 العملاء</button>
+          </div>
+          <input type="hidden" id="notifRole" value="">
+        </div>
+        <div class="divider"></div>
+        <div class="form-group"><label class="form-label">عنوان الإشعار <span class="form-label-hint">*</span></label><input type="text" class="form-input" id="notifTitle" placeholder="عنوان واضح وجذاب"></div>
+        <div class="form-group"><label class="form-label">نص الإشعار <span class="form-label-hint">*</span></label><textarea class="form-textarea" id="notifBody" placeholder="اكتب نص الإشعار هنا…" style="min-height:110px"></textarea></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="sendBroadcast()">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            إرسال
+          </button>
+          <button class="btn btn-subtle" onclick="document.getElementById('notifTitle').value='';document.getElementById('notifBody').value=''">مسح</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+function setNotifTarget(btn, role) {
+  document.querySelectorAll('.notif-target').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('notifRole').value = role;
+}
+async function sendBroadcast() {
+  const title = document.getElementById('notifTitle')?.value?.trim();
+  const body = document.getElementById('notifBody')?.value?.trim();
+  const role = document.getElementById('notifRole')?.value;
+  if (!title||!body) { showToast('اكمل البيانات','error'); return; }
+  await apiFetch('/api/admin/notify', {method:'POST', body:JSON.stringify({title, body, role:role||undefined, type:'admin'})});
+  showToast('تم الإرسال بنجاح ✅','success');
+  addLog('إشعار جماعي', title + (role ? ` ← ${role==='provider'?'المزودون':'العملاء'}` : ''), '#7c3aed');
+  document.getElementById('notifTitle').value = '';
+  document.getElementById('notifBody').value = '';
+}
+
+/* ════════════════════════════════════════
+   REPORTS
+════════════════════════════════════════ */
+async function renderReports() {
+  showLoading();
+  const [stats, requests] = await Promise.all([apiFetch('/api/admin/stats'), apiFetch('/api/admin/requests')]);
+  const s = stats || {};
+  const reqs = requests || [];
+
+  const cityCount = {}, catCount = {};
+  reqs.forEach(r => {
+    if (r.city) cityCount[r.city] = (cityCount[r.city]||0)+1;
+    if (r.category) catCount[r.category] = (catCount[r.category]||0)+1;
+  });
+  const topCities = Object.entries(cityCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topCats = Object.entries(catCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxCity = topCities[0]?.[1] || 1;
+  const maxCat = topCats[0]?.[1] || 1;
+  const completionRate = reqs.length ? Math.round((s.completed||0)/reqs.length*100) : 0;
+
+  setContent(`
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">التقارير والإحصائيات</div>
+        <div class="page-subtitle">نظرة شاملة على أداء المنصة</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      ${miniStat('معدل الإكمال', completionRate+'%', '#059669', 'var(--emerald-100)')}
+      ${miniStat('متوسط العروض', reqs.length ? Math.round((s.bids||0)/reqs.length) : 0, '#7c3aed', 'var(--violet-100)')}
+      ${miniStat('مشاريع نشطة', (s.open||0)+(s.in_progress||0), '#2563eb', 'var(--blue-100)')}
+      ${miniStat('مرفوضة', s.rejected||0, '#dc2626', 'var(--red-100)')}
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="card-icon" style="background:var(--blue-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <div><div class="card-title">أكثر المدن طلباً</div></div>
+          </div>
+        </div>
+        <div class="card-body">
+          ${topCities.map(([city, count]) => `
+            <div class="progress-row">
+              <div class="progress-label">${city}</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(count/maxCity*100)}%;background:var(--blue-500)"></div></div>
+              <div class="progress-value">${count}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="card-icon" style="background:var(--violet-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--violet-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <div><div class="card-title">أكثر التصنيفات طلباً</div></div>
+          </div>
+        </div>
+        <div class="card-body">
+          ${topCats.map(([cat, count]) => `
+            <div class="progress-row">
+              <div class="progress-label">${cat}</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(count/maxCat*100)}%;background:var(--violet-600)"></div></div>
+              <div class="progress-value">${count}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-icon" style="background:var(--emerald-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div><div class="card-title">توزيع حالات المشاريع</div></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center">
+          ${[
+            {label:'قيد المراجعة', key:'pending_review', color:'#f59e0b', bg:'var(--amber-50)'},
+            {label:'مفتوح', key:'open', color:'#059669', bg:'var(--emerald-50)'},
+            {label:'قيد التنفيذ', key:'in_progress', color:'#2563eb', bg:'var(--blue-50)'},
+            {label:'مكتمل', key:'completed', color:'#7c3aed', bg:'var(--violet-50)'},
+            {label:'مرفوض', key:'rejected', color:'#dc2626', bg:'var(--red-50)'},
+          ].map(item => `
+            <div style="background:${item.bg};border-radius:var(--r-lg);padding:16px;border:1px solid ${item.bg}">
+              <div style="font-size:22px;font-weight:900;color:${item.color};margin-bottom:4px">${s[item.key]||0}</div>
+              <div style="font-size:10px;font-weight:600;color:var(--text-secondary)">${item.label}</div>
+              <div style="font-size:9px;color:var(--text-tertiary);margin-top:2px">${reqs.length?Math.round((s[item.key]||0)/reqs.length*100):0}%</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function miniStat(label, value, color, bg) {
+  return `<div class="stat-card">
+    <div style="font-size:26px;font-weight:900;color:${color};margin-bottom:4px;letter-spacing:-.5px">${value}</div>
+    <div class="stat-label">${label}</div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════
+   ACTIVITY LOG
+════════════════════════════════════════ */
+function renderActivityLog() {
+  setContent(`
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">سجل النشاط</div>
+        <div class="page-subtitle">جميع الإجراءات التي قمت بها في هذه الجلسة</div>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-subtle btn-sm" onclick="activityLog=[];renderActivityLog()">مسح السجل</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        ${activityLog.length
+          ? activityLog.map(l => `
+            <div class="log-item">
+              <div class="log-dot" style="background:${l.color}"></div>
+              <div class="log-body">
+                <div class="log-action">${l.action}</div>
+                <div class="log-detail">${l.detail}</div>
+              </div>
+              <div class="log-time">${l.time}</div>
+            </div>`).join('')
+          : `<div class="empty-state">
+               <div class="empty-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+               <div class="empty-title">السجل فارغ</div>
+               <div class="empty-desc">ستظهر هنا كل الإجراءات التي تتخذها</div>
+             </div>`}
+      </div>
+    </div>
+  `);
+}
+
+/* ════════════════════════════════════════
+   SETTINGS
+════════════════════════════════════════ */
+function renderSettings() {
+  setContent(`
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">إعدادات المنصة</div>
+        <div class="page-subtitle">تحكم في سلوك وإعدادات منصة مناقصة</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon" style="background:var(--violet-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--violet-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+              <div class="card-title">إعدادات عامة</div>
+            </div>
+          </div>
+          <div class="card-body">
+            ${settingRow('مراجعة المشاريع قبل النشر','كل مشروع يمر بمراجعة المدير قبل ظهوره', true)}
+            ${settingRow('التسجيل التلقائي للمزودين','السماح بتسجيل مزودين جدد بدون مراجعة', false)}
+            ${settingRow('إشعارات البريد الإلكتروني','إرسال إشعارات للمدير عبر البريد', true)}
+            ${settingRow('وضع الصيانة','إيقاف الموقع مؤقتاً للصيانة', false)}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon" style="background:var(--amber-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--amber-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+              <div class="card-title">إعدادات المشاريع</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group"><label class="form-label">الحد الأدنى للميزانية (ر.س)</label><input type="number" class="form-input" value="100"></div>
+            <div class="form-group"><label class="form-label">الحد الأقصى لعدد العروض</label><input type="number" class="form-input" value="20"></div>
+            <div class="form-group"><label class="form-label">مدة بقاء المشروع المفتوح (أيام)</label><input type="number" class="form-input" value="30"></div>
+            <button class="btn btn-primary btn-sm" onclick="showToast('تم حفظ الإعدادات ✅','success')">
+              <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              حفظ الإعدادات
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon" style="background:var(--emerald-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald-600)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+              <div class="card-title">الأمان</div>
+            </div>
+          </div>
+          <div class="card-body">
+            ${settingRow('التحقق برقم الجوال (OTP)','إلزامي عند التسجيل الجديد', true)}
+            ${settingRow('Rate Limiting','حماية API من الطلبات المفرطة', true)}
+            ${settingRow('التحقق من البريد الإلكتروني','تأكيد البريد عند التسجيل', false)}
+            ${settingRow('تسجيل دخول ذو عاملين','للمدير فقط', false)}
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--red-100)">
+          <div class="card-header" style="background:var(--red-50)">
+            <div class="card-header-left">
+              <div class="card-icon" style="background:var(--red-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--red-500)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+              <div class="card-title" style="color:var(--red-600)">منطقة الخطر</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="settings-row">
+              <div class="settings-info">
+                <div class="settings-title" style="color:var(--red-600)">حذف البيانات التجريبية</div>
+                <div class="settings-desc">حذف كل المستخدمين والمشاريع التجريبية</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="showToast('هذه العملية غير متاحة حالياً','error')">حذف</button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-info">
+                <div class="settings-title" style="color:var(--red-600)">إعادة تعيين الإحصائيات</div>
+                <div class="settings-desc">مسح جميع الإحصائيات والسجلات</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="showToast('هذه العملية غير متاحة حالياً','error')">إعادة تعيين</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function settingRow(title, desc, defaultOn) {
+  const id = 'tog_' + Math.random().toString(36).slice(2);
+  return `<div class="settings-row">
+    <label class="toggle-switch" for="${id}">
+      <input type="checkbox" id="${id}" ${defaultOn?'checked':''} onchange="showToast('تم الحفظ ✅','success')">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </label>
+    <div class="settings-info">
+      <div class="settings-title">${title}</div>
+      <div class="settings-desc">${desc}</div>
+    </div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════
+   OVERLAY CLOSE ON BACKDROP
+════════════════════════════════════════ */
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ════════════════════════════════════════
+   BOOT
+════════════════════════════════════════ */
+navigate('home', document.querySelector('.nav-item.active'));
+</script>
+</body>
+</html>
