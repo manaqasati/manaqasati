@@ -122,8 +122,8 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (specialties || []) : null;
     const r = await pool.query(
-      'INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8) RETURNING id,name,email,role,specialties,bio,city',
-      [name, email, hash, phone, role||'client', specs, bio, city]
+      'INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,email,role,specialties,bio,city',
+      [name, email, hash, hash, phone, role||'client', specs, bio, city]
     );
     const user = r.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
