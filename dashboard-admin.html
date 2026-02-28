@@ -1354,6 +1354,12 @@ async function deleteUser(id){
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
 
 /* BOOT */
+go('home',document.querySelector('.ni.on'));
+
+/* ══════════════════════════════════════════
+   REVIEWS
+══════════════════════════════════════════ */
+async function pgReviews(){
   /* ══════════════════════════════════════════
    REVIEWS
 ══════════════════════════════════════════ */
@@ -1964,7 +1970,3 @@ function settingRow(title,desc,defaultOn){
     </div>
   </div>`;
 }
-go('home',document.querySelector('.ni.on'));
-</script>
-</body>
-</html>
