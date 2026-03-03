@@ -146,7 +146,6 @@ input,select,textarea{font-family:inherit;font-size:inherit;outline:none}
 .tgl-th{position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:right .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .tgl input:checked+.tgl-tr .tgl-th{right:17px}
 .c2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
-.dv{height:1px;background:var(--br);margin:12px 0}
 .ls{display:flex;flex-direction:column;align-items:center;padding:48px}
 .spin{width:24px;height:24px;border:2px solid var(--bg3);border-top-color:var(--p);border-radius:50%;animation:sp .65s linear infinite;margin-bottom:10px}
 @keyframes sp{to{transform:rotate(360deg)}}.ls-t{font-size:12px;color:var(--t4)}
@@ -220,7 +219,17 @@ const BT={pending:'بانتظار القبول',accepted:'مقبول ✓',reject
 document.getElementById('sbAv').textContent=(me.name||'م')[0];
 document.getElementById('sbNm').textContent=me.name||'المزود';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('ar-SA',{hour12:false})},1000);
-async function api(path,opts={}){try{const r=await fetch(API+path,{headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},...opts});return await r.json()}catch{return{}}}
+
+async function api(path,opts={}){
+  try{
+    const r=await fetch(API+path,{headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},...opts});
+    if(!r.ok)return{};
+    const ct=r.headers.get('content-type')||'';
+    if(ct.includes('application/json'))return await r.json();
+    return{};
+  }catch(e){console.error(path,e);return{}}
+}
+
 let _tT;
 function toast(msg,type='info'){const el=document.getElementById('toast');document.getElementById('tIc').textContent=type==='success'?'✓':type==='error'?'✕':'i';document.getElementById('tIc').className='t-ic t-'+(type==='success'?'s':type==='error'?'e':'i');document.getElementById('tMsg').textContent=msg;el.classList.add('show');clearTimeout(_tT);_tT=setTimeout(()=>el.classList.remove('show'),3200)}
 function openM(t,body,foot,iHtml,iBg='var(--pl)'){document.getElementById('mTit').textContent=t;document.getElementById('mBd').innerHTML=body;document.getElementById('mFt').innerHTML=foot||'';const ic=document.getElementById('mIc');ic.innerHTML=iHtml||'';ic.style.background=iBg;if(iHtml){const s=ic.querySelector('svg');if(s)s.style.cssText='width:13px;height:13px;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round'}document.getElementById('ov').classList.add('show')}
@@ -244,18 +253,29 @@ function togSpc(el){el.classList.toggle('on');el.querySelector('input').checked=
 function updSpCt(){const c=document.querySelectorAll('.spc.on').length;const el=document.getElementById('spCt');if(el)el.textContent=`${c} محدد`}
 function getSpc(){return[...document.querySelectorAll('.spc.on input')].map(i=>i.value)}
 
+// ========== الصفحة الرئيسية ==========
 async function pgHome(){
   loading();
-  const [profile,bids,projects]=await Promise.all([api('/api/provider/profile'),api('/api/provider/bids'),api('/api/requests?status=open')]);
-  const p=profile||{};myBids=bids||[];allProjects=projects||[];
+  const results=await Promise.allSettled([
+    fetch(API+'/api/provider/profile',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():{}),
+    fetch(API+'/api/provider/bids',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]),
+    fetch(API+'/api/requests',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]),
+    fetch(API+'/api/notifications',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[])
+  ]);
+  const p=(results[0].status==='fulfilled'?results[0].value:{})||{};
+  myBids=Array.isArray(results[1].status==='fulfilled'?results[1].value:[])?results[1].value:[];
+  const allReqs=Array.isArray(results[2].status==='fulfilled'?results[2].value:[])?results[2].value:[];
+  myNotifs=Array.isArray(results[3].status==='fulfilled'?results[3].value:[])?results[3].value:[];
+  allProjects=allReqs.filter(r=>r.status==='open');
   const accepted=myBids.filter(b=>b.status==='accepted');
   const pending=myBids.filter(b=>b.status==='pending');
   const nb=document.getElementById('nbNew');if(nb)nb.textContent=allProjects.length;
   const nbA=document.getElementById('nbAct');if(nbA){nbA.style.display=accepted.length?'':'none';nbA.textContent=accepted.length}
+  const nbN=document.getElementById('nbNf');if(nbN){const u=myNotifs.filter(n=>!n.read).length;nbN.style.display=u?'':'none';nbN.textContent=u}
   const rating=p.avg_rating?Number(p.avg_rating).toFixed(1):0;
   setPage(`<div class="pghd"><div><div class="pg-t">مرحباً، ${me.name||'المزود'}</div><div class="pg-s">${new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div></div><div class="pghd-r"><button class="btn btn-p btn-sm" onclick="go('browse',null)">${S('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')} تصفح المشاريع</button></div></div>
   ${p.badge&&p.badge!=='none'?`<div class="alt alt-s">${S(I.star,'var(--g)')} وسامك: <strong>${{verified:'موثق ✓',star:'متميز ⭐',partner:'شريك 💎',top:'الأفضل 🏆'}[p.badge]||p.badge}</strong></div>`:''}
-  <div class="sg">${stCard('تقييمي',rating+'★',I.star,'var(--a)','var(--al)')}${stCard('عروض مقبولة',accepted.length,I.chk,'var(--g)','var(--gl)')}${stCard('عروض معلقة',pending.length,I.send,'var(--b)','var(--bl)')}${stCard('مشاريع متاحة',allProjects.length,I.proj,'var(--p)','var(--pl)')}${stCard('مشاريع منجزة',p.completed_projects||0,I.tool,'var(--ind)','var(--indl)')}</div>
+  <div class="sg">${stCard('تقييمي',(rating||0)+'★',I.star,'var(--a)','var(--al)')}${stCard('عروض مقبولة',accepted.length,I.chk,'var(--g)','var(--gl)')}${stCard('عروض معلقة',pending.length,I.send,'var(--b)','var(--bl)')}${stCard('مشاريع متاحة',allProjects.length,I.proj,'var(--p)','var(--pl)')}${stCard('مشاريع منجزة',p.completed_projects||0,I.tool,'var(--ind)','var(--indl)')}</div>
   <div class="c2">
     <div class="card"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--gl);color:var(--g)">${S(I.tool,'var(--g)')}</div><div><div class="ch-t">مشاريعي النشطة</div><div class="ch-s">${accepted.length} مشروع</div></div></div>${accepted.length?`<button class="btn btn-s btn-sm" onclick="go('active',null)">عرض الكل</button>`:''}</div>
     <div class="cb">${accepted.length?accepted.slice(0,4).map(b=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--br)"><div style="flex:1;min-width:0;margin-left:10px"><div style="font-size:13px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${b.project_title||'مشروع #'+b.request_id}</div><div style="display:flex;gap:4px"><span class="chip">${S(I.dol)} ${fpr(b.price)}</span></div></div><button class="btn btn-s btn-xs" onclick="viewActiveModal(${b.request_id})">${S(I.eye)}</button></div>`).join(''):`<div class="es" style="padding:20px"><div class="es-s">لا توجد مشاريع نشطة</div></div>`}</div></div>
@@ -263,13 +283,16 @@ async function pgHome(){
       <div class="card" style="margin-bottom:12px"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--al);color:var(--a)">${S(I.star,'var(--a)')}</div><div class="ch-t">ملخص الأداء</div></div></div>
       <div class="cb">${[{l:'العروض المقبولة',v:accepted.length,mx:Math.max(myBids.length,1),c:'#059669'},{l:'العروض المعلقة',v:pending.length,mx:Math.max(myBids.length,1),c:'#d97706'},{l:'إجمالي العروض',v:myBids.length,mx:Math.max(myBids.length,1),c:'#2563eb'}].map(it=>`<div class="pr"><div class="pr-l">${it.l}</div><div class="pr-tr"><div class="pr-br" style="width:${it.mx?Math.round(it.v/it.mx*100):0}%;background:${it.c}"></div></div><div class="pr-n">${it.v}</div></div>`).join('')}</div></div>
       <div class="card"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--bl);color:var(--b)">${S('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>','var(--b)')}</div><div class="ch-t">مشاريع جديدة</div></div><button class="btn btn-p btn-sm" onclick="go('browse',null)">تصفح</button></div>
-      <div class="cb">${allProjects.slice(0,3).map(r=>`<div style="padding:8px 0;border-bottom:1px solid var(--br)"><div style="font-size:12px;font-weight:600;color:var(--t);margin-bottom:4px">${r.title}</div><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.dol)} ${fpr(r.budget_max)}</span></div></div>`).join('')||`<div class="es" style="padding:16px"><div class="es-s">لا توجد مشاريع</div></div>`}</div></div>
+      <div class="cb">${allProjects.slice(0,3).map(r=>`<div style="padding:8px 0;border-bottom:1px solid var(--br)"><div style="font-size:12px;font-weight:600;color:var(--t);margin-bottom:4px">${r.title}</div><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.dol)} ${fpr(r.budget_max)}</span></div></div>`).join('')||`<div class="es" style="padding:16px"><div class="es-s">لا توجد مشاريع متاحة</div></div>`}</div></div>
     </div>
   </div>`);
 }
 
+// ========== تصفح المشاريع ==========
 async function pgBrowse(){
-  loading();const data=await api('/api/requests?status=open');allProjects=data||[];
+  loading();
+  const data=await fetch(API+'/api/requests',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  allProjects=Array.isArray(data)?data.filter(r=>r.status==='open'):[];
   const nb=document.getElementById('nbNew');if(nb)nb.textContent=allProjects.length;
   setPage(`<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div><div class="pg-s">${allProjects.length} مشروع متاح</div></div></div>
   <div class="card"><div class="cb">
@@ -286,15 +309,18 @@ function renderBrowse(list){if(!list.length)return`<div class="es"><div class="e
   <div class="pc pc-op"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><div class="pc-num">${r.project_number||'#'+r.id}</div><div class="pc-tit">${r.title}</div></div><span class="bdg b-op">مفتوح</span></div>
   <div class="pc-meta"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.fold)} ${r.category||'عام'}</span>${r.budget_max?`<span class="chip">${S(I.dol)} ${fpr(r.budget_max)}</span>`:''}${r.deadline?`<span class="chip">${S(I.cal)} ${r.deadline}</span>`:''}<span class="chip">${S(I.send)} ${r.bid_count||0} عرض</span></div>
   ${r.description?`<div class="pc-desc">${r.description.slice(0,200)}${r.description.length>200?'…':''}</div>`:''}
-  <div class="pc-acts"><button class="btn btn-p btn-sm" onclick="bidModal(${r.id},'${r.title.replace(/'/g,'')}')">${S(I.send)} تقديم عرض</button><button class="btn btn-gh btn-sm" onclick="viewProjModal(${r.id})">${S(I.eye)} تفاصيل</button></div>
+  <div class="pc-acts"><button class="btn btn-p btn-sm" onclick="bidModal(${r.id},'${(r.title||'').replace(/'/g,'').replace(/"/g,'')}')">${S(I.send)} تقديم عرض</button><button class="btn btn-gh btn-sm" onclick="viewProjModal(${r.id})">${S(I.eye)} تفاصيل</button></div>
   </div>`).join('')}
 
-async function viewProjModal(id){const r=await api(`/api/requests/${id}`);const bids=await api(`/api/requests/${id}/bids`);
-  openM('تفاصيل المشروع',`<div style="padding:14px;background:var(--bg2);border-radius:var(--r8);margin-bottom:14px;border:1px solid var(--br)"><div style="font-size:10px;color:var(--t4);margin-bottom:3px">${r.project_number||'#'+r.id}</div><div style="font-size:15px;font-weight:700;color:var(--t);margin-bottom:10px">${r.title}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="bdg b-op">مفتوح</span>${r.category?`<span class="chip">${r.category}</span>`:''}${r.city?`<span class="chip">${r.city}</span>`:''}</div></div>
-  <div class="ib-bl"><div class="ib-t">معلومات</div><div class="ir"><span class="ik">الميزانية</span><span class="iv" style="color:var(--g)">${fpr(r.budget_max)}</span></div><div class="ir"><span class="ik">الموعد</span><span class="iv">${r.deadline||'—'}</span></div><div class="ir"><span class="ik">عدد العروض</span><span class="iv">${(bids||[]).length}</span></div><div class="ir"><span class="ik">المدينة</span><span class="iv">${r.city||'—'}</span></div></div>
-  ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--t3)">${r.description}</div></div>`:''}`,
-  `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-p" onclick="closeM();bidModal(${id},'${(r.title||'').replace(/'/g,'')}')">تقديم عرض</button>`,
-  `<svg viewBox="0 0 24 24" stroke="var(--p)">${I.proj}</svg>`,'var(--pl)')}
+async function viewProjModal(id){
+  const r=await api(`/api/requests/${id}`)||{};
+  const bids=await api(`/api/requests/${id}/bids`)||[];
+  openM('تفاصيل المشروع',
+    `<div style="padding:14px;background:var(--bg2);border-radius:var(--r8);margin-bottom:14px;border:1px solid var(--br)"><div style="font-size:10px;color:var(--t4);margin-bottom:3px">${r.project_number||'#'+r.id}</div><div style="font-size:15px;font-weight:700;color:var(--t);margin-bottom:10px">${r.title||'—'}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="bdg b-op">مفتوح</span>${r.category?`<span class="chip">${r.category}</span>`:''}${r.city?`<span class="chip">${r.city}</span>`:''}</div></div>
+    <div class="ib-bl"><div class="ib-t">معلومات</div><div class="ir"><span class="ik">الميزانية</span><span class="iv" style="color:var(--g)">${fpr(r.budget_max)}</span></div><div class="ir"><span class="ik">الموعد</span><span class="iv">${r.deadline||'—'}</span></div><div class="ir"><span class="ik">عدد العروض</span><span class="iv">${Array.isArray(bids)?bids.length:0}</span></div><div class="ir"><span class="ik">المدينة</span><span class="iv">${r.city||'—'}</span></div></div>
+    ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--t3)">${r.description}</div></div>`:''}`,
+    `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-p" onclick="closeM();bidModal(${id},'${(r.title||'').replace(/'/g,'').replace(/"/g,'')}')">تقديم عرض</button>`,
+    `<svg viewBox="0 0 24 24" stroke="var(--p)">${I.proj}</svg>`,'var(--pl)')}
 
 function bidModal(reqId,title){openM('تقديم عرض',
   `<div class="alt alt-i">${S(I.info,'var(--b)')} مشروع: <strong>${title}</strong></div>
@@ -302,9 +328,22 @@ function bidModal(reqId,title){openM('تقديم عرض',
   <div class="fg"><label class="fl">رسالتك للعميل <span class="fh">*</span></label><textarea class="fta" id="bMsg" style="min-height:90px" placeholder="اشرح خبرتك وسبب اختيارك…"></textarea></div>`,
   `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-p" onclick="submitBid(${reqId})">${S(I.send)} إرسال العرض</button>`,
   `<svg viewBox="0 0 24 24" stroke="var(--p)">${I.send}</svg>`,'var(--pl)')}
-async function submitBid(reqId){const price=document.getElementById('bPr')?.value;const message=document.getElementById('bMsg')?.value?.trim();const duration=document.getElementById('bDur')?.value||'';if(!price||!message){toast('اكمل البيانات المطلوبة','error');return}const res=await api(`/api/requests/${reqId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),message,duration})});if(res.error){toast(res.error,'error');return}closeM();toast('تم إرسال العرض بنجاح ✓','success');pgBrowse()}
 
-async function pgMyBids(){loading();const data=await api('/api/provider/bids');myBids=data||[];
+async function submitBid(reqId){
+  const price=document.getElementById('bPr')?.value;
+  const message=document.getElementById('bMsg')?.value?.trim();
+  const duration=document.getElementById('bDur')?.value||'';
+  if(!price||!message){toast('اكمل البيانات المطلوبة','error');return}
+  const res=await api(`/api/requests/${reqId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),message,duration})});
+  if(res&&res.error){toast(res.error,'error');return}
+  closeM();toast('تم إرسال العرض بنجاح ✓','success');pgBrowse()
+}
+
+// ========== عروضي ==========
+async function pgMyBids(){
+  loading();
+  const data=await fetch(API+'/api/provider/bids',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  myBids=Array.isArray(data)?data:[];
   setPage(`<div class="pghd"><div><div class="pg-t">عروضي</div><div class="pg-s">${myBids.length} عرض</div></div><div class="pghd-r"><select class="fsel" id="bFSt" onchange="filterMyBids()"><option value="">كل العروض</option><option value="pending">معلقة</option><option value="accepted">مقبولة</option><option value="rejected">مرفوضة</option></select></div></div>
   <div id="bidList">${renderMyBids(myBids)}</div>`);
 }
@@ -322,33 +361,47 @@ function renderMyBids(list){if(!list.length)return`<div class="card"><div class=
   </div>`).join('')}
 async function withdrawBid(id){if(!confirm('سحب هذا العرض؟'))return;await api(`/api/bids/${id}`,{method:'DELETE'});toast('تم سحب العرض','info');pgMyBids()}
 
-async function pgActive(){loading();const data=await api('/api/provider/active-projects');myActive=data||[];
+// ========== المشاريع النشطة ==========
+async function pgActive(){
+  loading();
+  const data=await fetch(API+'/api/provider/active-projects',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  myActive=Array.isArray(data)?data:[];
+  // fallback: إذا كان endpoint غير موجود جلب من bids
+  if(!myActive.length){
+    const bids=await fetch(API+'/api/provider/bids',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+    const accepted=(Array.isArray(bids)?bids:[]).filter(b=>b.status==='accepted');
+    myActive=accepted;
+  }
   const nb=document.getElementById('nbAct');if(nb){nb.style.display=myActive.length?'':'none';nb.textContent=myActive.length}
   setPage(`<div class="pghd"><div><div class="pg-t">مشاريعي النشطة</div><div class="pg-s">${myActive.length} مشروع جارٍ</div></div></div>
   ${myActive.length?myActive.map(r=>`<div class="pc pc-pr">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><div class="pc-num">${r.project_number||'#'+r.id}</div><div class="pc-tit">${r.title}</div></div><span class="bdg b-pr">قيد التنفيذ</span></div>
-    <div class="pc-meta"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.fold)} ${r.category||'عام'}</span>${r.agreed_price?`<span class="chip">${S(I.dol)} ${fpr(r.agreed_price)}</span>`:''}${r.deadline?`<span class="chip">${S(I.cal)} ${r.deadline}</span>`:''}</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><div class="pc-num">${r.project_number||'#'+(r.id||r.request_id)}</div><div class="pc-tit">${r.title||r.project_title||'مشروع'}</div></div><span class="bdg b-pr">قيد التنفيذ</span></div>
+    <div class="pc-meta"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.fold)} ${r.category||'—'}</span>${(r.agreed_price||r.price)?`<span class="chip">${S(I.dol)} ${fpr(r.agreed_price||r.price)}</span>`:''}${r.deadline?`<span class="chip">${S(I.cal)} ${r.deadline}</span>`:''}</div>
     ${r.description?`<div class="pc-desc">${r.description.slice(0,150)}…</div>`:''}
     <div class="pc-acts">
-      <button class="btn btn-gh btn-sm" onclick="viewActiveModal(${r.id})">${S(I.eye)} التفاصيل</button>
-      <button class="btn btn-s btn-sm" onclick="completeModal(${r.id})">${S(I.chk)} تعيين كمنجز</button>
-      <button class="btn btn-w btn-sm" onclick="openDispModal(${r.id},'${(r.title||'').replace(/'/g,'')}')">${S(I.disp)} رفع نزاع</button>
+      <button class="btn btn-gh btn-sm" onclick="viewActiveModal(${r.id||r.request_id})">${S(I.eye)} التفاصيل</button>
+      <button class="btn btn-s btn-sm" onclick="completeModal(${r.id||r.request_id})">${S(I.chk)} تعيين كمنجز</button>
+      <button class="btn btn-w btn-sm" onclick="openDispModal(${r.id||r.request_id},'${(r.title||r.project_title||'').replace(/'/g,'')}')">${S(I.disp)} رفع نزاع</button>
     </div>
   </div>`).join(''):`<div class="card"><div class="cb"><div class="es"><div class="es-ic">${S(I.tool)}</div><div class="es-t">لا توجد مشاريع نشطة</div><div class="es-s">عندما تُقبَل عروضك ستظهر هنا</div></div></div></div>`}`);
 }
-async function viewActiveModal(id){const r=await api(`/api/requests/${id}`);
+
+async function viewActiveModal(id){
+  const r=await api(`/api/requests/${id}`)||{};
   openM('تفاصيل المشروع النشط',
     `<div class="alt alt-s">${S(I.chk,'var(--g)')} عرضك مقبول — المشروع قيد التنفيذ</div>
     <div class="ib-bl"><div class="ib-t">معلومات</div><div class="ir"><span class="ik">العميل</span><span class="iv">${r.client_name||'—'}</span></div><div class="ir"><span class="ik">السعر المتفق</span><span class="iv" style="color:var(--g)">${fpr(r.agreed_price||r.budget_max)}</span></div><div class="ir"><span class="ik">الموعد</span><span class="iv">${r.deadline||'—'}</span></div><div class="ir"><span class="ik">المدينة</span><span class="iv">${r.city||'—'}</span></div></div>
     ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--t3)">${r.description}</div></div>`:''}`,
     `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-s" onclick="closeM();completeModal(${id})">${S(I.chk)} تعيين كمنجز</button>`,
     `<svg viewBox="0 0 24 24" stroke="var(--g)">${I.tool}</svg>`,'var(--gl)')}
+
 function completeModal(id){openM('إتمام المشروع',
   `<div class="alt alt-s">${S(I.chk,'var(--g)')} سيتم إخطار العميل بإتمام المشروع</div>
   <div class="fg"><label class="fl">ملاحظات الإتمام</label><textarea class="fta" id="cpNote" placeholder="اذكر أي ملاحظات نهائية…"></textarea></div>`,
   `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-s" onclick="submitComplete(${id})">${S(I.chk)} تأكيد الإتمام</button>`,
   `<svg viewBox="0 0 24 24" stroke="var(--g)">${I.chk}</svg>`,'var(--gl)')}
-async function submitComplete(id){const notes=document.getElementById('cpNote')?.value||'';await api(`/api/provider/requests/${id}/complete`,{method:'PUT',body:JSON.stringify({notes})});closeM();toast('تم تعيين المشروع كمنجز ✓','success');pgActive()}
+async function submitComplete(id){const notes=document.getElementById('cpNote')?.value||'';const res=await api(`/api/provider/requests/${id}/complete`,{method:'PUT',body:JSON.stringify({notes})});closeM();toast('تم تعيين المشروع كمنجز ✓','success');pgActive()}
+
 function openDispModal(reqId,title){openM('رفع نزاع',
   `<div class="alt alt-w">${S(I.alrt,'var(--a)')} يرجى الرفع بحسن نية فقط</div>
   <div class="fg"><label class="fl">عنوان النزاع <span class="fh">*</span></label><input type="text" class="fi" id="dTi" placeholder="وصف مختصر…"></div>
@@ -357,35 +410,51 @@ function openDispModal(reqId,title){openM('رفع نزاع',
   `<svg viewBox="0 0 24 24" stroke="var(--a)">${I.disp}</svg>`,'var(--al)')}
 async function submitDisp(reqId){const title=document.getElementById('dTi')?.value?.trim();const description=document.getElementById('dBd')?.value?.trim();if(!title||!description){toast('اكمل البيانات','error');return}await api('/api/disputes',{method:'POST',body:JSON.stringify({request_id:reqId,title,description})});closeM();toast('تم رفع النزاع','success');pgDisps()}
 
-async function pgHistory(){loading();const data=await api('/api/provider/history');const hist=data||[];
+// ========== سجل المشاريع ==========
+async function pgHistory(){
+  loading();
+  const data=await fetch(API+'/api/provider/history',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  const hist=Array.isArray(data)?data:[];
   setPage(`<div class="pghd"><div><div class="pg-t">سجل المشاريع</div><div class="pg-s">${hist.length} مشروع منجز</div></div></div>
   <div class="card"><div class="cb">${hist.length?hist.map(r=>`<div class="pc pc-dn"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><div class="pc-num">${r.project_number||'#'+r.id}</div><div class="pc-tit">${r.title}</div></div><span class="bdg b-dn">مكتمل</span></div><div class="pc-meta"><span class="chip">${S(I.map)} ${r.city||'—'}</span><span class="chip">${S(I.dol)} ${fpr(r.agreed_price)}</span><span class="chip">${S(I.cal)} ${fdt(r.completed_at||r.updated_at)}</span></div></div>`).join(''):`<div class="es"><div class="es-ic">${S(I.chk)}</div><div class="es-t">لا يوجد سجل بعد</div></div>`}</div></div>`);
 }
 
-async function pgReviews(){loading();const data=await api('/api/provider/reviews');myReviews=data||[];
-  const avg=myReviews.length?myReviews.reduce((s,r)=>s+r.rating,0)/myReviews.length:0;
+// ========== التقييمات ==========
+async function pgReviews(){
+  loading();
+  const data=await fetch(API+'/api/provider/reviews',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  myReviews=Array.isArray(data)?data:[];
+  const avg=myReviews.length?myReviews.reduce((s,r)=>s+(r.rating||0),0)/myReviews.length:0;
   setPage(`<div class="pghd"><div><div class="pg-t">تقييماتي</div><div class="pg-s">${myReviews.length} تقييم — متوسط: ${avg.toFixed(1)}★</div></div></div>
   <div class="card" style="margin-bottom:14px"><div class="cb"><div style="display:flex;align-items:center;gap:16px;padding:8px 0">
     <div style="text-align:center"><div style="font-size:36px;font-weight:800;color:var(--t);letter-spacing:-1px">${avg.toFixed(1)}</div><div style="font-size:16px;color:var(--a)">${[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(avg)?'#d97706':'#d1d5db'}">★</span>`).join('')}</div><div style="font-size:11px;color:var(--t4);margin-top:2px">${myReviews.length} تقييم</div></div>
     <div style="flex:1">${[5,4,3,2,1].map(n=>{const c=myReviews.filter(r=>r.rating===n).length;const pct=myReviews.length?Math.round(c/myReviews.length*100):0;return`<div class="pr" style="margin-bottom:5px"><div class="pr-l" style="min-width:30px;font-size:11px">${n}★</div><div class="pr-tr" style="height:6px"><div class="pr-br" style="width:${pct}%;background:#d97706"></div></div><div class="pr-n" style="min-width:16px;font-size:10px">${c}</div></div>`}).join('')}</div>
   </div></div></div>
-  ${myReviews.length?myReviews.map(r=>`<div class="rvc"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:9px"><div><div style="font-size:12px;font-weight:600;color:var(--t)">${r.reviewer_name||'عميل'}</div><div style="font-size:10px;color:var(--t4)">${fdt(r.created_at)}</div></div><div style="font-size:13px;letter-spacing:1px">${[1,2,3,4,5].map(i=>`<span style="color:${i<=r.rating?'#d97706':'#d1d5db'}">★</span>`).join('')}</div></div>${r.comment?`<div class="rv-body">${r.comment}</div>`:''}${r.admin_reply?`<div class="adm-rp"><div class="rp-lb">رد الإدارة</div><div class="rp-bd">${r.admin_reply}</div></div>`:''}</div>`).join(''):`<div class="card"><div class="cb"><div class="es"><div class="es-ic">${S(I.star)}</div><div class="es-t">لا يوجد تقييمات بعد</div></div></div></div>`}`);
+  ${myReviews.length?myReviews.map(r=>`<div class="rvc"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:9px"><div><div style="font-size:12px;font-weight:600;color:var(--t)">${r.reviewer_name||'عميل'}</div><div style="font-size:10px;color:var(--t4)">${fdt(r.created_at)}</div></div><div style="font-size:13px;letter-spacing:1px">${sts(r.rating)}</div></div>${r.comment?`<div class="rv-body">${r.comment}</div>`:''}${r.admin_reply?`<div class="adm-rp"><div class="rp-lb">رد الإدارة</div><div class="rp-bd">${r.admin_reply}</div></div>`:''}</div>`).join(''):`<div class="card"><div class="cb"><div class="es"><div class="es-ic">${S(I.star)}</div><div class="es-t">لا يوجد تقييمات بعد</div></div></div></div>`}`);
 }
 
-async function pgDisps(){loading();const data=await api('/api/provider/disputes');myDisps=data||[];
+// ========== النزاعات ==========
+async function pgDisps(){
+  loading();
+  const data=await fetch(API+'/api/provider/disputes',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  myDisps=Array.isArray(data)?data:[];
   setPage(`<div class="pghd"><div><div class="pg-t">النزاعات</div><div class="pg-s">${myDisps.length} نزاع</div></div></div>
   ${myDisps.length?myDisps.map(d=>`<div class="pc ${d.status==='resolved'?'pc-dn':'pc-rj'}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><div class="pc-num">نزاع #${d.id}</div><div class="pc-tit">${d.title}</div></div><span class="bdg ${d.status==='resolved'?'b-dn':'b-rj'}">${d.status==='resolved'?'محلول':'مفتوح'}</span></div>${d.description?`<div class="pc-desc">${d.description}</div>`:''}<div class="pc-meta"><span class="chip">${S(I.cal)} ${fdt(d.created_at)}</span></div>${d.resolution?`<div style="background:var(--gl);border:1px solid var(--gm);border-radius:var(--r6);padding:8px 11px;margin-top:8px;font-size:12px;color:var(--g)">✓ قرار الإدارة: ${d.resolution}</div>`:''}</div>`).join(''):`<div class="card"><div class="cb"><div class="es"><div class="es-ic">${S(I.chk)}</div><div class="es-t">لا يوجد نزاعات</div></div></div></div>`}`);
 }
 
-async function pgProfile(){loading();const data=await api('/api/provider/profile');const p=data||{};window._pData=p;
+// ========== الملف الشخصي ==========
+async function pgProfile(){
+  loading();
+  const data=await fetch(API+'/api/provider/profile',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():{}).catch(()=>{});
+  const p=(data&&typeof data==='object'?data:{})||{};window._pData=p;
   setPage(`<div class="pghd"><div><div class="pg-t">ملفي الشخصي</div><div class="pg-s">بياناتك ومعلوماتك المهنية</div></div></div>
   <div class="c2">
     <div>
       <div class="card"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--pl);color:var(--p)">${S(I.usr,'var(--p)')}</div><div class="ch-t">المعلومات الشخصية</div></div><button class="btn btn-gh btn-sm" onclick="editProfileModal()">${S(I.edit)} تعديل</button></div>
       <div class="cb">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:var(--r8);border:1px solid var(--br)">
-          <div style="width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(p.name||'م')[0]}</div>
-          <div><div style="font-size:15px;font-weight:700;color:var(--t)">${p.name||'—'}</div><div style="font-size:11px;color:var(--t4);margin-top:2px">${p.email||'—'}</div>${p.badge&&p.badge!=='none'?`<div style="font-size:11px;margin-top:3px">${{verified:'✓ موثق',star:'⭐ متميز',partner:'💎 شريك',top:'🏆 الأفضل'}[p.badge]||''}</div>`:''}</div>
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(p.name||me.name||'م')[0]}</div>
+          <div><div style="font-size:15px;font-weight:700;color:var(--t)">${p.name||me.name||'—'}</div><div style="font-size:11px;color:var(--t4);margin-top:2px">${p.email||me.email||'—'}</div>${p.badge&&p.badge!=='none'?`<div style="font-size:11px;margin-top:3px">${{verified:'✓ موثق',star:'⭐ متميز',partner:'💎 شريك',top:'🏆 الأفضل'}[p.badge]||''}</div>`:''}</div>
         </div>
         <div class="ib-bl"><div class="ib-t">التفاصيل</div>
           <div class="ir"><span class="ik">الجوال</span><span class="iv">${p.phone||'—'}</span></div>
@@ -411,8 +480,9 @@ async function pgProfile(){loading();const data=await api('/api/provider/profile
     </div>
   </div>`);
 }
+
 function editProfileModal(){const p=window._pData||{};openM('تعديل الملف الشخصي',
-  `<div class="g2"><div class="fg"><label class="fl">الاسم</label><input type="text" class="fi" id="epNm" value="${p.name||''}"></div><div class="fg"><label class="fl">الجوال</label><input type="text" class="fi" id="epPh" value="${p.phone||''}"></div></div>
+  `<div class="g2"><div class="fg"><label class="fl">الاسم</label><input type="text" class="fi" id="epNm" value="${p.name||me.name||''}"></div><div class="fg"><label class="fl">الجوال</label><input type="text" class="fi" id="epPh" value="${p.phone||''}"></div></div>
   <div class="fg"><label class="fl">المدينة</label><select class="fis" id="epCit">${cityOpts(p.city)}</select></div>
   <div class="fg"><label class="fl">النبذة المهنية</label><textarea class="fta" id="epBio">${p.bio||''}</textarea></div>`,
   `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-p" onclick="saveProfile()">${S(I.save)} حفظ</button>`,
@@ -420,15 +490,20 @@ function editProfileModal(){const p=window._pData||{};openM('تعديل المل
 async function saveProfile(){const body={name:document.getElementById('epNm')?.value?.trim()||'',phone:document.getElementById('epPh')?.value||'',city:document.getElementById('epCit')?.value||'',bio:document.getElementById('epBio')?.value||''};await api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});closeM();toast('تم حفظ الملف','success');pgProfile()}
 function editSpecsModal(){const p=window._pData||{};openM('تعديل التخصصات',specsH(p.specialties||[]),`<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-p" onclick="saveSpecs()">${S(I.save)} حفظ</button>`,`<svg viewBox="0 0 24 24" stroke="var(--p)">${I.tool}</svg>`,'var(--pl)')}
 async function saveSpecs(){const specialties=getSpc();if(!specialties.length){toast('اختر تخصصاً واحداً على الأقل','error');return}await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties})});closeM();toast('تم حفظ التخصصات','success');pgProfile()}
-async function changePass(){const oldP=document.getElementById('pwOld')?.value;const newP=document.getElementById('pwNew')?.value;const conP=document.getElementById('pwCon')?.value;if(!oldP||!newP){toast('اكمل الحقول','error');return}if(newP!==conP){toast('كلمتا المرور غير متطابقتين','error');return}if(newP.length<6){toast('كلمة المرور قصيرة جداً','error');return}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldP,new_password:newP})});if(res.error){toast(res.error,'error');return}toast('تم تغيير كلمة المرور ✓','success');document.getElementById('pwOld').value='';document.getElementById('pwNew').value='';document.getElementById('pwCon').value=''}
+async function changePass(){const oldP=document.getElementById('pwOld')?.value;const newP=document.getElementById('pwNew')?.value;const conP=document.getElementById('pwCon')?.value;if(!oldP||!newP){toast('اكمل الحقول','error');return}if(newP!==conP){toast('كلمتا المرور غير متطابقتين','error');return}if(newP.length<6){toast('كلمة المرور قصيرة جداً','error');return}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldP,new_password:newP})});if(res&&res.error){toast(res.error,'error');return}toast('تم تغيير كلمة المرور ✓','success');document.getElementById('pwOld').value='';document.getElementById('pwNew').value='';document.getElementById('pwCon').value=''}
 
-async function pgNotifs(){loading();const data=await api('/api/notifications');myNotifs=data||[];
+// ========== الإشعارات ==========
+async function pgNotifs(){
+  loading();
+  const data=await fetch(API+'/api/notifications',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  myNotifs=Array.isArray(data)?data:[];
   const unread=myNotifs.filter(n=>!n.read).length;
   if(unread)await api('/api/notifications/read-all',{method:'PUT'});
   const nb=document.getElementById('nbNf');if(nb)nb.style.display='none';
-  setPage(`<div class="pghd"><div><div class="pg-t">الإشعارات</div><div class="pg-s">${myNotifs.length} إشعار</div></div>${myNotifs.length?`<div class="pghd-r"><button class="btn btn-gh btn-sm" onclick="api('/api/notifications',{method:'DELETE'}).then(()=>{myNotifs=[];pgNotifs()})">مسح الكل</button></div>`:''}</div>
-  <div class="card"><div class="cb">${myNotifs.length?myNotifs.map(n=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--br)${!n.read?';background:var(--pl);margin:0 -16px;padding:10px 16px':''}"><div style="width:8px;height:8px;border-radius:50%;background:${!n.read?'var(--p)':'var(--br2)'};flex-shrink:0;margin-top:5px"></div><div style="flex:1"><div style="font-size:13px;font-weight:${!n.read?700:500};color:var(--t);margin-bottom:2px">${n.title||'إشعار'}</div><div style="font-size:12px;color:var(--t3);line-height:1.6">${n.body||n.message||''}</div><div style="font-size:10px;color:var(--t4);margin-top:3px">${fdt(n.created_at)}</div></div></div>`).join(''):`<div class="es"><div class="es-ic">${S(I.bell)}</div><div class="es-t">لا يوجد إشعارات</div></div>`}</div></div>`);
+  setPage(`<div class="pghd"><div><div class="pg-t">الإشعارات</div><div class="pg-s">${myNotifs.length} إشعار</div></div>${myNotifs.length?`<div class="pghd-r"><button class="btn btn-gh btn-sm" onclick="clearNotifs()">مسح الكل</button></div>`:''}</div>
+  <div class="card"><div class="cb">${myNotifs.length?myNotifs.map(n=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--br)"><div style="width:8px;height:8px;border-radius:50%;background:${!n.read?'var(--p)':'var(--br2)'};flex-shrink:0;margin-top:5px"></div><div style="flex:1"><div style="font-size:13px;font-weight:${!n.read?700:500};color:var(--t);margin-bottom:2px">${n.title||'إشعار'}</div><div style="font-size:12px;color:var(--t3);line-height:1.6">${n.body||n.message||''}</div><div style="font-size:10px;color:var(--t4);margin-top:3px">${fdt(n.created_at)}</div></div></div>`).join(''):`<div class="es"><div class="es-ic">${S(I.bell)}</div><div class="es-t">لا يوجد إشعارات</div></div>`}</div></div>`);
 }
+async function clearNotifs(){await api('/api/notifications',{method:'DELETE'});myNotifs=[];pgNotifs()}
 
 document.getElementById('ov').addEventListener('click',e=>{if(e.target===document.getElementById('ov'))closeM()});
 go('home',document.querySelector('.ni.on'));
