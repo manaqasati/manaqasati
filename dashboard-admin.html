@@ -401,12 +401,56 @@ function filterProjs(){
   if(el)el.innerHTML=renderProjs(f);
 }
 
+const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#06b6d4,#0891b2',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🪚'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'🧹'},'نقل عفش':{g:'135deg,#8b5cf6,#7c3aed',ic:'🚛'},'حدادة':{g:'135deg,#6b7280,#374151',ic:'🔩'},'ألمنيوم':{g:'135deg,#9ca3af,#6b7280',ic:'🪟'},'مسابح':{g:'135deg,#3b82f6,#1d4ed8',ic:'🏊'},'كاميرات مراقبة':{g:'135deg,#1f2937,#111827',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#6366f1,#4f46e5',ic:'📡'},'مظلات وسواتر':{g:'135deg,#f97316,#ea580c',ic:'⛱️'},'عزل حراري':{g:'135deg,#ef4444,#dc2626',ic:'🌡️'},'أبواب':{g:'135deg,#854d0e,#713f12',ic:'🚪'},'جبس وطباشير':{g:'135deg,#94a3b8,#64748b',ic:'🏠'},'مكافحة حشرات':{g:'135deg,#16a34a,#15803d',ic:'🦟'},'أخرى':{g:'135deg,#64748b,#475569',ic:'📋'}};
+
 function renderProjs(list){
   if(!list.length)return`<div class="es"><div class="es-ic">${S(I.proj)}</div><div class="es-t">لا يوجد نتائج</div></div>`;
-  return list.map(r=>projCard(r,r.status==='pending_review')).join('')
+  return`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">${list.map(r=>projCard(r,r.status==='pending_review')).join('')}</div>`
 }
 
 function projCard(r,showApprove=false){
+  const cs=CAT_STYLE[r.category]||{g:'135deg,#4f46e5,#7c3aed',ic:'📋'};
+  const sc={pending_review:'#d97706',open:'#059669',in_progress:'#2563eb',completed:'#4f46e5',rejected:'#dc2626'}[r.status]||'#6b7280';
+  // الجزء العلوي: صورة حقيقية أو gradient
+  const headerHtml=r.image_url
+    ?`<div style="position:relative;height:130px;overflow:hidden">
+        <img src="${r.image_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='linear-gradient(${cs.g})';this.remove()">
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.45),transparent)"></div>
+        <div style="position:absolute;top:12px;left:12px"><span style="background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700">${SL[r.status]||r.status}</span></div>
+        <div style="position:absolute;top:13px;right:13px;font-size:9px;color:rgba(255,255,255,.75);font-weight:600">${r.project_number||'#'+r.id}</div>
+      </div>`
+    :`<div style="background:linear-gradient(${cs.g});padding:20px 18px 18px;position:relative;min-height:105px">
+        <div style="font-size:38px;line-height:1;margin-bottom:8px">${cs.ic}</div>
+        <div style="position:absolute;top:12px;left:12px"><span style="background:rgba(0,0,0,.28);backdrop-filter:blur(6px);color:#fff;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700">${SL[r.status]||r.status}</span></div>
+        <div style="position:absolute;top:13px;right:13px;font-size:9px;color:rgba(255,255,255,.65);font-weight:600">${r.project_number||'#'+r.id}</div>
+        <div style="position:absolute;bottom:0;right:0;left:0;height:3px;background:${sc}40"></div>
+      </div>`;
+  return`<div style="background:var(--bg);border:1px solid var(--br);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:box-shadow .15s;display:flex;flex-direction:column" onmouseover="this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,.05)'">
+    ${headerHtml}
+    <div style="padding:14px 15px;flex:1;display:flex;flex-direction:column">
+      <div style="font-size:14px;font-weight:700;color:var(--t);line-height:1.4;margin-bottom:7px">${r.title||'—'}</div>
+      ${r.description?`<div style="font-size:12px;color:var(--t3);line-height:1.65;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.description}</div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t3)">📍 ${r.city||'—'}</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t3)">📨 ${r.bid_count||0} عرض</div>
+        ${r.budget_max?`<div style="font-size:11px;color:var(--g);font-weight:700">💰 ${fpr(r.budget_max)}</div>`:'<div></div>'}
+        ${r.deadline?`<div style="font-size:11px;color:var(--t3)">📅 ${r.deadline}</div>`:'<div></div>'}
+      </div>
+      ${r.client_name?`<div style="display:flex;align-items:center;gap:6px;padding:6px 9px;background:var(--bg2);border-radius:var(--r6);margin-bottom:10px;border:1px solid var(--br)"><div style="width:20px;height:20px;border-radius:50%;background:var(--p);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${al(r.client_name)}</div><span style="font-size:11px;color:var(--t2);font-weight:600">${r.client_name}</span></div>`:''}
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:auto">
+        ${showApprove?`<button class="btn btn-s btn-sm" onclick="approveProj(${r.id})">${S(I.chk)} قبول</button><button class="btn btn-e btn-sm" onclick="rejectModal(${r.id})">${S(I.x)} رفض</button>`:''}
+        <button class="btn btn-gh btn-sm" onclick="viewProjModal(${r.id})">${S(I.eye)}</button>
+        <button class="btn btn-gh btn-sm" onclick="editProjModal(${r.id})">${S(I.edit)}</button>
+        ${r.status==='open'?`<button class="btn btn-i btn-sm" onclick="assignModal(${r.id})">إسناد</button>`:''}
+        ${r.status==='in_progress'?`<button class="btn btn-s btn-sm" onclick="completeProj(${r.id})">مكتمل</button>`:''}
+        <button class="btn btn-e btn-sm" onclick="deleteProj(${r.id})">${S(I.trash)}</button>
+      </div>
+    </div>
+  </div>`
+}
+
+// دالة قديمة للتوافق (لا تُستخدم)
+function projCard_old(r,showApprove=false){
   return`<div class="pc ${PCC[r.status]||''}">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
       <div><div class="pc-num">${r.project_number||'#'+r.id}</div><div class="pc-tit">${r.title||'—'}</div></div>
@@ -506,8 +550,20 @@ async function confirmAssign(reqId){
 // ========== مزودو الخدمة ==========
 async function pgProviders(){
   loading();
-  const data=await fetch(API+'/api/admin/providers',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
-  allProviders=Array.isArray(data)?data:[];
+  // جرب endpoint المزودين أولاً، إذا فشل جرب العام وفلتر
+  let data=[];
+  try{
+    const r=await fetch(API+'/api/admin/providers',{headers:{'Authorization':`Bearer ${token}`}});
+    if(r.ok){const d=await r.json();data=Array.isArray(d)?d:[]}
+  }catch(e){}
+  if(!data.length){
+    try{
+      const r=await fetch(API+'/api/admin/users?role=provider',{headers:{'Authorization':`Bearer ${token}`}});
+      if(r.ok){const d=await r.json();data=Array.isArray(d)?d:[]}
+    }catch(e){}
+  }
+  // فلترة إضافية: تأكد أن كلهم مزودون فقط
+  allProviders=(Array.isArray(data)?data:[]).filter(u=>!u.role||u.role==='provider');
   // حفظ في الكاش
   allProviders.forEach(u=>{_userCache[u.id]=u});
   setPage(`<div class="pghd"><div><div class="pg-t">مزودو الخدمة</div><div class="pg-s">${allProviders.length} مزود</div></div><div class="pghd-r"><button class="btn btn-p btn-sm" onclick="addUserModal('provider')">${S(I.plus)} إضافة مزود</button></div></div>
@@ -572,8 +628,20 @@ function renderProviders(list){
 // ========== العملاء ==========
 async function pgClients(){
   loading();
-  const data=await fetch(API+'/api/admin/users?role=client',{headers:{'Authorization':`Bearer ${token}`}}).then(r=>r.ok?r.json():[]).catch(()=>[]);
-  allClients=Array.isArray(data)?data:[];
+  // جرب endpoint العملاء، مع فلترة إضافية
+  let data=[];
+  try{
+    const r=await fetch(API+'/api/admin/users?role=client',{headers:{'Authorization':`Bearer ${token}`}});
+    if(r.ok){const d=await r.json();data=Array.isArray(d)?d:[]}
+  }catch(e){}
+  if(!data.length){
+    try{
+      const r=await fetch(API+'/api/admin/users',{headers:{'Authorization':`Bearer ${token}`}});
+      if(r.ok){const d=await r.json();data=Array.isArray(d)?d:[]}
+    }catch(e){}
+  }
+  // فلترة إضافية: تأكد أن كلهم عملاء فقط وليسوا مزودين أو مدراء
+  allClients=(Array.isArray(data)?data:[]).filter(u=>u.role==='client');
   allClients.forEach(u=>{_userCache[u.id]=u});
   setPage(`<div class="pghd"><div><div class="pg-t">العملاء</div><div class="pg-s">${allClients.length} عميل</div></div><div class="pghd-r"><button class="btn btn-p btn-sm" onclick="addUserModal('client')">${S(I.plus)} إضافة عميل</button></div></div>
   <div class="card"><div class="cb">
