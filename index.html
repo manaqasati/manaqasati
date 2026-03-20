@@ -2,417 +2,397 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>مناقصة – بوابة المناقصات الرقمية</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مناقصة — منصة خدمات المشاريع</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#7c3aed;--p2:#6d28d9;--p3:#5b21b6;--p-light:#ede9fe;--p-mid:#ddd6fe;--gold:#f59e0b;--gold2:#d97706;--text:#0f0a1e;--muted:#64748b;--border:#e2e8f0;--bg:#faf9ff;--white:#fff;--red:#ef4444;--green:#16a34a;--green-l:#dcfce7}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
-.nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;transition:.3s}
-.nav.scrolled{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);box-shadow:0 1px 20px rgba(124,58,237,0.1)}
-.nav-logo{font-size:22px;font-weight:900;color:#fff;text-decoration:none;transition:.3s}
-.nav.scrolled .nav-logo{color:var(--p)}
-.nav-logo span{color:var(--gold)}
-.nav-btns{display:flex;gap:8px;align-items:center}
-.nav-login{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,0.5);background:transparent;color:#fff;font-family:'Tajawal',sans-serif;transition:.2s;text-decoration:none}
-.nav.scrolled .nav-login{border-color:var(--p);color:var(--p)}
-.nav-reg{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;border:none;background:var(--gold);color:#fff;font-family:'Tajawal',sans-serif;transition:.2s;text-decoration:none}
-.nav-reg:hover{background:var(--gold2)}
-.hero{min-height:100vh;background:linear-gradient(160deg,#1e0545 0%,#4c1d95 40%,#7c3aed 70%,#a855f7 100%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px 60px;overflow:hidden;text-align:center}
-.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
-.hero-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
-.hero-orb-1{width:400px;height:400px;background:rgba(168,85,247,0.3);top:-100px;right:-100px}
-.hero-orb-2{width:300px;height:300px;background:rgba(245,158,11,0.15);bottom:-50px;left:-50px}
-.hero-badge{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:50px;padding:6px 16px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:20px;display:inline-flex;align-items:center;gap:6px;backdrop-filter:blur(10px)}
-.hero h1{font-size:clamp(26px,6vw,50px);font-weight:900;color:#fff;line-height:1.2;margin-bottom:16px}
-.hero h1 span{color:var(--gold)}
-.hero p{font-size:clamp(13px,2.5vw,17px);color:rgba(255,255,255,0.75);max-width:480px;line-height:1.7;margin-bottom:32px}
-.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:48px}
-.btn-hero-p{padding:13px 28px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-.btn-hero-p:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 25px rgba(245,158,11,0.4)}
-.btn-hero-s{padding:13px 28px;background:rgba(255,255,255,0.12);color:#fff;border:1.5px solid rgba(255,255,255,0.3);border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;text-decoration:none;backdrop-filter:blur(10px)}
-.btn-hero-s:hover{background:rgba(255,255,255,0.2)}
-.hero-stats{display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
-.hs{text-align:center}
-.hs-n{font-size:30px;font-weight:900;color:#fff}
-.hs-t{font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;margin-top:2px}
-.hero-scroll{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.3);font-size:20px;animation:bounce 2s infinite}
-@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(7px)}}
-.cats-section{padding:28px 20px;background:var(--white);border-bottom:1px solid var(--border)}
-.cats-title{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:16px;text-align:center;letter-spacing:.5px}
-.cats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;max-width:900px;margin:0 auto}
-.cat-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:13px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;transition:.2s;font-family:'Tajawal',sans-serif}
-.cat-chip:hover{border-color:var(--p);background:var(--p-light);transform:translateY(-2px)}
-.cat-chip:hover .cat-ic-wrap{background:var(--p-mid)}
-.cat-chip:hover .cat-ic-wrap svg{stroke:var(--p)}
-.cat-chip.on{border-color:var(--p);background:var(--p-light)}
-.cat-chip.on .cat-ic-wrap{background:var(--p)}
-.cat-chip.on .cat-ic-wrap svg{stroke:#fff}
-.cat-chip.on .cat-name{color:var(--p)}
-.cat-ic-wrap{width:44px;height:44px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;transition:.2s}
-.cat-ic-wrap svg{width:20px;height:20px;stroke:#64748b;transition:.2s}
-.cat-name{font-size:10px;font-weight:700;color:var(--text);text-align:center;line-height:1.3}
-.main-section{padding:28px 20px 80px;max-width:900px;margin:0 auto}
-.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
-.section-head h2{font-size:18px;font-weight:900}
-.section-head h2 span{color:var(--p)}
-.live-dot{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--green);background:var(--green-l);padding:4px 10px;border-radius:20px}
-.live-dot::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
-.search-bar{background:var(--white);border:1.5px solid var(--border);border-radius:13px;padding:4px 4px 4px 14px;display:flex;align-items:center;gap:8px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
-.search-bar input{flex:1;border:none;outline:none;font-family:'Tajawal',sans-serif;font-size:14px;background:transparent;color:var(--text)}
-.search-bar input::placeholder{color:var(--muted)}
-.search-btn{background:var(--p);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
-.filter-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-.f-sel{padding:7px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;background:var(--white);color:var(--text);outline:none;cursor:pointer}
-.f-sel:focus{border-color:var(--p)}
-.reqs-grid{display:flex;flex-direction:column;gap:12px}
-.rcard{background:var(--white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;transition:.2s;cursor:pointer;position:relative;display:flex;flex-direction:column}
-.rcard:hover{border-color:var(--p-mid);box-shadow:0 4px 20px rgba(124,58,237,0.08);transform:translateY(-2px)}
-.rcard-emoji{width:100%;height:130px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--p-light),var(--p-mid));flex-shrink:0}
-.rcard-emoji svg{width:52px;height:52px;stroke:var(--p)}
-.rcard-body{padding:14px}
-.rcard-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;gap:8px}
-.rcard-title{font-size:15px;font-weight:800;flex:1;line-height:1.3}
-.rcard-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
-.rm{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;background:var(--bg);padding:3px 8px;border-radius:20px}
-.rcard-desc{font-size:12px;color:#64748b;line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.rcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.rcard-budget{font-size:17px;font-weight:900;color:var(--p)}
-.rcard-budget span{font-size:11px;font-weight:600;color:var(--muted)}
-.bid-cta{padding:8px 16px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:.15s;text-decoration:none;display:inline-block}
-.bid-cta:hover{background:var(--p2)}
-.tag{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
-.t-open{background:var(--green-l);color:var(--green)}
-.new-badge{position:absolute;top:10px;right:10px;background:var(--gold);color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;z-index:2}
-.providers-section{background:linear-gradient(160deg,#1e0545,#4c1d95);padding:40px 20px}
-.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-width:900px;margin:20px auto 0}
-.prov-card{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;text-align:center;transition:.2s;cursor:pointer}
-.prov-card:hover{background:rgba(255,255,255,0.15);transform:translateY(-3px)}
-.prov-av{width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,var(--gold),var(--p));color:#fff;font-size:19px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
-.prov-name{font-size:13px;font-weight:800;color:#fff;margin-bottom:3px}
-.prov-spec{font-size:10px;color:rgba(255,255,255,0.55);margin-bottom:7px;line-height:1.4}
-.prov-stars{color:var(--gold);font-size:12px;letter-spacing:1px;margin-bottom:3px}
-.prov-city{font-size:10px;color:rgba(255,255,255,0.4)}
-.prov-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:800;margin-top:6px}
-.pb-gold{background:rgba(245,158,11,0.2);color:var(--gold);border:1px solid rgba(245,158,11,0.3)}
-.pb-blue{background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)}
-.pb-green{background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid rgba(34,197,94,0.3)}
-.how-section{padding:48px 20px;background:var(--white);text-align:center}
-.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;max-width:750px;margin:24px auto 0}
-.how-step{padding:20px 14px}
-.how-num{width:42px;height:42px;border-radius:12px;background:var(--p);color:#fff;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.how-title{font-size:14px;font-weight:800;margin-bottom:7px}
-.how-desc{font-size:12px;color:var(--muted);line-height:1.7}
-.cta-banner{background:linear-gradient(135deg,var(--p),var(--p2));padding:48px 24px;text-align:center}
-.cta-banner h2{font-size:22px;font-weight:900;color:#fff;margin-bottom:8px}
-.cta-banner p{font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:24px}
-.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn-cta-w{padding:12px 24px;background:#fff;color:var(--p);border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;text-decoration:none;transition:.15s}
-.btn-cta-w:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.15)}
-.btn-cta-o{padding:12px 24px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.4);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;transition:.15s}
-.btn-cta-o:hover{background:rgba(255,255,255,0.1)}
-footer{background:#0f0a1e;padding:28px 20px;text-align:center;color:rgba(255,255,255,0.35);font-size:12px}
-footer strong{color:var(--gold)}
-.overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.7);z-index:400;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
-.overlay.show{display:flex}
-.modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:92vh;overflow-y:auto}
-.modal-drag{width:34px;height:4px;background:#d1d5db;border-radius:2px;margin:12px auto 0}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--border)}
-.modal-head h3{font-size:15px;font-weight:900}
-.modal-x{width:28px;height:28px;border-radius:8px;background:var(--bg);border:none;cursor:pointer;font-size:18px;color:var(--muted)}
-.modal-body{padding:16px 18px 24px}
-.m-emoji{width:100%;height:130px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--p-light),var(--p-mid));border-radius:12px;margin-bottom:14px}
-.m-emoji svg{width:56px;height:56px;stroke:var(--p)}
-.detail-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.detail-desc{font-size:13px;color:#475569;line-height:1.7;margin-bottom:14px}
-.detail-client{background:var(--bg);border-radius:11px;padding:12px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
-.dc-av{width:36px;height:36px;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.dc-name{font-size:13px;font-weight:800}
-.dc-meta{font-size:11px;color:var(--muted)}
-.login-prompt{background:var(--p-light);border:1.5px solid var(--p-mid);border-radius:13px;padding:16px;text-align:center}
-.login-prompt p{font-size:13px;color:var(--text);margin-bottom:12px;line-height:1.6}
-.login-prompt-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.lp-btn{padding:10px 20px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;text-decoration:none;transition:.15s}
-.lp-p{background:var(--p);color:#fff;border:none}.lp-p:hover{background:var(--p2)}
-.lp-s{background:var(--white);color:var(--p);border:1.5px solid var(--p)}
-.empty{text-align:center;padding:48px 16px;color:var(--muted)}
-.empty h4{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px}
-.loading{text-align:center;padding:48px;color:var(--muted)}
-.loading-spin{width:34px;height:34px;border:3px solid var(--p-mid);border-top-color:var(--p);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:768px){.cats-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:480px){.cats-grid{grid-template-columns:repeat(3,1fr)}.hero h1{font-size:24px}.hero-stats{gap:24px}.hs-n{font-size:24px}.prov-grid{grid-template-columns:repeat(2,1fr)}.how-grid{grid-template-columns:1fr}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--p:#312e81;--pl:#eef2ff;--pm:#c7d2fe;--g:#059669;--gl:#ecfdf5;--a:#d97706;--r:#dc2626;--t:#111827;--t2:#374151;--t3:#6b7280;--t4:#9ca3af;--bg:#f8fafc;--bg2:#f1f5f9;--br:#e2e8f0;--white:#ffffff}
+html,body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none}
+.header{background:var(--white);border-bottom:1px solid var(--br);position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 20px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;gap:9px;font-size:22px;font-weight:900;color:var(--t)}
+.logo-icon{width:38px;height:38px;background:#312e81;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:24px;height:24px}
+.logo span{color:var(--p)}
+.header-btns{display:flex;gap:8px;flex-shrink:0}
+.btn-outline{padding:8px 18px;border:1.5px solid var(--br);border-radius:8px;font-size:13px;font-weight:600;color:var(--t2);background:var(--white);transition:.15s}
+.btn-outline:hover{border-color:var(--p);color:var(--p)}
+.btn-primary{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;color:#fff;background:var(--p);transition:.15s}
+.btn-primary:hover{background:#1d4ed8}
+.hero{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);padding:60px 20px;text-align:center;position:relative;overflow:hidden}
+.hero-inner{max-width:700px;margin:0 auto;position:relative}
+.hero h1{font-size:38px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:14px;letter-spacing:-.5px}
+.hero h1 span{color:#93c5fd}
+.hero p{font-size:17px;color:rgba(255,255,255,.8);margin-bottom:32px;line-height:1.7}
+.search-bar{display:flex;gap:8px;background:#fff;border-radius:14px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.15);max-width:600px;margin:0 auto}
+.search-bar input{flex:1;border:none;outline:none;font-family:inherit;font-size:14px;padding:8px 12px;color:var(--t);background:transparent}
+.search-bar input::placeholder{color:var(--t4)}
+.search-btn{background:var(--p);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:.15s}
+.search-btn:hover{background:#1d4ed8}
+.search-btn svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.filters-wrap{max-width:1200px;margin:0 auto;padding:24px 20px 12px}
+.filters-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.section-title{font-size:20px;font-weight:800;color:var(--t)}
+.results-count{font-size:13px;color:var(--t4)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.fsel{padding:8px 12px;border:1.5px solid var(--br);border-radius:8px;font-size:12px;font-weight:500;background:var(--white);color:var(--t2);cursor:pointer;font-family:inherit;transition:.15s}
+.fsel:focus{outline:none;border-color:var(--p)}
+.cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.cat-btn{padding:6px 14px;border:1.5px solid var(--br);border-radius:99px;font-size:12px;font-weight:500;background:var(--white);color:var(--t3);cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+.cat-btn:hover{border-color:var(--pm);color:var(--p);background:var(--pl)}
+.cat-btn.on{border-color:var(--p);background:var(--p);color:#fff}
+.grid-wrap{max-width:1200px;margin:0 auto;padding:0 20px 40px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.card{background:var(--white);border:1px solid var(--br);border-radius:16px;overflow:hidden;transition:all .2s;cursor:pointer}
+.card:hover{box-shadow:0 10px 30px rgba(0,0,0,.1);transform:translateY(-3px);border-color:var(--pm)}
+.card-img{height:160px;position:relative;overflow:hidden}
+.card-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+.card:hover .card-img img{transform:scale(1.05)}
+.card-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:52px}
+.card-badge{position:absolute;top:10px;right:10px;background:rgba(5,150,105,.9);backdrop-filter:blur(6px);color:#fff;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700}
+.card-num{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);color:rgba(255,255,255,.85);padding:3px 8px;border-radius:6px;font-size:9px;font-weight:600}
+.card-body{padding:15px}
+.card-cat{font-size:10px;font-weight:700;color:var(--p);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.card-title{font-size:15px;font-weight:700;color:var(--t);line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-desc{font-size:12px;color:var(--t3);line-height:1.65;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t3)}
+.meta-item svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.meta-item.green{color:var(--g);font-weight:700}
+.card-footer{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--br)}
+.bids-count{font-size:11px;color:var(--t4);display:flex;align-items:center;gap:4px}
+.bids-count svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bid-btn{background:var(--p);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.bid-btn:hover{background:#1d4ed8}
+.empty{text-align:center;padding:60px 20px;color:var(--t4)}
+.empty-ic{font-size:48px;margin-bottom:12px}
+.empty h3{font-size:18px;font-weight:700;color:var(--t2);margin-bottom:6px}
+.loading{text-align:center;padding:60px;color:var(--t4)}
+.spin{width:28px;height:28px;border:3px solid var(--br);border-top-color:var(--p);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;padding:20px}
+.ov.show{display:flex}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.18);animation:mIn .18s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--white)}
+.modal-head h3{font-size:16px;font-weight:700}
+.modal-close{width:28px;height:28px;border-radius:8px;background:var(--bg2);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--t3)}
+.modal-close:hover{background:#fee2e2;color:var(--r)}
+.modal-body{padding:20px}
+.modal-foot{padding:14px 20px;background:var(--bg2);display:flex;gap:8px}
+.detail-img{width:100%;height:200px;object-fit:cover;border-radius:12px;margin-bottom:14px}
+.detail-img-ph{width:100%;height:200px;border-radius:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;font-size:64px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.info-item{background:var(--bg2);border-radius:8px;padding:10px 12px}
+.info-label{font-size:10px;color:var(--t4);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.info-val{font-size:13px;font-weight:700;color:var(--t2)}
+.desc-box{background:var(--bg2);border-radius:8px;padding:12px;font-size:13px;color:var(--t3);line-height:1.7;border-right:3px solid var(--pm)}
+.mbtn{flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s;border:none}
+.mbtn-blue{background:var(--p);color:#fff}
+.mbtn-blue:hover{background:#1d4ed8}
+.mbtn-gray{background:var(--white);color:var(--t2);border:1.5px solid var(--br)!important;border:none}
+.mbtn-gray:hover{background:var(--bg2)}
+.footer{background:#1e293b;color:rgba(255,255,255,.5);text-align:center;padding:24px;font-size:13px}
+.footer span{color:#fff;font-weight:700}
+@media(max-width:768px){
+  .hero h1{font-size:26px}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .header-btns .btn-outline{display:none}
+  .search-bar{flex-direction:column}
+  .cards-grid{grid-template-columns:1fr}
+  .info-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
-<nav class="nav" id="navbar">
-  <a href="#" class="nav-logo">مناقصة<span>.</span></a>
-  <div class="nav-btns">
-    <a href="auth.html" class="nav-login">دخول</a>
-    <a href="auth.html?tab=register" class="nav-reg">سجّل الآن</a>
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="14" width="5" height="8" rx="1" fill="#818cf8"/>
+          <rect x="9.5" y="9" width="5" height="13" rx="1" fill="#a5b4fc"/>
+          <rect x="17" y="4" width="5" height="18" rx="1" fill="white"/>
+          <path d="M17.5 2 L22 2 L21 4.5 C20.5 6 19.5 6.5 19.5 6.5 C19.5 6.5 18.5 6 18 4.5 Z" fill="#fbbf24"/>
+        </svg>
+      </div>
+      مناقصة<span>.</span>
+    </a>
+    <div class="header-btns">
+      <button class="btn-outline" onclick="location.href='auth.html'">تسجيل الدخول</button>
+      <button class="btn-primary" onclick="location.href='auth.html'">انضم الآن</button>
+    </div>
   </div>
-</nav>
+</header>
 
 <section class="hero">
-  <div class="hero-orb hero-orb-1"></div>
-  <div class="hero-orb hero-orb-2"></div>
-  <div class="hero-badge">✦ بوابة المناقصات الرقمية في السعودية</div>
-  <h1>بوابتك للمناقصات<br><span>الرقمية الموثوقة</span></h1>
-  <p>انشر مناقصتك مجاناً واستقبل عروض من أفضل مزودي الخدمات المعتمدين في مدينتك</p>
-  <div class="hero-actions">
-    <a href="auth.html?tab=register" class="btn-hero-p">🚀 انشر مناقصتك مجاناً</a>
-    <a href="#requests" class="btn-hero-s">تصفح المناقصات</a>
-  </div>
-  <div class="hero-stats">
-    <div class="hs"><div class="hs-n" id="h-reqs">0</div><div class="hs-t">مناقصة نشطة</div></div>
-    <div class="hs"><div class="hs-n" id="h-provs">0</div><div class="hs-t">مزود معتمد</div></div>
-    <div class="hs"><div class="hs-n" id="h-users">0</div><div class="hs-t">مستخدم مسجل</div></div>
-  </div>
-  <div class="hero-scroll">↓</div>
-</section>
-
-<div class="cats-section">
-  <div class="cats-title">تصفح حسب التصنيف</div>
-  <div class="cats-grid" id="cats-row"></div>
-</div>
-
-<section class="main-section" id="requests">
-  <div class="section-head">
-    <h2>المناقصات <span>المتاحة</span></h2>
-    <div class="live-dot">مباشر</div>
-  </div>
-  <div class="search-bar">
-    <svg width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="search-inp" placeholder="ابحث عن مناقصة..." oninput="filterReqs()">
-    <button class="search-btn" onclick="filterReqs()">بحث</button>
-  </div>
-  <div class="filter-row">
-    <select class="f-sel" id="f-city" onchange="filterReqs()"><option value="">كل المدن</option></select>
-    <select class="f-sel" id="f-cat" onchange="filterReqs()"><option value="">كل التصنيفات</option></select>
-  </div>
-  <div id="reqs-list"><div class="loading"><div class="loading-spin"></div>جاري التحميل...</div></div>
-  <div style="text-align:center;margin-top:20px">
-    <button id="load-more" style="display:none;padding:10px 24px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer" onclick="loadMore()">عرض المزيد ↓</button>
-  </div>
-</section>
-
-<section class="providers-section">
-  <div style="text-align:center;max-width:900px;margin:0 auto">
-    <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:8px">المزودون المتميزون</div>
-    <h2 style="font-size:21px;font-weight:900;color:#fff;margin-bottom:4px">أفضل <span style="color:var(--gold)">مزودي الخدمات</span></h2>
-    <p style="font-size:12px;color:rgba(255,255,255,0.45)">مزودون موثوقون وذوو تقييمات عالية</p>
-    <div class="prov-grid" id="provs-grid">
-      <div style="color:rgba(255,255,255,0.3);text-align:center;grid-column:1/-1;padding:24px">
-        <div class="loading-spin" style="border-color:rgba(255,255,255,0.1);border-top-color:var(--gold)"></div>
-      </div>
+  <div class="hero-inner">
+    <h1>منصة <span>مناقصة</span><br>اعثر على أفضل مزودي الخدمة</h1>
+    <p>تصفح المشاريع المفتوحة وقدّم عرضك الآن<br>نربط أصحاب المشاريع بأفضل مزودي الخدمة في المملكة</p>
+    <div class="search-bar">
+      <input type="text" id="heroSearch" placeholder="ابحث... (تكييف، كهرباء، حداد، كاميرات...)" onkeyup="if(event.key==='Enter')doSearch()">
+      <button class="search-btn" onclick="doSearch()">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        بحث
+      </button>
     </div>
   </div>
 </section>
 
-<section class="how-section">
-  <div style="font-size:11px;font-weight:800;color:var(--p);letter-spacing:1px;margin-bottom:8px">كيف تعمل المنصة؟</div>
-  <h2 style="font-size:21px;font-weight:900">3 خطوات بسيطة</h2>
-  <div class="how-grid">
-    <div class="how-step"><div class="how-num">١</div><div class="how-title">انشر مناقصتك</div><div class="how-desc">صف ما تحتاجه بالتفصيل مع الصور والميزانية والموقع</div></div>
-    <div class="how-step"><div class="how-num">٢</div><div class="how-title">استقبل العروض</div><div class="how-desc">يصلك عروض من مزودين متخصصين في مدينتك</div></div>
-    <div class="how-step"><div class="how-num">٣</div><div class="how-title">اختر الأنسب</div><div class="how-desc">قارن العروض وتواصل واختر المزود المناسب</div></div>
-  </div>
-</section>
 
-<section class="cta-banner">
-  <h2>مزود خدمة؟ ابدأ الآن 🚀</h2>
-  <p>سجّل كمزود خدمة مجاناً وابدأ استقبال المناقصات من عملاء في مدينتك</p>
-  <div class="cta-btns">
-    <a href="auth.html?tab=register&role=provider" class="btn-cta-w">سجل كمزود خدمة</a>
-    <a href="auth.html?tab=register" class="btn-cta-o">سجل كعميل</a>
-  </div>
-</section>
 
-<footer>
-  <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:6px">مناقصة<strong>.</strong></div>
-  <div>بوابة المناقصات الرقمية في المملكة العربية السعودية</div>
-  <div style="margin-top:6px">© 2025 مناقصة — جميع الحقوق محفوظة</div>
+<div class="filters-wrap">
+  <div class="filters-top">
+    <div class="section-title">المشاريع المتاحة</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="results-count" id="resCount">جاري التحميل...</span>
+      <div class="filters">
+        <select class="fsel" id="fCity" onchange="filterCards()"><option value="">كل المدن</option></select>
+        <select class="fsel" id="fSort" onchange="filterCards()">
+          <option value="new">الأحدث أولاً</option>
+          <option value="bids">الأكثر عروضاً</option>
+          <option value="budget">الأعلى ميزانية</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="cats" id="catsRow"></div>
+</div>
+
+<div class="grid-wrap">
+  <div class="cards-grid" id="cardsGrid">
+    <div class="loading"><div class="spin"></div><div>جاري تحميل المشاريع...</div></div>
+  </div>
+</div>
+
+<!-- قسم المشاريع المنجزة -->
+<div style="background:#f1f5f9;border-top:1px solid #e2e8f0;padding:40px 0 50px">
+  <div style="max-width:1200px;margin:0 auto;padding:0 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:#111827">مشاريع أُنجزت عبر مناقصة</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:3px">مشاريع حقيقية نفذها مزودو خدمة معتمدون</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#dc2626"></div>
+        <span style="font-size:12px;color:#6b7280;font-weight:600">تم الترسية</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:20px" id="doneGrid"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  <p>© 2025 <span>مناقصة</span> — منصة خدمات المشاريع في المملكة العربية السعودية</p>
 </footer>
 
-<div class="overlay" id="detailOverlay">
+<div class="ov" id="ov">
   <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-head"><h3 id="m-title">تفاصيل المناقصة</h3><button class="modal-x" onclick="closeModal()">×</button></div>
-    <div class="modal-body" id="m-body"></div>
+    <div class="modal-head">
+      <h3 id="mTitle">تفاصيل المشروع</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+    <div class="modal-foot" id="mFoot"></div>
   </div>
 </div>
 
 <script>
-var API='https://manaqasati-production.up.railway.app';
-var allReqs=[],filtered=[],shown=0,PAGE=8,selCat='all';
+const API='https://manaqasati-production.up.railway.app';
+const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#06b6d4,#0891b2',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🪚'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'🧹'},'نقل عفش':{g:'135deg,#8b5cf6,#7c3aed',ic:'🚛'},'حدادة':{g:'135deg,#6b7280,#374151',ic:'🔩'},'ألمنيوم':{g:'135deg,#9ca3af,#6b7280',ic:'🪟'},'مسابح (تنفيذ وصيانة)':{g:'135deg,#3b82f6,#1d4ed8',ic:'🏊'},'كاميرات مراقبة وأمن':{g:'135deg,#1f2937,#111827',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#6366f1,#4f46e5',ic:'📡'},'مظلات وسواتر':{g:'135deg,#f97316,#ea580c',ic:'⛱️'},'عزل حراري وأسطح':{g:'135deg,#ef4444,#dc2626',ic:'🌡️'},'أبواب':{g:'135deg,#854d0e,#713f12',ic:'🚪'},'أعمال جبس وطباشير':{g:'135deg,#94a3b8,#64748b',ic:'🏠'},'مكافحة حشرات':{g:'135deg,#16a34a,#15803d',ic:'🦟'},'أخرى':{g:'135deg,#64748b,#475569',ic:'📋'}};
+let allProjects=[],activecat='',searchQ='';
 
-var CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','القطيف','تبوك','أبها','خميس مشيط','حائل','نجران','جازان','الجوف','سكاكا','عرعر','الطائف','بريدة','عنيزة','الرس','القصيم','ينبع','القنفذة','الباحة','بيشة','الخرج','المجمعة','الزلفي','الدوادمي','وادي الدواسر','الأفلاج','شقراء','حوطة بني تميم','الحريق','رنية','تربة','المخواة','بلجرشي','المندق','العقيق','قلوة','النماص','محايل عسير','صبيا','صامطة','أبو عريش','الليث','القنفذة','رابغ','خليص','عفيف','الدوادمي','القويعية','حريملاء','الغاط','ثادق','رماح','الخرج'];
 
-var CATS=[
-  {name:'الكل',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>'},
-  {name:'تبريد وتكييف',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5l-5 5-5-5"/><path d="M17 19l-5-5-5 5"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M5 7l5 5-5 5"/><path d="M19 7l-5 5 5 5"/></svg>'},
-  {name:'كهرباء',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'},
-  {name:'سباكة',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'},
-  {name:'نجارة',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>'},
-  {name:'تنظيف',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M8.93 8.93A10 10 0 0021 21H3V3"/></svg>'},
-  {name:'نقل عفش',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>'},
-  {name:'حدادة',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M20 12h2M2 12h2M17.66 17.66l1.41 1.41M4.93 4.93l1.41 1.41M12 20v2M12 2v2"/></svg>'},
-  {name:'ألمنيوم',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>'},
-  {name:'مسابح',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20M2 16c2 2 4 2 6 0s4-2 6 0 4 2 6 0M2 20c2 2 4 2 6 0s4-2 6 0 4 2 6 0"/><circle cx="12" cy="7" r="2"/></svg>'},
-  {name:'كاميرات وأمن',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'},
-  {name:'شبكات وإنترنت',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M10.54 17.1a6 6 0 012.92 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>'},
-  {name:'مظلات وسواتر',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="9" x2="12" y2="22"/><line x1="21" y1="9" x2="12" y2="22"/></svg>'},
-  {name:'عزل وأسطح',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/><line x1="12" y1="17" x2="12" y2="20"/></svg>'},
-  {name:'أبواب',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><rect x="6" y="3" width="12" height="18" rx="1"/><circle cx="16" cy="12" r="1" fill="currentColor"/></svg>'},
-  {name:'جبس وطباشير',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'},
-  {name:'مكافحة حشرات',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22a7 7 0 007-7v-4H5v4a7 7 0 007 7z"/><path d="M9 11V6a3 3 0 016 0v5"/><line x1="5" y1="11" x2="2" y2="9"/><line x1="19" y1="11" x2="22" y2="9"/></svg>'},
-  {name:'أخرى',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>'}
+
+async function loadProjects(){
+  try{
+    const r=await fetch(API+'/api/requests?status=open');
+    if(r.ok){allProjects=await r.json();buildCities();buildCats();renderCards(allProjects);}
+    else document.getElementById('cardsGrid').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h3>تعذر تحميل المشاريع</h3></div>';
+  }catch(e){document.getElementById('cardsGrid').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';}
+}
+
+function buildCities(){
+  const cities=[...new Set(allProjects.map(p=>p.city).filter(Boolean))].sort();
+  const sel=document.getElementById('fCity');
+  cities.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+}
+
+function buildCats(){
+  const used=[...new Set(allProjects.map(p=>p.category).filter(Boolean))];
+  document.getElementById('catsRow').innerHTML=`<button class="cat-btn on" onclick="setCat('',this)">🔍 الكل</button>`+used.map(c=>{const cs=CAT_STYLE[c]||{ic:'📋'};return`<button class="cat-btn" onclick="setCat(decodeURIComponent('${encodeURIComponent(c)}'),this)">${cs.ic} ${c}</button>`;}).join('');
+}
+
+function setCat(cat,btn){activecat=cat;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');filterCards();}
+
+function doSearch(){searchQ=(document.getElementById('heroSearch').value||'').trim().toLowerCase();filterCards();document.querySelector('.grid-wrap').scrollIntoView({behavior:'smooth'});}
+
+function filterCards(){
+  const city=document.getElementById('fCity').value;
+  const sort=document.getElementById('fSort').value;
+  let list=allProjects.filter(p=>{
+    const mq=!searchQ||(p.title||'').toLowerCase().includes(searchQ)||(p.description||'').toLowerCase().includes(searchQ)||(p.city||'').toLowerCase().includes(searchQ);
+    const mc=!activecat||p.category===activecat;
+    const mi=!city||p.city===city;
+    return mq&&mc&&mi;
+  });
+  if(sort==='bids')list.sort((a,b)=>(b.bid_count||0)-(a.bid_count||0));
+  else if(sort==='budget')list.sort((a,b)=>(b.budget_max||0)-(a.budget_max||0));
+  renderCards(list);
+}
+
+function renderCards(list){
+  document.getElementById('resCount').textContent=`${list.length} مشروع`;
+  if(!list.length){document.getElementById('cardsGrid').innerHTML='<div class="empty"><div class="empty-ic">🔍</div><h3>لا يوجد مشاريع</h3><p>جرب تغيير كلمة البحث أو الفئة</p></div>';return;}
+  document.getElementById('cardsGrid').innerHTML=list.map(p=>{
+    const cs=CAT_STYLE[p.category]||{g:'135deg,#2563eb,#1d4ed8',ic:'📋'};
+    const imgHtml=p.image_url?`<img src="${p.image_url}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover;transition:transform .3s" onerror="this.parentElement.innerHTML='<div class=card-img-ph style=background:linear-gradient(${cs.g})>${cs.ic}</div>'">`:`<div class="card-img-ph" style="background:linear-gradient(${cs.g})">${cs.ic}</div>`;
+    const budget=p.budget_max?Number(p.budget_max).toLocaleString('ar-SA')+' ر.س':'غير محدد';
+    const deadline=p.deadline?new Date(p.deadline).toLocaleDateString('ar-SA'):'غير محدد';
+    return`<div class="card" onclick="openProject(${p.id})">
+      <div class="card-img">${imgHtml}<div class="card-badge">✓ مفتوح</div><div class="card-num">${p.project_number||'#'+p.id}</div></div>
+      <div class="card-body">
+        <div class="card-cat">${cs.ic} ${p.category||'عام'}</div>
+        <div class="card-title">${p.title}</div>
+        ${p.description?`<div class="card-desc">${p.description}</div>`:''}
+        <div class="card-meta">
+          <div class="meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.city||'—'}</div>
+          <div class="meta-item green"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${budget}</div>
+          <div class="meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${deadline}</div>
+          <div class="meta-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${p.client_name||'—'}</div>
+        </div>
+        <div class="card-footer">
+          <div class="bids-count"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>${p.bid_count||0} عرض</div>
+          <button class="bid-btn" onclick="event.stopPropagation();location.href='auth.html'">قدّم عرضك</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openProject(id){
+  const p=allProjects.find(x=>x.id===id);if(!p)return;
+  const cs=CAT_STYLE[p.category]||{g:'135deg,#2563eb,#1d4ed8',ic:'📋'};
+  const budget=p.budget_max?Number(p.budget_max).toLocaleString('ar-SA')+' ر.س':'غير محدد';
+  const deadline=p.deadline?new Date(p.deadline).toLocaleDateString('ar-SA'):'غير محدد';
+  const imgHtml=p.image_url?`<img src="${p.image_url}" class="detail-img" onerror="this.style.display='none'">`:`<div class="detail-img-ph" style="background:linear-gradient(${cs.g})">${cs.ic}</div>`;
+  document.getElementById('mTitle').textContent=p.title;
+  document.getElementById('mBody').innerHTML=`${imgHtml}
+    <div style="margin-bottom:12px"><span style="font-size:11px;font-weight:700;color:var(--p)">${cs.ic} ${p.category||'عام'}</span> &nbsp;·&nbsp; <span style="font-size:11px;color:var(--t4)">${p.project_number||'#'+p.id}</span></div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">المدينة</div><div class="info-val">📍 ${p.city||'—'}</div></div>
+      <div class="info-item"><div class="info-label">الميزانية</div><div class="info-val" style="color:var(--g)">💰 ${budget}</div></div>
+      <div class="info-item"><div class="info-label">الموعد النهائي</div><div class="info-val">📅 ${deadline}</div></div>
+      <div class="info-item"><div class="info-label">العروض</div><div class="info-val">📨 ${p.bid_count||0} عرض</div></div>
+    </div>
+    ${p.description?`<div class="desc-box">${p.description}</div>`:''}`;
+  document.getElementById('mFoot').innerHTML=`<button class="mbtn mbtn-gray" onclick="closeModal()" style="flex:1">إغلاق</button><button class="mbtn mbtn-blue" onclick="location.href='auth.html'" style="flex:2">سجّل الدخول لتقديم عرض</button>`;
+  document.getElementById('ov').classList.add('show');
+}
+
+function closeModal(){document.getElementById('ov').classList.remove('show');}
+document.getElementById('ov').addEventListener('click',e=>{if(e.target===document.getElementById('ov'))closeModal();});
+
+loadProjects();
+
+// ===== المشاريع المنجزة الوهمية =====
+const DONE_PROJECTS=[
+  {title:'تركيب مكيفات سبليت 4 طن في فيلا',cat:'تبريد وتكييف',city:'الرياض',provider:'أحمد العتيبي',price:'4,200',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:5},
+  {title:'تمديد كهربائي كامل لعمارة سكنية',cat:'كهرباء',city:'جدة',provider:'شركة الضوء',price:'12,500',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:5},
+  {title:'تركيب شبكة أنابيب مياه',cat:'سباكة',city:'الدمام',provider:'خالد الغامدي',price:'3,800',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:4},
+  {title:'صنع ووضع كاميرات مراقبة',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'تك فيجن',price:'6,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
+  {title:'نقل عفش فيلا كاملة',cat:'نقل عفش',city:'مكة المكرمة',provider:'نقل السرعة',price:'1,800',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:4},
+  {title:'تنظيف مبنى تجاري 3 طوابق',cat:'تنظيف',city:'جدة',provider:'نظافة بلس',price:'2,200',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:5},
+  {title:'تركيب مظلة سيارات خارجية',cat:'مظلات وسواتر',city:'الرياض',provider:'ظل الخليج',price:'5,500',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
+  {title:'أعمال جبس وديكور صالة',cat:'أعمال جبس وطباشير',city:'المدينة المنورة',provider:'ديكور الفن',price:'7,000',img:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=400&q=80',rating:4},
+  {title:'تركيب شبكة إنترنت للمكتب',cat:'شبكات وإنترنت',city:'الخبر',provider:'نت برو',price:'2,800',img:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',rating:5},
+  {title:'بناء مسبح خارجي 8×4 متر',cat:'مسابح (تنفيذ وصيانة)',city:'الرياض',provider:'بلو ووتر',price:'35,000',img:'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80',rating:5},
+  {title:'أبواب ألمنيوم للمشروع التجاري',cat:'ألمنيوم',city:'جدة',provider:'الألمنيوم الحديث',price:'8,400',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:4},
+  {title:'عزل أسطح منزل سكني',cat:'عزل حراري وأسطح',city:'تبوك',provider:'عزل الخبراء',price:'4,600',img:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80',rating:5},
+  {title:'أعمال حدادة بوابات وأسوار',cat:'نجارة',city:'أبها',provider:'حداد الجبل',price:'9,200',img:'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',rating:5},
+  {title:'صيانة مكيفات موسمية',cat:'تبريد وتكييف',city:'الدمام',provider:'بارد دائماً',price:'1,200',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:4},
+  {title:'تركيب لوحة كهربائية جديدة',cat:'كهرباء',city:'الرياض',provider:'كهرباء الأمان',price:'3,500',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:5},
+  {title:'إصلاح تسريبات مياه المطبخ',cat:'سباكة',city:'جدة',provider:'سباك المهرة',price:'950',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:5},
+  {title:'كاميرات مراقبة للمستودع',cat:'كاميرات مراقبة وأمن',city:'الجبيل',provider:'أمن التقنية',price:'4,800',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:4},
+  {title:'نقل مكتب كامل مع تركيب',cat:'نقل عفش',city:'الرياض',provider:'نقل المحترفين',price:'3,200',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:5},
+  {title:'تنظيف خزانات المياه',cat:'تنظيف',city:'حائل',provider:'نظيف دائماً',price:'800',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:5},
+  {title:'مظلة روف توب فيلا',cat:'مظلات وسواتر',city:'الرياض',provider:'سواتر الجزيرة',price:'14,000',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
+  {title:'ديكور جبس غرفة نوم رئيسية',cat:'أعمال جبس وطباشير',city:'جدة',provider:'فن الجبس',price:'4,200',img:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=400&q=80',rating:4},
+  {title:'شبكة واي فاي منزلية',cat:'شبكات وإنترنت',city:'الطائف',provider:'وايرلس بلس',price:'1,600',img:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',rating:5},
+  {title:'صيانة وتنظيف مسبح',cat:'مسابح (تنفيذ وصيانة)',city:'جدة',provider:'أكوا كلين',price:'2,400',img:'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80',rating:5},
+  {title:'نوافذ ألمنيوم للمبنى السكني',cat:'ألمنيوم',city:'المدينة المنورة',provider:'نوافذ الخليج',price:'18,000',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:4},
+  {title:'عزل حراري للجدران الخارجية',cat:'عزل حراري وأسطح',city:'الرياض',provider:'حماية العقار',price:'7,800',img:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80',rating:5},
+  {title:'باب حديد مع تشطيب',cat:'نجارة',city:'بريدة',provider:'نجار الخبر',price:'3,100',img:'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',rating:5},
+  {title:'تركيب مكيف مركزي فيلا',cat:'تبريد وتكييف',city:'الرياض',provider:'تكييف الراحة',price:'22,000',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:5},
+  {title:'تمديد أسلاك الإنارة الخارجية',cat:'كهرباء',city:'الدمام',provider:'نور المدينة',price:'5,200',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:4},
+  {title:'أعمال سباكة مطعم',cat:'سباكة',city:'جدة',provider:'سباكة المطاعم',price:'6,400',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:5},
+  {title:'منظومة كاميرات للمجمع السكني',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'حراسة ذكية',price:'28,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
+  {title:'نقل أثاث شقة سكنية',cat:'نقل عفش',city:'الخبر',provider:'نقل أكسبريس',price:'1,400',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:4},
+  {title:'تنظيف بعد الدهان',cat:'تنظيف',city:'الرياض',provider:'كلين تيم',price:'1,100',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:5},
+  {title:'سواتر قماش للحديقة',cat:'مظلات وسواتر',city:'الأحساء',provider:'ستر الخليج',price:'6,800',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
+  {title:'أسقف جبسية للفيلا كاملة',cat:'أعمال جبس وطباشير',city:'الرياض',provider:'غاية الجبس',price:'16,000',img:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=400&q=80',rating:5},
+  {title:'ربط كاميرات بالجوال',cat:'شبكات وإنترنت',city:'تبوك',provider:'سمارت كونكت',price:'2,000',img:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',rating:4},
+  {title:'تشييد مسبح داخلي فندق',cat:'مسابح (تنفيذ وصيانة)',city:'الرياض',provider:'أكوا بلدر',price:'85,000',img:'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80',rating:5},
+  {title:'تركيب واجهة ألمنيوم مبنى',cat:'ألمنيوم',city:'جدة',provider:'واجهات الفخر',price:'42,000',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:5},
+  {title:'عزل خزان المياه العلوي',cat:'عزل حراري وأسطح',city:'الدمام',provider:'عزل ماستر',price:'1,800',img:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80',rating:4},
+  {title:'بوابة حديدية كهربائية',cat:'نجارة',city:'الرياض',provider:'حديد الخليج',price:'7,500',img:'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',rating:5},
+  {title:'صيانة مكيفات 20 وحدة',cat:'تبريد وتكييف',city:'جدة',provider:'فريدج تك',price:'5,800',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:5},
+  {title:'تمديد كهرباء مخزن تجاري',cat:'كهرباء',city:'الرياض',provider:'فولت برو',price:'4,300',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:4},
+  {title:'سباكة حمامات فندق',cat:'سباكة',city:'مكة المكرمة',provider:'بلمبينج تيم',price:'19,000',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:5},
+  {title:'نظام إنذار وكاميرات مدرسة',cat:'كاميرات مراقبة وأمن',city:'المدينة المنورة',provider:'سيف تك',price:'15,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
+  {title:'نقل وتركيب أثاث مكتبي',cat:'نقل عفش',city:'الرياض',provider:'موفرز برو',price:'2,600',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:5},
+  {title:'تنظيف شامل فيلا قبل البيع',cat:'تنظيف',city:'جدة',provider:'براق كلين',price:'1,800',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:4},
+  {title:'مظلة مدخل فيلا بالبولي',cat:'مظلات وسواتر',city:'الرياض',provider:'مظلات الوطن',price:'8,200',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
+  {title:'تشطيب جبس مجلس رجال',cat:'أعمال جبس وطباشير',city:'القطيف',provider:'لمسة فنية',price:'5,400',img:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=400&q=80',rating:5},
+  {title:'شبكة كاميرات IP للمصنع',cat:'شبكات وإنترنت',city:'الجبيل',provider:'آي تي نت',price:'9,500',img:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',rating:5},
+  {title:'ترميم مسبح قديم',cat:'مسابح (تنفيذ وصيانة)',city:'الرياض',provider:'بلو ريبير',price:'12,000',img:'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80',rating:4},
+  {title:'ألمنيوم محلات تجارية',cat:'ألمنيوم',city:'الدمام',provider:'الألمنيوم الذهبي',price:'24,000',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:5},
 ];
 
-var catSVG={};
-CATS.forEach(function(c){catSVG[c.name]=c.svg;});
+const STAR_COLORS={'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706','سباكة':'135deg,#06b6d4,#0891b2','نجارة':'135deg,#92400e,#78350f','تنظيف':'135deg,#10b981,#059669','نقل عفش':'135deg,#8b5cf6,#7c3aed','مسابح (تنفيذ وصيانة)':'135deg,#3b82f6,#1d4ed8','كاميرات مراقبة وأمن':'135deg,#1f2937,#111827','شبكات وإنترنت':'135deg,#6366f1,#4f46e5','مظلات وسواتر':'135deg,#f97316,#ea580c','عزل حراري وأسطح':'135deg,#ef4444,#dc2626','نجارة':'135deg,#92400e,#78350f','أعمال جبس وطباشير':'135deg,#94a3b8,#64748b','ألمنيوم':'135deg,#9ca3af,#6b7280'};
 
-// Build cats grid
-var cr=document.getElementById('cats-row');
-CATS.forEach(function(c){
-  var d=document.createElement('div');
-  d.className='cat-chip'+(c.name==='الكل'?' on':'');
-  d.innerHTML='<div class="cat-ic-wrap">'+c.svg+'</div><div class="cat-name">'+c.name+'</div>';
-  d.onclick=function(){
-    document.querySelectorAll('.cat-chip').forEach(function(x){x.className='cat-chip';});
-    this.className='cat-chip on';
-    selCat=c.name==='الكل'?'all':c.name;
-    filterReqs();
-  };
-  cr.appendChild(d);
-});
-
-// Build cities dropdown
-var cf=document.getElementById('f-city');
-CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cf.appendChild(o);});
-
-window.addEventListener('scroll',function(){
-  document.getElementById('navbar').className=window.scrollY>50?'nav scrolled':'nav';
-});
-
-fetch(API+'/api/admin/stats').then(function(r){return r.json();}).then(function(s){
-  animCount('h-reqs',s.requests||0);
-  animCount('h-provs',s.providers||0);
-  animCount('h-users',s.users||0);
-}).catch(function(){});
-
-function animCount(id,target){
-  var el=document.getElementById(id);if(!el||!target)return;
-  var start=0;var step=Math.max(1,Math.ceil(target/40));
-  var t=setInterval(function(){start+=step;if(start>=target){el.textContent=target;clearInterval(t);}else{el.textContent=start;}},35);
-}
-
-fetch(API+'/api/requests').then(function(r){return r.json();}).then(function(reqs){
-  allReqs=reqs;
-  var cats=[];
-  reqs.forEach(function(r){if(r.category&&cats.indexOf(r.category)<0)cats.push(r.category);});
-  var catf=document.getElementById('f-cat');
-  cats.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catf.appendChild(o);});
-  filterReqs();
-}).catch(function(){
-  document.getElementById('reqs-list').innerHTML='<div class="empty"><h4>تعذر تحميل المناقصات</h4></div>';
-});
-
-fetch(API+'/api/admin/users').then(function(r){return r.json();}).then(function(users){
-  var provs=users.filter(function(u){return u.role==='provider';}).slice(0,8);
-  if(!provs.length){document.getElementById('provs-grid').innerHTML='<div style="color:rgba(255,255,255,0.3);text-align:center;grid-column:1/-1;padding:20px;font-size:13px">لا يوجد مزودون بعد</div>';return;}
-  var badges=[['pb-gold','موثّق ✓'],['pb-blue','متميز ⭐'],['pb-green','نشط 🔥']];
-  document.getElementById('provs-grid').innerHTML=provs.map(function(p,i){
-    var specs=p.specialties&&p.specialties.length?p.specialties[0]:'مزود خدمات';
-    var b=badges[i%3];
-    return '<div class="prov-card"><div class="prov-av">'+p.name.charAt(0)+'</div><div class="prov-name">'+p.name+'</div><div class="prov-spec">'+specs+'</div><div class="prov-stars">★★★★★</div><div class="prov-city">'+(p.city||'السعودية')+'</div><span class="prov-badge '+b[0]+'">'+b[1]+'</span></div>';
+function renderDone(){
+  const grid=document.getElementById('doneGrid');
+  if(!grid)return;
+  grid.innerHTML=DONE_PROJECTS.map(p=>{
+    const g=STAR_COLORS[p.cat]||'135deg,#312e81,#4338ca';
+    const stars='★'.repeat(p.rating)+'☆'.repeat(5-p.rating);
+    return`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative">
+      <!-- ختم تم الترسية -->
+      <div style="position:absolute;top:10px;left:10px;z-index:10;background:#dc2626;color:#fff;padding:3px 9px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.5px;border:1.5px solid #fff;transform:rotate(-3deg);box-shadow:0 2px 6px rgba(220,38,38,.4)">✓ تم الترسية</div>
+      <!-- الصورة -->
+      <div style="height:140px;overflow:hidden;position:relative">
+        <img src="${p.img}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.88)" onerror="this.parentElement.style.background='linear-gradient(${g})';this.remove()">
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div>
+        <!-- التصنيف -->
+        <div style="position:absolute;bottom:8px;right:10px;font-size:10px;color:rgba(255,255,255,.9);font-weight:600">${p.cat}</div>
+      </div>
+      <!-- التفاصيل -->
+      <div style="padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:#111827;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.title}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;color:#6b7280">📍 ${p.city}</div>
+          <div style="font-size:12px;color:#059669;font-weight:700">💰 ${p.price} ر.س</div>
+        </div>
+        <!-- المزود الفائز -->
+        <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+          <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(${g});color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${p.provider[0]}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;color:#065f46;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.provider}</div>
+            <div style="font-size:10px;color:#6b7280">مزود الخدمة الفائز</div>
+          </div>
+          <div style="font-size:11px;color:#f59e0b;letter-spacing:1px">${stars}</div>
+        </div>
+      </div>
+    </div>`;
   }).join('');
-}).catch(function(){});
-
-function filterReqs(){
-  var q=document.getElementById('search-inp').value.toLowerCase();
-  var city=document.getElementById('f-city').value;
-  var cat=document.getElementById('f-cat').value;
-  filtered=allReqs.filter(function(r){
-    if(q&&!(r.title||'').toLowerCase().includes(q)&&!(r.description||'').toLowerCase().includes(q))return false;
-    if(city&&r.city!==city)return false;
-    if(cat&&r.category!==cat)return false;
-    if(selCat!=='all'&&r.category!==selCat)return false;
-    return true;
-  });
-  shown=0;renderReqs();
 }
 
-function renderReqs(){
-  var list=filtered.slice(0,shown+PAGE);shown=list.length;
-  if(!list.length){document.getElementById('reqs-list').innerHTML='<div class="empty"><h4>لا يوجد مناقصات</h4><p>جرب فلتراً آخر</p></div>';document.getElementById('load-more').style.display='none';return;}
-  document.getElementById('reqs-list').innerHTML='<div class="reqs-grid">'+list.map(reqCard).join('')+'</div>';
-  document.getElementById('load-more').style.display=shown<filtered.length?'inline-block':'none';
-}
-
-function loadMore(){shown+=PAGE;renderReqs();}
-
-function timeAgo(d){var diff=(new Date()-new Date(d))/1000;if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
-
-function getSVG(cat){
-  var found=CATS.find(function(c){return c.name===cat||cat&&cat.includes(c.name);});
-  return found?found.svg:catSVG['أخرى'];
-}
-
-function reqCard(r){
-  var svg=getSVG(r.category);
-  var svgLarge=svg.replace('viewBox','width="52" height="52" viewBox').replace('stroke="currentColor"','stroke="var(--p)"');
-  var isNew=(new Date()-new Date(r.created_at))/3600000<24;
-  var bids=parseInt(r.bid_count)||0;
-  return '<div class="rcard" onclick="openDetail('+r.id+')">'+
-    (isNew?'<div class="new-badge">جديد</div>':'')+
-    '<div class="rcard-emoji">'+svgLarge+'</div>'+
-    '<div class="rcard-body">'+
-    '<div class="rcard-top"><div class="rcard-title">'+r.title+'</div><span class="tag t-open">نشط</span></div>'+
-    '<div class="rcard-meta">'+
-    (r.city?'<span class="rm">📍 '+r.city+'</span>':'')+
-    (r.category?'<span class="rm">'+r.category+'</span>':'')+
-    '<span class="rm">💼 '+bids+' عروض</span>'+
-    '<span class="rm">🕐 '+timeAgo(r.created_at)+'</span>'+
-    '</div>'+
-    (r.description?'<div class="rcard-desc">'+r.description+'</div>':'')+
-    '<div class="rcard-foot">'+
-    (r.budget_max?'<div class="rcard-budget">'+r.budget_max.toLocaleString()+' <span>ر.س</span></div>':'<div></div>')+
-    '<a href="auth.html" class="bid-cta" onclick="event.stopPropagation()">قدّم عرضاً</a>'+
-    '</div></div></div>';
-}
-
-function openDetail(id){
-  var r=allReqs.find(function(x){return x.id===id;});if(!r)return;
-  var svg=getSVG(r.category);
-  var svgLarge=svg.replace('viewBox','width="56" height="56" viewBox').replace('stroke="currentColor"','stroke="var(--p)"');
-  document.getElementById('m-title').textContent=r.title;
-  document.getElementById('m-body').innerHTML=
-    '<div class="m-emoji">'+svgLarge+'</div>'+
-    '<div class="detail-meta">'+
-    (r.city?'<span class="tag" style="background:#f1f5f9;color:#475569">📍 '+r.city+'</span>':'')+
-    (r.address?'<span class="tag" style="background:#f1f5f9;color:#475569">'+r.address+'</span>':'')+
-    (r.category?'<span class="tag" style="background:var(--p-light);color:var(--p)">'+r.category+'</span>':'')+
-    (r.budget_max?'<span class="tag" style="background:#f0fdf4;color:#16a34a">'+r.budget_max.toLocaleString()+' ر.س</span>':'')+
-    (r.deadline?'<span class="tag" style="background:#fef3c7;color:#d97706">📅 '+r.deadline+'</span>':'')+
-    '<span class="tag" style="background:#f1f5f9;color:#475569">💼 '+(r.bid_count||0)+' عروض</span>'+
-    '</div>'+
-    (r.description?'<div class="detail-desc">'+r.description+'</div>':'')+
-    '<div class="detail-client"><div class="dc-av">'+(r.client_name||'ع').charAt(0)+'</div><div><div class="dc-name">'+(r.client_name||'عميل')+'</div><div class="dc-meta">صاحب المناقصة</div></div></div>'+
-    '<div class="login-prompt"><p>سجّل دخولك لتقديم عرض على هذه المناقصة والتواصل مع صاحبها مباشرة</p>'+
-    '<div class="login-prompt-btns">'+
-    '<a href="auth.html?tab=register&role=provider" class="lp-btn lp-p">سجّل كمزود</a>'+
-    '<a href="auth.html" class="lp-btn lp-s">دخول</a>'+
-    '</div></div>';
-  document.getElementById('detailOverlay').className='overlay show';
-}
-
-function closeModal(){document.getElementById('detailOverlay').className='overlay';}
-document.getElementById('detailOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+renderDone();
 </script>
 </body>
 </html>
