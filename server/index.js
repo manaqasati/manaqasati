@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '../..')));
+app.use(express.static(__dirname));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
@@ -83,9 +83,7 @@ app.post('/api/auth/register', async (req, res) => {
     const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (exists.rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
     const hash = await bcrypt.hash(password, 10);
-    const r = await pool.query(
-      'INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,email,role,specialties,bio,city,badge',
-      [name, email, hash, hash, phone, role||'client', role==='provider'?(specialties||[]):null, bio, city]);
+    const r = await pool.query('INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,email,role,specialties,bio,city,badge', [name, email, hash, hash, phone, role||'client', role==='provider'?(specialties||[]):null, bio, city]);
     const token = jwt.sign({ id: r.rows[0].id, role: r.rows[0].role }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ user: r.rows[0], token });
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -133,8 +131,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM requests r JOIN users u ON r.client_id=u.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM requests r JOIN users u ON r.client_id=u.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -163,8 +160,7 @@ app.post('/api/requests', auth, async (req, res) => {
 
 app.put('/api/requests/:id/status', auth, async (req, res) => {
   try {
-    const r = await pool.query('UPDATE requests SET status=$1 WHERE id=$2 AND client_id=$3 RETURNING *', [req.body.status, req.params.id, req.user.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query('UPDATE requests SET status=$1 WHERE id=$2 AND client_id=$3 RETURNING *', [req.body.status, req.params.id, req.user.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -178,8 +174,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
 
 app.get('/api/requests/:id/bids', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.*, u.name as provider_name, u.city as provider_city, u.bio as provider_bio, u.phone as provider_phone, u.specialties as provider_specialties, u.badge as provider_badge, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=b.provider_id),0) as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=b.provider_id),0) as review_count FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 ORDER BY b.created_at ASC`, [req.params.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT b.*, u.name as provider_name, u.city as provider_city, u.bio as provider_bio, u.phone as provider_phone, u.specialties as provider_specialties, u.badge as provider_badge, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=b.provider_id),0) as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=b.provider_id),0) as review_count FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 ORDER BY b.created_at ASC`, [req.params.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -225,15 +220,13 @@ app.put('/api/bids/:id/reject', auth, async (req, res) => {
 
 app.get('/api/bids/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.*, r.title as request_title, r.city, r.category, r.status as request_status, r.client_id, r.project_number, r.image_url FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT b.*, r.title as request_title, r.city, r.category, r.status as request_status, r.client_id, r.project_number, r.image_url FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/saved', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM saved_requests s JOIN requests r ON s.request_id=r.id JOIN users u ON r.client_id=u.id WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM saved_requests s JOIN requests r ON s.request_id=r.id JOIN users u ON r.client_id=u.id WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -284,8 +277,7 @@ app.post('/api/reviews', auth, async (req, res) => {
 app.get('/api/reviews/provider/:id', async (req, res) => {
   try {
     const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC`, [req.params.id]);
-    const avg = r.rows.length ? (r.rows.reduce((s,x)=>s+x.rating,0)/r.rows.length).toFixed(1) : 0;
-    res.json({ reviews: r.rows, average: parseFloat(avg), count: r.rows.length });
+    res.json({ reviews: r.rows, average: r.rows.length?(r.rows.reduce((s,x)=>s+x.rating,0)/r.rows.length).toFixed(1):0, count: r.rows.length });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
