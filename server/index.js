@@ -1,12 +1,17 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ✅ تقديم ملفات HTML من مجلد public
+app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
@@ -53,6 +58,7 @@ async function initDB() {
       address TEXT,
       budget_max INTEGER,
       deadline DATE,
+      image_url TEXT,
       status VARCHAR(30) DEFAULT 'pending_review',
       client_id INTEGER REFERENCES users(id),
       accepted_bid_id INTEGER,
@@ -116,6 +122,7 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS project_number VARCHAR(50)`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS address TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS image_url TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS accepted_bid_id INTEGER`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_provider_id INTEGER`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`,
@@ -131,7 +138,6 @@ async function initDB() {
   ];
   for (const sql of alters) { await pool.query(sql).catch(()=>{}); }
 
-  // Backfill project numbers
   const rows = await pool.query(`SELECT id, created_at FROM requests WHERE project_number IS NULL`);
   for (const row of rows.rows) {
     const num = generateProjectNumber(row.id, row.created_at);
@@ -197,7 +203,7 @@ app.post('/api/auth/login', async (req, res) => {
 // ─── CATEGORIES ───
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
 
-// ─── REQUESTS (PUBLIC) ───
+// ─── REQUESTS ───
 app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
@@ -242,19 +248,17 @@ app.get('/api/requests/:id', async (req, res) => {
 
 app.post('/api/requests', auth, async (req, res) => {
   try {
-    const { title, description, category, city, address, budget_max, deadline } = req.body;
+    const { title, description, category, city, address, budget_max, deadline, image_url } = req.body;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
     const r = await pool.query(
-      `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,client_id,status)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending_review') RETURNING *`,
-      [title, description, category, city, address, budget_max, deadline, req.user.id]
+      `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,client_id,status)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending_review') RETURNING *`,
+      [title, description, category, city, address, budget_max, deadline, image_url||null, req.user.id]
     );
     const req2 = r.rows[0];
     const num = generateProjectNumber(req2.id, req2.created_at);
     await pool.query('UPDATE requests SET project_number=$1 WHERE id=$2', [num, req2.id]);
     req2.project_number = num;
-
-    // Notify admins
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) {
       await notify(a.id, '📋 طلب جديد للمراجعة', `طلب جديد: ${title} — بانتظار الموافقة`, 'new_request', req2.id);
@@ -290,24 +294,18 @@ app.post('/api/requests/:id/bids', auth, async (req, res) => {
   try {
     const { price, days, note } = req.body;
     if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
-    
-    // Check request status
     const reqData = await pool.query('SELECT * FROM requests WHERE id=$1', [req.params.id]);
     if (!reqData.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqData.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
-    
     const existing = await pool.query('SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2',
       [req.params.id, req.user.id]);
     if (existing.rows.length) return res.status(400).json({ message: 'قدمت عرضاً على هذا الطلب مسبقاً' });
-    
     const r = await pool.query(
       'INSERT INTO bids(request_id,provider_id,price,days,note) VALUES($1,$2,$3,$4,$5) RETURNING *',
       [req.params.id, req.user.id, price, days, note]
     );
     await notify(reqData.rows[0].client_id, '💼 عرض جديد',
       `وصلك عرض جديد على طلب: ${reqData.rows[0].title}`, 'bid', req.params.id);
-    
-    // Notify admins too
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) {
       await notify(a.id, '💼 عرض جديد', `عرض جديد على: ${reqData.rows[0].title}`, 'bid', req.params.id);
@@ -316,7 +314,6 @@ app.post('/api/requests/:id/bids', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Update bid price (before acceptance)
 app.put('/api/bids/:id', auth, async (req, res) => {
   try {
     const { price, days, note } = req.body;
@@ -340,7 +337,6 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     const b = bid.rows[0];
     if (b.client_id !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ message: 'غير مصرح' });
-    
     await pool.query('UPDATE bids SET status=$1 WHERE id=$2', ['accepted', req.params.id]);
     await pool.query('UPDATE bids SET status=$1 WHERE request_id=$2 AND id!=$3', ['rejected', b.request_id, req.params.id]);
     await pool.query(
@@ -379,7 +375,7 @@ app.get('/api/bids/my', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── SAVED REQUESTS (Provider bookmarks) ───
+// ─── SAVED ───
 app.get('/api/saved', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -487,6 +483,13 @@ app.put('/api/notifications/read', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+app.put('/api/notifications/read-all', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── PROFILE ───
 app.get('/api/profile', auth, async (req, res) => {
   try {
@@ -511,7 +514,7 @@ app.put('/api/profile', auth, async (req, res) => {
 // ─── ADMIN ───
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
-    const [u,r,b,p,pending,inprog,done] = await Promise.all([
+    const [u,r,b,p,pending,inprog,done,disp] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM users'),
       pool.query('SELECT COUNT(*) FROM requests'),
       pool.query('SELECT COUNT(*) FROM bids'),
@@ -519,29 +522,45 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM requests WHERE status='pending_review'`),
       pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),
       pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
+      pool.query(`SELECT COUNT(*) FROM requests WHERE status='rejected'`),
     ]);
     res.json({
-      users: +u.rows[0].count,
+      total_users: +u.rows[0].count,
       requests: +r.rows[0].count,
-      bids: +b.rows[0].count,
+      total_bids: +b.rows[0].count,
       providers: +p.rows[0].count,
       pending_review: +pending.rows[0].count,
       in_progress: +inprog.rows[0].count,
       completed: +done.rows[0].count,
+      rejected: +disp.rows[0].count,
+      disputes: 0,
     });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   try {
-    const r = await pool.query(
-      'SELECT id,name,email,phone,role,specialties,city,badge,is_active,created_at FROM users ORDER BY created_at DESC'
-    );
+    const { role } = req.query;
+    let q = 'SELECT id,name,email,phone,role,specialties,city,badge,is_active,created_at FROM users';
+    if (role) q += ` WHERE role='${role}'`;
+    q += ' ORDER BY created_at DESC';
+    const r = await pool.query(q);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: add user manually
+app.get('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,role,specialties,bio,city,badge,is_active,created_at,
+       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+       FROM users WHERE id=$1`, [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.post('/api/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const { name, email, password, phone, role, specialties, bio, city } = req.body;
@@ -558,7 +577,6 @@ app.post('/api/admin/users', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: update user (badge, role, active)
 app.put('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   try {
     const { name, phone, role, badge, is_active, city, specialties, bio } = req.body;
@@ -570,7 +588,6 @@ app.put('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: toggle user active
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(
@@ -581,20 +598,29 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: set badge
 app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   try {
     const { badge } = req.body;
     const r = await pool.query('UPDATE users SET badge=$1 WHERE id=$2 RETURNING id,name,badge',
       [badge, req.params.id]);
-    const user = r.rows[0];
-    await notify(parseInt(req.params.id), '🏆 وسام جديد',
-      `تهانينا! حصلت على وسام: ${badge}`, 'badge', null);
-    res.json(user);
+    await notify(parseInt(req.params.id), '🏆 وسام جديد', `تهانينا! حصلت على وسام: ${badge}`, 'badge', null);
+    res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: delete user
+app.put('/api/admin/users/:id/permissions', auth, adminOnly, async (req, res) => {
+  try {
+    const fields = req.body;
+    const keys = Object.keys(fields).filter(k=>['can_bid','can_view'].includes(k));
+    if(!keys.length) return res.json({ok:true});
+    const sets = keys.map((k,i)=>`${k}=$${i+1}`).join(',');
+    const vals = keys.map(k=>fields[k]);
+    vals.push(req.params.id);
+    await pool.query(`UPDATE users SET ${sets} WHERE id=$${vals.length}`, vals).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   try {
     await pool.query('DELETE FROM users WHERE id=$1', [req.params.id]);
@@ -616,27 +642,26 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: review request (approve/reject/open)
 app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
   try {
-    const { status, admin_notes } = req.body;
+    const { action, reason } = req.body;
+    const newStatus = action === 'approve' ? 'open' : 'rejected';
     const r = await pool.query(
       'UPDATE requests SET status=$1, admin_notes=$2 WHERE id=$3 RETURNING *',
-      [status, admin_notes, req.params.id]
+      [newStatus, reason||null, req.params.id]
     );
     const req2 = r.rows[0];
-    if (status === 'open') {
+    if (newStatus === 'open') {
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك',
         `طلبك "${req2.title}" تمت مراجعته ونُشر الآن`, 'approved', req2.id);
-    } else if (status === 'rejected') {
+    } else {
       await notify(req2.client_id, '❌ تم رفض طلبك',
-        `طلبك "${req2.title}" تم رفضه. السبب: ${admin_notes||'غير محدد'}`, 'rejected', req2.id);
+        `طلبك "${req2.title}" تم رفضه. السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
     }
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: edit any request
 app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   try {
     const { title, description, category, city, address, budget_max, deadline, admin_notes } = req.body;
@@ -649,7 +674,6 @@ app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: mark as completed
 app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(
@@ -666,7 +690,19 @@ app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) =>
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: delete request
+app.put('/api/admin/requests/:id/assign', auth, adminOnly, async (req, res) => {
+  try {
+    const { provider_id, price } = req.body;
+    const r = await pool.query(
+      `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW() WHERE id=$2 RETURNING *`,
+      [provider_id, req.params.id]
+    );
+    const req2 = r.rows[0];
+    await notify(provider_id, '📋 تم إسناد مشروع لك', `تم إسناد مشروع "${req2.title}" لك`, 'assigned', req2.id);
+    res.json(req2);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   try {
     await pool.query('DELETE FROM requests WHERE id=$1', [req.params.id]);
@@ -674,7 +710,6 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: send notification to all or specific user
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
     const { user_id, role, title, body, type } = req.body;
@@ -692,14 +727,14 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: get providers by category
 app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   try {
     const { category } = req.query;
-    let q = `SELECT id,name,email,phone,city,specialties,badge,is_active,
+    let q = `SELECT id,name,email,phone,city,specialties,badge,is_active,bio,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
-      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
       FROM users WHERE role='provider'`;
     if (category) q += ` AND $1=ANY(specialties)`;
     q += ' ORDER BY avg_rating DESC';
@@ -708,7 +743,6 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: get all reviews
 app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -724,7 +758,29 @@ app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// Admin: delete review
+app.put('/api/admin/reviews/:id/reply', auth, adminOnly, async (req, res) => {
+  try {
+    const { reply } = req.body;
+    await pool.query('UPDATE reviews SET admin_reply=$1 WHERE id=$2', [reply, req.params.id]).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/reviews/:id/hide', auth, adminOnly, async (req, res) => {
+  try {
+    const { hidden } = req.body;
+    await pool.query('UPDATE reviews SET hidden=$1 WHERE id=$2', [hidden, req.params.id]).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/reviews/:id/resolve', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('UPDATE reviews SET reported=FALSE WHERE id=$1', [req.params.id]).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
   try {
     await pool.query('DELETE FROM reviews WHERE id=$1', [req.params.id]);
@@ -732,4 +788,152 @@ app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running')));
+app.get('/api/admin/disputes', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.description as description, r.status,
+        r.client_id, u1.name as client_name,
+        r.assigned_provider_id as provider_id, u2.name as provider_name,
+        r.project_number, r.id as request_id, r.admin_notes as resolution,
+        r.created_at
+      FROM requests r
+      JOIN users u1 ON r.client_id=u1.id
+      LEFT JOIN users u2 ON r.assigned_provider_id=u2.id
+      WHERE r.status='disputed'
+      ORDER BY r.created_at DESC`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/disputes', auth, async (req, res) => {
+  try {
+    const { request_id, title, description } = req.body;
+    await pool.query(
+      `UPDATE requests SET status='disputed', admin_notes=$1 WHERE id=$2`,
+      [`نزاع: ${title} — ${description}`, request_id]
+    );
+    const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
+    for (const a of admins.rows) {
+      await notify(a.id, '⚠️ نزاع جديد', `نزاع على المشروع #${request_id}: ${title}`, 'dispute', request_id);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/disputes/:id/resolve', auth, adminOnly, async (req, res) => {
+  try {
+    const { resolution, decision } = req.body;
+    await pool.query(
+      `UPDATE requests SET status='completed', admin_notes=$1 WHERE id=$2`,
+      [resolution, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── CLIENT endpoints ───
+app.get('/api/client/requests', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.*, u.name as client_name,
+      (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count
+      FROM requests r JOIN users u ON r.client_id=u.id
+      WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/client/profile', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,city,created_at,
+       (SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_projects,
+       (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_projects
+       FROM users WHERE id=$1`, [req.user.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/client/profile', auth, async (req, res) => {
+  try {
+    const { name, phone, city } = req.body;
+    const r = await pool.query(
+      'UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city',
+      [name, phone, city, req.user.id]
+    );
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/client/disputes', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.admin_notes as description, r.status,
+        r.assigned_provider_id as provider_id, u.name as provider_name, r.created_at
+      FROM requests r
+      LEFT JOIN users u ON r.assigned_provider_id=u.id
+      WHERE r.client_id=$1 AND r.status='disputed'
+      ORDER BY r.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/client/reviews', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.*, u.name as reviewed_name
+      FROM reviews rv JOIN users u ON rv.reviewed_id=u.id
+      WHERE rv.reviewer_id=$1 ORDER BY rv.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/requests/:id/complete', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 RETURNING *`,
+      [req.params.id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(403).json({ message: 'غير مصرح' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── AUTH change password ───
+app.put('/api/auth/change-password', auth, async (req, res) => {
+  try {
+    const { old_password, new_password } = req.body;
+    const r = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+    const user = r.rows[0];
+    const ok = await bcrypt.compare(old_password, user.password || user.password_hash);
+    if (!ok) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── PROVIDER endpoints ───
+app.get('/api/provider/profile', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,city,specialties,bio,badge,created_at,
+       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+       FROM users WHERE id=$1`, [req.user.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/provider/bids', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.*, r.title as request_title, r.city, r.category,
+      r.status as request_status, r.client_id, r.project_number, r.image_url
+      FROM bids b JOIN requests r ON b.request_id=r.id
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running on port', process.env.PORT||3000)));
