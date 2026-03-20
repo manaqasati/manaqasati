@@ -835,6 +835,5 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
-
 initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running on port', process.env.PORT||3000)));
 ```
