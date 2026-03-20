@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '../..')));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
@@ -290,9 +290,8 @@ app.get('/api/reviews/provider/:id', async (req, res) => {
 });
 
 app.get('/api/notifications', auth, async (req, res) => {
-  try {
-    res.json((await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id])).rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  try { res.json((await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id])).rows); }
+  catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/notifications/read', auth, async (req, res) => {
@@ -306,66 +305,57 @@ app.put('/api/notifications/read-all', auth, async (req, res) => {
 });
 
 app.get('/api/profile', auth, async (req, res) => {
-  try {
-    res.json((await pool.query('SELECT id,name,email,phone,role,specialties,bio,city,badge FROM users WHERE id=$1', [req.user.id])).rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  try { res.json((await pool.query('SELECT id,name,email,phone,role,specialties,bio,city,badge FROM users WHERE id=$1', [req.user.id])).rows[0]); }
+  catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/profile', auth, async (req, res) => {
   try {
     const { name, phone, specialties, bio, city } = req.body;
-    const r = await pool.query('UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5 WHERE id=$6 RETURNING id,name,email,phone,role,specialties,bio,city,badge', [name, phone, specialties, bio, city, req.user.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query('UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5 WHERE id=$6 RETURNING id,name,email,phone,role,specialties,bio,city,badge', [name, phone, specialties, bio, city, req.user.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,specialties,bio,badge,created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query(`SELECT id,name,email,phone,city,specialties,bio,badge,created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.*, r.title as request_title, r.city, r.category, r.status as request_status, r.client_id, r.project_number, r.image_url FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT b.*, r.title as request_title, r.city, r.category, r.status as request_status, r.client_id, r.project_number, r.image_url FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/client/requests', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM requests r JOIN users u ON r.client_id=u.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT r.*, u.name as client_name, (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count FROM requests r JOIN users u ON r.client_id=u.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,created_at, (SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_projects, (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query(`SELECT id,name,email,phone,city,created_at, (SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_projects, (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
     const { name, phone, city } = req.body;
-    const r = await pool.query('UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city', [name, phone, city, req.user.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query('UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city', [name, phone, city, req.user.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/client/disputes', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.admin_notes as description, r.status, r.assigned_provider_id as provider_id, u.name as provider_name, r.created_at FROM requests r LEFT JOIN users u ON r.assigned_provider_id=u.id WHERE r.client_id=$1 AND r.status='disputed' ORDER BY r.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT r.id, r.title, r.admin_notes as description, r.status, r.assigned_provider_id as provider_id, u.name as provider_name, r.created_at FROM requests r LEFT JOIN users u ON r.assigned_provider_id=u.id WHERE r.client_id=$1 AND r.status='disputed' ORDER BY r.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/client/reviews', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.*, u.name as reviewed_name FROM reviews rv JOIN users u ON rv.reviewed_id=u.id WHERE rv.reviewer_id=$1 ORDER BY rv.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT rv.*, u.name as reviewed_name FROM reviews rv JOIN users u ON rv.reviewed_id=u.id WHERE rv.reviewer_id=$1 ORDER BY rv.created_at DESC`, [req.user.id])).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -418,24 +408,20 @@ app.post('/api/admin/users', auth, adminOnly, async (req, res) => {
     if (!name || !email || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
     if ((await pool.query('SELECT id FROM users WHERE email=$1', [email])).rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
     const hash = await bcrypt.hash(password, 10);
-    const r = await pool.query('INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,email,role,city,badge', [name, email, hash, hash, phone, role||'client', role==='provider'?(specialties||[]):null, bio, city]);
-    res.json(r.rows[0]);
+    res.json((await pool.query('INSERT INTO users(name,email,password,password_hash,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,email,role,city,badge', [name, email, hash, hash, phone, role||'client', role==='provider'?(specialties||[]):null, bio, city])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   try {
     const { name, phone, role, badge, is_active, city, specialties, bio } = req.body;
-    const r = await pool.query('UPDATE users SET name=$1,phone=$2,role=$3,badge=$4,is_active=$5,city=$6,specialties=$7,bio=$8 WHERE id=$9 RETURNING id,name,email,phone,role,badge,is_active,city,specialties', [name, phone, role, badge||'none', is_active!==undefined?is_active:true, city, specialties, bio, req.params.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query('UPDATE users SET name=$1,phone=$2,role=$3,badge=$4,is_active=$5,city=$6,specialties=$7,bio=$8 WHERE id=$9 RETURNING id,name,email,phone,role,badge,is_active,city,specialties', [name, phone, role, badge||'none', is_active!==undefined?is_active:true, city, specialties, bio, req.params.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
-  try {
-    const r = await pool.query('UPDATE users SET is_active=NOT is_active WHERE id=$1 RETURNING id,name,is_active', [req.params.id]);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  try { res.json((await pool.query('UPDATE users SET is_active=NOT is_active WHERE id=$1 RETURNING id,name,is_active', [req.params.id])).rows[0]); }
+  catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
@@ -481,8 +467,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
 app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   try {
     const { title, description, category, city, address, budget_max, deadline, admin_notes } = req.body;
-    const r = await pool.query(`UPDATE requests SET title=$1,description=$2,category=$3,city=$4,address=$5,budget_max=$6,deadline=$7,admin_notes=$8 WHERE id=$9 RETURNING *`, [title, description, category, city, address, budget_max, deadline, admin_notes, req.params.id]);
-    res.json(r.rows[0]);
+    res.json((await pool.query(`UPDATE requests SET title=$1,description=$2,category=$3,city=$4,address=$5,budget_max=$6,deadline=$7,admin_notes=$8 WHERE id=$9 RETURNING *`, [title, description, category, city, address, budget_max, deadline, admin_notes, req.params.id])).rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -512,15 +497,13 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
 
 app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,specialties,badge,is_active,bio, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT id,name,email,phone,city,specialties,badge,is_active,bio, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title, rq.project_number FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC`);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title, rq.project_number FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC`)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -546,8 +529,7 @@ app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
 
 app.get('/api/admin/disputes', auth, adminOnly, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.status, r.client_id, u1.name as client_name, r.assigned_provider_id as provider_id, u2.name as provider_name, r.project_number, r.id as request_id, r.admin_notes as resolution, r.created_at FROM requests r JOIN users u1 ON r.client_id=u1.id LEFT JOIN users u2 ON r.assigned_provider_id=u2.id WHERE r.status='disputed' ORDER BY r.created_at DESC`);
-    res.json(r.rows);
+    res.json((await pool.query(`SELECT r.id, r.title, r.description, r.status, r.client_id, u1.name as client_name, r.assigned_provider_id as provider_id, u2.name as provider_name, r.project_number, r.id as request_id, r.admin_notes as resolution, r.created_at FROM requests r JOIN users u1 ON r.client_id=u1.id LEFT JOIN users u2 ON r.assigned_provider_id=u2.id WHERE r.status='disputed' ORDER BY r.created_at DESC`)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
