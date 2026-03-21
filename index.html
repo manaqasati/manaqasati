@@ -93,13 +93,12 @@ button{font-family:inherit;cursor:pointer;border:none}
 .mbtn{flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s;border:none}
 .mbtn-blue{background:var(--p);color:#fff}
 .mbtn-blue:hover{background:#1d4ed8}
-.mbtn-gray{background:var(--white);color:var(--t2);border:1.5px solid var(--br)!important;border:none}
+.mbtn-gray{background:var(--white);color:var(--t2);border:1.5px solid var(--br)!important}
 .mbtn-gray:hover{background:var(--bg2)}
 .footer{background:#1e293b;color:rgba(255,255,255,.5);text-align:center;padding:24px;font-size:13px}
 .footer span{color:#fff;font-weight:700}
 @media(max-width:768px){
   .hero h1{font-size:26px}
-  .stats-inner{grid-template-columns:repeat(2,1fr)}
   .header-btns .btn-outline{display:none}
   .search-bar{flex-direction:column}
   .cards-grid{grid-template-columns:1fr}
@@ -143,8 +142,6 @@ button{font-family:inherit;cursor:pointer;border:none}
   </div>
 </section>
 
-
-
 <div class="filters-wrap">
   <div class="filters-top">
     <div class="section-title">المشاريع المتاحة</div>
@@ -169,7 +166,6 @@ button{font-family:inherit;cursor:pointer;border:none}
   </div>
 </div>
 
-<!-- قسم المشاريع المنجزة -->
 <div style="background:#f1f5f9;border-top:1px solid #e2e8f0;padding:40px 0 50px">
   <div style="max-width:1200px;margin:0 auto;padding:0 20px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:10px">
@@ -206,8 +202,6 @@ const API='https://manaqasati-production.up.railway.app';
 const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#06b6d4,#0891b2',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🪚'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'🧹'},'نقل عفش':{g:'135deg,#8b5cf6,#7c3aed',ic:'🚛'},'حدادة':{g:'135deg,#6b7280,#374151',ic:'🔩'},'ألمنيوم':{g:'135deg,#9ca3af,#6b7280',ic:'🪟'},'مسابح (تنفيذ وصيانة)':{g:'135deg,#3b82f6,#1d4ed8',ic:'🏊'},'كاميرات مراقبة وأمن':{g:'135deg,#1f2937,#111827',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#6366f1,#4f46e5',ic:'📡'},'مظلات وسواتر':{g:'135deg,#f97316,#ea580c',ic:'⛱️'},'عزل حراري وأسطح':{g:'135deg,#ef4444,#dc2626',ic:'🌡️'},'أبواب':{g:'135deg,#854d0e,#713f12',ic:'🚪'},'أعمال جبس وطباشير':{g:'135deg,#94a3b8,#64748b',ic:'🏠'},'مكافحة حشرات':{g:'135deg,#16a34a,#15803d',ic:'🦟'},'أخرى':{g:'135deg,#64748b,#475569',ic:'📋'}};
 let allProjects=[],activecat='',searchQ='';
 
-
-
 async function loadProjects(){
   try{
     const r=await fetch(API+'/api/requests?status=open');
@@ -228,7 +222,6 @@ function buildCats(){
 }
 
 function setCat(cat,btn){activecat=cat;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');filterCards();}
-
 function doSearch(){searchQ=(document.getElementById('heroSearch').value||'').trim().toLowerCase();filterCards();document.querySelector('.grid-wrap').scrollIntoView({behavior:'smooth'});}
 
 function filterCards(){
@@ -299,12 +292,11 @@ document.getElementById('ov').addEventListener('click',e=>{if(e.target===documen
 
 loadProjects();
 
-// ===== المشاريع المنجزة الوهمية =====
 const DONE_PROJECTS=[
   {title:'تركيب مكيفات سبليت 4 طن في فيلا',cat:'تبريد وتكييف',city:'الرياض',provider:'أحمد العتيبي',price:'4,200',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:5},
   {title:'تمديد كهربائي كامل لعمارة سكنية',cat:'كهرباء',city:'جدة',provider:'شركة الضوء',price:'12,500',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:5},
   {title:'تركيب شبكة أنابيب مياه',cat:'سباكة',city:'الدمام',provider:'خالد الغامدي',price:'3,800',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:4},
-  {title:'صنع ووضع كاميرات مراقبة',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'تك فيجن',price:'6,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
+  {title:'تركيب كاميرات مراقبة',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'تك فيجن',price:'6,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
   {title:'نقل عفش فيلا كاملة',cat:'نقل عفش',city:'مكة المكرمة',provider:'نقل السرعة',price:'1,800',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:4},
   {title:'تنظيف مبنى تجاري 3 طوابق',cat:'تنظيف',city:'جدة',provider:'نظافة بلس',price:'2,200',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:5},
   {title:'تركيب مظلة سيارات خارجية',cat:'مظلات وسواتر',city:'الرياض',provider:'ظل الخليج',price:'5,500',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
@@ -353,7 +345,7 @@ const DONE_PROJECTS=[
   {title:'ألمنيوم محلات تجارية',cat:'ألمنيوم',city:'الدمام',provider:'الألمنيوم الذهبي',price:'24,000',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:5},
 ];
 
-const STAR_COLORS={'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706','سباكة':'135deg,#06b6d4,#0891b2','نجارة':'135deg,#92400e,#78350f','تنظيف':'135deg,#10b981,#059669','نقل عفش':'135deg,#8b5cf6,#7c3aed','مسابح (تنفيذ وصيانة)':'135deg,#3b82f6,#1d4ed8','كاميرات مراقبة وأمن':'135deg,#1f2937,#111827','شبكات وإنترنت':'135deg,#6366f1,#4f46e5','مظلات وسواتر':'135deg,#f97316,#ea580c','عزل حراري وأسطح':'135deg,#ef4444,#dc2626','نجارة':'135deg,#92400e,#78350f','أعمال جبس وطباشير':'135deg,#94a3b8,#64748b','ألمنيوم':'135deg,#9ca3af,#6b7280'};
+const STAR_COLORS={'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706','سباكة':'135deg,#06b6d4,#0891b2','نجارة':'135deg,#92400e,#78350f','تنظيف':'135deg,#10b981,#059669','نقل عفش':'135deg,#8b5cf6,#7c3aed','مسابح (تنفيذ وصيانة)':'135deg,#3b82f6,#1d4ed8','كاميرات مراقبة وأمن':'135deg,#1f2937,#111827','شبكات وإنترنت':'135deg,#6366f1,#4f46e5','مظلات وسواتر':'135deg,#f97316,#ea580c','عزل حراري وأسطح':'135deg,#ef4444,#dc2626','أعمال جبس وطباشير':'135deg,#94a3b8,#64748b','ألمنيوم':'135deg,#9ca3af,#6b7280'};
 
 function renderDone(){
   const grid=document.getElementById('doneGrid');
@@ -362,23 +354,18 @@ function renderDone(){
     const g=STAR_COLORS[p.cat]||'135deg,#312e81,#4338ca';
     const stars='★'.repeat(p.rating)+'☆'.repeat(5-p.rating);
     return`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative">
-      <!-- ختم تم الترسية -->
       <div style="position:absolute;top:10px;left:10px;z-index:10;background:#dc2626;color:#fff;padding:3px 9px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.5px;border:1.5px solid #fff;transform:rotate(-3deg);box-shadow:0 2px 6px rgba(220,38,38,.4)">✓ تم الترسية</div>
-      <!-- الصورة -->
       <div style="height:140px;overflow:hidden;position:relative">
         <img src="${p.img}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.88)" onerror="this.parentElement.style.background='linear-gradient(${g})';this.remove()">
         <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div>
-        <!-- التصنيف -->
         <div style="position:absolute;bottom:8px;right:10px;font-size:10px;color:rgba(255,255,255,.9);font-weight:600">${p.cat}</div>
       </div>
-      <!-- التفاصيل -->
       <div style="padding:12px 14px">
         <div style="font-size:13px;font-weight:700;color:#111827;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.title}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:11px;color:#6b7280">📍 ${p.city}</div>
           <div style="font-size:12px;color:#059669;font-weight:700">💰 ${p.price} ر.س</div>
         </div>
-        <!-- المزود الفائز -->
         <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
           <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(${g});color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${p.provider[0]}</div>
           <div style="flex:1;min-width:0">
