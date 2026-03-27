@@ -278,6 +278,8 @@ const token=localStorage.getItem('token');
 const me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!token||me.role!=='provider')location.href='auth.html';
 
+const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#06b6d4,#0891b2',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🪚'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'🧹'},'نقل عفش':{g:'135deg,#8b5cf6,#7c3aed',ic:'🚛'},'حدادة':{g:'135deg,#6b7280,#374151',ic:'🔩'},'ألمنيوم':{g:'135deg,#9ca3af,#6b7280',ic:'🪟'},'مسابح':{g:'135deg,#3b82f6,#1d4ed8',ic:'🏊'},'كاميرات مراقبة':{g:'135deg,#1f2937,#111827',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#6366f1,#4f46e5',ic:'📡'},'مظلات وسواتر':{g:'135deg,#f97316,#ea580c',ic:'⛱️'},'عزل حراري':{g:'135deg,#ef4444,#dc2626',ic:'🌡️'},'أبواب':{g:'135deg,#854d0e,#713f12',ic:'🚪'},'جبس وطباشير':{g:'135deg,#94a3b8,#64748b',ic:'🏠'},'مكافحة حشرات':{g:'135deg,#16a34a,#15803d',ic:'🦟'},'أخرى':{g:'135deg,#64748b,#475569',ic:'📋'}};
+
 const CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
 const CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','الطائف','تبوك','بريدة','خميس مشيط','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','سكاكا','عرعر','الباحة','الرس','رابغ','بيشة','وادي الدواسر','الزلفي','القريات'];
 const AVC=['#18181b','#374151','#1e40af','#166534','#92400e','#991b1b','#1e3a8a','#365314'];
@@ -332,8 +334,8 @@ const catOpts=(s='')=>`<option value="">اختر</option>`+CATS.map(c=>`<option$
 /* ══ HOME ══ */
 async function pgHome(){
   loading();
-  const [profile,bids,projects]=await Promise.all([api('/api/provider/profile'),api('/api/provider/bids'),api('/api/provider/projects')]);
-  const p=profile||{};myBids=bids||[];myProjects=projects||[];
+  const [profile,bids]=await Promise.all([api('/api/provider/profile'),api('/api/provider/bids')]);
+  const p=profile||{};myBids=Array.isArray(bids)?bids:[];myProjects=myBids.filter(b=>b.status==='accepted');
   const acceptedBids=myBids.filter(b=>b.status==='accepted').length;
   const pendingBids=myBids.filter(b=>b.status==='pending').length;
   const doneProjects=myProjects.filter(p=>p.status==='completed').length;
@@ -497,7 +499,7 @@ async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;aw
 
 /* ══ MY PROJECTS ══ */
 async function pgMyProjects(){
-  loading();myProjects=await api('/api/provider/projects')||[];
+  loading();myProjects=await api('/api/provider/bids')||[];
   setPage(`<div class="pghd"><div><div class="pg-t">مشاريعي</div><div class="pg-s">${myProjects.length} مشروع</div></div></div>
     <div class="card"><div class="cb">
       <div class="fbar"><select class="fsel" id="mpSt" onchange="filterMyProjects()"><option value="">كل الحالات</option><option value="in_progress">جارٍ</option><option value="completed">مكتمل</option></select></div>
@@ -519,7 +521,7 @@ function renderMyProjects(list){
 
 /* ══ REVIEWS ══ */
 async function pgReviews(){
-  loading();const data=await api('/api/provider/reviews');const list=data||[];
+  loading();const data=await api('/api/reviews/provider/'+me.id);const list=data||[];
   const avg=list.length?list.reduce((s,r)=>s+(r.rating||0),0)/list.length:0;
   setPage(`<div class="pghd"><div><div class="pg-t">تقييماتي</div><div class="pg-s">${list.length} تقييم • معدل ${avg?avg.toFixed(1):'—'}★</div></div></div>
     <div class="card"><div class="cb">${list.length?list.map(r=>{const bg=ac(r.reviewer_id||1);return`<div class="rvc"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><div class="rv-av" style="background:${bg}">${al(r.reviewer_name)}</div><div><div class="rv-nm">${r.reviewer_name||'—'}</div><div class="rv-sb">${fdt(r.created_at)}</div></div></div><span class="sts">${sts(r.rating)}</span></div>${r.comment?`<div class="rv-body">${r.comment}</div>`:''}</div>`;}).join(''):`<div class="es"><div class="es-ic">${S(I.star)}</div><div class="es-t">لا يوجد تقييمات بعد</div><div class="es-s">أنجز مشاريع لتحصل على تقييمات</div></div>`}</div></div>`);
@@ -566,12 +568,12 @@ async function changePw(){const oldPw=document.getElementById('pwOld')?.value;co
 
 /* ══ NOTIFICATIONS ══ */
 async function pgNotifications(){
-  loading();const data=await api('/api/provider/notifications');const list=data||[];
+  loading();const data=await api('/api/notifications');const list=data||[];
   const unseen=list.filter(n=>!n.read).length;const nb=document.getElementById('nbNot');if(nb){nb.style.display=unseen?'':'none';nb.textContent=unseen;}const tDot=document.getElementById('tDot');if(tDot)tDot.style.display=unseen?'':'none';
   setPage(`<div class="pghd"><div><div class="pg-t">الإشعارات</div><div class="pg-s">${unseen} غير مقروء</div></div>${unseen?`<div class="pghd-r"><button class="btn btn-gh btn-sm" onclick="markAllRead()">تحديد الكل مقروء</button></div>`:''}</div>
     <div class="card"><div class="cb">${list.length?list.map(n=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g1);${!n.read?'background:rgba(59,130,246,.02);':''}"><div style="width:7px;height:7px;border-radius:50%;background:${!n.read?'var(--blu)':'var(--g2)'};flex-shrink:0"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:${!n.read?'700':'600'};color:${!n.read?'var(--g7)':'var(--g5)'};margin-bottom:2px">${n.title}</div>${n.body?`<div style="font-size:11px;color:var(--g3);line-height:1.5">${n.body}</div>`:''}</div><div style="font-size:9px;color:var(--g3);flex-shrink:0">${fdt(n.created_at)}</div></div>`).join(''):`<div class="es"><div class="es-ic">${S(I.bell)}</div><div class="es-t">لا يوجد إشعارات</div></div>`}</div></div>`);
 }
-async function markAllRead(){await api('/api/provider/notifications/read',{method:'PUT'});toast('تم التحديث ✅','success');pgNotifications();}
+async function markAllRead(){await api('/api/notifications/read-all',{method:'PUT'});toast('تم التحديث ✅','success');pgNotifications();}
 
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
 go('home',document.querySelector('.ni.on'));
