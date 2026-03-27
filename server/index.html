@@ -93,12 +93,13 @@ button{font-family:inherit;cursor:pointer;border:none}
 .mbtn{flex:1;padding:11px;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s;border:none}
 .mbtn-blue{background:var(--p);color:#fff}
 .mbtn-blue:hover{background:#1d4ed8}
-.mbtn-gray{background:var(--white);color:var(--t2);border:1.5px solid var(--br)!important}
+.mbtn-gray{background:var(--white);color:var(--t2);border:1.5px solid var(--br)!important;border:none}
 .mbtn-gray:hover{background:var(--bg2)}
 .footer{background:#1e293b;color:rgba(255,255,255,.5);text-align:center;padding:24px;font-size:13px}
 .footer span{color:#fff;font-weight:700}
 @media(max-width:768px){
   .hero h1{font-size:26px}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
   .header-btns .btn-outline{display:none}
   .search-bar{flex-direction:column}
   .cards-grid{grid-template-columns:1fr}
@@ -133,7 +134,10 @@ button{font-family:inherit;cursor:pointer;border:none}
     <h1>منصة <span>مناقصة</span><br>اعثر على أفضل مزودي الخدمة</h1>
     <p>تصفح المشاريع المفتوحة وقدّم عرضك الآن<br>نربط أصحاب المشاريع بأفضل مزودي الخدمة في المملكة</p>
     <div class="search-bar">
-      <input type="text" id="heroSearch" placeholder="ابحث... (تكييف، كهرباء، حداد، كاميرات...)" onkeyup="if(event.key==='Enter')doSearch()">
+      <div style="position:relative;flex:1">
+        <input type="text" id="heroSearch" placeholder="ابحث... (تكييف، كهرباء، حداد، كاميرات...)" onkeyup="if(event.key==='Enter')doSearch()" oninput="showHeroSuggest()" onblur="setTimeout(()=>{const d=document.getElementById('heroDD');if(d)d.style.display='none'},200)" autocomplete="off" style="width:100%;border:none;outline:none;font-family:inherit;font-size:14px;padding:8px 12px;color:var(--t);background:transparent">
+        <div id="heroDD" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:99;background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;margin-top:6px"></div>
+      </div>
       <button class="search-btn" onclick="doSearch()">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         بحث
@@ -142,13 +146,19 @@ button{font-family:inherit;cursor:pointer;border:none}
   </div>
 </section>
 
+
+
+<!-- المشاريع المتاحة -->
 <div class="filters-wrap">
   <div class="filters-top">
-    <div class="section-title">المشاريع المتاحة</div>
+    <div class="section-title">🔍 المشاريع المتاحة</div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="results-count" id="resCount">جاري التحميل...</span>
       <div class="filters">
-        <select class="fsel" id="fCity" onchange="filterCards()"><option value="">كل المدن</option></select>
+        <div style="position:relative">
+          <input type="text" id="fCity" placeholder="🏙 ابحث عن مدينة..." class="fsel" style="min-width:150px" oninput="filterCards();showIndexCity()" onblur="setTimeout(()=>{const d=document.getElementById('fCityDD');if(d)d.style.display='none'},200)" autocomplete="off">
+          <div id="fCityDD" style="display:none;position:absolute;top:100%;right:0;z-index:99;background:#fff;border:1px solid var(--br);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;margin-top:3px;min-width:180px"></div>
+        </div>
         <select class="fsel" id="fSort" onchange="filterCards()">
           <option value="new">الأحدث أولاً</option>
           <option value="bids">الأكثر عروضاً</option>
@@ -166,20 +176,23 @@ button{font-family:inherit;cursor:pointer;border:none}
   </div>
 </div>
 
-<div style="background:#f1f5f9;border-top:1px solid #e2e8f0;padding:40px 0 50px">
-  <div style="max-width:1200px;margin:0 auto;padding:0 20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:20px;font-weight:800;color:#111827">مشاريع أُنجزت عبر مناقصة</div>
-        <div style="font-size:13px;color:#9ca3af;margin-top:3px">مشاريع حقيقية نفذها مزودو خدمة معتمدون</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:10px;height:10px;border-radius:50%;background:#dc2626"></div>
-        <span style="font-size:12px;color:#6b7280;font-weight:600">تم الترسية</span>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:20px" id="doneGrid"></div>
+<!-- فاصل -->
+<div style="max-width:1200px;margin:0 auto;padding:0 20px">
+  <div style="border-top:2px dashed #e2e8f0;margin:10px 0 30px;position:relative">
+    <div style="position:absolute;top:-13px;right:50%;transform:translateX(50%);background:#f8fafc;padding:0 16px;font-size:12px;color:#9ca3af;font-weight:600;white-space:nowrap">✅ مشاريع مكتملة</div>
   </div>
+</div>
+
+<!-- المشاريع المنجزة -->
+<div style="max-width:1200px;margin:0 auto;padding:0 20px 50px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <div class="section-title">المشاريع المنجزة عبر مناقصة</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="width:8px;height:8px;border-radius:50%;background:#dc2626"></div>
+      <span style="font-size:12px;color:#6b7280;font-weight:600">تم الترسية</span>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px" id="doneGrid"></div>
 </div>
 
 <footer class="footer">
@@ -202,10 +215,12 @@ const API='https://manaqasati-production.up.railway.app';
 const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#06b6d4,#0891b2',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🪚'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'🧹'},'نقل عفش':{g:'135deg,#8b5cf6,#7c3aed',ic:'🚛'},'حدادة':{g:'135deg,#6b7280,#374151',ic:'🔩'},'ألمنيوم':{g:'135deg,#9ca3af,#6b7280',ic:'🪟'},'مسابح (تنفيذ وصيانة)':{g:'135deg,#3b82f6,#1d4ed8',ic:'🏊'},'كاميرات مراقبة وأمن':{g:'135deg,#1f2937,#111827',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#6366f1,#4f46e5',ic:'📡'},'مظلات وسواتر':{g:'135deg,#f97316,#ea580c',ic:'⛱️'},'عزل حراري وأسطح':{g:'135deg,#ef4444,#dc2626',ic:'🌡️'},'أبواب':{g:'135deg,#854d0e,#713f12',ic:'🚪'},'أعمال جبس وطباشير':{g:'135deg,#94a3b8,#64748b',ic:'🏠'},'مكافحة حشرات':{g:'135deg,#16a34a,#15803d',ic:'🦟'},'أخرى':{g:'135deg,#64748b,#475569',ic:'📋'}};
 let allProjects=[],activecat='',searchQ='';
 
+
+
 async function loadProjects(){
   try{
     const r=await fetch(API+'/api/requests?status=open');
-    if(r.ok){allProjects=await r.json();buildCities();buildCats();renderCards(allProjects);}
+    if(r.ok){allProjects=await r.json();buildCats();renderCards(allProjects);}
     else document.getElementById('cardsGrid').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h3>تعذر تحميل المشاريع</h3></div>';
   }catch(e){document.getElementById('cardsGrid').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';}
 }
@@ -222,15 +237,16 @@ function buildCats(){
 }
 
 function setCat(cat,btn){activecat=cat;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');filterCards();}
+
 function doSearch(){searchQ=(document.getElementById('heroSearch').value||'').trim().toLowerCase();filterCards();document.querySelector('.grid-wrap').scrollIntoView({behavior:'smooth'});}
 
 function filterCards(){
-  const city=document.getElementById('fCity').value;
+  const city=(document.getElementById('fCity')?.value||'').trim();
   const sort=document.getElementById('fSort').value;
   let list=allProjects.filter(p=>{
     const mq=!searchQ||(p.title||'').toLowerCase().includes(searchQ)||(p.description||'').toLowerCase().includes(searchQ)||(p.city||'').toLowerCase().includes(searchQ);
     const mc=!activecat||p.category===activecat;
-    const mi=!city||p.city===city;
+    const mi=!city||p.city?.toLowerCase().includes(city.toLowerCase());
     return mq&&mc&&mi;
   });
   if(sort==='bids')list.sort((a,b)=>(b.bid_count||0)-(a.bid_count||0));
@@ -267,7 +283,7 @@ function renderCards(list){
   }).join('');
 }
 
-function openProject(id){
+async function openProject(id){
   const p=allProjects.find(x=>x.id===id);if(!p)return;
   const cs=CAT_STYLE[p.category]||{g:'135deg,#2563eb,#1d4ed8',ic:'📋'};
   const budget=p.budget_max?Number(p.budget_max).toLocaleString('ar-SA')+' ر.س':'غير محدد';
@@ -282,21 +298,106 @@ function openProject(id){
       <div class="info-item"><div class="info-label">الموعد النهائي</div><div class="info-val">📅 ${deadline}</div></div>
       <div class="info-item"><div class="info-label">العروض</div><div class="info-val">📨 ${p.bid_count||0} عرض</div></div>
     </div>
-    ${p.description?`<div class="desc-box">${p.description}</div>`:''}`;
+    ${p.description?`<div class="desc-box">${p.description}</div>`:''}
+    <div id="bidsSection" style="margin-top:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        مفاضلة العروض
+      </div>
+      <div style="text-align:center;padding:20px;color:var(--t4);font-size:12px">
+        <div class="spin" style="margin:0 auto 8px"></div>
+        جاري تحميل العروض...
+      </div>
+    </div>`;
   document.getElementById('mFoot').innerHTML=`<button class="mbtn mbtn-gray" onclick="closeModal()" style="flex:1">إغلاق</button><button class="mbtn mbtn-blue" onclick="location.href='auth.html'" style="flex:2">سجّل الدخول لتقديم عرض</button>`;
   document.getElementById('ov').classList.add('show');
+
+  // جلب العروض
+  try {
+    const r = await fetch(API+'/api/requests/'+id+'/bids');
+    const bids = r.ok ? await r.json() : [];
+    const sec = document.getElementById('bidsSection');
+    if(!sec) return;
+    if(!bids.length){
+      sec.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:10px">📨 مفاضلة العروض</div><div style="text-align:center;padding:16px;background:var(--bg2);border-radius:8px;font-size:12px;color:var(--t4)">لا توجد عروض بعد</div>`;
+      return;
+    }
+    // ترتيب حسب السعر
+    const sorted=[...bids].sort((a,b)=>a.price-b.price);
+    const minPrice=sorted[0].price;
+    sec.innerHTML=`
+      <div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        مفاضلة العروض (${bids.length})
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${sorted.map((b,i)=>{
+          const stars='★'.repeat(Math.round(b.avg_rating||0))+'☆'.repeat(5-Math.round(b.avg_rating||0));
+          const isBest=b.price===minPrice;
+          return`<div style="border:1.5px solid ${isBest?'#059669':'var(--br)'};border-radius:10px;padding:10px 12px;background:${isBest?'#f0fdf4':'var(--white)'};position:relative">
+            ${isBest?'<div style="position:absolute;top:-1px;right:10px;background:#059669;color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:0 0 6px 6px">الأفضل سعراً ✓</div>':''}
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:${isBest?'6px':'0'}">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#312e81,#4338ca);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(b.provider_name||'؟')[0]}</div>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--t)">${b.provider_name||'مزود'}</div>
+                  <div style="font-size:10px;color:#f59e0b">${stars} <span style="color:var(--t4)">(${Number(b.avg_rating||0).toFixed(1)})</span></div>
+                </div>
+              </div>
+              <div style="text-align:left">
+                <div style="font-size:16px;font-weight:900;color:${isBest?'#059669':'var(--p)'}">
+                  ${Number(b.price).toLocaleString('ar-SA')} ر.س
+                </div>
+                <div style="font-size:10px;color:var(--t4)">⏱ ${b.days} يوم</div>
+              </div>
+            </div>
+            ${b.note?`<div style="margin-top:6px;font-size:11px;color:var(--t3);background:var(--bg2);padding:6px 8px;border-radius:6px;border-right:2px solid var(--pm)">${b.note}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) {
+    const sec=document.getElementById('bidsSection');
+    if(sec) sec.innerHTML='';
+  }
 }
 
 function closeModal(){document.getElementById('ov').classList.remove('show');}
 document.getElementById('ov').addEventListener('click',e=>{if(e.target===document.getElementById('ov'))closeModal();});
 
+
+const IDX_CITIES=['الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الدمام', 'الخبر', 'الظهران', 'الأحساء', 'الطائف', 'تبوك', 'بريدة', 'القصيم', 'خميس مشيط', 'أبها', 'نجران', 'جيزان', 'حائل', 'ينبع', 'الجبيل', 'القطيف', 'سكاكا', 'عرعر', 'الباحة', 'الرس', 'رابغ', 'بيشة', 'وادي الدواسر', 'الزلفي', 'القريات'];
+function showHeroSuggest(){
+  const q=(document.getElementById('heroSearch')?.value||'').toLowerCase().trim();
+  const dd=document.getElementById('heroDD');if(!dd)return;
+  if(!q){dd.style.display='none';return;}
+  const titles=[...new Set(allProjects.filter(p=>(p.title||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q)).map(p=>p.title))].slice(0,8);
+  const cats=IDX_CITIES.filter(c=>c.includes(q)).slice(0,3).map(c=>'📍 '+c);
+  const all=[...titles,...cats].slice(0,8);
+  if(!all.length){dd.style.display='none';return;}
+  dd.innerHTML=all.map(t=>{
+    const isCity=t.startsWith('📍');
+    const val=isCity?t.replace('📍 ',''):t;
+    return`<div onclick="document.getElementById('heroSearch').value='${val.replace(/'/g,"\'")}';document.getElementById('heroDD').style.display='none';doSearch()" style="padding:10px 14px;font-size:13px;cursor:pointer;color:#111827;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">${isCity?'📍':'🔍'} ${val}</div>`;
+  }).join('');
+  dd.style.display='block';
+}
+function showIndexCity(){
+  const q=(document.getElementById('fCity')?.value||'').toLowerCase();
+  const dd=document.getElementById('fCityDD');if(!dd)return;
+  const filtered=q?IDX_CITIES.filter(c=>c.includes(q)):IDX_CITIES;
+  if(!filtered.length){dd.style.display='none';return;}
+  dd.innerHTML=filtered.slice(0,10).map(c=>`<div onclick="document.getElementById('fCity').value='${c}';document.getElementById('fCityDD').style.display='none';filterCards()" style="padding:9px 14px;font-size:12px;cursor:pointer;color:#111827;border-bottom:1px solid #f3f4f6" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">${c}</div>`).join('');
+  dd.style.display='block';
+}
+
 loadProjects();
 
+// ===== المشاريع المنجزة الوهمية =====
 const DONE_PROJECTS=[
   {title:'تركيب مكيفات سبليت 4 طن في فيلا',cat:'تبريد وتكييف',city:'الرياض',provider:'أحمد العتيبي',price:'4,200',img:'https://images.unsplash.com/photo-1599189925002-a3e6ae7c2bec?w=400&q=80',rating:5},
   {title:'تمديد كهربائي كامل لعمارة سكنية',cat:'كهرباء',city:'جدة',provider:'شركة الضوء',price:'12,500',img:'https://images.unsplash.com/photo-1565264078-22c5ee5a34d0?w=400&q=80',rating:5},
   {title:'تركيب شبكة أنابيب مياه',cat:'سباكة',city:'الدمام',provider:'خالد الغامدي',price:'3,800',img:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400&q=80',rating:4},
-  {title:'تركيب كاميرات مراقبة',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'تك فيجن',price:'6,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
+  {title:'صنع ووضع كاميرات مراقبة',cat:'كاميرات مراقبة وأمن',city:'الرياض',provider:'تك فيجن',price:'6,000',img:'https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&q=80',rating:5},
   {title:'نقل عفش فيلا كاملة',cat:'نقل عفش',city:'مكة المكرمة',provider:'نقل السرعة',price:'1,800',img:'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=400&q=80',rating:4},
   {title:'تنظيف مبنى تجاري 3 طوابق',cat:'تنظيف',city:'جدة',provider:'نظافة بلس',price:'2,200',img:'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',rating:5},
   {title:'تركيب مظلة سيارات خارجية',cat:'مظلات وسواتر',city:'الرياض',provider:'ظل الخليج',price:'5,500',img:'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&q=80',rating:5},
@@ -345,7 +446,7 @@ const DONE_PROJECTS=[
   {title:'ألمنيوم محلات تجارية',cat:'ألمنيوم',city:'الدمام',provider:'الألمنيوم الذهبي',price:'24,000',img:'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80',rating:5},
 ];
 
-const STAR_COLORS={'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706','سباكة':'135deg,#06b6d4,#0891b2','نجارة':'135deg,#92400e,#78350f','تنظيف':'135deg,#10b981,#059669','نقل عفش':'135deg,#8b5cf6,#7c3aed','مسابح (تنفيذ وصيانة)':'135deg,#3b82f6,#1d4ed8','كاميرات مراقبة وأمن':'135deg,#1f2937,#111827','شبكات وإنترنت':'135deg,#6366f1,#4f46e5','مظلات وسواتر':'135deg,#f97316,#ea580c','عزل حراري وأسطح':'135deg,#ef4444,#dc2626','أعمال جبس وطباشير':'135deg,#94a3b8,#64748b','ألمنيوم':'135deg,#9ca3af,#6b7280'};
+const STAR_COLORS={'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706','سباكة':'135deg,#06b6d4,#0891b2','نجارة':'135deg,#92400e,#78350f','تنظيف':'135deg,#10b981,#059669','نقل عفش':'135deg,#8b5cf6,#7c3aed','مسابح (تنفيذ وصيانة)':'135deg,#3b82f6,#1d4ed8','كاميرات مراقبة وأمن':'135deg,#1f2937,#111827','شبكات وإنترنت':'135deg,#6366f1,#4f46e5','مظلات وسواتر':'135deg,#f97316,#ea580c','عزل حراري وأسطح':'135deg,#ef4444,#dc2626','نجارة':'135deg,#92400e,#78350f','أعمال جبس وطباشير':'135deg,#94a3b8,#64748b','ألمنيوم':'135deg,#9ca3af,#6b7280'};
 
 function renderDone(){
   const grid=document.getElementById('doneGrid');
@@ -354,18 +455,29 @@ function renderDone(){
     const g=STAR_COLORS[p.cat]||'135deg,#312e81,#4338ca';
     const stars='★'.repeat(p.rating)+'☆'.repeat(5-p.rating);
     return`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative">
-      <div style="position:absolute;top:10px;left:10px;z-index:10;background:#dc2626;color:#fff;padding:3px 9px;border-radius:4px;font-size:9px;font-weight:800;letter-spacing:.5px;border:1.5px solid #fff;transform:rotate(-3deg);box-shadow:0 2px 6px rgba(220,38,38,.4)">✓ تم الترسية</div>
+      <!-- ختم تم الترسية -->
+      <div style="position:absolute;top:10px;left:10px;z-index:10;pointer-events:none;transform:rotate(-8deg);opacity:0.82">
+        <svg viewBox="0 0 110 44" width="95" height="38" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="110" height="44" rx="4" fill="#7f1d1d" opacity="0.85"/>
+          <rect x="3" y="3" width="104" height="38" rx="2" fill="none" stroke="#fca5a5" stroke-width="1.2" opacity="0.7"/>
+          <text x="55" y="28" font-size="14" font-weight="900" fill="#fff" text-anchor="middle" opacity="0.95" font-family="Arial" letter-spacing="1">تم الترسية</text>
+        </svg>
+      </div>
+      <!-- الصورة -->
       <div style="height:140px;overflow:hidden;position:relative">
-        <img src="${p.img}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.88)" onerror="this.parentElement.style.background='linear-gradient(${g})';this.remove()">
-        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div>
+        <img src="${p.img}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.65) saturate(0.7)" onerror="this.parentElement.style.background='linear-gradient(${g})';this.remove()">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.25)"></div>
+        <!-- التصنيف -->
         <div style="position:absolute;bottom:8px;right:10px;font-size:10px;color:rgba(255,255,255,.9);font-weight:600">${p.cat}</div>
       </div>
+      <!-- التفاصيل -->
       <div style="padding:12px 14px">
         <div style="font-size:13px;font-weight:700;color:#111827;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.title}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:11px;color:#6b7280">📍 ${p.city}</div>
           <div style="font-size:12px;color:#059669;font-weight:700">💰 ${p.price} ر.س</div>
         </div>
+        <!-- المزود الفائز -->
         <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
           <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(${g});color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${p.provider[0]}</div>
           <div style="flex:1;min-width:0">
