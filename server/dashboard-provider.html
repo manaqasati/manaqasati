@@ -437,7 +437,7 @@ function bidModal(projectId,projectTitle){
        <div class="fg"><label class="fl">سعر العرض (ر.س) <span class="fh">*</span></label><input type="number" class="fi" id="bPrice" placeholder="5000"></div>
        <div class="fg"><label class="fl">مدة التنفيذ (أيام) <span class="fh">*</span></label><input type="number" class="fi" id="bDays" placeholder="7"></div>
      </div>
-     <div class="fg"><label class="fl">رسالتك للعميل <span class="fh">*</span></label><textarea class="fta" style="min-height:90px" id="bNote" placeholder="اشرح خبرتك وكيف ستنفذ المشروع…"></textarea></div>`,
+     <div class="fg"><label class="fl">رسالتك للعميل <span class="fh">*</span></label><textarea class="fta" style="min-height:140px;white-space:pre-wrap;line-height:1.8" id="bNote" placeholder="اشرح خبرتك وكيف ستنفذ المشروع…"></textarea></div>`,
     `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-dk" onclick="submitBid(${projectId})">${S(I.send)} إرسال العرض</button>`,
     `<svg viewBox="0 0 24 24">${I.send}</svg>`,'#f4f4f5');
 }
@@ -490,7 +490,7 @@ function renderMyBids(list){
         <span class="bdc-st ${sc}">${sl}</span>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:7px"><span class="chip">${fpr(b.price)}</span>${b.delivery_days?`<span class="chip">${b.delivery_days} يوم</span>`:''}</div>
-      ${b.note?`<div class="bdc-note">${b.note}</div>`:''}
+      ${b.note?`<div class="bdc-note" style="white-space:pre-wrap;line-height:1.8">${b.note}</div>`:''}
       ${b.status==='pending'?`<div style="margin-top:8px"><button class="btn btn-rd btn-xs" onclick="deleteBid(${b.id})">سحب العرض</button></div>`:''}
     </div>`;
   }).join('');
