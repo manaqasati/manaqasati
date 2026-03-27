@@ -379,17 +379,24 @@ async function pgBrowse(){
   const nb=document.getElementById('nbNew');if(nb){nb.style.display=openProjs.length?'':'none';nb.textContent=openProjs.length;}
   setPage(`<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div><div class="pg-s">${openProjs.length} مشروع متاح</div></div></div>
     <div class="card"><div class="cb">
-      <div class="fbar">
-        <div class="sbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث…" oninput="filterBrowse()"></div>
+      <div class="fbar" style="flex-wrap:wrap">
+        <div class="sbox" style="position:relative;flex:1;min-width:200px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="bQ" placeholder="ابحث في المشاريع..." oninput="filterBrowse();showSuggest()" onblur="setTimeout(()=>hideDrop('bQDrop'),200)" autocomplete="off" style="flex:1">
+          <div id="bQDrop" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:99;background:#fff;border:1px solid var(--br);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;margin-top:3px"></div>
+        </div>
         <select class="fsel" id="bCat" onchange="filterBrowse()"><option value="">كل التصنيفات</option>${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
-        <select class="fsel" id="bCit" onchange="filterBrowse()"><option value="">كل المدن</option>${CITIES.map(c=>`<option>${c}</option>`).join('')}</select>
+        <div style="position:relative">
+          <input type="text" id="bCit" placeholder="ابحث عن مدينة..." class="fsel" style="min-width:150px" oninput="filterBrowse();showCitySuggest('bCit','bCitDrop')" onblur="setTimeout(()=>hideDrop('bCitDrop'),200)" autocomplete="off">
+          <div id="bCitDrop" style="display:none;position:absolute;top:100%;right:0;z-index:99;background:#fff;border:1px solid var(--br);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;margin-top:3px;min-width:180px"></div>
+        </div>
       </div>
       <div id="bList">${renderBrowse(openProjs)}</div>
     </div></div>`);
 }
 function filterBrowse(){
-  const q=(document.getElementById('bQ')?.value||'').toLowerCase();const cat=document.getElementById('bCat')?.value||'';const cit=document.getElementById('bCit')?.value||'';
-  const f=allProjects.filter(p=>p.status==='open'&&(!q||p.title.toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!cit||p.city===cit));
+  const q=(document.getElementById('bQ')?.value||'').toLowerCase();const cat=document.getElementById('bCat')?.value||'';const cit=(document.getElementById('bCit')?.value||'').toLowerCase();
+  const f=allProjects.filter(p=>p.status==='open'&&(!q||p.title.toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!cit||p.city?.toLowerCase().includes(cit)));
   const el=document.getElementById('bList');if(el)el.innerHTML=renderBrowse(f);
 }
 function renderBrowse(list){
@@ -443,12 +450,32 @@ function bidModal(projectId,projectTitle){
            <button type="button" onclick="fmtField('bNote','italic')" style="padding:3px 8px;border:1px solid var(--br);border-radius:5px;font-size:12px;font-style:italic;cursor:pointer;background:var(--bg);color:var(--t2);font-family:inherit">I</button>
            <div style="font-size:10px;color:var(--t4);margin-right:4px">Enter = سطر جديد</div>
          </div>
-         <textarea class="fta" style="min-height:140px;white-space:pre-wrap;line-height:1.9;border:none;border-radius:0" id="bNote" placeholder="اشرح خبرتك وكيف ستنفذ المشروع…&#10;مثال:&#10;## خبرتي&#10;10 سنوات في المجال&#10;&#10;## خطة التنفيذ&#10;سأبدأ بالمعاينة ثم التنفيذ"></textarea>
+         <textarea class="fta" style="min-height:140px;white-space:pre-wrap;line-height:1.9;border:none;border-radius:0" id="bNote" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..."></textarea>
        </div>
      </div>`,
     `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-dk" onclick="submitBid(${projectId})">${S(I.send)} إرسال العرض</button>`,
     `<svg viewBox="0 0 24 24">${I.send}</svg>`,'#f4f4f5');
 }
+
+function showSuggest(){
+  const q=(document.getElementById('bQ')?.value||'').toLowerCase();
+  const dd=document.getElementById('bQDrop');if(!dd)return;
+  if(!q){dd.style.display='none';return;}
+  const matches=[...new Set(allProjects.filter(p=>p.title.toLowerCase().includes(q)).map(p=>p.title))].slice(0,8);
+  if(!matches.length){dd.style.display='none';return;}
+  dd.innerHTML=matches.map(t=>`<div onclick="document.getElementById('bQ').value='${t.replace(/'/g,"\'")}';hideDrop('bQDrop');filterBrowse()" style="padding:9px 14px;font-size:12px;cursor:pointer;color:var(--t);border-bottom:1px solid var(--bg3)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='#fff'">${t}</div>`).join('');
+  dd.style.display='block';
+}
+function showCitySuggest(inpId,dropId){
+  const q=(document.getElementById(inpId)?.value||'').toLowerCase();
+  const dd=document.getElementById(dropId);if(!dd)return;
+  const filtered=q?CITIES.filter(c=>c.includes(q)):CITIES;
+  if(!filtered.length){dd.innerHTML='<div style="padding:9px 14px;font-size:12px;color:var(--t4)">لا توجد نتائج</div>';dd.style.display='block';return;}
+  dd.innerHTML=filtered.slice(0,12).map(c=>`<div onclick="document.getElementById('${inpId}').value='${c}';hideDrop('${dropId}');filterBrowse()" style="padding:9px 14px;font-size:12px;cursor:pointer;color:var(--t);border-bottom:1px solid var(--bg3)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='#fff'">${c}</div>`).join('');
+  dd.style.display='block';
+}
+function hideDrop(id){const dd=document.getElementById(id);if(dd)dd.style.display='none';}
+
 function fmtField(id,type){
   var el=document.getElementById(id);if(!el)return;
   var s=el.selectionStart,e=el.selectionEnd,sel=el.value.substring(s,e);
