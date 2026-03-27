@@ -35,25 +35,40 @@ body{font-family:'Tajawal',sans-serif;background:#f0f5ff;min-height:100vh;displa
 .btn:hover{transform:translateY(-2px)}
 .btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
 .back{display:block;text-align:center;margin-top:18px;color:#64748b;text-decoration:none;font-size:13px}
+.back:hover{color:#1d4ed8}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo"><h1>مناقصة<span>.</span></h1><p>منصة العطاءات الأولى</p></div>
+  <div class="logo">
+    <h1>مناقصة<span>.</span></h1>
+    <p>منصة العطاءات الأولى</p>
+  </div>
   <div class="tabs">
     <button class="tab on" id="t1" onclick="go('login')">تسجيل الدخول</button>
     <button class="tab" id="t2" onclick="go('reg')">حساب جديد</button>
   </div>
   <div class="msg" id="msg"></div>
   <div class="box on" id="login">
-    <div class="g"><label>البريد الإلكتروني</label><input type="email" id="le" placeholder="example@email.com"></div>
+    <div class="g">
+      <label>البريد الإلكتروني أو رقم الجوال</label>
+      <input type="text" id="le" placeholder="example@email.com أو 05xxxxxxxx" autocomplete="username">
+    </div>
     <div class="g"><label>كلمة المرور</label><input type="password" id="lp" placeholder="••••••••"></div>
     <button class="btn" id="lb" onclick="doLogin()">تسجيل الدخول</button>
   </div>
   <div class="box" id="reg">
     <div class="roles">
-      <div class="role on" id="rc" onclick="setRole('client',this)"><div class="role-ic">🔍</div><div class="role-t">باحث عن خدمة</div><div class="role-s">أنشر طلبك</div></div>
-      <div class="role" id="rp" onclick="setRole('provider',this)"><div class="role-ic">🔧</div><div class="role-t">مزود خدمة</div><div class="role-s">قدّم عروضك</div></div>
+      <div class="role on" id="rc" onclick="setRole('client',this)">
+        <div class="role-ic">🔍</div>
+        <div class="role-t">باحث عن خدمة</div>
+        <div class="role-s">أنشر طلبك</div>
+      </div>
+      <div class="role" id="rp" onclick="setRole('provider',this)">
+        <div class="role-ic">🔧</div>
+        <div class="role-t">مزود خدمة</div>
+        <div class="role-s">قدّم عروضك</div>
+      </div>
     </div>
     <div class="g"><label>الاسم الكامل</label><input type="text" id="rn" placeholder="أحمد العمري"></div>
     <div class="g"><label>البريد الإلكتروني</label><input type="email" id="re" placeholder="example@email.com"></div>
@@ -73,35 +88,63 @@ function go(tab){
   document.getElementById('reg').className=tab==='reg'?'box on':'box';
   document.getElementById('msg').className='msg';
 }
-function setRole(r,el){role=r;document.getElementById('rc').className='role';document.getElementById('rp').className='role';el.className='role on';}
+function setRole(r,el){
+  role=r;
+  document.getElementById('rc').className='role';
+  document.getElementById('rp').className='role';
+  el.className='role on';
+}
 function showMsg(t,c){var e=document.getElementById('msg');e.textContent=t;e.className='msg '+c;}
-function goTo(r){if(r==='admin')location.href='dashboard-admin.html';else if(r==='provider')location.href='dashboard-provider.html';else location.href='dashboard-client.html';}
+function goTo(r){
+  if(r==='admin')location.href='dashboard-admin.html';
+  else if(r==='provider')location.href='dashboard-provider.html';
+  else location.href='dashboard-client.html';
+}
 function doLogin(){
   var e=document.getElementById('le').value.trim();
   var p=document.getElementById('lp').value;
   if(!e||!p){showMsg('يرجى تعبئة جميع الحقول','err');return;}
-  var b=document.getElementById('lb');b.disabled=true;b.textContent='جاري...';
-  fetch(API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})})
+  // تحديد إذا كان جوال أو بريد
+  var isPhone=/^05\d{8}$/.test(e)||/^\d{10}$/.test(e);
+  var payload={password:p};
+  if(isPhone){payload.phone=e;}else{payload.email=e;}
+  var b=document.getElementById('lb');
+  b.disabled=true;b.textContent='جاري تسجيل الدخول...';
+  fetch(API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
   .then(function(r){
-    if(r.ok){localStorage.setItem('token',r.d.token);localStorage.setItem('user',JSON.stringify(r.d.user));showMsg('تم! جاري التحويل...','ok');setTimeout(function(){goTo(r.d.user.role);},1200);}
-    else{showMsg(r.d.message||'خطأ في البيانات','err');b.disabled=false;b.textContent='تسجيل الدخول';}
-  }).catch(function(){showMsg('تعذر الاتصال','err');b.disabled=false;b.textContent='تسجيل الدخول';});
+    if(r.ok){
+      localStorage.setItem('token',r.d.token);
+      localStorage.setItem('user',JSON.stringify(r.d.user));
+      showMsg('تم تسجيل الدخول! جاري التحويل...','ok');
+      setTimeout(function(){goTo(r.d.user.role);},1200);
+    }else{showMsg(r.d.message||'البيانات غير صحيحة','err');b.disabled=false;b.textContent='تسجيل الدخول';}
+  }).catch(function(){showMsg('تعذر الاتصال بالخادم','err');b.disabled=false;b.textContent='تسجيل الدخول';});
 }
 function doReg(){
   var n=document.getElementById('rn').value.trim();
   var e=document.getElementById('re').value.trim();
   var ph=document.getElementById('rph').value.trim();
   var p=document.getElementById('rpw').value;
-  if(!n||!e||!p){showMsg('يرجى تعبئة الحقول المطلوبة','err');return;}
+  // التحقق من الحقول
+  if(!n||!e||!ph||!p){showMsg('يرجى تعبئة جميع الحقول','err');return;}
+  // التحقق من البريد الإلكتروني
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){showMsg('البريد الإلكتروني غير صحيح','err');return;}
+  // التحقق من رقم الجوال - 10 أرقام يبدأ بـ 05
+  if(!/^05\d{8}$/.test(ph)){showMsg('رقم الجوال يجب أن يكون 10 أرقام ويبدأ بـ 05','err');return;}
   if(p.length<8){showMsg('كلمة المرور 8 أحرف على الأقل','err');return;}
-  var b=document.getElementById('rb');b.disabled=true;b.textContent='جاري...';
+  var b=document.getElementById('rb');
+  b.disabled=true;b.textContent='جاري إنشاء الحساب...';
   fetch(API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,email:e,phone:ph,password:p,role:role})})
   .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
   .then(function(r){
-    if(r.ok){localStorage.setItem('token',r.d.token);localStorage.setItem('user',JSON.stringify(r.d.user));showMsg('تم إنشاء حسابك! 🎉','ok');setTimeout(function(){goTo(r.d.user.role);},1500);}
-    else{showMsg(r.d.message||'حدث خطأ','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';}
-  }).catch(function(){showMsg('تعذر الاتصال','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';});
+    if(r.ok){
+      localStorage.setItem('token',r.d.token);
+      localStorage.setItem('user',JSON.stringify(r.d.user));
+      showMsg('تم إنشاء حسابك! مرحباً بك 🎉','ok');
+      setTimeout(function(){goTo(r.d.user.role);},1500);
+    }else{showMsg(r.d.message||'حدث خطأ، حاول مرة أخرى','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';}
+  }).catch(function(){showMsg('تعذر الاتصال بالخادم','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';});
 }
 </script>
 </body>
