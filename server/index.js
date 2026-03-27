@@ -14,6 +14,47 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// ✅ Resend Email Service
+const RESEND_KEY = process.env.RESEND_KEY || 're_bfjMBMPj_67sGJEwKehKqnqz5B4pVqvTD';
+const FROM_EMAIL = 'cs@manaqasa.com';
+const SITE_URL = 'https://manaqasati-production.up.railway.app';
+
+async function sendEmail(to, subject, html) {
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `مناقصة <${FROM_EMAIL}>`, to: [to], subject, html })
+    });
+    const d = await r.json();
+    if (!r.ok) console.error('Resend error:', d);
+    return r.ok;
+  } catch(e) { console.error('Email error:', e.message); return false; }
+}
+
+function emailTemplate(title, body, btnText, btnUrl) {
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>
+    body{font-family:Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:20px}
+    .box{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    .head{background:#4f46e5;padding:24px;text-align:center}
+    .head h1{color:#fff;margin:0;font-size:20px}
+    .body{padding:28px 32px}
+    .body p{color:#374151;font-size:14px;line-height:1.8;margin:0 0 16px}
+    .btn{display:inline-block;background:#4f46e5;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;margin:8px 0}
+    .foot{background:#f9fafb;padding:14px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
+  </style></head><body>
+    <div class="box">
+      <div class="head"><h1>🏆 مناقصة</h1></div>
+      <div class="body">
+        <p><strong>${title}</strong></p>
+        ${body}
+        ${btnText && btnUrl ? `<p><a href="${btnUrl}" class="btn">${btnText}</a></p>` : ''}
+      </div>
+      <div class="foot">© 2025 منصة مناقصة — manaqasa.com</div>
+    </div>
+  </body></html>`;
+}
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
 
@@ -351,6 +392,17 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     );
     await notify(b.provider_id, '✅ تم قبول عرضك', `تم قبول عرضك على: ${b.title}`, 'accepted', b.request_id);
     await notify(b.client_id, '🎉 تم الإسناد', `تم إسناد مشروعك: ${b.title}`, 'assigned', b.request_id);
+    // إيميل للمزود
+    const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
+    if (provider.rows[0]?.email) {
+      await sendEmail(provider.rows[0].email, `✅ تم قبول عرضك على: ${b.title}`,
+        emailTemplate(`مبروك ${provider.rows[0].name}! 🎉`,
+          `<p>تم قبول عرضك على المشروع: <strong>${b.title}</strong></p>
+           <p>تواصل مع صاحب الطلب للبدء بالتنفيذ.</p>`,
+          '📋 عرض تفاصيل المشروع', `${SITE_URL}/dashboard-provider.html`
+        )
+      );
+    }
     res.json({ message: 'تم قبول العرض وإسناد المشروع' });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -439,6 +491,17 @@ app.post('/api/messages', auth, async (req, res) => {
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await notify(receiver_id, '💬 رسالة جديدة',
       `${sender.rows[0].name}: ${content.substring(0,50)}`, 'message', request_id);
+    // إيميل للمستقبل
+    const receiver = await pool.query('SELECT name,email FROM users WHERE id=$1', [receiver_id]);
+    if (receiver.rows[0]?.email) {
+      await sendEmail(receiver.rows[0].email, `💬 رسالة جديدة من ${sender.rows[0].name}`,
+        emailTemplate(`لديك رسالة جديدة`,
+          `<p>أرسل لك <strong>${sender.rows[0].name}</strong> رسالة:</p>
+           <p style="background:#f3f4f6;padding:12px;border-radius:8px;border-right:3px solid #4f46e5">${content.substring(0,200)}${content.length>200?'...':''}</p>`,
+          '💬 الرد على الرسالة', `${SITE_URL}/dashboard-${receiver.rows[0].role==='provider'?'provider':'client'}.html`
+        )
+      );
+    }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -657,12 +720,32 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       [newStatus, reason||null, req.params.id]
     );
     const req2 = r.rows[0];
+    const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.client_id]);
     if (newStatus === 'open') {
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك',
         `طلبك "${req2.title}" تمت مراجعته ونُشر الآن`, 'approved', req2.id);
+      if (client.rows[0]?.email) {
+        await sendEmail(client.rows[0].email, `✅ تمت الموافقة على طلبك — ${req2.title}`,
+          emailTemplate(`مرحباً ${client.rows[0].name}،`,
+            `<p>تمت مراجعة طلبك <strong>"${req2.title}"</strong> والموافقة عليه.</p>
+             <p>طلبك الآن منشور ومتاح لمزودي الخدمة لتقديم عروضهم.</p>`,
+            '📋 عرض طلبك', `${SITE_URL}/dashboard-client.html`
+          )
+        );
+      }
     } else {
       await notify(req2.client_id, '❌ تم رفض طلبك',
         `طلبك "${req2.title}" تم رفضه. السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
+      if (client.rows[0]?.email) {
+        await sendEmail(client.rows[0].email, `❌ تم رفض طلبك — ${req2.title}`,
+          emailTemplate(`مرحباً ${client.rows[0].name}،`,
+            `<p>للأسف، تم رفض طلبك <strong>"${req2.title}"</strong>.</p>
+             <p>السبب: ${reason||'غير محدد'}</p>
+             <p>يمكنك تعديل الطلب وإعادة تقديمه.</p>`,
+            '✏️ تعديل الطلب', `${SITE_URL}/dashboard-client.html`
+          )
+        );
+      }
     }
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -915,6 +998,42 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
     if (!ok) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── نسيت كلمة السر ───
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'البريد مطلوب' });
+    const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    if (!r.rows.length) return res.json({ ok: true }); // لا نكشف إذا كان البريد موجود
+    const user = r.rows[0];
+    const resetToken = jwt.sign({ id: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
+    const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
+    await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
+      emailTemplate(
+        `مرحباً ${user.name}،`,
+        `<p>تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في منصة <strong>مناقصة</strong>.</p>
+         <p>اضغط على الزر أدناه لإعادة تعيين كلمة المرور. الرابط صالح لمدة ساعة واحدة.</p>
+         <p style="color:#6b7280;font-size:12px">إذا لم تطلب ذلك، تجاهل هذه الرسالة.</p>`,
+        '🔑 إعادة تعيين كلمة المرور', resetUrl
+      )
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, new_password } = req.body;
+    if (!token || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    let decoded;
+    try { decoded = jwt.verify(token, JWT_SECRET); } catch { return res.status(400).json({ message: 'رابط منتهي الصلاحية' }); }
+    if (decoded.type !== 'reset') return res.status(400).json({ message: 'رابط غير صحيح' });
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, decoded.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
