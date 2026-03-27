@@ -442,9 +442,9 @@ function bidModal(projectId,projectTitle){
     `<svg viewBox="0 0 24 24">${I.send}</svg>`,'#f4f4f5');
 }
 async function submitBid(projectId){
-  const price=document.getElementById('bPrice')?.value;const days=document.getElementById('bDays')?.value;const note=document.getElementById('bNote')?.value?.trim();
-  if(!price||!days||!note){toast('اكمل البيانات','error');return;}
-  const res=await api(`/api/requests/${projectId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),delivery_days:parseInt(days),note})});
+  const price=document.getElementById('bPrice')?.value?.trim();const days=document.getElementById('bDays')?.value?.trim();const note=document.getElementById('bNote')?.value?.trim();
+  if(!price||!days||!note){toast('السعر والمدة والرسالة مطلوبة','error');return;}
+  const res=await api(`/api/requests/${projectId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),days:parseInt(days),note})});
   if(res.message&&!res.id&&!res.bid_id){toast(res.message||'حدث خطأ','error');return;}
   closeM();toast('تم إرسال عرضك ✅','success');
 }
