@@ -188,13 +188,18 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
-    if (!r.rows.length) return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
+    const { email, phone, password } = req.body;
+    let r;
+    if(phone){
+      r = await pool.query('SELECT * FROM users WHERE phone=$1', [phone]);
+    } else {
+      r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    }
+    if (!r.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف، تواصل مع المدير' });
     const ok = await bcrypt.compare(password, user.password || user.password_hash);
-    if (!ok) return res.status(400).json({ message: 'البريد أو كلمة المرور غير صحيحة' });
+    if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     delete user.password; delete user.password_hash;
     res.json({ user, token });
