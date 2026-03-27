@@ -289,7 +289,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
           <div class="fg ff"><label>عنوان الطلب *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت 2 طن"></div>
           <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"></select></div>
           <div class="fg" id="other-wrap" style="display:none"><label>حدد التخصص</label><input id="n-other" type="text" placeholder="اكتب التخصص المطلوب"></div>
-          <div class="fg"><label>المدينة *</label><input id="n-city" type="text" placeholder="الرياض"></div>
+          <div class="fg">
+            <label>المدينة *</label>
+            <div style="position:relative">
+              <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off"
+                oninput="filterCities(this.value)"
+                onfocus="showCityList()"
+                onblur="setTimeout(()=>hideCityList(),200)"
+                style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:13px;color:#111827">
+              <div id="cityDropdown" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;margin-top:3px"></div>
+            </div>
+          </div>
           <div class="fg ff"><label>العنوان التفصيلي</label><input id="n-address" type="text" placeholder="الحي، الشارع، رقم المبنى..."></div>
           <div class="fg"><label>الميزانية المتوقعة (ر.س)</label><input id="n-budget" type="number" placeholder="500" inputmode="numeric"></div>
           <div class="fg"><label>تاريخ الانتهاء المطلوب</label><input id="n-deadline" type="date"></div>
@@ -304,7 +314,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
                 <button type="button" onclick="fmtTxt('n-desc','italic')" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;font-style:italic;cursor:pointer;background:#fff;color:#374151;font-family:inherit">I</button>
                 <div style="font-size:10px;color:#9ca3af;margin-right:4px">Enter = سطر جديد</div>
               </div>
-              <textarea id="n-desc" placeholder="اشرح طلبك بالتفصيل...&#10;مثال:&#10;## ما أحتاجه&#10;تركيب مكيف سبليت&#10;&#10;## التفاصيل&#10;الطابق الثالث، غرفة 4×5 متر" style="border:none;outline:none;width:100%;min-height:140px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.9;resize:vertical;color:#111827;background:#fff;white-space:pre-wrap"></textarea>
+              <textarea id="n-desc" placeholder="اشرح طلبك بالتفاصيل..." style="border:none;outline:none;width:100%;min-height:140px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.9;resize:vertical;color:#111827;background:#fff;white-space:pre-wrap"></textarea>
             </div>
           </div>
           <div class="fg ff">
@@ -370,6 +380,24 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
+
+const ALL_CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','الطائف','تبوك','بريدة','القصيم','خميس مشيط','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','سكاكا','عرعر','الباحة','الرس','رابغ','بيشة','وادي الدواسر','الزلفي','القريات','صبيا','محايل عسير','الدوادمي','المجمعة','شقراء','الأفلاج','الخرج','حوطة بني تميم','ضرما','عفيف','رنية','الليث','القنفذة','تربة','بيشة','الأرطاوية','الحريق'];
+
+function filterCities(q){
+  var dd=document.getElementById('cityDropdown');
+  if(!dd)return;
+  var filtered=q?ALL_CITIES.filter(c=>c.includes(q)):ALL_CITIES;
+  if(!filtered.length){dd.innerHTML='<div style="padding:10px;font-size:12px;color:#9ca3af;text-align:center">لا توجد نتائج</div>';dd.style.display='block';return;}
+  dd.innerHTML=filtered.map(c=>`<div onclick="selectCity('${c}')" style="padding:9px 14px;font-size:13px;cursor:pointer;color:#111827;border-bottom:1px solid #f3f4f6" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">${c}</div>`).join('');
+  dd.style.display='block';
+}
+function selectCity(c){
+  var inp=document.getElementById('n-city');
+  if(inp)inp.value=c;
+  hideCityList();
+}
+function showCityList(){filterCities(document.getElementById('n-city')?.value||'');}
+function hideCityList(){var dd=document.getElementById('cityDropdown');if(dd)dd.style.display='none';}
 if(!user.id){location.href='auth.html';}
 var selRating=0,selProviderId=null,selRequestId=null,curRequestId=null,curChatReceiver=null;
 var n=user.name||'العميل';
