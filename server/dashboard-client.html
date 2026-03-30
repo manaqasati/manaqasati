@@ -1,632 +1,824 @@
-import { useState } from "react";
-
-// ─── Design Tokens ───────────────────────────────────────────────────────────
-const T = {
-  primary:  "#1B3A6B",
-  client:   "#2C5282",
-  provider: "#1D6A5A",
-  accent:   "#D4973A",
-  success:  "#1D9E75",
-  danger:   "#E24B4A",
-  warn:     "#BA7517",
-  bg:       "#F7F8FC",
-  surface:  "#FFFFFF",
-  border:   "rgba(27,58,107,0.11)",
-  text:     "#1B2B4B",
-  muted:    "#6B7A99",
-  subtle:   "#EEF1F8",
-};
-
-// ─── Shared Components ────────────────────────────────────────────────────────
-const Avatar = ({ initials, color = T.provider, size = 36 }) => (
-  <div style={{
-    width: size, height: size, borderRadius: "50%",
-    background: color, color: "#fff", display: "flex",
-    alignItems: "center", justifyContent: "center",
-    fontSize: size * 0.35, fontWeight: 600, flexShrink: 0,
-  }}>{initials}</div>
-);
-
-const Badge = ({ children, bg, color }) => (
-  <span style={{
-    fontSize: 11, padding: "3px 9px", borderRadius: 20,
-    fontWeight: 600, background: bg, color,
-    display: "inline-block",
-  }}>{children}</span>
-);
-
-const StatusBadge = ({ status }) => {
-  const map = {
-    "مفتوحة":       { bg: "#EAF3DE", color: "#27500A" },
-    "قيد المراجعة": { bg: "#FAEEDA", color: "#633806" },
-    "مغلقة":        { bg: "#F1EFE8", color: "#444441" },
-    "مقبول":        { bg: "#E1F5EE", color: "#085041" },
-    "قيد الانتظار": { bg: "#FAEEDA", color: "#633806" },
-    "مرفوض":        { bg: "#FCEBEB", color: "#791F1F" },
-  };
-  const s = map[status] || { bg: T.subtle, color: T.muted };
-  return <Badge bg={s.bg} color={s.color}>{status}</Badge>;
-};
-
-const Btn = ({ children, variant = "ghost", onClick, fullWidth, size = "md" }) => {
-  const [hov, setHov] = useState(false);
-  const pad = size === "sm" ? "5px 12px" : size === "lg" ? "10px 20px" : "7px 16px";
-  const bg = variant === "client"   ? (hov ? T.primary  : T.client)
-           : variant === "provider" ? (hov ? "#0F4A3D" : T.provider)
-           : hov ? T.subtle : "transparent";
-  const cl = (variant === "client" || variant === "provider") ? "#fff" : T.muted;
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        padding: pad, borderRadius: 8, fontSize: 13, fontWeight: 600,
-        cursor: "pointer", border: `1px solid ${variant === "ghost" ? T.border : "transparent"}`,
-        background: bg, color: cl, transition: "all .15s",
-        width: fullWidth ? "100%" : "auto", display: "block",
-      }}
-    >{children}</button>
-  );
-};
-
-const Card = ({ children, style = {} }) => (
-  <div style={{
-    background: T.surface, borderRadius: 12,
-    border: `1px solid ${T.border}`, overflow: "hidden",
-    marginBottom: 16, ...style,
-  }}>{children}</div>
-);
-
-const CardHeader = ({ left, right }) => (
-  <div style={{
-    padding: "12px 16px", borderBottom: `1px solid ${T.border}`,
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-  }}>
-    <span style={{ fontWeight: 600, fontSize: 14 }}>{left}</span>
-    <span>{right}</span>
-  </div>
-);
-
-const StatCard = ({ label, value, valueColor, sub }) => (
-  <div style={{
-    background: T.surface, borderRadius: 10, padding: "14px 16px",
-    border: `1px solid ${T.border}`,
-  }}>
-    <div style={{ fontSize: 11, color: T.muted, marginBottom: 4 }}>{label}</div>
-    <div style={{ fontSize: 22, fontWeight: 700, color: valueColor || T.text }}>{value}</div>
-    {sub && <div style={{ fontSize: 11, color: T.success, marginTop: 3 }}>{sub}</div>}
-  </div>
-);
-
-const TopBar = ({ role, initials, accentColor }) => (
-  <div style={{
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: T.surface, padding: "0 20px", height: 54,
-    borderBottom: `1px solid ${T.border}`,
-    borderTop: `3px solid ${accentColor}`,
-  }}>
-    <div style={{ fontSize: 18, fontWeight: 700, color: T.primary }}>
-      مناقصة<span style={{ color: T.accent }}>.</span>
-    </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <Badge
-        bg={role === "عميل" ? "#E6EEF8" : "#E1F5EE"}
-        color={role === "عميل" ? T.client : "#0F4A3D"}
-      >{role}</Badge>
-      <Avatar initials={initials} color={accentColor} />
-    </div>
-  </div>
-);
-
-const InfoRow = ({ label, value, valueColor }) => (
-  <div style={{
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "8px 0", borderBottom: `1px solid rgba(27,58,107,0.05)`, fontSize: 13,
-  }}>
-    <span style={{ color: T.muted }}>{label}</span>
-    <span style={{ fontWeight: 500, color: valueColor || T.text }}>{value}</span>
-  </div>
-);
-
-const Stars = ({ count }) => (
-  <span>
-    {[1,2,3,4,5].map(i => (
-      <span key={i} style={{ color: i <= count ? T.accent : T.subtle, fontSize: 13 }}>★</span>
-    ))}
-  </span>
-);
-
-// ─── Screen 1: تفاصيل المناقصة ───────────────────────────────────────────────
-const TenderDetail = ({ onNav }) => {
-  const bids = [
-    { name: "محمد الحربي", initials: "مح", color: T.provider, spec: "React Native · Node.js", stars: 4.8, reviews: 32, price: "٩,٥٠٠" },
-    { name: "سارة المطيري",  initials: "س",  color: "#993C1D",  spec: "Flutter · Firebase",    stars: 4.9, reviews: 61, price: "١١,٢٠٠" },
-    { name: "علي الشمري",   initials: "ع",  color: "#534AB7",  spec: "React Native · Express", stars: 4.5, reviews: 18, price: "٧,٨٠٠" },
-  ];
-
-  return (
-    <div style={{ background: T.bg, minHeight: "100vh" }}>
-      <TopBar role="عميل" initials="أح" accentColor={T.client} />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <span style={{ color: T.muted, fontSize: 13, cursor: "pointer" }} onClick={() => onNav("home")}>← مناقصاتي</span>
-          <span style={{ color: T.muted }}>/</span>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>تطوير تطبيق جوال</span>
-          <span style={{ marginRight: "auto" }}><StatusBadge status="قيد المراجعة" /></span>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 16 }}>
-          <div>
-            <Card>
-              <CardHeader
-                left="تطوير تطبيق جوال للتوصيل"
-                right={<div style={{ display: "flex", gap: 8 }}>
-                  <Btn variant="ghost" size="sm">تعديل</Btn>
-                  <Btn variant="client" size="sm">إغلاق المناقصة</Btn>
-                </div>}
-              />
-              <div style={{ padding: 16 }}>
-                <p style={{ lineHeight: 1.7, color: T.muted, fontSize: 13, marginBottom: 14 }}>
-                  نحتاج إلى تطوير تطبيق جوال متكامل لخدمة التوصيل يعمل على iOS وAndroid، يشمل واجهة العميل وواجهة السائق ولوحة تحكم الإدارة. التطبيق يجب أن يدعم التتبع الفوري، نظام الدفع الإلكتروني، والإشعارات الفورية.
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
-                  {["React Native","Node.js","Firebase","تتبع GPS","دفع إلكتروني"].map(t => (
-                    <span key={t} style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, background: T.subtle, color: T.muted }}>{t}</span>
-                  ))}
-                </div>
-                <div style={{ height: 1, background: T.border, margin: "12px 0" }} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-                  <div><div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>الميزانية</div><div style={{ fontWeight: 600, color: T.accent }}>٨,٠٠٠ – ١٢,٠٠٠ ر.س</div></div>
-                  <div><div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>المدة</div><div style={{ fontWeight: 600 }}>٤٥ – ٦٠ يوم</div></div>
-                  <div><div style={{ fontSize: 11, color: T.muted, marginBottom: 3 }}>الإغلاق</div><div style={{ fontWeight: 600 }}>١٥ مارس ٢٠٢٦</div></div>
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader left="العروض المستلمة" right={<Badge bg={T.subtle} color={T.muted}>٣ عروض</Badge>} />
-              {bids.map((b, i) => (
-                <div key={i} style={{
-                  display: "grid", gridTemplateColumns: "auto 1fr auto auto",
-                  alignItems: "center", gap: 12, padding: "12px 16px",
-                  borderBottom: i < bids.length - 1 ? `1px solid rgba(27,58,107,0.05)` : "none",
-                }}>
-                  <Avatar initials={b.initials} color={b.color} size={38} />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{b.name}</div>
-                    <div style={{ fontSize: 11, color: T.muted }}>{b.spec}</div>
-                    <div style={{ marginTop: 2 }}><Stars count={Math.floor(b.stars)} /><span style={{ fontSize: 11, color: T.muted, marginRight: 4 }}>{b.stars} ({b.reviews} تقييم)</span></div>
-                  </div>
-                  <div style={{ fontWeight: 700, color: T.client }}>{b.price} ر.س</div>
-                  <Btn variant="client" size="sm" onClick={() => onNav("bids")}>عرض</Btn>
-                </div>
-              ))}
-            </Card>
-          </div>
-
-          <div>
-            <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12 }}>إحصائيات المناقصة</div>
-              <InfoRow label="المشاهدات" value="١٤٢" />
-              <InfoRow label="العروض" value="٨" />
-              <InfoRow label="متوسط العروض" value="٩,٣٠٠ ر.س" valueColor={T.accent} />
-              <InfoRow label="أدنى عرض" value="٧,٨٠٠ ر.س" valueColor={T.success} />
-              <InfoRow label="أعلى عرض" value="١١,٢٠٠ ر.س" valueColor={T.danger} />
-            </div>
-
-            <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, padding: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 14 }}>الجدول الزمني</div>
-              {[
-                { label: "نُشرت المناقصة", date: "١ مارس ٢٠٢٦", done: true },
-                { label: "مرحلة المراجعة", date: "الآن", active: true },
-                { label: "قبول العرض",     date: "قريبًا", done: false },
-              ].map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%", marginTop: 4, flexShrink: 0,
-                    background: s.done ? T.success : s.active ? T.accent : T.border,
-                  }} />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: s.active ? 600 : 400, color: s.done === false && !s.active ? T.muted : T.text }}>{s.label}</div>
-                    <div style={{ fontSize: 11, color: T.muted }}>{s.date}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Screen 2: إدارة العروض ──────────────────────────────────────────────────
-const BidsManager = ({ onNav }) => {
-  const [sort, setSort] = useState("rating");
-  const bids = [
-    { rank: 1, name: "محمد الحربي", initials: "مح", color: T.provider, skills: "React Native · Node.js · Firebase", stars: 4.8, reviews: 32, price: "٩,٥٠٠", days: "٥٠", best: true },
-    { rank: 2, name: "سارة المطيري",  initials: "س",  color: "#993C1D",  skills: "Flutter · Dart · Firebase",         stars: 4.9, reviews: 61, price: "١١,٢٠٠", days: "٤٥", best: false },
-    { rank: 3, name: "علي الشمري",   initials: "ع",  color: "#534AB7",  skills: "React Native · Express",            stars: 4.5, reviews: 18, price: "٧,٨٠٠",  days: "٦٠", best: false },
-  ];
-
-  return (
-    <div style={{ background: T.bg, minHeight: "100vh" }}>
-      <TopBar role="عميل" initials="أح" accentColor={T.client} />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>إدارة العروض</div>
-            <div style={{ fontSize: 12, color: T.muted }}>تطوير تطبيق جوال للتوصيل</div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select
-              value={sort}
-              onChange={e => setSort(e.target.value)}
-              style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 12, color: T.muted, background: T.surface, cursor: "pointer" }}
-            >
-              <option value="rating">ترتيب: الأفضل تقييمًا</option>
-              <option value="price_asc">الأقل سعرًا</option>
-              <option value="price_desc">الأعلى سعرًا</option>
-              <option value="fastest">الأسرع تسليمًا</option>
-            </select>
-          </div>
-        </div>
-
-        <Card style={{ marginBottom: 0 }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: "40px 1fr 120px 80px 130px",
-            gap: 12, alignItems: "center", padding: "9px 16px",
-            background: T.subtle, fontSize: 11, fontWeight: 600, color: T.muted,
-          }}>
-            <span>#</span><span>المزود</span><span>القيمة</span><span>المدة</span><span>الإجراء</span>
-          </div>
-
-          {bids.map((b, i) => (
-            <div key={i} style={{
-              display: "grid", gridTemplateColumns: "40px 1fr 120px 80px 130px",
-              gap: 12, alignItems: "center", padding: "14px 16px",
-              borderBottom: i < bids.length - 1 ? `1px solid rgba(27,58,107,0.05)` : "none",
-              background: b.best ? "#FAFCFF" : T.surface,
-              borderRight: b.best ? `3px solid ${T.client}` : "none",
-            }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                {b.best && <div style={{ fontSize: 9, fontWeight: 700, color: T.accent }}>★ الأفضل</div>}
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: b.best ? T.accent : T.subtle,
-                  color: b.best ? "#fff" : T.muted,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, fontWeight: 700,
-                }}>{b.rank}</div>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar initials={b.initials} color={b.color} size={42} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>{b.skills}</div>
-                  <div style={{ marginTop: 3 }}>
-                    <Stars count={Math.floor(b.stars)} />
-                    <span style={{ fontSize: 11, color: T.muted, marginRight: 4 }}>{b.stars} ({b.reviews} تقييم)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ fontWeight: 700, fontSize: 15, color: b.best ? T.client : T.muted }}>{b.price} ر.س</div>
-              <div style={{ fontSize: 13 }}>{b.days} يوم</div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <Btn variant={b.best ? "client" : "ghost"} size="sm" onClick={() => onNav("detail")}>
-                  {b.best ? "قبول العرض" : "قبول العرض"}
-                </Btn>
-                <Btn variant="ghost" size="sm" onClick={() => onNav("messages")}>التواصل</Btn>
-              </div>
-            </div>
-          ))}
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-// ─── Screen 3: ملف المزود ────────────────────────────────────────────────────
-const ProviderProfile = ({ onNav }) => {
-  const skills = ["React Native","Flutter","Node.js","Firebase","AWS","MongoDB","Redux"];
-  const reviews = [
-    { name: "فهد العتيبي", company: "شركة الأفق التقنية", text: "عمل ممتاز، التزم بالوقت وتجاوز التوقعات. أنصح بالتعامل معه بشدة.", stars: 5, initials: "ف", color: T.client },
-    { name: "نورة السبيعي", company: "مؤسسة رؤية",        text: "مطور محترف جداً، تواصله ممتاز وفهم المتطلبات بدقة من أول مرة.",  stars: 5, initials: "ن", color: "#993C1D" },
-  ];
-
-  return (
-    <div style={{ background: T.bg, minHeight: "100vh" }}>
-      <TopBar role="مزود خدمة" initials="مح" accentColor={T.provider} />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 16 }}>
-          <div>
-            <Card>
-              <div style={{ padding: 20, display: "flex", gap: 16, alignItems: "flex-start" }}>
-                <Avatar initials="مح" color={T.provider} size={68} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700 }}>محمد الحربي</span>
-                    <Badge bg="#E1F5EE" color="#085041">موثّق ✓</Badge>
-                  </div>
-                  <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>مطوّر تطبيقات جوال · الرياض، المملكة العربية السعودية</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                    {skills.map(s => (
-                      <span key={s} style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, background: T.subtle, color: T.muted }}>{s}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div style={{ height: 1, background: T.border, margin: "0 16px" }} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", textAlign: "center", padding: "14px 16px" }}>
-                {[
-                  { val: "٤٧", label: "مشروع مكتمل", color: T.provider },
-                  { val: "٤.٨", label: "متوسط التقييم", color: T.accent },
-                  { val: "٩٧٪", label: "نسبة الإتمام",  color: T.client },
-                  { val: "٥ سنوات", label: "خبرة",       color: T.text },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: 11, color: T.muted }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader left="نبذة عني" />
-              <div style={{ padding: 16, lineHeight: 1.7, color: T.muted, fontSize: 13 }}>
-                مطوّر تطبيقات جوال متخصص في React Native وFlutter مع خبرة ٥ سنوات في تطوير تطبيقات iOS وAndroid. نفّذت مشاريع لأكثر من ٤٠ شركة في المملكة والخليج، بما فيها تطبيقات التجارة الإلكترونية والتوصيل والرعاية الصحية. أؤمن بأن الكود النظيف والتواصل المستمر مع العميل هما مفتاح نجاح أي مشروع.
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader left="التقييمات" right={<span style={{ color: T.muted, fontSize: 12 }}>٣٢ تقييم</span>} />
-              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-                {reviews.map((r, i) => (
-                  <div key={i} style={{ padding: 14, background: T.subtle, borderRadius: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                      <Avatar initials={r.initials} color={r.color} size={32} />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{r.name}</div>
-                        <div style={{ fontSize: 11, color: T.muted }}>{r.company}</div>
-                      </div>
-                      <div style={{ marginRight: "auto" }}><Stars count={r.stars} /></div>
-                    </div>
-                    <div style={{ fontSize: 13, lineHeight: 1.6, color: T.muted }}>"{r.text}"</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          <div>
-            <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, padding: 16, marginBottom: 16 }}>
-              <Btn variant="provider" fullWidth onClick={() => onNav("messages")}>
-                تواصل معي
-              </Btn>
-              <div style={{ height: 8 }} />
-              <Btn variant="ghost" fullWidth onClick={() => onNav("bids")}>
-                عرض على مناقصتي
-              </Btn>
-            </div>
-
-            <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 14 }}>تقييم الأداء</div>
-              {[
-                { label: "جودة العمل",      val: 4.9, pct: 98 },
-                { label: "الالتزام بالمواعيد", val: 4.7, pct: 94 },
-                { label: "التواصل",          val: 4.8, pct: 96 },
-                { label: "القيمة مقابل السعر",val: 4.6, pct: 92 },
-              ].map((r, i) => (
-                <div key={i} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: T.muted }}>{r.label}</span>
-                    <span style={{ fontWeight: 600 }}>{r.val}</span>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 3, background: T.subtle, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 3, background: T.provider, width: `${r.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, padding: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12 }}>معلومات الحساب</div>
-              <InfoRow label="عضو منذ" value="يناير ٢٠٢٣" />
-              <InfoRow label="آخر نشاط" value="اليوم" valueColor={T.success} />
-              <InfoRow label="وقت الرد" value="أقل من ساعة" valueColor={T.success} />
-              <InfoRow label="الموقع" value="الرياض" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Screen 4: الرسائل ────────────────────────────────────────────────────────
-const Messages = () => {
-  const [active, setActive] = useState(0);
-  const [input, setInput] = useState("");
-  const [chats, setChats] = useState([
-    {
-      name: "محمد الحربي", initials: "مح", color: T.provider,
-      status: "متصل الآن", unread: 2,
-      messages: [
-        { from: "them", text: "السلام عليكم، اطلعت على تفاصيل مناقصتك وأنا متحمس جداً للعمل على هذا المشروع.", time: "٩:١٥ ص" },
-        { from: "me",   text: "وعليكم السلام، يسعدنا ذلك. هل يمكنك مشاركة أمثلة على مشاريع مشابهة؟", time: "٩:٤٥ ص" },
-        { from: "them", text: "بالتأكيد! طورت ٣ تطبيقات توصيل خلال آخر سنتين. سأرسل لك روابط المشاريع والكود على GitHub الآن.", time: "١٠:٣٠ ص" },
-      ],
-    },
-    {
-      name: "سارة المطيري", initials: "س", color: "#993C1D",
-      status: "آخر ظهور: أمس", unread: 0,
-      messages: [
-        { from: "them", text: "مرحباً، اطلعت على المناقصة. هل لديك أي استفسار عن تقنياتي؟", time: "أمس" },
-      ],
-    },
-    {
-      name: "علي الشمري", initials: "ع", color: "#534AB7",
-      status: "آخر ظهور: ٢ يوم", unread: 0,
-      messages: [
-        { from: "them", text: "أهلاً، لدي خبرة مناسبة في هذا المجال. يمكنني البدء فورًا بعد التوقيع.", time: "٢٨ فبراير" },
-      ],
-    },
-  ]);
-
-  const send = () => {
-    if (!input.trim()) return;
-    const updated = [...chats];
-    updated[active].messages.push({ from: "me", text: input, time: "الآن" });
-    setChats(updated);
-    setInput("");
-  };
-
-  const chat = chats[active];
-
-  return (
-    <div style={{ background: T.bg, minHeight: "100vh" }}>
-      <TopBar role="عميل" initials="أح" accentColor={T.client} />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,2.2fr)", gap: 16 }}>
-          <Card style={{ marginBottom: 0 }}>
-            <CardHeader
-              left="المحادثات"
-              right={<Badge bg={T.subtle} color={T.client}>{chats.reduce((a, c) => a + c.unread, 0)}</Badge>}
-            />
-            {chats.map((c, i) => (
-              <div
-                key={i}
-                onClick={() => setActive(i)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "12px 16px",
-                  cursor: "pointer", transition: "background .12s",
-                  background: active === i ? "#EEF4FF" : T.surface,
-                  borderRight: active === i ? `3px solid ${T.client}` : "3px solid transparent",
-                  borderBottom: i < chats.length - 1 ? `1px solid rgba(27,58,107,0.05)` : "none",
-                }}
-              >
-                <div style={{ position: "relative" }}>
-                  <Avatar initials={c.initials} color={c.color} size={38} />
-                  {c.status === "متصل الآن" && (
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: T.success, border: "2px solid #fff", position: "absolute", bottom: 0, left: 0 }} />
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</div>
-                  <div style={{ fontSize: 11, color: T.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {c.messages[c.messages.length - 1]?.text}
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                  <span style={{ fontSize: 10, color: T.muted }}>{c.messages[c.messages.length - 1]?.time}</span>
-                  {c.unread > 0 && (
-                    <div style={{ width: 18, height: 18, borderRadius: "50%", background: T.client, color: "#fff", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{c.unread}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </Card>
-
-          <Card style={{ marginBottom: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ position: "relative" }}>
-                  <Avatar initials={chat.initials} color={chat.color} size={38} />
-                  {chat.status === "متصل الآن" && (
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: T.success, border: "2px solid #fff", position: "absolute", bottom: 0, left: 0 }} />
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{chat.name}</div>
-                  <div style={{ fontSize: 11, color: chat.status === "متصل الآن" ? T.success : T.muted }}>{chat.status}</div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Btn variant="ghost" size="sm">عرض الملف</Btn>
-                <Btn variant="client" size="sm">قبول العرض</Btn>
-              </div>
-            </div>
-
-            <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 4, minHeight: 280 }}>
-              {chat.messages.map((m, i) => (
-                <div key={i} style={{ marginBottom: 6 }}>
-                  <div style={{ fontSize: 10, color: T.muted, marginBottom: 3, textAlign: m.from === "me" ? "right" : "left" }}>
-                    {m.from === "them" ? chat.name : "أنت"} · {m.time}
-                  </div>
-                  <div style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start" }}>
-                    <div style={{
-                      padding: "10px 14px", borderRadius: 12, fontSize: 13, maxWidth: "70%", lineHeight: 1.55,
-                      background: m.from === "me" ? T.client : T.subtle,
-                      color: m.from === "me" ? "#fff" : T.text,
-                      borderBottomRightRadius: m.from === "me" ? 4 : 12,
-                      borderBottomLeftRadius:  m.from === "me" ? 12 : 4,
-                    }}>{m.text}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", gap: 8, padding: 12, borderTop: `1px solid ${T.border}`, background: T.surface }}>
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && send()}
-                placeholder="اكتب رسالتك..."
-                style={{
-                  flex: 1, padding: "9px 14px", borderRadius: 8,
-                  border: `1px solid ${T.border}`, background: T.subtle,
-                  fontSize: 13, color: T.text, direction: "rtl", outline: "none",
-                }}
-              />
-              <Btn variant="client" onClick={send}>إرسال</Btn>
-            </div>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── App Shell ────────────────────────────────────────────────────────────────
-export default function ManaqasatiApp() {
-  const [screen, setScreen] = useState("detail");
-
-  const navItems = [
-    { id: "detail",   label: "تفاصيل المناقصة" },
-    { id: "bids",     label: "إدارة العروض" },
-    { id: "profile",  label: "ملف المزود" },
-    { id: "messages", label: "الرسائل" },
-  ];
-
-  return (
-    <div style={{ fontFamily: "'Segoe UI', Tahoma, sans-serif", direction: "rtl" }}>
-      <div style={{
-        display: "flex", gap: 4, padding: "8px 16px",
-        background: T.primary, flexWrap: "wrap",
-      }}>
-        {navItems.map(n => (
-          <button
-            key={n.id}
-            onClick={() => setScreen(n.id)}
-            style={{
-              padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
-              border: "none", transition: "all .15s",
-              background: screen === n.id ? T.accent : "rgba(255,255,255,0.1)",
-              color: screen === n.id ? "#fff" : "rgba(255,255,255,0.75)",
-            }}
-          >{n.label}</button>
-        ))}
-      </div>
-
-      {screen === "detail"   && <TenderDetail  onNav={setScreen} />}
-      {screen === "bids"     && <BidsManager   onNav={setScreen} />}
-      {screen === "profile"  && <ProviderProfile onNav={setScreen} />}
-      {screen === "messages" && <Messages />}
-    </div>
-  );
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>مناقصة – لوحة العميل</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F8FC;--bg2:#f0f2f8;--bg3:#e8ecf4;
+  --br:#e2e6f0;--br2:#c9d0e0;
+  --t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--t4:#9aa3b8;
+  --primary:#1B3A6B;
+  --client:#2C5282;--client-l:#E6EEF8;--client-m:#b8cce8;
+  --accent:#D4973A;--accent-l:#FDF3E3;--accent-m:#f6c96b;
+  --success:#1D9E75;--success-l:#E1F5EE;--success-m:#9FE1CB;
+  --danger:#E24B4A;--danger-l:#FCEBEB;--danger-m:#F09595;
+  --warn:#BA7517;--warn-l:#FAEEDA;--warn-m:#FAC775;
+  --info:#185FA5;--info-l:#E6F1FB;--info-m:#85B7EB;
+  --white:#fff;--border:rgba(27,58,107,0.11);
+  --subtle:#EEF1F8;
 }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+
+/* ── SIDEBAR ── */
+.side{width:252px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:2px 0 24px rgba(27,58,107,0.08)}
+.side-head{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo{font-size:22px;font-weight:900;color:var(--primary);margin-bottom:12px}.logo span{color:var(--accent)}
+.user-pill{background:var(--client-l);border-radius:13px;padding:11px;display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:10px;background:var(--client);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.av-name{font-size:13px;font-weight:800;color:var(--t)}.av-role{font-size:10px;color:var(--client);font-weight:700;margin-top:1px}
+.nav{padding:12px 8px;flex:1;overflow-y:auto}
+.nav-sec{font-size:10px;font-weight:800;color:var(--t3);letter-spacing:.8px;padding:0 8px;margin:12px 0 4px;text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:.15s;position:relative}
+.ni:hover{background:var(--bg);color:var(--t)}
+.ni.on{background:var(--client-l);color:var(--client)}
+.ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.ni.on .ni-ic{background:var(--client)}.ni.on .ni-ic svg{stroke:#fff}.ni-ic svg{stroke:currentColor}
+.notif-dot{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.side-foot{padding:10px 16px;border-top:1px solid var(--border)}
+.logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif;transition:.15s}
+.logoutbtn:hover{background:var(--danger-l)}
+
+/* ── MAIN ── */
+.main{margin-right:252px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:15px;font-weight:800;color:var(--t)}
+.btn-new{background:var(--client);color:#fff;padding:7px 16px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:.15s}
+.btn-new:hover{background:var(--primary)}
+.content{padding:20px 24px;flex:1}
+.page{display:none}.page.on{display:block}
+
+/* ── MOBILE ── */
+.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.mob-logo{font-size:18px;font-weight:900;color:var(--primary)}.mob-logo span{color:var(--accent)}
+.mob-right{display:flex;align-items:center;gap:8px}
+.mob-notif{position:relative;background:none;border:none;cursor:pointer;padding:6px;color:var(--t3);display:flex}
+.mob-notif-badge{position:absolute;top:2px;left:2px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none}
+.mob-av{width:30px;height:30px;border-radius:8px;background:var(--client);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.mob-out{background:none;border:none;cursor:pointer;padding:5px;color:var(--t3);display:flex}
+.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:3px 0 calc(env(safe-area-inset-bottom,0px) + 3px)}
+.bnav-inner{display:flex}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:var(--t3);transition:.15s;position:relative}
+.bni .bic svg{stroke:currentColor;width:20px;height:20px}
+.bni .bt{font-size:9px;font-weight:700}
+.bni.on{color:var(--client)}
+.bni-badge{position:absolute;top:3px;right:calc(50% - 18px);background:var(--danger);color:#fff;font-size:9px;font-weight:800;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none}
+
+/* ── HERO ── */
+.hero{background:var(--primary);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
+.hero::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.04);top:-60px;left:-40px}
+.hero::after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(212,151,58,0.1);bottom:-40px;left:80px}
+.hero-t h2{font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;position:relative}
+.hero-t p{font-size:12px;color:rgba(255,255,255,0.6);position:relative}
+.hero-btn{background:var(--accent);color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:.15s;flex-shrink:0;position:relative}
+.hero-btn:hover{background:#c07e28;transform:translateY(-1px)}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:.2s;cursor:default}
+.sc:hover{border-color:var(--client-m);box-shadow:0 4px 16px rgba(44,82,130,0.08)}
+.sic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sic.cl{background:var(--client-l)}.sic.cl svg{stroke:var(--client)}
+.sic.wn{background:var(--warn-l)}.sic.wn svg{stroke:var(--warn)}
+.sic.inf{background:var(--info-l)}.sic.inf svg{stroke:var(--info)}
+.sic.sc2{background:var(--success-l)}.sic.sc2 svg{stroke:var(--success)}
+.sn{font-size:24px;font-weight:900;color:var(--t)}.st{font-size:11px;color:var(--t3);margin-top:2px;font-weight:600}
+
+/* ── CARD ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.card-body{padding:16px}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+.ch h3{font-size:14px;font-weight:800;color:var(--t)}
+.ch-link{font-size:12px;color:var(--client);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
+
+/* ── BREADCRUMB ── */
+.breadcrumb{display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px}
+.bc-link{color:var(--t3);cursor:pointer;background:none;border:none;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600}
+.bc-link:hover{color:var(--client)}
+.bc-sep{color:var(--t4)}
+.bc-cur{font-weight:700;color:var(--t)}
+
+/* ── STATUS BADGES ── */
+.tag{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.t-open{background:var(--success-l);color:#085041}
+.t-prog{background:var(--info-l);color:#0C447C}
+.t-done{background:var(--client-l);color:var(--primary)}
+.t-rev{background:var(--warn-l);color:#633806}
+
+/* ── REQUEST ITEMS ── */
+.ri{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;transition:.2s;cursor:pointer}
+.ri:last-child{margin-bottom:0}
+.ri:hover{border-color:var(--client-m);background:var(--client-l)}
+.ri-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px}
+.ri-title{font-size:14px;font-weight:800;flex:1;color:var(--t)}
+.ri-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.rm{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:3px;font-weight:500}
+.ri-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+/* ── BUTTONS ── */
+.btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:.15s;display:inline-flex;align-items:center;gap:5px}
+.bs-p{background:var(--client-l);color:var(--client)}.bs-p:hover{background:var(--client-m)}
+.bs-g{background:var(--success-l);color:var(--success)}.bs-g:hover{background:var(--success-m)}
+.bs-r{background:var(--danger-l);color:var(--danger)}.bs-r:hover{background:var(--danger-m)}
+.bs-a{background:var(--accent-l);color:var(--accent)}.bs-a:hover{background:var(--accent-m)}
+
+/* ── DETAIL HEADER ── */
+.detail-hd{background:var(--primary);border-radius:14px;padding:22px 24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.detail-hd::before{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.04);top:-50px;left:-20px}
+.detail-hd::after{content:'';position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(212,151,58,0.12);bottom:-20px;left:40px}
+.dh-title{font-size:19px;font-weight:900;margin-bottom:10px;position:relative}
+.dh-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;opacity:.85;position:relative}
+.dh-meta span{display:flex;align-items:center;gap:5px}
+.dh-desc{margin-top:14px;font-size:13px;line-height:1.75;opacity:.88;position:relative}
+
+/* ── DETAIL LAYOUT ── */
+.detail-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
+.detail-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.dtag{font-size:11px;padding:3px 10px;border-radius:6px;background:var(--subtle);color:var(--t3);font-weight:600}
+.detail-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.dn-item .dn-lbl{font-size:11px;color:var(--t3);margin-bottom:3px;font-weight:600}
+.dn-item .dn-val{font-size:14px;font-weight:800}
+
+/* ── SIDE CARD ── */
+.side-card{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:16px;margin-bottom:14px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(27,58,107,0.05);font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-lbl{color:var(--t3)}
+.info-val{font-weight:600;color:var(--t)}
+
+/* ── TIMELINE ── */
+.timeline{display:flex;flex-direction:column;gap:12px}
+.tl-item{display:flex;gap:10px;align-items:flex-start}
+.tl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tl-dot.done{background:var(--success)}
+.tl-dot.active{background:var(--accent)}
+.tl-dot.pending{background:var(--border)}
+.tl-label{font-size:13px;font-weight:600;color:var(--t)}
+.tl-label.pending{font-weight:400;color:var(--t3)}
+.tl-date{font-size:11px;color:var(--t3);margin-top:1px}
+
+/* ── TABS ── */
+.tab-btns{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab-btn{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);font-family:'Tajawal',sans-serif;background:var(--white);color:var(--t3);transition:.15s}
+.tab-btn.on{background:var(--client);color:#fff;border-color:var(--client)}
+.tab-btn:hover:not(.on){background:var(--subtle);color:var(--t)}
+.tab{display:none}.tab.on{display:block}
+
+/* ── BIDS ── */
+.bid-item{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:.2s;background:var(--white)}
+.bid-item:hover{border-color:var(--client-m)}
+.bid-item.accepted{border-color:var(--success);border-width:2px;background:var(--success-l)}
+.bid-item.rejected{opacity:.45}
+.bid-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+.bid-av{width:40px;height:40px;border-radius:50%;background:var(--client);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bid-name{font-size:14px;font-weight:800;color:var(--t)}
+.bid-price{font-size:20px;font-weight:900;color:var(--client)}
+.bid-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bid-note{font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:10px;padding:8px 12px;background:var(--subtle);border-radius:8px;font-style:italic}
+.bid-actions{display:flex;gap:8px;flex-wrap:wrap}
+.stars{color:var(--accent);font-size:13px;letter-spacing:1px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ff{grid-column:1/-1}
+.fg label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--t2)}
+.fg input,.fg textarea,.fg select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--t);outline:none;background:var(--white);transition:.15s}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--client);box-shadow:0 0 0 3px rgba(44,82,130,0.1)}
+.fg textarea{min-height:110px;resize:vertical}
+.form-btns{display:flex;gap:10px;margin-top:16px}
+.btn-p{padding:11px 22px;background:var(--client);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
+.btn-p:hover{background:var(--primary)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.btn-s{padding:11px 16px;background:var(--bg);color:var(--t3);border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ── CHAT ── */
+.chat-wrap{display:flex;flex-direction:column;height:420px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--bg);border-radius:10px;margin-bottom:10px}
+.msg-me{max-width:75%;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.55;background:var(--client);color:#fff;align-self:flex-end}
+.msg-other{max-width:75%;padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.55;background:var(--white);border:1px solid var(--border);align-self:flex-start;color:var(--t)}
+.msg-name{font-size:10px;font-weight:700;margin-bottom:3px;opacity:.7}
+.msg-time{font-size:10px;opacity:.55;margin-top:3px;text-align:left}
+.chat-input{display:flex;gap:8px}
+.chat-inp{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;transition:.15s;color:var(--t);background:var(--white)}
+.chat-inp:focus{border-color:var(--client);box-shadow:0 0 0 3px rgba(44,82,130,0.08)}
+.chat-send{padding:10px 18px;background:var(--client);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.chat-send:hover{background:var(--primary)}
+
+/* ── NOTIF ── */
+.notif-item{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);transition:.15s;cursor:pointer}
+.notif-item:hover{background:var(--bg)}
+.notif-item:last-child{border-bottom:none}
+.notif-item.unread{background:var(--client-l)}
+.notif-ic{width:38px;height:38px;border-radius:10px;background:var(--client-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+.notif-title{font-size:13px;font-weight:800;margin-bottom:3px;color:var(--t)}
+.notif-body{font-size:11px;color:var(--t3);line-height:1.5}
+.notif-time{font-size:10px;color:var(--t4);margin-top:3px}
+
+/* ── MODAL / OVERLAY ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,0.72);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
+.overlay.show{display:flex}
+.modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-drag{width:36px;height:4px;background:var(--br2);border-radius:2px;margin:12px auto 0}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:15px;font-weight:800;color:var(--t)}
+.modal-x{width:28px;height:28px;border-radius:7px;background:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t3)}
+.modal-body{padding:18px 20px;overflow-y:auto;flex:1}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--white)}
+
+/* ── AGREE ── */
+.agree-modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+.agree-hd{background:var(--primary);padding:16px 22px;text-align:center;flex-shrink:0;position:relative;overflow:hidden}
+.agree-hd::before{content:'';position:absolute;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.05);top:-45px;left:-25px}
+.agree-hd h2{color:#fff;font-size:16px;font-weight:900;margin-bottom:3px;position:relative}
+.agree-hd p{color:rgba(255,255,255,0.6);font-size:11px;position:relative}
+.agree-body{padding:18px 20px;overflow-y:auto;flex:1}
+.quran-box{background:var(--accent-l);border:2px solid var(--accent);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center}
+.quran-title{font-size:12px;font-weight:800;color:#92400e;margin-bottom:7px}
+.quran-text{font-size:13px;font-weight:700;color:#78350f;line-height:2.1}
+.quran-src{font-size:11px;color:#92400e;font-weight:700;margin-top:7px}
+.agree-sec{background:var(--bg);border:1.5px solid var(--client-m);border-radius:12px;padding:13px 15px;margin-bottom:10px}
+.agree-sec-t{font-size:12px;font-weight:900;color:var(--client);margin-bottom:7px}
+.agree-sec p{font-size:11px;color:var(--t);line-height:1.9;font-weight:500}
+.agree-sec strong{color:var(--client);font-weight:800}
+.note-sec{background:var(--danger-l);border:1.5px solid var(--danger-m);border-radius:12px;padding:13px 15px;margin-bottom:14px}
+.note-sec .agree-sec-t{color:var(--danger)}
+.note-sec p{font-size:11px;color:#7f1d1d;line-height:1.9}
+.agree-check{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--client-l);border-radius:11px;cursor:pointer;border:1px solid var(--client-m)}
+.agree-check input{width:17px;height:17px;cursor:pointer;margin-top:2px;accent-color:var(--client);flex-shrink:0}
+.agree-check label{font-size:11px;font-weight:700;cursor:pointer;line-height:1.7;color:var(--t)}
+.agree-foot{padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
+.btn-agree{flex:1;padding:13px;background:var(--client);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
+.btn-agree:hover{background:var(--primary)}.btn-agree:disabled{opacity:.4;cursor:not-allowed}
+.btn-back{padding:13px 16px;background:var(--bg);color:var(--t3);border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+
+/* ── STARS ── */
+.stars-pick{display:flex;gap:10px;justify-content:center;margin:14px 0}
+.sp{font-size:34px;cursor:pointer;opacity:.25;transition:.15s;filter:grayscale(1)}
+.sp.on{opacity:1;filter:none}
+
+/* ── EMPTY / ALERT ── */
+.empty{text-align:center;padding:40px 16px;color:var(--t3)}
+.empty-ic{width:52px;height:52px;background:var(--client-l);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-ic svg{stroke:var(--client);width:22px;height:22px}
+.empty h4{font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px}.empty p{font-size:12px;color:var(--t3)}
+.loading{text-align:center;padding:28px;color:var(--t3);font-size:13px}
+.alert{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:12px;display:none;border-width:1.5px;border-style:solid}
+.alert.ok{background:var(--success-l);color:#085041;border-color:var(--success-m);display:flex;align-items:center;gap:6px}
+.alert.err{background:var(--danger-l);color:#7f1d1d;border-color:var(--danger-m);display:flex;align-items:center;gap:6px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.detail-grid{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .side,.topbar{display:none}.main{margin-right:0}
+  .mob-head{display:flex}.bnav{display:block}
+  .content{padding:10px 12px;padding-bottom:86px}
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sc{padding:12px 14px;border-radius:12px}
+  .sic{width:38px;height:38px;border-radius:10px}
+  .sn{font-size:21px}
+  .hero{padding:16px;border-radius:14px;flex-direction:column;gap:12px;text-align:center}
+  .hero-t h2{font-size:15px}
+  .hero-btn{width:100%;padding:11px;justify-content:center}
+  .card{border-radius:12px}
+  .form-grid{grid-template-columns:1fr}.ff{grid-column:1}
+  .form-btns,.bid-actions,.ri-actions{flex-direction:column}
+  .btn-p,.btn-s,.btn-sm{width:100%;text-align:center;justify-content:center;padding:11px}
+  .chat-wrap{height:340px}
+  .detail-nums{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="side">
+  <div class="side-head">
+    <div class="logo">مناقصة<span>.</span></div>
+    <div class="user-pill">
+      <div class="av" id="userAv">ع</div>
+      <div><div class="av-name" id="userName">...</div><div class="av-role">عميل</div></div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-sec">القائمة</div>
+    <button class="ni on" onclick="show('home',this,'home')">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية
+    </button>
+    <button class="ni" onclick="show('requests',this,'requests')">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي
+    </button>
+    <button class="ni" onclick="showAgreement()">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>طلب جديد
+    </button>
+    <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات
+      <span class="notif-dot" id="notif-badge" style="display:none">0</span>
+    </button>
+  </div>
+  <div class="side-foot">
+    <button class="logoutbtn" onclick="logout()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE HEAD -->
+<div class="mob-head">
+  <div class="mob-logo">مناقصة<span>.</span></div>
+  <div class="mob-right">
+    <button class="mob-notif" onclick="show('notifs',null,'notifs')">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="mob-notif-badge" id="mob-notif-badge">0</span>
+    </button>
+    <div class="mob-av" id="mobAv">ع</div>
+    <button class="mob-out" onclick="logout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">الرئيسية</div>
+    <button class="btn-new" onclick="showAgreement()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>طلب جديد
+    </button>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="page on" id="page-home">
+      <div class="hero">
+        <div class="hero-t">
+          <h2 id="welcomeName">مرحباً 👋</h2>
+          <p>انشر طلبك واستقبل أفضل العروض من مزودي الخدمة</p>
+        </div>
+        <button class="hero-btn" onclick="showAgreement()">+ أنشر طلباً</button>
+      </div>
+      <div class="stat-grid">
+        <div class="sc"><div class="sic cl"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="sn" id="s-total">0</div><div class="st">طلباتي</div></div></div>
+        <div class="sc"><div class="sic wn"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn" id="s-open">0</div><div class="st">نشطة</div></div></div>
+        <div class="sc"><div class="sic inf"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div></div>
+        <div class="sc"><div class="sic sc2"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>آخر طلباتي</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل ←</button></div>
+        <div class="card-body"><div id="home-reqs"><div class="loading">جاري التحميل...</div></div></div>
+      </div>
+    </div>
+
+    <!-- REQUESTS -->
+    <div class="page" id="page-requests">
+      <div class="card">
+        <div class="ch"><h3>جميع طلباتي</h3></div>
+        <div class="card-body"><div id="all-reqs"><div class="loading">جاري التحميل...</div></div></div>
+      </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="page" id="page-detail">
+      <div class="breadcrumb">
+        <button class="bc-link" onclick="show('requests',null,'requests')">← طلباتي</button>
+        <span class="bc-sep">/</span>
+        <span class="bc-cur" id="bc-title">تفاصيل الطلب</span>
+      </div>
+      <div id="detail-head"></div>
+      <div class="tab-btns">
+        <button class="tab-btn on" onclick="showTab('bids',this)">العروض <span id="bids-count" style="font-size:11px;opacity:.7"></span></button>
+        <button class="tab-btn" onclick="showTab('chat',this)">المحادثات</button>
+        <button class="tab-btn" onclick="showTab('actions',this)">الإجراءات</button>
+      </div>
+      <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
+      <div class="tab" id="tab-chat"><div id="chat-list"><div class="loading">جاري التحميل...</div></div></div>
+      <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
+    </div>
+
+    <!-- NEW REQUEST -->
+    <div class="page" id="page-new">
+      <div class="card">
+        <div class="ch"><h3>نشر طلب جديد</h3></div>
+        <div class="card-body">
+          <div class="alert" id="new-msg"></div>
+          <div class="form-grid">
+            <div class="fg ff"><label>عنوان الطلب *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت 2 طن"></div>
+            <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"></select></div>
+            <div class="fg" id="other-wrap" style="display:none"><label>حدد التخصص</label><input id="n-other" type="text" placeholder="اكتب التخصص المطلوب"></div>
+            <div class="fg">
+              <label>المدينة *</label>
+              <div style="position:relative">
+                <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off" oninput="filterCities(this.value)" onfocus="showCityList()" onblur="setTimeout(()=>hideCityList(),200)">
+                <div id="cityDropdown" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 20px rgba(27,58,107,0.12);max-height:220px;overflow-y:auto;margin-top:4px"></div>
+              </div>
+            </div>
+            <div class="fg ff"><label>العنوان التفصيلي</label><input id="n-address" type="text" placeholder="الحي، الشارع، رقم المبنى..."></div>
+            <div class="fg"><label>الميزانية المتوقعة (ر.س)</label><input id="n-budget" type="number" placeholder="500" inputmode="numeric"></div>
+            <div class="fg"><label>تاريخ الانتهاء المطلوب</label><input id="n-deadline" type="date"></div>
+            <div class="fg ff">
+              <label>تفاصيل الطلب *</label>
+              <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:#fff">
+                <div style="display:flex;gap:4px;padding:7px 12px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
+                  <button type="button" onclick="fmtTxt('n-desc','h1')" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-weight:800;cursor:pointer;background:#fff;color:var(--t);font-family:inherit">H1</button>
+                  <button type="button" onclick="fmtTxt('n-desc','h2')" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--t2);font-family:inherit">H2</button>
+                  <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+                  <button type="button" onclick="fmtTxt('n-desc','bold')" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-weight:900;cursor:pointer;background:#fff;color:var(--t2);font-family:inherit">B</button>
+                  <button type="button" onclick="fmtTxt('n-desc','italic')" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-style:italic;cursor:pointer;background:#fff;color:var(--t2);font-family:inherit">I</button>
+                  <span style="font-size:10px;color:var(--t4);margin-right:4px">Enter = سطر جديد</span>
+                </div>
+                <textarea id="n-desc" placeholder="اشرح طلبك بالتفاصيل..." style="border:none;outline:none;width:100%;min-height:140px;padding:12px;font-family:inherit;font-size:13px;line-height:1.9;resize:vertical;color:var(--t);background:#fff;white-space:pre-wrap"></textarea>
+              </div>
+            </div>
+            <div class="fg ff">
+              <label>صورة المشروع <span style="font-size:11px;color:var(--t4);font-weight:400">(اختياري)</span></label>
+              <div id="imgUploadBox" onclick="document.getElementById('n-image').click()" style="border:2px dashed var(--br2);border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:.15s;background:var(--bg)" onmouseover="this.style.borderColor='var(--client)';this.style.background='var(--client-l)'" onmouseout="this.style.borderColor='var(--br2)';this.style.background='var(--bg)'">
+                <div id="imgPreviewWrap">
+                  <div style="font-size:30px;margin-bottom:8px">🖼️</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--t2)">اضغط لرفع صورة</div>
+                  <div style="font-size:11px;color:var(--t4);margin-top:3px">JPG، PNG — حجم أقصى 5MB</div>
+                </div>
+              </div>
+              <input type="file" id="n-image" accept="image/*" style="display:none" onchange="previewImage(this)">
+            </div>
+          </div>
+          <div class="form-btns">
+            <button class="btn-p" id="n-btn" onclick="submitReq()">نشر الطلب</button>
+            <button class="btn-s" onclick="show('home',null,'home')">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFS -->
+    <div class="page" id="page-notifs">
+      <div class="card">
+        <div class="ch"><h3>الإشعارات</h3><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button></div>
+        <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- BOTTOM NAV -->
+<div class="bnav"><div class="bnav-inner">
+  <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><div class="bic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div><span class="bt">الرئيسية</span></button>
+  <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">طلباتي</span></button>
+  <button class="bni" onclick="showAgreement()"><div class="bic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div><span class="bt">جديد</span></button>
+  <button class="bni" id="bn-notifs" onclick="show('notifs',null,'notifs')"><div class="bic" style="position:relative"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="bni-badge" id="bn-notif-badge">0</span></div><span class="bt">إشعارات</span></button>
+</div></div>
+
+<!-- AGREE OVERLAY -->
+<div class="overlay" id="agreeOverlay">
+  <div class="agree-modal">
+    <div class="agree-hd"><h2>📜 اتفاقية الرسوم</h2><p>يرجى قراءة الاتفاقية كاملةً قبل النشر</p></div>
+    <div class="agree-body">
+      <div class="quran-box">
+        <div class="quran-title">بسم الله الرحمن الرحيم</div>
+        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا ﴾</div>
+        <div class="quran-src">صدق الله العظيم</div>
+      </div>
+      <div class="agree-sec"><div class="agree-sec-t">أولًا: التعهد والالتزام</div><p>أُقرّ وأتعهد بدفع رسوم الموقع البالغة <strong>(1%) واحد بالمائة</strong> من إجمالي قيمة العقد المتفق عليه، ويشمل أي اتفاق تم عبر الموقع أو بسببه، سواء كان مكتوبًا أو شفهيًا.</p></div>
+      <div class="agree-sec"><div class="agree-sec-t">ثانيًا: استحقاق الرسوم وآلية السداد</div><p>تستحق الرسوم بمجرد اكتمال الاتفاق النهائي، ويلتزم طالب الخدمة بسدادها خلال <strong>(10) عشرة أيام</strong> من تاريخ الاكتمال.</p></div>
+      <div class="note-sec"><div class="agree-sec-t">ثالثًا: مسؤولية السداد</div><p>⚠️ هذه الرسوم التزام مالي واجب السداد، ولا تبرأ ذمتك إلا بعد السداد الكامل.</p></div>
+      <div class="agree-check"><input type="checkbox" id="agreeCheck" onchange="document.getElementById('agreeBtn').disabled=!this.checked"><label for="agreeCheck">أُقرّ بأنني اطلعت على اتفاقية الرسوم كاملةً وأتعهد بسداد رسوم المنصة <strong>(1%)</strong> خلال عشرة أيام من تاريخ اكتمال الاتفاق</label></div>
+    </div>
+    <div class="agree-foot">
+      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">✓ أوافق وأنشر طلبي</button>
+      <button class="btn-back" onclick="closeAgree()">رجوع</button>
+    </div>
+  </div>
+</div>
+
+<!-- RATE OVERLAY -->
+<div class="overlay" id="rateOverlay">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-head">
+      <h3>تقييم المزود</h3>
+      <button class="modal-x" onclick="document.getElementById('rateOverlay').className='overlay'"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="rate-msg"></div>
+      <p style="text-align:center;font-size:12px;color:var(--t3)">كيف كانت تجربتك مع المزود؟</p>
+      <div class="stars-pick"><span class="sp" onclick="setStar(1)">⭐</span><span class="sp" onclick="setStar(2)">⭐</span><span class="sp" onclick="setStar(3)">⭐</span><span class="sp" onclick="setStar(4)">⭐</span><span class="sp" onclick="setStar(5)">⭐</span></div>
+      <div class="fg"><label>تعليقك (اختياري)</label><textarea id="rate-comment" style="min-height:75px" placeholder="شارك تجربتك..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-p" id="rate-btn" onclick="submitRate()" style="flex:1">إرسال التقييم</button>
+      <button class="btn-s" onclick="document.getElementById('rateOverlay').className='overlay'">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API='https://manaqasati-production.up.railway.app';
+var user=JSON.parse(localStorage.getItem('user')||'{}');
+var token=localStorage.getItem('token')||'';
+
+const ALL_CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','الطائف','تبوك','بريدة','القصيم','خميس مشيط','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','سكاكا','عرعر','الباحة','الرس','رابغ','بيشة','وادي الدواسر','الزلفي','القريات','صبيا','محايل عسير','الدوادمي','المجمعة','شقراء','الأفلاج','الخرج','حوطة بني تميم','ضرما','عفيف','رنية','الليث','القنفذة','تربة','الأرطاوية','الحريق'];
+
+function filterCities(q){
+  var dd=document.getElementById('cityDropdown');if(!dd)return;
+  var f=q?ALL_CITIES.filter(c=>c.includes(q)):ALL_CITIES;
+  if(!f.length){dd.innerHTML='<div style="padding:10px;font-size:12px;color:var(--t4);text-align:center">لا توجد نتائج</div>';dd.style.display='block';return;}
+  dd.innerHTML=f.map(c=>`<div onclick="selectCity('${c}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:var(--t);border-bottom:1px solid var(--bg3);transition:.1s" onmouseover="this.style.background='var(--client-l)'" onmouseout="this.style.background=''">${c}</div>`).join('');
+  dd.style.display='block';
+}
+function selectCity(c){var i=document.getElementById('n-city');if(i)i.value=c;hideCityList();}
+function showCityList(){filterCities(document.getElementById('n-city')?.value||'');}
+function hideCityList(){var d=document.getElementById('cityDropdown');if(d)d.style.display='none';}
+
+if(!user.id){location.href='auth.html';}
+var selRating=0,selProviderId=null,selRequestId=null,curRequestId=null,curChatReceiver=null;
+var n=user.name||'العميل';
+document.getElementById('userName').textContent=n;
+document.getElementById('welcomeName').textContent='مرحباً، '+n.split(' ')[0]+' 👋';
+document.getElementById('userAv').textContent=n.charAt(0);
+document.getElementById('mobAv').textContent=n.charAt(0);
+
+var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
+var sel=document.getElementById('n-cat');
+CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
+
+function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}};}
+
+function show(pg,el,key){
+  document.querySelectorAll('.page').forEach(p=>p.className='page');
+  document.querySelectorAll('.ni').forEach(m=>m.className='ni');
+  document.querySelectorAll('.bni').forEach(m=>m.className='bni');
+  document.getElementById('page-'+pg).className='page on';
+  if(el)el.className='ni on';
+  if(key){var b=document.getElementById('bn-'+key);if(b)b.className='bni on';}
+  var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب'};
+  document.getElementById('pageTitle').textContent=t[pg]||'';
+  if(pg==='requests')loadReqs();
+  if(pg==='home')loadHome();
+  if(pg==='notifs')loadNotifs();
+  window.scrollTo(0,0);
+}
+function showTab(t,el){
+  document.querySelectorAll('.tab').forEach(x=>x.className='tab');
+  document.querySelectorAll('.tab-btn').forEach(x=>x.className='tab-btn');
+  document.getElementById('tab-'+t).className='tab on';
+  el.className='tab-btn on';
+  if(t==='bids')loadBids(curRequestId);
+  if(t==='chat')loadChat(curRequestId);
+  if(t==='actions')loadActions(curRequestId);
+}
+function logout(){localStorage.clear();location.href='auth.html';}
+function showAgreement(){document.getElementById('agreeCheck').checked=false;document.getElementById('agreeBtn').disabled=true;document.getElementById('agreeOverlay').className='overlay show';}
+function closeAgree(){document.getElementById('agreeOverlay').className='overlay';}
+function acceptAgree(){closeAgree();show('new',null,'new');}
+
+function stTag(s){
+  if(s==='open')return '<span class="tag t-open">نشط</span>';
+  if(s==='in_progress')return '<span class="tag t-prog">قيد التنفيذ</span>';
+  if(s==='done')return '<span class="tag t-done">مكتمل</span>';
+  return '<span class="tag t-rev">مراجعة</span>';
+}
+function starsStr(n){var s='';for(var i=1;i<=5;i++)s+=i<=n?'★':'☆';return s;}
+function timeAgo(d){var diff=(new Date()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
+function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
+function errH(){return '<div class="empty"><div class="empty-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h4>تعذر التحميل</h4></div>';}
+
+function riCard(r,actions){
+  var bids=r.bid_count>0?'<span class="rm"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+r.bid_count+' عروض</span>':'';
+  var act=actions?'<div class="ri-actions"><button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>التفاصيل والعروض</button></div>':'';
+  return '<div class="ri" onclick="openDetail('+r.id+',event)"><div class="ri-top"><div class="ri-title">'+r.title+'</div>'+stTag(r.status)+'</div><div class="ri-meta">'+(r.city?'<span class="rm"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+r.city+'</span>':'')+(r.category?'<span class="rm">'+r.category+'</span>':'')+(r.budget_max?'<span class="rm">'+r.budget_max+' ر.س</span>':'')+bids+'<span class="rm">'+timeAgo(r.created_at)+'</span></div>'+act+'</div>';
+}
+
+function loadHome(){
+  fetch(API+'/api/requests/my',hdr()).then(r=>r.json()).then(all=>{
+    document.getElementById('s-total').textContent=all.length;
+    document.getElementById('s-open').textContent=all.filter(r=>r.status==='open').length;
+    document.getElementById('s-prog').textContent=all.filter(r=>r.status==='in_progress').length;
+    document.getElementById('s-done').textContent=all.filter(r=>r.status==='done').length;
+    document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(r=>riCard(r,false)).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
+  }).catch(()=>{document.getElementById('home-reqs').innerHTML=errH();});
+  loadNotifCount();
+}
+function loadReqs(){
+  document.getElementById('all-reqs').innerHTML='<div class="loading">جاري التحميل...</div>';
+  fetch(API+'/api/requests/my',hdr()).then(r=>r.json()).then(all=>{
+    document.getElementById('all-reqs').innerHTML=all.length?all.map(r=>riCard(r,true)).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
+  }).catch(()=>{document.getElementById('all-reqs').innerHTML=errH();});
+}
+function openDetail(id,e){
+  if(e)e.stopPropagation();
+  curRequestId=id;curChatReceiver=null;
+  document.querySelectorAll('.tab-btn').forEach((x,i)=>x.className=i===0?'tab-btn on':'tab-btn');
+  document.querySelectorAll('.tab').forEach((x,i)=>x.className=i===0?'tab on':'tab');
+  fetch(API+'/api/requests/'+id).then(r=>r.json()).then(req=>{
+    document.getElementById('bc-title').textContent=req.title;
+    var dl=req.deadline?'<span><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+req.deadline+'</span>':'';
+    document.getElementById('detail-head').innerHTML=
+      '<div class="detail-hd">'+
+        '<div class="dh-title">'+req.title+'</div>'+
+        '<div class="dh-meta">'+
+          (req.city?'<span><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+req.city+'</span>':'')+
+          (req.category?'<span>'+req.category+'</span>':'')+
+          (req.budget_max?'<span>'+req.budget_max+' ر.س</span>':'')+
+          dl+stTag(req.status)+
+        '</div>'+
+        (req.description?'<div class="dh-desc">'+req.description+'</div>':'')+
+      '</div>';
+    loadBids(id);
+  });
+  show('detail',null,null);
+}
+
+function loadBids(id){
+  document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
+  fetch(API+'/api/requests/'+id+'/bids').then(r=>r.json()).then(bids=>{
+    document.getElementById('bids-count').textContent='('+bids.length+')';
+    if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
+    document.getElementById('bids-list').innerHTML=bids.map(b=>{
+      var isAcc=b.status==='accepted',isRej=b.status==='rejected';
+      var rating=b.avg_rating>0?'<span class="stars">'+starsStr(Math.round(b.avg_rating))+'</span> '+b.avg_rating+' ('+b.review_count+')':'جديد';
+      var acts=!isAcc&&!isRej?
+        '<div class="bid-actions">'+
+          '<button class="btn-sm bs-g" onclick="acceptBid('+b.id+','+id+')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول</button>'+
+          '<button class="btn-sm bs-r" onclick="rejectBid('+b.id+','+id+')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>رفض</button>'+
+          '<button class="btn-sm bs-p" onclick="startChat('+id+','+b.provider_id+',\''+b.provider_name+'\')">💬 محادثة</button>'+
+        '</div>':'';
+      return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'+
+        '<div class="bid-top">'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<div class="bid-av">'+b.provider_name.charAt(0)+'</div>'+
+            '<div>'+
+              '<div class="bid-name">'+b.provider_name+(isAcc?' ✅':'')+(isRej?' ❌':'')+'</div>'+
+              '<div style="font-size:11px;color:var(--t3)">'+(b.provider_city?'📍'+b.provider_city:'')+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div class="bid-price">'+b.price+' ر.س</div>'+
+        '</div>'+
+        '<div class="bid-meta">'+
+          '<span class="rm">⏱ '+b.days+' أيام</span>'+
+          '<span class="rm">'+rating+'</span>'+
+        '</div>'+
+        (b.note?'<div class="bid-note">"'+b.note+'"</div>':'')+
+        acts+
+      '</div>';
+    }).join('');
+  }).catch(()=>{document.getElementById('bids-list').innerHTML=errH();});
+}
+
+function loadChat(id){
+  var wrap=document.getElementById('chat-list');
+  wrap.innerHTML='<div class="loading">جاري التحميل...</div>';
+  if(!curChatReceiver){wrap.innerHTML=emptyH('اختر مزوداً','اذهب لتبويب العروض واضغط محادثة');return;}
+  renderChat(id);
+}
+function startChat(reqId,providerId,providerName){
+  curChatReceiver={id:providerId,name:providerName};
+  document.querySelectorAll('.tab-btn')[1].click();
+}
+function renderChat(id){
+  fetch(API+'/api/messages/'+id,hdr()).then(r=>r.json()).then(msgs=>{
+    var h='<div class="chat-wrap"><div class="chat-msgs" id="msgs-box">';
+    if(!msgs.length)h+='<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة 👋</div>';
+    msgs.forEach(m=>{
+      var isMe=m.sender_id==user.id;
+      h+='<div class="'+(isMe?'msg-me':'msg-other')+'">'+(!isMe?'<div class="msg-name">'+m.sender_name+'</div>':'')+m.content+'<div class="msg-time">'+timeAgo(m.created_at)+'</div></div>';
+    });
+    h+='</div><div class="chat-input"><input class="chat-inp" id="chat-inp" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\')sendMsg('+id+')"><button class="chat-send" onclick="sendMsg('+id+')">إرسال</button></div></div>';
+    document.getElementById('chat-list').innerHTML=h;
+    var box=document.getElementById('msgs-box');if(box)box.scrollTop=box.scrollHeight;
+  });
+}
+function sendMsg(reqId){
+  var inp=document.getElementById('chat-inp');
+  if(!inp||!inp.value.trim()||!curChatReceiver)return;
+  var content=inp.value.trim();inp.value='';
+  fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:reqId,receiver_id:curChatReceiver.id,content})},hdr())).then(()=>renderChat(reqId));
+}
+function loadActions(id){
+  fetch(API+'/api/requests/'+id).then(r=>r.json()).then(req=>{
+    var h='';
+    if(req.status==='in_progress'){
+      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div><div class="card-body">'+
+        '<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:12px;margin-bottom:10px;font-size:13px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم الإنجاز — أكمل الطلب</button>'+
+        '<button class="btn-sm bs-a" onclick="openRate('+id+','+req.accepted_bid_id+')" style="width:100%;padding:12px;font-size:13px">⭐ تقييم المزود</button>'+
+        '</div></div>';
+    }
+    if(req.status==='done'){h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:14px;color:var(--success);font-weight:800;padding:10px 0">✅ الطلب مكتمل بنجاح</p></div></div>';}
+    if(req.status==='open'){h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:13px;color:var(--t3);padding:10px 0">انتظر العروض ثم اقبل المناسب</p></div></div>';}
+    document.getElementById('actions-wrap').innerHTML=h||emptyH('لا يوجد إجراءات','');
+  });
+}
+function acceptBid(bidId,reqId){
+  fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr())).then(()=>openDetail(reqId,null));
+}
+function rejectBid(bidId,reqId){
+  fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(()=>loadBids(reqId));
+}
+function markDone(id){
+  fetch(API+'/api/requests/'+id+'/status',Object.assign({method:'PUT',body:JSON.stringify({status:'done'})},hdr())).then(()=>openDetail(id,null));
+}
+function openRate(reqId,bidId){
+  selRequestId=reqId;selRating=0;
+  document.querySelectorAll('.sp').forEach(s=>s.className='sp');
+  document.getElementById('rate-comment').value='';
+  document.getElementById('rate-msg').className='alert';
+  document.getElementById('rateOverlay').className='overlay show';
+  if(bidId){fetch(API+'/api/requests/'+reqId+'/bids').then(r=>r.json()).then(bids=>{var ab=bids.find(b=>b.status==='accepted');if(ab)selProviderId=ab.provider_id;});}
+}
+function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach((s,i)=>s.className=i<n?'sp on':'sp');}
+function submitRate(){
+  if(!selRating){var e=document.getElementById('rate-msg');e.textContent='يرجى اختيار تقييم';e.className='alert err';return;}
+  var btn=document.getElementById('rate-btn');btn.disabled=true;btn.textContent='جاري الإرسال...';
+  fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:document.getElementById('rate-comment').value,type:'client_to_provider'})},hdr()))
+  .then(r=>r.json().then(d=>({ok:r.ok,d})))
+  .then(r=>{
+    if(r.ok){var e=document.getElementById('rate-msg');e.textContent='✓ شكراً على تقييمك';e.className='alert ok';setTimeout(()=>{document.getElementById('rateOverlay').className='overlay';},1500);}
+    else{var e=document.getElementById('rate-msg');e.textContent=r.d.message||'حدث خطأ';e.className='alert err';}
+    btn.disabled=false;btn.textContent='إرسال التقييم';
+  });
+}
+function loadNotifCount(){
+  fetch(API+'/api/notifications',hdr()).then(r=>r.json()).then(ns=>{
+    var u=ns.filter(n=>!n.is_read).length;
+    ['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(id=>{
+      var el=document.getElementById(id);if(!el)return;
+      el.textContent=u;el.style.display=u>0?'flex':'none';
+    });
+  }).catch(()=>{});
+}
+function loadNotifs(){
+  document.getElementById('notifs-list').innerHTML='<div class="loading">جاري التحميل...</div>';
+  fetch(API+'/api/notifications',hdr()).then(r=>r.json()).then(ns=>{
+    if(!ns.length){document.getElementById('notifs-list').innerHTML=emptyH('لا يوجد إشعارات','');return;}
+    document.getElementById('notifs-list').innerHTML=ns.map(n=>
+      '<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="handleNotif('+n.ref_id+',\''+n.type+'\')">'+
+        '<div class="notif-ic">'+n.title.charAt(0)+'</div>'+
+        '<div><div class="notif-title">'+n.title+'</div><div class="notif-body">'+n.body+'</div><div class="notif-time">'+timeAgo(n.created_at)+'</div></div>'+
+      '</div>'
+    ).join('');
+    markAllRead();
+  }).catch(()=>{document.getElementById('notifs-list').innerHTML=errH();});
+}
+function handleNotif(refId,type){if(refId&&(type==='bid'||type==='message'))openDetail(refId,null);}
+function markAllRead(){
+  fetch(API+'/api/notifications/read',Object.assign({method:'PUT'},hdr())).then(()=>{
+    ['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(id=>{var el=document.getElementById(id);if(el)el.style.display='none';});
+  });
+}
+function previewImage(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>5*1024*1024){alert('حجم الصورة يجب أن يكون أقل من 5MB');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('imgPreviewWrap').innerHTML=
+      `<img src="${e.target.result}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;display:block">
+       <div style="font-size:11px;color:var(--success);margin-top:7px;font-weight:700">✓ ${file.name}</div>
+       <div style="font-size:10px;color:var(--t4);margin-top:2px">اضغط لتغييرها</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+async function uploadImageAndGetUrl(file){
+  return new Promise(resolve=>{const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>resolve(null);r.readAsDataURL(file);});
+}
+function fmtTxt(id,type){
+  var el=document.getElementById(id);if(!el)return;
+  var s=el.selectionStart,e2=el.selectionEnd,sel=el.value.substring(s,e2),before=el.value.substring(0,s),after=el.value.substring(e2),insert='';
+  if(type==='bold')insert='**'+(sel||'نص عريض')+'**';
+  else if(type==='italic')insert='_'+(sel||'نص مائل')+'_';
+  else if(type==='h1')insert='# '+(sel||'العنوان الرئيسي')+'\n';
+  else if(type==='h2')insert='## '+(sel||'عنوان فرعي')+'\n';
+  el.value=before+insert+after;el.focus();el.setSelectionRange(before.length,before.length+insert.length);
+}
+function submitReq(){
+  var title=document.getElementById('n-title').value.trim();
+  var desc=document.getElementById('n-desc').value.trim();
+  var city=document.getElementById('n-city').value.trim();
+  var cat=document.getElementById('n-cat').value;
+  if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}
+  if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}
+  var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';
+  const imgFile=document.getElementById('n-image')?.files?.[0]||null;
+  const doSubmit=imageUrl=>{
+    const body={title,description:desc,category:cat,city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};
+    if(imageUrl)body.image_url=imageUrl;
+    fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
+    .then(r=>r.json().then(d=>({ok:r.ok,d})))
+    .then(r=>{
+      if(r.ok){
+        showNewMsg('✓ تم نشر طلبك بنجاح!','ok');
+        ['n-title','n-desc','n-city','n-address','n-budget','n-other'].forEach(id=>{var el=document.getElementById(id);if(el)el.value='';});
+        document.getElementById('n-deadline').value='';document.getElementById('n-image').value='';
+        document.getElementById('imgPreviewWrap').innerHTML='<div style="font-size:30px;margin-bottom:8px">🖼️</div><div style="font-size:13px;font-weight:600;color:var(--t2)">اضغط لرفع صورة</div><div style="font-size:11px;color:var(--t4);margin-top:3px">JPG، PNG — حجم أقصى 5MB</div>';
+        setTimeout(()=>show('requests',null,'requests'),1600);
+      }else{showNewMsg(r.d.message||'حدث خطأ','err');}
+      btn.disabled=false;btn.textContent='نشر الطلب';
+    }).catch(()=>{showNewMsg('تعذر الاتصال','err');btn.disabled=false;btn.textContent='نشر الطلب';});
+  };
+  if(imgFile){uploadImageAndGetUrl(imgFile).then(doSubmit);}else{doSubmit(null);}
+}
+function showNewMsg(t,c){var e=document.getElementById('new-msg');e.innerHTML=(c==='ok'?'✓ ':'⚠ ')+t;e.className='alert '+c;setTimeout(()=>e.className='alert',5000);}
+setInterval(loadNotifCount,30000);
+loadHome();
+</script>
+</body>
+</html>
