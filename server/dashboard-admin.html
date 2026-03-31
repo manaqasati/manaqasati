@@ -651,22 +651,30 @@ function loadReviews(){
     if(!revs.length){document.getElementById('rev-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--t3)">لا يوجد تقييمات</td></tr>';return;}
     document.getElementById('rev-tbody').innerHTML=revs.map(function(rv){
       var starsHtml=''; for(var i=1;i<=5;i++) starsHtml+='<span style="color:'+(i<=rv.rating?'var(--accent)':'#ddd')+'">★</span>';
+      var commentHtml = rv.comment ?
+        '<div style="max-width:200px;font-size:12px;color:var(--t);line-height:1.5">'+rv.comment.substring(0,100)+(rv.comment.length>100?'...':'')+'</div>' :
+        '<span style="color:var(--t4);font-size:11px">بدون تعليق</span>';
       return '<tr>' +
-        '<td>'+rv.reviewer_name+'</td>' +
-        '<td>'+rv.reviewed_name+'</td>' +
-        '<td>'+starsHtml+'</td>' +
-        '<td style="font-size:12px;color:var(--t3);max-width:180px">'+(rv.comment?rv.comment.substring(0,80)+'...':'—')+'</td>' +
+        '<td><div style="font-size:13px;font-weight:700">'+rv.reviewer_name+'</div></td>' +
+        '<td><div style="font-size:13px;font-weight:700;color:var(--admin)">'+rv.reviewed_name+'</div></td>' +
+        '<td><div>'+starsHtml+'</div><div style="font-size:10px;color:var(--t4)">'+rv.rating+'/5</div></td>' +
+        '<td>'+commentHtml+'</td>' +
         '<td style="font-size:11px;color:var(--t3)">'+(rv.request_title||'—')+'</td>' +
         '<td style="font-size:11px;color:var(--t4)">'+ago(rv.created_at)+'</td>' +
-        '<td><button class="btn-sm bs-r" onclick="deleteReview('+rv.id+')">حذف</button></td>' +
+        '<td>' +
+          '<button class="btn-sm bs-r" onclick="deleteReview('+rv.id+',\''+rv.reviewed_name+'\')">🗑 حذف</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
   }).catch(function(){});
 }
 
-function deleteReview(id){
-  if(!confirm('هل تريد حذف هذا التقييم؟')) return;
-  apiDel('/api/admin/reviews/'+id).then(function(){loadReviews();}).catch(function(){alert('حدث خطأ');});
+function deleteReview(id, provName){
+  if(!confirm('حذف هذا التقييم لـ '+provName+'؟\n\nهذا الإجراء لا يمكن التراجع عنه.')) return;
+  apiDel('/api/admin/reviews/'+id).then(function(){
+    loadReviews();
+    loadHome(); // تحديث الإحصائيات
+  }).catch(function(){alert('حدث خطأ في الحذف');});
 }
 
 // ── DISPUTES ──
