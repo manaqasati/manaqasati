@@ -172,6 +172,9 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS address TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS image_url TEXT`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS images TEXT[]`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS main_image_index INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_categories TEXT[]`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS accepted_bid_id INTEGER`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_provider_id INTEGER`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`,
@@ -957,6 +960,22 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
         );
       }
     }
+    // ✅ إرسال إشعار تقييم للعميل بعد الاكتمال
+    try {
+      const clientData = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
+      if (clientData.rows[0]?.email) {
+        setTimeout(async () => {
+          await sendEmail(clientData.rows[0].email, `⭐ قيّم تجربتك مع المشروع: ${req2.title}`,
+            emailTemplate('مشروعك اكتمل! كيف كانت التجربة؟ ⭐',
+              `<p>مرحباً <strong>${clientData.rows[0].name}</strong>،</p>
+               <p>اكتمل مشروعك <strong>"${req2.title}"</strong> بنجاح! 🎉</p>
+               <p>رأيك مهم — ساعد العملاء الآخرين باختيار أفضل المزودين من خلال تقييمك.</p>`,
+              '⭐ تقييم المزود الآن', `${SITE_URL}/dashboard-client.html`
+            )
+          ).catch(()=>{});
+        }, 3600000); // بعد ساعة
+      }
+    } catch(e) {}
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1164,6 +1183,8 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     const req2 = r.rows[0];
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.client_id]);
     if (newStatus === 'open') {
+      // إشعار المزودين المهتمين عند النشر
+      notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك', `طلبك "${req2.title}" تمت مراجعته ونُشر الآن`, 'approved', req2.id);
       if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `✅ تمت الموافقة على طلبك — ${req2.title}`,
@@ -1328,3 +1349,75 @@ app.get('/api/client/disputes', auth, async (req, res) => {
 });
 
 initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running on port', process.env.PORT||3000)));
+
+// ── صور متعددة للطلب ──
+app.put('/api/requests/:id/images', auth, async (req, res) => {
+  try {
+    const { images, main_image_index } = req.body;
+    if (!Array.isArray(images)) return res.status(400).json({ message: 'images يجب أن يكون مصفوفة' });
+    const mainIdx = parseInt(main_image_index) || 0;
+    const mainImg = images[mainIdx] || images[0] || null;
+    await pool.query(
+      'UPDATE requests SET images=$1, main_image_index=$2, image_url=$3 WHERE id=$4 AND client_id=$5',
+      [images, mainIdx, mainImg, req.params.id, req.user.id]
+    );
+    res.json({ ok: true, images, main_image_index: mainIdx, image_url: mainImg });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── تحديث تفضيلات الإشعارات للمزود ──
+app.put('/api/provider/notify-prefs', auth, async (req, res) => {
+  try {
+    const { notify_categories } = req.body;
+    await pool.query('UPDATE users SET notify_categories=$1 WHERE id=$2', [notify_categories || [], req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── إشعار للمزودين المهتمين عند نشر طلب جديد ──
+async function notifyInterestedProviders(reqId, title, category) {
+  try {
+    if (!category) return;
+    const providers = await pool.query(
+      `SELECT id, name, email FROM users WHERE role='provider' AND is_active=TRUE AND $1=ANY(notify_categories)`,
+      [category]
+    );
+    for (const prov of providers.rows) {
+      await notify(prov.id, '🔔 مناقصة جديدة تهمك', `نُشرت مناقصة جديدة: "${title}" في تخصصك (${category})`, 'bid', reqId);
+      if (prov.email) {
+        await sendEmail(prov.email, `🔔 مناقصة جديدة في تخصصك: ${title}`,
+          emailTemplate('مناقصة جديدة تهمك! 🔔',
+            `<p>مرحباً <strong>${prov.name}</strong>،</p>
+             <p>نُشرت مناقصة جديدة في مجال <strong>${category}</strong>:</p>
+             <div class="highlight"><strong>${title}</strong></div>
+             <p>قدّم عرضك الآن قبل أن يسبقك الآخرون!</p>`,
+            '💼 تقديم عرض', `${SITE_URL}/dashboard-provider.html`
+          )
+        );
+      }
+    }
+  } catch(e) { console.error('notifyInterestedProviders error:', e.message); }
+}
+
+// ── إشعار تقييم بعد اكتمال المشروع ──
+app.post('/api/requests/:id/request-review', auth, async (req, res) => {
+  try {
+    const reqData = await pool.query('SELECT * FROM requests WHERE id=$1', [req.params.id]);
+    if (!reqData.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const r = reqData.rows[0];
+    await notify(r.client_id, '⭐ قيّم تجربتك', `مشروعك "${r.title}" اكتمل! شاركنا تقييمك للمزود`, 'review', r.id);
+    const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [r.client_id]);
+    if (client.rows[0]?.email) {
+      await sendEmail(client.rows[0].email, `⭐ قيّم تجربتك مع المشروع: ${r.title}`,
+        emailTemplate('مشروعك اكتمل! كيف كانت التجربة؟ ⭐',
+          `<p>مرحباً <strong>${client.rows[0].name}</strong>،</p>
+           <p>اكتمل مشروعك <strong>"${r.title}"</strong> بنجاح! 🎉</p>
+           <p>رأيك مهم جداً — ساعد العملاء الآخرين باختيار أفضل المزودين من خلال تقييمك.</p>
+           <p>التقييم لا يأخذ أكثر من دقيقة!</p>`,
+          '⭐ تقييم المزود الآن', `${SITE_URL}/dashboard-client.html`
+        )
+      );
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
