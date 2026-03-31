@@ -485,6 +485,58 @@ app.put('/api/bids/:id', auth, async (req, res) => {
 });
 
 // ✅ قبول العرض مع إيميل للمزود والعميل
+// ✅ تعديل العرض من المزود بعد القبول (سعر + أيام + ملاحظة تعديل)
+app.put('/api/bids/:id/revise', auth, async (req, res) => {
+  try {
+    const { price, days, revision_note } = req.body;
+    if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
+    if (!revision_note?.trim()) return res.status(400).json({ message: 'يرجى كتابة سبب التعديل' });
+
+    const bid = await pool.query(
+      'SELECT b.*, r.client_id, r.title, r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1 AND b.provider_id=$2',
+      [req.params.id, req.user.id]
+    );
+    if (!bid.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    const b = bid.rows[0];
+    if (b.status !== 'accepted') return res.status(400).json({ message: 'يمكن التعديل فقط على العروض المقبولة' });
+
+    const oldPrice = b.price, oldDays = b.days;
+    await pool.query('UPDATE bids SET price=$1, days=$2, note=$3 WHERE id=$4', [price, days, revision_note, req.params.id]);
+
+    // إشعار للعميل
+    await notify(b.client_id, '✏️ تعديل على عرض مقبول',
+      `عدّل ${b.provider_name || 'المزود'} عرضه على "${b.title}": السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم. السبب: ${revision_note}`,
+      'bid', b.req_id
+    );
+
+    // إشعار للأدمن
+    const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
+    for (const a of admins.rows) {
+      await notify(a.id, '✏️ تعديل عرض مقبول',
+        `تعديل على "${b.title}": ${oldPrice}→${price} ر.س، ${oldDays}→${days} يوم. السبب: ${revision_note}`, 'bid', b.req_id);
+    }
+
+    // إيميل للعميل
+    const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
+    if (client.rows[0]?.email) {
+      await sendEmail(client.rows[0].email, `✏️ تعديل على عرض مشروع: ${b.title}`,
+        emailTemplate(`تعديل على عرض مقبول`,
+          `<p>مرحباً <strong>${client.rows[0].name}</strong>،</p>
+           <p>قام المزود بتعديل عرضه على مشروع <strong>"${b.title}"</strong>:</p>
+           <div class="highlight">
+             السعر: <strong>${oldPrice} → ${price} ر.س</strong><br>
+             مدة التنفيذ: <strong>${oldDays} → ${days} يوم</strong><br>
+             السبب: ${revision_note}
+           </div>
+           <p>يمكنك مراجعة التعديل والتواصل مع المزود من لوحة التحكم.</p>`,
+          '📋 مراجعة المشروع', `${SITE_URL}/dashboard-client.html`
+        )
+      );
+    }
+    res.json({ message: 'تم تعديل العرض بنجاح', price, days });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.put('/api/bids/:id/accept', auth, async (req, res) => {
   try {
     const bid = await pool.query(
