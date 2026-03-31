@@ -299,6 +299,30 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
   </div>
 </div>
 
+<!-- EDIT REQUEST MODAL -->
+<div class="overlay" id="editReqOv">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-head"><h3>✏️ تعديل المشروع</h3><button class="modal-x" onclick="closeEditReqModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="alert" id="editreq-alert"></div>
+      <div class="fg"><label>عنوان المشروع</label><input id="er-title" type="text"></div>
+      <div class="fg"><label>الوصف</label><textarea id="er-desc" style="min-height:80px"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label>الميزانية (ر.س)</label><input id="er-budget" type="number"></div>
+        <div class="fg"><label>الموعد النهائي</label><input id="er-deadline" type="date"></div>
+        <div class="fg"><label>المدينة</label><input id="er-city" type="text"></div>
+        <div class="fg"><label>التصنيف</label><input id="er-cat" type="text"></div>
+      </div>
+      <div class="fg"><label>ملاحظات المدير</label><textarea id="er-notes" placeholder="ملاحظات داخلية أو للعميل..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-p" onclick="saveEditReq()" style="flex:1">حفظ التعديلات</button>
+      <button class="btn-s" onclick="closeEditReqModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <!-- REVIEW REQUEST MODAL -->
 <div class="overlay" id="reviewOv">
   <div class="modal">
@@ -365,7 +389,7 @@ var user = JSON.parse(localStorage.getItem('user') || '{}');
 var token = localStorage.getItem('token') || '';
 if (!user.id || user.role !== 'admin') location.href = 'auth.html';
 
-var curReviewReqId = null, curBadgeProvId = null, curDisputeId = null;
+var curReviewReqId = null, curBadgeProvId = null, curDisputeId = null, curEditReqId = null;
 var allRequests = [], allUsers = [];
 
 function hdr() { return { headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token } }; }
@@ -453,6 +477,7 @@ function renderRequests(reqs){
   document.getElementById('req-tbody').innerHTML=reqs.map(function(r){
     var acts='<div style="display:flex;gap:4px;flex-wrap:wrap">';
     if(r.status==='pending_review') acts+='<button class="btn-sm bs-g" onclick="openReviewModal('+r.id+')">مراجعة</button>';
+    acts+='<button class="btn-sm bs-p" onclick="openEditReqModal('+r.id+')">✏️ تعديل</button>';
     if(r.status==='in_progress') acts+='<button class="btn-sm bs-a" onclick="completeRequest('+r.id+')">إتمام</button>';
     acts+='<button class="btn-sm bs-r" onclick="deleteRequest('+r.id+')">حذف</button></div>';
     return '<tr><td><strong>'+r.title+'</strong><div style="font-size:10px;color:var(--t4)">'+(r.project_number||'')+'</div></td><td>'+(r.client_name||'—')+'</td><td>'+(r.city||'—')+'</td><td>'+(r.bid_count||0)+'</td><td>'+stTag(r.status)+'</td><td>'+acts+'</td></tr>';
@@ -463,6 +488,39 @@ function filterRequests(){
   var q=document.getElementById('req-search').value.toLowerCase();
   var filtered=allRequests.filter(function(r){return r.title.toLowerCase().includes(q)||(r.client_name||'').toLowerCase().includes(q)||(r.city||'').toLowerCase().includes(q);});
   renderRequests(filtered);
+}
+
+function openEditReqModal(id){
+  curEditReqId=id;
+  document.getElementById('editreq-alert').className='alert';
+  apiGet('/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
+    document.getElementById('er-title').value=req.title||'';
+    document.getElementById('er-desc').value=req.description||'';
+    document.getElementById('er-budget').value=req.budget_max||'';
+    document.getElementById('er-deadline').value=req.deadline?req.deadline.substring(0,10):'';
+    document.getElementById('er-city').value=req.city||'';
+    document.getElementById('er-cat').value=req.category||'';
+    document.getElementById('er-notes').value=req.admin_notes||'';
+    document.getElementById('editReqOv').className='overlay show';
+  });
+}
+function closeEditReqModal(){document.getElementById('editReqOv').className='overlay';}
+function saveEditReq(){
+  var body={
+    title:document.getElementById('er-title').value.trim(),
+    description:document.getElementById('er-desc').value.trim(),
+    budget_max:parseFloat(document.getElementById('er-budget').value)||null,
+    deadline:document.getElementById('er-deadline').value||null,
+    city:document.getElementById('er-city').value.trim(),
+    category:document.getElementById('er-cat').value.trim(),
+    admin_notes:document.getElementById('er-notes').value.trim()
+  };
+  if(!body.title){showAlert('editreq-alert','العنوان مطلوب','err');return;}
+  apiPut('/api/admin/requests/'+curEditReqId,body)
+    .then(function(r){return r.json();}).then(function(){
+      showAlert('editreq-alert','✓ تم حفظ التعديلات','ok');
+      setTimeout(function(){closeEditReqModal();loadRequests();},1200);
+    }).catch(function(){showAlert('editreq-alert','حدث خطأ','err');});
 }
 
 function openReviewModal(id){
