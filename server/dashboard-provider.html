@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>مناقصة – لوحة العميل</title>
+<title>مناقصة – لوحة المزود</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#F7F8FC;--bg2:#f0f2f8;--bg3:#e8ecf4;--br:#e2e6f0;--br2:#c9d0e0;
   --t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--t4:#9aa3b8;
-  --primary:#1B3A6B;--client:#2C5282;--client-l:#E6EEF8;--client-m:#b8cce8;
+  --primary:#1B3A6B;
+  --prov:#1D6A5A;--prov-l:#E1F5EE;--prov-m:#9FE1CB;--prov-d:#0F4A3D;
   --accent:#D4973A;--accent-l:#FDF3E3;--accent-m:#f6c96b;
   --success:#1D9E75;--success-l:#E1F5EE;--success-m:#9FE1CB;
   --danger:#E24B4A;--danger-l:#FCEBEB;--danger-m:#F09595;
@@ -22,143 +23,102 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 .side{width:252px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:2px 0 24px rgba(27,58,107,.08)}
 .side-head{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
 .logo{font-size:22px;font-weight:900;color:var(--primary);margin-bottom:12px}.logo span{color:var(--accent)}
-.user-pill{background:var(--client-l);border-radius:13px;padding:11px;display:flex;align-items:center;gap:10px}
-.av{width:36px;height:36px;border-radius:10px;background:var(--client);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.av-name{font-size:13px;font-weight:800;color:var(--t)}.av-role{font-size:10px;color:var(--client);font-weight:700;margin-top:1px}
+.user-pill{background:var(--prov-l);border-radius:13px;padding:11px;display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:10px;background:var(--prov);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.av-name{font-size:13px;font-weight:800;color:var(--t)}.av-role{font-size:10px;color:var(--prov);font-weight:700;margin-top:1px}
 .nav{padding:12px 8px;flex:1;overflow-y:auto}
 .nav-sec{display:block;font-size:10px;font-weight:800;color:var(--t3);letter-spacing:.8px;padding:0 8px;margin:12px 0 4px}
 .ni{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:.15s;position:relative}
-.ni:hover{background:var(--bg);color:var(--t)}.ni.on{background:var(--client-l);color:var(--client)}
+.ni:hover{background:var(--bg);color:var(--t)}.ni.on{background:var(--prov-l);color:var(--prov)}
 .ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ni.on .ni-ic{background:var(--client)}.ni.on .ni-ic svg{stroke:#fff}
+.ni.on .ni-ic{background:var(--prov)}.ni.on .ni-ic svg{stroke:#fff}
 .ni-ic svg{stroke:currentColor;width:15px;height:15px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nbadge{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .side-foot{padding:10px 16px;border-top:1px solid var(--border)}
 .logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif;transition:.15s}
 .logoutbtn:hover{background:var(--danger-l)}
 .main{margin-right:252px;min-height:100vh;display:flex;flex-direction:column}
-.topbar{background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--prov);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .topbar-title{font-size:15px;font-weight:800;color:var(--t)}
-.btn-new{background:var(--client);color:#fff;padding:7px 16px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:.15s}
-.btn-new:hover{background:var(--primary)}
 .content{padding:20px 24px;flex:1}.page{display:none}.page.on{display:block}
-.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--prov);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .mob-logo{font-size:18px;font-weight:900;color:var(--primary)}.mob-logo span{color:var(--accent)}
 .mob-right{display:flex;align-items:center;gap:8px}
 .mob-btn{position:relative;background:none;border:none;cursor:pointer;padding:6px;color:var(--t3);display:flex}
-.mob-av{width:30px;height:30px;border-radius:8px;background:var(--client);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.mob-av{width:30px;height:30px;border-radius:8px;background:var(--prov);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:3px 0 calc(env(safe-area-inset-bottom,0px)+3px)}
 .bnav-inner{display:flex}
 .bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:var(--t3);transition:.15s}
 .bni svg{stroke:currentColor;width:20px;height:20px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.bni .bt{font-size:9px;font-weight:700}.bni.on{color:var(--client)}
-.hero{background:var(--primary);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
+.bni .bt{font-size:9px;font-weight:700}.bni.on{color:var(--prov)}
+/* HERO */
+.hero{background:var(--prov);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
 .hero::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px}
 .hero::after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(212,151,58,.1);bottom:-40px;left:80px}
 .hero-t h2{font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;position:relative}
 .hero-t p{font-size:12px;color:rgba(255,255,255,.6);position:relative}
 .hero-btn{background:var(--accent);color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:.15s;flex-shrink:0;position:relative}
 .hero-btn:hover{background:#c07e28}
+/* STATS */
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .sc{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:.2s}
-.sc:hover{border-color:var(--client-m);box-shadow:0 4px 16px rgba(44,82,130,.08)}
+.sc:hover{border-color:var(--prov-m);box-shadow:0 4px 16px rgba(29,106,90,.08)}
 .sic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sic svg{width:19px;height:19px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.sic.cl{background:var(--client-l)}.sic.cl svg{stroke:var(--client)}
+.sic.pv{background:var(--prov-l)}.sic.pv svg{stroke:var(--prov)}
 .sic.wn{background:var(--warn-l)}.sic.wn svg{stroke:var(--warn)}
 .sic.inf{background:var(--info-l)}.sic.inf svg{stroke:var(--info)}
 .sic.sc2{background:var(--success-l)}.sic.sc2 svg{stroke:var(--success)}
 .sn{font-size:24px;font-weight:900;color:var(--t)}.st{font-size:11px;color:var(--t3);margin-top:2px;font-weight:600}
+/* CARD */
 .card{background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
 .card-body{padding:16px}
 .ch{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
 .ch h3{font-size:14px;font-weight:800;color:var(--t)}
-.ch-link{font-size:12px;color:var(--client);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
+.ch-link{font-size:12px;color:var(--prov);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
+/* TAGS */
 .tag{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
-.t-open{background:var(--success-l);color:#085041}.t-prog{background:var(--info-l);color:#0C447C}
-.t-done{background:var(--client-l);color:var(--primary)}.t-rev{background:var(--warn-l);color:#633806}
-.ri{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;transition:.2s;cursor:pointer}
-.ri:last-child{margin-bottom:0}.ri:hover{border-color:var(--client-m);background:var(--client-l)}
-.ri-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px}
-.ri-title{font-size:14px;font-weight:800;flex:1;color:var(--t)}
-.ri-meta{display:flex;gap:6px;flex-wrap:wrap}.rm{font-size:11px;color:var(--t3);font-weight:500}
-.btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:.15s;display:inline-flex;align-items:center;gap:5px}
-.bs-p{background:var(--client-l);color:var(--client)}.bs-p:hover{background:var(--client-m)}
-.bs-g{background:var(--success-l);color:var(--success)}.bs-g:hover{background:var(--success-m)}
-.bs-r{background:var(--danger-l);color:var(--danger)}.bs-r:hover{background:var(--danger-m)}
-.bs-a{background:var(--accent-l);color:var(--accent)}.bs-a:hover{background:var(--accent-m)}
-.bs-dark{background:var(--primary);color:#fff}.bs-dark:hover{background:#0f2347}
-.detail-hd{background:var(--primary);border-radius:14px;padding:22px 24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
-.detail-hd::before{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-20px}
-.dh-title{font-size:19px;font-weight:900;margin-bottom:10px;position:relative}
-.dh-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;opacity:.85;position:relative}
-.dh-meta span{display:flex;align-items:center;gap:5px}
-.dh-desc{margin-top:14px;font-size:13px;line-height:1.75;opacity:.88;position:relative}
-/* بطاقة المزود الاحترافية */
-.bid-card{border:1px solid var(--border);border-radius:14px;margin-bottom:12px;background:var(--white);overflow:hidden;transition:.2s}
-.bid-card:hover{border-color:var(--client-m);box-shadow:0 4px 20px rgba(44,82,130,.08)}
-.bid-card.accepted{border-color:var(--success);border-width:2px}
-.bid-card.rejected{opacity:.4}
-.bid-card-top{padding:16px;display:flex;gap:14px;align-items:flex-start}
-.bid-provider-av{width:52px;height:52px;border-radius:50%;color:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:.15s}
-.bid-provider-av:hover{transform:scale(1.05)}
-.bid-provider-info{flex:1}
-.bid-provider-name{font-size:15px;font-weight:800;color:var(--t);cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:4px}
-.bid-provider-name:hover{color:var(--client)}
-.bid-stars{display:flex;align-items:center;gap:4px;margin-bottom:6px}
-.bid-stars .s{color:var(--accent);font-size:14px;letter-spacing:1px}
-.bid-stars .rv{font-size:11px;color:var(--t3);font-weight:600}
-.bid-specs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.bid-spec{padding:4px 10px;background:var(--subtle);border-radius:6px;font-size:11px;font-weight:600;color:var(--t2)}
-.bid-price-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border)}
-.bid-price{font-size:22px;font-weight:900;color:var(--client)}
-.bid-price span{font-size:12px;font-weight:600;color:var(--t3);margin-right:4px}
-.bid-days{font-size:12px;color:var(--t3);font-weight:600}
-.bid-note{padding:10px 16px;font-size:12px;color:var(--t3);line-height:1.7;font-style:italic;border-top:1px solid var(--border);background:var(--bg2)}
-.bid-actions-row{padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border)}
-.bid-accepted-banner{padding:10px 16px;background:var(--success-l);border-top:1px solid var(--success-m);display:flex;align-items:center;gap:8px}
-.bid-accepted-txt{font-size:12px;font-weight:700;color:#085041}
-/* ملف المزود */
-.prov-profile-hd{background:var(--primary);border-radius:14px;padding:24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
-.prov-profile-hd::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px}
-.prov-av-big{width:64px;height:64px;border-radius:50%;color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:14px;position:relative}
-.prov-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;position:relative}
-.prov-city{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:12px;position:relative}
-.prov-stats{display:flex;gap:20px;flex-wrap:wrap;position:relative}
-.prov-stat{text-align:center}
-.prov-stat-n{font-size:20px;font-weight:900;color:#fff}
-.prov-stat-l{font-size:10px;color:rgba(255,255,255,.6);font-weight:600}
-.prov-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;position:relative}
-.prov-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,255,255,.15);color:#fff}
-.review-item{padding:14px;border-bottom:1px solid var(--border)}
-.review-item:last-child{border-bottom:none}
-.review-stars{color:var(--accent);font-size:13px;letter-spacing:1px;margin-bottom:5px}
-.review-text{font-size:13px;color:var(--t);line-height:1.7;margin-bottom:5px}
-.review-by{font-size:11px;color:var(--t3)}
-/* المحادثة */
+.t-pend{background:var(--warn-l);color:#633806}.t-acc{background:var(--success-l);color:#085041}
+.t-rej{background:var(--danger-l);color:#7f1d1d}.t-prog{background:var(--info-l);color:#0C447C}
+.t-done{background:var(--prov-l);color:var(--prov-d)}.t-rev{background:var(--warn-l);color:#633806}
+/* TENDER CARD */
+.tender-card{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;background:var(--white);transition:.2s;cursor:pointer}
+.tender-card:hover{border-color:var(--prov-m);box-shadow:0 4px 16px rgba(29,106,90,.08)}
+.tender-title{font-size:14px;font-weight:800;color:var(--t);margin-bottom:6px}
+.tender-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tm{font-size:11px;color:var(--t3);font-weight:500}
+.tender-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+/* BID STATUS CARDS */
+.bid-status-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--white);transition:.2s}
+.bid-status-card.accepted{border-color:var(--success);border-width:2px;background:var(--success-l)}
+.bid-status-card.rejected{opacity:.5}
+.bid-status-card.pending{border-color:var(--warn-m)}
+/* SUBMIT BID FORM */
+.bid-form{background:var(--prov-l);border:1.5px solid var(--prov-m);border-radius:14px;padding:16px;margin-top:14px}
+.bid-form h4{font-size:14px;font-weight:800;color:var(--prov);margin-bottom:14px}
+/* CHAT */
 .chat-box{display:flex;flex-direction:column;height:400px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.chat-hd{padding:12px 16px;background:var(--primary);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.chat-hd{padding:12px 16px;background:var(--prov);display:flex;align-items:center;gap:10px;flex-shrink:0}
 .chat-hd-av{width:34px;height:34px;border-radius:50%;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .chat-hd-name{font-size:13px;font-weight:700;color:#fff}
-.chat-hd-status{font-size:10px;color:rgba(255,255,255,.6)}
 .chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-.bubble-me{max-width:72%;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.6;background:var(--client);color:#fff;align-self:flex-end}
+.bubble-me{max-width:72%;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.6;background:var(--prov);color:#fff;align-self:flex-end}
 .bubble-other{max-width:72%;padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.6;background:var(--white);border:1px solid var(--border);align-self:flex-start;color:var(--t)}
 .bubble-sys{align-self:center;background:var(--success-l);border:1px solid var(--success-m);color:#085041;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:700;text-align:center;max-width:90%}
 .msg-time{font-size:9px;opacity:.5;margin-top:3px}
 .msg-sname{font-size:10px;font-weight:700;margin-bottom:3px;opacity:.6}
 .chat-inp-row{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--white);flex-shrink:0}
 .chat-inp{flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;transition:.15s;color:var(--t)}
-.chat-inp:focus{border-color:var(--client);box-shadow:0 0 0 3px rgba(44,82,130,.08)}
-.chat-send{padding:9px 18px;background:var(--client);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
-.chat-send:hover{background:var(--primary)}
-/* صفحة الرسائل */
+.chat-inp:focus{border-color:var(--prov);box-shadow:0 0 0 3px rgba(29,106,90,.08)}
+.chat-send{padding:9px 18px;background:var(--prov);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.chat-send:hover{background:var(--prov-d)}
+/* MSG PAGE */
 .msg-layout{display:grid;grid-template-columns:270px 1fr;height:calc(100vh - 130px);min-height:500px;background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden}
 .msg-sidebar{border-left:1px solid var(--border);display:flex;flex-direction:column}
 .msg-sidebar-hd{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;color:var(--t);flex-shrink:0}
 .msg-threads{flex:1;overflow-y:auto}
 .thread{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:.15s}
-.thread:hover{background:var(--bg)}.thread.on{background:var(--client-l);border-right:3px solid var(--client)}
+.thread:hover{background:var(--bg)}.thread.on{background:var(--prov-l);border-right:3px solid var(--prov)}
 .thread-av{width:38px;height:38px;border-radius:50%;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .thread-nm{font-size:13px;font-weight:700;color:var(--t)}
 .thread-sub{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
@@ -171,63 +131,53 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 /* TABS */
 .tab-btns{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .tab-btn{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);font-family:'Tajawal',sans-serif;background:var(--white);color:var(--t3);transition:.15s}
-.tab-btn.on{background:var(--client);color:#fff;border-color:var(--client)}
+.tab-btn.on{background:var(--prov);color:#fff;border-color:var(--prov)}
 .tab-btn:hover:not(.on){background:var(--subtle);color:var(--t)}
 .tab{display:none}.tab.on{display:block}
 /* FORM */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ff{grid-column:1/-1}
 .fg label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--t2)}
 .fg input,.fg textarea,.fg select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--t);outline:none;background:var(--white);transition:.15s}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--client);box-shadow:0 0 0 3px rgba(44,82,130,.1)}
-.fg textarea{min-height:110px;resize:vertical}
-.form-btns{display:flex;gap:10px;margin-top:16px}
-.btn-p{padding:11px 22px;background:var(--client);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
-.btn-p:hover{background:var(--primary)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--prov);box-shadow:0 0 0 3px rgba(29,106,90,.1)}
+.fg textarea{min-height:100px;resize:vertical}
+.form-btns{display:flex;gap:10px;margin-top:14px}
+.btn-p{padding:11px 22px;background:var(--prov);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
+.btn-p:hover{background:var(--prov-d)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
 .btn-s{padding:11px 16px;background:var(--bg);color:var(--t3);border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:.15s;display:inline-flex;align-items:center;gap:5px}
+.bs-p{background:var(--prov-l);color:var(--prov)}.bs-p:hover{background:var(--prov-m)}
+.bs-g{background:var(--success-l);color:var(--success)}.bs-g:hover{background:var(--success-m)}
+.bs-r{background:var(--danger-l);color:var(--danger)}.bs-r:hover{background:var(--danger-m)}
+.bs-a{background:var(--accent-l);color:var(--accent)}.bs-a:hover{background:var(--accent-m)}
 /* NOTIF */
 .notif-item{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);transition:.15s;cursor:pointer}
-.notif-item:hover{background:var(--bg)}.notif-item.unread{background:var(--client-l)}
-.notif-ic{width:38px;height:38px;border-radius:10px;background:var(--client-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+.notif-item:hover{background:var(--bg)}.notif-item.unread{background:var(--prov-l)}
+.notif-ic{width:38px;height:38px;border-radius:10px;background:var(--prov-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
 .notif-title{font-size:13px;font-weight:800;margin-bottom:3px;color:var(--t)}
 .notif-body{font-size:11px;color:var(--t3);line-height:1.5}.notif-time{font-size:10px;color:var(--t4);margin-top:3px}
+/* PROFILE */
+.profile-hd{background:var(--prov);border-radius:14px;padding:24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.profile-hd::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px}
+.profile-av{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative}
+.profile-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;position:relative}
+.profile-city{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:12px;position:relative}
+.profile-stats{display:flex;gap:20px;flex-wrap:wrap;position:relative}
+.pstat{text-align:center}
+.pstat-n{font-size:20px;font-weight:900;color:#fff}
+.pstat-l{font-size:10px;color:rgba(255,255,255,.6)}
 /* OVERLAY */
 .overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.72);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
 .overlay.show{display:flex}
-.modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column}
+.modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column}
 .modal-drag{width:36px;height:4px;background:var(--br2);border-radius:2px;margin:12px auto 0}
 .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border)}
 .modal-head h3{font-size:15px;font-weight:800;color:var(--t)}
 .modal-x{width:28px;height:28px;border-radius:7px;background:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:14px}
 .modal-body{padding:18px 20px;overflow-y:auto;flex:1}
 .modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--white)}
-.agree-modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
-.agree-hd{background:var(--primary);padding:16px 22px;text-align:center;flex-shrink:0;position:relative;overflow:hidden}
-.agree-hd::before{content:'';position:absolute;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.05);top:-45px;left:-25px}
-.agree-hd h2{color:#fff;font-size:16px;font-weight:900;margin-bottom:3px;position:relative}
-.agree-hd p{color:rgba(255,255,255,.6);font-size:11px;position:relative}
-.agree-body{padding:18px 20px;overflow-y:auto;flex:1}
-.quran-box{background:var(--accent-l);border:2px solid var(--accent);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center}
-.quran-title{font-size:12px;font-weight:800;color:#92400e;margin-bottom:7px}
-.quran-text{font-size:13px;font-weight:700;color:#78350f;line-height:2.1}
-.quran-src{font-size:11px;color:#92400e;font-weight:700;margin-top:7px}
-.agree-sec{background:var(--bg);border:1.5px solid var(--client-m);border-radius:12px;padding:13px 15px;margin-bottom:10px}
-.agree-sec-t{font-size:12px;font-weight:900;color:var(--client);margin-bottom:7px}
-.agree-sec p{font-size:11px;color:var(--t);line-height:1.9;font-weight:500}
-.agree-sec strong{color:var(--client);font-weight:800}
-.note-sec{background:var(--danger-l);border:1.5px solid var(--danger-m);border-radius:12px;padding:13px 15px;margin-bottom:14px}
-.note-sec .agree-sec-t{color:var(--danger)}.note-sec p{font-size:11px;color:#7f1d1d;line-height:1.9}
-.agree-check{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--client-l);border-radius:11px;cursor:pointer;border:1px solid var(--client-m)}
-.agree-check input{width:17px;height:17px;cursor:pointer;margin-top:2px;accent-color:var(--client);flex-shrink:0}
-.agree-check label{font-size:11px;font-weight:700;cursor:pointer;line-height:1.7;color:var(--t)}
-.agree-foot{padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
-.btn-agree{flex:1;padding:13px;background:var(--client);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
-.btn-agree:hover{background:var(--primary)}.btn-agree:disabled{opacity:.4;cursor:not-allowed}
-.btn-back{padding:13px 16px;background:var(--bg);color:var(--t3);border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
-.stars-pick{display:flex;gap:10px;justify-content:center;margin:14px 0}
-.sp{font-size:34px;cursor:pointer;opacity:.25;transition:.15s;filter:grayscale(1)}.sp.on{opacity:1;filter:none}
 .empty{text-align:center;padding:40px 16px;color:var(--t3)}
-.empty-ic{width:52px;height:52px;background:var(--client-l);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.empty-ic svg{stroke:var(--client);width:22px;height:22px;fill:none;stroke-width:2}
+.empty-ic{width:52px;height:52px;background:var(--prov-l);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-ic svg{stroke:var(--prov);width:22px;height:22px;fill:none;stroke-width:2}
 .empty h4{font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px}.empty p{font-size:12px;color:var(--t3)}
 .loading{text-align:center;padding:28px;color:var(--t3);font-size:13px}
 .alert{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:12px;display:none;border-width:1.5px;border-style:solid}
@@ -242,10 +192,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
   .hero{padding:16px;flex-direction:column;gap:12px;text-align:center}
   .hero-btn{width:100%;padding:11px;justify-content:center}
   .form-grid{grid-template-columns:1fr}.ff{grid-column:1}
-  .form-btns{flex-direction:column}
-  .btn-p,.btn-s,.btn-sm{width:100%;text-align:center;justify-content:center;padding:11px}
+  .form-btns{flex-direction:column}.btn-p,.btn-s,.btn-sm{width:100%;justify-content:center;padding:11px}
   .msg-layout{grid-template-columns:1fr;height:auto}.msg-sidebar{display:none}
-  .bid-card-top{flex-direction:column}
 }
 </style>
 </head>
@@ -255,8 +203,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
   <div class="side-head">
     <div class="logo">مناقصة<span>.</span></div>
     <div class="user-pill">
-      <div class="av" id="userAv">ع</div>
-      <div><div class="av-name" id="userName">...</div><div class="av-role">عميل</div></div>
+      <div class="av" id="userAv">م</div>
+      <div><div class="av-name" id="userName">...</div><div class="av-role">مزود خدمة</div></div>
     </div>
   </div>
   <div class="nav">
@@ -264,11 +212,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
     <button class="ni on" id="ni-home" onclick="show('home',this,'home')">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية
     </button>
-    <button class="ni" id="ni-requests" onclick="show('requests',this,'requests')">
-      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي
+    <button class="ni" id="ni-browse" onclick="show('browse',this,'browse')">
+      <div class="ni-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>تصفح المناقصات
     </button>
-    <button class="ni" onclick="showAgreement()">
-      <div class="ni-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>طلب جديد
+    <button class="ni" id="ni-bids" onclick="show('bids',this,'bids')">
+      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>عروضي
+      <span class="nbadge" id="bids-badge" style="display:none">0</span>
     </button>
     <button class="ni" id="ni-messages" onclick="show('messages',this,'messages')">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>الرسائل
@@ -277,6 +226,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
     <button class="ni" id="ni-notifs" onclick="show('notifs',this,'notifs')">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات
       <span class="nbadge" id="notif-badge" style="display:none">0</span>
+    </button>
+    <button class="ni" id="ni-profile" onclick="show('profile',this,'profile')">
+      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي
     </button>
   </div>
   <div class="side-foot">
@@ -289,13 +241,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 <div class="mob-head">
   <div class="mob-logo">مناقصة<span>.</span></div>
   <div class="mob-right">
-    <button class="mob-btn" onclick="show('messages',null,'messages')">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    </button>
-    <button class="mob-btn" onclick="show('notifs',null,'notifs')">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-    </button>
-    <div class="mob-av" id="mobAv">ع</div>
+    <button class="mob-btn" onclick="show('messages',null,'messages')"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+    <button class="mob-btn" onclick="show('notifs',null,'notifs')"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></button>
+    <div class="mob-av" id="mobAv">م</div>
     <button class="mob-btn" onclick="logout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
   </div>
 </div>
@@ -303,67 +251,66 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 <div class="main">
   <div class="topbar">
     <div class="topbar-title" id="pageTitle">الرئيسية</div>
-    <button class="btn-new" onclick="showAgreement()">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>طلب جديد
-    </button>
   </div>
   <div class="content">
 
     <!-- HOME -->
     <div class="page on" id="page-home">
       <div class="hero">
-        <div class="hero-t"><h2 id="welcomeName">مرحباً 👋</h2><p>انشر طلبك واستقبل أفضل العروض</p></div>
-        <button class="hero-btn" onclick="showAgreement()">+ أنشر طلباً</button>
+        <div class="hero-t"><h2 id="welcomeName">مرحباً 👋</h2><p>تصفح المناقصات وقدّم عروضك الآن</p></div>
+        <button class="hero-btn" onclick="show('browse',null,'browse')">🔍 تصفح المناقصات</button>
       </div>
       <div class="stat-grid">
-        <div class="sc"><div class="sic cl"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="sn" id="s-total">0</div><div class="st">طلباتي</div></div></div>
-        <div class="sc"><div class="sic wn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn" id="s-open">0</div><div class="st">نشطة</div></div></div>
-        <div class="sc"><div class="sic inf"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div></div>
-        <div class="sc"><div class="sic sc2"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
+        <div class="sc"><div class="sic pv"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><div><div class="sn" id="s-total">0</div><div class="st">عروضي</div></div></div>
+        <div class="sc"><div class="sic wn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn" id="s-pend">0</div><div class="st">بانتظار</div></div></div>
+        <div class="sc"><div class="sic sc2"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-acc">0</div><div class="st">مقبولة</div></div></div>
+        <div class="sc"><div class="sic inf"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
+      </div>
+      <!-- مشاريع قيد التنفيذ -->
+      <div class="card" id="active-projects-card" style="display:none">
+        <div class="ch"><h3>🔥 مشاريع قيد التنفيذ</h3></div>
+        <div class="card-body"><div id="active-projects"></div></div>
       </div>
       <div class="card">
-        <div class="ch"><h3>آخر طلباتي</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل ←</button></div>
-        <div class="card-body"><div id="home-reqs"><div class="loading">جاري التحميل...</div></div></div>
+        <div class="ch"><h3>آخر العروض المقدمة</h3><button class="ch-link" onclick="show('bids',null,'bids')">عرض الكل ←</button></div>
+        <div class="card-body"><div id="home-bids"><div class="loading">جاري التحميل...</div></div></div>
       </div>
     </div>
 
-    <!-- REQUESTS -->
-    <div class="page" id="page-requests">
-      <div class="card">
-        <div class="ch"><h3>جميع طلباتي</h3></div>
-        <div class="card-body"><div id="all-reqs"><div class="loading">جاري التحميل...</div></div></div>
+    <!-- BROWSE -->
+    <div class="page" id="page-browse">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <select id="browse-cat" onchange="loadBrowse()" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--t);outline:none;background:var(--white)">
+          <option value="">جميع التصنيفات</option>
+        </select>
+        <select id="browse-city" onchange="loadBrowse()" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--t);outline:none;background:var(--white)">
+          <option value="">جميع المدن</option>
+        </select>
       </div>
+      <div id="browse-list"><div class="loading">جاري التحميل...</div></div>
     </div>
 
-    <!-- DETAIL -->
-    <div class="page" id="page-detail">
+    <!-- TENDER DETAIL -->
+    <div class="page" id="page-tender">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-        <button onclick="show('requests',null,'requests')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:4px">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>طلباتي
+        <button onclick="show('browse',null,'browse')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:4px">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>المناقصات
         </button>
         <span style="color:var(--t4);font-size:11px">/</span>
-        <span style="font-size:13px;font-weight:800;color:var(--t)" id="bc-title">تفاصيل</span>
+        <span style="font-size:13px;font-weight:800;color:var(--t)" id="tender-bc">تفاصيل</span>
       </div>
-      <div id="detail-head"></div>
-      <div id="assigned-provider-box"></div>
-      <div class="tab-btns">
-        <button class="tab-btn on" onclick="switchTab('bids',this)">العروض <span id="bids-count"></span></button>
-        <button class="tab-btn" onclick="switchTab('chat',this)">المحادثة</button>
-        <button class="tab-btn" onclick="switchTab('actions',this)">الإجراءات</button>
-      </div>
-      <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
-      <div class="tab" id="tab-chat"><div id="chat-wrap"></div></div>
-      <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
+      <div id="tender-detail"></div>
     </div>
 
-    <!-- PROVIDER PROFILE -->
-    <div class="page" id="page-provider">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-        <button id="prov-back-btn" onclick="goBackFromProvider()" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:4px">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>رجوع
-        </button>
+    <!-- MY BIDS -->
+    <div class="page" id="page-bids">
+      <div class="tab-btns">
+        <button class="tab-btn on" onclick="switchBidsTab('all',this)">الكل</button>
+        <button class="tab-btn" onclick="switchBidsTab('pending',this)">بانتظار الرد</button>
+        <button class="tab-btn" onclick="switchBidsTab('accepted',this)">مقبولة</button>
+        <button class="tab-btn" onclick="switchBidsTab('rejected',this)">مرفوضة</button>
       </div>
-      <div id="provider-profile-content"><div class="loading">جاري التحميل...</div></div>
+      <div id="bids-list"><div class="loading">جاري التحميل...</div></div>
     </div>
 
     <!-- MESSAGES -->
@@ -376,37 +323,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
         <div class="msg-main" id="msg-main">
           <div class="empty" style="margin:auto">
             <div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-            <h4>اختر محادثة</h4><p>اختر مزوداً من القائمة</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- NEW REQUEST -->
-    <div class="page" id="page-new">
-      <div class="card">
-        <div class="ch"><h3>نشر طلب جديد</h3></div>
-        <div class="card-body">
-          <div class="alert" id="new-alert"></div>
-          <div class="form-grid">
-            <div class="fg ff"><label>عنوان الطلب *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت"></div>
-            <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"></select></div>
-            <div class="fg" id="other-wrap" style="display:none"><label>حدد التخصص</label><input id="n-other" type="text" placeholder="اكتب التخصص"></div>
-            <div class="fg">
-              <label>المدينة *</label>
-              <div style="position:relative">
-                <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off" oninput="filterCities(this.value)" onfocus="showCityList()" onblur="setTimeout(hideCityList,200)">
-                <div id="cityDD" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 20px rgba(27,58,107,.12);max-height:200px;overflow-y:auto;margin-top:4px"></div>
-              </div>
-            </div>
-            <div class="fg ff"><label>العنوان التفصيلي</label><input id="n-address" type="text" placeholder="الحي، الشارع..."></div>
-            <div class="fg"><label>الميزانية (ر.س)</label><input id="n-budget" type="number" placeholder="500" inputmode="numeric"></div>
-            <div class="fg"><label>تاريخ الانتهاء</label><input id="n-deadline" type="date"></div>
-            <div class="fg ff"><label>تفاصيل الطلب *</label><textarea id="n-desc" placeholder="اشرح طلبك بالتفاصيل..."></textarea></div>
-          </div>
-          <div class="form-btns">
-            <button class="btn-p" id="n-btn" onclick="submitReq()">نشر الطلب</button>
-            <button class="btn-s" onclick="show('home',null,'home')">إلغاء</button>
+            <h4>اختر محادثة</h4><p>اختر عميلاً من القائمة</p>
           </div>
         </div>
       </div>
@@ -420,60 +337,68 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
       </div>
     </div>
 
+    <!-- PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="profile-hd">
+        <div class="profile-av" id="prof-av">م</div>
+        <div class="profile-name" id="prof-name">...</div>
+        <div class="profile-city" id="prof-city"></div>
+        <div class="profile-stats">
+          <div class="pstat"><div class="pstat-n" id="prof-rating">—</div><div class="pstat-l">التقييم</div></div>
+          <div class="pstat"><div class="pstat-n" id="prof-projects">0</div><div class="pstat-l">مشروع مكتمل</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>تعديل الملف الشخصي</h3></div>
+        <div class="card-body">
+          <div class="alert" id="prof-alert"></div>
+          <div class="form-grid">
+            <div class="fg"><label>الاسم</label><input id="prof-n" type="text"></div>
+            <div class="fg"><label>رقم الجوال</label><input id="prof-p" type="tel"></div>
+            <div class="fg"><label>المدينة</label><input id="prof-c" type="text"></div>
+            <div class="fg"><label>تغيير كلمة المرور</label><input id="prof-pw" type="password" placeholder="اتركه فارغاً إن لم تريد التغيير"></div>
+            <div class="fg ff"><label>نبذة عني</label><textarea id="prof-bio" placeholder="اشرح خبرتك وتخصصاتك..."></textarea></div>
+          </div>
+          <!-- تفضيلات الإشعارات -->
+          <div style="margin-top:16px;padding:16px;background:var(--prov-l);border:1.5px solid var(--prov-m);border-radius:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--prov);margin-bottom:4px">🔔 إشعارات المناقصات الجديدة</div>
+            <div style="font-size:12px;color:var(--t3);margin-bottom:12px">اختر التخصصات التي تهمك — سيصلك إشعار فوراً عند نشر مناقصة جديدة فيها</div>
+            <div id="notify-cats-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
+          <div class="form-btns">
+            <button class="btn-p" onclick="saveProfile()">حفظ التعديلات</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <div class="bnav"><div class="bnav-inner">
   <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span class="bt">الرئيسية</span></button>
-  <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="bt">طلباتي</span></button>
-  <button class="bni" onclick="showAgreement()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="bt">جديد</span></button>
+  <button class="bni" id="bn-browse" onclick="show('browse',null,'browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="bt">تصفح</span></button>
+  <button class="bni" id="bn-bids" onclick="show('bids',null,'bids')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span class="bt">عروضي</span></button>
   <button class="bni" id="bn-messages" onclick="show('messages',null,'messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bt">رسائل</span></button>
   <button class="bni" id="bn-notifs" onclick="show('notifs',null,'notifs')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="bt">إشعارات</span></button>
 </div></div>
 
-<!-- AGREE -->
-<div class="overlay" id="agreeOv">
-  <div class="agree-modal">
-    <div class="agree-hd"><h2>📜 اتفاقية الرسوم</h2><p>يرجى قراءة الاتفاقية كاملة قبل النشر</p></div>
-    <div class="agree-body">
-      <div class="quran-box">
-        <div class="quran-title">بسم الله الرحمن الرحيم</div>
-        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ ﴾</div>
-        <div class="quran-src">صدق الله العظيم</div>
-      </div>
-      <div class="agree-sec"><div class="agree-sec-t">أولاً: التعهد والالتزام</div><p>أُقرّ وأتعهد بدفع رسوم الموقع البالغة <strong>(1%)</strong> من إجمالي قيمة العقد.</p></div>
-      <div class="agree-sec"><div class="agree-sec-t">ثانياً: آلية السداد</div><p>تستحق الرسوم بمجرد اكتمال الاتفاق، ويلتزم طالب الخدمة بسدادها خلال <strong>10 أيام</strong>.</p></div>
-      <div class="note-sec"><div class="agree-sec-t">ثالثاً: مسؤولية السداد</div><p>⚠️ هذه الرسوم التزام مالي واجب السداد.</p></div>
-      <div class="agree-check">
-        <input type="checkbox" id="agreeChk" onchange="document.getElementById('agreeBtn').disabled=!this.checked">
-        <label for="agreeChk">أُقرّ بأنني اطلعت على اتفاقية الرسوم وأتعهد بسداد <strong>1%</strong> خلال عشرة أيام</label>
-      </div>
-    </div>
-    <div class="agree-foot">
-      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">✓ أوافق وأنشر طلبي</button>
-      <button class="btn-back" onclick="closeAgree()">رجوع</button>
-    </div>
-  </div>
-</div>
-
-<!-- RATE -->
-<div class="overlay" id="rateOv">
+<!-- BID MODAL -->
+<div class="overlay" id="bidOv">
   <div class="modal">
     <div class="modal-drag"></div>
-    <div class="modal-head"><h3>تقييم المزود</h3><button class="modal-x" onclick="closeRate()">✕</button></div>
+    <div class="modal-head"><h3 id="bid-modal-title">تقديم عرض</h3><button class="modal-x" onclick="closeBidModal()">✕</button></div>
     <div class="modal-body">
-      <div class="alert" id="rate-alert"></div>
-      <p style="text-align:center;font-size:12px;color:var(--t3);margin-bottom:4px">كيف كانت تجربتك مع المزود؟</p>
-      <div class="stars-pick">
-        <span class="sp" onclick="setStar(1)">⭐</span><span class="sp" onclick="setStar(2)">⭐</span>
-        <span class="sp" onclick="setStar(3)">⭐</span><span class="sp" onclick="setStar(4)">⭐</span>
-        <span class="sp" onclick="setStar(5)">⭐</span>
+      <div class="alert" id="bid-alert"></div>
+      <div class="form-grid">
+        <div class="fg"><label>السعر (ر.س) *</label><input id="bid-price" type="number" placeholder="0" inputmode="numeric"></div>
+        <div class="fg"><label>مدة التنفيذ (يوم) *</label><input id="bid-days" type="number" placeholder="0" inputmode="numeric"></div>
+        <div class="fg ff"><label>ملاحظات وعرض الخدمة</label><textarea id="bid-note" placeholder="اشرح تجربتك وكيف ستنفذ المشروع..."></textarea></div>
       </div>
-      <div class="fg"><label>تعليق (اختياري)</label><textarea id="rate-comment" style="min-height:75px" placeholder="شارك تجربتك..."></textarea></div>
     </div>
     <div class="modal-foot">
-      <button class="btn-p" id="rate-btn" onclick="submitRate()" style="flex:1">إرسال التقييم</button>
-      <button class="btn-s" onclick="closeRate()">إلغاء</button>
+      <button class="btn-p" id="bid-submit-btn" onclick="submitBid()" style="flex:1">تقديم العرض</button>
+      <button class="btn-s" onclick="closeBidModal()">إلغاء</button>
     </div>
   </div>
 </div>
@@ -484,33 +409,28 @@ var user = JSON.parse(localStorage.getItem('user') || '{}');
 var token = localStorage.getItem('token') || '';
 if (!user.id) location.href = 'auth.html';
 
-var curReqId = null, curChatProv = null, curMsgProv = null, curMsgReqId = null;
-var selRating = 0, selProvId = null, selReqId = null;
-var prevPage = 'requests'; // للرجوع من ملف المزود
+var curBidReqId = null, curMsgClient = null, curMsgReqId = null;
+var curBidsFilter = 'all', allMyBids = [];
 
 var AVC = ['#1B3A6B','#1D6A5A','#1e40af','#166534','#92400e','#991b1b','#0891b2','#7c3aed'];
 function ac(id) { return AVC[(+id||0) % AVC.length]; }
 function hdr() { return { headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token } }; }
-function apiFetch(url) { return fetch(API+url, hdr()); }
+function apiGet(url) { return fetch(API+url, hdr()); }
 function apiPost(url, body) { return fetch(API+url, Object.assign({method:'POST',body:JSON.stringify(body)}, hdr())); }
-function apiPut(url, body) { return fetch(API+url, Object.assign({method:'PUT', body:body?JSON.stringify(body):undefined}, hdr())); }
+function apiPut(url, body) { return fetch(API+url, Object.assign({method:'PUT',body:body?JSON.stringify(body):undefined}, hdr())); }
 
-var nm = user.name||'العميل';
+var nm = user.name||'المزود';
 document.getElementById('userName').textContent = nm;
 document.getElementById('welcomeName').textContent = 'مرحباً، '+nm.split(' ')[0]+' 👋';
 document.getElementById('userAv').textContent = nm.charAt(0);
 document.getElementById('mobAv').textContent = nm.charAt(0);
 
 var CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-var cSel = document.getElementById('n-cat');
-CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cSel.appendChild(o);});
-
-var ALL_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','الطائف','تبوك','بريدة','القصيم','خميس مشيط','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','سكاكا','عرعر','الباحة','الرس','رابغ','بيشة','الزلفي','الخرج','الدوادمي'];
-function filterCities(q){var dd=document.getElementById('cityDD');if(!dd)return;var f=q?ALL_CITIES.filter(function(c){return c.includes(q);}):ALL_CITIES;dd.innerHTML=f.map(function(c){return '<div style="padding:10px 14px;font-size:13px;cursor:pointer;color:var(--t);border-bottom:1px solid var(--bg3)" onmousedown="selectCity(\''+c+'\')">'+c+'</div>';}).join('');dd.style.display=f.length?'block':'none';}
-function selectCity(c){document.getElementById('n-city').value=c;hideCityList();}
-function showCityList(){filterCities(document.getElementById('n-city').value||'');}
-function hideCityList(){var d=document.getElementById('cityDD');if(d)d.style.display='none';}
-function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
+var CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','تبوك','بريدة','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف'];
+var catSel = document.getElementById('browse-cat');
+var citySel = document.getElementById('browse-city');
+CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;citySel.appendChild(o);});
 
 function show(pg, el, key) {
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
@@ -520,480 +440,380 @@ function show(pg, el, key) {
   if(el) el.className='ni on';
   var ni=document.getElementById('ni-'+key); if(ni) ni.className='ni on';
   var bn=document.getElementById('bn-'+key); if(bn) bn.className='bni on';
-  var titles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',messages:'الرسائل',provider:'ملف المزود'};
+  var titles={home:'الرئيسية',browse:'تصفح المناقصات',bids:'عروضي',messages:'الرسائل',notifs:'الإشعارات',profile:'ملفي الشخصي',tender:'تفاصيل المناقصة'};
   document.getElementById('pageTitle').textContent=titles[pg]||'';
-  if(pg==='requests') loadReqs();
   if(pg==='home') loadHome();
-  if(pg==='notifs') loadNotifs();
+  if(pg==='browse') loadBrowse();
+  if(pg==='bids') loadMyBids();
   if(pg==='messages') loadMsgThreads();
+  if(pg==='notifs') loadNotifs();
+  if(pg==='profile') loadProfile();
   window.scrollTo(0,0);
 }
 
-function switchTab(t, el) {
-  document.querySelectorAll('.tab').forEach(function(x){x.className='tab';});
-  document.querySelectorAll('.tab-btn').forEach(function(x){x.className='tab-btn';});
-  document.getElementById('tab-'+t).className='tab on';
-  el.className='tab-btn on';
-  if(t==='bids') loadBids(curReqId);
-  if(t==='chat') loadChatTab(curReqId);
-  if(t==='actions') loadActions(curReqId);
-}
-
 function logout(){localStorage.clear();location.href='auth.html';}
-function showAgreement(){document.getElementById('agreeChk').checked=false;document.getElementById('agreeBtn').disabled=true;document.getElementById('agreeOv').className='overlay show';}
-function closeAgree(){document.getElementById('agreeOv').className='overlay';}
-function acceptAgree(){closeAgree();show('new',null,'new');}
-function closeRate(){document.getElementById('rateOv').className='overlay';}
-
-function stTag(s){if(s==='open')return'<span class="tag t-open">نشط</span>';if(s==='in_progress')return'<span class="tag t-prog">قيد التنفيذ</span>';if(s==='done'||s==='completed')return'<span class="tag t-done">مكتمل</span>';return'<span class="tag t-rev">مراجعة</span>';}
-function starsStr(n){var s='';for(var i=1;i<=5;i++)s+=i<=n?'★':'☆';return s;}
 function ago(d){var diff=(new Date()-new Date(d))/1000;if(diff<60)return'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
-function emptyBox(t,s){return'<div class="empty"><div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
+function emptyBox(t,s){return'<div class="empty"><div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
 function errBox(){return'<div class="empty"><h4>تعذر التحميل</h4><p>تحقق من اتصالك</p></div>';}
+function starsStr(n){var s='';for(var i=1;i<=5;i++)s+=i<=Math.round(n)?'★':'☆';return s;}
 
 // ── HOME ──
 function loadHome(){
-  apiFetch('/api/requests/my').then(function(r){return r.json();}).then(function(all){
-    document.getElementById('s-total').textContent=all.length;
-    document.getElementById('s-open').textContent=all.filter(function(r){return r.status==='open';}).length;
-    document.getElementById('s-prog').textContent=all.filter(function(r){return r.status==='in_progress';}).length;
-    document.getElementById('s-done').textContent=all.filter(function(r){return r.status==='done'||r.status==='completed';}).length;
-    document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(riCard).join(''):emptyBox('لا يوجد طلبات بعد','انشر أول طلب الآن');
-  }).catch(function(){document.getElementById('home-reqs').innerHTML=errBox();});
+  apiGet('/api/provider/bids').then(function(r){return r.json();}).then(function(bids){
+    allMyBids = bids;
+    document.getElementById('s-total').textContent=bids.length;
+    document.getElementById('s-pend').textContent=bids.filter(function(b){return b.status==='pending';}).length;
+    document.getElementById('s-acc').textContent=bids.filter(function(b){return b.status==='accepted';}).length;
+    document.getElementById('s-done').textContent=bids.filter(function(b){return b.request_status==='completed'||b.request_status==='done';}).length;
+
+    // مشاريع نشطة
+    var active=bids.filter(function(b){return b.status==='accepted'&&(b.request_status==='in_progress');});
+    if(active.length){
+      document.getElementById('active-projects-card').style.display='block';
+      document.getElementById('active-projects').innerHTML=active.map(function(b){
+        return '<div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:12px;padding:14px;margin-bottom:8px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+            '<div>' +
+              '<div style="font-size:14px;font-weight:800;color:var(--t);margin-bottom:4px">✅ '+b.request_title+'</div>' +
+              '<div style="font-size:11px;color:var(--t3)">'+b.price+' ر.س • '+b.days+' يوم</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:8px">' +
+              '<button class="btn-sm bs-p" onclick="openMsgWith('+b.client_id+',\'العميل\','+b.request_id+')">💬 تواصل مع العميل</button>' +
+              '<button class="btn-sm bs-g" onclick="openTender('+b.request_id+')">تفاصيل</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    var recent=bids.slice(0,5);
+    document.getElementById('home-bids').innerHTML=recent.length?recent.map(bidCard).join(''):emptyBox('لا يوجد عروض بعد','تصفح المناقصات وقدم عرضك الأول');
+  }).catch(function(){document.getElementById('home-bids').innerHTML=errBox();});
   loadNotifCount();
 }
 
-function riCard(r){
-  return '<div class="ri" onclick="openDetail('+r.id+')">' +
-    '<div class="ri-top"><div class="ri-title">'+r.title+'</div>'+stTag(r.status)+'</div>' +
-    '<div class="ri-meta">'+(r.city?'<span class="rm">📍'+r.city+'</span>':'')+(r.category?'<span class="rm">• '+r.category+'</span>':'')+(r.bid_count>0?'<span class="rm">• '+r.bid_count+' عروض</span>':'')+'</div>' +
+function bidCard(b){
+  var statusMap={pending:'<span class="tag t-pend">بانتظار الرد</span>',accepted:'<span class="tag t-acc">✅ مقبول</span>',rejected:'<span class="tag t-rej">❌ مرفوض</span>'};
+  var st=statusMap[b.status]||'';
+  var extra='';
+  if(b.status==='accepted'){
+    extra='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn-sm bs-p" onclick="openMsgWith('+(b.client_id||0)+',\'العميل\','+b.request_id+')">💬 تواصل مع العميل</button>' +
     '</div>';
+  }
+  return '<div class="bid-status-card '+b.status+'">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
+      '<div style="font-size:14px;font-weight:800;color:var(--t)">'+b.request_title+'</div>'+st+
+    '</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--t3)">' +
+      '<span>💰 '+b.price+' ر.س</span>' +
+      '<span>⏱ '+b.days+' يوم</span>' +
+      (b.city?'<span>📍'+b.city+'</span>':'')+
+      '<span>'+ago(b.created_at)+'</span>' +
+    '</div>' +
+    extra+
+  '</div>';
 }
 
-// ── REQUESTS ──
-function loadReqs(){
-  document.getElementById('all-reqs').innerHTML='<div class="loading">جاري التحميل...</div>';
-  apiFetch('/api/requests/my').then(function(r){return r.json();}).then(function(all){
-    document.getElementById('all-reqs').innerHTML=all.length?all.map(function(r){
-      return '<div class="ri" onclick="openDetail('+r.id+')">' +
-        '<div class="ri-top"><div class="ri-title">'+r.title+'</div>'+stTag(r.status)+'</div>' +
-        '<div class="ri-meta">'+(r.city?'<span class="rm">📍'+r.city+'</span>':'')+(r.category?'<span class="rm">• '+r.category+'</span>':'')+(r.bid_count>0?'<span class="rm">• '+r.bid_count+' عروض</span>':'')+'<span class="rm">• '+ago(r.created_at)+'</span></div>' +
-        '<div style="margin-top:8px"><button class="btn-sm bs-p" onclick="event.stopPropagation();openDetail('+r.id+')">التفاصيل والعروض</button></div>' +
-        '</div>';
-    }).join(''):emptyBox('لا يوجد طلبات','انشر طلبك الأول');
-  }).catch(function(){document.getElementById('all-reqs').innerHTML=errBox();});
-}
-
-// ── DETAIL ──
-function openDetail(id){
-  curReqId=id; curChatProv=null;
-  document.querySelectorAll('.tab-btn').forEach(function(x,i){x.className=i===0?'tab-btn on':'tab-btn';});
-  document.querySelectorAll('.tab').forEach(function(x,i){x.className=i===0?'tab on':'tab';});
-  show('detail',null,null);
-  apiFetch('/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
-    document.getElementById('bc-title').textContent=req.title;
-    document.getElementById('detail-head').innerHTML=
-      '<div class="detail-hd">' +
-        '<div class="dh-title">'+req.title+'</div>' +
-        '<div class="dh-meta">'+(req.city?'<span>📍'+req.city+'</span>':'')+(req.category?'<span>'+req.category+'</span>':'')+(req.budget_max?'<span>'+req.budget_max+' ر.س</span>':'')+stTag(req.status)+'</div>' +
-        (req.description?'<div class="dh-desc">'+req.description+'</div>':'')+
-      '</div>';
-    // بطاقة المزود المُسند بعد القبول
-    if(req.status==='in_progress'&&req.provider_name){
-      document.getElementById('assigned-provider-box').innerHTML=
-        '<div style="background:var(--success-l);border:2px solid var(--success-m);border-radius:14px;padding:16px;margin-bottom:16px">' +
-          '<div style="font-size:11px;color:var(--success);font-weight:800;margin-bottom:10px">✅ المزود المُسند لهذا المشروع</div>' +
-          '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
-            '<div style="width:52px;height:52px;border-radius:50%;background:'+ac(req.assigned_provider_id)+';color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" onclick="openProviderProfile('+req.assigned_provider_id+',\'detail\')">'+req.provider_name.charAt(0)+'</div>' +
-            '<div style="flex:1">' +
-              '<div style="font-size:16px;font-weight:800;color:var(--t);cursor:pointer" onclick="openProviderProfile('+req.assigned_provider_id+',\'detail\')">'+req.provider_name+'</div>' +
-              (req.provider_phone?'<div style="font-size:13px;color:var(--t3);margin-top:4px">📞 '+req.provider_phone+'</div>':'')+
-            '</div>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-              '<button class="btn-sm bs-dark" onclick="openChatWith('+req.assigned_provider_id+',\''+req.provider_name.replace(/\'/g,'')+'\','+id+')">💬 تواصل معه</button>' +
-              '<button class="btn-sm bs-p" onclick="openProviderProfile('+req.assigned_provider_id+',\'detail\')">👤 ملفه</button>' +
-              '<button class="btn-sm bs-a" onclick="openRate('+id+','+req.assigned_provider_id+')">⭐ تقييم</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-    } else {
-      document.getElementById('assigned-provider-box').innerHTML='';
-    }
-    loadBids(id);
-  });
-}
-
-// ── BIDS ──
-function loadBids(id){
-  document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  apiFetch('/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(function(bids){
-    document.getElementById('bids-count').textContent='('+bids.length+')';
-    if(!bids.length){document.getElementById('bids-list').innerHTML=emptyBox('لا يوجد عروض بعد','انتظر قليلاً');return;}
-
-    // ترتيب: المقبول أولاً ثم الأفضل تقييماً
-    bids.sort(function(a,b){
-      if(a.status==='accepted') return -1;
-      if(b.status==='accepted') return 1;
-      return b.avg_rating-a.avg_rating;
-    });
-
-    document.getElementById('bids-list').innerHTML=bids.map(function(b){
-      var isAcc=b.status==='accepted', isRej=b.status==='rejected';
-      var avgR=parseFloat(b.avg_rating)||0;
-      var starsHtml='';
-      for(var i=1;i<=5;i++) starsHtml+='<span style="color:'+(i<=Math.round(avgR)?'var(--accent)':'#ddd')+';font-size:14px">★</span>';
-      var specs=[];
-      if(b.provider_city) specs.push('📍 '+b.provider_city);
-      if(b.provider_specialties&&b.provider_specialties.length) specs.push(b.provider_specialties.slice(0,2).join(' • '));
-
-      var actionsHtml='';
-      if(isAcc){
-        actionsHtml=
-          '<div class="bid-accepted-banner">' +
-            '<span style="font-size:18px">✅</span>' +
-            '<span class="bid-accepted-txt">تم قبول هذا العرض — '+b.provider_name+' هو مزود الخدمة</span>' +
-          '</div>' +
-          (b.note&&b.note.includes('→')?'<div style="background:var(--warn-l);border-right:3px solid var(--warn);padding:10px 16px;font-size:12px;color:#633806">✏️ <strong>تعديل من المزود:</strong> '+b.note+'</div>':'')+
-          '<div class="bid-actions-row">' +
-            '<button class="btn-sm bs-dark" onclick="openChatWith('+b.provider_id+',\''+b.provider_name.replace(/\'/g,'')+'\','+id+')">💬 تواصل مع المزود</button>' +
-            '<button class="btn-sm bs-p" onclick="openProviderProfile('+b.provider_id+',\'detail\')">👤 ملف المزود</button>' +
-            '<button class="btn-sm bs-a" onclick="openRate('+id+','+b.provider_id+')">⭐ تقييم</button>' +
-          '</div>';
-      } else if(!isRej){
-        actionsHtml=
-          '<div class="bid-actions-row">' +
-            '<button class="btn-sm bs-g" onclick="acceptBid('+b.id+','+id+')">✓ قبول العرض</button>' +
-            '<button class="btn-sm bs-r" onclick="rejectBid('+b.id+','+id+')">✕ رفض</button>' +
-            '<button class="btn-sm bs-p" onclick="openChatWith('+b.provider_id+',\''+b.provider_name.replace(/\'/g,'')+'\','+id+')">💬 محادثة</button>' +
-            '<button class="btn-sm bs-p" onclick="openProviderProfile('+b.provider_id+',\'detail\')">👤 ملفه</button>' +
-          '</div>';
-      }
-
-      return '<div class="bid-card'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">' +
-        '<div class="bid-card-top">' +
-          '<div class="bid-provider-av" style="background:'+ac(b.provider_id)+'" onclick="openProviderProfile('+b.provider_id+',\'detail\')">'+b.provider_name.charAt(0)+'</div>' +
-          '<div class="bid-provider-info">' +
-            '<div class="bid-provider-name" onclick="openProviderProfile('+b.provider_id+',\'detail\')">' +
-              b.provider_name+(isAcc?' ✅':'')+(isRej?' ❌':'') +
-              (b.provider_badge&&b.provider_badge!=='none'?'<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">'+b.provider_badge+'</span>':'')+
-            '</div>' +
-            '<div class="bid-stars"><span class="s">'+starsHtml+'</span><span class="rv">'+( avgR>0?avgR.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم بعد')+'</span></div>' +
-            (specs.length?'<div class="bid-specs">'+specs.map(function(s){return'<span class="bid-spec">'+s+'</span>';}).join('')+'</div>':'')+
-            (b.note?'<div style="font-size:12px;color:var(--t3);font-style:italic;line-height:1.6;margin-top:4px">"'+b.note+'"</div>':'')+
-          '</div>' +
+// ── BROWSE ──
+function loadBrowse(){
+  document.getElementById('browse-list').innerHTML='<div class="loading">جاري التحميل...</div>';
+  var cat=document.getElementById('browse-cat').value;
+  var city=document.getElementById('browse-city').value;
+  var url='/api/requests?';
+  if(cat) url+='category='+encodeURIComponent(cat)+'&';
+  if(city) url+='city='+encodeURIComponent(city)+'&';
+  apiGet(url).then(function(r){return r.json();}).then(function(reqs){
+    if(!reqs.length){document.getElementById('browse-list').innerHTML=emptyBox('لا يوجد مناقصات','جرب تصنيفاً أو مدينة أخرى');return;}
+    document.getElementById('browse-list').innerHTML=reqs.map(function(r){
+      return '<div class="tender-card" onclick="openTender('+r.id+')">' +
+        '<div class="tender-title">'+r.title+'</div>' +
+        '<div class="tender-meta">' +
+          (r.city?'<span class="tm">📍 '+r.city+'</span>':'')+
+          (r.category?'<span class="tm">• '+r.category+'</span>':'')+
+          (r.budget_max?'<span class="tm">• الميزانية '+r.budget_max+' ر.س</span>':'')+
+          (r.bid_count>0?'<span class="tm">• '+r.bid_count+' عروض</span>':'')+
         '</div>' +
-        '<div class="bid-price-row">' +
-          '<div><div class="bid-price">'+b.price+' <span>ر.س</span></div></div>' +
-          '<div class="bid-days">⏱ '+b.days+' يوم تنفيذ</div>' +
+        '<div class="tender-footer">' +
+          '<span style="font-size:11px;color:var(--t4)">'+ago(r.created_at)+'</span>' +
+          '<button class="btn-sm bs-p">عرض التفاصيل ←</button>' +
         '</div>' +
-        actionsHtml+
       '</div>';
     }).join('');
+  }).catch(function(){document.getElementById('browse-list').innerHTML=errBox();});
+}
+
+// ── TENDER DETAIL ──
+function openTender(id){
+  show('tender',null,null);
+  document.getElementById('tender-detail').innerHTML='<div class="loading">جاري التحميل...</div>';
+  Promise.all([
+    apiGet('/api/requests/'+id).then(function(r){return r.json();}),
+    apiGet('/api/requests/'+id+'/bids').then(function(r){return r.json();})
+  ]).then(function(results){
+    var req=results[0], bids=results[1];
+    document.getElementById('tender-bc').textContent=req.title;
+    var myBid=bids.find(function(b){return b.provider_id==user.id;});
+    var bidCount=bids.length;
+    var minPrice=bidCount?Math.min.apply(null,bids.map(function(b){return+b.price;})):0;
+
+    var html=
+      '<div style="background:var(--prov);border-radius:14px;padding:22px 24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden">' +
+        '<div style="font-size:19px;font-weight:900;margin-bottom:10px">'+req.title+'</div>' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;opacity:.85">' +
+          (req.city?'<span>📍 '+req.city+'</span>':'')+
+          (req.category?'<span>'+req.category+'</span>':'')+
+          (req.budget_max?'<span>💰 الميزانية: '+req.budget_max+' ر.س</span>':'')+
+          (req.deadline?'<span>📅 '+req.deadline+'</span>':'')+
+        '</div>' +
+        (req.description?'<div style="margin-top:12px;font-size:13px;line-height:1.8;opacity:.88">'+req.description+'</div>':'')+
+      '</div>';
+
+    // معرض الصور
+    var imgs = req.images && req.images.length ? req.images : (req.image_url ? [req.image_url] : []);
+    if(imgs.length){
+      var mainIdx = req.main_image_index || 0;
+      html += '<div style="margin-bottom:16px">' +
+        '<img id="main-img-view" src="'+imgs[mainIdx]+'" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="openImgFull(this.src)">' +
+        (imgs.length > 1 ?
+          '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">'+
+            imgs.map(function(src,i){
+              return '<img src="'+src+'" onclick="document.getElementById(\'main-img-view\').src=this.src" style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:'+(i===mainIdx?'2px solid var(--prov)':'1px solid var(--border)')+';">';
+            }).join('')+
+          '</div>' : '') +
+      '</div>';
+    }
+
+    // إحصائيات العروض
+    html+=
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">' +
+        '<div class="sc" style="flex-direction:column;text-align:center"><div class="sn">'+bidCount+'</div><div class="st">عروض مقدمة</div></div>' +
+        '<div class="sc" style="flex-direction:column;text-align:center"><div class="sn">'+(minPrice?minPrice+' ر.س':'—')+'</div><div class="st">أقل سعر</div></div>' +
+        '<div class="sc" style="flex-direction:column;text-align:center"><div class="sn">'+(req.budget_max||'—')+'</div><div class="st">الميزانية</div></div>' +
+      '</div>';
+
+    // عرضي الحالي أو نموذج تقديم عرض
+    if(myBid){
+      var isAcc=myBid.status==='accepted', isRej=myBid.status==='rejected';
+      html+='<div class="card"><div class="ch"><h3>عرضي على هذه المناقصة</h3></div><div class="card-body">' +
+        '<div style="'+(isAcc?'background:var(--success-l);border:2px solid var(--success-m);':'background:var(--warn-l);border:1.5px solid var(--warn-m);')+'border-radius:12px;padding:16px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
+            '<div style="font-size:16px;font-weight:900;color:var(--t)">'+myBid.price+' ر.س</div>' +
+            (isAcc?'<span class="tag t-acc">✅ تم القبول!</span>':isRej?'<span class="tag t-rej">❌ مرفوض</span>':'<span class="tag t-pend">⏳ بانتظار الرد</span>')+
+          '</div>' +
+          '<div style="font-size:12px;color:var(--t3);margin-bottom:'+(isAcc?'12px':'0')+'">مدة التنفيذ: '+myBid.days+' يوم'+(myBid.note?' • '+myBid.note:'')+'</div>' +
+          (isAcc?'<button class="btn-p" onclick="openMsgWith('+req.client_id+',\''+req.client_name.replace(/\'/g,'')+'\','+id+')" style="width:100%;margin-top:4px">💬 تواصل مع العميل الآن</button>':'')+
+        '</div>' +
+        // ✅ نموذج تعديل العرض بعد القبول
+        (isAcc?
+        '<div style="margin-top:14px;background:var(--warn-l);border:1.5px solid var(--warn-m);border-radius:12px;padding:14px">' +
+          '<div style="font-size:13px;font-weight:800;color:var(--warn);margin-bottom:12px">✏️ طلب تعديل على العرض المقبول</div>' +
+          '<div class="alert" id="revise-alert"></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">' +
+            '<div class="fg"><label>السعر الجديد (ر.س)</label><input id="revise-price" type="number" value="'+myBid.price+'" inputmode="numeric"></div>' +
+            '<div class="fg"><label>المدة الجديدة (يوم)</label><input id="revise-days" type="number" value="'+myBid.days+'" inputmode="numeric"></div>' +
+          '</div>' +
+          '<div class="fg"><label>سبب التعديل * <span style="font-size:11px;color:var(--t3);font-weight:400">(سيظهر للعميل والمدير)</span></label>' +
+            '<textarea id="revise-note" placeholder="مثال: ارتفعت تكلفة المواد، أو تعديل في نطاق العمل..." style="min-height:70px"></textarea>' +
+          '</div>' +
+          '<button class="btn-p" onclick="submitRevision('+myBid.id+')" style="background:var(--warn);width:100%;margin-top:6px">إرسال طلب التعديل</button>' +
+        '</div>'
+        :'')+
+      '</div></div>';
+    } else if(req.status==='open'){
+      html+='<div class="card"><div class="ch"><h3>تقديم عرضك</h3></div><div class="card-body">' +
+        '<div class="alert" id="bid-inline-alert"></div>' +
+        '<div class="form-grid">' +
+          '<div class="fg"><label>السعر (ر.س) *</label><input id="inline-price" type="number" placeholder="0" inputmode="numeric"></div>' +
+          '<div class="fg"><label>مدة التنفيذ (يوم) *</label><input id="inline-days" type="number" placeholder="0" inputmode="numeric"></div>' +
+          '<div class="fg ff"><label>ملاحظات وعرض الخدمة</label><textarea id="inline-note" placeholder="اشرح تجربتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>' +
+        '</div>' +
+        '<div class="form-btns"><button class="btn-p" id="inline-bid-btn" onclick="submitInlineBid('+id+')">تقديم العرض</button></div>' +
+      '</div></div>';
+    } else {
+      html+='<div class="card"><div class="card-body"><p style="text-align:center;font-size:13px;color:var(--t3);padding:8px 0">هذه المناقصة '+(req.status==='in_progress'?'قيد التنفيذ':'مغلقة')+'</p></div></div>';
+    }
+
+    document.getElementById('tender-detail').innerHTML=html;
+  }).catch(function(){document.getElementById('tender-detail').innerHTML=errBox();});
+}
+
+function submitRevision(bidId){
+  var price=document.getElementById('revise-price')?.value;
+  var days=document.getElementById('revise-days')?.value;
+  var note=document.getElementById('revise-note')?.value?.trim();
+  if(!price||!days){showAlert('revise-alert','يرجى تعبئة السعر والمدة','err');return;}
+  if(!note){showAlert('revise-alert','يرجى كتابة سبب التعديل','err');return;}
+  apiPut('/api/bids/'+bidId+'/revise',{price:+price,days:+days,revision_note:note})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(r){
+      if(r.ok){showAlert('revise-alert','✓ تم إرسال طلب التعديل للعميل والمدير','ok');}
+      else{showAlert('revise-alert',r.d.message||'حدث خطأ','err');}
+    }).catch(function(){showAlert('revise-alert','تعذر الاتصال','err');});
+}
+
+function submitInlineBid(reqId){
+  var price=document.getElementById('inline-price').value;
+  var days=document.getElementById('inline-days').value;
+  var note=document.getElementById('inline-note').value;
+  if(!price||!days){showAlert('bid-inline-alert','يرجى تعبئة السعر والمدة','err');return;}
+  var btn=document.getElementById('inline-bid-btn');btn.disabled=true;btn.textContent='جاري التقديم...';
+  apiPost('/api/bids',{request_id:reqId,price:+price,days:+days,note:note})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(r){
+      if(r.ok){showAlert('bid-inline-alert','✓ تم تقديم عرضك بنجاح!','ok');setTimeout(function(){openTender(reqId);},1500);}
+      else{showAlert('bid-inline-alert',r.d.message||'حدث خطأ','err');}
+      btn.disabled=false;btn.textContent='تقديم العرض';
+    }).catch(function(){showAlert('bid-inline-alert','تعذر الاتصال','err');btn.disabled=false;btn.textContent='تقديم العرض';});
+}
+
+// ── MY BIDS ──
+function loadMyBids(){
+  document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
+  apiGet('/api/provider/bids').then(function(r){return r.json();}).then(function(bids){
+    allMyBids=bids;
+    renderBidsList();
   }).catch(function(){document.getElementById('bids-list').innerHTML=errBox();});
 }
 
-// ── قبول / رفض ──
-function acceptBid(bidId, reqId){
-  if(!confirm('هل تريد قبول هذا العرض؟')) return;
-  apiPut('/api/bids/'+bidId+'/accept').then(function(r){return r.json();}).then(function(){
-    apiFetch('/api/requests/'+reqId+'/bids').then(function(r){return r.json();}).then(function(bids){
-      var acc=bids.find(function(b){return b.status==='accepted';});
-      if(acc){
-        apiPost('/api/messages',{request_id:reqId,receiver_id:acc.provider_id,content:'✅ تم قبول عرضك! يسعدنا العمل معك. سيتم التواصل معك قريباً.'}).catch(function(){});
-      }
-      openDetail(reqId);
-    });
-  }).catch(function(){alert('حدث خطأ، حاول مرة أخرى');});
+function switchBidsTab(filter, el){
+  curBidsFilter=filter;
+  document.querySelectorAll('.tab-btn').forEach(function(x){x.className='tab-btn';});
+  el.className='tab-btn on';
+  renderBidsList();
 }
 
-function rejectBid(bidId, reqId){
-  if(!confirm('هل تريد رفض هذا العرض؟')) return;
-  apiPut('/api/bids/'+bidId+'/reject').then(function(){loadBids(reqId);}).catch(function(){alert('حدث خطأ');});
-}
-
-// ── ملف المزود ──
-function openProviderProfile(provId, fromPage){
-  prevPage=fromPage||'detail';
-  show('provider',null,null);
-  document.getElementById('provider-profile-content').innerHTML='<div class="loading">جاري التحميل...</div>';
-
-  Promise.all([
-    apiFetch('/api/provider/'+provId+'/profile').then(function(r){return r.json();}),
-    apiFetch('/api/reviews/provider/'+provId).then(function(r){return r.json();})
-  ]).then(function(results){
-    var prov=results[0], revData=results[1];
-    var avgR=parseFloat(prov.avg_rating)||0;
-    var starsH='';
-    for(var i=1;i<=5;i++) starsH+='<span style="color:'+(i<=Math.round(avgR)?'#fff':'rgba(255,255,255,.3')+';font-size:18px">★</span>';
-
-    var html=
-      '<div class="prov-profile-hd">' +
-        '<div class="prov-av-big" style="background:'+ac(provId)+'">'+prov.name.charAt(0)+'</div>' +
-        '<div class="prov-name">'+prov.name+'</div>' +
-        '<div class="prov-city">'+(prov.city?'📍 '+prov.city:'')+(prov.phone?' • 📞 '+prov.phone:'')+'</div>' +
-        '<div class="prov-stats">' +
-          '<div class="prov-stat"><div class="prov-stat-n">'+(avgR>0?avgR.toFixed(1):'—')+'</div><div class="prov-stat-l">التقييم</div></div>' +
-          '<div class="prov-stat"><div class="prov-stat-n">'+starsH+'</div><div class="prov-stat-l">'+(revData.count||0)+' تقييم</div></div>' +
-          '<div class="prov-stat"><div class="prov-stat-n">'+(prov.completed_projects||0)+'</div><div class="prov-stat-l">مشروع مكتمل</div></div>' +
-        '</div>' +
-        (prov.specialties&&prov.specialties.length?'<div class="prov-badges">'+prov.specialties.slice(0,4).map(function(s){return'<span class="prov-badge">'+s+'</span>';}).join('')+'</div>':'')+
-      '</div>' +
-      // أزرار التواصل
-      '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">' +
-        '<button class="btn-sm bs-dark" style="flex:1;padding:12px;font-size:13px" onclick="openChatFromProfile('+provId+',\''+prov.name.replace(/\'/g,'')+'\')">💬 إرسال رسالة</button>' +
-        (prov.phone?'<a href="tel:'+prov.phone+'" style="flex:1;padding:12px;font-size:13px;text-align:center;background:var(--success-l);color:var(--success);border-radius:8px;font-weight:700;text-decoration:none">📞 اتصال مباشر</a>':'')+
+function renderBidsList(){
+  var filtered=curBidsFilter==='all'?allMyBids:allMyBids.filter(function(b){return b.status===curBidsFilter;});
+  if(!filtered.length){document.getElementById('bids-list').innerHTML=emptyBox('لا يوجد عروض','');return;}
+  document.getElementById('bids-list').innerHTML=filtered.map(function(b){
+    var statusMap={pending:'<span class="tag t-pend">⏳ بانتظار الرد</span>',accepted:'<span class="tag t-acc">✅ مقبول</span>',rejected:'<span class="tag t-rej">❌ مرفوض</span>'};
+    var st=statusMap[b.status]||'';
+    var actions='';
+    if(b.status==='accepted'){
+      actions='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+        '<button class="btn-sm bs-p" onclick="openMsgWith('+(b.client_id||0)+',\'العميل\','+b.request_id+')">💬 تواصل مع العميل</button>' +
+        '<button class="btn-sm bs-g" onclick="openTender('+b.request_id+')">تفاصيل المشروع</button>' +
       '</div>';
-
-    // نبذة
-    if(prov.bio){
-      html+='<div class="card"><div class="ch"><h3>نبذة عن المزود</h3></div><div class="card-body"><p style="font-size:13px;line-height:1.9;color:var(--t)">'+prov.bio+'</p></div></div>';
     }
-
-    // التقييمات
-    if(revData.reviews&&revData.reviews.length){
-      html+='<div class="card"><div class="ch"><h3>التقييمات</h3><span style="font-size:12px;color:var(--t3)">'+revData.count+' تقييم</span></div>';
-      html+=revData.reviews.slice(0,5).map(function(rv){
-        var rSt=''; for(var i=1;i<=5;i++) rSt+='<span style="color:'+(i<=rv.rating?'var(--accent)':'#ddd')+'">★</span>';
-        return '<div class="review-item"><div class="review-stars">'+rSt+'</div>'+(rv.comment?'<div class="review-text">'+rv.comment+'</div>':'')+'<div class="review-by">'+rv.reviewer_name+' • '+ago(rv.created_at)+'</div></div>';
-      }).join('');
-      html+='</div>';
-    }
-
-    document.getElementById('provider-profile-content').innerHTML=html;
-  }).catch(function(){
-    document.getElementById('provider-profile-content').innerHTML=errBox();
-  });
-}
-
-function goBackFromProvider(){
-  if(prevPage==='detail') openDetail(curReqId);
-  else show('requests',null,'requests');
-}
-
-function openChatFromProfile(provId, provName){
-  // البحث عن طلب مشترك
-  apiFetch('/api/requests/my').then(function(r){return r.json();}).then(function(reqs){
-    var active=reqs.filter(function(r){return r.status==='open'||r.status==='in_progress';});
-    if(!active.length){alert('ليس لديك طلبات نشطة حالياً');return;}
-    // ابحث عن طلب فيه هذا المزود
-    var found=null;
-    var pending=active.length;
-    active.forEach(function(req){
-      apiFetch('/api/requests/'+req.id+'/bids').then(function(r){return r.json();}).then(function(bids){
-        if(!found){
-          var bid=bids.find(function(b){return b.provider_id==provId;});
-          if(bid) found={reqId:req.id};
-        }
-        pending--;
-        if(pending===0){
-          if(found) openChatWith(provId,provName,found.reqId);
-          else {
-            // افتح رسالة بدون طلب محدد (استخدم أول طلب نشط)
-            openChatWith(provId,provName,active[0].id);
-          }
-        }
-      }).catch(function(){pending--;if(pending===0&&!found)openChatWith(provId,provName,active[0].id);});
-    });
-  });
-}
-
-// ── فتح محادثة مع مزود ──
-function openChatWith(provId, provName, reqId){
-  curChatProv={id:provId,name:provName};
-  if(reqId){
-    curReqId=reqId;
-    openDetail(reqId);
-    setTimeout(function(){
-      document.querySelectorAll('.tab-btn')[1].click();
-    },300);
-  } else {
-    curMsgProv={id:provId,name:provName};
-    show('messages',document.getElementById('ni-messages'),'messages');
-  }
-}
-
-// ── الشات داخل تبويب التفاصيل ──
-function loadChatTab(id){
-  var wrap=document.getElementById('chat-wrap');
-  if(!curChatProv){
-    wrap.innerHTML='<div class="empty"><div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><h4>اختر مزوداً</h4><p>اضغط "محادثة" في تبويب العروض</p></div>';
-    return;
-  }
-  renderChatTab(id);
-}
-
-function renderChatTab(id){
-  apiFetch('/api/messages/'+id).then(function(r){return r.json();}).then(function(msgs){
-    var filtered=msgs.filter(function(m){
-      return (m.sender_id==user.id&&m.receiver_id==curChatProv.id)||
-             (m.sender_id==curChatProv.id&&m.receiver_id==user.id)||
-             (m.content&&m.content.startsWith('✅ تم قبول'));
-    });
-    var h='<div class="chat-box">' +
-      '<div class="chat-hd">' +
-        '<div class="chat-hd-av" style="background:'+ac(curChatProv.id)+'">'+curChatProv.name.charAt(0)+'</div>' +
-        '<div><div class="chat-hd-name">'+curChatProv.name+'</div><div class="chat-hd-status">مزود خدمة</div></div>' +
-        '<button onclick="openProviderProfile('+curChatProv.id+',\'detail\')" style="margin-right:auto;padding:5px 10px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">👤 ملفه</button>' +
+    return '<div class="bid-status-card '+b.status+'">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">' +
+        '<div style="font-size:14px;font-weight:800;color:var(--t);cursor:pointer" onclick="openTender('+b.request_id+')">'+b.request_title+'</div>'+st+
       '</div>' +
-      '<div class="chat-msgs" id="chat-msgs-inner">';
-    if(!filtered.length) h+='<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة 👋</div>';
-    filtered.forEach(function(m){
-      var isMe=m.sender_id==user.id;
-      var isSys=m.content&&m.content.startsWith('✅');
-      if(isSys){h+='<div class="bubble-sys">'+m.content+'</div>';return;}
-      h+='<div class="'+(isMe?'bubble-me':'bubble-other')+'">'+ (!isMe?'<div class="msg-sname">'+(m.sender_name||curChatProv.name)+'</div>':'')+m.content+'<div class="msg-time">'+ago(m.created_at)+'</div></div>';
-    });
-    h+='</div><div class="chat-inp-row"><input class="chat-inp" id="tab-chat-inp" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\')sendTabMsg('+id+')"><button class="chat-send" onclick="sendTabMsg('+id+')">إرسال</button></div></div>';
-    document.getElementById('chat-wrap').innerHTML=h;
-    var box=document.getElementById('chat-msgs-inner');
-    if(box) box.scrollTop=box.scrollHeight;
-  });
-}
-
-function sendTabMsg(reqId){
-  var inp=document.getElementById('tab-chat-inp');
-  if(!inp||!inp.value.trim()||!curChatProv) return;
-  var content=inp.value.trim(); inp.value='';
-  apiPost('/api/messages',{request_id:reqId,receiver_id:curChatProv.id,content:content}).then(function(){renderChatTab(reqId);});
-}
-
-// ── ACTIONS ──
-function loadActions(id){
-  apiFetch('/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
-    var h='';
-    if(req.status==='in_progress'){
-      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div><div class="card-body">' +
-        '<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:12px;margin-bottom:10px;font-size:13px">✓ تم الإنجاز — أكمل الطلب</button>' +
-        '<button class="btn-sm bs-a" onclick="openRate('+id+','+req.assigned_provider_id+')" style="width:100%;padding:12px;font-size:13px">⭐ تقييم المزود</button>' +
-        '</div></div>';
-    } else if(req.status==='done'||req.status==='completed'){
-      h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:14px;color:var(--success);font-weight:800;padding:10px 0">✅ الطلب مكتمل بنجاح</p></div></div>';
-    } else if(req.status==='open'){
-      h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:13px;color:var(--t3);padding:10px 0">انتظر العروض ثم اقبل المناسب</p></div></div>';
-    }
-    document.getElementById('actions-wrap').innerHTML=h||emptyBox('لا يوجد إجراءات','');
-  });
-}
-
-function markDone(id){
-  apiPut('/api/requests/'+id+'/complete').then(function(){openDetail(id);}).catch(function(){
-    apiPut('/api/requests/'+id+'/status',{status:'done'}).then(function(){openDetail(id);});
-  });
-}
-
-// ── صفحة الرسائل ──
-function loadMsgThreads(){
-  document.getElementById('msg-threads').innerHTML='<div class="loading">جاري التحميل...</div>';
-  apiFetch('/api/requests/my').then(function(r){return r.json();}).then(function(reqs){
-    var active=reqs.filter(function(r){return r.status==='open'||r.status==='in_progress';});
-    if(!active.length){document.getElementById('msg-threads').innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--t3)">لا يوجد محادثات بعد</div>';return;}
-    var threads=[], pending=active.length;
-    active.forEach(function(req){
-      apiFetch('/api/requests/'+req.id+'/bids').then(function(r){return r.json();}).then(function(bids){
-        bids.forEach(function(b){threads.push({pid:b.provider_id,pname:b.provider_name,rid:req.id,rtitle:req.title,bstatus:b.status});});
-      }).catch(function(){}).then(function(){
-        pending--;
-        if(pending===0) renderMsgThreads(threads);
-      });
-    });
-  }).catch(function(){document.getElementById('msg-threads').innerHTML='<div style="padding:14px;font-size:12px;color:var(--t3)">تعذر التحميل</div>';});
-}
-
-function renderMsgThreads(threads){
-  document.getElementById('msg-count').textContent=threads.length?threads.length+' محادثة':'';
-  if(!threads.length){document.getElementById('msg-threads').innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--t3)">لا يوجد محادثات<br><small>اقبل عرضاً لبدء التواصل</small></div>';return;}
-  document.getElementById('msg-threads').innerHTML=threads.map(function(t){
-    var isOn=curMsgProv&&curMsgProv.id==t.pid&&curMsgReqId==t.rid;
-    return '<div class="thread'+(isOn?' on':'')+'" onclick="openMsgChat('+t.pid+',\''+t.pname.replace(/\'/g,'')+'\','+t.rid+')">' +
-      '<div class="thread-av" style="background:'+ac(t.pid)+'">'+t.pname.charAt(0)+'</div>' +
-      '<div style="flex:1;min-width:0"><div class="thread-nm">'+t.pname+'</div><div class="thread-sub">'+t.rtitle+'</div></div>' +
-      (t.bstatus==='accepted'?'<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:2px 6px;border-radius:10px;font-weight:700;white-space:nowrap">✅ مقبول</span>':'')+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--t3);margin-bottom:4px">' +
+        '<span>💰 '+b.price+' ر.س</span><span>⏱ '+b.days+' يوم</span>'+(b.city?'<span>📍'+b.city+'</span>':'')+'<span>'+ago(b.created_at)+'</span>' +
+      '</div>' +
+      (b.note?'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-top:4px">"'+b.note+'"</div>':'')+
+      actions+
     '</div>';
   }).join('');
-  if(curMsgProv&&curMsgReqId) openMsgChat(curMsgProv.id,curMsgProv.name,curMsgReqId);
-  else if(threads.length) openMsgChat(threads[0].pid,threads[0].pname,threads[0].rid);
 }
 
-function openMsgChat(provId, provName, reqId){
-  curMsgProv={id:provId,name:provName}; curMsgReqId=reqId;
+// ── MESSAGES ──
+function openMsgWith(clientId, clientName, reqId){
+  curMsgClient={id:clientId,name:clientName}; curMsgReqId=reqId;
+  show('messages',document.getElementById('ni-messages'),'messages');
+  setTimeout(function(){openMsgChat(clientId,clientName,reqId);},400);
+}
+
+function loadMsgThreads(){
+  document.getElementById('msg-threads').innerHTML='<div class="loading">جاري التحميل...</div>';
+  apiGet('/api/provider/bids').then(function(r){return r.json();}).then(function(bids){
+    var accepted=bids.filter(function(b){return b.status==='accepted'||b.request_status==='in_progress';});
+    if(!accepted.length){document.getElementById('msg-threads').innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--t3)">لا يوجد محادثات<br><small>ستظهر بعد قبول عرضك</small></div>';return;}
+    document.getElementById('msg-count').textContent=accepted.length+' محادثة';
+    document.getElementById('msg-threads').innerHTML=accepted.map(function(b){
+      var isOn=curMsgClient&&curMsgClient.id==b.client_id&&curMsgReqId==b.request_id;
+      return '<div class="thread'+(isOn?' on':'')+'" onclick="openMsgChat('+(b.client_id||0)+',\'العميل\','+b.request_id+')">' +
+        '<div class="thread-av" style="background:#1B3A6B">ع</div>' +
+        '<div style="flex:1;min-width:0"><div class="thread-nm">'+(b.client_name||'العميل')+'</div><div class="thread-sub">'+b.request_title+'</div></div>' +
+        '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:2px 6px;border-radius:10px;font-weight:700;white-space:nowrap">مقبول</span>' +
+      '</div>';
+    }).join('');
+    if(curMsgClient&&curMsgReqId) openMsgChat(curMsgClient.id,curMsgClient.name,curMsgReqId);
+    else openMsgChat(accepted[0].client_id||0,'العميل',accepted[0].request_id);
+  }).catch(function(){document.getElementById('msg-threads').innerHTML=errBox();});
+}
+
+function openMsgChat(clientId, clientName, reqId){
+  curMsgClient={id:clientId,name:clientName}; curMsgReqId=reqId;
   document.querySelectorAll('.thread').forEach(function(t){t.classList.remove('on');});
-  apiFetch('/api/requests/'+reqId+'/bids').then(function(r){return r.json();}).then(function(bids){
-    var bid=bids.find(function(b){return b.provider_id==provId;});
-    var isAcc=bid&&bid.status==='accepted';
-    var main=document.getElementById('msg-main');
-    main.innerHTML=
-      '<div class="msg-hd">' +
-        '<div style="display:flex;align-items:center;gap:10px">' +
-          '<div style="width:38px;height:38px;border-radius:50%;background:'+ac(provId)+';color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" onclick="openProviderProfile('+provId+',\'messages\')">'+provName.charAt(0)+'</div>' +
-          '<div><div style="font-size:13px;font-weight:800;color:var(--t);cursor:pointer" onclick="openProviderProfile('+provId+',\'messages\')">'+provName+'</div><div style="font-size:11px;color:var(--success);font-weight:600">متصل</div></div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button onclick="openProviderProfile('+provId+',\'messages\')" style="padding:5px 10px;background:var(--subtle);color:var(--t2);border:1px solid var(--border);border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">👤 الملف</button>' +
-          (isAcc?'<button onclick="openRate('+reqId+','+provId+')" style="padding:5px 10px;background:var(--accent-l);color:var(--warn);border:1px solid var(--accent-m);border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">⭐ تقييم</button>':'')+
-          '<button onclick="curReqId='+reqId+';openDetail('+reqId+')" style="padding:5px 10px;background:var(--client-l);color:var(--client);border:1px solid var(--client-m);border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">الطلب</button>' +
-        '</div>' +
+  var main=document.getElementById('msg-main');
+  main.innerHTML=
+    '<div class="msg-hd">' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="width:38px;height:38px;border-radius:50%;background:#1B3A6B;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">ع</div>' +
+        '<div><div style="font-size:13px;font-weight:800;color:var(--t)">'+(clientName||'العميل')+'</div><div style="font-size:11px;color:var(--success);font-weight:600">متصل</div></div>' +
       '</div>' +
-      (isAcc?'<div class="acc-banner"><span style="font-size:18px">✅</span><div class="acc-banner-txt">تم قبول عرض '+provName+' — المشروع قيد التنفيذ</div></div>':'')+
-      '<div class="msg-chat-area" id="msgs-area"><div class="loading">جاري التحميل...</div></div>' +
-      '<div class="msg-inp-row"><input class="chat-inp" id="main-inp" placeholder="اكتب رسالتك..." onkeydown="if(event.key===\'Enter\')sendMainMsg('+provId+','+reqId+')"><button class="chat-send" onclick="sendMainMsg('+provId+','+reqId+')">إرسال</button></div>';
+      '<button onclick="openTender('+reqId+')" style="padding:5px 10px;background:var(--prov-l);color:var(--prov);border:1px solid var(--prov-m);border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">عرض المشروع</button>' +
+    '</div>' +
+    '<div class="acc-banner"><span style="font-size:18px">✅</span><div class="acc-banner-txt">تم قبول عرضك — تواصل مع العميل لمناقشة التفاصيل</div></div>' +
+    '<div class="msg-chat-area" id="msgs-area"><div class="loading">جاري التحميل...</div></div>' +
+    '<div class="msg-inp-row"><input class="chat-inp" id="main-inp" placeholder="اكتب رسالتك..." onkeydown="if(event.key===\'Enter\')sendMainMsg('+clientId+','+reqId+')"><button class="chat-send" onclick="sendMainMsg('+clientId+','+reqId+')">إرسال</button></div>';
 
-    apiFetch('/api/messages/'+reqId).then(function(r){return r.json();}).then(function(msgs){
-      var area=document.getElementById('msgs-area'); if(!area) return;
-      var filtered=msgs.filter(function(m){
-        return (m.sender_id==user.id&&m.receiver_id==provId)||
-               (m.sender_id==provId&&m.receiver_id==user.id)||
-               (m.content&&m.content.startsWith('✅ تم قبول'));
-      });
-      if(!filtered.length){area.innerHTML='<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة 👋</div>';return;}
-      area.innerHTML=filtered.map(function(m){
-        var isMe=m.sender_id==user.id;
-        var isSys=m.content&&m.content.startsWith('✅ تم قبول');
-        if(isSys) return'<div class="bubble-sys">'+m.content+'</div>';
-        return'<div class="'+(isMe?'bubble-me':'bubble-other')+'">'+ (!isMe?'<div class="msg-sname">'+(m.sender_name||provName)+'</div>':'')+m.content+'<div class="msg-time">'+ago(m.created_at)+'</div></div>';
-      }).join('');
-      area.scrollTop=area.scrollHeight;
-    }).catch(function(){var a=document.getElementById('msgs-area');if(a)a.innerHTML='<div style="text-align:center;color:var(--t3);font-size:12px;padding:20px">ابدأ المحادثة 👋</div>';});
-  });
+  apiGet('/api/messages/'+reqId).then(function(r){return r.json();}).then(function(msgs){
+    var area=document.getElementById('msgs-area'); if(!area) return;
+    var filtered=msgs.filter(function(m){
+      return (m.sender_id==user.id&&m.receiver_id==clientId)||
+             (m.sender_id==clientId&&m.receiver_id==user.id)||
+             (m.content&&(m.content.startsWith('✅ تم قبول')||m.content.startsWith('✅ تم قبول عرضك')));
+    });
+    if(!filtered.length){area.innerHTML='<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة مع العميل 👋</div>';return;}
+    area.innerHTML=filtered.map(function(m){
+      var isMe=m.sender_id==user.id;
+      var isSys=m.content&&m.content.startsWith('✅');
+      if(isSys) return'<div class="bubble-sys">'+m.content+'</div>';
+      return'<div class="'+(isMe?'bubble-me':'bubble-other')+'">'+ (!isMe?'<div class="msg-sname">'+(m.sender_name||clientName)+'</div>':'')+m.content+'<div class="msg-time">'+ago(m.created_at)+'</div></div>';
+    }).join('');
+    area.scrollTop=area.scrollHeight;
+  }).catch(function(){var a=document.getElementById('msgs-area');if(a)a.innerHTML='<div style="text-align:center;color:var(--t3);font-size:12px;padding:20px">ابدأ المحادثة 👋</div>';});
 }
 
-function sendMainMsg(provId, reqId){
+function sendMainMsg(clientId, reqId){
   var inp=document.getElementById('main-inp');
   if(!inp||!inp.value.trim()) return;
   var content=inp.value.trim(); inp.value='';
-  apiPost('/api/messages',{request_id:reqId,receiver_id:provId,content:content}).then(function(){openMsgChat(provId,curMsgProv?curMsgProv.name:'',reqId);});
+  apiPost('/api/messages',{request_id:reqId,receiver_id:clientId,content:content})
+    .then(function(){openMsgChat(clientId,curMsgClient?curMsgClient.name:'العميل',reqId);});
 }
 
-// ── RATE ──
-function openRate(reqId, provId){
-  selReqId=reqId; selProvId=provId; selRating=0;
-  document.querySelectorAll('.sp').forEach(function(s){s.className='sp';});
-  document.getElementById('rate-comment').value='';
-  document.getElementById('rate-alert').className='alert';
-  document.getElementById('rateOv').className='overlay show';
+// ── BID MODAL (للرئيسية) ──
+function openBidModal(reqId){
+  curBidReqId=reqId;
+  document.getElementById('bid-price').value='';
+  document.getElementById('bid-days').value='';
+  document.getElementById('bid-note').value='';
+  document.getElementById('bid-alert').className='alert';
+  document.getElementById('bidOv').className='overlay show';
 }
-function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach(function(s,i){s.className=i<n?'sp on':'sp';});}
-function submitRate(){
-  if(!selRating){var e=document.getElementById('rate-alert');e.textContent='يرجى اختيار تقييم';e.className='alert err';return;}
-  var btn=document.getElementById('rate-btn');btn.disabled=true;btn.textContent='جاري الإرسال...';
-  apiPost('/api/reviews',{request_id:selReqId,reviewed_id:selProvId,rating:selRating,comment:document.getElementById('rate-comment').value,type:'client_to_provider'})
+function closeBidModal(){document.getElementById('bidOv').className='overlay';}
+function submitBid(){
+  var price=document.getElementById('bid-price').value;
+  var days=document.getElementById('bid-days').value;
+  if(!price||!days){showAlert('bid-alert','يرجى تعبئة السعر والمدة','err');return;}
+  var btn=document.getElementById('bid-submit-btn');btn.disabled=true;btn.textContent='جاري التقديم...';
+  apiPost('/api/bids',{request_id:curBidReqId,price:+price,days:+days,note:document.getElementById('bid-note').value})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
     .then(function(r){
-      if(r.ok){var e=document.getElementById('rate-alert');e.textContent='✓ شكراً على تقييمك';e.className='alert ok';setTimeout(closeRate,1500);}
-      else{var e=document.getElementById('rate-alert');e.textContent=r.d.message||'حدث خطأ';e.className='alert err';}
-      btn.disabled=false;btn.textContent='إرسال التقييم';
-    });
+      if(r.ok){showAlert('bid-alert','✓ تم تقديم عرضك!','ok');setTimeout(function(){closeBidModal();loadHome();},1500);}
+      else{showAlert('bid-alert',r.d.message||'حدث خطأ','err');}
+      btn.disabled=false;btn.textContent='تقديم العرض';
+    }).catch(function(){showAlert('bid-alert','تعذر الاتصال','err');btn.disabled=false;btn.textContent='تقديم العرض';});
 }
 
 // ── NOTIFS ──
 function loadNotifCount(){
-  apiFetch('/api/notifications').then(function(r){return r.json();}).then(function(ns){
+  apiGet('/api/notifications').then(function(r){return r.json();}).then(function(ns){
     var u=ns.filter(function(n){return!n.is_read;}).length;
-    ['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.textContent=u;el.style.display=u>0?'flex':'none';});
+    ['notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.textContent=u;el.style.display=u>0?'flex':'none';});
+    // عروض مقبولة كـ badge
+    var accBids=allMyBids.filter(function(b){return b.status==='accepted';}).length;
+    var bBadge=document.getElementById('bids-badge');if(bBadge){bBadge.textContent=accBids;bBadge.style.display=accBids>0?'flex':'none';}
   }).catch(function(){});
 }
 function loadNotifs(){
   document.getElementById('notifs-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  apiFetch('/api/notifications').then(function(r){return r.json();}).then(function(ns){
+  apiGet('/api/notifications').then(function(r){return r.json();}).then(function(ns){
     if(!ns.length){document.getElementById('notifs-list').innerHTML=emptyBox('لا يوجد إشعارات','');return;}
     document.getElementById('notifs-list').innerHTML=ns.map(function(n){
       return '<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="handleNotif('+n.ref_id+',\''+n.type+'\')">' +
@@ -1005,35 +825,81 @@ function loadNotifs(){
   }).catch(function(){document.getElementById('notifs-list').innerHTML=errBox();});
 }
 function handleNotif(refId,type){
-  if(type==='message'&&refId){show('messages',document.getElementById('ni-messages'),'messages');curMsgReqId=refId;}
-  else if(refId&&['bid','assigned','accepted'].includes(type)) openDetail(refId);
+  if(type==='message'&&refId){curMsgReqId=refId;show('messages',document.getElementById('ni-messages'),'messages');}
+  else if(refId&&['bid','accepted','assigned'].includes(type)){openTender(refId);}
 }
 function markAllRead(){
-  apiPut('/api/notifications/read-all').then(function(){['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});});
+  apiPut('/api/notifications/read-all').then(function(){['notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});});
 }
 
-// ── NEW REQUEST ──
-function submitReq(){
-  var title=document.getElementById('n-title').value.trim();
-  var desc=document.getElementById('n-desc').value.trim();
-  var city=document.getElementById('n-city').value.trim();
-  var cat=document.getElementById('n-cat').value;
-  if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}
-  if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}
-  var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';
-  var body={title:title,description:desc,category:cat,city:city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};
-  apiPost('/api/requests',body).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-    .then(function(r){
-      if(r.ok){
-        showNewMsg('✓ تم نشر طلبك بنجاح!','ok');
-        ['n-title','n-desc','n-city','n-address','n-budget'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-        document.getElementById('n-deadline').value='';
-        setTimeout(function(){show('requests',null,'requests');},1600);
-      } else {showNewMsg(r.d.message||'حدث خطأ','err');}
-      btn.disabled=false;btn.textContent='نشر الطلب';
-    }).catch(function(){showNewMsg('تعذر الاتصال بالسيرفر','err');btn.disabled=false;btn.textContent='نشر الطلب';});
+// ── PROFILE ──
+var selectedNotifyCats = [];
+
+function renderNotifyCats(){
+  var grid = document.getElementById('notify-cats-grid');
+  if(!grid) return;
+  grid.innerHTML = CATS.map(function(c){
+    var on = selectedNotifyCats.includes(c);
+    return '<div onclick="toggleNotifyCat(\''+c+'\')" style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;border:1.5px solid '+(on?'var(--prov)':'var(--border)')+';background:'+(on?'var(--prov)':'var(--white)')+';color:'+(on?'#fff':'var(--t3)')+'">'+c+'</div>';
+  }).join('');
 }
-function showNewMsg(t,c){var e=document.getElementById('new-alert');e.textContent=t;e.className='alert '+c;setTimeout(function(){e.className='alert';},5000);}
+
+function toggleNotifyCat(cat){
+  var idx = selectedNotifyCats.indexOf(cat);
+  if(idx >= 0) selectedNotifyCats.splice(idx,1);
+  else selectedNotifyCats.push(cat);
+  renderNotifyCats();
+}
+
+function openImgFull(src){
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  ov.onclick = function(){document.body.removeChild(ov);};
+  var img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:95vw;max-height:95vh;border-radius:8px;object-fit:contain';
+  ov.appendChild(img);
+  document.body.appendChild(ov);
+}
+
+function loadProfile(){
+  apiGet('/api/provider/profile').then(function(r){return r.json();}).then(function(p){
+    document.getElementById('prof-av').textContent=p.name.charAt(0);
+    document.getElementById('prof-name').textContent=p.name;
+    document.getElementById('prof-city').textContent=(p.city?'📍 '+p.city:'')+(p.phone?' • 📞 '+p.phone:'');
+    document.getElementById('prof-rating').textContent=p.avg_rating>0?parseFloat(p.avg_rating).toFixed(1):'—';
+    document.getElementById('prof-projects').textContent=p.completed_projects||0;
+    document.getElementById('prof-n').value=p.name||'';
+    document.getElementById('prof-p').value=p.phone||'';
+    document.getElementById('prof-c').value=p.city||'';
+    document.getElementById('prof-bio').value=p.bio||'';
+    selectedNotifyCats = Array.isArray(p.notify_categories) ? p.notify_categories : [];
+    renderNotifyCats();
+  }).catch(function(){});
+}
+
+function saveProfile(){
+  var name=document.getElementById('prof-n').value.trim();
+  var phone=document.getElementById('prof-p').value.trim();
+  var city=document.getElementById('prof-c').value.trim();
+  var bio=document.getElementById('prof-bio').value.trim();
+  if(!name){showAlert('prof-alert','الاسم مطلوب','err');return;}
+  // حفظ الملف الشخصي
+  apiPut('/api/provider/profile',{name,phone,city,bio})
+    .then(function(r){return r.json();}).then(function(p){
+      user.name=p.name; localStorage.setItem('user',JSON.stringify(user));
+      document.getElementById('userName').textContent=p.name;
+      document.getElementById('userAv').textContent=p.name.charAt(0);
+    }).catch(function(){});
+  // حفظ تفضيلات الإشعارات
+  apiPut('/api/provider/notify-prefs',{notify_categories:selectedNotifyCats})
+    .then(function(){
+      showAlert('prof-alert','✓ تم حفظ التعديلات وتفضيلات الإشعارات','ok');
+      loadProfile();
+    }).catch(function(){showAlert('prof-alert','تعذر الحفظ','err');});
+}
+
+function showAlert(id,txt,type){var e=document.getElementById(id);if(!e)return;e.textContent=txt;e.className='alert '+type;setTimeout(function(){e.className='alert';},5000);}
 
 setInterval(loadNotifCount,30000);
 loadHome();
