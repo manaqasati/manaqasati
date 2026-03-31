@@ -504,6 +504,12 @@ var AVC = ['#1B3A6B','#1D6A5A','#1e40af','#166534','#92400e','#991b1b','#0891b2'
 function ac(id) { return AVC[(+id||0) % AVC.length]; }
 function hdr() { return { headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token } }; }
 function apiFetch(url) { return fetch(API+url, hdr()); }
+function apiFetchSafe(url) {
+  return fetch(API+url, hdr()).then(function(r){
+    if(!r.ok) return [];
+    return r.json().then(function(d){ return Array.isArray(d)?d:[]; });
+  }).catch(function(){return [];});
+}
 function apiPost(url, body) { return fetch(API+url, Object.assign({method:'POST',body:JSON.stringify(body)}, hdr())); }
 function apiPut(url, body) { return fetch(API+url, Object.assign({method:'PUT', body:body?JSON.stringify(body):undefined}, hdr())); }
 
@@ -638,7 +644,7 @@ function openDetail(id){
 // ── BIDS ──
 function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  apiFetch('/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(function(bids){
+  apiFetchSafe('/api/requests/'+id+'/bids').then(function(bids){
     document.getElementById('bids-count').textContent='('+bids.length+')';
     if(!bids.length){document.getElementById('bids-list').innerHTML=emptyBox('لا يوجد عروض بعد','انتظر قليلاً');return;}
 
@@ -708,8 +714,8 @@ function loadBids(id){
 function acceptBid(bidId, reqId){
   if(!confirm('هل تريد قبول هذا العرض؟')) return;
   apiPut('/api/bids/'+bidId+'/accept').then(function(r){return r.json();}).then(function(){
-    apiFetch('/api/requests/'+reqId+'/bids').then(function(r){return r.json();}).then(function(bids){
-      var acc=bids.find(function(b){return b.status==='accepted';});
+    apiFetchSafe('/api/requests/'+reqId+'/bids').then(function(bids){
+      var acc=Array.isArray(bids)?bids.find(function(b){return b.status==='accepted';}):null;
       if(acc){
         apiPost('/api/messages',{request_id:reqId,receiver_id:acc.provider_id,content:'✅ تم قبول عرضك! يسعدنا العمل معك. سيتم التواصل معك قريباً.'}).catch(function(){});
       }
