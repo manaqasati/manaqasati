@@ -403,6 +403,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
             <div class="fg"><label>الميزانية (ر.س)</label><input id="n-budget" type="number" placeholder="500" inputmode="numeric"></div>
             <div class="fg"><label>تاريخ الانتهاء</label><input id="n-deadline" type="date"></div>
             <div class="fg ff"><label>تفاصيل الطلب *</label><textarea id="n-desc" placeholder="اشرح طلبك بالتفاصيل..."></textarea></div>
+            <!-- رفع صور متعددة -->
+            <div class="fg ff">
+              <label>صور المشروع <span style="font-size:11px;color:var(--t3);font-weight:400">حتى 5 صور — اضغط على أي صورة لجعلها الرئيسية</span></label>
+              <div id="img-upload-area" onclick="document.getElementById('n-images').click()" style="border:2px dashed var(--br2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.15s;background:var(--bg)" onmouseover="this.style.borderColor='var(--client)';this.style.background='var(--client-l)'" onmouseout="this.style.borderColor='var(--br2)';this.style.background='var(--bg)'">
+                <div style="font-size:28px;margin-bottom:6px">🖼️</div>
+                <div style="font-size:13px;font-weight:600;color:var(--t2)">اضغط لرفع الصور</div>
+                <div style="font-size:11px;color:var(--t4);margin-top:3px">JPG، PNG — حتى 5 صور، 5MB لكل صورة</div>
+              </div>
+              <input type="file" id="n-images" accept="image/*" multiple style="display:none" onchange="previewImages(this)">
+              <div id="img-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px"></div>
+              <input type="hidden" id="n-main-image-index" value="0">
+            </div>
           </div>
           <div class="form-btns">
             <button class="btn-p" id="n-btn" onclick="submitReq()">نشر الطلب</button>
@@ -653,6 +665,7 @@ function loadBids(id){
             '<span style="font-size:18px">✅</span>' +
             '<span class="bid-accepted-txt">تم قبول هذا العرض — '+b.provider_name+' هو مزود الخدمة</span>' +
           '</div>' +
+          (b.note&&b.note.includes('→')?'<div style="background:var(--warn-l);border-right:3px solid var(--warn);padding:10px 16px;font-size:12px;color:#633806">✏️ <strong>تعديل من المزود:</strong> '+b.note+'</div>':'')+
           '<div class="bid-actions-row">' +
             '<button class="btn-sm bs-dark" onclick="openChatWith('+b.provider_id+',\''+b.provider_name.replace(/\'/g,'')+'\','+id+')">💬 تواصل مع المزود</button>' +
             '<button class="btn-sm bs-p" onclick="openProviderProfile('+b.provider_id+',\'detail\')">👤 ملف المزود</button>' +
@@ -862,11 +875,15 @@ function loadActions(id){
     var h='';
     if(req.status==='in_progress'){
       h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div><div class="card-body">' +
-        '<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:12px;margin-bottom:10px;font-size:13px">✓ تم الإنجاز — أكمل الطلب</button>' +
+        '<button class="btn-sm bs-g" onclick="markDone('+id+','+req.assigned_provider_id+')" style="width:100%;padding:12px;margin-bottom:10px;font-size:13px">✓ تم الإنجاز — أكمل الطلب</button>' +
         '<button class="btn-sm bs-a" onclick="openRate('+id+','+req.assigned_provider_id+')" style="width:100%;padding:12px;font-size:13px">⭐ تقييم المزود</button>' +
         '</div></div>';
     } else if(req.status==='done'||req.status==='completed'){
-      h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:14px;color:var(--success);font-weight:800;padding:10px 0">✅ الطلب مكتمل بنجاح</p></div></div>';
+      h='<div class="card"><div class="card-body">' +
+        '<p style="text-align:center;font-size:14px;color:var(--success);font-weight:800;padding:10px 0 6px">✅ الطلب مكتمل بنجاح</p>' +
+        (req.assigned_provider_id ?
+          '<button class="btn-sm bs-a" onclick="openRate('+id+','+req.assigned_provider_id+')" style="width:100%;padding:11px;font-size:13px;margin-top:6px">⭐ قيّم المزود الآن</button>' : '') +
+        '</div></div>';
     } else if(req.status==='open'){
       h='<div class="card"><div class="card-body"><p style="text-align:center;font-size:13px;color:var(--t3);padding:10px 0">انتظر العروض ثم اقبل المناسب</p></div></div>';
     }
@@ -874,8 +891,17 @@ function loadActions(id){
   });
 }
 
-function markDone(id){
-  apiPut('/api/requests/'+id+'/complete').then(function(){openDetail(id);}).catch(function(){
+function markDone(id, provId){
+  if(!confirm('تأكيد إتمام المشروع؟')) return;
+  apiPut('/api/requests/'+id+'/complete').then(function(){
+    openDetail(id);
+    // عرض طلب التقييم بعد ثانيتين
+    setTimeout(function(){
+      if(provId && confirm('🎉 أحسنت! المشروع مكتمل.\n\nهل تريد تقييم المزود الآن؟ تقييمك يساعد العملاء الآخرين.')){
+        openRate(id, provId);
+      }
+    }, 2000);
+  }).catch(function(){
     apiPut('/api/requests/'+id+'/status',{status:'done'}).then(function(){openDetail(id);});
   });
 }
@@ -1012,6 +1038,55 @@ function markAllRead(){
 }
 
 // ── NEW REQUEST ──
+// صور متعددة
+var uploadedImages = [];
+var mainImageIndex = 0;
+
+function previewImages(input){
+  var files = Array.from(input.files);
+  if(!files.length) return;
+  var grid = document.getElementById('img-preview-grid');
+  files.forEach(function(file){
+    if(uploadedImages.length >= 5){showNewMsg('الحد الأقصى 5 صور','err');return;}
+    if(file.size > 5*1024*1024){showNewMsg('حجم الصورة يجب أن يكون أقل من 5MB','err');return;}
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var idx = uploadedImages.length;
+      uploadedImages.push(e.target.result);
+      renderImageGrid();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value='';
+}
+
+function renderImageGrid(){
+  var grid = document.getElementById('img-preview-grid');
+  if(!grid) return;
+  if(!uploadedImages.length){grid.innerHTML='';return;}
+  grid.innerHTML = uploadedImages.map(function(src,i){
+    var isMain = i === mainImageIndex;
+    return '<div style="position:relative;cursor:pointer" onclick="setMainImage('+i+')">' +
+      '<img src="'+src+'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:'+(isMain?'3px solid var(--success)':'2px solid var(--border)')+';transition:.15s">' +
+      (isMain ? '<div style="position:absolute;top:4px;right:4px;background:var(--success);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px">رئيسية</div>' : '') +
+      '<button onclick="removeImage(event,'+i+')" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+function setMainImage(idx){
+  mainImageIndex = idx;
+  document.getElementById('n-main-image-index').value = idx;
+  renderImageGrid();
+}
+
+function removeImage(e, idx){
+  e.stopPropagation();
+  uploadedImages.splice(idx, 1);
+  if(mainImageIndex >= uploadedImages.length) mainImageIndex = Math.max(0, uploadedImages.length-1);
+  renderImageGrid();
+}
+
 function submitReq(){
   var title=document.getElementById('n-title').value.trim();
   var desc=document.getElementById('n-desc').value.trim();
@@ -1020,13 +1095,23 @@ function submitReq(){
   if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}
   if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}
   var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';
-  var body={title:title,description:desc,category:cat,city:city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};
+  var mainImg = uploadedImages.length ? uploadedImages[mainImageIndex] : null;
+  var body={
+    title:title, description:desc, category:cat, city:city,
+    address:document.getElementById('n-address').value.trim(),
+    budget_max:parseInt(document.getElementById('n-budget').value||0)||null,
+    deadline:document.getElementById('n-deadline').value||null,
+    image_url: mainImg,
+    images: uploadedImages,
+    main_image_index: mainImageIndex
+  };
   apiPost('/api/requests',body).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
     .then(function(r){
       if(r.ok){
         showNewMsg('✓ تم نشر طلبك بنجاح!','ok');
         ['n-title','n-desc','n-city','n-address','n-budget'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         document.getElementById('n-deadline').value='';
+        uploadedImages=[];mainImageIndex=0;renderImageGrid();
         setTimeout(function(){show('requests',null,'requests');},1600);
       } else {showNewMsg(r.d.message||'حدث خطأ','err');}
       btn.disabled=false;btn.textContent='نشر الطلب';
