@@ -311,7 +311,13 @@ app.get('/api/requests/my', auth, async (req, res) => {
 app.get('/api/requests/:id', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT r.*, u.name as client_name, u.phone as client_phone, u.city as client_city,
+      SELECT r.id, r.project_number, r.title, r.description, r.category, r.city, r.address,
+      r.budget_max, r.deadline, r.image_url,
+      COALESCE(r.images, ARRAY[]::TEXT[]) as images,
+      COALESCE(r.main_image_index, 0) as main_image_index,
+      r.status, r.client_id, r.accepted_bid_id, r.assigned_provider_id,
+      r.assigned_at, r.completed_at, r.admin_notes, r.created_at,
+      u.name as client_name, u.phone as client_phone, u.city as client_city,
       p.name as provider_name, p.phone as provider_phone
       FROM requests r 
       JOIN users u ON r.client_id=u.id
