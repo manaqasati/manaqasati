@@ -583,6 +583,21 @@ function openTender(id){
           '<div style="font-size:12px;color:var(--t3);margin-bottom:'+(isAcc?'12px':'0')+'">مدة التنفيذ: '+myBid.days+' يوم'+(myBid.note?' • '+myBid.note:'')+'</div>' +
           (isAcc?'<button class="btn-p" onclick="openMsgWith('+req.client_id+',\''+req.client_name.replace(/\'/g,'')+'\','+id+')" style="width:100%;margin-top:4px">💬 تواصل مع العميل الآن</button>':'')+
         '</div>' +
+        // ✅ نموذج تعديل العرض بعد القبول
+        (isAcc?
+        '<div style="margin-top:14px;background:var(--warn-l);border:1.5px solid var(--warn-m);border-radius:12px;padding:14px">' +
+          '<div style="font-size:13px;font-weight:800;color:var(--warn);margin-bottom:12px">✏️ طلب تعديل على العرض المقبول</div>' +
+          '<div class="alert" id="revise-alert"></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">' +
+            '<div class="fg"><label>السعر الجديد (ر.س)</label><input id="revise-price" type="number" value="'+myBid.price+'" inputmode="numeric"></div>' +
+            '<div class="fg"><label>المدة الجديدة (يوم)</label><input id="revise-days" type="number" value="'+myBid.days+'" inputmode="numeric"></div>' +
+          '</div>' +
+          '<div class="fg"><label>سبب التعديل * <span style="font-size:11px;color:var(--t3);font-weight:400">(سيظهر للعميل والمدير)</span></label>' +
+            '<textarea id="revise-note" placeholder="مثال: ارتفعت تكلفة المواد، أو تعديل في نطاق العمل..." style="min-height:70px"></textarea>' +
+          '</div>' +
+          '<button class="btn-p" onclick="submitRevision('+myBid.id+')" style="background:var(--warn);width:100%;margin-top:6px">إرسال طلب التعديل</button>' +
+        '</div>'
+        :'')+
       '</div></div>';
     } else if(req.status==='open'){
       html+='<div class="card"><div class="ch"><h3>تقديم عرضك</h3></div><div class="card-body">' +
@@ -600,6 +615,20 @@ function openTender(id){
 
     document.getElementById('tender-detail').innerHTML=html;
   }).catch(function(){document.getElementById('tender-detail').innerHTML=errBox();});
+}
+
+function submitRevision(bidId){
+  var price=document.getElementById('revise-price')?.value;
+  var days=document.getElementById('revise-days')?.value;
+  var note=document.getElementById('revise-note')?.value?.trim();
+  if(!price||!days){showAlert('revise-alert','يرجى تعبئة السعر والمدة','err');return;}
+  if(!note){showAlert('revise-alert','يرجى كتابة سبب التعديل','err');return;}
+  apiPut('/api/bids/'+bidId+'/revise',{price:+price,days:+days,revision_note:note})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(r){
+      if(r.ok){showAlert('revise-alert','✓ تم إرسال طلب التعديل للعميل والمدير','ok');}
+      else{showAlert('revise-alert',r.d.message||'حدث خطأ','err');}
+    }).catch(function(){showAlert('revise-alert','تعذر الاتصال','err');});
 }
 
 function submitInlineBid(reqId){
