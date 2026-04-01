@@ -863,6 +863,18 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ─── FIX-DB ENDPOINT ───
+app.get("/api/fix-db", async (req, res) => {
+  try {
+    if (req.query.secret !== "manaqasa2024") return res.status(403).json({ message: "رمز خاطئ" });
+    const results = [];
+    try { await pool.query("ALTER TABLE users RENAME COLUMN password_hash TO password"); results.push("✅ تم تسمية العمود"); } catch(e){ results.push("ℹ️ rename: "+e.message.substring(0,60)); }
+    try { await pool.query("ALTER TABLE users ALTER COLUMN password DROP NOT NULL"); results.push("✅ تم إزالة NOT NULL"); } catch(e){ results.push("ℹ️ null: "+e.message.substring(0,60)); }
+    const cols = await pool.query("SELECT column_name,is_nullable FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position");
+    res.json({ ok: true, steps: results, columns: cols.rows });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── ADMIN SETUP (استخدم مرة واحدة فقط لإنشاء حساب المدير) ───
 // الرابط: /api/setup-admin?secret=manaqasa2024
 app.get('/api/setup-admin', async (req, res) => {
