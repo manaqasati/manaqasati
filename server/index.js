@@ -108,6 +108,18 @@ async function initDB() {
     );
   `);
 
+  // ترحيل: إعادة تسمية password_hash → password إذا كان موجوداً
+  await pool.query(`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='users' AND column_name='password_hash'
+      ) THEN
+        ALTER TABLE users RENAME COLUMN password_hash TO password;
+      END IF;
+    END $$;
+  `).catch(()=>{});
+
   const alters = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS specialties TEXT[]`,
