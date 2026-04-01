@@ -15,7 +15,21 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 const RESEND_KEY = process.env.RESEND_KEY || 're_bfjMBMPj_67sGJEwKehKqnqz5B4pVqvTD';
 const FROM_EMAIL = 'cs@manaqasa.com';
 const SITE_URL = 'https://manaqasati-production.up.railway.app';
+const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
 
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+const CATEGORIES = [
+  'تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش',
+  'حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن',
+  'شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب',
+  'أعمال جبس وطباشير','مكافحة حشرات','أخرى'
+];
+
+// ── EMAIL ──
 async function sendEmail(to, subject, html) {
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -23,25 +37,23 @@ async function sendEmail(to, subject, html) {
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: `مناقصة <${FROM_EMAIL}>`, to: [to], subject, html })
     });
-    const d = await r.json();
-    if (!r.ok) console.error('Resend error:', d);
+    if (!r.ok) console.error('Resend:', await r.text());
     return r.ok;
   } catch(e) { console.error('Email error:', e.message); return false; }
 }
 
-function emailTemplate(title, body, btnText, btnUrl) {
+function emailTpl(title, body, btnText, btnUrl) {
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>
     body{font-family:Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:20px}
     .box{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
     .head{background:#1B3A6B;padding:24px;text-align:center}
     .head h1{color:#fff;margin:0;font-size:20px}
     .head p{color:rgba(255,255,255,.7);margin:6px 0 0;font-size:13px}
-    .body{padding:28px 32px}
-    .body p{color:#374151;font-size:14px;line-height:1.9;margin:0 0 14px}
+    .body{padding:28px 32px}.body p{color:#374151;font-size:14px;line-height:1.9;margin:0 0 14px}
     .btn{display:inline-block;background:#2C5282;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;margin:8px 0}
-    .highlight{background:#E6EEF8;border-right:3px solid #2C5282;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#1B2B4B}
-    .success{background:#E1F5EE;border-right:3px solid #1D9E75;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#085041}
-    .danger{background:#FCEBEB;border-right:3px solid #E24B4A;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#7f1d1d}
+    .hl{background:#E6EEF8;border-right:3px solid #2C5282;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#1B2B4B}
+    .ok{background:#E1F5EE;border-right:3px solid #1D9E75;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#085041}
+    .ng{background:#FCEBEB;border-right:3px solid #E24B4A;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#7f1d1d}
     .foot{background:#f9fafb;padding:14px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
   </style></head><body><div class="box">
     <div class="head"><h1>🏆 مناقصة</h1><p>منصة مناقصة للخدمات</p></div>
@@ -52,74 +64,111 @@ function emailTemplate(title, body, btnText, btnUrl) {
   </div></body></html>`;
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
-
-const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-
-function generateProjectNumber(id, date) {
+function genProjectNum(id, date) {
   const d = new Date(date);
   return `MNQ-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(id).padStart(4,'0')}`;
 }
 
+// ── DB INIT ──
 async function initDB() {
+  // إنشاء الجداول
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255), phone VARCHAR(20), role VARCHAR(20) DEFAULT 'client',
-      specialties TEXT[], notify_categories TEXT[], bio TEXT, city VARCHAR(100),
-      badge VARCHAR(50) DEFAULT 'none', is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW()
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255),
+      phone VARCHAR(20),
+      role VARCHAR(20) DEFAULT 'client',
+      specialties TEXT[],
+      notify_categories TEXT[],
+      bio TEXT,
+      city VARCHAR(100),
+      badge VARCHAR(50) DEFAULT 'none',
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS requests (
-      id SERIAL PRIMARY KEY, project_number VARCHAR(50), title VARCHAR(255) NOT NULL,
-      description TEXT, category VARCHAR(100), city VARCHAR(100), address TEXT,
-      budget_max INTEGER, deadline DATE, image_url TEXT, images TEXT[],
-      main_image_index INTEGER DEFAULT 0, status VARCHAR(30) DEFAULT 'pending_review',
-      client_id INTEGER REFERENCES users(id), accepted_bid_id INTEGER,
+      id SERIAL PRIMARY KEY,
+      project_number VARCHAR(50),
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      category VARCHAR(100),
+      city VARCHAR(100),
+      address TEXT,
+      budget_max INTEGER,
+      deadline DATE,
+      image_url TEXT,
+      images TEXT[],
+      main_image_index INTEGER DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'pending_review',
+      client_id INTEGER REFERENCES users(id),
+      accepted_bid_id INTEGER,
       assigned_provider_id INTEGER REFERENCES users(id),
-      assigned_at TIMESTAMP, completed_at TIMESTAMP, admin_notes TEXT, created_at TIMESTAMP DEFAULT NOW()
+      assigned_at TIMESTAMP,
+      completed_at TIMESTAMP,
+      admin_notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS bids (
-      id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
-      provider_id INTEGER REFERENCES users(id), price INTEGER NOT NULL, days INTEGER NOT NULL,
-      note TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(),
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id),
+      price INTEGER NOT NULL,
+      days INTEGER NOT NULL,
+      note TEXT,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(request_id, provider_id)
     );
     CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
-      sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id),
-      content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      sender_id INTEGER REFERENCES users(id),
+      receiver_id INTEGER REFERENCES users(id),
+      content TEXT NOT NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS reviews (
-      id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id),
-      reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id),
-      rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30),
-      created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id)
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id),
+      reviewer_id INTEGER REFERENCES users(id),
+      reviewed_id INTEGER REFERENCES users(id),
+      rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT,
+      type VARCHAR(30),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(request_id, reviewer_id)
     );
     CREATE TABLE IF NOT EXISTS notifications (
-      id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id),
-      title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER,
-      is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS saved_requests (
-      id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id),
-      request_id INTEGER REFERENCES requests(id), created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(provider_id, request_id)
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      title VARCHAR(255),
+      body TEXT,
+      type VARCHAR(50),
+      ref_id INTEGER,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
     );
   `);
 
-  // ترحيل: إعادة تسمية password_hash → password إذا كان موجوداً
-  await pool.query(`
-    DO $$ BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name='users' AND column_name='password_hash'
-      ) THEN
-        ALTER TABLE users RENAME COLUMN password_hash TO password;
-      END IF;
-    END $$;
-  `).catch(()=>{});
+  // ترحيل: إعادة تسمية password_hash → password
+  try {
+    await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`);
+    console.log('✅ تم تسمية password_hash → password');
+  } catch(e) {
+    if (!e.message.includes('does not exist') && !e.message.includes('already exists')) {
+      console.log('rename note:', e.message);
+    }
+  }
 
+  // إزالة NOT NULL عن password
+  try {
+    await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`);
+  } catch(e) {}
+
+  // إضافة أعمدة مفقودة
   const alters = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS specialties TEXT[]`,
@@ -140,15 +189,18 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
   ];
-  for (const sql of alters) { await pool.query(sql).catch(()=>{}); }
+  for (const sql of alters) await pool.query(sql).catch(()=>{});
 
-  const rows = await pool.query(`SELECT id, created_at FROM requests WHERE project_number IS NULL`);
+  // توليد أرقام المشاريع المفقودة
+  const rows = await pool.query(`SELECT id,created_at FROM requests WHERE project_number IS NULL`);
   for (const row of rows.rows) {
-    await pool.query(`UPDATE requests SET project_number=$1 WHERE id=$2`, [generateProjectNumber(row.id, row.created_at), row.id]);
+    await pool.query(`UPDATE requests SET project_number=$1 WHERE id=$2`,
+      [genProjectNum(row.id, row.created_at), row.id]);
   }
-  console.log('✅ DB ready');
+  console.log('✅ DB جاهزة');
 }
 
+// ── MIDDLEWARE ──
 function auth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'غير مصرح' });
@@ -162,35 +214,118 @@ function adminOnly(req, res, next) {
 }
 
 async function notify(userId, title, body, type, refId) {
-  await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)',
-    [userId, title, body, type, refId]).catch(()=>{});
+  await pool.query(
+    'INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)',
+    [userId, title, body, type, refId]
+  ).catch(()=>{});
 }
 
 async function notifyInterestedProviders(reqId, title, category) {
   if (!category) return;
   try {
     const provs = await pool.query(
-      `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)`,
+      `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
+       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)`,
       [category]
     );
     for (const p of provs.rows) {
-      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت مناقصة: "${title}" في تخصص ${category}`, 'bid', reqId);
+      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
       if (p.email) {
         await sendEmail(p.email, `🔔 مناقصة جديدة: ${title}`,
-          emailTemplate('مناقصة جديدة تهمك! 🔔',
+          emailTpl('مناقصة جديدة تهمك! 🔔',
             `<p>مرحباً <strong>${p.name}</strong>،</p>
              <p>نُشرت مناقصة جديدة في مجال <strong>${category}</strong>:</p>
-             <div class="highlight"><strong>${title}</strong></div>
-             <p>قدّم عرضك الآن!</p>`,
+             <div class="hl"><strong>${title}</strong></div>`,
             '💼 تقديم عرض', `${SITE_URL}/dashboard-provider.html`
           )
         );
       }
     }
-  } catch(e) { console.error('notifyProviders error:', e.message); }
+  } catch(e) { console.error('notifyProviders:', e.message); }
 }
 
-// ─── AUTH ───
+// ────────────────────────────────────────────
+// ── SETUP / FIX ENDPOINTS ──
+// ────────────────────────────────────────────
+
+// إصلاح قاعدة البيانات مباشرة
+// /api/fix-db?secret=manaqasa2024
+app.get('/api/fix-db', async (req, res) => {
+  try {
+    if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رمز خاطئ' });
+    const results = [];
+    try { await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`); results.push('✅ تم تسمية العمود'); } catch(e) { results.push('ℹ️ ' + e.message.substring(0,80)); }
+    try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); results.push('✅ تم إزالة NOT NULL'); } catch(e) { results.push('ℹ️ ' + e.message.substring(0,80)); }
+    const cols = await pool.query(`SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position`);
+    res.json({ ok: true, steps: results, columns: cols.rows });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// تعيين المدير مباشرة + إعادة تعيين كلمة المرور
+// /api/direct-admin?secret=manaqasa2024&email=EMAIL&password=PASS
+app.get('/api/direct-admin', async (req, res) => {
+  try {
+    if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رمز خاطئ' });
+    const { email, password } = req.query;
+    if (!email || !password) return res.json({ usage: '/api/direct-admin?secret=manaqasa2024&email=EMAIL&password=PASS' });
+
+    // إصلاح العمود أولاً
+    try { await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`); } catch(e) {}
+    try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); } catch(e) {}
+
+    const hash = await bcrypt.hash(password, 10);
+    const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+
+    if (exists.rows.length) {
+      await pool.query(`UPDATE users SET password=$1, role='admin', is_active=TRUE WHERE email=$2`, [hash, email]);
+      res.json({ ok: true, message: '✅ تم تحديث كلمة المرور ودور المدير بنجاح', email });
+    } else {
+      await pool.query(`INSERT INTO users(name,email,password,role) VALUES('المدير',$1,$2,'admin')`, [email, hash]);
+      res.json({ ok: true, message: '✅ تم إنشاء حساب المدير', email });
+    }
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// إنشاء حساب المدير
+// /api/setup-admin?secret=manaqasa2024&email=EMAIL&password=PASS&name=الاسم
+app.get('/api/setup-admin', async (req, res) => {
+  try {
+    if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رابط غير صحيح' });
+    const { email, password, name } = req.query;
+    if (!email || !password || !name) return res.json({
+      usage: '?secret=manaqasa2024&email=EMAIL&password=PASS&name=الاسم',
+      example: `${req.protocol}://${req.get('host')}/api/setup-admin?secret=manaqasa2024&email=admin@manaqasa.com&password=Admin@123&name=المدير`
+    });
+    try { await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`); } catch(e) {}
+    try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); } catch(e) {}
+    const hash = await bcrypt.hash(password, 10);
+    const exists = await pool.query('SELECT id,role FROM users WHERE email=$1', [email]);
+    if (exists.rows.length) {
+      await pool.query(`UPDATE users SET password=$1, role='admin', is_active=TRUE WHERE email=$2`, [hash, email]);
+      return res.json({ ok: true, message: `✅ تم ترقية الحساب ${email} لمدير وتحديث كلمة المرور` });
+    }
+    const r = await pool.query(
+      `INSERT INTO users(name,email,password,role) VALUES($1,$2,$3,'admin') RETURNING id,name,email,role`,
+      [name, email, hash]
+    );
+    res.json({ ok: true, message: '✅ تم إنشاء حساب المدير بنجاح', user: r.rows[0] });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// التحقق من الحساب
+app.get('/api/check-user', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id,name,email,role,is_active FROM users WHERE id=$1', [req.user.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ────────────────────────────────────────────
+// ── AUTH ──
+// ────────────────────────────────────────────
+
+app.get('/api/categories', (req, res) => res.json(CATEGORIES));
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone, role, specialties, bio, city } = req.body;
@@ -201,7 +336,7 @@ app.post('/api/auth/register', async (req, res) => {
     const specs = role === 'provider' ? (specialties || []) : null;
     const r = await pool.query(
       'INSERT INTO users(name,email,password,phone,role,specialties,bio,city) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,name,email,role,specialties,bio,city,badge',
-      [name, email, hash, phone, role||'client', specs, bio, city]
+      [name, email, hash, phone||null, role||'client', specs, bio||null, city||null]
     );
     const user = r.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -218,10 +353,14 @@ app.post('/api/auth/login', async (req, res) => {
     if (!r.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const ok = await bcrypt.compare(password, user.password || '');
+    // يدعم كلا العمودين: password و password_hash
+    const storedHash = user.password || user.password_hash || '';
+    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة — استخدم رابط إعادة التعيين' });
+    const ok = await bcrypt.compare(password, storedHash);
     if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     delete user.password;
+    delete user.password_hash;
     res.json({ user, token });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -235,7 +374,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const resetToken = jwt.sign({ id: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
     const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
     await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
-      emailTemplate(`مرحباً ${user.name}،`,
+      emailTpl(`مرحباً ${user.name}،`,
         `<p>اضغط الزر لإعادة تعيين كلمة المرور خلال ساعة.</p>`,
         '🔑 إعادة تعيين كلمة المرور', resetUrl));
     res.json({ ok: true });
@@ -258,7 +397,8 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
   try {
     const { old_password, new_password } = req.body;
     const r = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
-    const ok = await bcrypt.compare(old_password, r.rows[0].password || '');
+    const storedHash = r.rows[0].password || r.rows[0].password_hash || '';
+    const ok = await bcrypt.compare(old_password, storedHash);
     if (!ok) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hash, req.user.id]);
@@ -266,23 +406,23 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── CATEGORIES ───
-app.get('/api/categories', (req, res) => res.json(CATEGORIES));
+// ────────────────────────────────────────────
+// ── REQUESTS ──
+// ────────────────────────────────────────────
 
-// ─── REQUESTS ───
 app.get('/api/requests', async (req, res) => {
   try {
     const { category, city } = req.query;
-    let q = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.image_url,r.images,r.main_image_index,r.status,r.client_id,r.created_at,
-      u.name as client_name,
+    let q = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
+      r.budget_max,r.deadline,r.image_url,r.images,r.main_image_index,r.status,
+      r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'`;
     const params = [];
     if (category) { params.push(category); q += ` AND r.category=$${params.length}`; }
     if (city) { params.push(`%${city}%`); q += ` AND r.city ILIKE $${params.length}`; }
     q += ' ORDER BY r.created_at DESC';
-    const r = await pool.query(q, params);
-    res.json(r.rows);
+    res.json((await pool.query(q, params)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -300,13 +440,7 @@ app.get('/api/requests/my', auth, async (req, res) => {
 app.get('/api/requests/:id', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.address,
-      r.budget_max,r.deadline,r.image_url,
-      COALESCE(r.images,ARRAY[]::TEXT[]) as images,
-      COALESCE(r.main_image_index,0) as main_image_index,
-      r.status,r.client_id,r.accepted_bid_id,r.assigned_provider_id,
-      r.assigned_at,r.completed_at,r.admin_notes,r.created_at,
-      u.name as client_name,u.phone as client_phone,u.city as client_city,
+      SELECT r.*,u.name as client_name,u.phone as client_phone,
       p.name as provider_name,p.phone as provider_phone
       FROM requests r JOIN users u ON r.client_id=u.id
       LEFT JOIN users p ON r.assigned_provider_id=p.id
@@ -321,20 +455,18 @@ app.post('/api/requests', auth, async (req, res) => {
     const { title, description, category, city, address, budget_max, deadline, image_url, images, main_image_index } = req.body;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
     const mainIdx = parseInt(main_image_index) || 0;
-    const mainImg = image_url || (images&&images[mainIdx]) || null;
+    const mainImg = image_url || (images && images[mainIdx]) || null;
     const r = await pool.query(
       `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,images,main_image_index,client_id,status)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review') RETURNING *`,
-      [title, description, category, city, address, budget_max||null, deadline||null, mainImg, images||null, mainIdx, req.user.id]
+      [title, description, category||null, city||null, address||null, budget_max||null, deadline||null, mainImg, images||null, mainIdx, req.user.id]
     );
     const req2 = r.rows[0];
-    const num = generateProjectNumber(req2.id, req2.created_at);
+    const num = genProjectNum(req2.id, req2.created_at);
     await pool.query('UPDATE requests SET project_number=$1 WHERE id=$2', [num, req2.id]);
     req2.project_number = num;
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
-    for (const a of admins.rows) {
-      await notify(a.id, '📋 طلب جديد للمراجعة', `${title} — بانتظار الموافقة`, 'new_request', req2.id);
-    }
+    for (const a of admins.rows) await notify(a.id, '📋 طلب جديد للمراجعة', `${title} — بانتظار الموافقة`, 'new_request', req2.id);
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -351,7 +483,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
       await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
       if (prov.rows[0]?.email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
-          emailTemplate('مبروك! اكتمل المشروع 🎉',
+          emailTpl('مبروك! اكتمل المشروع 🎉',
             `<p>أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong>.</p>`,
             '⭐ ملفي الشخصي', `${SITE_URL}/dashboard-provider.html`));
       }
@@ -360,8 +492,8 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
     if (client.rows[0]?.email) {
       setTimeout(async () => {
         await sendEmail(client.rows[0].email, `⭐ قيّم تجربتك: ${req2.title}`,
-          emailTemplate('قيّم المزود الآن ⭐',
-            `<p>اكتمل مشروعك <strong>"${req2.title}"</strong> بنجاح! رأيك يساعد العملاء الآخرين.</p>`,
+          emailTpl('قيّم المزود الآن ⭐',
+            `<p>اكتمل مشروعك <strong>"${req2.title}"</strong>! رأيك يساعد العملاء الآخرين.</p>`,
             '⭐ تقييم المزود', `${SITE_URL}/dashboard-client.html`)
         ).catch(()=>{});
       }, 3600000);
@@ -370,7 +502,10 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── BIDS ───
+// ────────────────────────────────────────────
+// ── BIDS ──
+// ────────────────────────────────────────────
+
 app.get('/api/requests/:id/bids', async (req, res) => {
   try {
     const r = await pool.query(`
@@ -395,27 +530,27 @@ async function handleSubmitBid(req, res, requestId) {
     if (existing.rows.length) return res.status(400).json({ message: 'قدمت عرضاً على هذا الطلب مسبقاً' });
     const r = await pool.query(
       'INSERT INTO bids(request_id,provider_id,price,days,note) VALUES($1,$2,$3,$4,$5) RETURNING *',
-      [requestId, req.user.id, price, days, note]
+      [requestId, req.user.id, price, days, note||null]
     );
     await notify(reqData.rows[0].client_id, '💼 عرض جديد', `وصلك عرض جديد على: ${reqData.rows[0].title}`, 'bid', requestId);
     const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `💼 عرض جديد: ${reqData.rows[0].title}`,
-        emailTemplate('وصلك عرض جديد! 💼',
+        emailTpl('وصلك عرض جديد! 💼',
           `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك <strong>"${reqData.rows[0].title}"</strong>:</p>
-           <div class="highlight">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
+           <div class="hl">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
           '👀 مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
     }
     if (provider.rows[0]?.email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
-        emailTemplate('تم تقديم عرضك ✅',
-          `<div class="success">السعر: ${Number(price).toLocaleString('ar-SA')} ر.س | المدة: ${days} يوم</div>
+        emailTpl('تم تقديم عرضك ✅',
+          `<div class="ok">السعر: ${Number(price).toLocaleString('ar-SA')} ر.س | المدة: ${days} يوم</div>
            <p>سنُخطرك فور رد العميل.</p>`,
           '📋 عروضي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json(r.rows[0]);
-  } catch(e) { console.error('submitBid error:', e.message); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('submitBid:', e.message); res.status(500).json({ message: e.message }); }
 }
 
 app.post('/api/requests/:id/bids', auth, (req, res) => handleSubmitBid(req, res, req.params.id));
@@ -438,52 +573,46 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     await pool.query('UPDATE requests SET status=$1,accepted_bid_id=$2,assigned_provider_id=$3,assigned_at=NOW() WHERE id=$4',
       ['in_progress', req.params.id, b.provider_id, b.request_id]);
     await notify(b.provider_id, '✅ تم قبول عرضك', `تم قبول عرضك على: ${b.title}`, 'accepted', b.request_id);
-    await notify(b.client_id, '🎉 تم الإسناد', `تم إسناد مشروعك: ${b.title}`, 'assigned', b.request_id);
     const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
     if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
-        emailTemplate(`مبروك ${prov.rows[0].name}! 🎉`,
-          `<div class="success">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>
-           <p>تواصل مع العميل لبدء التنفيذ.</p>`,
+        emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
+          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
           '💬 تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
     }
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
-        emailTemplate('تم إسناد مشروعك 🎉',
-          `<div class="highlight">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
+        emailTpl('تم إسناد مشروعك 🎉',
+          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
           '💬 تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
     }
-    // إشعار المرفوضين
-    const rejected = await pool.query('SELECT b.provider_id,u.name,u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2', [b.request_id, req.params.id]);
+    const rejected = await pool.query(
+      'SELECT b.provider_id,u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2',
+      [b.request_id, req.params.id]);
     for (const rb of rejected.rows) {
       await notify(rb.provider_id, '❌ تم رفض عرضك', `للأسف تم اختيار مزود آخر لـ: ${b.title}`, 'rejected', b.request_id);
       if (rb.email) {
         await sendEmail(rb.email, `❌ تم رفض عرضك: ${b.title}`,
-          emailTemplate('نأسف لإخبارك',
-            `<div class="danger">المشروع: <strong>${b.title}</strong></div><p>هناك مناقصات أخرى تنتظرك!</p>`,
+          emailTpl('نأسف لإخبارك',
+            `<div class="ng">المشروع: <strong>${b.title}</strong></div><p>هناك مناقصات أخرى تنتظرك!</p>`,
             '🔍 تصفح المناقصات', `${SITE_URL}/dashboard-provider.html`));
       }
     }
     res.json({ message: 'تم قبول العرض' });
-  } catch(e) { console.error('acceptBid error:', e.message); res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/bids/:id/reject', auth, async (req, res) => {
   try {
-    const bid = await pool.query('SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1', [req.params.id]);
+    const bid = await pool.query(
+      'SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1',
+      [req.params.id]);
     if (!bid.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
     const b = bid.rows[0];
     if (b.client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'غير مصرح' });
     await pool.query('UPDATE bids SET status=$1 WHERE id=$2', ['rejected', req.params.id]);
-    await notify(b.provider_id, '❌ تم رفض عرضك', `للأسف تم رفض عرضك على: ${b.title}`, 'rejected', b.req_id);
-    const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
-    if (prov.rows[0]?.email) {
-      await sendEmail(prov.rows[0].email, `❌ تم رفض عرضك: ${b.title}`,
-        emailTemplate('نأسف لإخبارك',
-          `<div class="danger">المشروع: <strong>${b.title}</strong></div><p>هناك مناقصات أخرى!</p>`,
-          '🔍 تصفح المناقصات', `${SITE_URL}/dashboard-provider.html`));
-    }
+    await notify(b.provider_id, '❌ تم رفض عرضك', `تم رفض عرضك على: ${b.title}`, 'rejected', b.req_id);
     res.json({ message: 'تم رفض العرض' });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -492,21 +621,22 @@ app.put('/api/bids/:id/revise', auth, async (req, res) => {
   try {
     const { price, days, revision_note } = req.body;
     if (!price || !days || !revision_note?.trim()) return res.status(400).json({ message: 'السعر والمدة وسبب التعديل مطلوبة' });
-    const bid = await pool.query('SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1 AND b.provider_id=$2', [req.params.id, req.user.id]);
+    const bid = await pool.query(
+      'SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1 AND b.provider_id=$2',
+      [req.params.id, req.user.id]);
     if (!bid.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
     const b = bid.rows[0];
     if (b.status !== 'accepted') return res.status(400).json({ message: 'يمكن التعديل فقط على العروض المقبولة' });
-    const oldPrice = b.price, oldDays = b.days;
-    const note = `تعديل: السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم. السبب: ${revision_note}`;
+    const note = `تعديل: السعر ${b.price}→${price} ر.س، المدة ${b.days}→${days} يوم. السبب: ${revision_note}`;
     await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, note, req.params.id]);
     await notify(b.client_id, '✏️ تعديل على العرض', note, 'bid', b.req_id);
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) await notify(a.id, '✏️ تعديل عرض', `${b.title}: ${note}`, 'bid', b.req_id);
-    const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
+    const client = await pool.query('SELECT email FROM users WHERE id=$1', [b.client_id]);
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`,
-        emailTemplate('تعديل على عرض مقبول ✏️',
-          `<div class="highlight">السعر: ${oldPrice}→${price} ر.س | المدة: ${oldDays}→${days} يوم | السبب: ${revision_note}</div>`,
+        emailTpl('تعديل على عرض مقبول ✏️',
+          `<div class="hl">السعر: ${b.price}→${price} ر.س | المدة: ${b.days}→${days} يوم | السبب: ${revision_note}</div>`,
           '📋 مراجعة', `${SITE_URL}/dashboard-client.html`));
     }
     res.json({ message: 'تم تعديل العرض', price, days });
@@ -516,14 +646,32 @@ app.put('/api/bids/:id/revise', auth, async (req, res) => {
 app.get('/api/bids/my', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,r.client_id,r.project_number,r.image_url
+      SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
+      r.client_id,r.project_number,r.image_url
       FROM bids b JOIN requests r ON b.request_id=r.id
       WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── MESSAGES ───
+app.get('/api/provider/bids', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
+      r.client_id,r.project_number,r.image_url,r.client_id,
+      u.name as client_name
+      FROM bids b
+      JOIN requests r ON b.request_id=r.id
+      JOIN users u ON r.client_id=u.id
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ────────────────────────────────────────────
+// ── MESSAGES ──
+// ────────────────────────────────────────────
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -532,7 +680,8 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
       WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2 OR $3='admin')
       ORDER BY m.created_at ASC`,
       [req.params.requestId, req.user.id, req.user.role]);
-    await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2', [req.params.requestId, req.user.id]);
+    await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2',
+      [req.params.requestId, req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -549,16 +698,19 @@ app.post('/api/messages', auth, async (req, res) => {
     const receiver = await pool.query('SELECT name,email,role FROM users WHERE id=$1', [receiver_id]);
     if (receiver.rows[0]?.email) {
       await sendEmail(receiver.rows[0].email, `💬 رسالة من ${sender.rows[0].name}`,
-        emailTemplate('رسالة جديدة 💬',
+        emailTpl('رسالة جديدة 💬',
           `<p>أرسل لك <strong>${sender.rows[0].name}</strong>:</p>
-           <div class="highlight">${content.substring(0,200)}</div>`,
+           <div class="hl">${content.substring(0,200)}</div>`,
           '💬 الرد', `${SITE_URL}/dashboard-${receiver.rows[0].role==='provider'?'provider':'client'}.html`));
     }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── REVIEWS ───
+// ────────────────────────────────────────────
+// ── REVIEWS ──
+// ────────────────────────────────────────────
+
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment, type } = req.body;
@@ -566,16 +718,16 @@ app.post('/api/reviews', auth, async (req, res) => {
     if (exists.rows.length) return res.status(400).json({ message: 'قيّمت هذا الطلب مسبقاً' });
     const r = await pool.query(
       'INSERT INTO reviews(request_id,reviewer_id,reviewed_id,rating,comment,type) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
-      [request_id, req.user.id, reviewed_id, rating, comment, type||'client_to_provider']);
+      [request_id, req.user.id, reviewed_id, rating, comment||null, type||'client_to_provider']);
     const reviewer = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await notify(reviewed_id, `⭐ تقييم جديد (${rating}/5)`, `${reviewer.rows[0].name} قيّمك بـ ${rating} نجوم`, 'review', request_id);
     const reviewed = await pool.query('SELECT name,email FROM users WHERE id=$1', [reviewed_id]);
     if (reviewed.rows[0]?.email) {
       const starsText = '★'.repeat(rating)+'☆'.repeat(5-rating);
       await sendEmail(reviewed.rows[0].email, `⭐ تقييم جديد: ${starsText}`,
-        emailTemplate(`تقييم جديد ${starsText}`,
+        emailTpl(`تقييم جديد ${starsText}`,
           `<p>قيّمك <strong>${reviewer.rows[0].name}</strong> بـ <strong>${rating} من 5 نجوم</strong>.</p>
-           ${comment?`<div class="highlight">"${comment}"</div>`:''}`,
+           ${comment?`<div class="hl">"${comment}"</div>`:''}`,
           '⭐ تقييماتي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json(r.rows[0]);
@@ -593,7 +745,10 @@ app.get('/api/reviews/provider/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── NOTIFICATIONS ───
+// ────────────────────────────────────────────
+// ── NOTIFICATIONS ──
+// ────────────────────────────────────────────
+
 app.get('/api/notifications', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id]);
@@ -608,10 +763,15 @@ app.put('/api/notifications/read-all', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── PROFILE ───
+// ────────────────────────────────────────────
+// ── PROFILE ──
+// ────────────────────────────────────────────
+
 app.get('/api/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query('SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge FROM users WHERE id=$1', [req.user.id]);
+    const r = await pool.query(
+      'SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge FROM users WHERE id=$1',
+      [req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -621,12 +781,11 @@ app.put('/api/profile', auth, async (req, res) => {
     const { name, phone, specialties, bio, city } = req.body;
     const r = await pool.query(
       'UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5 WHERE id=$6 RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge',
-      [name, phone, specialties, bio, city, req.user.id]);
+      [name, phone||null, specialties||null, bio||null, city||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── PROVIDER ───
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -641,10 +800,10 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, completion_rate } = req.body;
     const r = await pool.query(
       'UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5 WHERE id=$6 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge',
-      [name, phone, city, bio, specialties, req.user.id]);
+      [name, phone||null, city||null, bio||null, specialties||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -670,19 +829,6 @@ app.get('/api/provider/:id/profile', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-app.get('/api/provider/bids', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
-      r.client_id,r.project_number,r.image_url,
-      COALESCE(r.images,ARRAY[]::TEXT[]) as images
-      FROM bids b JOIN requests r ON b.request_id=r.id
-      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ─── CLIENT ───
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -697,12 +843,17 @@ app.get('/api/client/profile', auth, async (req, res) => {
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
     const { name, phone, city } = req.body;
-    const r = await pool.query('UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city', [name, phone, city, req.user.id]);
+    const r = await pool.query(
+      'UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city',
+      [name, phone||null, city||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── ADMIN ───
+// ────────────────────────────────────────────
+// ── ADMIN ──
+// ────────────────────────────────────────────
+
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const [u,r,b,p,pending,inprog,done] = await Promise.all([
@@ -739,15 +890,17 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
   try {
     const { action, reason } = req.body;
     const newStatus = action === 'approve' ? 'open' : 'rejected';
-    const r = await pool.query('UPDATE requests SET status=$1,admin_notes=$2 WHERE id=$3 RETURNING *', [newStatus, reason||null, req.params.id]);
+    const r = await pool.query(
+      'UPDATE requests SET status=$1,admin_notes=$2 WHERE id=$3 RETURNING *',
+      [newStatus, reason||null, req.params.id]);
     const req2 = r.rows[0];
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.client_id]);
     if (newStatus === 'open') {
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك', `طلبك "${req2.title}" نُشر الآن`, 'approved', req2.id);
       if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `✅ تمت الموافقة: ${req2.title}`,
-          emailTemplate(`مرحباً ${client.rows[0].name}،`,
-            `<div class="success">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
+          emailTpl(`مرحباً ${client.rows[0].name}،`,
+            `<div class="ok">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
             '📋 متابعة طلبي', `${SITE_URL}/dashboard-client.html`));
       }
       notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
@@ -755,8 +908,8 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       await notify(req2.client_id, '❌ تم رفض طلبك', `طلبك "${req2.title}". السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
       if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `❌ تم رفض طلبك: ${req2.title}`,
-          emailTemplate(`مرحباً ${client.rows[0].name}،`,
-            `<div class="danger">تم رفض طلبك <strong>"${req2.title}"</strong>. السبب: ${reason||'غير محدد'}</div>`,
+          emailTpl(`مرحباً ${client.rows[0].name}،`,
+            `<div class="ng">تم رفض طلبك <strong>"${req2.title}"</strong>. السبب: ${reason||'غير محدد'}</div>`,
             '✏️ تعديل الطلب', `${SITE_URL}/dashboard-client.html`));
       }
     }
@@ -769,7 +922,7 @@ app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
     const { title, description, category, city, address, budget_max, deadline, admin_notes } = req.body;
     const r = await pool.query(
       `UPDATE requests SET title=$1,description=$2,category=$3,city=$4,address=$5,budget_max=$6,deadline=$7,admin_notes=$8 WHERE id=$9 RETURNING *`,
-      [title, description, category, city, address, budget_max, deadline, admin_notes, req.params.id]);
+      [title, description, category||null, city||null, address||null, budget_max||null, deadline||null, admin_notes||null, req.params.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -778,7 +931,7 @@ app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) =>
   try {
     const r = await pool.query(`UPDATE requests SET status='completed',completed_at=NOW() WHERE id=$1 RETURNING *`, [req.params.id]);
     const req2 = r.rows[0];
-    await notify(req2.client_id, '🎉 اكتمل المشروع', `مشروعك "${req2.title}" اكتمل`, 'completed', req2.id);
+    if (req2.client_id) await notify(req2.client_id, '🎉 اكتمل المشروع', `مشروعك "${req2.title}" اكتمل`, 'completed', req2.id);
     if (req2.assigned_provider_id) await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -863,62 +1016,9 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ─── FIX-DB ENDPOINT ───
-app.get("/api/fix-db", async (req, res) => {
-  try {
-    if (req.query.secret !== "manaqasa2024") return res.status(403).json({ message: "رمز خاطئ" });
-    const results = [];
-    try { await pool.query("ALTER TABLE users RENAME COLUMN password_hash TO password"); results.push("✅ تم تسمية العمود"); } catch(e){ results.push("ℹ️ rename: "+e.message.substring(0,60)); }
-    try { await pool.query("ALTER TABLE users ALTER COLUMN password DROP NOT NULL"); results.push("✅ تم إزالة NOT NULL"); } catch(e){ results.push("ℹ️ null: "+e.message.substring(0,60)); }
-    const cols = await pool.query("SELECT column_name,is_nullable FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position");
-    res.json({ ok: true, steps: results, columns: cols.rows });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ─── ADMIN SETUP (استخدم مرة واحدة فقط لإنشاء حساب المدير) ───
-// الرابط: /api/setup-admin?secret=manaqasa2024
-app.get('/api/setup-admin', async (req, res) => {
-  try {
-    if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رابط غير صحيح' });
-    const { email, password, name } = req.query;
-    if (!email || !password || !name) {
-      return res.json({
-        usage: 'أضف: ?secret=manaqasa2024&email=admin@manaqasa.com&password=yourpass&name=المدير',
-        example: `${req.protocol}://${req.get('host')}/api/setup-admin?secret=manaqasa2024&email=admin@manaqasa.com&password=Admin@123&name=المدير`
-      });
-    }
-    const exists = await pool.query(`SELECT id,role FROM users WHERE email=$1`, [email]);
-    if (exists.rows.length) {
-      // ترقية الحساب الموجود لمدير
-      await pool.query(`UPDATE users SET role='admin' WHERE email=$1`, [email]);
-      return res.json({ ok: true, message: `✅ تم ترقية الحساب ${email} لمدير بنجاح`, action: 'upgraded' });
-    }
-    const hash = await bcrypt.hash(password, 10);
-    const r = await pool.query(
-      `INSERT INTO users(name,email,password,role) VALUES($1,$2,$3,'admin') RETURNING id,name,email,role`,
-      [name, email, hash]
-    );
-    res.json({ ok: true, message: `✅ تم إنشاء حساب المدير بنجاح`, user: r.rows[0], action: 'created' });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ─── تحقق من الحساب الحالي ───
-app.get('/api/check-user', auth, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT id,name,email,role FROM users WHERE id=$1', [req.user.id]);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ─── ترقية بريد إلكتروني لمدير (للطوارئ) ───
-app.post('/api/promote-admin', async (req, res) => {
-  try {
-    const { email, secret } = req.body;
-    if (secret !== 'manaqasa_admin_2024') return res.status(403).json({ message: 'رمز خاطئ' });
-    const r = await pool.query(`UPDATE users SET role='admin' WHERE email=$1 RETURNING id,name,email,role`, [email]);
-    if (!r.rows.length) return res.status(404).json({ message: 'البريد غير موجود' });
-    res.json({ ok: true, user: r.rows[0] });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running on port', process.env.PORT||3000)));
+// ────────────────────────────────────────────
+initDB().then(() =>
+  app.listen(process.env.PORT||3000, () =>
+    console.log('🚀 Server running on port', process.env.PORT||3000)
+  )
+);
