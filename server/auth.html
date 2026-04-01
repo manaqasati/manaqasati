@@ -2,205 +2,422 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مناقصة – الدخول</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>مناقصة — تسجيل الدخول</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:#f0f5ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{background:#fff;border-radius:20px;padding:36px 32px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(37,99,235,0.13)}
-.logo{text-align:center;margin-bottom:24px}
-.logo h1{font-size:30px;font-weight:900;color:#1d4ed8}
-.logo h1 span{color:#0ea5e9}
-.logo p{font-size:13px;color:#64748b;margin-top:3px}
-.tabs{display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:24px}
-.tab{flex:1;padding:9px;border:none;background:none;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;color:#64748b;cursor:pointer;border-radius:7px;transition:.2s}
-.tab.on{background:#fff;color:#1d4ed8;box-shadow:0 2px 8px rgba(37,99,235,0.13)}
-.box{display:none}
-.box.on{display:block}
-.msg{padding:11px 14px;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:16px;display:none}
-.msg.ok{background:#dcfce7;color:#16a34a;display:block}
-.msg.err{background:#fee2e2;color:#dc2626;display:block}
-.g{margin-bottom:15px}
-.g label{display:block;font-size:14px;font-weight:700;color:#1e3a8a;margin-bottom:6px}
-.g input{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:14px;color:#1e293b;outline:none}
-.g input:focus{border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
-.roles{display:flex;gap:10px;margin-bottom:15px}
-.role{flex:1;border:2px solid #e2e8f0;border-radius:11px;padding:13px 8px;text-align:center;cursor:pointer;transition:.2s}
-.role.on{border-color:#1d4ed8;background:#eff6ff}
-.role-ic{font-size:22px;margin-bottom:5px}
-.role-t{font-size:13px;font-weight:700;color:#1e3a8a}
-.role-s{font-size:11px;color:#64748b}
-.btn{width:100%;padding:13px;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:800;cursor:pointer;margin-top:4px;transition:.2s;box-shadow:0 4px 14px rgba(37,99,235,0.3)}
-.btn:hover{transform:translateY(-2px)}
-.btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
-.back{display:block;text-align:center;margin-top:18px;color:#64748b;text-decoration:none;font-size:13px}
-.back:hover{color:#1d4ed8}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F7F8FC;--t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--t4:#9aa3b8;
+  --primary:#1B3A6B;--accent:#D4973A;--accent-l:#FDF3E3;--accent-m:#f6c96b;
+  --success:#1D9E75;--success-l:#E1F5EE;--success-m:#9FE1CB;
+  --danger:#E24B4A;--danger-l:#FCEBEB;--danger-m:#F09595;
+  --client:#2C5282;--client-l:#E6EEF8;--prov:#1D6A5A;--prov-l:#E1F5EE;
+  --white:#fff;--border:rgba(27,58,107,0.12);
+}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+button,input,select,textarea{font-family:'Tajawal',sans-serif}
+
+/* BG PATTERN */
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(135deg,#1B3A6B 0%,#0d2040 100%);z-index:-2}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 120%,rgba(212,151,58,.18) 0%,transparent 70%),radial-gradient(ellipse 60% 80% at -10% 50%,rgba(29,106,90,.14) 0%,transparent 70%);z-index:-1}
+
+.wrap{width:100%;max-width:440px}
+
+/* LOGO */
+.logo-area{text-align:center;margin-bottom:28px}
+.logo{font-size:32px;font-weight:900;color:#fff}.logo span{color:var(--accent)}
+.logo-tag{font-size:13px;color:rgba(255,255,255,.55);margin-top:5px;font-weight:500}
+
+/* CARD */
+.card{background:var(--white);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+
+/* TABS */
+.tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
+.tab{padding:14px;text-align:center;font-size:14px;font-weight:800;cursor:pointer;color:var(--t3);border:none;background:none;transition:.15s;position:relative}
+.tab.on{color:var(--primary)}
+.tab.on::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--primary);border-radius:3px 3px 0 0}
+
+/* BODY */
+.cb{padding:24px}
+
+/* ROLE PICKER */
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.role-btn{border:2px solid var(--border);border-radius:13px;padding:14px 10px;text-align:center;cursor:pointer;transition:.15s;background:var(--white)}
+.role-btn:hover{border-color:var(--accent-m)}
+.role-btn.on.client{border-color:var(--client);background:var(--client-l)}
+.role-btn.on.prov{border-color:var(--prov);background:var(--prov-l)}
+.role-ic{font-size:26px;margin-bottom:6px}
+.role-name{font-size:13px;font-weight:800;color:var(--t)}
+.role-sub{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* FORM */
+.fg{margin-bottom:13px;position:relative}
+.fg label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--t2)}
+.fg input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;color:var(--t);outline:none;background:var(--white);transition:.15s}
+.fg input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(27,58,107,.09)}
+.fg input.err{border-color:var(--danger)}
+.eye{position:absolute;left:12px;bottom:11px;cursor:pointer;color:var(--t4);font-size:16px;border:none;background:none;padding:0}
+
+/* BUTTONS */
+.btn-main{width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:800;cursor:pointer;transition:.15s;margin-top:4px}
+.btn-main:hover{background:#0d2040}.btn-main:disabled{opacity:.5;cursor:not-allowed}
+.btn-main.green{background:var(--prov)}.btn-main.green:hover{background:var(--prov-d,#0F4A3D)}
+
+/* DIVIDER */
+.div-or{display:flex;align-items:center;gap:10px;margin:16px 0}
+.div-or span{font-size:11px;color:var(--t4);font-weight:600;flex-shrink:0}
+.div-or::before,.div-or::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ALERT */
+.alert{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:12px;border-width:1.5px;border-style:solid;display:none}
+.alert.ok{background:var(--success-l);color:#085041;border-color:var(--success-m);display:block}
+.alert.err{background:var(--danger-l);color:#7f1d1d;border-color:var(--danger-m);display:block}
+
+/* LINKS */
+.lnk{color:var(--primary);font-weight:700;cursor:pointer;background:none;border:none;font-size:13px;font-family:'Tajawal',sans-serif}
+.lnk:hover{text-decoration:underline}
+
+/* BOTTOM */
+.bottom-note{text-align:center;margin-top:18px;font-size:12px;color:rgba(255,255,255,.45)}
+
+/* FORGOT */
+.page{display:none}.page.on{display:block}
+
+@media(max-width:480px){.cb{padding:18px}.role-ic{font-size:22px}}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo">
-    <h1>مناقصة<span>.</span></h1>
-    <p>منصة العطاءات الأولى</p>
+<div class="wrap">
+  <div class="logo-area">
+    <div class="logo">مناقصة<span>.</span></div>
+    <div class="logo-tag">منصة خدمات موثوقة في المملكة</div>
   </div>
-  <div class="tabs">
-    <button class="tab on" id="t1" onclick="go('login')">تسجيل الدخول</button>
-    <button class="tab" id="t2" onclick="go('reg')">حساب جديد</button>
-  </div>
-  <div class="msg" id="msg"></div>
-  <div class="box on" id="login">
-    <div class="g">
-      <label>البريد الإلكتروني أو رقم الجوال</label>
-      <input type="text" id="le" placeholder="example@email.com أو 05xxxxxxxx" autocomplete="username">
+
+  <div class="card">
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab on" id="tab-login" onclick="switchTab('login')">تسجيل الدخول</button>
+      <button class="tab" id="tab-register" onclick="switchTab('register')">حساب جديد</button>
     </div>
-    <div class="g"><label>كلمة المرور</label><input type="password" id="lp" placeholder="••••••••"></div>
-    <button class="btn" id="lb" onclick="doLogin()">تسجيل الدخول</button>
-    <div style="text-align:center;margin-top:10px"><a href="#" onclick="showForgot()" style="font-size:12px;color:#6b7280;text-decoration:none">نسيت كلمة المرور؟</a></div>
-  </div>
-  <div class="box" id="forgot">
-    <div class="g"><label>البريد الإلكتروني</label><input type="email" id="fe" placeholder="example@email.com"></div>
-    <button class="btn" id="fb" onclick="doForgot()">إرسال رابط الاستعادة</button>
-    <div style="text-align:center;margin-top:10px"><a href="#" onclick="go('login')" style="font-size:12px;color:#6b7280;text-decoration:none">← رجوع لتسجيل الدخول</a></div>
-  </div>
-  <div class="box" id="reset">
-    <div class="g"><label>كلمة المرور الجديدة</label><input type="password" id="np" placeholder="8 أحرف على الأقل"></div>
-    <div class="g"><label>تأكيد كلمة المرور</label><input type="password" id="np2" placeholder="••••••••"></div>
-    <button class="btn" id="rpb" onclick="doReset()">حفظ كلمة المرور الجديدة</button>
-  </div>
-  <div class="box" id="reg">
-    <div class="roles">
-      <div class="role on" id="rc" onclick="setRole('client',this)">
-        <div class="role-ic">🔍</div>
-        <div class="role-t">باحث عن خدمة</div>
-        <div class="role-s">أنشر طلبك</div>
-      </div>
-      <div class="role" id="rp" onclick="setRole('provider',this)">
-        <div class="role-ic">🔧</div>
-        <div class="role-t">مزود خدمة</div>
-        <div class="role-s">قدّم عروضك</div>
+
+    <!-- LOGIN -->
+    <div class="page on" id="page-login">
+      <div class="cb">
+        <div class="alert" id="login-alert"></div>
+        <div class="fg">
+          <label>البريد الإلكتروني أو الجوال</label>
+          <input id="l-id" type="text" placeholder="example@email.com أو 05xxxxxxxx" autocomplete="username">
+        </div>
+        <div class="fg">
+          <label>كلمة المرور</label>
+          <input id="l-pw" type="password" placeholder="••••••••" autocomplete="current-password">
+          <button class="eye" id="l-eye" onclick="toggleEye('l-pw','l-eye')">👁</button>
+        </div>
+        <div style="text-align:left;margin-bottom:14px">
+          <button class="lnk" onclick="switchTab('forgot')">نسيت كلمة المرور؟</button>
+        </div>
+        <button class="btn-main" id="login-btn" onclick="doLogin()">تسجيل الدخول</button>
+        <div class="div-or"><span>أو</span></div>
+        <div style="text-align:center;font-size:13px;color:var(--t3)">
+          ليس لديك حساب؟ <button class="lnk" onclick="switchTab('register')">سجّل الآن مجاناً</button>
+        </div>
       </div>
     </div>
-    <div class="g"><label>الاسم الكامل</label><input type="text" id="rn" placeholder="أحمد العمري"></div>
-    <div class="g"><label>البريد الإلكتروني</label><input type="email" id="re" placeholder="example@email.com"></div>
-    <div class="g"><label>رقم الجوال</label><input type="tel" id="rph" placeholder="05xxxxxxxx"></div>
-    <div class="g"><label>كلمة المرور</label><input type="password" id="rpw" placeholder="8 أحرف على الأقل"></div>
-    <button class="btn" id="rb" onclick="doReg()">إنشاء الحساب مجاناً 🚀</button>
+
+    <!-- REGISTER -->
+    <div class="page" id="page-register">
+      <div class="cb">
+        <div class="alert" id="reg-alert"></div>
+
+        <!-- Role Picker -->
+        <div class="role-grid">
+          <div class="role-btn client on" id="r-client" onclick="setRole('client')">
+            <div class="role-ic">🏠</div>
+            <div class="role-name">عميل</div>
+            <div class="role-sub">أبحث عن مزود خدمة</div>
+          </div>
+          <div class="role-btn prov" id="r-prov" onclick="setRole('provider')">
+            <div class="role-ic">🔧</div>
+            <div class="role-name">مزود خدمة</div>
+            <div class="role-sub">أقدم خدماتي للعملاء</div>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>الاسم الكامل *</label>
+          <input id="r-name" type="text" placeholder="محمد أحمد الغامدي" autocomplete="name">
+        </div>
+        <div class="fg">
+          <label>البريد الإلكتروني *</label>
+          <input id="r-email" type="email" placeholder="example@email.com" autocomplete="email">
+        </div>
+        <div class="fg">
+          <label>رقم الجوال</label>
+          <input id="r-phone" type="tel" placeholder="05xxxxxxxx" autocomplete="tel" inputmode="tel">
+        </div>
+
+        <!-- تخصص للمزود فقط -->
+        <div class="fg" id="spec-wrap" style="display:none">
+          <label>التخصص الرئيسي</label>
+          <select id="r-spec" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;color:var(--t);outline:none;background:var(--white)"></select>
+        </div>
+
+        <div class="fg">
+          <label>كلمة المرور *</label>
+          <input id="r-pw" type="password" placeholder="8 أحرف على الأقل" autocomplete="new-password">
+          <button class="eye" id="r-eye" onclick="toggleEye('r-pw','r-eye')">👁</button>
+        </div>
+        <div class="fg">
+          <label>تأكيد كلمة المرور *</label>
+          <input id="r-pw2" type="password" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password">
+        </div>
+
+        <button class="btn-main green" id="reg-btn" onclick="doRegister()">إنشاء الحساب</button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--t3)">
+          بالتسجيل أنت توافق على <button class="lnk" style="font-size:12px">شروط الاستخدام</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORGOT -->
+    <div class="page" id="page-forgot">
+      <div class="cb">
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-size:28px;margin-bottom:8px">🔑</div>
+          <div style="font-size:16px;font-weight:800;color:var(--t)">استعادة كلمة المرور</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:4px">سنرسل لك رابط الاستعادة على بريدك</div>
+        </div>
+        <div class="alert" id="forgot-alert"></div>
+        <div class="fg">
+          <label>البريد الإلكتروني</label>
+          <input id="f-email" type="email" placeholder="example@email.com">
+        </div>
+        <button class="btn-main" id="forgot-btn" onclick="doForgot()">إرسال رابط الاستعادة</button>
+        <div style="text-align:center;margin-top:14px">
+          <button class="lnk" onclick="switchTab('login')">← رجوع لتسجيل الدخول</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESET -->
+    <div class="page" id="page-reset">
+      <div class="cb">
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-size:28px;margin-bottom:8px">🔒</div>
+          <div style="font-size:16px;font-weight:800;color:var(--t)">كلمة مرور جديدة</div>
+        </div>
+        <div class="alert" id="reset-alert"></div>
+        <div class="fg">
+          <label>كلمة المرور الجديدة</label>
+          <input id="rs-pw" type="password" placeholder="8 أحرف على الأقل">
+          <button class="eye" id="rs-eye" onclick="toggleEye('rs-pw','rs-eye')">👁</button>
+        </div>
+        <div class="fg">
+          <label>تأكيد كلمة المرور</label>
+          <input id="rs-pw2" type="password" placeholder="أعد الإدخال">
+        </div>
+        <button class="btn-main" id="reset-btn" onclick="doReset()">حفظ كلمة المرور الجديدة</button>
+      </div>
+    </div>
+
   </div>
-  <a href="index.html" class="back">← الرئيسية</a>
+
+  <div class="bottom-note">© 2025 منصة مناقصة — manaqasa.com</div>
 </div>
+
 <script>
-var API='https://manaqasati-production.up.railway.app';
-var role='client';
-function go(tab){
-  document.getElementById('t1').className=tab==='login'?'tab on':'tab';
-  document.getElementById('t2').className=tab==='reg'?'tab on':'tab';
-  document.getElementById('login').className=tab==='login'?'box on':'box';
-  document.getElementById('reg').className=tab==='reg'?'box on':'box';
-  document.getElementById('forgot').className='box';
-  document.getElementById('reset').className='box';
-  document.getElementById('msg').className='msg';
+const API = 'https://manaqasati-production.up.railway.app';
+const CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
+
+let curRole = 'client';
+let resetToken = null;
+
+// fill spec select
+const specSel = document.getElementById('r-spec');
+CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; specSel.appendChild(o); });
+
+// check URL for reset token
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('reset')) {
+  resetToken = urlParams.get('reset');
+  switchPage('reset');
 }
-function showForgot(){
-  document.getElementById('login').className='box';
-  document.getElementById('forgot').className='box on';
-  document.getElementById('msg').className='msg';
+
+// check if already logged in
+const existing = JSON.parse(localStorage.getItem('user') || '{}');
+if (existing.id && existing.role) redirect(existing.role);
+
+function redirect(role) {
+  if (role === 'admin') location.href = 'dashboard-admin.html';
+  else if (role === 'provider') location.href = 'dashboard-provider.html';
+  else location.href = 'dashboard-client.html';
 }
-function doForgot(){
-  var e=document.getElementById('fe').value.trim();
-  if(!e){showMsg('أدخل بريدك الإلكتروني','err');return;}
-  var b=document.getElementById('fb');b.disabled=true;b.textContent='جاري الإرسال...';
-  fetch(API+'/api/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e})})
-  .then(r=>r.json()).then(()=>{
-    showMsg('تم إرسال رابط الاستعادة على بريدك ✅','ok');
-    b.disabled=false;b.textContent='إرسال رابط الاستعادة';
-  }).catch(()=>{showMsg('تعذر الإرسال','err');b.disabled=false;b.textContent='إرسال رابط الاستعادة';});
-}
-function doReset(){
-  var p=document.getElementById('np').value;
-  var p2=document.getElementById('np2').value;
-  if(!p||!p2){showMsg('اكمل الحقول','err');return;}
-  if(p!==p2){showMsg('كلمتا المرور غير متطابقتين','err');return;}
-  if(p.length<8){showMsg('كلمة المرور 8 أحرف على الأقل','err');return;}
-  var token=new URLSearchParams(location.search).get('reset');
-  if(!token){showMsg('رابط غير صحيح','err');return;}
-  var b=document.getElementById('rpb');b.disabled=true;b.textContent='جاري الحفظ...';
-  fetch(API+'/api/auth/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,new_password:p})})
-  .then(r=>r.json()).then(r=>{
-    if(r.ok){showMsg('تم تغيير كلمة المرور ✅ جاري التحويل...','ok');setTimeout(()=>location.href='auth.html',2000);}
-    else{showMsg(r.message||'حدث خطأ','err');b.disabled=false;b.textContent='حفظ كلمة المرور الجديدة';}
-  }).catch(()=>{showMsg('تعذر الاتصال','err');b.disabled=false;b.textContent='حفظ كلمة المرور الجديدة';});
-}
-// تحقق إذا في رابط reset
-(function(){
-  var token=new URLSearchParams(location.search).get('reset');
-  if(token){
-    document.getElementById('login').className='box';
-    document.getElementById('reset').className='box on';
-    document.getElementById('t1').style.display='none';
-    document.getElementById('t2').style.display='none';
-    document.getElementById('msg').className='msg';
-    document.getElementById('msg').textContent='';
+
+function switchTab(t) {
+  document.getElementById('tab-login').className = 'tab' + (t === 'login' ? ' on' : '');
+  document.getElementById('tab-register').className = 'tab' + (t === 'register' ? ' on' : '');
+  if (t === 'login' || t === 'register') {
+    document.getElementById('tab-login').style.display = '';
+    document.getElementById('tab-register').style.display = '';
+  } else {
+    document.getElementById('tab-login').style.display = 'none';
+    document.getElementById('tab-register').style.display = 'none';
   }
-})();
-function setRole(r,el){
-  role=r;
-  document.getElementById('rc').className='role';
-  document.getElementById('rp').className='role';
-  el.className='role on';
+  switchPage(t);
 }
-function showMsg(t,c){var e=document.getElementById('msg');e.textContent=t;e.className='msg '+c;}
-function goTo(r){
-  if(r==='admin')location.href='dashboard-admin.html';
-  else if(r==='provider')location.href='dashboard-provider.html';
-  else location.href='dashboard-client.html';
+
+function switchPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.className = 'page');
+  const el = document.getElementById('page-' + p);
+  if (el) el.className = 'page on';
 }
-function doLogin(){
-  var e=document.getElementById('le').value.trim();
-  var p=document.getElementById('lp').value;
-  if(!e||!p){showMsg('يرجى تعبئة جميع الحقول','err');return;}
-  // تحديد إذا كان جوال أو بريد
-  var isPhone=/^05\d{8}$/.test(e)||/^\d{10}$/.test(e);
-  var payload={password:p};
-  if(isPhone){payload.phone=e;}else{payload.email=e;}
-  var b=document.getElementById('lb');
-  b.disabled=true;b.textContent='جاري تسجيل الدخول...';
-  fetch(API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-  .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-  .then(function(r){
-    if(r.ok){
-      localStorage.setItem('token',r.d.token);
-      localStorage.setItem('user',JSON.stringify(r.d.user));
-      showMsg('تم تسجيل الدخول! جاري التحويل...','ok');
-      setTimeout(function(){goTo(r.d.user.role);},1200);
-    }else{showMsg(r.d.message||'البيانات غير صحيحة','err');b.disabled=false;b.textContent='تسجيل الدخول';}
-  }).catch(function(){showMsg('تعذر الاتصال بالخادم','err');b.disabled=false;b.textContent='تسجيل الدخول';});
+
+function setRole(r) {
+  curRole = r;
+  document.getElementById('r-client').className = 'role-btn client' + (r === 'client' ? ' on' : '');
+  document.getElementById('r-prov').className = 'role-btn prov' + (r === 'provider' ? ' on' : '');
+  document.getElementById('spec-wrap').style.display = r === 'provider' ? 'block' : 'none';
 }
-function doReg(){
-  var n=document.getElementById('rn').value.trim();
-  var e=document.getElementById('re').value.trim();
-  var ph=document.getElementById('rph').value.trim();
-  var p=document.getElementById('rpw').value;
-  // التحقق من الحقول
-  if(!n||!e||!ph||!p){showMsg('يرجى تعبئة جميع الحقول','err');return;}
-  // التحقق من البريد الإلكتروني
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){showMsg('البريد الإلكتروني غير صحيح','err');return;}
-  // التحقق من رقم الجوال - 10 أرقام يبدأ بـ 05
-  if(!/^05\d{8}$/.test(ph)){showMsg('رقم الجوال يجب أن يكون 10 أرقام ويبدأ بـ 05','err');return;}
-  if(p.length<8){showMsg('كلمة المرور 8 أحرف على الأقل','err');return;}
-  var b=document.getElementById('rb');
-  b.disabled=true;b.textContent='جاري إنشاء الحساب...';
-  fetch(API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,email:e,phone:ph,password:p,role:role})})
-  .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-  .then(function(r){
-    if(r.ok){
-      localStorage.setItem('token',r.d.token);
-      localStorage.setItem('user',JSON.stringify(r.d.user));
-      showMsg('تم إنشاء حسابك! مرحباً بك 🎉','ok');
-      setTimeout(function(){goTo(r.d.user.role);},1500);
-    }else{showMsg(r.d.message||'حدث خطأ، حاول مرة أخرى','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';}
-  }).catch(function(){showMsg('تعذر الاتصال بالخادم','err');b.disabled=false;b.textContent='إنشاء الحساب مجاناً 🚀';});
+
+function toggleEye(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
 }
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'alert ' + type;
+  setTimeout(() => el.className = 'alert', 6000);
+}
+
+function setLoading(btnId, loading, text) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? text : btn.dataset.orig || btn.textContent;
+  if (!loading && btn.dataset.orig) btn.textContent = btn.dataset.orig;
+  else if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+}
+
+// ── LOGIN ──
+async function doLogin() {
+  const id = document.getElementById('l-id').value.trim();
+  const pw = document.getElementById('l-pw').value;
+  if (!id || !pw) { showAlert('login-alert', 'يرجى تعبئة جميع الحقول', 'err'); return; }
+  setLoading('login-btn', true, 'جاري الدخول...');
+  try {
+    const isPhone = /^05\d{8}$/.test(id.replace(/\s/g,''));
+    const body = isPhone ? { phone: id, password: pw } : { email: id, password: pw };
+    const r = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (r.ok) {
+      localStorage.setItem('user', JSON.stringify(d.user));
+      localStorage.setItem('token', d.token);
+      showAlert('login-alert', `مرحباً ${d.user.name}! جاري التوجيه...`, 'ok');
+      setTimeout(() => redirect(d.user.role), 1000);
+    } else {
+      showAlert('login-alert', d.message || 'البيانات غير صحيحة', 'err');
+    }
+  } catch { showAlert('login-alert', 'تعذر الاتصال بالسيرفر', 'err'); }
+  setLoading('login-btn', false, 'تسجيل الدخول');
+}
+
+// ── REGISTER ──
+async function doRegister() {
+  const name = document.getElementById('r-name').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const phone = document.getElementById('r-phone').value.trim();
+  const pw = document.getElementById('r-pw').value;
+  const pw2 = document.getElementById('r-pw2').value;
+  const spec = document.getElementById('r-spec').value;
+
+  if (!name || !email || !pw) { showAlert('reg-alert', 'يرجى تعبئة الاسم والبريد وكلمة المرور', 'err'); return; }
+  if (pw.length < 8) { showAlert('reg-alert', 'كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'err'); return; }
+  if (pw !== pw2) { showAlert('reg-alert', 'كلمتا المرور غير متطابقتين', 'err'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlert('reg-alert', 'البريد الإلكتروني غير صحيح', 'err'); return; }
+
+  setLoading('reg-btn', true, 'جاري التسجيل...');
+  try {
+    const body = {
+      name, email, phone: phone || null, password: pw, role: curRole,
+      specialties: curRole === 'provider' ? [spec] : null
+    };
+    const r = await fetch(API + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (r.ok) {
+      localStorage.setItem('user', JSON.stringify(d.user));
+      localStorage.setItem('token', d.token);
+      showAlert('reg-alert', `تم إنشاء حسابك بنجاح! مرحباً ${d.user.name}`, 'ok');
+      setTimeout(() => redirect(d.user.role), 1200);
+    } else {
+      showAlert('reg-alert', d.message || 'حدث خطأ أثناء التسجيل', 'err');
+    }
+  } catch { showAlert('reg-alert', 'تعذر الاتصال بالسيرفر', 'err'); }
+  setLoading('reg-btn', false, 'إنشاء الحساب');
+}
+
+// ── FORGOT ──
+async function doForgot() {
+  const email = document.getElementById('f-email').value.trim();
+  if (!email) { showAlert('forgot-alert', 'يرجى إدخال البريد الإلكتروني', 'err'); return; }
+  setLoading('forgot-btn', true, 'جاري الإرسال...');
+  try {
+    const r = await fetch(API + '/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    showAlert('forgot-alert', 'تم إرسال رابط الاستعادة — تحقق من بريدك الإلكتروني', 'ok');
+  } catch { showAlert('forgot-alert', 'تعذر الاتصال بالسيرفر', 'err'); }
+  setLoading('forgot-btn', false, 'إرسال رابط الاستعادة');
+}
+
+// ── RESET ──
+async function doReset() {
+  const pw = document.getElementById('rs-pw').value;
+  const pw2 = document.getElementById('rs-pw2').value;
+  if (!pw || pw.length < 8) { showAlert('reset-alert', 'كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'err'); return; }
+  if (pw !== pw2) { showAlert('reset-alert', 'كلمتا المرور غير متطابقتين', 'err'); return; }
+  setLoading('reset-btn', true, 'جاري الحفظ...');
+  try {
+    const r = await fetch(API + '/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, new_password: pw })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      showAlert('reset-alert', 'تم تغيير كلمة المرور بنجاح! جاري التوجيه لتسجيل الدخول...', 'ok');
+      setTimeout(() => { window.history.replaceState({}, '', window.location.pathname); switchTab('login'); }, 2000);
+    } else {
+      showAlert('reset-alert', d.message || 'رابط منتهي الصلاحية', 'err');
+    }
+  } catch { showAlert('reset-alert', 'تعذر الاتصال بالسيرفر', 'err'); }
+  setLoading('reset-btn', false, 'حفظ كلمة المرور الجديدة');
+}
+
+// Enter key
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const active = document.querySelector('.page.on')?.id;
+  if (active === 'page-login') doLogin();
+  else if (active === 'page-register') doRegister();
+  else if (active === 'page-forgot') doForgot();
+  else if (active === 'page-reset') doReset();
+});
 </script>
 </body>
 </html>
