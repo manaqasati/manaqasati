@@ -851,4 +851,50 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ─── ADMIN SETUP (استخدم مرة واحدة فقط لإنشاء حساب المدير) ───
+// الرابط: /api/setup-admin?secret=manaqasa2024
+app.get('/api/setup-admin', async (req, res) => {
+  try {
+    if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رابط غير صحيح' });
+    const { email, password, name } = req.query;
+    if (!email || !password || !name) {
+      return res.json({
+        usage: 'أضف: ?secret=manaqasa2024&email=admin@manaqasa.com&password=yourpass&name=المدير',
+        example: `${req.protocol}://${req.get('host')}/api/setup-admin?secret=manaqasa2024&email=admin@manaqasa.com&password=Admin@123&name=المدير`
+      });
+    }
+    const exists = await pool.query(`SELECT id,role FROM users WHERE email=$1`, [email]);
+    if (exists.rows.length) {
+      // ترقية الحساب الموجود لمدير
+      await pool.query(`UPDATE users SET role='admin' WHERE email=$1`, [email]);
+      return res.json({ ok: true, message: `✅ تم ترقية الحساب ${email} لمدير بنجاح`, action: 'upgraded' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const r = await pool.query(
+      `INSERT INTO users(name,email,password,role) VALUES($1,$2,$3,'admin') RETURNING id,name,email,role`,
+      [name, email, hash]
+    );
+    res.json({ ok: true, message: `✅ تم إنشاء حساب المدير بنجاح`, user: r.rows[0], action: 'created' });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── تحقق من الحساب الحالي ───
+app.get('/api/check-user', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id,name,email,role FROM users WHERE id=$1', [req.user.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── ترقية بريد إلكتروني لمدير (للطوارئ) ───
+app.post('/api/promote-admin', async (req, res) => {
+  try {
+    const { email, secret } = req.body;
+    if (secret !== 'manaqasa_admin_2024') return res.status(403).json({ message: 'رمز خاطئ' });
+    const r = await pool.query(`UPDATE users SET role='admin' WHERE email=$1 RETURNING id,name,email,role`, [email]);
+    if (!r.rows.length) return res.status(404).json({ message: 'البريد غير موجود' });
+    res.json({ ok: true, user: r.rows[0] });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 initDB().then(() => app.listen(process.env.PORT||3000, () => console.log('🚀 Server running on port', process.env.PORT||3000)));
