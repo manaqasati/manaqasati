@@ -182,6 +182,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 .alert.ok{background:var(--success-l);color:#085041;border-color:var(--success-m);display:block}
 .alert.err{background:var(--danger-l);color:#7f1d1d;border-color:var(--danger-m);display:block}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.toast-notif{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--t);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);animation:fadeIn .3s ease;white-space:nowrap}
 @media(max-width:900px){.sg{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
   .side,.topbar{display:none}.main{margin-right:0}
@@ -428,6 +430,11 @@ function showAlert(id,txt,type){let e=document.getElementById(id);if(!e)return;e
 function stTag(s){return{open:'<span class="tag t-open">نشط</span>',in_progress:'<span class="tag t-prog">قيد التنفيذ</span>',completed:'<span class="tag t-done">مكتمل</span>',done:'<span class="tag t-done">مكتمل</span>',pending_review:'<span class="tag t-rev">مراجعة</span>',rejected:'<span class="tag t-rej">مرفوض</span>'}[s]||'';}
 function logout(){localStorage.clear();location.href='auth.html';}
 function stars(n){let s='';for(let i=1;i<=5;i++)s+=`<span style="color:${i<=Math.round(n)?'var(--accent)':'#ddd'};font-size:14px">★</span>`;return s;}
+function showToast(msg,dur=3500){
+  let t=document.createElement('div');t.className='toast-notif';t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>{try{document.body.removeChild(t);}catch{}},300);},dur);
+}
 
 // init
 let nm=user.name||'العميل';
@@ -602,7 +609,12 @@ async function loadBids(id){
   let bids=await safeArr('/api/requests/'+id+'/bids');
   let cnt=document.getElementById('bids-count');
   if(cnt)cnt.textContent='('+bids.length+')';
-  if(!bids.length){el.innerHTML=empty('لا يوجد عروض بعد','انتظر قليلاً');return;}
+  renderBidsList(bids, id);
+}
+
+function renderBidsList(bids, id){
+  let el=document.getElementById('bids-list');
+  if(!bids.length){el.innerHTML=empty('لا يوجد عروض بعد','انتظر قليلاً — سيُرسل لك إشعار عند وصول عرض جديد');return;}
   bids.sort((a,b)=>a.status==='accepted'?-1:b.status==='accepted'?1:b.avg_rating-a.avg_rating);
   el.innerHTML=bids.map(b=>{
     let isAcc=b.status==='accepted',isRej=b.status==='rejected';
@@ -621,16 +633,17 @@ async function loadBids(id){
           <button class="btn-sm bs-a" onclick="openRate(${id},${b.provider_id})">⭐ تقييم</button>
         </div>`;
     }else if(!isRej){
+      // زر المحادثة متاح دائماً حتى قبل القبول
       acts=`<div class="bid-actions">
         <button class="btn-sm bs-g" onclick="acceptBid(${b.id},${id})">✓ قبول العرض</button>
         <button class="btn-sm bs-r" onclick="rejectBid(${b.id},${id})">✕ رفض</button>
-        <button class="btn-sm bs-cl" onclick="openChatWith(${b.provider_id},'${provName}',${id})">💬 محادثة</button>
+        <button class="btn-sm bs-cl" onclick="startChat(${b.provider_id},'${provName}',${id})">💬 محادثة</button>
         <button class="btn-sm bs-cl" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
       </div>`;
     }
-    return`<div class="bid-card${isAcc?' accepted':isRej?' rejected':''}">
+    return`<div class="bid-card${isAcc?' accepted':isRej?' rejected':''}" id="bid-card-${b.id}">
       <div class="bid-top">
-        <div class="bid-av" style="background:${ac(b.provider_id)}" onclick="openProv(${b.provider_id},'detail')">${b.provider_name.charAt(0)}</div>
+        <div class="bid-av" style="background:${ac(b.provider_id)}" onclick="openProv(${b.provider_id},'detail')">${(b.provider_name||'م').charAt(0)}</div>
         <div style="flex:1">
           <div class="bid-pname" onclick="openProv(${b.provider_id},'detail')">${b.provider_name}${isAcc?' ✅':isRej?' ❌':''}${b.provider_badge&&b.provider_badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${b.provider_badge}</span>`:''}</div>
           <div class="stars">${stars(avg)}</div>
@@ -646,6 +659,22 @@ async function loadBids(id){
       ${acts}
     </div>`;
   }).join('');
+}
+
+// فتح محادثة مباشرة من قائمة العروض (بدون الانتقال لتبويب آخر)
+function startChat(provId, provName, reqId){
+  curChatProv={id:provId, name:provName};
+  // الانتقال لتبويب المحادثة مباشرة
+  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab');
+  let chatBtn=document.querySelector('[onclick*="chat"]');
+  if(chatBtn) chatBtn.className='tab-btn on';
+  // ابحث عن tab-btn الثاني (المحادثة)
+  let tabs=document.querySelectorAll('.tab-btn');
+  if(tabs[1]){tabs[1].className='tab-btn on';}
+  let chatTab=document.getElementById('tab-chat');
+  if(chatTab){chatTab.className='tab on';}
+  loadChatTab(reqId);
 }
 
 async function acceptBid(bidId,reqId){
@@ -750,6 +779,57 @@ function connectWS(){
             } else {
               // أرسل إشعار قراءة
               wsSend({type:'read',request_id:m.request_id,sender_id:m.sender_id});
+            }
+          }
+        }
+        // ── استقبال عرض جديد فوراً ──
+        if(d.type==='new_bid'){
+          const b=d.bid;
+          // إشعار بصري
+          showToast(`💼 عرض جديد من ${b.provider_name}`);
+          // تحديث عداد الإشعارات
+          let nb=document.getElementById('notif-badge');
+          if(nb){let n=parseInt(nb.textContent||0)+1;nb.textContent=n;nb.style.display='flex';}
+          // إذا المستخدم في صفحة تفاصيل نفس الطلب — أضف العرض فوراً
+          if(curReqId==d.request_id){
+            let el=document.getElementById('bids-list');
+            if(el){
+              // أزل رسالة "لا يوجد عروض" إن وجدت
+              let empty=el.querySelector('.empty-ic');
+              if(empty) el.innerHTML='';
+              // أضف كارد العرض الجديد
+              let provName=(b.provider_name||'').replace(/'/g,'');
+              let specs=[];
+              if(b.provider_city)specs.push('📍 '+b.provider_city);
+              let newCard=document.createElement('div');
+              newCard.className='bid-card';
+              newCard.id='bid-card-'+b.id;
+              newCard.style.animation='fadeIn .4s ease';
+              newCard.innerHTML=`
+                <div class="bid-top">
+                  <div class="bid-av" style="background:${ac(b.provider_id)}" onclick="openProv(${b.provider_id},'detail')">${(b.provider_name||'م').charAt(0)}</div>
+                  <div style="flex:1">
+                    <div class="bid-pname">${b.provider_name}${b.provider_badge&&b.provider_badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${b.provider_badge}</span>`:''}</div>
+                    <div class="stars">${stars(b.avg_rating||0)}</div>
+                    <div style="font-size:11px;color:var(--t3)">${b.avg_rating>0?b.avg_rating.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم بعد'}</div>
+                    ${specs.length?`<div class="bid-specs">${specs.map(s=>`<span class="spec">${s}</span>`).join('')}</div>`:''}
+                    ${b.note?`<div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:5px">"${b.note}"</div>`:''}
+                  </div>
+                </div>
+                <div class="bid-price-row">
+                  <div class="bid-price">${b.price} <span style="font-size:12px;font-weight:600;color:var(--t3)">ر.س</span></div>
+                  <div class="bid-days">⏱ ${b.days} يوم</div>
+                </div>
+                <div class="bid-actions">
+                  <button class="btn-sm bs-g" onclick="acceptBid(${b.id},${d.request_id})">✓ قبول</button>
+                  <button class="btn-sm bs-r" onclick="rejectBid(${b.id},${d.request_id})">✕ رفض</button>
+                  <button class="btn-sm bs-cl" onclick="startChat(${b.provider_id},'${provName}',${d.request_id})">💬 محادثة</button>
+                  <button class="btn-sm bs-cl" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
+                </div>`;
+              el.insertBefore(newCard, el.firstChild);
+              // تحديث عداد العروض
+              let cnt=document.getElementById('bids-count');
+              if(cnt){let n=parseInt((cnt.textContent||'0').replace(/\D/g,''))||0;cnt.textContent='('+(n+1)+')';}
             }
           }
         }
