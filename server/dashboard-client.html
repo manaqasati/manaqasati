@@ -3,281 +3,217 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>مناقصة – العميل</title>
+<title>مناقصة — العميل</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#F7F8FC;--bg2:#f0f2f8;--br:#e2e6f0;--br2:#c9d0e0;
-  --t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--t4:#9aa3b8;
-  --primary:#1B3A6B;--client:#2C5282;--client-l:#E6EEF8;--client-m:#b8cce8;
-  --accent:#D4973A;--accent-l:#FDF3E3;--accent-m:#f6c96b;
-  --success:#1D9E75;--success-l:#E1F5EE;--success-m:#9FE1CB;
-  --danger:#E24B4A;--danger-l:#FCEBEB;--danger-m:#F09595;
-  --warn:#BA7517;--warn-l:#FAEEDA;--warn-m:#FAC775;
-  --info:#185FA5;--info-l:#E6F1FB;--info-m:#85B7EB;
-  --white:#fff;--border:rgba(27,58,107,0.11);
-}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
-.side{width:252px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:2px 0 20px rgba(27,58,107,.07)}
-.side-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
-.logo{font-size:22px;font-weight:900;color:var(--primary)}.logo span{color:var(--accent)}
-.user-pill{background:var(--client-l);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-top:10px}
-.av{width:36px;height:36px;border-radius:10px;background:var(--client);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.av-name{font-size:13px;font-weight:800}.av-role{font-size:10px;color:var(--client);font-weight:700}
-.nav{padding:10px 8px;flex:1;overflow-y:auto}
-.ns{display:block;font-size:10px;font-weight:800;color:var(--t3);letter-spacing:.8px;padding:0 8px;margin:12px 0 4px}
-.ni{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:.15s;position:relative}
-.ni:hover{background:var(--bg);color:var(--t)}.ni.on{background:var(--client-l);color:var(--client)}
-.ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ni.on .ni-ic{background:var(--client)}.ni.on .ni-ic svg{stroke:#fff}
-.ni-ic svg{stroke:currentColor;width:15px;height:15px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.nbadge{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
-.side-foot{padding:10px 16px;border-top:1px solid var(--border)}
-.logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif}
-.logoutbtn:hover{background:var(--danger-l)}
-.main{margin-right:252px;min-height:100vh}
-.topbar{background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar-title{font-size:15px;font-weight:800}
-.btn-new{background:var(--client);color:#fff;padding:7px 16px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:5px}
-.btn-new:hover{background:var(--primary)}
-.content{padding:20px 24px}.page{display:none}.page.on{display:block}
-.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--client);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.mob-logo{font-size:18px;font-weight:900;color:var(--primary)}.mob-logo span{color:var(--accent)}
-.mob-btn{background:none;border:none;cursor:pointer;padding:6px;color:var(--t3);display:flex}
-.mob-av{width:30px;height:30px;border-radius:8px;background:var(--client);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:3px 0 env(safe-area-inset-bottom,0px)}
-.bnav-inner{display:flex}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:var(--t3)}
-.bni svg{stroke:currentColor;width:20px;height:20px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.bni .bt{font-size:9px;font-weight:700}.bni.on{color:var(--client)}
-.card{background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
-.ch{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
-.ch h3{font-size:14px;font-weight:800}
-.ch-link{font-size:12px;color:var(--client);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
-.cb{padding:16px}
-.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:14px;display:flex;align-items:center;gap:12px}
-.sic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sic svg{width:18px;height:18px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.sic.cl{background:var(--client-l)}.sic.cl svg{stroke:var(--client)}
-.sic.wn{background:var(--warn-l)}.sic.wn svg{stroke:var(--warn)}
-.sic.sc2{background:var(--success-l)}.sic.sc2 svg{stroke:var(--success)}
-.sic.inf{background:var(--info-l)}.sic.inf svg{stroke:var(--info)}
-.sn{font-size:22px;font-weight:900}.st{font-size:11px;color:var(--t3);font-weight:600}
-.hero{background:var(--primary);border-radius:16px;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
-.hero::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-30px}
-.hero-t h2{font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;position:relative}
-.hero-t p{font-size:12px;color:rgba(255,255,255,.6);position:relative}
-.hero-btn{background:var(--accent);color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;flex-shrink:0;position:relative}
-.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
-.t-open{background:var(--success-l);color:#085041}.t-prog{background:var(--info-l);color:#0C447C}
-.t-done{background:var(--client-l);color:var(--primary)}.t-rev{background:var(--warn-l);color:#633806}.t-rej{background:var(--danger-l);color:#7f1d1d}
-.ri{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:.15s}
-.ri:hover{border-color:var(--client-m);background:var(--client-l)}
-/* ── BID CARDS (تصميم جديد) ── */
-.bid-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.2s;position:relative}
-.bid-card:hover{border-color:var(--client-m);transform:translateY(-1px);box-shadow:0 6px 20px rgba(44,82,130,.09)}
-.bid-card.accepted{border-color:#1D9E75;border-width:2px}
-.bid-card.rejected{opacity:.4;pointer-events:none}
-.bid-header{padding:16px 16px 0;display:flex;gap:12px;align-items:flex-start}
-.bid-av{width:44px;height:44px;border-radius:50%;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
-.bid-info{flex:1;min-width:0}
-.bid-name{font-size:14px;font-weight:800;color:var(--t);cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.bid-name:hover{color:var(--client)}
-.bid-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;background:var(--accent-l);color:#78350f}
-.bid-stars{display:flex;align-items:center;gap:3px;margin-top:3px}
-.bid-star{color:#e5e7eb;font-size:13px}
-.bid-star.on{color:#f59e0b}
-.bid-rating{font-size:11px;color:var(--t3);font-weight:600}
-.bid-specs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-.bid-spec{font-size:10px;padding:2px 8px;background:var(--bg);border-radius:6px;color:var(--t2);font-weight:600}
-.bid-note{margin:10px 16px 0;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:12px;color:var(--t3);font-style:italic;line-height:1.6;border-right:3px solid var(--client-m)}
-.bid-price-bar{margin:12px 16px 0;padding:12px 14px;background:var(--bg);border-radius:12px;display:flex;align-items:center;justify-content:space-between}
-.bid-price{font-size:22px;font-weight:900;color:var(--client)}
-.bid-price span{font-size:12px;font-weight:600;color:var(--t3)}
-.bid-days{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px}
-.bid-actions{padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap}
-.bid-accepted-banner{margin:0 16px;padding:10px 14px;background:#E1F5EE;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041;margin-top:10px}
-.bid-revised-bar{margin:0 16px;padding:8px 12px;background:var(--warn-l);border-right:3px solid var(--warn-m);border-radius:8px;font-size:11px;color:#633806;margin-top:6px}
-.btn-accept{padding:9px 18px;background:var(--success);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;display:flex;align-items:center;gap:5px}
-.btn-accept:hover{background:#0F6E56}
-.btn-reject{padding:9px 14px;background:var(--danger-l);color:var(--danger);border:1.5px solid var(--danger-m);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
-.btn-reject:hover{background:var(--danger-m)}
-.btn-chat{padding:9px 14px;background:var(--client-l);color:var(--client);border:1.5px solid var(--client-m);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;display:flex;align-items:center;gap:5px}
-.btn-chat:hover{background:var(--client-m)}
-.btn-profile{padding:9px 12px;background:var(--bg);color:var(--t3);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
-.btn-profile:hover{background:var(--bg2);color:var(--t)}
-/* PROV PROFILE */
-.prov-hd{background:var(--primary);border-radius:14px;padding:22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden}
-.prov-hd::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-30px}
-.prov-av{width:56px;height:56px;border-radius:50%;color:#fff;font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative}
-/* CHAT */
-.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-.bme{max-width:75%;padding:9px 13px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.6;background:var(--client);color:#fff;align-self:flex-end}
-.both{max-width:75%;padding:9px 13px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.6;background:var(--white);border:1px solid var(--border);align-self:flex-start}
-.bsys{align-self:center;background:var(--success-l);border:1px solid var(--success-m);color:#085041;padding:7px 14px;border-radius:20px;font-size:11px;font-weight:700;text-align:center;max-width:90%}
-.msg-time{font-size:9px;opacity:.5;margin-top:2px}
-/* MSG LAYOUT */
-.msg-layout{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 120px);background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.msg-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
-.msg-side-hd{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;flex-shrink:0}
-.msg-threads{flex:1;overflow-y:auto}
-.thread{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:.15s}
-.thread:hover{background:var(--bg)}.thread.on{background:var(--client-l);border-right:3px solid var(--client)}
-.tav{width:36px;height:36px;border-radius:50%;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-/* FORM */
-.fg{margin-bottom:12px}.fg label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--t2)}
-.fg input,.fg textarea,.fg select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--t);outline:none;background:var(--white);transition:.15s}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--client);box-shadow:0 0 0 3px rgba(44,82,130,.1)}
-.fg textarea{min-height:100px;resize:vertical}
-.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* BTNS */
-.btn-sm{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:.15s;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
-.bs-cl{background:var(--client-l);color:var(--client)}.bs-cl:hover{background:var(--client-m)}
-.bs-dk{background:var(--primary);color:#fff}.bs-dk:hover{background:#0f2347}
-.bs-g{background:var(--success-l);color:var(--success)}.bs-g:hover{background:var(--success-m)}
-.bs-r{background:var(--danger-l);color:var(--danger)}.bs-r:hover{background:var(--danger-m)}
-.bs-a{background:var(--accent-l);color:var(--accent)}.bs-a:hover{background:var(--accent-m)}
-.btn-p{padding:10px 20px;background:var(--client);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
-.btn-p:hover{background:var(--primary)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
-.btn-s{padding:10px 14px;background:var(--bg);color:var(--t3);border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
-/* TABS */
-.tab-btns{display:flex;gap:4px;margin-bottom:14px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab-btns::-webkit-scrollbar{display:none}
-.tab-btn{padding:9px 16px;border-radius:22px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);font-family:'Tajawal',sans-serif;background:var(--white);color:var(--t3);white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
-.tab-btn:hover{background:var(--bg2);color:var(--t)}
-.tab-btn.on{background:var(--client);color:#fff;border-color:var(--client)}
-.tab{display:none}.tab.on{display:block}
-/* IMAGES */
-.img-upload-area{border:2px dashed var(--br2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.15s}
-.img-upload-area:hover{border-color:var(--client);background:var(--client-l)}
-.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:10px}
-.img-item{position:relative;cursor:pointer}
-.img-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:2px solid var(--border);transition:.15s}
-.img-item.main img{border-color:var(--success);border-width:3px}
-.img-main-badge{position:absolute;top:4px;right:4px;background:var(--success);color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:8px}
-.img-remove{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
-/* OVERLAY */
-.ov{display:none;position:fixed;inset:0;background:rgba(10,20,50,.72);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
-.ov.show{display:flex}
-.modal{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
-.modal-drag{width:36px;height:4px;background:var(--br2);border-radius:2px;margin:10px auto 0}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:13px 20px 11px;border-bottom:1px solid var(--border)}
-.modal-head h3{font-size:15px;font-weight:800}
-.modal-x{width:26px;height:26px;border-radius:7px;background:var(--bg);border:none;cursor:pointer;font-size:14px;color:var(--t3)}
-.modal-body{padding:16px 20px;overflow-y:auto;flex:1}
-.modal-foot{padding:11px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--white)}
-/* AGREE */
-.agree-modal{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
-.agree-hd{background:var(--primary);padding:18px 22px;text-align:center;flex-shrink:0;position:relative;overflow:hidden}
-.agree-hd::before{content:'';position:absolute;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.05);top:-45px;left:-25px}
-.agree-hd h2{color:#fff;font-size:16px;font-weight:900;margin-bottom:3px;position:relative}
-.agree-hd p{color:rgba(255,255,255,.6);font-size:11px;position:relative}
-.agree-body{padding:18px 20px;overflow-y:auto;flex:1}
-.quran-box{background:var(--accent-l);border:2px solid var(--accent-m);border-radius:12px;padding:14px;margin-bottom:14px;text-align:center}
-.quran-text{font-size:14px;font-weight:700;color:#78350f;line-height:2.1}
-.agree-sec{background:var(--bg);border:1.5px solid var(--client-m);border-radius:11px;padding:12px;margin-bottom:10px}
-.agree-sec-t{font-size:12px;font-weight:800;color:var(--client);margin-bottom:6px}
-.agree-sec p{font-size:11px;color:var(--t);line-height:1.9}
-.agree-check{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--client-l);border-radius:11px;cursor:pointer;border:1px solid var(--client-m);margin-top:12px}
-.agree-check input{width:17px;height:17px;cursor:pointer;accent-color:var(--client);flex-shrink:0;margin-top:2px}
-.agree-check label{font-size:11px;font-weight:700;cursor:pointer;line-height:1.7}
-.agree-foot{padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
-/* STARS */
-.stars-pick{display:flex;gap:8px;justify-content:center;margin:12px 0}
-.sp{font-size:32px;cursor:pointer;opacity:.25;filter:grayscale(1);transition:.15s}.sp.on{opacity:1;filter:none}
-/* MISC */
-.empty{text-align:center;padding:36px 16px;color:var(--t3)}
-.empty h4{font-size:13px;font-weight:700;color:var(--t);margin-bottom:3px}
-.empty-ic{width:48px;height:48px;background:var(--client-l);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
-.empty-ic svg{stroke:var(--client);width:20px;height:20px;fill:none;stroke-width:2}
-.loading{text-align:center;padding:28px;color:var(--t3);font-size:13px}
-.alert{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:12px;border-width:1.5px;border-style:solid;display:none}
-.alert.ok{background:var(--success-l);color:#085041;border-color:var(--success-m);display:block}
-.alert.err{background:var(--danger-l);color:#7f1d1d;border-color:var(--danger-m);display:block}
-@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.toast-notif{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--t);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);animation:fadeIn .3s ease;white-space:nowrap}
-/* ── PROJECT CARDS (مستقل style) ── */
-.proj-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;transition:.2s;animation:slideUp .3s ease}
-.proj-card:hover{border-color:var(--client-m);box-shadow:0 6px 24px rgba(44,82,130,.1);transform:translateY(-1px)}
-.proj-card.has-bids{border-color:var(--accent-m)}
-.proj-card.in-progress{border-color:var(--success-m);border-width:2px}
-.proj-card.completed{border-color:var(--br2);opacity:.75}
-.proj-top{padding:16px 18px;cursor:pointer}
-.proj-title{font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px;line-height:1.4}
-.proj-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--t3);align-items:center}
+:root{
+  --blue:#1473E6;--blue-d:#0d5fc9;--blue-l:#EBF3FD;--blue-m:#b3d4f8;
+  --gray:#f7f8fa;--gray2:#eef0f3;--gray3:#dde1e7;
+  --text:#1a1a2e;--text2:#4a5568;--text3:#8a97a8;--text4:#b0bac5;
+  --success:#16a34a;--success-l:#f0fdf4;--success-m:#86efac;
+  --danger:#dc2626;--danger-l:#fef2f2;--danger-m:#fca5a5;
+  --warn:#d97706;--warn-l:#fffbeb;--warn-m:#fcd34d;
+  --accent:#f59e0b;
+  --white:#fff;--border:#e8ecf0;--shadow:0 1px 3px rgba(0,0,0,.08);
+  --r:8px;--rl:12px;--rxl:16px;
+}
+body{font-family:'Tajawal',sans-serif;background:var(--gray);color:var(--text);min-height:100vh}
+button,input,select,textarea{font-family:'Tajawal',sans-serif}
+
+/* NAV */
+.nav-top{background:var(--white);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 0 var(--border)}
+.logo{font-size:19px;font-weight:900;color:var(--text)}.logo span{color:var(--blue)}
+.nav-links{display:flex;align-items:center;gap:0;flex:1;margin:0 12px;overflow-x:auto;scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nl{padding:8px 12px;border-radius:var(--r);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;border:none;background:none;display:flex;align-items:center;gap:5px;transition:.1s;position:relative}
+.nl:hover{color:var(--blue)}.nl.on{color:var(--blue);background:var(--blue-l)}
+.nl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nbadge{background:var(--danger);color:#fff;font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px}
+.nav-av{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+
+/* LAYOUT */
+.wrap{max-width:1140px;margin:0 auto;padding:20px 16px}
+.page{display:none}.page.on{display:block}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch h3{font-size:13px;font-weight:800;color:var(--text)}
+.cb{padding:18px}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.sn{font-size:24px;font-weight:900;color:var(--text)}.st{font-size:11px;color:var(--text3);margin-top:2px;font-weight:600}
+
+/* PROJECT CARDS */
+.proj-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:.12s}
+.proj-card:hover{border-color:var(--blue-m);box-shadow:0 3px 12px rgba(20,115,230,.09);transform:translateY(-1px)}
+.proj-card.active-proj{border-right:3px solid var(--success)}
+.proj-card-top{padding:16px 20px;cursor:pointer}
+.proj-title{font-size:15px;font-weight:800;color:var(--text);line-height:1.4}
+.proj-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-top:6px}
 .proj-meta span{display:flex;align-items:center;gap:3px}
-.proj-footer{padding:10px 18px;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.bid-strip{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:10px 18px;border-top:1px solid var(--border);background:var(--bg2)}
-.bid-mini{display:flex;flex-direction:column;align-items:center;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;min-width:130px;cursor:pointer;transition:.15s;flex-shrink:0}
-.bid-mini:hover{border-color:var(--client);background:var(--client-l)}
-.bid-mini.accepted{border-color:var(--success);background:var(--success-l)}
-.bid-mini-name{font-size:12px;font-weight:800;color:var(--t);margin-bottom:3px}
-.bid-mini-price{font-size:16px;font-weight:900;color:var(--client)}
-.bid-mini-days{font-size:10px;color:var(--t3)}
-.bid-mini-stars{font-size:10px;color:var(--accent)}
-/* فلتر الحالات */
-.status-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
-.status-tab{padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--t3);white-space:nowrap;transition:.15s;font-family:'Tajawal',sans-serif}
-.status-tab:hover{background:var(--bg2)}
-.status-tab.on{background:var(--client);color:#fff;border-color:var(--client)}
-@media(max-width:900px){.sg{grid-template-columns:repeat(2,1fr)}}
+.proj-meta svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;opacity:.7}
+.proj-footer{padding:10px 20px;background:var(--gray);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+/* BID CARDS */
+.bid-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;transition:.12s}
+.bid-card:hover{border-color:var(--blue-m);box-shadow:0 3px 12px rgba(20,115,230,.09);transform:translateY(-1px)}
+.bid-card.accepted{border-color:var(--success);border-width:2px}
+.bid-card.rejected{opacity:.4;pointer-events:none}
+.bid-header{padding:14px 18px 0;display:flex;gap:11px;align-items:flex-start}
+.bid-av{width:42px;height:42px;border-radius:50%;color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.bid-name{font-size:14px;font-weight:800;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
+.bid-name:hover{color:var(--blue)}
+.bid-badge-gold{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--warn-l);color:var(--warn);font-weight:700}
+.bid-stars{display:flex;align-items:center;gap:2px;margin-bottom:5px}
+.bid-star{font-size:13px;color:#e5e7eb}.bid-star.on{color:var(--accent)}
+.bid-rating{font-size:11px;color:var(--text3);font-weight:600}
+.bid-spec-tag{font-size:10px;padding:2px 8px;background:var(--gray);border-radius:5px;color:var(--text2);font-weight:600}
+.bid-note{margin:10px 18px 0;padding:9px 12px;background:var(--gray);border-radius:var(--r);font-size:12px;color:var(--text2);font-style:italic;line-height:1.6;border-right:3px solid var(--blue-m)}
+.bid-price-bar{margin:12px 18px 0;padding:11px 14px;background:var(--gray);border-radius:var(--rl);display:flex;align-items:center;justify-content:space-between}
+.bid-price-val{font-size:20px;font-weight:900;color:var(--blue)}
+.bid-price-unit{font-size:11px;font-weight:600;color:var(--text3)}
+.bid-days-val{font-size:15px;font-weight:800;color:var(--text)}
+.bid-actions{padding:11px 18px;display:flex;gap:7px;flex-wrap:wrap}
+.bid-accepted-bar{margin:0 18px;padding:9px 12px;background:var(--success-l);border-radius:var(--r);display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--success);margin-top:10px}
+.bid-top-strip{background:var(--success);padding:3px 18px;font-size:10px;font-weight:800;color:#fff;letter-spacing:.3px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.1s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue-d)}
+.btn-ghost{background:none;color:var(--blue);border:1.5px solid var(--blue-m)}.btn-ghost:hover{background:var(--blue-l)}
+.btn-gray{background:var(--gray2);color:var(--text2);border:1px solid var(--border)}.btn-gray:hover{background:var(--gray3)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger-soft{background:var(--danger-l);color:var(--danger);border:1px solid var(--danger-m)}.btn-danger-soft:hover{background:var(--danger-m)}
+.btn-accent{background:var(--warn-l);color:var(--warn);border:1px solid var(--warn-m)}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-lg{padding:11px 22px;font-size:14px;border-radius:var(--rl)}
+.btn-full{width:100%;justify-content:center}
+
+/* TAGS */
+.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.t-open{background:var(--success-l);color:var(--success)}
+.t-prog{background:var(--blue-l);color:var(--blue)}
+.t-done{background:var(--gray2);color:var(--text3)}
+.t-pend{background:var(--warn-l);color:var(--warn)}
+.t-rej{background:var(--danger-l);color:var(--danger)}
+
+/* DETAIL TABS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:14px;gap:0;position:sticky;top:58px;background:var(--gray);z-index:10;padding:6px 0;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
+.tb{padding:8px 16px;font-size:13px;font-weight:700;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.1s;display:flex;align-items:center;gap:5px;border-radius:var(--r) var(--r) 0 0;white-space:nowrap}
+.tb:hover{color:var(--text)}.tb.on{color:var(--blue);border-bottom-color:var(--blue);background:var(--white)}
+.tab{display:none}.tab.on{display:block}
+
+/* MESSAGES */
+.msg-layout{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 130px);background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.msg-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
+.msg-side-head{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;flex-shrink:0}
+.msg-threads{flex:1;overflow-y:auto}
+.thread{padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:.1s;display:flex;align-items:center;gap:10px}
+.thread:hover{background:var(--gray)}.thread.on{background:var(--blue-l);border-right:3px solid var(--blue)}
+.tav{width:38px;height:38px;border-radius:50%;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.tav-dot{position:absolute;bottom:1px;left:1px;width:9px;height:9px;border-radius:50%;background:var(--success);border:2px solid #fff}
+.thr-name{font-size:13px;font-weight:700;margin-bottom:1px}
+.thr-last{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-main{display:flex;flex-direction:column}
+.chat-hd{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.msgs-area{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
+.bme{max-width:68%;padding:9px 13px;background:var(--blue);color:#fff;border-radius:12px 12px 3px 12px;font-size:13px;line-height:1.6;align-self:flex-end}
+.both{max-width:68%;padding:9px 13px;background:var(--white);border:1px solid var(--border);border-radius:12px 12px 12px 3px;font-size:13px;line-height:1.6;align-self:flex-start}
+.bsys{align-self:center;background:var(--gray2);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--text3)}
+.msg-time{font-size:10px;opacity:.55;margin-top:2px;text-align:left}
+.chat-inp-row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.chat-inp{flex:1;padding:9px 15px;border:1.5px solid var(--border);border-radius:22px;font-size:13px;outline:none;color:var(--text);background:var(--gray);transition:.1s}
+.chat-inp:focus{border-color:var(--blue);background:var(--white)}
+.chat-send-btn{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send-btn:hover{background:var(--blue-d)}
+.chat-send-btn svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.typing-ind{display:none;align-items:center;gap:5px;padding:4px 8px;align-self:flex-start}
+
+/* STATUS FILTER */
+.status-tabs{display:flex;gap:5px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.status-tabs::-webkit-scrollbar{display:none}
+.st-btn{padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text3);white-space:nowrap;transition:.1s}
+.st-btn:hover{background:var(--gray2)}.st-btn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* NEW REQUEST */
+.new-req-grid{display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start}
+.tip-box{border-radius:var(--rl);padding:16px;margin-bottom:10px}
+
+/* PROVIDER PROFILE */
+.prov-hd{background:var(--blue);border-radius:var(--rxl);padding:22px 20px;margin-bottom:14px;position:relative;overflow:hidden}
+.prov-hd::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.06);top:-40px;left:-30px}
+.prov-av{width:60px;height:60px;border-radius:var(--rl);background:rgba(255,255,255,.2);color:#fff;font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);margin-bottom:12px;position:relative}
+.prov-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative}
+.prov-stat{background:rgba(255,255,255,.12);border-radius:var(--r);padding:9px;text-align:center}
+.prov-stat-val{font-size:19px;font-weight:900;color:#fff}
+.prov-stat-lbl{font-size:9px;color:rgba(255,255,255,.65);margin-top:1px}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px}
+.fg input,.fg textarea,.fg select{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);outline:none;background:var(--white);transition:.1s}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,115,230,.1)}
+.fg textarea{min-height:100px;resize:vertical}
+
+/* IMG UPLOAD */
+.img-upload-area{border:2px dashed var(--border);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;transition:.12s}
+.img-upload-area:hover{border-color:var(--blue);background:var(--blue-l)}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;margin-top:8px}
+.img-item{position:relative}
+.img-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r);border:2px solid var(--border)}
+.img-item.main img{border-color:var(--success);border-width:2.5px}
+.img-main-badge{position:absolute;top:3px;right:3px;background:var(--success);color:#fff;font-size:8px;font-weight:800;padding:1px 5px;border-radius:5px}
+.img-remove{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}
+
+/* STARS RATE */
+.stars-pick{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.sp{font-size:30px;cursor:pointer;opacity:.22;filter:grayscale(1);transition:.1s}.sp.on{opacity:1;filter:none}
+
+/* MISC */
+.empty{text-align:center;padding:48px 20px}
+.empty h4{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
+.empty p{font-size:12px;color:var(--text3)}
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.alert{padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;margin-bottom:10px;display:none;border:1px solid}
+.alert.ok{background:var(--success-l);color:var(--success);border-color:var(--success-m);display:block}
+.alert.err{background:var(--danger-l);color:var(--danger);border-color:var(--danger-m);display:block}
+.city-drop{display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;margin-top:4px}
+.toast-p{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 20px;border-radius:22px;font-size:12px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:fadeUp .3s ease;white-space:nowrap}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px) translateX(-50%)}to{opacity:1;transform:translateY(0) translateX(-50%)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* MOB NAV */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:2px 0 calc(env(safe-area-inset-bottom,0px)+2px)}
+.mob-nav-inner{display:flex}
+.mni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--text3);font-family:'Tajawal',sans-serif;transition:.1s}
+.mni svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mni span{font-size:9px;font-weight:700}.mni.on{color:var(--blue)}
+.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.mob-logo{font-size:18px;font-weight:900;color:var(--text)}.mob-logo span{color:var(--blue)}
+.mob-av{width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.mob-btn{background:none;border:none;cursor:pointer;padding:6px;color:var(--text3);display:flex}
+
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
-  .side,.topbar{display:none}.main{margin-right:0}
-  .mob-head{display:flex}.bnav{display:block}
-  .content{padding:8px 10px;padding-bottom:80px}
-  .sg{grid-template-columns:repeat(2,1fr);gap:8px}
-  .hero{flex-direction:column;gap:10px;padding:16px}.hero-btn{width:100%;text-align:center;justify-content:center}
-  .msg-layout{grid-template-columns:1fr}.msg-side{display:none}
-  .fg2{grid-template-columns:1fr}
-  /* بطاقات العروض للجوال */
-  .bid-card{border-radius:14px;margin-bottom:10px}
-  .bid-header{padding:14px 14px 0}
-  .bid-price-bar{margin:10px 14px 0;padding:10px 12px}
-  .bid-note{margin:8px 14px 0;padding:8px 10px}
-  .bid-actions{padding:10px 14px;gap:6px}
-  .btn-accept{padding:10px;flex:1;justify-content:center;font-size:13px}
-  .btn-chat{padding:10px;flex:1;justify-content:center;font-size:13px}
-  .btn-reject{padding:10px;font-size:12px}
-  .btn-profile{padding:8px 10px;font-size:11px}
-  /* بطاقات الطلبات للجوال */
-  .proj-card{border-radius:14px;margin-bottom:10px}
-  .proj-top{padding:14px 14px}
-  .proj-footer{padding:8px 14px}
-  .bid-strip{padding:8px 14px}
-  .bid-mini{min-width:110px;padding:8px 10px}
-  /* الـ tab-btns للجوال */
-  .tab-btns{gap:4px}
-  .tab-btn{padding:8px 12px;font-size:12px;border-radius:20px}
-  /* status-tabs */
-  .status-tabs{gap:5px;margin-bottom:12px}
-  .status-tab{padding:6px 12px;font-size:11px}
+  .nav-top{display:none}.mob-head{display:flex}.mob-nav{display:block}
+  .wrap{padding:8px 10px;padding-bottom:76px}
+  .stats-row{gap:8px}.msg-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}.msg-side{display:none}
+  .new-req-grid{grid-template-columns:1fr}
+  .new-req-grid>div:last-child{display:none}
+  .form-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
-
-<div class="side">
-  <div class="side-logo">
-    <div class="logo">مناقصة<span>.</span></div>
-    <div class="user-pill">
-      <div class="av" id="userAv">ع</div>
-      <div><div class="av-name" id="userName">...</div><div class="av-role">عميل</div></div>
-    </div>
-  </div>
-  <div class="nav">
-    <span class="ns">القائمة</span>
-    <button class="ni on" id="ni-home" onclick="go('home',this)"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية</button>
-    <button class="ni" id="ni-requests" onclick="go('requests',this)"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي</button>
-    <button class="ni" onclick="showAgree()"><div class="ni-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>طلب جديد</button>
-    <button class="ni" id="ni-messages" onclick="go('messages',this)"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>الرسائل<span class="nbadge" id="msg-badge" style="display:none">0</span></button>
-    <button class="ni" id="ni-notifs" onclick="go('notifs',this)"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="nbadge" id="notif-badge" style="display:none">0</span></button>
-  </div>
-  <div class="side-foot"><button class="logoutbtn" onclick="logout()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button></div>
-</div>
 
 <div class="mob-head">
   <div class="mob-logo">مناقصة<span>.</span></div>
@@ -289,182 +225,192 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
   </div>
 </div>
 
-<div class="main">
-  <div class="topbar">
-    <div class="topbar-title" id="pageTitle">الرئيسية</div>
-    <button class="btn-new" onclick="showAgree()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>طلب جديد</button>
+<nav class="nav-top">
+  <div class="logo">مناقصة<span>.</span></div>
+  <div class="nav-links">
+    <button class="nl on" id="ni-home" onclick="go('home',this)"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية</button>
+    <button class="nl" id="ni-requests" onclick="go('requests',this)"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>مشاريعي</button>
+    <button class="nl" id="ni-messages" onclick="go('messages',this)"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل<span class="nbadge" id="msg-badge" style="display:none">0</span></button>
+    <button class="nl" id="ni-notifs" onclick="go('notifs',this)"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات<span class="nbadge" id="notif-badge" style="display:none">0</span></button>
   </div>
-  <div class="content">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <div style="text-align:left"><div style="font-size:13px;font-weight:700" id="userName">عميل</div><div style="font-size:10px;color:var(--text3)">صاحب مشروع</div></div>
+    <div class="nav-av" id="userAv">ع</div>
+    <button class="btn-blue btn btn-sm" onclick="showAgree()">+ مشروع جديد</button>
+  </div>
+</nav>
 
-    <!-- HOME -->
-    <div class="page on" id="page-home">
-      <div class="hero">
-        <div class="hero-t"><h2 id="welcomeName">مرحباً 👋</h2><p>انشر طلبك واستقبل أفضل العروض</p></div>
-        <button class="hero-btn" onclick="showAgree()">+ أنشر طلباً</button>
-      </div>
-      <div class="sg">
-        <div class="sc"><div class="sic cl"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div><div><div class="sn" id="s-total">0</div><div class="st">طلباتي</div></div></div>
-        <div class="sc"><div class="sic wn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn" id="s-open">0</div><div class="st">نشطة</div></div></div>
-        <div class="sc"><div class="sic inf"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg></div><div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div></div>
-        <div class="sc"><div class="sic sc2"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
-      </div>
-      <div class="card">
-        <div class="ch"><h3>آخر طلباتي</h3><button class="ch-link" onclick="go('requests',null)">عرض الكل ←</button></div>
-        <div class="cb" id="home-reqs"><div class="loading">جاري التحميل...</div></div>
-      </div>
+<div class="wrap">
+
+<!-- HOME -->
+<div class="page on" id="page-home">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:20px;font-weight:900" id="welcomeName">مرحباً 👋</div><div style="font-size:13px;color:var(--text3);margin-top:2px">انشر مشروعك واستقبل أفضل العروض</div></div>
+    <button class="btn btn-blue btn-lg" onclick="showAgree()">+ نشر مشروع جديد</button>
+  </div>
+  <div id="bids-banner"></div>
+  <div class="stats-row">
+    <div class="sc"><div class="sn" id="s-total">0</div><div class="st">مشاريعي</div></div>
+    <div class="sc"><div class="sn" id="s-open" style="color:var(--success)">0</div><div class="st">نشطة</div></div>
+    <div class="sc"><div class="sn" id="s-prog" style="color:var(--blue)">0</div><div class="st">قيد التنفيذ</div></div>
+    <div class="sc"><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div>
+  </div>
+  <div style="font-size:13px;font-weight:800;margin-bottom:10px">آخر مشاريعي</div>
+  <div id="home-reqs"><div class="loading">جاري التحميل...</div></div>
+</div>
+
+<!-- REQUESTS -->
+<div class="page" id="page-requests">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:18px;font-weight:900">مشاريعي</div>
+    <button class="btn btn-blue btn-sm" onclick="showAgree()">+ مشروع جديد</button>
+  </div>
+  <div class="status-tabs" id="status-tabs">
+    <button class="st-btn on" onclick="filterProjs('all',this)">الكل <span id="cnt-all"></span></button>
+    <button class="st-btn" onclick="filterProjs('open',this)">نشط ✅</button>
+    <button class="st-btn" onclick="filterProjs('in_progress',this)">قيد التنفيذ 🔨</button>
+    <button class="st-btn" onclick="filterProjs('completed',this)">مكتمل 🎉</button>
+  </div>
+  <div id="all-reqs"><div class="loading">جاري التحميل...</div></div>
+</div>
+
+<!-- DETAIL -->
+<div class="page" id="page-detail">
+  <button onclick="go('requests',null)" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:5px;margin-bottom:14px">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>مشاريعي
+  </button>
+  <div id="detail-hd"></div>
+  <div id="assigned-box"></div>
+  <div class="tabs">
+    <button class="tb on" id="tbtn-bids" onclick="switchTab('bids',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      العروض <span id="bids-count"></span>
+    </button>
+    <button class="tb" id="tbtn-chat" onclick="switchTab('chat',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      المحادثة
+    </button>
+    <button class="tb" id="tbtn-actions" onclick="switchTab('actions',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4"/></svg>
+      إجراءات
+    </button>
+  </div>
+  <div class="tab on" id="tab-bids"><div id="bids-list" style="padding-top:4px"><div class="loading">جاري التحميل...</div></div></div>
+  <div class="tab" id="tab-chat"><div id="chat-wrap"></div></div>
+  <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
+</div>
+
+<!-- PROVIDER PROFILE -->
+<div class="page" id="page-provider">
+  <button id="prov-back" onclick="goBackProv()" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:5px;margin-bottom:14px">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع
+  </button>
+  <div id="prov-content"><div class="loading">جاري التحميل...</div></div>
+</div>
+
+<!-- MESSAGES -->
+<div class="page" id="page-messages">
+  <div class="msg-layout">
+    <div class="msg-side">
+      <div class="msg-side-head">المحادثات</div>
+      <div class="msg-threads" id="msg-threads"><div class="loading">جاري التحميل...</div></div>
     </div>
-
-    <!-- REQUESTS -->
-    <div class="page" id="page-requests">
-      <div class="status-tabs" id="status-tabs">
-        <button class="status-tab on" onclick="filterProjs('all',this)">الكل <span id="cnt-all"></span></button>
-        <button class="status-tab" onclick="filterProjs('pending_review',this)">⏳ مراجعة</button>
-        <button class="status-tab" onclick="filterProjs('open',this)">✅ نشط</button>
-        <button class="status-tab" onclick="filterProjs('in_progress',this)">🔨 قيد التنفيذ</button>
-        <button class="status-tab" onclick="filterProjs('completed',this)">🎉 مكتمل</button>
-      </div>
-      <div id="all-reqs"><div class="loading">جاري التحميل...</div></div>
+    <div style="display:flex;flex-direction:column;background:var(--gray)" id="msg-main">
+      <div class="empty" style="margin:auto"><h4>💬 اختر محادثة</h4><p>اختر مزوداً للتواصل معه</p></div>
     </div>
+  </div>
+</div>
 
-    <!-- DETAIL -->
-    <div class="page" id="page-detail">
-      <button onclick="go('requests',null)" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--client);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:5px;margin-bottom:12px;padding:6px 0">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>← طلباتي
-      </button>
-      <div id="detail-hd"></div>
-      <div id="assigned-box"></div>
-      <!-- Tabs sticky على الجوال -->
-      <div class="tab-btns" style="position:sticky;top:0;z-index:10;background:var(--bg);padding:6px 0;margin:0 -10px;padding-right:10px;padding-left:10px">
-        <button class="tab-btn on" id="tbtn-bids" onclick="switchTab('bids',this)">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          العروض <span id="bids-count"></span>
-        </button>
-        <button class="tab-btn" id="tbtn-chat" onclick="switchTab('chat',this)">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          المحادثة
-        </button>
-        <button class="tab-btn" id="tbtn-actions" onclick="switchTab('actions',this)">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          إجراءات
-        </button>
-      </div>
-      <div class="tab on" id="tab-bids"><div id="bids-list" style="padding-top:4px"><div class="loading">جاري التحميل...</div></div></div>
-      <div class="tab" id="tab-chat"><div id="chat-wrap"></div></div>
-      <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
-    </div>
-
-    <!-- PROVIDER PROFILE -->
-    <div class="page" id="page-provider">
-      <button id="prov-back" onclick="goBackProv()" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:4px;margin-bottom:14px">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>رجوع
-      </button>
-      <div id="prov-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- MESSAGES -->
-    <div class="page" id="page-messages">
-      <div class="msg-layout">
-        <div class="msg-side">
-          <div class="msg-side-hd">المحادثات</div>
-          <div class="msg-threads" id="msg-threads"><div class="loading">جاري التحميل...</div></div>
-        </div>
-        <div style="display:flex;flex-direction:column;background:var(--bg)" id="msg-main">
-          <div class="empty" style="margin:auto"><div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><h4>اختر محادثة</h4></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- NEW REQUEST -->
-    <div class="page" id="page-new">
-      <div class="card">
-        <div class="ch"><h3>نشر طلب جديد</h3></div>
+<!-- NEW REQUEST -->
+<div class="page" id="page-new">
+  <div style="font-size:20px;font-weight:900;margin-bottom:4px">نشر مشروع جديد</div>
+  <div style="font-size:13px;color:var(--text3);margin-bottom:20px">أضف تفاصيل مشروعك ليصلك أفضل العروض</div>
+  <div class="new-req-grid">
+    <div>
+      <div class="alert" id="new-alert"></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>تفاصيل المشروع</h3></div>
         <div class="cb">
-          <div class="alert" id="new-alert"></div>
-          <div class="fg2">
-            <div class="fg" style="grid-column:1/-1"><label>عنوان الطلب *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت"></div>
+          <div class="fg" style="margin-bottom:12px"><label>عنوان المشروع *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت في الرياض"></div>
+          <div class="form-grid">
             <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"></select></div>
-            <div class="fg" id="other-wrap" style="display:none"><label>حدد التخصص</label><input id="n-other" type="text"></div>
+            <div class="fg" id="other-wrap" style="display:none"><label>التخصص</label><input id="n-other" type="text"></div>
             <div class="fg"><label>المدينة *</label>
               <div style="position:relative">
                 <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off" oninput="filterCities(this.value)" onfocus="showCities()" onblur="setTimeout(hideCities,200)">
-                <div id="city-dd" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 20px rgba(27,58,107,.12);max-height:180px;overflow-y:auto;margin-top:4px"></div>
+                <div id="city-dd" class="city-drop"></div>
               </div>
             </div>
+            <div class="fg"><label>الميزانية (ر.س)</label><input id="n-budget" type="number" placeholder="مثال: 2000" inputmode="numeric"></div>
+            <div class="fg"><label>الموعد المطلوب</label><input id="n-deadline" type="date"></div>
             <div class="fg"><label>العنوان التفصيلي</label><input id="n-address" type="text" placeholder="الحي، الشارع..."></div>
-            <div class="fg"><label>الميزانية (ر.س)</label><input id="n-budget" type="number" placeholder="500" inputmode="numeric"></div>
-            <div class="fg"><label>تاريخ الانتهاء</label><input id="n-deadline" type="date"></div>
-            <div class="fg" style="grid-column:1/-1"><label>تفاصيل الطلب *</label><textarea id="n-desc" placeholder="اشرح طلبك بالتفاصيل..."></textarea></div>
-          </div>
-          <!-- رفع صور متعددة -->
-          <div class="fg">
-            <label>صور المشروع <span style="font-size:11px;color:var(--t3);font-weight:400">حتى 5 صور — اضغط صورة لجعلها الرئيسية</span></label>
-            <div class="img-upload-area" onclick="document.getElementById('n-imgs').click()">
-              <div style="font-size:26px;margin-bottom:6px">🖼️</div>
-              <div style="font-size:13px;font-weight:600;color:var(--t2)">اضغط لرفع الصور</div>
-              <div style="font-size:11px;color:var(--t4);margin-top:3px">JPG, PNG — حتى 5 صور</div>
-            </div>
-            <input type="file" id="n-imgs" accept="image/*" multiple style="display:none" onchange="previewImgs(this)">
-            <div class="img-grid" id="img-grid"></div>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:6px">
-            <button class="btn-p" id="n-btn" onclick="submitReq()">نشر الطلب</button>
-            <button class="btn-s" onclick="go('home',null)">إلغاء</button>
+            <div class="fg full"><label>تفاصيل المشروع *</label><textarea id="n-desc" placeholder="اشرح مشروعك بالتفاصيل — المساحة، النوع، أي معلومات تفيد المزودين..."></textarea></div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- NOTIFS -->
-    <div class="page" id="page-notifs">
-      <div class="card">
-        <div class="ch"><h3>الإشعارات</h3><button class="ch-link" onclick="markRead()">تحديد الكل كمقروء</button></div>
-        <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="ch"><h3>صور المشروع <span style="font-size:11px;color:var(--text3);font-weight:400">اختياري — حتى 5 صور</span></h3></div>
+        <div class="cb">
+          <div class="img-upload-area" onclick="document.getElementById('n-imgs').click()">
+            <div style="font-size:28px;margin-bottom:7px">📷</div>
+            <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور المشروع</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">JPG, PNG — حتى 5 صور</div>
+          </div>
+          <input type="file" id="n-imgs" accept="image/*" multiple style="display:none" onchange="previewImgs(this)">
+          <div class="img-grid" id="img-grid"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-blue btn-lg" id="n-btn" onclick="submitReq()" style="flex:1">نشر المشروع الآن</button>
+        <button class="btn btn-gray btn-lg" onclick="go('home',null)" style="padding:11px 20px">إلغاء</button>
       </div>
     </div>
-
-  </div>
-</div>
-
-<div class="bnav"><div class="bnav-inner">
-  <button class="bni on" id="bn-home" onclick="go('home',null)"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span class="bt">الرئيسية</span></button>
-  <button class="bni" id="bn-requests" onclick="go('requests',null)"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg><span class="bt">طلباتي</span></button>
-  <button class="bni" onclick="showAgree()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="bt">جديد</span></button>
-  <button class="bni" id="bn-messages" onclick="go('messages',null)"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bt">رسائل</span></button>
-  <button class="bni" id="bn-notifs" onclick="go('notifs',null)"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="bt">إشعارات</span></button>
-</div></div>
-
-<!-- AGREE -->
-<div class="ov" id="agree-ov">
-  <div class="agree-modal">
-    <div class="agree-hd"><h2>📜 اتفاقية الرسوم</h2><p>يرجى القراءة قبل النشر</p></div>
-    <div class="agree-body">
-      <div class="quran-box">
-        <div style="font-size:11px;font-weight:800;color:#92400e;margin-bottom:6px">بسم الله الرحمن الرحيم</div>
-        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ ﴾</div>
-        <div style="font-size:11px;color:#92400e;margin-top:6px;font-weight:700">سورة النحل — صدق الله العظيم</div>
+    <!-- نصائح -->
+    <div>
+      <div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:var(--rl);padding:18px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:10px">ابدأ في دقائق</div>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:#166534">
+          <div>✓ انشر مشروعك مجاناً فوراً</div>
+          <div>✓ استقبل عروض المزودين خلال دقائق</div>
+          <div>✓ تصفح ملفات الأعمال والتقييمات</div>
+          <div>✓ تواصل واقبل العرض المناسب</div>
+        </div>
       </div>
-      <div class="agree-sec"><div class="agree-sec-t">رسوم المنصة</div><p>تلتزم بدفع رسوم المنصة البالغة <strong>1%</strong> من قيمة العقد خلال <strong>10 أيام</strong> من اكتمال الاتفاق.</p></div>
-      <div class="agree-sec"><div class="agree-sec-t">الالتزام بالاتفاقية</div><p>بموافقتك فإنك تُقرّ بالاطلاع على الشروط والالتزام بها.</p></div>
-      <div class="agree-check">
-        <input type="checkbox" id="agree-chk" onchange="document.getElementById('agree-btn').disabled=!this.checked">
-        <label for="agree-chk">أُقرّ بقراءة اتفاقية الرسوم والالتزام بسداد <strong>1%</strong> من قيمة العقد</label>
+      <div style="background:var(--blue-l);border:1.5px solid var(--blue-m);border-radius:var(--rl);padding:18px">
+        <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:10px">نصائح للحصول على عروض أفضل</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2)">
+          <div>📝 وصف واضح — اشرح المطلوب بالتفاصيل</div>
+          <div>📍 حدد موقعك — يساعد في إيجاد مزودين قريبين</div>
+          <div>💰 ميزانية واقعية — تجذب عروضاً جادة</div>
+          <div>📷 أضف صوراً — توضح المطلوب بشكل أفضل</div>
+        </div>
       </div>
-    </div>
-    <div class="agree-foot">
-      <button class="btn-p" id="agree-btn" disabled onclick="acceptAgree()" style="flex:1">✓ أوافق وأنشر طلبي</button>
-      <button class="btn-s" onclick="closeAgree()">رجوع</button>
     </div>
   </div>
 </div>
 
-<!-- RATE -->
-<div class="ov" id="rate-ov">
-  <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-head"><h3>⭐ تقييم المزود</h3><button class="modal-x" onclick="closeRate()">✕</button></div>
-    <div class="modal-body">
+<!-- NOTIFS -->
+<div class="page" id="page-notifs">
+  <div style="font-size:18px;font-weight:900;margin-bottom:14px">الإشعارات</div>
+  <div class="card">
+    <div class="ch"><h3>الإشعارات</h3><button onclick="markRead()" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">تحديد الكل كمقروء</button></div>
+    <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
+  </div>
+</div>
+
+</div>
+
+<!-- MODALS (نفس القديم) -->
+<div class="ov" id="rate-ov" style="display:none;position:fixed;inset:0;background:rgba(10,20,50,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px 11px;border-bottom:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:800">تقييم المزود ⭐</div>
+      <button onclick="closeRate()" style="width:26px;height:26px;border-radius:var(--r);background:var(--gray);border:none;cursor:pointer;font-size:14px;color:var(--text3)">✕</button>
+    </div>
+    <div style="padding:16px 20px;overflow-y:auto;flex:1">
       <div class="alert" id="rate-alert"></div>
-      <p style="text-align:center;font-size:12px;color:var(--t3)">كيف كانت تجربتك مع المزود؟</p>
+      <div style="text-align:center;margin-bottom:14px;font-size:13px;color:var(--text3)">كيف كانت تجربتك مع هذا المزود؟</div>
       <div class="stars-pick">
         <span class="sp" onclick="setStar(1)">⭐</span><span class="sp" onclick="setStar(2)">⭐</span>
         <span class="sp" onclick="setStar(3)">⭐</span><span class="sp" onclick="setStar(4)">⭐</span>
@@ -472,14 +418,53 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
       </div>
       <div class="fg"><label>تعليق (اختياري)</label><textarea id="rate-comment" style="min-height:70px" placeholder="شارك تجربتك مع الآخرين..."></textarea></div>
     </div>
-    <div class="modal-foot">
-      <button class="btn-p" id="rate-btn" onclick="submitRate()" style="flex:1">إرسال التقييم</button>
-      <button class="btn-s" onclick="closeRate()">إلغاء</button>
+    <div style="padding:11px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button class="btn btn-blue btn-lg" id="rate-btn" onclick="submitRate()" style="flex:1">إرسال التقييم</button>
+      <button class="btn btn-gray btn-lg" onclick="closeRate()" style="padding:11px 20px">إلغاء</button>
     </div>
   </div>
 </div>
 
-<script>
+<div class="ov" id="agree-ov" style="display:none;position:fixed;inset:0;background:rgba(10,20,50,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:94vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0"></div>
+    <div style="background:var(--blue);padding:18px 22px;text-align:center;flex-shrink:0">
+      <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:3px">نشر مشروع جديد</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6)">اقرأ الشروط وأوافق للمتابعة</div>
+    </div>
+    <div style="padding:18px 20px;overflow-y:auto;flex:1">
+      <div style="background:var(--warn-l);border:2px solid var(--warn-m);border-radius:var(--rl);padding:14px;margin-bottom:14px;text-align:center">
+        <div style="font-size:14px;font-weight:700;color:#78350f;line-height:2">﴿ وَأَوْفُوا بِالْعَهْدِ إِنَّ الْعَهْدَ كَانَ مَسْئُولًا ﴾</div>
+      </div>
+      <div style="background:var(--gray);border:1.5px solid var(--border);border-radius:var(--rl);padding:12px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:6px">شروط النشر</div>
+        <p style="font-size:11px;color:var(--text);line-height:1.9">يجب أن تكون التفاصيل دقيقة وواضحة. لا يُسمح بنشر معلومات مضللة. يُعدّ النشر التزاماً بالتعاقد مع المزود المناسب.</p>
+      </div>
+      <div style="background:var(--gray);border:1.5px solid var(--border);border-radius:var(--rl);padding:12px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:6px">التزامات العميل</div>
+        <p style="font-size:11px;color:var(--text);line-height:1.9">الالتزام بمراجعة العروض وإبلاغ المزودين بقرارك. التواصل بشكل محترم واحترام الاتفاقيات المبرمة.</p>
+      </div>
+      <div onclick="document.getElementById('agree-chk').click()" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--blue-l);border-radius:var(--rl);cursor:pointer;border:1px solid var(--blue-m)">
+        <input type="checkbox" id="agree-chk" onchange="document.getElementById('agree-btn').disabled=!this.checked" style="width:17px;height:17px;cursor:pointer;accent-color:var(--blue);flex-shrink:0;margin-top:2px">
+        <label style="font-size:11px;font-weight:700;cursor:pointer;line-height:1.7;color:var(--text)">أقرّ بقراءة الشروط وأوافق على الالتزام بها في هذا المشروع</label>
+      </div>
+    </div>
+    <div style="padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border)">
+      <button class="btn btn-blue btn-lg" id="agree-btn" disabled onclick="acceptAgree()" style="flex:1">متابعة وإضافة المشروع</button>
+      <button class="btn btn-gray btn-lg" onclick="closeAgree()" style="padding:11px 20px">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="mob-nav"><div class="mob-nav-inner">
+  <button class="mni on" id="bn-home" onclick="go('home',null)"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
+  <button class="mni" id="bn-requests" onclick="go('requests',null)"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg><span>مشاريعي</span></button>
+  <button class="mni" id="bn-new" onclick="showAgree()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>جديد</span></button>
+  <button class="mni" id="bn-messages" onclick="go('messages',null)"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
+  <button class="mni" id="bn-notifs" onclick="go('notifs',null)"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span>إشعارات</span></button>
+</div></div>
+
+
 const API='https://manaqasati-production.up.railway.app';
 let user=JSON.parse(localStorage.getItem('user')||'{}');
 let token=localStorage.getItem('token')||'';
@@ -566,7 +551,7 @@ function go(pg,el){
   let ni=document.getElementById('ni-'+pg);if(ni)ni.className='ni on';
   let bn=document.getElementById('bn-'+pg);if(bn)bn.className='bni on';
   let titles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',messages:'الرسائل',notifs:'الإشعارات',detail:'تفاصيل الطلب',provider:'ملف المزود'};
-  document.getElementById('pageTitle').textContent=titles[pg]||'';
+  document.getElementById('pageTitle') || {textContent:''}.textContent=titles[pg]||'';
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='messages')loadMsgThreads();
@@ -1659,6 +1644,6 @@ function openImgFull(src){
 
 setInterval(loadNotifCount,30000);
 loadHome();
-</script>
+
 </body>
 </html>
