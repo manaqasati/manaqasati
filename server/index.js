@@ -595,15 +595,24 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
 // ── BIDS ──
 // ────────────────────────────────────────────
 
-app.get('/api/requests/:id/bids', async (req, res) => {
+app.get('/api/requests/:id/bids', auth, async (req, res) => {
   try {
+    // تحقق إن المستخدم مالك الطلب أو مزود أو أدمن
+    const reqCheck = await pool.query('SELECT client_id FROM requests WHERE id=$1', [req.params.id]);
+    if (!reqCheck.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const isOwner = reqCheck.rows[0].client_id === req.user.id;
+    const isAdminOrProv = req.user.role === 'admin' || req.user.role === 'provider';
+    if (!isOwner && !isAdminOrProv) return res.status(403).json({ message: 'غير مصرح' });
+
     const r = await pool.query(`
       SELECT b.*,u.name as provider_name,u.city as provider_city,u.bio as provider_bio,
       u.phone as provider_phone,u.specialties as provider_specialties,u.badge as provider_badge,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=b.provider_id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=b.provider_id),0) as review_count
       FROM bids b JOIN users u ON b.provider_id=u.id
-      WHERE b.request_id=$1 ORDER BY b.created_at ASC`, [req.params.id]);
+      WHERE b.request_id=$1 ORDER BY
+        CASE b.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
+        b.created_at ASC`, [req.params.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
