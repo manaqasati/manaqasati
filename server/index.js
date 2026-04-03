@@ -876,13 +876,18 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
   try {
     const { status } = req.query;
+    const VALID_STATUSES = ['pending_review','open','in_progress','completed','rejected'];
     let q = `SELECT r.*,u.name as client_name,p.name as provider_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r JOIN users u ON r.client_id=u.id
       LEFT JOIN users p ON r.assigned_provider_id=p.id`;
-    if (status) q += ` WHERE r.status='${status}'`;
+    const params = [];
+    if (status && VALID_STATUSES.includes(status)) {
+      params.push(status);
+      q += ` WHERE r.status=$1`;
+    }
     q += ' ORDER BY r.created_at DESC';
-    res.json((await pool.query(q)).rows);
+    res.json((await pool.query(q, params)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -945,10 +950,12 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const { role } = req.query;
+    const VALID_ROLES = ['client','provider','admin'];
     let q = 'SELECT id,name,email,phone,role,specialties,city,badge,is_active,created_at FROM users';
-    if (role) q += ` WHERE role='${role}'`;
+    const params = [];
+    if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` WHERE role=$1`; }
     q += ' ORDER BY created_at DESC';
-    res.json((await pool.query(q)).rows);
+    res.json((await pool.query(q, params)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -1004,15 +1011,58 @@ app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
     const { user_id, role, title, body, type } = req.body;
+    const VALID_ROLES = ['client','provider','admin'];
     if (user_id) {
       await notify(user_id, title, body, type||'admin', null);
     } else {
       let q = 'SELECT id FROM users WHERE is_active=TRUE';
-      if (role) q += ` AND role='${role}'`;
-      const users = await pool.query(q);
+      const params = [];
+      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$1`; }
+      const users = await pool.query(q, params);
       for (const u of users.rows) await notify(u.id, title, body, type||'admin', null);
     }
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+
+// ── ADMIN CHARTS ──
+app.get('/api/admin/charts', auth, adminOnly, async (req, res) => {
+  try {
+    const [byStatus, byCategory, byMonth, topProviders, recentActivity] = await Promise.all([
+      pool.query(`SELECT status, COUNT(*) as count FROM requests GROUP BY status ORDER BY count DESC`),
+      pool.query(`SELECT category, COUNT(*) as count FROM requests WHERE category IS NOT NULL GROUP BY category ORDER BY count DESC LIMIT 8`),
+      pool.query(`SELECT TO_CHAR(created_at,'YYYY-MM') as month, COUNT(*) as count FROM requests WHERE created_at >= NOW() - INTERVAL '6 months' GROUP BY month ORDER BY month ASC`),
+      pool.query(`SELECT u.name, u.city, u.badge, COALESCE(ROUND(AVG(rv.rating)::numeric,1),0) as avg_rating, COUNT(DISTINCT rv.id) as review_count, COUNT(DISTINCT r.id) as completed FROM users u LEFT JOIN reviews rv ON rv.reviewed_id=u.id LEFT JOIN requests r ON r.assigned_provider_id=u.id AND r.status='completed' WHERE u.role='provider' AND u.is_active=TRUE GROUP BY u.id,u.name,u.city,u.badge ORDER BY avg_rating DESC, completed DESC LIMIT 5`),
+      pool.query(`(SELECT 'طلب جديد' as type, title as label, created_at FROM requests ORDER BY created_at DESC LIMIT 5) UNION ALL (SELECT 'مستخدم جديد' as type, name as label, created_at FROM users ORDER BY created_at DESC LIMIT 5) ORDER BY created_at DESC LIMIT 8`)
+    ]);
+    res.json({ by_status: byStatus.rows, by_category: byCategory.rows, by_month: byMonth.rows, top_providers: topProviders.rows, recent_activity: recentActivity.rows });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── ADMIN SEARCH ──
+app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) return res.json({ requests: [], users: [] });
+    const term = '%' + q.trim() + '%';
+    const [reqs, users] = await Promise.all([
+      pool.query(`SELECT r.id,r.title,r.status,r.project_number,u.name as client_name FROM requests r JOIN users u ON r.client_id=u.id WHERE r.title ILIKE $1 OR r.project_number ILIKE $1 LIMIT 5`, [term]),
+      pool.query(`SELECT id,name,email,role,is_active FROM users WHERE name ILIKE $1 OR email ILIKE $1 LIMIT 5`, [term])
+    ]);
+    res.json({ requests: reqs.rows, users: users.rows });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── ADMIN EXPORT CSV ──
+app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT r.project_number,r.title,r.category,r.city,r.status,r.budget_max,r.created_at,r.completed_at,u.name as client_name,p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id ORDER BY r.created_at DESC`);
+    const headers = ['رقم المشروع','العنوان','الفئة','المدينة','الحالة','الميزانية','العميل','المزود','عدد العروض','تاريخ الإنشاء','تاريخ الإكمال'];
+    const csv = [headers.join(','), ...r.rows.map(x => [x.project_number||'','"'+(x.title||'').replace(/"/g,'""')+'"',x.category||'',x.city||'',x.status||'',x.budget_max||'','"'+(x.client_name||'')+'"','"'+(x.provider_name||'')+'"',x.bid_count||0,x.created_at?new Date(x.created_at).toLocaleDateString('ar-SA'):'',x.completed_at?new Date(x.completed_at).toLocaleDateString('ar-SA'):''].join(','))].join('\n');
+    res.setHeader('Content-Type','text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition','attachment; filename="requests.csv"');
+    res.send('\uFEFF'+csv);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
