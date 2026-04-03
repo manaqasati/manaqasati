@@ -209,6 +209,22 @@ a{text-decoration:none;color:inherit}
 
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.stats4{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}.browse-wrap{grid-template-columns:1fr}.filters-box{display:none}}
 @media(max-width:768px){.nav-top{display:none}.mob-head{display:flex}.mob-nav{display:block}.wrap{padding:8px 10px;padding-bottom:76px}.stats-row{gap:8px}.chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}.chat-side{display:none}.form-grid{grid-template-columns:1fr}.prof-hd{flex-direction:column;align-items:center;text-align:center}}
+
+/* ── MODALS ── */
+.ov{display:none;position:fixed;inset:0;background:rgba(10,20,50,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.ov.show{display:flex}
+.modal-drag{width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0}
+
+/* ── CHAT MSGS AREA ── */
+.msgs-area{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
+.chat-msgs{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray);height:300px}
+
+/* ── TYPING ── */
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite}
+
+/* ── EMPTY IC ── */
+.empty-ic{width:48px;height:48px;border-radius:var(--rl);background:var(--blue-l);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-ic svg{width:22px;height:22px;fill:none;stroke:var(--blue);stroke-width:2}
 </style>
 </head>
 <body>
@@ -556,13 +572,13 @@ function toggleChip(c) {
 // navigation
 function show(pg, el, key) {
   document.querySelectorAll('.page').forEach(p => p.className = 'page');
-  document.querySelectorAll('.ni').forEach(n => n.className = 'ni');
-  document.querySelectorAll('.bni').forEach(n => n.className = 'bni');
+  document.querySelectorAll('.nl').forEach(n => n.classList.remove('on'));
+  document.querySelectorAll('.mni,.mn').forEach(n => n.classList.remove('on'));
   document.getElementById('page-' + pg).className = 'page on';
-  if (el) el.className = 'ni on';
-  if (key) { const b = document.getElementById('bn-' + key); if (b) b.className = 'bni on'; }
+  if(el){el.classList.add('on');}
+  if (key) { const b = document.getElementById('bn-' + key); if(b)b.classList.add('on'); }
   const titles = { home: 'الرئيسية', browse: 'تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
-  document.getElementById('pageTitle') || {textContent:''}.textContent = titles[pg] || '';
+  const _pt = document.getElementById('pageTitle'); if(_pt) _pt.textContent = titles[pg] || '';
   if (pg === 'home') loadHome();
   if (pg === 'browse') loadTenders();
   if (pg === 'my-bids') loadMyBids();
@@ -781,7 +797,7 @@ function searchTenders() {
 // ── TENDER DETAIL ──
 async function openTender(id) {
   show('tender-detail', null, null);
-  document.getElementById('pageTitle') || {textContent:''}.textContent = 'تفاصيل المناقصة';
+  (function(){const _p=document.getElementById('pageTitle');if(_p)_p.textContent='تفاصيل المناقصة';})();
   document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
     const [rReq, rBids] = await Promise.all([
