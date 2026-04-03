@@ -75,26 +75,39 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 .t-done{background:var(--client-l);color:var(--primary)}.t-rev{background:var(--warn-l);color:#633806}.t-rej{background:var(--danger-l);color:#7f1d1d}
 .ri{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:.15s}
 .ri:hover{border-color:var(--client-m);background:var(--client-l)}
-/* BIDS */
-.bid-card{border:1px solid var(--border);border-radius:14px;margin-bottom:12px;background:var(--white);overflow:hidden;transition:.15s}
-.bid-card:hover{border-color:var(--client-m);box-shadow:0 4px 16px rgba(44,82,130,.08)}
-.bid-card.accepted{border-color:var(--success);border-width:2px}
-.bid-card.rejected{opacity:.45}
-.bid-top{padding:14px;display:flex;gap:12px;align-items:flex-start}
-.bid-av{width:48px;height:48px;border-radius:50%;color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:.15s}
-.bid-av:hover{transform:scale(1.05)}
-.bid-pname{font-size:15px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin-bottom:3px}
-.bid-pname:hover{color:var(--client)}
-.stars{color:var(--accent);font-size:14px;letter-spacing:1px}
-.bid-specs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.spec{padding:3px 9px;background:var(--bg);border-radius:6px;font-size:11px;font-weight:600;color:var(--t2)}
-.bid-price-row{padding:10px 14px;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.bid-price{font-size:20px;font-weight:900;color:var(--client)}
-.bid-days{font-size:12px;color:var(--t3)}
-.bid-note{padding:8px 14px;font-size:12px;color:var(--t3);font-style:italic;border-top:1px solid var(--border);background:var(--bg2)}
-.bid-actions{padding:10px 14px;display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid var(--border)}
-.bid-accepted-bar{padding:9px 14px;background:var(--success-l);border-top:1px solid var(--success-m);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041}
-.bid-revised-bar{padding:8px 14px;background:var(--warn-l);border-right:3px solid var(--warn);font-size:12px;color:#633806}
+/* ── BID CARDS (تصميم جديد) ── */
+.bid-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.2s;position:relative}
+.bid-card:hover{border-color:var(--client-m);transform:translateY(-1px);box-shadow:0 6px 20px rgba(44,82,130,.09)}
+.bid-card.accepted{border-color:#1D9E75;border-width:2px}
+.bid-card.rejected{opacity:.4;pointer-events:none}
+.bid-header{padding:16px 16px 0;display:flex;gap:12px;align-items:flex-start}
+.bid-av{width:44px;height:44px;border-radius:50%;color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.bid-info{flex:1;min-width:0}
+.bid-name{font-size:14px;font-weight:800;color:var(--t);cursor:pointer;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bid-name:hover{color:var(--client)}
+.bid-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;background:var(--accent-l);color:#78350f}
+.bid-stars{display:flex;align-items:center;gap:3px;margin-top:3px}
+.bid-star{color:#e5e7eb;font-size:13px}
+.bid-star.on{color:#f59e0b}
+.bid-rating{font-size:11px;color:var(--t3);font-weight:600}
+.bid-specs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.bid-spec{font-size:10px;padding:2px 8px;background:var(--bg);border-radius:6px;color:var(--t2);font-weight:600}
+.bid-note{margin:10px 16px 0;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:12px;color:var(--t3);font-style:italic;line-height:1.6;border-right:3px solid var(--client-m)}
+.bid-price-bar{margin:12px 16px 0;padding:12px 14px;background:var(--bg);border-radius:12px;display:flex;align-items:center;justify-content:space-between}
+.bid-price{font-size:22px;font-weight:900;color:var(--client)}
+.bid-price span{font-size:12px;font-weight:600;color:var(--t3)}
+.bid-days{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:4px}
+.bid-actions{padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.bid-accepted-banner{margin:0 16px;padding:10px 14px;background:#E1F5EE;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041;margin-top:10px}
+.bid-revised-bar{margin:0 16px;padding:8px 12px;background:var(--warn-l);border-right:3px solid var(--warn-m);border-radius:8px;font-size:11px;color:#633806;margin-top:6px}
+.btn-accept{padding:9px 18px;background:var(--success);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;display:flex;align-items:center;gap:5px}
+.btn-accept:hover{background:#0F6E56}
+.btn-reject{padding:9px 14px;background:var(--danger-l);color:var(--danger);border:1.5px solid var(--danger-m);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
+.btn-reject:hover{background:var(--danger-m)}
+.btn-chat{padding:9px 14px;background:var(--client-l);color:var(--client);border:1.5px solid var(--client-m);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;display:flex;align-items:center;gap:5px}
+.btn-chat:hover{background:var(--client-m)}
+.btn-profile{padding:9px 12px;background:var(--bg);color:var(--t3);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
+.btn-profile:hover{background:var(--bg2);color:var(--t)}
 /* PROV PROFILE */
 .prov-hd{background:var(--primary);border-radius:14px;padding:22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden}
 .prov-hd::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-30px}
@@ -836,49 +849,101 @@ async function loadBids(id){
 
 function renderBidsList(bids, id){
   let el=document.getElementById('bids-list');
-  if(!bids.length){el.innerHTML=empty('لا يوجد عروض بعد','انتظر قليلاً — سيُرسل لك إشعار عند وصول عرض جديد');return;}
-  bids.sort((a,b)=>a.status==='accepted'?-1:b.status==='accepted'?1:b.avg_rating-a.avg_rating);
+  if(!bids||!bids.length){
+    el.innerHTML=`<div style="text-align:center;padding:40px 20px">
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--client-l);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+        <svg width="24" height="24" fill="none" stroke="var(--client)" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--t);margin-bottom:4px">لا يوجد عروض بعد</div>
+      <div style="font-size:12px;color:var(--t3)">سيُرسل لك إشعار فور وصول عرض جديد</div>
+    </div>`;
+    return;
+  }
+
   el.innerHTML=bids.map(b=>{
-    let isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    let avg=parseFloat(b.avg_rating)||0;
-    let provName=(b.provider_name||'').replace(/'/g,'');
+    const isAcc=b.status==='accepted', isRej=b.status==='rejected';
+    const avg=parseFloat(b.avg_rating)||0;
+    const provName=(b.provider_name||'').replace(/'/g,'');
+
+    // النجوم
+    let starsHtml='';
+    for(let i=1;i<=5;i++) starsHtml+=`<span class="bid-star${i<=Math.round(avg)?' on':''}">★</span>`;
+
+    // المواصفات
     let specs=[];
-    if(b.provider_city)specs.push('📍 '+b.provider_city);
-    if(Array.isArray(b.provider_specialties)&&b.provider_specialties.length)specs.push(b.provider_specialties.slice(0,2).join(' • '));
-    let acts='';
+    if(b.provider_city) specs.push('📍 '+b.provider_city);
+    if(Array.isArray(b.provider_specialties)&&b.provider_specialties.length) specs.push(b.provider_specialties[0]);
+
+    // الأزرار
+    let actions='';
     if(isAcc){
-      acts=`<div class="bid-accepted-bar">✅ <strong>تم قبول هذا العرض</strong> — ${b.provider_name} هو مزود الخدمة</div>
-        ${b.note&&b.note.includes('→')?`<div class="bid-revised-bar">✏️ <strong>تعديل:</strong> ${b.note}</div>`:''}
+      actions=`
+        <div class="bid-accepted-banner">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          تم قبول هذا العرض — ${b.provider_name} هو مزود الخدمة
+        </div>
+        ${b.note&&b.note.includes('→')?`<div class="bid-revised-bar">✏️ تعديل: ${b.note}</div>`:''}
         <div class="bid-actions">
-          <button class="btn-sm bs-dk" onclick="openChatWith(${b.provider_id},'${provName}',${id})">💬 تواصل</button>
-          <button class="btn-sm bs-cl" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
-          <button class="btn-sm bs-a" onclick="openRate(${id},${b.provider_id})">⭐ تقييم</button>
+          <button class="btn-chat" onclick="startChat(${b.provider_id},'${provName}',${id})">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            تواصل
+          </button>
+          <button class="btn-profile" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
+          <button class="btn-profile" onclick="openRate(${id},${b.provider_id})" style="color:var(--accent);border-color:var(--accent-m)">⭐ تقييم</button>
         </div>`;
-    }else if(!isRej){
-      // زر المحادثة متاح دائماً حتى قبل القبول
-      acts=`<div class="bid-actions">
-        <button class="btn-sm bs-g" onclick="acceptBid(${b.id},${id})">✓ قبول العرض</button>
-        <button class="btn-sm bs-r" onclick="rejectBid(${b.id},${id})">✕ رفض</button>
-        <button class="btn-sm bs-cl" onclick="startChat(${b.provider_id},'${provName}',${id})">💬 محادثة</button>
-        <button class="btn-sm bs-cl" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
-      </div>`;
+    } else if(!isRej){
+      actions=`
+        <div class="bid-actions">
+          <button class="btn-accept" onclick="acceptBid(${b.id},${id})">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            قبول العرض
+          </button>
+          <button class="btn-chat" onclick="startChat(${b.provider_id},'${provName}',${id})">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            محادثة
+          </button>
+          <button class="btn-reject" onclick="rejectBid(${b.id},${id})">رفض</button>
+          <button class="btn-profile" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
+        </div>`;
     }
+
     return`<div class="bid-card${isAcc?' accepted':isRej?' rejected':''}" id="bid-card-${b.id}">
-      <div class="bid-top">
+      ${isAcc?'<div style="background:#1D9E75;padding:4px 14px;font-size:10px;font-weight:800;color:#fff;letter-spacing:.5px">✓ العرض المقبول</div>':''}
+      <div class="bid-header">
         <div class="bid-av" style="background:${ac(b.provider_id)}" onclick="openProv(${b.provider_id},'detail')">${(b.provider_name||'م').charAt(0)}</div>
-        <div style="flex:1">
-          <div class="bid-pname" onclick="openProv(${b.provider_id},'detail')">${b.provider_name}${isAcc?' ✅':isRej?' ❌':''}${b.provider_badge&&b.provider_badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${b.provider_badge}</span>`:''}</div>
-          <div class="stars">${stars(avg)}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:1px">${avg>0?avg.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم بعد'}</div>
-          ${specs.length?`<div class="bid-specs">${specs.map(s=>`<span class="spec">${s}</span>`).join('')}</div>`:''}
-          ${b.note&&!b.note.includes('→')?`<div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:5px">"${b.note}"</div>`:''}
+        <div class="bid-info">
+          <div class="bid-name" onclick="openProv(${b.provider_id},'detail')">
+            ${b.provider_name||'—'}
+            ${b.provider_badge&&b.provider_badge!=='none'?`<span class="bid-badge">${b.provider_badge}</span>`:''}
+            ${isAcc?'<span style="font-size:11px;color:#1D9E75">✓</span>':''}
+          </div>
+          <div class="bid-stars">
+            ${starsHtml}
+            <span class="bid-rating">${avg>0?avg.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم'}</span>
+          </div>
+          ${specs.length?`<div class="bid-specs">${specs.map(s=>`<span class="bid-spec">${s}</span>`).join('')}</div>`:''}
+        </div>
+        <div style="text-align:left;flex-shrink:0">
+          <div style="font-size:18px;font-weight:900;color:var(--client)">${Number(b.price).toLocaleString('ar-SA')}</div>
+          <div style="font-size:10px;color:var(--t3);text-align:center">ر.س</div>
         </div>
       </div>
-      <div class="bid-price-row">
-        <div class="bid-price">${b.price} <span style="font-size:12px;font-weight:600;color:var(--t3)">ر.س</span></div>
-        <div class="bid-days">⏱ ${b.days} يوم</div>
+      ${b.note&&!b.note.includes('→')?`<div class="bid-note">"${b.note}"</div>`:''}
+      <div class="bid-price-bar">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:2px">قيمة العرض</div>
+            <div class="bid-price">${Number(b.price).toLocaleString('ar-SA')} <span>ر.س</span></div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:2px">مدة التنفيذ</div>
+            <div style="font-size:16px;font-weight:800;color:var(--t)">${b.days} <span style="font-size:11px;font-weight:600;color:var(--t3)">يوم</span></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--t4)">${ago(b.created_at)}</div>
       </div>
-      ${acts}
+      ${actions}
     </div>`;
   }).join('');
 }
@@ -1038,25 +1103,32 @@ function connectWS(){
               newCard.id='bid-card-'+b.id;
               newCard.style.animation='fadeIn .4s ease';
               newCard.innerHTML=`
-                <div class="bid-top">
-                  <div class="bid-av" style="background:${ac(b.provider_id)}" onclick="openProv(${b.provider_id},'detail')">${(b.provider_name||'م').charAt(0)}</div>
-                  <div style="flex:1">
-                    <div class="bid-pname">${b.provider_name}${b.provider_badge&&b.provider_badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${b.provider_badge}</span>`:''}</div>
-                    <div class="stars">${stars(b.avg_rating||0)}</div>
-                    <div style="font-size:11px;color:var(--t3)">${b.avg_rating>0?b.avg_rating.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم بعد'}</div>
-                    ${specs.length?`<div class="bid-specs">${specs.map(s=>`<span class="spec">${s}</span>`).join('')}</div>`:''}
-                    ${b.note?`<div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:5px">"${b.note}"</div>`:''}
+                <div class="bid-header">
+                  <div class="bid-av" style="background:${ac(b.provider_id)}">${(b.provider_name||'م').charAt(0)}</div>
+                  <div class="bid-info">
+                    <div class="bid-name">${b.provider_name||'—'}${b.provider_badge&&b.provider_badge!=='none'?`<span class="bid-badge">${b.provider_badge}</span>`:''}</div>
+                    <div class="bid-stars">${[1,2,3,4,5].map(i=>`<span class="bid-star${i<=Math.round(b.avg_rating||0)?' on':''}">★</span>`).join('')}
+                      <span class="bid-rating">${b.avg_rating>0?b.avg_rating.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم'}</span></div>
+                  </div>
+                  <div style="text-align:left;flex-shrink:0">
+                    <div style="font-size:18px;font-weight:900;color:var(--client)">${Number(b.price).toLocaleString('ar-SA')}</div>
+                    <div style="font-size:10px;color:var(--t3);text-align:center">ر.س</div>
                   </div>
                 </div>
-                <div class="bid-price-row">
-                  <div class="bid-price">${b.price} <span style="font-size:12px;font-weight:600;color:var(--t3)">ر.س</span></div>
-                  <div class="bid-days">⏱ ${b.days} يوم</div>
+                ${b.note?`<div class="bid-note">"${b.note}"</div>`:''}
+                <div class="bid-price-bar">
+                  <div style="display:flex;gap:16px;align-items:center">
+                    <div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">قيمة العرض</div>
+                    <div class="bid-price">${Number(b.price).toLocaleString('ar-SA')} <span>ر.س</span></div></div>
+                    <div style="width:1px;height:32px;background:var(--border)"></div>
+                    <div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">مدة التنفيذ</div>
+                    <div style="font-size:16px;font-weight:800">${b.days} <span style="font-size:11px;font-weight:600;color:var(--t3)">يوم</span></div></div>
+                  </div>
                 </div>
                 <div class="bid-actions">
-                  <button class="btn-sm bs-g" onclick="acceptBid(${b.id},${d.request_id})">✓ قبول</button>
-                  <button class="btn-sm bs-r" onclick="rejectBid(${b.id},${d.request_id})">✕ رفض</button>
-                  <button class="btn-sm bs-cl" onclick="startChat(${b.provider_id},'${provName}',${d.request_id})">💬 محادثة</button>
-                  <button class="btn-sm bs-cl" onclick="openProv(${b.provider_id},'detail')">👤 ملفه</button>
+                  <button class="btn-accept" onclick="acceptBid(${b.id},${d.request_id})">✓ قبول</button>
+                  <button class="btn-chat" onclick="startChat(${b.provider_id},'${provName}',${d.request_id})">💬 محادثة</button>
+                  <button class="btn-reject" onclick="rejectBid(${b.id},${d.request_id})">رفض</button>
                 </div>`;
               el.insertBefore(newCard, el.firstChild);
               // تحديث عداد العروض
