@@ -416,12 +416,12 @@ document.getElementById('userAv').textContent=(user.name||'م').charAt(0);
 
 function go(pg,el){
   document.querySelectorAll('.page').forEach(p=>p.className='page');
-  document.querySelectorAll('.ni').forEach(n=>n.className='ni');
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   document.getElementById('page-'+pg).className='page on';
-  if(el)el.className='ni on';
+  if(el){el.classList.add('on');}
   let ni=document.getElementById('ni-'+pg);if(ni)ni.className='ni on';
   let titles={home:'الرئيسية',requests:'إدارة الطلبات',users:'المستخدمون',providers:'مزودو الخدمة',reviews:'التقييمات',notify:'إرسال إشعار',charts:'الإحصائيات والتقارير'};
-  document.getElementById('pageTitle').textContent=titles[pg]||'';
+  (document.getElementById('pageTitle')||{}).textContent=titles[pg]||'';
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='users')loadUsers();
