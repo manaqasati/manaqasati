@@ -469,9 +469,13 @@ h3{font-size:15px;font-weight:800}
 
 <!-- TENDER DETAIL -->
 <div class="page" id="page-tender-detail">
-  <button onclick="show('browse')" class="btn btn-gray btn-sm" style="margin-bottom:14px">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
-  </button>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <button onclick="show('browse')" class="btn btn-gray btn-sm">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
+    </button>
+    <span style="color:var(--text4)">/</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text2)" id="td-bc">تفاصيل</span>
+  </div>
   <div id="tender-detail-content"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
 </div>
 
