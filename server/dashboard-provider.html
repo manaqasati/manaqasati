@@ -561,6 +561,7 @@ function fdt(d) { return d ? new Date(d).toLocaleDateString('ar-SA') : '—'; }
 function starsStr(n) { let s = ''; for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆'; return s; }
 function emptyH(t, s) { return `<div class="empty"><div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>${t}</h4>${s ? `<p>${s}</p>` : ''}</div>`; }
 function safeArr(r) { try { return Array.isArray(r) ? r : []; } catch { return []; } }
+async function safeFetch(url) { try { const r = await fetch(url, hdr()); const d = await r.json(); return Array.isArray(d) ? d : []; } catch { return []; } }
 function logout() { localStorage.clear(); location.href = 'auth.html'; }
 
 function toast(msg, type = 'info') {
@@ -1016,32 +1017,47 @@ function openChatWith(clientId, clientName, reqId) {
 }
 
 async function loadMessages() {
-  document.getElementById('msg-threads').innerHTML = '<div class="loading" style="padding:14px;font-size:12px">جاري التحميل...</div>';
-  try {
-    const r = await fetch(API + '/api/provider/bids', hdr());
-    const bids = safeArr(await r.json());
-    const accepted = bids.filter(b => b.status === 'accepted');
-    if (!accepted.length) {
-      document.getElementById('msg-threads').innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--t3)">لا يوجد محادثات<br><small>ستظهر بعد قبول أحد عروضك</small></div>';
-      return;
-    }
-    document.getElementById('msg-threads').innerHTML = accepted.map(b => {
-      const isOn = curChatClient?.id == b.client_id && curChatClient?.reqId == b.request_id;
-      return `<div class="thread${isOn ? ' on' : ''}" onclick="loadChatWith(${b.client_id || 0},'${(b.client_name || 'العميل').replace(/'/g, '')}',${b.request_id})">
-        <div style="position:relative">
-          <div class="thread-av" style="background:#1B3A6B">${(b.client_name || 'ع').charAt(0)}</div>
-          <span style="position:absolute;bottom:1px;left:1px;width:8px;height:8px;border-radius:50%;background:var(--success);border:2px solid #fff"></span>
+  const el = document.getElementById('msg-threads');
+  el.innerHTML = '<div class="loading" style="padding:14px;font-size:12px">جاري التحميل...</div>';
+  const convs = await safeFetch(API + '/api/conversations');
+  if (!convs.length) {
+    el.innerHTML = `<div style="padding:24px 16px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">💬</div>
+      <div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px">لا يوجد محادثات</div>
+      <div style="font-size:11px;color:var(--t3)">ستظهر هنا بعد تقديم عروضك</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = convs.map(c => {
+    const otherId = c.other_id || c.provider_id;
+    const isAcc = c.bid_status === 'accepted';
+    const unread = parseInt(c.unread_count) || 0;
+    const isOn = curChatClient?.id == otherId && curChatClient?.reqId == c.request_id;
+    return `<div class="thread${isOn ? ' on' : ''}" id="prov-thread-${otherId}-${c.request_id}"
+      onclick="loadChatWith(${otherId},'${(c.other_name||'العميل').replace(/'/g,'')}',${c.request_id})">
+      <div style="position:relative;flex-shrink:0">
+        <div class="thread-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
+        ${unread > 0 ? `<span style="position:absolute;top:-3px;left:-3px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${unread}</span>` : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+          <div class="thread-nm">${c.other_name || 'العميل'}</div>
+          <div style="font-size:10px;color:var(--t4);flex-shrink:0">${c.last_msg_at ? ago(c.last_msg_at) : ''}</div>
         </div>
-        <div style="flex:1;min-width:0">
-          <div class="thread-nm">${b.client_name || 'العميل'}</div>
-          <div class="thread-last">${b.request_title}</div>
+        <div class="thread-last">${c.last_msg || c.request_title}</div>
+        <div style="margin-top:3px">
+          ${isAcc
+            ? '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:1px 6px;border-radius:8px;font-weight:700">✅ مقبول</span>'
+            : '<span style="font-size:9px;background:var(--warn-l);color:var(--warn);padding:1px 6px;border-radius:8px;font-weight:700">⏳ عرض</span>'}
         </div>
-        <span class="tag t-won" style="font-size:9px">مقبول</span>
-      </div>`;
-    }).join('');
-    if (curChatClient) loadChatWith(curChatClient.id, curChatClient.name, curChatClient.reqId);
-    else loadChatWith(accepted[0].client_id || 0, accepted[0].client_name || 'العميل', accepted[0].request_id);
-  } catch { document.getElementById('msg-threads').innerHTML = '<div style="padding:14px;font-size:12px;color:var(--t3)">تعذر التحميل</div>'; }
+      </div>
+    </div>`;
+  }).join('');
+  if (curChatClient) loadChatWith(curChatClient.id, curChatClient.name, curChatClient.reqId);
+  else if (convs.length) {
+    const c = convs[0];
+    loadChatWith(c.other_id || c.provider_id, c.other_name || 'العميل', c.request_id);
+  }
 }
 
 async function loadChatWith(clientId, clientName, requestId) {
