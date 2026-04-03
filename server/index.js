@@ -181,6 +181,8 @@ async function initDB() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS badge VARCHAR(50) DEFAULT 'none'`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio_images TEXT[]`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS project_number VARCHAR(50)`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS address TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE`,
@@ -556,17 +558,21 @@ app.post('/api/requests', auth, async (req, res) => {
     if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
     const mainIdx = parseInt(main_image_index) || 0;
     const mainImg = image_url || (images && images[mainIdx]) || null;
+    // ── النشر مباشرة بحالة open ──
     const r = await pool.query(
       `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,images,main_image_index,client_id,status)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review') RETURNING *`,
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open') RETURNING *`,
       [title, description, category||null, city||null, address||null, budget_max||null, deadline||null, mainImg, images||null, mainIdx, req.user.id]
     );
     const req2 = r.rows[0];
     const num = genProjectNum(req2.id, req2.created_at);
     await pool.query('UPDATE requests SET project_number=$1 WHERE id=$2', [num, req2.id]);
     req2.project_number = num;
+    // إشعار الأدمن
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
-    for (const a of admins.rows) await notify(a.id, '📋 طلب جديد للمراجعة', `${title} — بانتظار الموافقة`, 'new_request', req2.id);
+    for (const a of admins.rows) await notify(a.id, '📋 طلب جديد', `${title} — نُشر تلقائياً`, 'new_request', req2.id);
+    // إشعار المزودين المهتمين بهذا التصنيف
+    notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -668,7 +674,7 @@ async function handleSubmitBid(req, res, requestId) {
     if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
     const reqData = await pool.query('SELECT * FROM requests WHERE id=$1', [requestId]);
     if (!reqData.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
-    if (reqData.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
+    if (!['open','pending_review'].includes(reqData.rows[0].status)) return res.status(400).json({ message: 'الطلب غير متاح للعروض' });
     const existing = await pool.query('SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
     if (existing.rows.length) return res.status(400).json({ message: 'قدمت عرضاً على هذا الطلب مسبقاً' });
     const r = await pool.query(
@@ -998,10 +1004,12 @@ app.put('/api/profile', auth, async (req, res) => {
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT id,name,email,phone,city,specialties,notify_categories,bio,badge,created_at,
-      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
-      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
-      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      SELECT id,name,email,phone,city,specialties,notify_categories,bio,badge,
+             experience_years,portfolio_images,created_at,
+             COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+             COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+             (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects,
+             (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids
       FROM users WHERE id=$1`, [req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -1009,10 +1017,13 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, completion_rate } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, portfolio_images } = req.body;
     const r = await pool.query(
-      'UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5 WHERE id=$6 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge',
-      [name, phone||null, city||null, bio||null, specialties||null, req.user.id]);
+      `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,
+       experience_years=$6,portfolio_images=$7
+       WHERE id=$8 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images`,
+      [name, phone||null, city||null, bio||null, specialties||null,
+       experience_years||null, portfolio_images||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1025,16 +1036,32 @@ app.put('/api/provider/notify-prefs', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── ملف المزود العام (يراه العميل) ──
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT id,name,city,specialties,bio,badge,created_at,
-      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
-      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
-      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      SELECT id,name,city,specialties,bio,badge,experience_years,portfolio_images,created_at,
+             COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+             COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+             (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
       FROM users WHERE id=$1 AND role='provider'`, [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── التحقق من إمكانية التقييم ──
+app.get('/api/reviews/can-rate/:requestId', auth, async (req, res) => {
+  try {
+    const req2 = await pool.query('SELECT status,client_id,assigned_provider_id FROM requests WHERE id=$1', [req.params.requestId]);
+    if (!req2.rows.length) return res.json({ can: false });
+    const r = req2.rows[0];
+    const isClient = Number(r.client_id) === Number(req.user.id);
+    const isProv = Number(r.assigned_provider_id) === Number(req.user.id);
+    if (!isClient && !isProv) return res.json({ can: false });
+    const done = ['in_progress','completed'].includes(r.status);
+    const already = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [req.params.requestId, req.user.id]);
+    res.json({ can: done && !already.rows.length, already: already.rows.length > 0, status: r.status });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
