@@ -280,6 +280,7 @@ button,input,select,textarea{font-family:'Tajawal',sans-serif}
   .portfolio-grid{grid-template-columns:repeat(3,1fr)}
   .prov-stats-row{grid-template-columns:repeat(2,1fr)}
 }
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
 </style>
 </head>
 <body>
@@ -918,6 +919,95 @@ function renderBids(bids) {
   document.getElementById('my-bids-list').innerHTML = bids.length ? bids.map(bidCard).join('') : emptyH('لا يوجد عروض', '');
 }
 
+// ── WEBSOCKET CHAT (PROVIDER) ──
+let ws = null, wsReady = false;
+let typingTimer = null, isTypingNow = false;
+
+function wsUrl() {
+  const base = API.replace('https://', 'wss://').replace('http://', 'ws://');
+  return base + '/?token=' + token;
+}
+
+function connectWS() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  try {
+    ws = new WebSocket(wsUrl());
+    ws.onopen = () => { wsReady = true; };
+    ws.onclose = () => { wsReady = false; setTimeout(connectWS, 3000); };
+    ws.onerror = () => { wsReady = false; };
+    ws.onmessage = e => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === 'message') {
+          const m = d.message;
+          appendProvMsg(m);
+          if (m.sender_id != user.id) {
+            const box = document.getElementById('msgs-box');
+            if (!box || !box.offsetParent) {
+              const b = document.getElementById('notif-badge');
+              if (b) { const n = parseInt(b.textContent || 0) + 1; b.textContent = n; b.style.display = 'flex'; }
+            } else {
+              wsSend({ type: 'read', request_id: m.request_id, sender_id: m.sender_id });
+            }
+          }
+        }
+        if (d.type === 'typing') {
+          const ind = document.getElementById('prov-typing-ind');
+          if (ind && curChatClient && d.from == curChatClient.id) {
+            ind.style.display = d.is_typing ? 'flex' : 'none';
+          }
+        }
+        if (d.type === 'read') {
+          document.querySelectorAll('.msg-tick').forEach(el => {
+            if (el.dataset.reqId == d.request_id) el.textContent = '✓✓';
+          });
+        }
+      } catch {}
+    };
+  } catch {}
+}
+
+function wsSend(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify(data)); return true; }
+  return false;
+}
+
+function appendProvMsg(m) {
+  const box = document.getElementById('msgs-box');
+  if (!box) return;
+  if (!curChatClient) return;
+  const relevant = (m.sender_id == user.id && m.receiver_id == curChatClient.id) ||
+    (m.sender_id == curChatClient.id && m.receiver_id == user.id);
+  if (!relevant && !m.content?.startsWith('✅')) return;
+  if (box.querySelector('[data-msg-id="' + m.id + '"]')) return;
+  box.querySelectorAll('.loading').forEach(el => el.remove());
+  const isMe = m.sender_id == user.id;
+  const el = document.createElement('div');
+  if (m.content?.startsWith('✅')) {
+    el.className = 'msg-sys'; el.dataset.msgId = m.id; el.textContent = m.content;
+  } else {
+    el.className = isMe ? 'msg-me' : 'msg-other';
+    el.dataset.msgId = m.id;
+    el.innerHTML = (!isMe ? `<div class="msg-name">${m.sender_name || curChatClient.name}</div>` : '') +
+      `<span>${m.content}</span><div class="msg-time" style="display:flex;align-items:center;justify-content:${isMe ? 'flex-end' : 'flex-start'};gap:3px">${ago(m.created_at)}${isMe ? `<span class="msg-tick" data-req-id="${m.request_id}" style="font-size:9px;opacity:.6">${m.is_read ? '✓✓' : '✓'}</span>` : ''}</div>`;
+  }
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function onProvTyping(receiverId, reqId) {
+  if (!isTypingNow) { isTypingNow = true; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: true }); }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => stopProvTyping(receiverId, reqId), 2000);
+}
+
+function stopProvTyping(receiverId, reqId) {
+  if (isTypingNow) { isTypingNow = false; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: false }); }
+  clearTimeout(typingTimer);
+}
+
+connectWS();
+
 // ── MESSAGES ──
 function openChatWith(clientId, clientName, reqId) {
   curChatClient = { id: clientId, name: clientName, reqId };
@@ -938,7 +1028,10 @@ async function loadMessages() {
     document.getElementById('msg-threads').innerHTML = accepted.map(b => {
       const isOn = curChatClient?.id == b.client_id && curChatClient?.reqId == b.request_id;
       return `<div class="thread${isOn ? ' on' : ''}" onclick="loadChatWith(${b.client_id || 0},'${(b.client_name || 'العميل').replace(/'/g, '')}',${b.request_id})">
-        <div class="thread-av" style="background:#1B3A6B">${(b.client_name || 'ع').charAt(0)}</div>
+        <div style="position:relative">
+          <div class="thread-av" style="background:#1B3A6B">${(b.client_name || 'ع').charAt(0)}</div>
+          <span style="position:absolute;bottom:1px;left:1px;width:8px;height:8px;border-radius:50%;background:var(--success);border:2px solid #fff"></span>
+        </div>
         <div style="flex:1;min-width:0">
           <div class="thread-nm">${b.client_name || 'العميل'}</div>
           <div class="thread-last">${b.request_title}</div>
@@ -957,16 +1050,30 @@ async function loadChatWith(clientId, clientName, requestId) {
   const main = document.getElementById('chat-main-prov');
   main.innerHTML = `
     <div class="chat-header">
-      <div><div class="chat-name">${clientName}</div><div class="chat-online">متصل الآن</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="position:relative">
+          <div style="width:36px;height:36px;border-radius:50%;background:#1B3A6B;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center">${clientName.charAt(0)}</div>
+          <span style="position:absolute;bottom:1px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid #fff"></span>
+        </div>
+        <div><div class="chat-name">${clientName}</div><div class="chat-online">متصل الآن</div></div>
+      </div>
       <button class="btn btn-gh btn-sm" onclick="openTender(${requestId})">عرض المشروع</button>
     </div>
     <div style="background:var(--success-l);border-bottom:2px solid var(--success-m);padding:8px 14px;flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041">
       ✅ تم قبول عرضك — تواصل مع العميل لبدء التنفيذ
     </div>
     <div class="chat-msgs" id="msgs-box"><div class="loading">جاري التحميل...</div></div>
+    <div id="prov-typing-ind" style="display:none;align-items:center;gap:6px;padding:6px 14px;background:var(--bg);border-top:1px solid var(--border)">
+      <div style="display:flex;gap:3px">${[0,150,300].map(d=>`<span style="width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bounce .9s ${d}ms infinite"></span>`).join('')}</div>
+      <span style="font-size:11px;color:var(--t3)">${clientName} يكتب...</span>
+    </div>
     <div class="chat-input-row">
-      <input class="chat-inp" id="chat-inp" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter')sendMsg(${clientId},${requestId})">
-      <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">إرسال</button>
+      <input class="chat-inp" id="chat-inp" placeholder="اكتب رسالتك..."
+        oninput="onProvTyping(${clientId},${requestId})"
+        onkeydown="if(event.key==='Enter'){sendMsg(${clientId},${requestId});}">
+      <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>`;
 
   try {
@@ -974,22 +1081,22 @@ async function loadChatWith(clientId, clientName, requestId) {
     const msgs = safeArr(await r.json());
     const box = document.getElementById('msgs-box'); if (!box) return;
     const filtered = msgs.filter(m => (m.sender_id == user.id && m.receiver_id == clientId) || (m.sender_id == clientId && m.receiver_id == user.id) || m.content?.startsWith('✅'));
-    if (!filtered.length) { box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة مع العميل 👋</div>'; return; }
-    box.innerHTML = filtered.map(m => {
-      if (m.content?.startsWith('✅')) return `<div class="msg-sys">${m.content}</div>`;
-      const isMe = m.sender_id == user.id;
-      return `<div class="${isMe ? 'msg-me' : 'msg-other'}">${!isMe ? `<div class="msg-name">${m.sender_name || clientName}</div>` : ''}${m.content}<div class="msg-time">${ago(m.created_at)}</div></div>`;
-    }).join('');
+    if (!filtered.length) { box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة مع العميل 👋</div>'; return; }
+    box.innerHTML = '';
+    filtered.forEach(m => appendProvMsg(m));
     box.scrollTop = box.scrollHeight;
+    wsSend({ type: 'read', request_id: requestId, sender_id: clientId });
   } catch { const b = document.getElementById('msgs-box'); if (b) b.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة 👋</div>'; }
 }
 
-async function sendMsg(receiverId, requestId) {
+function sendMsg(receiverId, requestId) {
   const inp = document.getElementById('chat-inp');
   if (!inp?.value.trim()) return;
   const content = inp.value.trim(); inp.value = '';
-  await fetch(API + '/api/messages', { method: 'POST', body: JSON.stringify({ request_id: requestId, receiver_id: receiverId, content }), ...hdr() }).catch(() => {});
-  loadChatWith(receiverId, curChatClient?.name || 'العميل', requestId);
+  stopProvTyping(receiverId, requestId);
+  if (!wsSend({ type: 'message', request_id: requestId, receiver_id: receiverId, content })) {
+    fetch(API + '/api/messages', { method: 'POST', body: JSON.stringify({ request_id: requestId, receiver_id: receiverId, content }), ...hdr() }).catch(() => {});
+  }
 }
 
 // ── PROFILE ──
