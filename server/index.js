@@ -1,11 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+const server = http.createServer(app);
+
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -219,6 +223,91 @@ async function notify(userId, title, body, type, refId) {
     [userId, title, body, type, refId]
   ).catch(()=>{});
 }
+
+// ────────────────────────────────────────────
+// ── WEBSOCKET SERVER ──
+// ────────────────────────────────────────────
+
+const wss = new WebSocketServer({ server });
+
+// Map: userId => Set<ws>
+const clients = new Map();
+
+function wsAuth(token) {
+  try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
+}
+
+function broadcast(userIds, payload) {
+  const msg = JSON.stringify(payload);
+  for (const uid of userIds) {
+    const conns = clients.get(String(uid));
+    if (conns) conns.forEach(ws => { try { if(ws.readyState===1) ws.send(msg); } catch {} });
+  }
+}
+
+wss.on('connection', (ws, req) => {
+  const params = new URLSearchParams(req.url.replace(/^.*\?/, ''));
+  const user = wsAuth(params.get('token') || '');
+  if (!user) { ws.close(4001, 'غير مصرح'); return; }
+
+  const uid = String(user.id);
+  if (!clients.has(uid)) clients.set(uid, new Set());
+  clients.get(uid).add(ws);
+
+  ws.userId = user.id;
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
+  ws.on('message', async (raw) => {
+    try {
+      const data = JSON.parse(raw);
+
+      if (data.type === 'message') {
+        const { request_id, receiver_id, content } = data;
+        if (!content?.trim() || !receiver_id || !request_id) return;
+        const r = await pool.query(
+          'INSERT INTO messages(request_id,sender_id,receiver_id,content) VALUES($1,$2,$3,$4) RETURNING *',
+          [request_id, ws.userId, receiver_id, content.trim()]);
+        const msg = r.rows[0];
+        const senderInfo = await pool.query('SELECT name,role FROM users WHERE id=$1', [ws.userId]);
+        msg.sender_name = senderInfo.rows[0]?.name || '';
+        msg.sender_role = senderInfo.rows[0]?.role || '';
+        broadcast([ws.userId, receiver_id], { type: 'message', message: msg });
+        await notify(receiver_id, '💬 رسالة جديدة',
+          `${msg.sender_name}: ${content.substring(0,50)}`, 'message', request_id);
+      }
+
+      if (data.type === 'typing') {
+        const { receiver_id, request_id, is_typing } = data;
+        if (!receiver_id) return;
+        broadcast([receiver_id], { type: 'typing', from: ws.userId, request_id, is_typing });
+      }
+
+      if (data.type === 'read') {
+        const { request_id, sender_id } = data;
+        await pool.query(
+          'UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND sender_id=$3',
+          [request_id, ws.userId, sender_id]);
+        broadcast([sender_id], { type: 'read', request_id, reader_id: ws.userId });
+      }
+
+    } catch (e) { console.error('ws error:', e.message); }
+  });
+
+  ws.on('close', () => {
+    const conns = clients.get(uid);
+    if (conns) { conns.delete(ws); if (!conns.size) clients.delete(uid); }
+  });
+
+  ws.send(JSON.stringify({ type: 'connected', userId: user.id }));
+});
+
+setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (!ws.isAlive) { ws.terminate(); return; }
+    ws.isAlive = false; ws.ping();
+  });
+}, 30000);
 
 async function notifyInterestedProviders(reqId, title, category) {
   if (!category) return;
@@ -1068,7 +1157,7 @@ app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
 
 // ────────────────────────────────────────────
 initDB().then(() =>
-  app.listen(process.env.PORT||3000, () =>
+  server.listen(process.env.PORT||3000, () =>
     console.log('🚀 Server running on port', process.env.PORT||3000)
   )
 );
