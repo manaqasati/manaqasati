@@ -305,6 +305,8 @@ button,input,select,textarea{font-family:'Tajawal',sans-serif}
 </div>
 
 
+
+<script>
 const API='https://manaqasati-production.up.railway.app';
 let user=JSON.parse(localStorage.getItem('user')||'{}');
 let token=localStorage.getItem('token')||'';
@@ -637,6 +639,6 @@ async function sendNotif(){
 function clearNotif(){document.getElementById('notif-title').value='';document.getElementById('notif-body').value='';}
 
 loadHome();
-
+</script>
 </body>
 </html>
