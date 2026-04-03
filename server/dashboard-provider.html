@@ -52,7 +52,7 @@ h3{font-size:15px;font-weight:800}
 .card+.card{margin-top:12px}
 
 /* ── STAT CARD ── */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
 .stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
 .stat-num{font-size:24px;font-weight:900;line-height:1;margin-bottom:4px}
 .stat-label{font-size:11px;color:var(--text3);font-weight:600}
@@ -341,6 +341,23 @@ h3{font-size:15px;font-weight:800}
 .sn{font-size:20px;font-weight:900;color:var(--text);line-height:1}
 .st{font-size:11px;color:var(--text3);font-weight:600;margin-top:3px}
 
+
+/* ── BID CARD (home) ── */
+.bi{background:var(--white);border:1.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px;transition:.12s}
+.bi:hover{border-color:var(--blue-m)}.bi.won{border-color:var(--green);background:var(--green-l)}.bi.rejected{opacity:.45}
+.bi-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.bi-req{font-size:14px;font-weight:800;color:var(--text);cursor:pointer}.bi-req:hover{color:var(--blue)}
+.bi-price{font-size:16px;font-weight:900;color:var(--blue)}
+.bi-meta{display:flex;gap:8px;flex-wrap:wrap}
+
+
+.t-won{background:var(--green-l);color:var(--green)}
+.t-rev{background:var(--gray2);color:var(--text3)}
+.btn-p{background:var(--blue);color:#fff;padding:6px 14px;border:none;border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer}
+.btn-gh{background:var(--gray2);color:var(--text2);padding:6px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer}
+.t3{color:var(--text3)}
+.rm{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:3px;font-weight:500}
+
 </style>
 </head>
 <body>
@@ -400,11 +417,12 @@ h3{font-size:15px;font-weight:800}
   </div>
   <div class="stat-grid">
     <div class="stat-card"><div class="stat-num" id="s-bids">0</div><div class="stat-label">عروضي</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-won" style="color:var(--green)">0</div><div class="stat-label">عروض مقبولة</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-won" style="color:var(--green)">0</div><div class="stat-label">مقبولة</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-earnings">0</div><div class="stat-label">الأرباح ر.س</div></div>
     <div class="stat-card"><div class="stat-num" id="s-done">0</div><div class="stat-label">مشاريع منجزة</div></div>
     <div class="stat-card"><div class="stat-num" id="s-rating" style="color:#f59e0b">—</div><div class="stat-label">تقييمي</div></div>
   </div>
-  <div id="active-card" style="display:none;margin-bottom:14px"></div>
+  <div id="active-card" style="display:none;margin-bottom:14px"><div id="active-projects"></div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -941,7 +959,8 @@ async function openTender(id) {
         return;
       }
     } catch(fetchErr) {
-      document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', 'تحقق من اتصالك');
+      console.error('fetch error:', fetchErr);
+      document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', fetchErr?.message || 'تحقق من اتصالك');
       return;
     }
     try {
@@ -1032,7 +1051,8 @@ async function openTender(id) {
 
     document.getElementById('tender-detail-content').innerHTML = html;
   } catch (e) {
-    document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', '');
+    console.error('openTender error:', e);
+    document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', e?.message || 'خطأ غير معروف');
   }
 }
 
