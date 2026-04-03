@@ -468,6 +468,8 @@ a{text-decoration:none;color:inherit}
 <div class="toast-p" id="toast"></div>
 
 
+
+<script>
 const API = 'https://manaqasati-production.up.railway.app';
 let user = JSON.parse(localStorage.getItem('user') || '{}');
 let token = localStorage.getItem('token') || '';
@@ -1344,6 +1346,6 @@ async function markAllRead() {
 
 setInterval(loadNotifCount, 30000);
 loadHome();
-
+</script>
 </body>
 </html>
