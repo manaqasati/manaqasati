@@ -778,6 +778,55 @@ app.get('/api/provider/bids', auth, async (req, res) => {
 // ── MESSAGES ──
 // ────────────────────────────────────────────
 
+// جلب كل المحادثات للمستخدم (مرتبطة بالعروض)
+app.get('/api/conversations', auth, async (req, res) => {
+  try {
+    let rows;
+    if (req.user.role === 'client') {
+      // العميل: جلب كل العروض على طلباته مع آخر رسالة
+      const r = await pool.query(`
+        SELECT DISTINCT ON (b.provider_id, b.request_id)
+          b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status,
+          b.price, b.days,
+          u.name as other_name, u.city as other_city,
+          rq.title as request_title, rq.project_number, rq.status as request_status,
+          (SELECT content FROM messages WHERE request_id=b.request_id
+           AND (sender_id=b.provider_id OR receiver_id=b.provider_id) ORDER BY created_at DESC LIMIT 1) as last_msg,
+          (SELECT created_at FROM messages WHERE request_id=b.request_id
+           AND (sender_id=b.provider_id OR receiver_id=b.provider_id) ORDER BY created_at DESC LIMIT 1) as last_msg_at,
+          (SELECT COUNT(*) FROM messages WHERE request_id=b.request_id
+           AND receiver_id=$1 AND is_read=FALSE) as unread_count
+        FROM bids b
+        JOIN users u ON b.provider_id=u.id
+        JOIN requests rq ON b.request_id=rq.id
+        WHERE rq.client_id=$1
+        ORDER BY b.provider_id, b.request_id, last_msg_at DESC NULLS LAST`,
+        [req.user.id]);
+      rows = r.rows;
+    } else {
+      // المزود: جلب كل عروضه مع آخر رسالة
+      const r = await pool.query(`
+        SELECT b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status,
+          b.price, b.days,
+          u.name as other_name, u.city as other_city,
+          rq.title as request_title, rq.project_number, rq.status as request_status,
+          rq.client_id as other_id,
+          (SELECT content FROM messages WHERE request_id=b.request_id ORDER BY created_at DESC LIMIT 1) as last_msg,
+          (SELECT created_at FROM messages WHERE request_id=b.request_id ORDER BY created_at DESC LIMIT 1) as last_msg_at,
+          (SELECT COUNT(*) FROM messages WHERE request_id=b.request_id
+           AND receiver_id=$1 AND is_read=FALSE) as unread_count
+        FROM bids b
+        JOIN requests rq ON b.request_id=rq.id
+        JOIN users u ON rq.client_id=u.id
+        WHERE b.provider_id=$1
+        ORDER BY last_msg_at DESC NULLS LAST`,
+        [req.user.id]);
+      rows = r.rows;
+    }
+    res.json(rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const r = await pool.query(`
