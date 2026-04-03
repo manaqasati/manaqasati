@@ -651,7 +651,7 @@ async function renderProjs(reqs){
     if(r.city) metaItems.push(`<span>📍 ${r.city}</span>`);
     if(r.category) metaItems.push(`<span>🏷 ${r.category}</span>`);
     if(r.budget_max) metaItems.push(`<span>💰 ${Number(r.budget_max).toLocaleString('ar-SA')} ر.س</span>`);
-    if(r.deadline) metaItems.push(`<span>📅 ${r.deadline}</span>`);
+    if(r.deadline) metaItems.push(`<span>📅 ${r.deadline.toString().slice(0,10)}</span>`);
     metaItems.push(`<span>🕐 ${ago(r.created_at)}</span>`);
 
     // زر الإجراء الرئيسي
@@ -768,7 +768,7 @@ async function openDetail(id){
           ${req.city?`<span>📍 ${req.city}</span>`:''}
           ${req.category?`<span>🏷 ${req.category}</span>`:''}
           ${req.budget_max?`<span>💰 ${Number(req.budget_max).toLocaleString('ar-SA')} ر.س</span>`:''}
-          ${req.deadline?`<span>📅 ${req.deadline}</span>`:''}
+          ${req.deadline?`<span>📅 ${req.deadline.toString().slice(0,10)}</span>`:''}
         </div>
         ${req.description?`<div style="margin-top:10px;font-size:13px;line-height:1.8;opacity:.85;position:relative;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">${req.description}</div>`:''}
       </div>
