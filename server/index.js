@@ -622,6 +622,23 @@ async function handleSubmitBid(req, res, requestId) {
       [requestId, req.user.id, price, days, note||null]
     );
     await notify(reqData.rows[0].client_id, '💼 عرض جديد', `وصلك عرض جديد على: ${reqData.rows[0].title}`, 'bid', requestId);
+    // إشعار WebSocket فوري للعميل
+    const providerInfo = await pool.query('SELECT name,city,specialties,badge FROM users WHERE id=$1', [req.user.id]);
+    const pInfo = providerInfo.rows[0] || {};
+    const avgR = await pool.query('SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1', [req.user.id]);
+    broadcast([reqData.rows[0].client_id], {
+      type: 'new_bid',
+      bid: {
+        ...r.rows[0],
+        provider_name: pInfo.name,
+        provider_city: pInfo.city,
+        provider_specialties: pInfo.specialties,
+        provider_badge: pInfo.badge,
+        avg_rating: parseFloat(avgR.rows[0].avg) || 0,
+        review_count: parseInt(avgR.rows[0].cnt) || 0
+      },
+      request_id: requestId
+    });
     const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
     if (client.rows[0]?.email) {
