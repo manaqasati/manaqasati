@@ -211,6 +211,39 @@ button,input,select,textarea{font-family:'Tajawal',sans-serif}
   .new-req-grid>div:last-child{display:none}
   .form-grid{grid-template-columns:1fr}
 }
+
+/* ── MODALS ── */
+.ov{display:none;position:fixed;inset:0;background:rgba(10,20,50,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.ov.show{display:flex}
+
+/* ── BID BUTTONS ── */
+.btn-accept{padding:9px 18px;background:var(--success);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s;display:flex;align-items:center;gap:5px}
+.btn-accept:hover{background:#15803d}
+.btn-chat{padding:9px 14px;background:var(--blue-l);color:var(--blue);border:1.5px solid var(--blue-m);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s;display:flex;align-items:center;gap:5px}
+.btn-chat:hover{background:var(--blue-m)}
+.btn-reject{padding:9px 14px;background:var(--danger-l);color:var(--danger);border:1.5px solid var(--danger-m);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s}
+.btn-reject:hover{background:var(--danger-m)}
+.btn-profile{padding:8px 12px;background:var(--gray);color:var(--text3);border:1.5px solid var(--border);border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s}
+.btn-profile:hover{background:var(--gray2);color:var(--text)}
+.btn-p{padding:10px 18px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s;display:flex;align-items:center;justify-content:center;width:100%;gap:6px;margin-bottom:8px}
+.btn-p:hover{background:var(--blue-d)}
+.btn-s{padding:10px 16px;background:var(--gray);color:var(--text2);border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.12s}
+
+/* ── CHAT MESSAGES ── */
+.chat-msgs{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray);height:300px}
+.msg-tick{font-size:9px;opacity:.6}
+
+/* ── EMPTY STATE ── */
+.empty-ic{width:48px;height:48px;border-radius:var(--rl);background:var(--blue-l);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-ic svg{width:22px;height:22px;fill:none;stroke:var(--blue);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── STARS RATE ── */
+.stars-pick{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.sp{font-size:30px;cursor:pointer;opacity:.22;filter:grayscale(1);transition:.1s}
+.sp.on{opacity:1;filter:none}
+
+/* ── MODAL INNER ── */
+.modal-drag{width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0}
 </style>
 </head>
 <body>
@@ -546,14 +579,14 @@ function removeImg(e,i){e.stopPropagation();uploadedImgs.splice(i,1);if(mainImgI
 // ── NAV ──
 function go(pg,el){
   document.querySelectorAll('.page').forEach(p=>p.className='page');
-  document.querySelectorAll('.ni').forEach(n=>n.className='ni');
-  document.querySelectorAll('.bni').forEach(n=>n.className='bni');
+  document.querySelectorAll('.nl').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.mni').forEach(n=>n.classList.remove('on'));
   document.getElementById('page-'+pg).className='page on';
-  if(el)el.className='ni on';
-  let ni=document.getElementById('ni-'+pg);if(ni)ni.className='ni on';
-  let bn=document.getElementById('bn-'+pg);if(bn)bn.className='bni on';
+  if(el){el.classList.add('on');}
+  let ni=document.getElementById('ni-'+pg);if(ni)ni.classList.add('on');
+  let bn=document.getElementById('mn-'+pg)||document.getElementById('bn-'+pg);if(bn)bn.classList.add('on');
   let titles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',messages:'الرسائل',notifs:'الإشعارات',detail:'تفاصيل الطلب',provider:'ملف المزود'};
-  document.getElementById('pageTitle') || {textContent:''}.textContent=titles[pg]||'';
+  (document.getElementById('pageTitle') || {textContent:''}).textContent=titles[pg]||'';
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='messages')loadMsgThreads();
@@ -1416,6 +1449,8 @@ async function loadActions(id){
         <div style="font-size:12px;color:var(--t3);margin-top:4px">بعد قبول عرض مناسب ستظهر هنا خيارات إدارة المشروع</div>
       </div></div>`;
     }
+  }catch(e){el.innerHTML='<div class="empty"><h4>تعذر التحميل</h4></div>';}
+}
 async function markDone(id,provId){
   if(!confirm('تأكيد إتمام المشروع؟'))return;
   try{
