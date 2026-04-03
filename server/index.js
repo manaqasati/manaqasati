@@ -607,27 +607,38 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const isAdminOrProv = req.user.role === 'admin' || req.user.role === 'provider';
     if (!isOwner && !isAdminOrProv) return res.status(403).json({ message: 'غير مصرح' });
 
-    const r = await pool.query(`
-      SELECT
-        b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
-        u.name  AS provider_name,
-        u.city  AS provider_city,
-        u.phone AS provider_phone,
-        u.specialties AS provider_specialties,
-        u.badge AS provider_badge,
-        ROUND(COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id = b.provider_id), 0), 1) AS avg_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id = b.provider_id), 0) AS review_count
-      FROM bids b
-      JOIN users u ON u.id = b.provider_id
-      WHERE b.request_id = $1
-      ORDER BY
-        CASE b.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
-        b.created_at ASC
-    `, [reqId]);
+    // query بسيط بدون subqueries
+    const bidsRes = await pool.query(
+      `SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
+              u.name AS provider_name, u.city AS provider_city,
+              u.phone AS provider_phone, u.specialties AS provider_specialties, u.badge AS provider_badge
+       FROM bids b
+       JOIN users u ON u.id = b.provider_id
+       WHERE b.request_id = $1
+       ORDER BY b.created_at ASC`, [reqId]);
 
-    res.json(r.rows);
+    // جلب التقييمات بشكل منفصل
+    const bids = bidsRes.rows;
+    for (const b of bids) {
+      const rv = await pool.query(
+        'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1',
+        [b.provider_id]);
+      b.avg_rating = parseFloat(rv.rows[0].avg) || 0;
+      b.review_count = parseInt(rv.rows[0].cnt) || 0;
+    }
+
+    // ترتيب: مقبول أولاً
+    bids.sort((a,b) => {
+      if (a.status==='accepted') return -1;
+      if (b.status==='accepted') return 1;
+      if (a.status==='pending') return -1;
+      if (b.status==='pending') return 1;
+      return 0;
+    });
+
+    res.json(bids);
   } catch(e) {
-    console.error('GET /bids error:', e.message);
+    console.error('GET /bids error:', e.message, e.stack);
     res.status(500).json({ message: e.message });
   }
 });
