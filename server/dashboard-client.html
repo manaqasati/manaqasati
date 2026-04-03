@@ -143,8 +143,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 .btn-p:hover{background:var(--primary)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
 .btn-s{padding:10px 14px;background:var(--bg);color:var(--t3);border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
 /* TABS */
-.tab-btns{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.tab-btn{padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);font-family:'Tajawal',sans-serif;background:var(--white);color:var(--t3);transition:.15s}
+.tab-btns{display:flex;gap:4px;margin-bottom:14px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btns::-webkit-scrollbar{display:none}
+.tab-btn{padding:9px 16px;border-radius:22px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);font-family:'Tajawal',sans-serif;background:var(--white);color:var(--t3);white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:5px}
+.tab-btn:hover{background:var(--bg2);color:var(--t)}
 .tab-btn.on{background:var(--client);color:#fff;border-color:var(--client)}
 .tab{display:none}.tab.on{display:block}
 /* IMAGES */
@@ -226,11 +228,33 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 @media(max-width:768px){
   .side,.topbar{display:none}.main{margin-right:0}
   .mob-head{display:flex}.bnav{display:block}
-  .content{padding:10px 12px;padding-bottom:80px}
+  .content{padding:8px 10px;padding-bottom:80px}
   .sg{grid-template-columns:repeat(2,1fr);gap:8px}
   .hero{flex-direction:column;gap:10px;padding:16px}.hero-btn{width:100%;text-align:center;justify-content:center}
   .msg-layout{grid-template-columns:1fr}.msg-side{display:none}
-  .fg2{grid-template-columns:1fr}.bid-top{flex-direction:column}
+  .fg2{grid-template-columns:1fr}
+  /* بطاقات العروض للجوال */
+  .bid-card{border-radius:14px;margin-bottom:10px}
+  .bid-header{padding:14px 14px 0}
+  .bid-price-bar{margin:10px 14px 0;padding:10px 12px}
+  .bid-note{margin:8px 14px 0;padding:8px 10px}
+  .bid-actions{padding:10px 14px;gap:6px}
+  .btn-accept{padding:10px;flex:1;justify-content:center;font-size:13px}
+  .btn-chat{padding:10px;flex:1;justify-content:center;font-size:13px}
+  .btn-reject{padding:10px;font-size:12px}
+  .btn-profile{padding:8px 10px;font-size:11px}
+  /* بطاقات الطلبات للجوال */
+  .proj-card{border-radius:14px;margin-bottom:10px}
+  .proj-top{padding:14px 14px}
+  .proj-footer{padding:8px 14px}
+  .bid-strip{padding:8px 14px}
+  .bid-mini{min-width:110px;padding:8px 10px}
+  /* الـ tab-btns للجوال */
+  .tab-btns{gap:4px}
+  .tab-btn{padding:8px 12px;font-size:12px;border-radius:20px}
+  /* status-tabs */
+  .status-tabs{gap:5px;margin-bottom:12px}
+  .status-tab{padding:6px 12px;font-size:11px}
 }
 </style>
 </head>
@@ -304,17 +328,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
 
     <!-- DETAIL -->
     <div class="page" id="page-detail">
-      <button onclick="go('requests',null)" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:4px;margin-bottom:14px">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>طلباتي
+      <button onclick="go('requests',null)" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--client);font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:5px;margin-bottom:12px;padding:6px 0">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>← طلباتي
       </button>
       <div id="detail-hd"></div>
       <div id="assigned-box"></div>
-      <div class="tab-btns">
-        <button class="tab-btn on" onclick="switchTab('bids',this)">العروض <span id="bids-count"></span></button>
-        <button class="tab-btn" onclick="switchTab('chat',this)">المحادثة</button>
-        <button class="tab-btn" onclick="switchTab('actions',this)">الإجراءات</button>
+      <!-- Tabs sticky على الجوال -->
+      <div class="tab-btns" style="position:sticky;top:0;z-index:10;background:var(--bg);padding:6px 0;margin:0 -10px;padding-right:10px;padding-left:10px">
+        <button class="tab-btn on" id="tbtn-bids" onclick="switchTab('bids',this)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          العروض <span id="bids-count"></span>
+        </button>
+        <button class="tab-btn" id="tbtn-chat" onclick="switchTab('chat',this)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          المحادثة
+        </button>
+        <button class="tab-btn" id="tbtn-actions" onclick="switchTab('actions',this)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          إجراءات
+        </button>
       </div>
-      <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
+      <div class="tab on" id="tab-bids"><div id="bids-list" style="padding-top:4px"><div class="loading">جاري التحميل...</div></div></div>
       <div class="tab" id="tab-chat"><div id="chat-wrap"></div></div>
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
     </div>
