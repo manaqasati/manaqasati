@@ -603,28 +603,31 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const reqCheck = await pool.query('SELECT client_id FROM requests WHERE id=$1', [reqId]);
     if (!reqCheck.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
 
-    // مقارنة صحيحة (كلاهما numbers)
     const isOwner = Number(reqCheck.rows[0].client_id) === Number(req.user.id);
     const isAdminOrProv = req.user.role === 'admin' || req.user.role === 'provider';
     if (!isOwner && !isAdminOrProv) return res.status(403).json({ message: 'غير مصرح' });
 
     const r = await pool.query(`
-      SELECT b.*,
-        u.name as provider_name, u.city as provider_city,
-        u.phone as provider_phone, u.specialties as provider_specialties,
-        u.badge as provider_badge,
-        COALESCE((SELECT AVG(rating)::numeric(3,1) FROM reviews WHERE reviewed_id=b.provider_id), 0) as avg_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=b.provider_id), 0) as review_count
+      SELECT
+        b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
+        u.name  AS provider_name,
+        u.city  AS provider_city,
+        u.phone AS provider_phone,
+        u.specialties AS provider_specialties,
+        u.badge AS provider_badge,
+        ROUND(COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id = b.provider_id), 0), 1) AS avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id = b.provider_id), 0) AS review_count
       FROM bids b
-      JOIN users u ON b.provider_id = u.id
+      JOIN users u ON u.id = b.provider_id
       WHERE b.request_id = $1
       ORDER BY
-        (CASE WHEN b.status='accepted' THEN 0 WHEN b.status='pending' THEN 1 ELSE 2 END),
-        b.created_at ASC`, [reqId]);
+        CASE b.status WHEN 'accepted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
+        b.created_at ASC
+    `, [reqId]);
 
     res.json(r.rows);
   } catch(e) {
-    console.error('bids error:', e.message);
+    console.error('GET /bids error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
