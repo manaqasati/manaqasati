@@ -148,7 +148,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
         <div class="sc"><div class="sic wn"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div><div><div class="sn" id="s-reqs">0</div><div class="st">إجمالي الطلبات</div></div></div>
       </div>
       <div class="card">
-        <div class="ch"><h3>⏳ طلبات تنتظر المراجعة</h3><button class="btn-sm bs-a" onclick="go('requests',null)">عرض الكل</button></div>
+        <div class="ch"><h3>📋 آخر الطلبات المنشورة</h3><button class="btn-sm bs-a" onclick="go('requests',null)">عرض الكل</button></div>
         <div id="pend-reqs"><div class="loading">جاري التحميل...</div></div>
       </div>
     </div>
@@ -159,12 +159,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-he
         <input class="srch" id="req-srch" type="text" placeholder="بحث..." oninput="filterReqs()">
         <select id="req-status" onchange="loadReqs()" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;background:var(--white);color:var(--t)">
           <option value="">جميع الحالات</option>
-          <option value="pending_review">بانتظار المراجعة</option>
           <option value="open">مفتوحة</option>
           <option value="in_progress">قيد التنفيذ</option>
           <option value="completed">مكتملة</option>
-          <option value="rejected">مرفوضة</option>
         </select>
+        <button class="btn-sm bs-g" onclick="exportCSV()" style="padding:9px 14px">⬇ تصدير CSV</button>
       </div>
       <div class="card">
         <div class="ch"><h3>إدارة الطلبات</h3><span id="req-cnt" style="font-size:12px;color:var(--t3)"></span></div>
@@ -458,18 +457,22 @@ async function loadHome(){
     document.getElementById('s-provs').textContent=s.providers||0;
     document.getElementById('s-bids').textContent=s.total_bids||0;
     document.getElementById('s-reqs').textContent=s.requests||0;
-    let pb=document.getElementById('pend-badge');if(pb){pb.textContent=s.pending_review||0;pb.style.display=(s.pending_review||0)>0?'flex':'none';}
+    let pb=document.getElementById('pend-badge');if(pb)pb.style.display='none';
   }catch{}
-  let reqs=await safeArr('/api/admin/requests?status=pending_review');
+  // آخر الطلبات المنشورة
+  let reqs=await safeArr('/api/admin/requests');
   let el=document.getElementById('pend-reqs');
-  if(!reqs.length){el.innerHTML='<div class="empty">لا يوجد طلبات بانتظار المراجعة ✅</div>';return;}
-  el.innerHTML='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>الطلب</th><th>العميل</th><th>المدينة</th><th>التاريخ</th><th>إجراءات</th></tr></thead><tbody>'+
-    reqs.map(r=>`<tr>
-      <td><strong>${r.title}</strong>${r.description?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${r.description.substring(0,60)}...</div>`:''}</td>
-      <td>${r.client_name||'—'}</td><td>${r.city||'—'}</td><td>${ago(r.created_at)}</td>
+  if(!reqs.length){el.innerHTML='<div class="empty">لا يوجد طلبات بعد</div>';return;}
+  el.innerHTML='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>الطلب</th><th>العميل</th><th>العروض</th><th>الحالة</th><th>التاريخ</th><th>إجراءات</th></tr></thead><tbody>'+
+    reqs.slice(0,8).map(r=>`<tr>
+      <td><strong>${r.title}</strong><div style="font-size:10px;color:var(--t4)">${r.project_number||''}</div></td>
+      <td>${r.client_name||'—'}</td>
+      <td><span style="font-weight:700;color:var(--admin)">${r.bid_count||0}</span></td>
+      <td>${stTag(r.status)}</td>
+      <td>${ago(r.created_at)}</td>
       <td><div style="display:flex;gap:5px">
-        <button class="btn-sm bs-g" onclick="openReview(${r.id})">مراجعة</button>
         <button class="btn-sm bs-p" onclick="openEditReq(${r.id})">✏️ تعديل</button>
+        <button class="btn-sm bs-r" onclick="delReq(${r.id})">🗑</button>
       </div></td>
     </tr>`).join('')+
   '</tbody></table></div>';
@@ -489,15 +492,20 @@ function filterReqs(){
 }
 function renderReqs(list){
   if(!list.length){document.getElementById('req-tbody').innerHTML='<tr><td colspan="6" class="empty">لا يوجد نتائج</td></tr>';return;}
+  const stLabel={open:'مفتوح',in_progress:'قيد التنفيذ',completed:'مكتمل',pending_review:'مراجعة',rejected:'مرفوض'};
   document.getElementById('req-tbody').innerHTML=list.map(r=>`<tr>
-    <td><strong>${r.title}</strong><div style="font-size:10px;color:var(--t4)">${r.project_number||''}</div></td>
-    <td>${r.client_name||'—'}</td><td>${r.city||'—'}</td><td>${r.bid_count||0}</td>
+    <td>
+      <strong style="cursor:pointer;color:var(--admin)" onclick="openEditReq(${r.id})">${r.title}</strong>
+      <div style="font-size:10px;color:var(--t4)">${r.project_number||''}</div>
+    </td>
+    <td>${r.client_name||'—'}</td>
+    <td>${r.city||'—'}</td>
+    <td><span style="font-weight:700;color:var(--admin)">${r.bid_count||0}</span></td>
     <td>${stTag(r.status)}</td>
     <td><div style="display:flex;gap:4px;flex-wrap:wrap">
-      ${r.status==='pending_review'?`<button class="btn-sm bs-g" onclick="openReview(${r.id})">مراجعة</button>`:''}
-      <button class="btn-sm bs-p" onclick="openEditReq(${r.id})">✏️</button>
-      ${r.status==='in_progress'?`<button class="btn-sm bs-a" onclick="completeReq(${r.id})">إتمام</button>`:''}
-      <button class="btn-sm bs-r" onclick="delReq(${r.id})">حذف</button>
+      <button class="btn-sm bs-p" onclick="openEditReq(${r.id})" title="تعديل">✏️ تعديل</button>
+      ${r.status==='in_progress'?`<button class="btn-sm bs-a" onclick="completeReq(${r.id})">✓ إتمام</button>`:''}
+      <button class="btn-sm bs-r" onclick="delReq(${r.id})" title="حذف">🗑</button>
     </div></td>
   </tr>`).join('');
 }
