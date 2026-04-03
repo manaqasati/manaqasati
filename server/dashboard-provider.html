@@ -319,6 +319,28 @@ h3{font-size:15px;font-weight:800}
 .portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .portfolio-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r);border:1px solid var(--border);cursor:pointer}
 
+
+/* ── TENDER DETAIL PAGE ── */
+.detail-banner{background:linear-gradient(135deg,#1B3A6B 0%,#1473E6 100%);border-radius:var(--rxl);padding:22px 20px;margin-bottom:16px;position:relative;overflow:hidden}
+.detail-banner::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);top:-50px;left:-30px;pointer-events:none}
+.db-title{font-size:20px;font-weight:900;color:#fff;line-height:1.3;position:relative;letter-spacing:-.2px}
+.db-meta{display:flex;gap:14px;flex-wrap:wrap;position:relative;margin-top:10px}
+.db-meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.75);font-weight:600}
+.db-meta-item svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+.db-desc{font-size:13px;color:rgba(255,255,255,.8);line-height:1.8;margin-top:12px;position:relative}
+
+/* صور المشروع */
+.img-main{width:100%;max-height:320px;object-fit:cover;border-radius:var(--rl);cursor:pointer;display:block;border:1px solid var(--border)}
+.img-thumbs{display:flex;gap:8px;margin-top:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.img-thumbs::-webkit-scrollbar{display:none}
+.img-thumb{width:72px;height:72px;object-fit:cover;border-radius:var(--r);cursor:pointer;border:2px solid var(--border);flex-shrink:0;transition:.12s;opacity:.65}
+.img-thumb.on,.img-thumb:hover{border-color:var(--blue);opacity:1}
+
+/* stat cards داخل التفاصيل */
+.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;display:flex;align-items:center;gap:10px}
+.sn{font-size:20px;font-weight:900;color:var(--text);line-height:1}
+.st{font-size:11px;color:var(--text3);font-weight:600;margin-top:3px}
+
 </style>
 </head>
 <body>
@@ -750,14 +772,7 @@ async function loadHome() {
     const r = await fetch(API + '/api/requests', hdr());
     const ts = safeArr(await r.json());
     const ht = document.getElementById('home-tenders');
-    if (ht) ht.innerHTML = ts.slice(0, 3).map(t => `
-      <div class="tender-card" onclick="openTender(${t.id})">
-        <div class="ti-top"><div class="tender-title">${t.title}</div><span class="tag t-open">نشط</span></div>
-        <div class="ti-meta">
-          ${t.city ? `<span class="rm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
-          ${t.budget_max ? `<span class="rm">${fpr(t.budget_max)}</span>` : ''}
-        </div>
-      </div>`).join('') || emptyH('لا توجد مناقصات', '');
+    if (ht) ht.innerHTML = ts.slice(0, 4).map(t => buildTenderCard(t, false)).join('') || '<div class="empty-state"><h3>لا توجد مشاريع</h3></div>';
   } catch {}
 
   loadNotifCount();
@@ -781,6 +796,42 @@ function bidCard(b) {
 
 // ── BROWSE ──
 let allTenders = [], browseTimer = null;
+
+
+// ── بطاقة المشروع الموحدة ──
+function buildTenderCard(t, hasBid) {
+  const imgs = Array.isArray(t.images) && t.images.length ? t.images : (t.image_url ? [t.image_url] : []);
+  const mainImg = imgs[t.main_image_index || 0] || imgs[0] || null;
+  const desc = t.description ? t.description.substring(0, 140) + (t.description.length > 140 ? '...' : '') : '';
+  return `<div class="tender-card" onclick="openTender(${t.id})">
+    ${mainImg ? `<img src="${mainImg}" style="width:100%;height:160px;object-fit:cover;border-radius:var(--rl) var(--rl) 0 0;display:block;border-bottom:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">` : ''}
+    <div style="padding:16px 18px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div style="font-size:16px;font-weight:900;color:var(--text);line-height:1.3;letter-spacing:-.1px">${t.title}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+          <span style="background:var(--green-l);color:var(--green);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;border:1px solid var(--green-m)">نشط</span>
+          ${hasBid ? '<span style="background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">✓ قدّمت عرض</span>' : ''}
+        </div>
+      </div>
+      ${desc ? `<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px">${desc}</div>` : ''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:14px">
+        ${t.city ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
+        ${t.category ? `<span style="background:var(--blue-l);color:var(--blue);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${t.category}</span>` : ''}
+        ${t.budget_max ? `<span style="display:flex;align-items:center;gap:4px;font-weight:700;color:var(--blue)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(t.budget_max)}</span>` : ''}
+        ${t.deadline ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:5px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          ${t.bid_count||0} عرض • ${ago(t.created_at)}
+        </span>
+        ${hasBid
+          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">عرضي المقدَّم</button>`
+          : `<button class="btn btn-blue btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">تقديم عرض</button>`}
+      </div>
+    </div>
+  </div>`;
+}
 
 async function loadTenders() {
   const listEl = document.getElementById('tenders-list');
@@ -843,38 +894,7 @@ async function loadTenders() {
       myBids.forEach(b => myBidIds.add(b.request_id));
     } catch {}
 
-    listEl.innerHTML = ts.map(t => {
-      const hasBid = myBidIds.has(t.id);
-      const desc = t.description ? t.description.substring(0, 120) + (t.description.length > 120 ? '...' : '') : '';
-      return `
-        <div class="tender-card" onclick="openTender(${t.id})">
-          <div class="tender-card-top">
-            <div class="tender-card-title">${t.title}</div>
-            ${hasBid ? '<span style="font-size:10px;background:var(--prov-l);color:var(--prov);padding:3px 10px;border-radius:20px;font-weight:800;white-space:nowrap;flex-shrink:0">✓ قدّمت عرض</span>' : ''}
-          </div>
-          ${desc ? `<div class="tender-card-desc">${desc}</div>` : ''}
-          <div class="tender-card-meta">
-            ${t.city ? `<span class="tender-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
-            ${t.category ? `<span class="tender-meta-item" style="background:var(--bg2);padding:2px 8px;border-radius:6px">${t.category}</span>` : ''}
-            ${t.deadline ? `<span class="tender-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
-          </div>
-          <div class="tender-card-footer">
-            <div style="display:flex;align-items:center;gap:12px">
-              <span class="tender-bid-count">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                ${t.bid_count||0} عرض
-              </span>
-              <span style="font-size:11px;color:var(--t4)">${ago(t.created_at)}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              ${t.budget_max ? `<span class="tender-budget">${fpr(t.budget_max)}</span>` : ''}
-              ${hasBid
-                ? `<button class="btn-bid-ghost" onclick="event.stopPropagation();openTender(${t.id})">عرضي</button>`
-                : `<button class="btn-bid" onclick="event.stopPropagation();openTender(${t.id})">تقديم عرض</button>`}
-            </div>
-          </div>
-        </div>`;
-    }).join('');
+    listEl.innerHTML = ts.map(t => buildTenderCard(t, myBidIds.has(t.id))).join('');
   } catch(e) {
     if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--t3)">تعذر التحميل</div>`;
   }
@@ -909,11 +929,27 @@ async function openTender(id) {
   (function(){const _p=null;if(_p)_p.textContent='تفاصيل المناقصة';})();
   document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
-    const [rReq, rBids] = await Promise.all([
-      fetch(API + '/api/requests/' + id, hdr()).then(r => r.ok ? r.json() : null),
-      fetch(API + '/api/requests/' + id + '/bids', hdr()).then(r => r.ok ? r.json() : []).catch(() => [])
-    ]);
-    if (!rReq || !rReq.title) { document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', ''); return; }
+    // جلب تفاصيل الطلب
+    let rReq = null, rBids = [];
+    try {
+      const resp = await fetch(API + '/api/requests/' + id, hdr());
+      if (resp.ok) {
+        rReq = await resp.json();
+      } else {
+        const errText = await resp.text().catch(() => resp.status);
+        document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', 'كود الخطأ: ' + resp.status);
+        return;
+      }
+    } catch(fetchErr) {
+      document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', 'تحقق من اتصالك');
+      return;
+    }
+    try {
+      const resp2 = await fetch(API + '/api/requests/' + id + '/bids', hdr());
+      if (resp2.ok) rBids = await resp2.json();
+    } catch {}
+    if (!rReq || typeof rReq !== 'object') { document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', ''); return; }
+    if (!rReq.title) rReq.title = 'مشروع';
     const req = rReq;
     const bids = safeArr(rBids);
     document.getElementById('td-bc').textContent = req.title;
