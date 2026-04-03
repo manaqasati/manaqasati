@@ -6,255 +6,315 @@
 <title>مناقصة — مزود الخدمة</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ===== SHARED CSS (مناقصة — نمط مستقل) ===== */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --blue:#1473E6;--blue-d:#0d5fc9;--blue-l:#EBF3FD;--blue-m:#b3d4f8;
+  --green:#16a34a;--green-l:#f0fdf4;--green-m:#86efac;
+  --red:#dc2626;--red-l:#fef2f2;--red-m:#fca5a5;
+  --yellow:#d97706;--yellow-l:#fffbeb;--yellow-m:#fcd34d;
+  --purple:#7c3aed;--purple-l:#f5f3ff;
   --gray:#f7f8fa;--gray2:#eef0f3;--gray3:#dde1e7;
   --text:#1a1a2e;--text2:#4a5568;--text3:#8a97a8;--text4:#b0bac5;
-  --success:#16a34a;--success-l:#f0fdf4;--success-m:#86efac;
-  --danger:#dc2626;--danger-l:#fef2f2;--danger-m:#fca5a5;
-  --warn:#d97706;--warn-l:#fffbeb;--warn-m:#fcd34d;
-  --white:#fff;--border:#e8ecf0;--shadow:0 1px 3px rgba(0,0,0,.08);
+  --white:#fff;--border:#e8ecf0;
   --r:8px;--rl:12px;--rxl:16px;
 }
-body{font-family:'Tajawal',sans-serif;background:var(--gray);color:var(--text);min-height:100vh}
-button,input,select,textarea{font-family:'Tajawal',sans-serif}
+body{font-family:'Tajawal',sans-serif;background:var(--gray);color:var(--text);min-height:100vh;font-size:14px}
+button,input,select,textarea{font-family:'Tajawal',sans-serif;font-size:14px}
 a{text-decoration:none;color:inherit}
 
-/* NAV */
-.nav-top{background:var(--white);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 0 var(--border)}
-.logo{font-size:19px;font-weight:900;color:var(--text)}.logo span{color:var(--blue)}
-.nav-links{display:flex;align-items:center;gap:0;flex:1;margin:0 12px;overflow-x:auto;scrollbar-width:none}
-.nav-links::-webkit-scrollbar{display:none}
-.nl{padding:8px 12px;border-radius:var(--r);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;border:none;background:none;display:flex;align-items:center;gap:5px;transition:.1s;position:relative}
-.nl:hover{color:var(--blue)}
-.nl.on{color:var(--blue);background:var(--blue-l)}
-.nl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.nbadge{background:var(--danger);color:#fff;font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px}
-.nav-av{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+/* ── TYPOGRAPHY ── */
+h1{font-size:22px;font-weight:900}
+h2{font-size:18px;font-weight:800}
+h3{font-size:15px;font-weight:800}
 
-/* LAYOUT */
-.wrap{max-width:1140px;margin:0 auto;padding:20px 16px}
+/* ── TOP NAV ── */
+.nav{background:var(--white);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0 20px;gap:8px;position:sticky;top:0;z-index:200}
+.nav-logo{font-size:18px;font-weight:900;color:var(--text);flex-shrink:0}.nav-logo b{color:var(--blue)}
+.nav-links{display:flex;align-items:center;flex:1;margin:0 12px;overflow-x:auto;scrollbar-width:none;gap:2px}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-btn{padding:7px 12px;border-radius:var(--r);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;border:none;background:none;display:flex;align-items:center;gap:5px;transition:.12s}
+.nav-btn:hover,.nav-btn.on{color:var(--blue);background:var(--blue-l)}
+.nav-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-badge{background:var(--red);color:#fff;font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;margin-right:2px}
+.nav-av{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1160px;margin:0 auto;padding:20px 16px}
 .page{display:none}.page.on{display:block}
 
-/* CARDS */
+/* ── CARD ── */
 .card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title{font-size:13px;font-weight:800;color:var(--text)}
+.card-body{padding:16px 18px}
 .card+.card{margin-top:12px}
-.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
-.ch h3{font-size:13px;font-weight:800;color:var(--text)}
-.cb{padding:18px}
 
-/* STATS */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
-.sn{font-size:24px;font-weight:900;color:var(--text)}.st{font-size:11px;color:var(--text3);margin-top:2px;font-weight:600}
+/* ── STAT CARD ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.stat-num{font-size:24px;font-weight:900;line-height:1;margin-bottom:4px}
+.stat-label{font-size:11px;color:var(--text3);font-weight:600}
 
-/* PROJECT LIST */
-.proj-item{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:8px;cursor:pointer;transition:.12s}
-.proj-item:hover{border-color:var(--blue-m);box-shadow:0 3px 12px rgba(20,115,230,.09);transform:translateY(-1px)}
-.proj-title{font-size:15px;font-weight:800;color:var(--text);flex:1;line-height:1.4}
-.proj-desc{font-size:13px;color:var(--text2);line-height:1.7;margin:8px 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.proj-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);font-weight:600}
-.proj-meta span{display:flex;align-items:center;gap:4px}
-.proj-meta svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;opacity:.7}
-.proj-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px}
-.proj-price{font-size:16px;font-weight:900;color:var(--blue)}
-.badge-applied{background:var(--success-l);color:var(--success);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.1s;white-space:nowrap}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.12s;white-space:nowrap;line-height:1}
 .btn:active{transform:scale(.97)}
 .btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue-d)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#15803d}
+.btn-red-soft{background:var(--red-l);color:var(--red);border:1px solid var(--red-m)}.btn-red-soft:hover{background:var(--red-m)}
 .btn-ghost{background:none;color:var(--blue);border:1.5px solid var(--blue-m)}.btn-ghost:hover{background:var(--blue-l)}
 .btn-gray{background:var(--gray2);color:var(--text2);border:1px solid var(--border)}.btn-gray:hover{background:var(--gray3)}
-.btn-success{background:var(--success);color:#fff}
-.btn-danger{background:var(--danger-l);color:var(--danger);border:1px solid var(--danger-m)}
-.btn-sm{padding:6px 13px;font-size:12px;border-radius:var(--r)}
-.btn-lg{padding:11px 22px;font-size:14px;border-radius:var(--rl)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-lg{padding:11px 22px;font-size:14px}
 .btn-full{width:100%;justify-content:center}
+.btn-accept{padding:9px 18px;background:var(--green);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.12s}
+.btn-accept:hover{background:#15803d}
+.btn-chat{padding:9px 14px;background:var(--blue-l);color:var(--blue);border:1.5px solid var(--blue-m);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.12s}
+.btn-chat:hover{background:var(--blue-m)}
+.btn-reject{padding:9px 14px;background:var(--red-l);color:var(--red);border:1.5px solid var(--red-m);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;transition:.12s}
+.btn-reject:hover{background:var(--red-m)}
 
-/* TAGS */
-.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
-.t-open{background:var(--success-l);color:var(--success)}
-.t-prog{background:var(--blue-l);color:var(--blue)}
-.t-done{background:var(--gray2);color:var(--text3)}
-.t-pend{background:var(--warn-l);color:var(--warn)}
-.t-rej{background:var(--danger-l);color:var(--danger)}
+/* ── TAGS ── */
+.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;white-space:nowrap}
+.tag-green{background:var(--green-l);color:var(--green)}
+.tag-blue{background:var(--blue-l);color:var(--blue)}
+.tag-gray{background:var(--gray2);color:var(--text3)}
+.tag-yellow{background:var(--yellow-l);color:var(--yellow)}
+.tag-red{background:var(--red-l);color:var(--red)}
 
-/* FILTERS */
-.browse-wrap{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start}
-.filters-box{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);position:sticky;top:70px}
-.filters-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:space-between}
-.filters-body{padding:12px}
-.fg-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:block;padding:0 6px;margin-bottom:6px;margin-top:12px}
-.fg-label:first-child{margin-top:0}
-.fc-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:7px 10px;border-radius:var(--r);cursor:pointer;border:none;background:none;font-size:13px;font-weight:600;color:var(--text2);transition:.1s;text-align:right}
-.fc-btn:hover{background:var(--gray);color:var(--text)}
-.fc-btn.on{background:var(--blue-l);color:var(--blue);font-weight:800}
-.fc-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:700}
-.fc-btn.on .fc-cnt{background:var(--blue);color:#fff}
-.fi{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:12px;outline:none;color:var(--text);transition:.1s}
-.fi:focus{border-color:var(--blue)}
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-grid .full{grid-column:1/-1}
+.fg{margin-bottom:0}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);outline:none;background:var(--white);transition:.12s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,115,230,.1)}
+.fg textarea{min-height:90px;resize:vertical}
+.fg input::placeholder,.fg textarea::placeholder{color:var(--text4)}
 
-/* BIDS */
-.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:16px;gap:0}
-.tb{padding:9px 16px;font-size:13px;font-weight:700;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.1s;display:flex;align-items:center;gap:5px}
-.tb:hover{color:var(--text)}.tb.on{color:var(--blue);border-bottom-color:var(--blue)}
-.tb-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:700}
-.tb.on .tb-cnt{background:var(--blue);color:#fff}
-.bid-row{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:8px;transition:.1s}
-.bid-row:hover{border-color:var(--blue-m)}
-.bid-row.won{border-color:var(--success);border-width:2px;background:var(--success-l)}
-.bid-row.lost{opacity:.5}
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:500;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-handle{width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0;flex-shrink:0}
+.modal-head{padding:12px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-head h3{font-size:14px;font-weight:800}
+.modal-close{width:26px;height:26px;border-radius:var(--r);background:var(--gray2);border:none;cursor:pointer;font-size:13px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:.1s}
+.modal-close:hover{background:var(--gray3)}
+.modal-body{padding:16px 18px;overflow-y:auto;flex:1}
+.modal-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--white)}
 
-/* CHAT */
-.chat-layout{display:grid;grid-template-columns:268px 1fr;height:calc(100vh - 130px);background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
-.chat-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
-.chat-side-head{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;flex-shrink:0}
+/* ── ALERT ── */
+.alert{display:none;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;border:1px solid;margin-bottom:10px}
+.alert.ok{display:block;background:var(--green-l);color:var(--green);border-color:var(--green-m)}
+.alert.err{display:block;background:var(--red-l);color:var(--red);border-color:var(--red-m)}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:48px 20px}
+.empty-state .empty-icon{width:56px;height:56px;border-radius:var(--rl);background:var(--blue-l);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.empty-state .empty-icon svg{width:24px;height:24px;fill:none;stroke:var(--blue);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.empty-state h3{font-size:14px;font-weight:800;color:var(--text);margin-bottom:5px}
+.empty-state p{font-size:12px;color:var(--text3)}
+
+/* ── LOADING ── */
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CHAT ── */
+.chat-layout{display:grid;grid-template-columns:268px 1fr;height:calc(100vh - 120px);background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.chat-sidebar{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.chat-sidebar-head{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;flex-shrink:0}
 .chat-threads{flex:1;overflow-y:auto}
-.thread{padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:.1s;display:flex;align-items:center;gap:10px}
-.thread:hover{background:var(--gray)}.thread.on{background:var(--blue-l);border-right:3px solid var(--blue)}
-.thr-av{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.thr-dot{position:absolute;bottom:1px;left:1px;width:9px;height:9px;border-radius:50%;background:var(--success);border:2px solid #fff}
-.thr-name{font-size:13px;font-weight:700}.thr-last{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.chat-thread{padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:.1s}
+.chat-thread:hover{background:var(--gray)}.chat-thread.on{background:var(--blue-l);border-right:3px solid var(--blue)}
+.thread-av{width:38px;height:38px;border-radius:50%;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.thread-name{font-size:13px;font-weight:700;color:var(--text)}
+.thread-last{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .chat-main{display:flex;flex-direction:column}
-.chat-hd{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.msgs-area{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
-.msg-me{max-width:68%;padding:9px 13px;background:var(--blue);color:#fff;border-radius:12px 12px 3px 12px;font-size:13px;line-height:1.6;align-self:flex-end}
-.msg-other{max-width:68%;padding:9px 13px;background:var(--white);border:1px solid var(--border);border-radius:12px 12px 12px 3px;font-size:13px;line-height:1.6;align-self:flex-start}
+.chat-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--white)}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
+.msg-me{max-width:70%;padding:9px 13px;background:var(--blue);color:#fff;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.6;align-self:flex-end}
+.msg-other{max-width:70%;padding:9px 13px;background:var(--white);border:1px solid var(--border);border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.6;align-self:flex-start}
 .msg-sys{align-self:center;background:var(--gray2);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--text3)}
-.msg-time{font-size:10px;opacity:.55;margin-top:2px;text-align:left}
-.chat-inp-row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
-.chat-input{flex:1;padding:9px 15px;border:1.5px solid var(--border);border-radius:22px;font-size:13px;outline:none;color:var(--text);background:var(--gray);transition:.1s}
+.msg-time{font-size:10px;opacity:.55;margin-top:3px}
+.chat-input-row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;background:var(--white)}
+.chat-input{flex:1;padding:9px 16px;border:1.5px solid var(--border);border-radius:22px;font-size:13px;outline:none;background:var(--gray);transition:.12s}
 .chat-input:focus{border-color:var(--blue);background:var(--white)}
-.chat-send-btn{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.chat-send-btn:hover{background:var(--blue-d)}
-.chat-send-btn svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.typing-ind{display:none;align-items:center;gap:5px;padding:4px 8px;align-self:flex-start}
+.chat-send{width:38px;height:38px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.1s}
+.chat-send:hover{background:var(--blue-d)}
+.chat-send svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.typing-ind{display:none;align-items:center;gap:5px;align-self:flex-start;padding:4px 8px}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+/* ── NOTIF ROW ── */
+.notif-row{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;gap:11px;align-items:flex-start;cursor:pointer;transition:.1s}
+.notif-row:hover{background:var(--gray)}.notif-row.unread{background:var(--blue-l)}
+.notif-icon{width:36px;height:36px;border-radius:var(--r);background:var(--blue-l);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 20px;border-radius:22px;font-size:12px;font-weight:700;z-index:9999;display:none;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;animation:slideDown .25s ease}
+.toast.show{display:flex}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ── IMAGE UPLOAD ── */
+.img-upload-zone{border:2px dashed var(--border);border-radius:var(--rl);padding:22px;text-align:center;cursor:pointer;transition:.12s}
+.img-upload-zone:hover{border-color:var(--blue);background:var(--blue-l)}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;margin-top:10px}
+.img-item{position:relative;border-radius:var(--r);overflow:hidden}
+.img-item img{width:100%;aspect-ratio:1;object-fit:cover;border:2px solid var(--border);border-radius:var(--r)}
+.img-item.main img{border-color:var(--green)}
+.img-main-badge{position:absolute;top:3px;right:3px;background:var(--green);color:#fff;font-size:8px;font-weight:800;padding:1px 5px;border-radius:5px}
+.img-rm{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800}
+
+/* ── CITY DROPDOWN ── */
+.city-dd{display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.1);max-height:180px;overflow-y:auto;margin-top:3px}
+.city-opt{padding:9px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);color:var(--text)}
+.city-opt:hover{background:var(--blue-l);color:var(--blue)}
+.city-opt:last-child{border-bottom:none}
+
+/* ── MOBILE NAV ── */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:2px 0 calc(env(safe-area-inset-bottom,0px) + 2px)}
+.mob-nav-inner{display:flex}
+.mob-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--text3);transition:.1s}
+.mob-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mob-btn span{font-size:9px;font-weight:700}
+.mob-btn.on{color:var(--blue)}
+.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.mob-logo{font-size:17px;font-weight:900;color:var(--text)}.mob-logo b{color:var(--blue)}
+.mob-icon-btn{background:none;border:none;cursor:pointer;padding:6px;color:var(--text3);display:flex;position:relative}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .nav{display:none}.mob-head{display:flex}.mob-nav{display:block}
+  .wrap{padding:8px 10px;padding-bottom:76px}
+  .stat-grid{gap:8px}
+  .chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}
+  .chat-sidebar{display:none}
+}
+
+
+/* ══ PROVIDER SPECIFIC ══ */
+/* BROWSE */
+.browse-layout{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start}
+.filters-panel{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);position:sticky;top:68px}
+.filters-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:space-between}
+.filters-body{padding:10px}
+.f-section-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:block;padding:8px 8px 4px}
+.f-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:7px 10px;border-radius:var(--r);cursor:pointer;border:none;background:none;font-size:13px;font-weight:600;color:var(--text2);transition:.1s;text-align:right}
+.f-btn:hover{background:var(--gray);color:var(--text)}.f-btn.on{background:var(--blue-l);color:var(--blue);font-weight:700}
+.f-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 7px;border-radius:10px;font-weight:700}
+.f-btn.on .f-cnt{background:var(--blue);color:#fff}
+.f-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:12px;outline:none;color:var(--text);transition:.1s}
+.f-input:focus{border-color:var(--blue)}
+
+/* TENDER CARD */
+.tender-card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:10px;cursor:pointer;transition:.12s;animation:slideUp .25s ease}
+.tender-card:hover{border-color:var(--blue-m);box-shadow:0 3px 14px rgba(20,115,230,.09);transform:translateY(-1px)}
+.tender-title{font-size:15px;font-weight:800;color:var(--text);line-height:1.4;flex:1}
+.tender-desc{font-size:13px;color:var(--text2);line-height:1.7;margin:8px 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tender-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3)}
+.tender-meta-item{display:flex;align-items:center;gap:4px;font-weight:600}
+.tender-meta-item svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;opacity:.7}
+.tender-footer{display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.tender-price{font-size:15px;font-weight:900;color:var(--blue)}
+.applied-badge{background:var(--green-l);color:var(--green);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;flex-shrink:0}
+
+/* BID ROW */
+.bid-row{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:14px 18px;margin-bottom:8px;transition:.12s}
+.bid-row:hover{border-color:var(--blue-m)}.bid-row.won{border-color:var(--green);border-width:2px;background:var(--green-l)}.bid-row.lost{opacity:.45}
 
 /* PROFILE */
-.prof-hd{background:var(--white);border:1px solid var(--border);border-radius:var(--rxl);padding:24px;margin-bottom:14px;display:flex;align-items:flex-start;gap:18px}
-.prof-av{width:68px;height:68px;border-radius:var(--rl);background:var(--blue);color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.prof-name{font-size:20px;font-weight:900;color:var(--text);margin-bottom:3px}
-.prof-sub{font-size:13px;color:var(--text3);margin-bottom:8px}
-.prof-tag{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-l);color:var(--blue);font-weight:700;display:inline-block;margin:2px}
-.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:14px}
-.s4{background:var(--white);padding:13px;text-align:center;border-left:1px solid var(--border)}
-.s4:last-child{border-left:none}
-.s4-v{font-size:19px;font-weight:900;color:var(--text)}.s4-l{font-size:10px;color:var(--text3);font-weight:600;margin-top:1px}
+.prof-banner{background:linear-gradient(135deg,#1B3A6B 0%,#1473E6 100%);border-radius:var(--rxl);padding:24px;margin-bottom:14px;position:relative;overflow:hidden}
+.prof-banner::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05);top:-60px;left:-40px}
+.prof-av{width:64px;height:64px;border-radius:var(--rl);background:rgba(255,255,255,.2);color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.25);margin-bottom:12px;position:relative}
+.prof-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:3px}
+.prof-sub{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:8px}
+.prof-tag{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.14);color:rgba(255,255,255,.85);font-weight:600;display:inline-block;margin:2px}
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:14px}
+.s4{background:var(--white);padding:13px;text-align:center;border-left:1px solid var(--border)}.s4:last-child{border-left:none}
+.s4-v{font-size:18px;font-weight:900;color:var(--text)}.s4-l{font-size:10px;color:var(--text3);font-weight:600;margin-top:1px}
 
 /* SETTINGS */
-.settings-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.settings-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
 .s-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
 .s-item:last-child{border-bottom:none}
 .toggle{width:42px;height:22px;border-radius:11px;background:var(--gray3);border:none;cursor:pointer;position:relative;transition:.18s;flex-shrink:0}
 .toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;right:3px;transition:.18s}
 .toggle.on{background:var(--blue)}.toggle.on::after{right:auto;left:3px}
+.chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text2);display:inline-block;margin:3px;transition:.1s}
+.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.tabs-bar{display:flex;border-bottom:2px solid var(--border);margin-bottom:14px;gap:0;overflow-x:auto;scrollbar-width:none}
+.tabs-bar::-webkit-scrollbar{display:none}
+.tabs-btn{padding:9px 16px;font-size:13px;font-weight:700;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.12s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tabs-btn:hover{color:var(--text)}.tabs-btn.on{color:var(--blue);border-bottom-color:var(--blue)}
+.tabs-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:700}
+.tabs-btn.on .tabs-cnt{background:var(--blue);color:#fff}
 
-/* FORM */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.full{grid-column:1/-1}
-.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px}
-.fg input,.fg textarea,.fg select{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);outline:none;background:var(--white);transition:.1s}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,115,230,.1)}
-.fg textarea{min-height:80px;resize:vertical}
+/* TENDER DETAIL */
+.detail-banner{background:linear-gradient(135deg,#1B3A6B 0%,#1473E6 100%);border-radius:var(--rxl);padding:22px 20px;margin-bottom:14px;position:relative;overflow:hidden}
+.detail-banner::before{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);top:-40px;left:-30px}
+.bid-form-box{background:var(--blue-l);border:2px solid var(--blue-m);border-radius:var(--rl);padding:18px;margin-bottom:14px}
+.bid-form-title{font-size:14px;font-weight:800;color:var(--blue);margin-bottom:14px}
 
-/* BID FORM */
-.bid-form{background:var(--blue-l);border:2px solid var(--blue-m);border-radius:var(--rl);padding:18px}
-.bid-form h3{font-size:14px;font-weight:800;color:var(--blue);margin-bottom:12px}
-
-/* PORTFOLIO */
-.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-
-/* NOTIFS */
-.notif-row{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;gap:11px;align-items:flex-start;cursor:pointer;transition:.1s}
-.notif-row:hover{background:var(--gray)}.notif-row.unread{background:var(--blue-l)}
-.notif-ic{width:36px;height:36px;border-radius:var(--r);background:var(--blue-l);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-
-/* MISC */
-.empty{text-align:center;padding:48px 20px}
-.empty h4{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
-.empty p{font-size:12px;color:var(--text3)}
-.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
-.alert{padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;margin-bottom:10px;display:none}
-.alert.ok{background:var(--success-l);color:var(--success);border:1px solid var(--success-m);display:block}
-.alert.err{background:var(--danger-l);color:var(--danger);border:1px solid var(--danger-m);display:block}
-.rating-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.rb-label{font-size:12px;color:var(--text2);width:80px;font-weight:600}
-.rb-track{flex:1;height:6px;background:var(--gray2);border-radius:3px;overflow:hidden}
-.rb-fill{height:100%;background:var(--blue);border-radius:3px}
-.rb-val{font-size:12px;font-weight:800;color:var(--text);width:24px}
-.review-mini{padding:13px 18px;border-bottom:1px solid var(--border)}
-.rm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
-.rm-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800}
-.rm-nm{font-size:13px;font-weight:700}.rm-sub{font-size:10px;color:var(--text3)}
-.rm-body{font-size:12px;color:var(--text2);font-style:italic;line-height:1.6;padding:8px 10px;background:var(--gray);border-radius:var(--r);margin-top:6px}
-.city-drop{display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;margin-top:4px}
-.chip-notif{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text2);transition:.1s;display:inline-block;margin:3px}
-.chip-notif.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-.toast-p{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 20px;border-radius:22px;font-size:12px;font-weight:700;z-index:9999;display:none;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(0,0,0,.2)}
-.toast-p.show{display:flex}
-@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-/* MOB NAV */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:2px 0 calc(env(safe-area-inset-bottom,0px)+2px)}
-.mob-nav-inner{display:flex}
-.mni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--text3);font-family:'Tajawal',sans-serif;transition:.1s}
-.mni svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mni span{font-size:9px;font-weight:700}.mni.on{color:var(--blue)}
-.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
-.mob-logo{font-size:18px;font-weight:900;color:var(--text)}.mob-logo span{color:var(--blue)}
-
-@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.stats4{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}.browse-wrap{grid-template-columns:1fr}.filters-box{display:none}}
-@media(max-width:768px){.nav-top{display:none}.mob-head{display:flex}.mob-nav{display:block}.wrap{padding:8px 10px;padding-bottom:76px}.stats-row{gap:8px}.chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}.chat-side{display:none}.form-grid{grid-template-columns:1fr}.prof-hd{flex-direction:column;align-items:center;text-align:center}}
-
-/* ── MODALS ── */
-.ov{display:none;position:fixed;inset:0;background:rgba(10,20,50,.6);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
-.ov.show{display:flex}
-.modal-drag{width:36px;height:4px;background:var(--gray3);border-radius:2px;margin:10px auto 0}
-
-/* ── CHAT MSGS AREA ── */
-.msgs-area{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
-.chat-msgs{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray);height:300px}
-
-/* ── TYPING ── */
-.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite}
-
-/* ── EMPTY IC ── */
-.empty-ic{width:48px;height:48px;border-radius:var(--rl);background:var(--blue-l);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.empty-ic svg{width:22px;height:22px;fill:none;stroke:var(--blue);stroke-width:2}
+@media(max-width:768px){
+  .browse-layout{grid-template-columns:1fr}.filters-panel{display:none}
+  .settings-layout{grid-template-columns:1fr}
+  .stats4{grid-template-columns:repeat(2,1fr)}
+  .prof-banner{padding:18px}
+}
 </style>
 </head>
 <body>
 
 <div class="mob-head">
-  <div class="mob-logo">مناقصة<span>.</span></div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button onclick="show('notifs')" style="background:none;border:none;cursor:pointer;position:relative;color:var(--text3);display:flex">
+  <div class="mob-logo"><b>مناقصة</b>.</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="mob-icon-btn" onclick="show('notifs')" style="position:relative">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span id="mob-notif-badge" class="nbadge" style="position:absolute;top:-4px;left:-4px;display:none">0</span>
+      <span id="mob-notif-dot" style="display:none;position:absolute;top:3px;left:3px;width:8px;height:8px;border-radius:50%;background:var(--red)"></span>
     </button>
-    <div class="nav-av" id="mobAv" onclick="show('profile')" style="width:30px;height:30px;font-size:12px">م</div>
+    <div class="nav-av" id="mobAv" onclick="show('profile')" style="width:30px;height:30px;font-size:11px">م</div>
   </div>
 </div>
 
-<nav class="nav-top">
-  <div class="logo">مناقصة<span>.</span></div>
+<nav class="nav">
+  <div class="nav-logo"><b>مناقصة</b>.</div>
   <div class="nav-links">
-    <button class="nl on" id="nl-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية</button>
-    <button class="nl" id="nl-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع</button>
-    <button class="nl" id="nl-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>عروضي<span class="nbadge" id="bids-badge" style="display:none">0</span></button>
-    <button class="nl" id="nl-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل<span class="nbadge" id="msg-badge" style="display:none">0</span></button>
-    <button class="nl" id="nl-notifs" onclick="show('notifs')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات<span class="nbadge" id="notif-badge" style="display:none">0</span></button>
+    <button class="nav-btn on" id="nl-home" onclick="show('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية
+    </button>
+    <button class="nav-btn" id="nl-browse" onclick="show('browse')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
+    </button>
+    <button class="nav-btn" id="nl-my-bids" onclick="show('my-bids')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>عروضي
+      <span class="nav-badge" id="bids-badge" style="display:none">0</span>
+    </button>
+    <button class="nav-btn" id="nl-messages" onclick="show('messages')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل
+      <span class="nav-badge" id="msg-badge" style="display:none">0</span>
+    </button>
+    <button class="nav-btn" id="nl-notifs" onclick="show('notifs')">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات
+      <span class="nav-badge" id="notif-badge" style="display:none">0</span>
+    </button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <div style="text-align:left"><div style="font-size:13px;font-weight:700" id="userName">مزود</div><div style="font-size:10px;color:var(--text3)">مزود خدمة</div></div>
+    <div style="text-align:left">
+      <div style="font-size:13px;font-weight:700" id="userName">مزود</div>
+      <div style="font-size:10px;color:var(--text3)">مزود خدمة</div>
+    </div>
     <div class="nav-av" id="userAv" onclick="show('profile')">م</div>
-    <button onclick="logout()" style="padding:6px;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--text3);display:flex" title="خروج">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    </button>
+    <button onclick="logout()" class="btn btn-gray btn-sm">خروج</button>
   </div>
 </nav>
 
@@ -263,30 +323,32 @@ a{text-decoration:none;color:inherit}
 <!-- HOME -->
 <div class="page on" id="page-home">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-    <div><div style="font-size:20px;font-weight:900" id="welcomeName">مرحباً 👋</div><div style="font-size:13px;color:var(--text3);margin-top:2px">تصفح المشاريع المتاحة وقدّم أفضل عروضك</div></div>
-    <button class="btn btn-blue btn-lg" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع</button>
+    <div><h1 id="welcomeName">مرحباً 👋</h1><p style="font-size:13px;color:var(--text3);margin-top:3px">تصفح المشاريع المتاحة وقدّم أفضل عروضك</p></div>
+    <button class="btn btn-blue btn-lg" onclick="show('browse')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
+    </button>
   </div>
-  <div class="stats-row">
-    <div class="sc"><div class="sn" id="s-bids">0</div><div class="st">إجمالي عروضي</div></div>
-    <div class="sc"><div class="sn" id="s-won" style="color:var(--success)">0</div><div class="st">عروض مقبولة</div></div>
-    <div class="sc"><div class="sn" id="s-done">0</div><div class="st">مشاريع مكتملة</div></div>
-    <div class="sc"><div class="sn" id="s-rating" style="color:#f59e0b">—</div><div class="st">تقييمي</div></div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num" id="s-bids">0</div><div class="stat-label">عروضي</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-won" style="color:var(--green)">0</div><div class="stat-label">عروض مقبولة</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-done">0</div><div class="stat-label">مشاريع منجزة</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-rating" style="color:#f59e0b">—</div><div class="stat-label">تقييمي</div></div>
   </div>
   <div id="active-card" style="display:none;margin-bottom:14px"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:800">آخر عروضي</div>
-        <button onclick="show('my-bids')" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">الكل</button>
+        <button onclick="show('my-bids')" class="btn btn-gray btn-sm">الكل</button>
       </div>
-      <div id="home-bids"><div class="loading">جاري التحميل...</div></div>
+      <div id="home-bids"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:800">مشاريع مقترحة</div>
-        <button onclick="show('browse')" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">الكل</button>
+        <button onclick="show('browse')" class="btn btn-gray btn-sm">الكل</button>
       </div>
-      <div id="home-tenders"><div class="loading">جاري التحميل...</div></div>
+      <div id="home-tenders"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
   </div>
 </div>
@@ -294,103 +356,99 @@ a{text-decoration:none;color:inherit}
 <!-- BROWSE -->
 <div class="page" id="page-browse">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div><div style="font-size:18px;font-weight:900">المشاريع المتاحة</div><div style="font-size:12px;color:var(--text3);margin-top:2px" id="browse-count">...</div></div>
-    <input id="browse-search" type="text" placeholder="🔍 ابحث عن مشروع..." oninput="searchTenders()" class="fi" style="width:220px">
+    <div><h2>المشاريع المتاحة</h2><p style="font-size:12px;color:var(--text3);margin-top:2px" id="browse-count"></p></div>
+    <input id="browse-search" type="text" placeholder="🔍 ابحث عن مشروع..." oninput="searchTenders()" class="f-input" style="width:220px">
   </div>
-  <div class="browse-wrap">
-    <div class="filters-box">
-      <div class="filters-head">تصفية <button onclick="clearFilters()" style="font-size:11px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">مسح</button></div>
+  <div class="browse-layout">
+    <div class="filters-panel">
+      <div class="filters-head">تصفية <button onclick="clearFilters()" style="font-size:11px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">مسح الكل</button></div>
       <div class="filters-body">
-        <span class="fg-label">الفئة</span>
-        <button class="fc-btn on" id="fc-all" onclick="setCat('all',this)">الكل <span class="fc-cnt" id="fc-all-cnt">0</span></button>
+        <span class="f-section-label">الفئة</span>
+        <button class="f-btn on" id="fc-all" onclick="setCat('all',this)">الكل <span class="f-cnt" id="fc-all-cnt">0</span></button>
         <div id="cat-filter-list"></div>
-        <span class="fg-label">المدينة</span>
-        <input id="city-filter" type="text" placeholder="أي مدينة..." oninput="loadTenders()" class="fi">
-        <span class="fg-label">الميزانية (ر.س)</span>
+        <span class="f-section-label">المدينة</span>
+        <input id="city-filter" type="text" placeholder="أي مدينة..." oninput="loadTenders()" class="f-input">
+        <span class="f-section-label">الميزانية (ر.س)</span>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <input id="budget-min" type="number" placeholder="من" oninput="loadTenders()" class="fi">
-          <input id="budget-max" type="number" placeholder="إلى" oninput="loadTenders()" class="fi">
+          <input id="budget-min" type="number" placeholder="من" oninput="loadTenders()" class="f-input">
+          <input id="budget-max" type="number" placeholder="إلى" oninput="loadTenders()" class="f-input">
         </div>
       </div>
     </div>
-    <div id="tenders-list"><div class="loading">جاري التحميل...</div></div>
+    <div id="tenders-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
   </div>
 </div>
 
 <!-- TENDER DETAIL -->
 <div class="page" id="page-tender-detail">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-    <button onclick="show('browse')" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:4px">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
-    </button>
-    <span style="color:var(--text4)">/</span>
-    <span style="font-size:13px;font-weight:700;color:var(--text3)" id="td-bc">تفاصيل</span>
-  </div>
-  <div id="tender-detail-content"><div class="loading">جاري التحميل...</div></div>
+  <button onclick="show('browse')" class="btn btn-gray btn-sm" style="margin-bottom:14px">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
+  </button>
+  <div id="tender-detail-content"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
 </div>
 
 <!-- MY BIDS -->
 <div class="page" id="page-my-bids">
-  <div style="font-size:18px;font-weight:900;margin-bottom:4px">عروضي</div>
-  <div class="tabs">
-    <button class="tb on" onclick="filterBids('all',this)">الكل <span class="tb-cnt" id="cnt-all">0</span></button>
-    <button class="tb" onclick="filterBids('pending',this)">بانتظار الرد <span class="tb-cnt" id="cnt-pend">0</span></button>
-    <button class="tb" onclick="filterBids('accepted',this)">مقبولة ✅ <span class="tb-cnt" id="cnt-won">0</span></button>
-    <button class="tb" onclick="filterBids('rejected',this)">مرفوضة <span class="tb-cnt" id="cnt-rej">0</span></button>
+  <h2 style="margin-bottom:14px">عروضي</h2>
+  <div class="tabs-bar">
+    <button class="tabs-btn on" onclick="filterBids('all',this)">الكل <span class="tabs-cnt" id="cnt-all">0</span></button>
+    <button class="tabs-btn" onclick="filterBids('pending',this)">بانتظار الرد <span class="tabs-cnt" id="cnt-pend">0</span></button>
+    <button class="tabs-btn" onclick="filterBids('accepted',this)">مقبولة ✅ <span class="tabs-cnt" id="cnt-won">0</span></button>
+    <button class="tabs-btn" onclick="filterBids('rejected',this)">مرفوضة <span class="tabs-cnt" id="cnt-rej">0</span></button>
   </div>
-  <div id="my-bids-list"><div class="loading">جاري التحميل...</div></div>
+  <div id="my-bids-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
 </div>
 
 <!-- MESSAGES -->
 <div class="page" id="page-messages">
   <div class="chat-layout">
-    <div class="chat-side">
-      <div class="chat-side-head">المحادثات</div>
-      <div class="chat-threads" id="msg-threads"><div class="loading" style="padding:16px;font-size:12px">جاري التحميل...</div></div>
+    <div class="chat-sidebar">
+      <div class="chat-sidebar-head">المحادثات</div>
+      <div class="chat-threads" id="msg-threads"><div class="loading">جاري التحميل...</div></div>
     </div>
     <div class="chat-main" id="chat-main-prov">
-      <div class="empty" style="margin:auto"><h4>💬 اختر محادثة</h4><p>اختر عميلاً من القائمة</p></div>
+      <div class="empty-state" style="margin:auto">
+        <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <h3>اختر محادثة</h3><p>اختر عميلاً من القائمة</p>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- PROFILE -->
 <div class="page" id="page-profile">
-  <div class="prof-hd">
-    <div class="prof-av" id="profile-av">م</div>
-    <div style="flex:1">
+  <div class="prof-banner">
+    <div style="position:relative">
+      <div class="prof-av" id="profile-av">م</div>
       <div class="prof-name" id="profile-name">...</div>
       <div class="prof-sub" id="profile-sub">مزود خدمة</div>
       <div id="profile-tags"></div>
-    </div>
-    <div style="display:flex;gap:8px;flex-shrink:0">
-      <button class="btn btn-ghost btn-sm" onclick="show('settings')">✏️ تعديل</button>
     </div>
   </div>
   <div class="stats4">
     <div class="s4"><div class="s4-v" id="ps-done">0</div><div class="s4-l">مشروع منجز</div></div>
     <div class="s4"><div class="s4-v" id="ps-rating">—</div><div class="s4-l">التقييم</div></div>
     <div class="s4"><div class="s4-v" id="ps-years">—</div><div class="s4-l">سنوات خبرة</div></div>
-    <div class="s4"><div class="s4-v" id="ps-rate">—</div><div class="s4-l">نسبة الإنجاز</div></div>
+    <div class="s4"><div class="s4-v" id="ps-rate">—%</div><div class="s4-l">نسبة الإنجاز</div></div>
   </div>
   <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px">
     <div>
-      <div class="card" style="margin-bottom:10px">
-        <div class="ch"><h3>نبذة عني</h3><button class="btn btn-gray btn-sm" onclick="show('settings')">تعديل</button></div>
-        <div class="cb"><p id="profile-bio" style="font-size:13px;color:var(--text2);line-height:1.85">أضف نبذة تعريفية...</p></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><div class="card-title">نبذة عني</div><button onclick="show('settings')" class="btn btn-gray btn-sm">تعديل</button></div>
+        <div class="card-body"><p id="profile-bio" style="font-size:13px;color:var(--text2);line-height:1.85">أضف نبذة تعريفية...</p></div>
       </div>
       <div class="card">
-        <div class="ch"><h3>معرض الأعمال</h3></div>
-        <div class="cb"><div class="port-grid" id="portfolio-grid"></div></div>
+        <div class="card-head"><div class="card-title">معرض الأعمال</div></div>
+        <div class="card-body"><div class="img-grid" id="portfolio-grid"></div></div>
       </div>
     </div>
     <div>
-      <div class="card" style="margin-bottom:10px">
-        <div class="ch"><h3>تقييم الأداء</h3></div>
-        <div class="cb" id="profile-ratings"><div style="font-size:12px;color:var(--text3);text-align:center">لا يوجد تقييمات بعد</div></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><div class="card-title">تقييم الأداء</div></div>
+        <div class="card-body" id="profile-ratings"><p style="font-size:12px;color:var(--text3);text-align:center">لا يوجد تقييمات بعد</p></div>
       </div>
       <div class="card">
-        <div class="ch"><h3>آخر التقييمات</h3></div>
+        <div class="card-head"><div class="card-title">آخر التقييمات</div></div>
         <div id="profile-reviews"><div class="loading">جاري التحميل...</div></div>
       </div>
     </div>
@@ -399,14 +457,14 @@ a{text-decoration:none;color:inherit}
 
 <!-- SETTINGS -->
 <div class="page" id="page-settings">
-  <div style="font-size:18px;font-weight:900;margin-bottom:4px">الإعدادات</div>
-  <div style="font-size:13px;color:var(--text3);margin-bottom:16px">تحديث معلوماتك الشخصية والمهنية</div>
-  <div class="settings-grid">
+  <h2 style="margin-bottom:4px">الإعدادات</h2>
+  <p style="font-size:13px;color:var(--text3);margin-bottom:18px">تحديث معلوماتك الشخصية والمهنية</p>
+  <div class="settings-layout">
     <div>
-      <div class="card" style="margin-bottom:10px">
-        <div class="ch"><h3>المعلومات الشخصية</h3></div>
-        <div class="cb">
-          <div id="settings-alert" style="display:none;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;margin-bottom:10px;border:1px solid"></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><div class="card-title">المعلومات الشخصية</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div id="settings-alert" class="alert"></div>
           <div class="form-grid">
             <div class="fg"><label>الاسم الكامل</label><input id="s-name" type="text"></div>
             <div class="fg"><label>رقم الجوال</label><input id="s-phone" type="tel" inputmode="tel"></div>
@@ -414,48 +472,50 @@ a{text-decoration:none;color:inherit}
             <div class="fg"><label>المدينة</label>
               <div style="position:relative">
                 <input id="s-city" type="text" autocomplete="off" oninput="filterCitiesS(this.value)" onfocus="showCityListS()" onblur="setTimeout(hideCityListS,200)">
-                <div id="cityDropdownS" class="city-drop"></div>
+                <div id="cityDropdownS" class="city-dd"></div>
               </div>
             </div>
-            <div class="fg full"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك..."></textarea></div>
             <div class="fg"><label>سنوات الخبرة</label><input id="s-years" type="number" inputmode="numeric"></div>
             <div class="fg"><label>نسبة الإنجاز (%)</label><input id="s-rate" type="number" inputmode="numeric"></div>
           </div>
-          <div style="display:flex;gap:8px;margin-top:12px">
+          <div class="fg"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك ومهاراتك..." style="min-height:90px"></textarea></div>
+          <div style="display:flex;gap:8px">
             <button class="btn btn-blue btn-lg" id="s-btn" onclick="saveSettings()">حفظ التعديلات</button>
             <button class="btn btn-gray btn-lg" onclick="show('profile')">إلغاء</button>
           </div>
         </div>
       </div>
+      <!-- معرض الأعمال -->
       <div class="card">
-        <div class="ch"><h3>📸 معرض الأعمال</h3></div>
-        <div class="cb">
-          <p style="font-size:12px;color:var(--text3);margin-bottom:12px">أضف صور أعمالك — تظهر لكل عميل يرى ملفك</p>
-          <div onclick="document.getElementById('portfolio-inp').click()" style="border:2px dashed var(--border);border-radius:var(--rl);padding:22px;text-align:center;cursor:pointer;background:var(--gray);transition:.12s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div class="card-head"><div class="card-title">📸 معرض الأعمال</div></div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">أضف صور أعمالك — تظهر لكل عميل يرى ملفك</p>
+          <div class="img-upload-zone" onclick="document.getElementById('portfolio-inp').click()">
             <div style="font-size:28px;margin-bottom:6px">📸</div>
             <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">JPG, PNG — حتى 10 صور</div>
           </div>
           <input type="file" id="portfolio-inp" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
-          <div id="portfolio-preview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px"></div>
-          <button class="btn btn-blue" id="portfolio-save-btn" onclick="savePortfolio()" style="margin-top:10px;display:none">حفظ معرض الأعمال</button>
-          <div id="portfolio-alert" style="display:none;margin-top:8px;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;border:1px solid"></div>
+          <div class="img-grid" id="portfolio-preview" style="margin-top:10px"></div>
+          <button class="btn btn-blue" id="portfolio-save-btn" onclick="savePortfolio()" style="display:none;margin-top:10px">حفظ معرض الأعمال</button>
+          <div id="portfolio-alert" class="alert"></div>
         </div>
       </div>
     </div>
-    <div style="position:sticky;top:70px">
-      <div class="card" style="margin-bottom:10px">
-        <div class="ch"><h3>🔔 إشعارات المشاريع</h3></div>
-        <div class="cb">
-          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اختر التخصصات لتصلك إشعارات</p>
+    <!-- جانب الإعدادات -->
+    <div style="position:sticky;top:68px">
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head"><div class="card-title">🔔 إشعارات المشاريع</div></div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اختر التخصصات التي تهمك</p>
           <div id="cats-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
           <button class="btn btn-blue btn-full" id="notif-save-btn" onclick="saveNotifPrefs()">حفظ التفضيلات</button>
-          <div id="notif-prefs-alert" style="display:none;margin-top:8px;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;border:1px solid"></div>
+          <div id="notif-prefs-alert" class="alert"></div>
         </div>
       </div>
       <div class="card">
-        <div class="cb">
-          <button class="btn btn-danger btn-full" onclick="logout()">تسجيل الخروج</button>
+        <div class="card-body">
+          <button class="btn btn-red-soft btn-full" onclick="logout()">تسجيل الخروج</button>
         </div>
       </div>
     </div>
@@ -464,28 +524,29 @@ a{text-decoration:none;color:inherit}
 
 <!-- NOTIFS -->
 <div class="page" id="page-notifs">
-  <div style="font-size:18px;font-weight:900;margin-bottom:14px">الإشعارات</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h2>الإشعارات</h2>
+    <button onclick="markAllRead()" class="btn btn-gray btn-sm">تحديد الكل كمقروء</button>
+  </div>
   <div class="card">
-    <div class="ch"><h3>الإشعارات</h3><button onclick="markAllRead()" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">تحديد الكل كمقروء</button></div>
-    <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
+    <div id="notifs-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
   </div>
 </div>
 
 </div><!-- end wrap -->
 
 <div class="mob-nav"><div class="mob-nav-inner">
-  <button class="mni on" id="mn-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
-  <button class="mni" id="mn-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>تصفح</span></button>
-  <button class="mni" id="mn-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>عروضي</span></button>
-  <button class="mni" id="mn-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
-  <button class="mni" id="mn-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ملفي</span></button>
+  <button class="mob-btn on" id="mn-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
+  <button class="mob-btn" id="mn-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>تصفح</span></button>
+  <button class="mob-btn" id="mn-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>عروضي</span></button>
+  <button class="mob-btn" id="mn-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
+  <button class="mob-btn" id="mn-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ملفي</span></button>
 </div></div>
 
-<div class="toast-p" id="toast"></div>
-
-
+<div class="toast" id="toast"></div>
 
 <script>
+
 const API = 'https://manaqasati-production.up.railway.app';
 let user = JSON.parse(localStorage.getItem('user') || '{}');
 let token = localStorage.getItem('token') || '';
@@ -516,7 +577,7 @@ function ago(d) { const s = (new Date() - new Date(d)) / 1000; if (s < 60) retur
 function fpr(p) { return p ? Number(p).toLocaleString('ar-SA') + ' ر.س' : '—'; }
 function fdt(d) { return d ? new Date(d).toLocaleDateString('ar-SA') : '—'; }
 function starsStr(n) { let s = ''; for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆'; return s; }
-function emptyH(t, s) { return `<div class="empty"><div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>${t}</h4>${s ? `<p>${s}</p>` : ''}</div>`; }
+function emptyH(t, s) { return `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>${t}</h4>${s ? `<p>${s}</p>` : ''}</div>`; }
 function safeArr(r) { try { return Array.isArray(r) ? r : []; } catch { return []; } }
 async function safeFetch(url) { try { const r = await fetch(url, hdr()); const d = await r.json(); return Array.isArray(d) ? d : []; } catch { return []; } }
 function logout() { localStorage.clear(); location.href = 'auth.html'; }
@@ -524,7 +585,7 @@ function logout() { localStorage.clear(); location.href = 'auth.html'; }
 function toast(msg, type = 'info') {
   const el = document.getElementById('toast');
   const col = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--prov)';
-  el.innerHTML = `<span style="width:16px;height:16px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'i'}</span>${msg}`;
+  el.innerHTML = `<span style="display:none">${col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'i'}</span>${msg}`;
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
@@ -572,11 +633,11 @@ function toggleChip(c) {
 // navigation
 function show(pg, el, key) {
   document.querySelectorAll('.page').forEach(p => p.className = 'page');
-  document.querySelectorAll('.nl').forEach(n => n.classList.remove('on'));
-  document.querySelectorAll('.mni,.mn').forEach(n => n.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('on'));
+  document.querySelectorAll('.mob-btn').forEach(n => n.classList.remove('on'));
   document.getElementById('page-' + pg).className = 'page on';
   if(el){el.classList.add('on');}
-  if (key) { const b = document.getElementById('bn-' + key); if(b)b.classList.add('on'); }
+  if (key) { const b = document.getElementById('mn-' + key) || document.getElementById('nl-' + key); if(b) b.classList.add('on'); }
   const titles = { home: 'الرئيسية', browse: 'تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
   const _pt = document.getElementById('pageTitle'); if(_pt) _pt.textContent = titles[pg] || '';
   if (pg === 'home') loadHome();
@@ -642,8 +703,8 @@ async function loadHome() {
     const ts = safeArr(await r.json());
     const ht = document.getElementById('home-tenders');
     if (ht) ht.innerHTML = ts.slice(0, 3).map(t => `
-      <div class="tender-item" onclick="openTender(${t.id})">
-        <div class="ti-top"><div class="ti-title">${t.title}</div><span class="tag t-open">نشط</span></div>
+      <div class="tender-card" onclick="openTender(${t.id})">
+        <div class="ti-top"><div class="tender-title">${t.title}</div><span class="tag t-open">نشط</span></div>
         <div class="ti-meta">
           ${t.city ? `<span class="rm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
           ${t.budget_max ? `<span class="rm">${fpr(t.budget_max)}</span>` : ''}
@@ -797,7 +858,7 @@ function searchTenders() {
 // ── TENDER DETAIL ──
 async function openTender(id) {
   show('tender-detail', null, null);
-  (function(){const _p=document.getElementById('pageTitle');if(_p)_p.textContent='تفاصيل المناقصة';})();
+  (function(){const _p=null;if(_p)_p.textContent='تفاصيل المناقصة';})();
   document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
     const [rReq, rBids] = await Promise.all([
@@ -845,7 +906,7 @@ async function openTender(id) {
 
     if (myBid) {
       const isAcc = myBid.status === 'accepted', isRej = myBid.status === 'rejected';
-      html += `<div class="bid-form-wrap" style="background:${isAcc ? 'var(--success-l)' : 'var(--warn-l)'};border-color:${isAcc ? 'var(--success-m)' : 'var(--warn-m)'}">
+      html += `<div class="bid-form-box" style="background:${isAcc ? 'var(--success-l)' : 'var(--warn-l)'};border-color:${isAcc ? 'var(--success-m)' : 'var(--warn-m)'}">
         <div class="bid-form-title">
           ${isAcc ? '✅ تم قبول عرضك!' : isRej ? '❌ تم رفض عرضك' : '⏳ في انتظار رد العميل'}
         </div>
@@ -854,7 +915,7 @@ async function openTender(id) {
       </div>`;
       // نموذج تعديل العرض المقبول
       if (isAcc) {
-        html += `<div class="bid-form-wrap">
+        html += `<div class="bid-form-box">
           <div class="bid-form-title">✏️ طلب تعديل على العرض المقبول</div>
           <div id="revise-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
           <div class="form-grid">
@@ -868,7 +929,7 @@ async function openTender(id) {
         </div>`;
       }
     } else if (req.status === 'open') {
-      html += `<div class="bid-form-wrap">
+      html += `<div class="bid-form-box">
         <div class="bid-form-title"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>تقديم عرضك</div>
         <div id="bid-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
         <div class="form-grid">
@@ -963,8 +1024,8 @@ async function loadMyBids() {
   } catch { document.getElementById('my-bids-list').innerHTML = emptyH('تعذر التحميل', ''); }
 }
 function filterBids(status, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.className = 'tab-btn');
-  btn.className = 'tab-btn on';
+  document.querySelectorAll('.tabs-btn').forEach(b => b.className = 'tabs-btn');
+  btn.className = 'tabs-btn on';
   renderBids(status === 'all' ? allMyBids : allMyBids.filter(b => b.status === status));
 }
 function renderBids(bids) {
@@ -1087,15 +1148,15 @@ async function loadMessages() {
     return `<div class="thread${isOn ? ' on' : ''}" id="prov-thread-${otherId}-${c.request_id}"
       onclick="loadChatWith(${otherId},'${(c.other_name||'العميل').replace(/'/g,'')}',${c.request_id})">
       <div style="position:relative;flex-shrink:0">
-        <div class="thr-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
+        <div class="thread-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
         ${unread > 0 ? `<span style="position:absolute;top:-3px;left:-3px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${unread}</span>` : ''}
       </div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-          <div class="thr-name">${c.other_name || 'العميل'}</div>
+          <div class="thread-name">${c.other_name || 'العميل'}</div>
           <div style="font-size:10px;color:var(--t4);flex-shrink:0">${c.last_msg_at ? ago(c.last_msg_at) : ''}</div>
         </div>
-        <div class="thr-last">${c.last_msg || c.request_title}</div>
+        <div class="thread-last">${c.last_msg || c.request_title}</div>
         <div style="margin-top:3px">
           ${isAcc
             ? '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:1px 6px;border-radius:8px;font-weight:700">✅ مقبول</span>'
@@ -1129,16 +1190,16 @@ async function loadChatWith(clientId, clientName, requestId) {
     <div style="background:var(--success-l);border-bottom:2px solid var(--success-m);padding:8px 14px;flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041">
       ✅ تم قبول عرضك — تواصل مع العميل لبدء التنفيذ
     </div>
-    <div class="msgs-area" id="msgs-area"><div class="loading">جاري التحميل...</div></div>
+    <div class="chat-msgs" id="chat-msgs"><div class="loading">جاري التحميل...</div></div>
     <div id="prov-typing-ind" style="display:none;align-items:center;gap:6px;padding:6px 14px;background:var(--bg);border-top:1px solid var(--border)">
       <div style="display:flex;gap:3px">${[0,150,300].map(d=>`<span style="width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bounce .9s ${d}ms infinite"></span>`).join('')}</div>
       <span style="font-size:11px;color:var(--t3)">${clientName} يكتب...</span>
     </div>
     <div class="chat-input-row">
-      <input class="chat-input" id="chat-inp" placeholder="اكتب رسالتك..."
+      <input class="chat-input" id="chat-input" placeholder="اكتب رسالتك..."
         oninput="onProvTyping(${clientId},${requestId})"
         onkeydown="if(event.key==='Enter'){sendMsg(${clientId},${requestId});}">
-      <button class="chat-send-btn" onclick="sendMsg(${clientId},${requestId})">
+      <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>`;
@@ -1157,7 +1218,7 @@ async function loadChatWith(clientId, clientName, requestId) {
 }
 
 function sendMsg(receiverId, requestId) {
-  const inp = document.getElementById('chat-inp');
+  const inp = document.getElementById('chat-input');
   if (!inp?.value.trim()) return;
   const content = inp.value.trim(); inp.value = '';
   stopProvTyping(receiverId, requestId);
@@ -1178,7 +1239,7 @@ async function loadProfile() {
     if (p.experience_years) document.getElementById('ps-years').textContent = p.experience_years;
     if (p.completion_rate) document.getElementById('ps-rate').textContent = p.completion_rate + '%';
     const specs = Array.isArray(p.specialties) ? p.specialties.slice(0, 5) : [];
-    document.getElementById('profile-tags').innerHTML = specs.map(s => `<span class="prov-tag">${s}</span>`).join('');
+    document.getElementById('profile-tags').innerHTML = specs.map(s => `<span class="prof-tag">${s}</span>`).join('');
     document.getElementById('ps-done').textContent = p.completed_projects || 0;
     const portfolio = document.getElementById('portfolio-grid');
     const pItems = ['تبريد وتكييف', 'كهرباء', 'سباكة', 'نجارة', 'تنظيف'];
@@ -1362,6 +1423,7 @@ async function markAllRead() {
 
 setInterval(loadNotifCount, 30000);
 loadHome();
+
 </script>
 </body>
 </html>
