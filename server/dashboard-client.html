@@ -542,42 +542,77 @@ async function loadReqs(){
 
 // ── DETAIL ──
 async function openDetail(id){
-  curReqId=id;curChatProv=null;
+  curReqId=id; curChatProv=null;
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.className=i===0?'tab-btn on':'tab-btn');
   document.querySelectorAll('.tab').forEach((t,i)=>t.className=i===0?'tab on':'tab');
   go('detail',null);
   try{
     let r=await GET('/api/requests/'+id);
-    if(!r.ok)throw new Error();
+    if(!r.ok) throw new Error('فشل تحميل الطلب');
     let req=await r.json();
-    // header
+
+    // ── header ──
     let imgs=Array.isArray(req.images)&&req.images.length?req.images:(req.image_url?[req.image_url]:[]);
     let mainIdx=req.main_image_index||0;
-    document.getElementById('detail-hd').innerHTML=`
-      <div style="background:var(--primary);border-radius:14px;padding:20px 22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden">
-        <div style="position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-20px"></div>
-        <div style="font-size:18px;font-weight:900;margin-bottom:8px;position:relative">${req.title}</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;opacity:.85;position:relative">
-          ${req.city?`<span>📍 ${req.city}</span>`:''}${req.category?`<span>${req.category}</span>`:''}
-          ${req.budget_max?`<span>💰 ${req.budget_max} ر.س</span>`:''}${stTag(req.status)}
+
+    // شريط الحالة
+    let statusBars={
+      pending_review:`<div style="background:var(--warn-l);border:1.5px solid var(--warn-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">⏳</span>
+        <div><div style="font-size:13px;font-weight:800;color:#633806">طلبك قيد المراجعة</div>
+        <div style="font-size:11px;color:#92400e">سيُراجعه المدير ويُنشر قريباً — ستصلك إشعار عند الموافقة</div></div>
+      </div>`,
+      open:`<div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">✅</span>
+        <div><div style="font-size:13px;font-weight:800;color:#085041">طلبك منشور ويستقبل العروض</div>
+        <div style="font-size:11px;color:var(--success)">راجع العروض واختر المناسب</div></div>
+      </div>`,
+      in_progress:`<div style="background:var(--info-l);border:1.5px solid var(--info-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🔨</span>
+        <div><div style="font-size:13px;font-weight:800;color:#0C447C">المشروع قيد التنفيذ</div>
+        <div style="font-size:11px;color:var(--info)">المزود يعمل على طلبك — تواصل معه من تبويب المحادثة</div></div>
+      </div>`,
+      completed:`<div style="background:var(--admin-l);border:1.5px solid var(--admin-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🎉</span>
+        <div><div style="font-size:13px;font-weight:800;color:var(--admin-d)">المشروع مكتمل</div>
+        <div style="font-size:11px;color:var(--admin)">تم إنجاز الطلب بنجاح</div></div>
+      </div>`,
+      rejected:`<div style="background:var(--danger-l);border:1.5px solid var(--danger-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">❌</span>
+        <div><div style="font-size:13px;font-weight:800;color:#7f1d1d">تم رفض الطلب</div>
+        ${req.admin_notes?`<div style="font-size:11px;color:var(--danger)">السبب: ${req.admin_notes}</div>`:''}
         </div>
-        ${req.description?`<div style="margin-top:10px;font-size:13px;line-height:1.8;opacity:.88;position:relative">${req.description}</div>`:''}
+      </div>`
+    };
+
+    document.getElementById('detail-hd').innerHTML=`
+      ${statusBars[req.status]||''}
+      <div style="background:var(--primary);border-radius:14px;padding:18px 20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden">
+        <div style="position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.04);top:-40px;left:-20px"></div>
+        <div style="font-size:17px;font-weight:900;margin-bottom:6px;position:relative">${req.title}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;opacity:.8;position:relative">
+          ${req.city?`<span>📍 ${req.city}</span>`:''}
+          ${req.category?`<span>🏷 ${req.category}</span>`:''}
+          ${req.budget_max?`<span>💰 ${Number(req.budget_max).toLocaleString('ar-SA')} ر.س</span>`:''}
+          ${req.deadline?`<span>📅 ${req.deadline}</span>`:''}
+        </div>
+        ${req.description?`<div style="margin-top:10px;font-size:13px;line-height:1.8;opacity:.85;position:relative;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">${req.description}</div>`:''}
       </div>
       ${imgs.length?`<div style="margin-bottom:14px">
-        <img id="det-main-img" src="${imgs[mainIdx]}" style="width:100%;max-height:260px;object-fit:cover;border-radius:12px;cursor:pointer;margin-bottom:6px" onclick="openImgFull(this.src)">
-        ${imgs.length>1?`<div style="display:flex;gap:6px;overflow-x:auto">${imgs.map((s,i)=>`<img src="${s}" onclick="document.getElementById('det-main-img').src=this.src" style="width:58px;height:58px;object-fit:cover;border-radius:7px;cursor:pointer;border:${i===mainIdx?'2px solid var(--client)':'1px solid var(--border)'};">`).join('')}</div>`:''}
+        <img id="det-main-img" src="${imgs[mainIdx]}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;cursor:pointer;margin-bottom:6px" onclick="openImgFull(this.src)">
+        ${imgs.length>1?`<div style="display:flex;gap:6px;overflow-x:auto">${imgs.map((s,i)=>`<img src="${s}" onclick="document.getElementById('det-main-img').src=this.src" style="width:56px;height:56px;object-fit:cover;border-radius:7px;cursor:pointer;border:${i===mainIdx?'2px solid var(--client)':'1px solid var(--border)'};">`).join('')}</div>`:''}
       </div>`:''}`;
 
-    // assigned provider box
+    // ── assigned provider box ──
     let ab=document.getElementById('assigned-box');
-    if(req.status==='in_progress'&&req.provider_name){
+    if((req.status==='in_progress'||req.status==='completed')&&req.provider_name){
       ab.innerHTML=`<div style="background:var(--success-l);border:2px solid var(--success-m);border-radius:14px;padding:14px;margin-bottom:14px">
         <div style="font-size:11px;color:var(--success);font-weight:800;margin-bottom:10px">✅ المزود المُسند لهذا المشروع</div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="width:48px;height:48px;border-radius:50%;background:${ac(req.assigned_provider_id)};color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name.charAt(0)}</div>
+          <div style="width:46px;height:46px;border-radius:50%;background:${ac(req.assigned_provider_id)};color:#fff;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name.charAt(0)}</div>
           <div style="flex:1">
-            <div style="font-size:15px;font-weight:800;cursor:pointer" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name}</div>
-            ${req.provider_phone?`<div style="font-size:12px;color:var(--t3)">📞 ${req.provider_phone}</div>`:''}
+            <div style="font-size:14px;font-weight:800;cursor:pointer" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name}</div>
+            ${req.provider_phone?`<a href="tel:${req.provider_phone}" style="font-size:12px;color:var(--success);text-decoration:none">📞 ${req.provider_phone}</a>`:''}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn-sm bs-dk" onclick="openChatWith(${req.assigned_provider_id},'${req.provider_name.replace(/'/g,'')}',${id})">💬 تواصل</button>
@@ -586,10 +621,12 @@ async function openDetail(id){
           </div>
         </div>
       </div>`;
-    }else{ab.innerHTML='';}
+    } else { ab.innerHTML=''; }
 
     loadBids(id);
-  }catch{document.getElementById('detail-hd').innerHTML=err();}
+  }catch(e){
+    document.getElementById('detail-hd').innerHTML=`<div class="empty"><h4>تعذر تحميل الطلب</h4><p style="font-size:11px">${e.message}</p><button class="btn-sm bs-cl" style="margin-top:8px" onclick="openDetail(${id})">إعادة المحاولة</button></div>`;
+  }
 }
 
 function switchTab(t,el){
@@ -605,11 +642,22 @@ function switchTab(t,el){
 // ── BIDS ──
 async function loadBids(id){
   let el=document.getElementById('bids-list');
+  if(!el)return;
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  let bids=await safeArr('/api/requests/'+id+'/bids');
-  let cnt=document.getElementById('bids-count');
-  if(cnt)cnt.textContent='('+bids.length+')';
-  renderBidsList(bids, id);
+  try{
+    let r=await GET('/api/requests/'+id+'/bids');
+    if(!r.ok){
+      el.innerHTML=`<div class="empty"><h4>تعذر تحميل العروض</h4><p style="font-size:11px">كود الخطأ: ${r.status}</p></div>`;
+      return;
+    }
+    let bids=await r.json();
+    if(!Array.isArray(bids)) bids=[];
+    let cnt=document.getElementById('bids-count');
+    if(cnt)cnt.textContent=bids.length?'('+bids.length+')':'';
+    renderBidsList(bids, id);
+  }catch(e){
+    el.innerHTML=`<div class="empty"><h4>خطأ في التحميل</h4><p style="font-size:11px">${e.message||'تحقق من اتصالك'}</p><button class="btn-sm bs-cl" style="margin-top:8px" onclick="loadBids(${id})">إعادة المحاولة</button></div>`;
+  }
 }
 
 function renderBidsList(bids, id){
@@ -682,17 +730,27 @@ async function acceptBid(bidId,reqId){
   try{
     let r=await PUT('/api/bids/'+bidId+'/accept');
     if(r.ok){
-      let bids=await safeArr('/api/requests/'+reqId+'/bids');
-      let acc=bids.find(b=>b.status==='accepted');
-      if(acc)await POST('/api/messages',{request_id:reqId,receiver_id:acc.provider_id,content:'✅ تم قبول عرضك! يسعدنا العمل معك.'}).catch(()=>{});
+      // إرسال رسالة ترحيب للمزود
+      let bidsR=await GET('/api/requests/'+reqId+'/bids');
+      if(bidsR.ok){
+        let bids=await bidsR.json();
+        let acc=Array.isArray(bids)?bids.find(b=>b.status==='accepted'):null;
+        if(acc) await POST('/api/messages',{request_id:reqId,receiver_id:acc.provider_id,content:'✅ تم قبول عرضك! يسعدنا العمل معك، ننتظر بدء التنفيذ.'}).catch(()=>{});
+      }
+      showToast('✅ تم قبول العرض بنجاح');
       openDetail(reqId);
-    }else{let d=await r.json();alert(d.message||'حدث خطأ');}
-  }catch{alert('حدث خطأ، حاول مرة أخرى');}
+    }else{
+      let d=await r.json();
+      alert(d.message||'حدث خطأ في القبول');
+    }
+  }catch(e){ alert('حدث خطأ: '+e.message); }
 }
+
 async function rejectBid(bidId,reqId){
   if(!confirm('هل تريد رفض هذا العرض؟'))return;
-  await PUT('/api/bids/'+bidId+'/reject').catch(()=>{});
-  loadBids(reqId);
+  let r=await PUT('/api/bids/'+bidId+'/reject').catch(()=>({ok:false}));
+  if(r.ok) loadBids(reqId);
+  else alert('حدث خطأ في الرفض');
 }
 
 // ── PROVIDER PROFILE ──
