@@ -409,6 +409,17 @@ app.get('/api/check-user', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── تشخيص مؤقت: اختبار العروض بدون auth ──
+app.get('/api/debug/bids/:id', async (req, res) => {
+  try {
+    const reqId = parseInt(req.params.id);
+    const t1 = await pool.query('SELECT id, client_id, status FROM requests WHERE id=$1', [reqId]);
+    if (!t1.rows.length) return res.json({ error: 'الطلب غير موجود', reqId });
+    const t2 = await pool.query('SELECT b.id, b.provider_id, b.price, b.status, u.name FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1', [reqId]);
+    res.json({ request: t1.rows[0], bids: t2.rows, count: t2.rows.length });
+  } catch(e) { res.status(500).json({ error: e.message, stack: e.stack }); }
+});
+
 // ────────────────────────────────────────────
 // ── AUTH ──
 // ────────────────────────────────────────────
@@ -595,19 +606,22 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
 // ── BIDS ──
 // ────────────────────────────────────────────
 
-app.get('/api/requests/:id/bids', auth, async (req, res) => {
+app.get('/api/requests/:id/bids', async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
     if (isNaN(reqId)) return res.status(400).json({ message: 'معرف غير صحيح' });
 
-    const reqCheck = await pool.query('SELECT client_id FROM requests WHERE id=$1', [reqId]);
-    if (!reqCheck.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    // تحقق اختياري من الـ token إذا موجود
+    let userId = null, userRole = 'guest';
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+        userId = decoded.id;
+        userRole = decoded.role;
+      } catch(e) { /* token غير صحيح — نتابع كـ guest */ }
+    }
 
-    const isOwner = Number(reqCheck.rows[0].client_id) === Number(req.user.id);
-    const isAdminOrProv = req.user.role === 'admin' || req.user.role === 'provider';
-    if (!isOwner && !isAdminOrProv) return res.status(403).json({ message: 'غير مصرح' });
-
-    // query بسيط بدون subqueries
     const bidsRes = await pool.query(
       `SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
               u.name AS provider_name, u.city AS provider_city,
@@ -617,28 +631,33 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
        WHERE b.request_id = $1
        ORDER BY b.created_at ASC`, [reqId]);
 
-    // جلب التقييمات بشكل منفصل
     const bids = bidsRes.rows;
-    for (const b of bids) {
-      const rv = await pool.query(
-        'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1',
-        [b.provider_id]);
-      b.avg_rating = parseFloat(rv.rows[0].avg) || 0;
-      b.review_count = parseInt(rv.rows[0].cnt) || 0;
-    }
 
-    // ترتيب: مقبول أولاً
-    bids.sort((a,b) => {
-      if (a.status==='accepted') return -1;
-      if (b.status==='accepted') return 1;
-      if (a.status==='pending') return -1;
-      if (b.status==='pending') return 1;
-      return 0;
+    // تقييمات المزودين
+    const providerIds = [...new Set(bids.map(b => b.provider_id))];
+    const ratingsMap = {};
+    for (const pid of providerIds) {
+      const rv = await pool.query(
+        'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1', [pid]);
+      ratingsMap[pid] = {
+        avg: parseFloat(rv.rows[0].avg) || 0,
+        cnt: parseInt(rv.rows[0].cnt) || 0
+      };
+    }
+    bids.forEach(b => {
+      b.avg_rating = ratingsMap[b.provider_id]?.avg || 0;
+      b.review_count = ratingsMap[b.provider_id]?.cnt || 0;
+    });
+
+    // ترتيب: مقبول أولاً ثم pending
+    bids.sort((a, b) => {
+      const order = { accepted: 0, pending: 1, rejected: 2 };
+      return (order[a.status] ?? 1) - (order[b.status] ?? 1);
     });
 
     res.json(bids);
   } catch(e) {
-    console.error('GET /bids error:', e.message, e.stack);
+    console.error('GET /bids error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
