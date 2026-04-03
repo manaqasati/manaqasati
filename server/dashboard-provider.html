@@ -3,549 +3,471 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>مناقصة – مزود الخدمة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<title>مناقصة — مزود الخدمة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#F7F8FC;--bg2:#f0f2f8;--bg3:#e8ecf4;
-  --br:#e2e6f0;--br2:#c9d0e0;
-  --t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--t4:#9aa3b8;
-  --primary:#1B3A6B;
-  --prov:#1D6A5A;--prov-d:#0F4A3D;--prov-l:#E1F5EE;--prov-m:#9FE1CB;
-  --accent:#D4973A;--accent-l:#FDF3E3;--accent-m:#f6c96b;
-  --success:#1D9E75;--success-l:#E1F5EE;--success-m:#9FE1CB;
-  --danger:#E24B4A;--danger-l:#FCEBEB;--danger-m:#F09595;
-  --warn:#BA7517;--warn-l:#FAEEDA;--warn-m:#FAC775;
-  --info:#185FA5;--info-l:#E6F1FB;--info-m:#85B7EB;
-  --white:#fff;--border:rgba(27,58,107,0.11);--subtle:#EEF1F8;
+  --blue:#1473E6;--blue-d:#0d5fc9;--blue-l:#EBF3FD;--blue-m:#b3d4f8;
+  --gray:#f7f8fa;--gray2:#eef0f3;--gray3:#dde1e7;
+  --text:#1a1a2e;--text2:#4a5568;--text3:#8a97a8;--text4:#b0bac5;
+  --success:#16a34a;--success-l:#f0fdf4;--success-m:#86efac;
+  --danger:#dc2626;--danger-l:#fef2f2;--danger-m:#fca5a5;
+  --warn:#d97706;--warn-l:#fffbeb;--warn-m:#fcd34d;
+  --white:#fff;--border:#e8ecf0;--shadow:0 1px 3px rgba(0,0,0,.08);
+  --r:8px;--rl:12px;--rxl:16px;
 }
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+body{font-family:'Tajawal',sans-serif;background:var(--gray);color:var(--text);min-height:100vh}
 button,input,select,textarea{font-family:'Tajawal',sans-serif}
+a{text-decoration:none;color:inherit}
 
-/* ── SIDEBAR ── */
-.side{width:252px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:2px 0 24px rgba(27,58,107,.08)}
-.side-head{padding:20px 16px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
-.logo{font-size:22px;font-weight:900;color:var(--primary);margin-bottom:12px}.logo span{color:var(--accent)}
-.user-pill{background:var(--prov-l);border-radius:13px;padding:11px;display:flex;align-items:center;gap:10px}
-.av{width:36px;height:36px;border-radius:10px;background:var(--prov);color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.av-name{font-size:13px;font-weight:800;color:var(--t)}.av-role{font-size:10px;color:var(--prov);font-weight:700;margin-top:1px}
-.nav{padding:12px 8px;flex:1;overflow-y:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}
-.nav-sec{font-size:9px;font-weight:800;color:var(--t4);letter-spacing:.8px;padding:10px 8px 4px;text-transform:uppercase;display:block}
-.ni{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;color:var(--t3);cursor:pointer;font-size:13px;font-weight:600;border:none;background:none;width:100%;text-align:right;margin-bottom:2px;transition:.15s;position:relative}
-.ni:hover{background:var(--bg);color:var(--t)}.ni.on{background:var(--prov-l);color:var(--prov)}
-.ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ni.on .ni-ic{background:var(--prov)}.ni.on .ni-ic svg{stroke:#fff}
-.ni-ic svg{stroke:currentColor;width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ndot{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
-.side-foot{padding:10px;border-top:1px solid var(--border);flex-shrink:0}
-.logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;transition:.15s}
-.logoutbtn:hover{background:var(--danger-l)}
-.logoutbtn svg{stroke:var(--danger);width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* NAV */
+.nav-top{background:var(--white);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 0 var(--border)}
+.logo{font-size:19px;font-weight:900;color:var(--text)}.logo span{color:var(--blue)}
+.nav-links{display:flex;align-items:center;gap:0;flex:1;margin:0 12px;overflow-x:auto;scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nl{padding:8px 12px;border-radius:var(--r);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;border:none;background:none;display:flex;align-items:center;gap:5px;transition:.1s;position:relative}
+.nl:hover{color:var(--blue)}
+.nl.on{color:var(--blue);background:var(--blue-l)}
+.nl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nbadge{background:var(--danger);color:#fff;font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px}
+.nav-av{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 
-/* ── MAIN ── */
-.main{margin-right:252px;min-height:100vh;display:flex;flex-direction:column}
-.topbar{background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--prov);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar-title{font-size:15px;font-weight:800;color:var(--t)}
-.btn-browse{background:var(--prov);color:#fff;padding:7px 16px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;display:flex;align-items:center;gap:6px;transition:.15s}
-.btn-browse:hover{background:var(--prov-d)}
-.content{padding:20px 24px;flex:1}.page{display:none}.page.on{display:block}
+/* LAYOUT */
+.wrap{max-width:1140px;margin:0 auto;padding:20px 16px}
+.page{display:none}.page.on{display:block}
 
-/* ── MOBILE ── */
-.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);border-top:3px solid var(--prov);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.mob-logo{font-size:18px;font-weight:900;color:var(--primary)}.mob-logo span{color:var(--accent)}
-.mob-right{display:flex;align-items:center;gap:8px}
-.mob-av{width:30px;height:30px;border-radius:8px;background:var(--prov);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.mob-ic{background:none;border:none;cursor:pointer;padding:5px;color:var(--t3);display:flex}
-.mob-ic svg{stroke:currentColor;width:18px;height:18px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:3px 0 calc(env(safe-area-inset-bottom,0px)+3px)}
-.bnav-inner{display:flex}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--t3);transition:.15s}
-.bni svg{stroke:currentColor;width:20px;height:20px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.bni .bt{font-size:9px;font-weight:700}.bni.on{color:var(--prov)}
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.card+.card{margin-top:12px}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch h3{font-size:13px;font-weight:800;color:var(--text)}
+.cb{padding:18px}
 
-/* ── HERO ── */
-.hero{background:var(--primary);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative}
-.hero::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px;pointer-events:none}
-.hero::after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(212,151,58,.1);bottom:-40px;left:80px;pointer-events:none}
-.hero-t h2{font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;position:relative}
-.hero-t p{font-size:12px;color:rgba(255,255,255,.6);position:relative}
-.hero-btn{background:var(--accent);color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;border:none;white-space:nowrap;transition:.15s;flex-shrink:0;position:relative}
-.hero-btn:hover{background:#c07e28}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.sn{font-size:24px;font-weight:900;color:var(--text)}.st{font-size:11px;color:var(--text3);margin-top:2px;font-weight:600}
 
-/* ── STATS ── */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:.2s}
-.sc:hover{border-color:var(--prov-m);box-shadow:0 4px 16px rgba(29,106,90,.08)}
-.sic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sic svg{width:19px;height:19px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.sic.pr{background:var(--prov-l)}.sic.pr svg{stroke:var(--prov)}
-.sic.ac{background:var(--accent-l)}.sic.ac svg{stroke:var(--accent)}
-.sic.su{background:var(--success-l)}.sic.su svg{stroke:var(--success)}
-.sic.wn{background:var(--warn-l)}.sic.wn svg{stroke:var(--warn)}
-.sn{font-size:24px;font-weight:900;color:var(--t)}.st{font-size:11px;color:var(--t3);margin-top:2px;font-weight:600}
+/* PROJECT LIST */
+.proj-item{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:8px;cursor:pointer;transition:.12s}
+.proj-item:hover{border-color:var(--blue-m);box-shadow:0 3px 12px rgba(20,115,230,.09);transform:translateY(-1px)}
+.proj-title{font-size:15px;font-weight:800;color:var(--text);flex:1;line-height:1.4}
+.proj-desc{font-size:13px;color:var(--text2);line-height:1.7;margin:8px 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.proj-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);font-weight:600}
+.proj-meta span{display:flex;align-items:center;gap:4px}
+.proj-meta svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;opacity:.7}
+.proj-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.proj-price{font-size:16px;font-weight:900;color:var(--blue)}
+.badge-applied{background:var(--success-l);color:var(--success);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px}
 
-/* ── CARDS ── */
-.card{background:var(--white);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden}
-.ch{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;min-height:46px}
-.ch h3{font-size:14px;font-weight:800;color:var(--t)}
-.ch-link{font-size:12px;color:var(--prov);font-weight:700;background:none;border:none;cursor:pointer}
-.cb{padding:14px 16px}
-
-/* ── TAGS ── */
-.tag{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
-.t-open{background:var(--success-l);color:#085041}
-.t-prog{background:var(--info-l);color:#0C447C}
-.t-done{background:var(--prov-l);color:var(--prov-d)}
-.t-pend{background:var(--warn-l);color:#633806}
-.t-won{background:var(--prov-l);color:var(--prov-d)}
-.t-rej{background:var(--danger-l);color:#7f1d1d}
-
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all .12s;white-space:nowrap;line-height:1}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;border:none;transition:.1s;white-space:nowrap}
 .btn:active{transform:scale(.97)}
-.btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
-.btn-p{background:var(--prov);color:#fff;border-color:var(--prov)}.btn-p:hover{background:var(--prov-d)}
-.btn-g{background:var(--success-l);color:var(--success);border-color:var(--success-m)}.btn-g:hover{background:var(--success-m)}
-.btn-r{background:var(--danger-l);color:var(--danger);border-color:var(--danger-m)}.btn-r:hover{background:var(--danger-m)}
-.btn-a{background:var(--accent-l);color:var(--warn);border-color:var(--accent-m)}.btn-a:hover{background:var(--accent-m)}
-.btn-gh{background:var(--bg2);color:var(--t2);border-color:var(--border)}.btn-gh:hover{background:var(--bg3);border-color:var(--br2)}
-.btn-sm{padding:5px 11px;font-size:11px;border-radius:7px}
-.btn-xs{padding:3px 8px;font-size:10px;border-radius:6px}
+.btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue-d)}
+.btn-ghost{background:none;color:var(--blue);border:1.5px solid var(--blue-m)}.btn-ghost:hover{background:var(--blue-l)}
+.btn-gray{background:var(--gray2);color:var(--text2);border:1px solid var(--border)}.btn-gray:hover{background:var(--gray3)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger-l);color:var(--danger);border:1px solid var(--danger-m)}
+.btn-sm{padding:6px 13px;font-size:12px;border-radius:var(--r)}
+.btn-lg{padding:11px 22px;font-size:14px;border-radius:var(--rl)}
+.btn-full{width:100%;justify-content:center}
 
-/* ── BID ITEMS ── */
-.bi{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:.2s;background:var(--white)}
-.bi:hover{border-color:var(--prov-m)}
-.bi.won{border-color:var(--prov);border-width:2px;background:var(--prov-l)}
-.bi.rejected{opacity:.45}
-.bi-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
-.bi-req{font-size:14px;font-weight:800;color:var(--t);cursor:pointer}.bi-req:hover{color:var(--prov)}
-.bi-price{font-size:18px;font-weight:900;color:var(--prov)}
-.bi-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.rm{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:3px;font-weight:500}
-.rm svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* TAGS */
+.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.t-open{background:var(--success-l);color:var(--success)}
+.t-prog{background:var(--blue-l);color:var(--blue)}
+.t-done{background:var(--gray2);color:var(--text3)}
+.t-pend{background:var(--warn-l);color:var(--warn)}
+.t-rej{background:var(--danger-l);color:var(--danger)}
 
-/* ── BROWSE / TENDERS ── */
-.tender-item{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:.2s;cursor:pointer;background:var(--white)}
-.tender-item:hover{border-color:var(--prov-m);background:var(--prov-l)}
-.ti-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px}
-.ti-title{font-size:14px;font-weight:800;flex:1;color:var(--t)}
-.ti-meta{display:flex;gap:6px;flex-wrap:wrap}
+/* FILTERS */
+.browse-wrap{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start}
+.filters-box{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);position:sticky;top:70px}
+.filters-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:space-between}
+.filters-body{padding:12px}
+.fg-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:block;padding:0 6px;margin-bottom:6px;margin-top:12px}
+.fg-label:first-child{margin-top:0}
+.fc-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:7px 10px;border-radius:var(--r);cursor:pointer;border:none;background:none;font-size:13px;font-weight:600;color:var(--text2);transition:.1s;text-align:right}
+.fc-btn:hover{background:var(--gray);color:var(--text)}
+.fc-btn.on{background:var(--blue-l);color:var(--blue);font-weight:800}
+.fc-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:700}
+.fc-btn.on .fc-cnt{background:var(--blue);color:#fff}
+.fi{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:12px;outline:none;color:var(--text);transition:.1s}
+.fi:focus{border-color:var(--blue)}
 
-/* ── TENDER DETAIL ── */
-.detail-banner{background:var(--primary);padding:20px 24px;position:relative;overflow:hidden;border-radius:14px;margin-bottom:14px}
-.detail-banner::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-30px;pointer-events:none}
-.detail-banner::after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(212,151,58,.1);bottom:-25px;left:60px;pointer-events:none}
-.db-title{font-size:18px;font-weight:900;color:#fff;margin-bottom:10px;position:relative}
-.db-meta{display:flex;gap:14px;flex-wrap:wrap;position:relative}
-.db-meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.65);font-weight:500}
-.db-meta-item svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
-.db-desc{font-size:13px;color:rgba(255,255,255,.75);line-height:1.8;margin-top:10px;position:relative}
+/* BIDS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:16px;gap:0}
+.tb{padding:9px 16px;font-size:13px;font-weight:700;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.1s;display:flex;align-items:center;gap:5px}
+.tb:hover{color:var(--text)}.tb.on{color:var(--blue);border-bottom-color:var(--blue)}
+.tb-cnt{font-size:10px;background:var(--gray2);color:var(--text3);padding:1px 6px;border-radius:10px;font-weight:700}
+.tb.on .tb-cnt{background:var(--blue);color:#fff}
+.bid-row{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:8px;transition:.1s}
+.bid-row:hover{border-color:var(--blue-m)}
+.bid-row.won{border-color:var(--success);border-width:2px;background:var(--success-l)}
+.bid-row.lost{opacity:.5}
 
-/* ── BID FORM ── */
-.bid-form-wrap{background:var(--prov-l);border:2px solid var(--prov-m);border-radius:14px;padding:18px 20px;margin-bottom:16px}
-.bid-form-title{font-size:14px;font-weight:800;color:var(--prov);margin-bottom:14px;display:flex;align-items:center;gap:7px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.ff{grid-column:1/-1}
-.fg label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--t2)}
-.fg input,.fg textarea,.fg select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;color:var(--t);outline:none;background:var(--white);transition:.15s}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--prov);box-shadow:0 0 0 3px rgba(29,106,90,.09)}
-.fg textarea{min-height:90px;resize:vertical}
-.form-btns{display:flex;gap:10px;margin-top:14px}
-.btn-main{padding:11px 22px;background:var(--prov);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
-.btn-main:hover{background:var(--prov-d)}.btn-main:disabled{opacity:.5;cursor:not-allowed}
-.btn-sec{padding:11px 16px;background:var(--bg);color:var(--t3);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
-
-/* ── TABS ── */
-.tabs-bar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;position:sticky;top:56px;z-index:39;overflow-x:auto;scrollbar-width:none;margin:0 -24px 0}
-.tabs-bar::-webkit-scrollbar{display:none}
-.tab-btn{padding:12px 18px;font-size:13px;font-weight:700;color:var(--t3);cursor:pointer;border:none;background:none;white-space:nowrap;border-bottom:2px solid transparent;transition:.15s;display:flex;align-items:center;gap:6px}
-.tab-btn:hover{color:var(--t)}
-.tab-btn.on{color:var(--prov);border-bottom-color:var(--prov)}
-.tb-cnt{font-size:10px;background:var(--prov-l);color:var(--prov);padding:1px 6px;border-radius:10px;font-weight:700}
-.tab-btn.on .tb-cnt{background:var(--prov);color:#fff}
-.tab-content{display:none;padding-top:14px}.tab-content.on{display:block}
-
-/* ── PROFILE ── */
-.profile-banner{background:var(--primary);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;overflow:hidden}
-.profile-banner::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px}
-.profile-banner::after{content:'';position:absolute;width:100px;height:100px;border-radius:50%;background:rgba(212,151,58,.1);bottom:-30px;left:60px}
-.prov-av-xl{width:64px;height:64px;border-radius:16px;background:var(--prov);color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:3px solid rgba(255,255,255,.2)}
-.prov-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px}
-.prov-sub{font-size:13px;color:rgba(255,255,255,.65);margin-bottom:10px}
-.prov-tag{font-size:11px;padding:3px 10px;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);font-weight:600;display:inline-block;margin:2px}
-.prov-stats-row{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border)}
-.ps{padding:12px 8px;text-align:center;border-left:1px solid var(--border)}
-.ps:last-child{border-left:none}
-.ps-v{font-size:18px;font-weight:900;color:var(--t)}.ps-l{font-size:9px;font-weight:600;color:var(--t4);margin-top:2px}
-.rating-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.rb-label{font-size:11px;color:var(--t3);min-width:80px;text-align:right}
-.rb-track{flex:1;height:5px;background:var(--bg3);border-radius:4px;overflow:hidden}
-.rb-fill{height:100%;border-radius:4px;background:var(--prov)}
-.rb-val{font-size:11px;font-weight:700;color:var(--t3);min-width:24px;text-align:left}
-.portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pg-item{background:var(--primary);border-radius:10px;height:68px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.75);cursor:pointer;transition:.15s;overflow:hidden}
-.pg-item:hover{opacity:.85}
-.review-mini{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px}
-.rm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.rm-av{width:28px;height:28px;border-radius:7px;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.rm-nm{font-size:12px;font-weight:700;color:var(--t)}.rm-sub{font-size:10px;color:var(--t4)}
-.strs{color:var(--accent);letter-spacing:1px}
-.rm-body{font-size:11.5px;color:var(--t3);line-height:1.7;font-style:italic}
-
-/* ── SETTINGS & TOGGLES ── */
-.settings-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px}
-.settings-item:last-child{border-bottom:none}
-.toggle{width:40px;height:22px;border-radius:11px;background:var(--bg3);border:none;cursor:pointer;position:relative;transition:.2s;flex-shrink:0}
-.toggle.on{background:var(--prov)}
-.toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;right:3px;transition:.2s}
-.toggle.on::after{right:auto;left:3px}
-
-/* ── NOTIFY CATS CHIPS ── */
-.cat-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--t3);display:inline-block;margin:3px;transition:.15s}
-.cat-chip:hover{border-color:var(--prov-m);color:var(--prov)}
-.cat-chip.on{border-color:var(--prov);background:var(--prov);color:#fff}
-
-/* ── CHAT ── */
-.chat-layout{display:grid;grid-template-columns:280px 1fr;gap:0;height:calc(100vh - 200px);min-height:460px;background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.chat-sidebar{border-left:1px solid var(--border);display:flex;flex-direction:column}
-.chat-sidebar-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.chat-sidebar-title{font-size:13px;font-weight:800;color:var(--t)}
+/* CHAT */
+.chat-layout{display:grid;grid-template-columns:268px 1fr;height:calc(100vh - 130px);background:var(--white);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.chat-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
+.chat-side-head{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:800;flex-shrink:0}
 .chat-threads{flex:1;overflow-y:auto}
-.thread{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:.15s}
-.thread:hover{background:var(--bg)}.thread.on{background:var(--prov-l);border-right:3px solid var(--prov)}
-.thread-av{width:38px;height:38px;border-radius:50%;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.thread-nm{font-size:12.5px;font-weight:700;color:var(--t)}
-.thread-last{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
-.chat-main{display:flex;flex-direction:column;min-width:0}
-.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--white)}
-.chat-name{font-size:13px;font-weight:800;color:var(--t)}
-.chat-online{font-size:10px;color:var(--success);font-weight:600;display:flex;align-items:center;gap:4px}
-.chat-online::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--success)}
-.chat-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-.msg-me{max-width:72%;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;line-height:1.6;background:var(--prov);color:#fff;align-self:flex-end}
-.msg-other{max-width:72%;padding:10px 14px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.6;background:var(--white);border:1px solid var(--border);align-self:flex-start;color:var(--t)}
-.msg-sys{align-self:center;background:var(--success-l);border:1px solid var(--success-m);color:#085041;padding:7px 14px;border-radius:20px;font-size:11px;font-weight:700;text-align:center;max-width:90%}
-.msg-time{font-size:9px;opacity:.55;margin-top:3px}
-.msg-name{font-size:10px;font-weight:700;margin-bottom:3px;opacity:.65}
-.chat-input-row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--white)}
-.chat-inp{flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;outline:none;transition:.15s;color:var(--t);background:var(--white)}
-.chat-inp:focus{border-color:var(--prov);box-shadow:0 0 0 3px rgba(29,106,90,.08)}
-.chat-send{padding:9px 16px;background:var(--prov);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
-.chat-send:hover{background:var(--prov-d)}
+.thread{padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:.1s;display:flex;align-items:center;gap:10px}
+.thread:hover{background:var(--gray)}.thread.on{background:var(--blue-l);border-right:3px solid var(--blue)}
+.thr-av{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.thr-dot{position:absolute;bottom:1px;left:1px;width:9px;height:9px;border-radius:50%;background:var(--success);border:2px solid #fff}
+.thr-name{font-size:13px;font-weight:700}.thr-last{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.chat-main{display:flex;flex-direction:column}
+.chat-hd{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.msgs-area{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--gray)}
+.msg-me{max-width:68%;padding:9px 13px;background:var(--blue);color:#fff;border-radius:12px 12px 3px 12px;font-size:13px;line-height:1.6;align-self:flex-end}
+.msg-other{max-width:68%;padding:9px 13px;background:var(--white);border:1px solid var(--border);border-radius:12px 12px 12px 3px;font-size:13px;line-height:1.6;align-self:flex-start}
+.msg-sys{align-self:center;background:var(--gray2);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--text3)}
+.msg-time{font-size:10px;opacity:.55;margin-top:2px;text-align:left}
+.chat-inp-row{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.chat-input{flex:1;padding:9px 15px;border:1.5px solid var(--border);border-radius:22px;font-size:13px;outline:none;color:var(--text);background:var(--gray);transition:.1s}
+.chat-input:focus{border-color:var(--blue);background:var(--white)}
+.chat-send-btn{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send-btn:hover{background:var(--blue-d)}
+.chat-send-btn svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.typing-ind{display:none;align-items:center;gap:5px;padding:4px 8px;align-self:flex-start}
 
-/* ── IMG GALLERY ── */
-.img-main{width:100%;max-height:280px;object-fit:cover;border-radius:12px;cursor:pointer;margin-bottom:8px;display:block}
-.img-thumbs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-.img-thumb{width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:2px solid transparent;transition:.15s}
-.img-thumb.on{border-color:var(--prov)}
-.img-thumb:hover{border-color:var(--prov-m)}
+/* PROFILE */
+.prof-hd{background:var(--white);border:1px solid var(--border);border-radius:var(--rxl);padding:24px;margin-bottom:14px;display:flex;align-items:flex-start;gap:18px}
+.prof-av{width:68px;height:68px;border-radius:var(--rl);background:var(--blue);color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prof-name{font-size:20px;font-weight:900;color:var(--text);margin-bottom:3px}
+.prof-sub{font-size:13px;color:var(--text3);margin-bottom:8px}
+.prof-tag{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-l);color:var(--blue);font-weight:700;display:inline-block;margin:2px}
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:14px}
+.s4{background:var(--white);padding:13px;text-align:center;border-left:1px solid var(--border)}
+.s4:last-child{border-left:none}
+.s4-v{font-size:19px;font-weight:900;color:var(--text)}.s4-l{font-size:10px;color:var(--text3);font-weight:600;margin-top:1px}
 
-/* ── NOTIFS ── */
-.notif-item{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s}
-.notif-item:hover{background:var(--bg)}.notif-item.unread{background:var(--prov-l)}
-.notif-item:last-child{border-bottom:none}
-.notif-ic{width:36px;height:36px;border-radius:9px;background:var(--prov-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
-.notif-title{font-size:13px;font-weight:800;margin-bottom:2px;color:var(--t)}
-.notif-body{font-size:11px;color:var(--t3);line-height:1.5}
-.notif-time{font-size:10px;color:var(--t4);margin-top:3px}
+/* SETTINGS */
+.settings-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.s-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.s-item:last-child{border-bottom:none}
+.toggle{width:42px;height:22px;border-radius:11px;background:var(--gray3);border:none;cursor:pointer;position:relative;transition:.18s;flex-shrink:0}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;right:3px;transition:.18s}
+.toggle.on{background:var(--blue)}.toggle.on::after{right:auto;left:3px}
 
-/* ── CITY DROPDOWN ── */
-.city-drop{display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:var(--white);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 20px rgba(27,58,107,.12);max-height:220px;overflow-y:auto;margin-top:4px}
-.city-drop-item{padding:9px 13px;font-size:13px;cursor:pointer;color:var(--t);border-bottom:1px solid var(--bg3);transition:.1s}
-.city-drop-item:last-child{border-bottom:none}.city-drop-item:hover{background:var(--prov-l)}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px}
+.fg input,.fg textarea,.fg select{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);outline:none;background:var(--white);transition:.1s}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,115,230,.1)}
+.fg textarea{min-height:80px;resize:vertical}
 
-/* ── TOAST ── */
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--t);color:#fff;padding:10px 16px;border-radius:9px;font-size:12px;font-weight:600;z-index:9999;opacity:0;transition:all .2s cubic-bezier(.34,1.56,.64,1);pointer-events:none;display:flex;align-items:center;gap:7px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* BID FORM */
+.bid-form{background:var(--blue-l);border:2px solid var(--blue-m);border-radius:var(--rl);padding:18px}
+.bid-form h3{font-size:14px;font-weight:800;color:var(--blue);margin-bottom:12px}
 
-/* ── EMPTY / LOADING ── */
-.loading{text-align:center;padding:28px;color:var(--t3);font-size:13px}
-.empty{text-align:center;padding:36px 16px;color:var(--t3)}
-.empty-ic{width:48px;height:48px;background:var(--prov-l);border-radius:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px}
-.empty-ic svg{stroke:var(--prov);width:20px;height:20px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.empty h4{font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px}.empty p{font-size:12px;color:var(--t3)}
+/* PORTFOLIO */
+.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 
-@media(max-width:1024px){.chat-layout{grid-template-columns:1fr;height:auto}.chat-sidebar{display:none}.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){
-  .side,.topbar{display:none}.main{margin-right:0}
-  .mob-head{display:flex}.bnav{display:block}
-  .content{padding:10px 12px;padding-bottom:86px}
-  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-  .hero{padding:16px;border-radius:14px;flex-direction:column;gap:12px;text-align:center}
-  .hero-btn{width:100%;padding:11px;justify-content:center}
-  .form-grid{grid-template-columns:1fr}.ff{grid-column:1}
-  .form-btns{flex-direction:column}.btn-main,.btn-sec{width:100%;text-align:center;padding:12px}
-  .tabs-bar{padding:0 12px}.tab-content{padding-top:10px}
-  .portfolio-grid{grid-template-columns:repeat(3,1fr)}
-  .prov-stats-row{grid-template-columns:repeat(2,1fr)}
-}
-@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+/* NOTIFS */
+.notif-row{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;gap:11px;align-items:flex-start;cursor:pointer;transition:.1s}
+.notif-row:hover{background:var(--gray)}.notif-row.unread{background:var(--blue-l)}
+.notif-ic{width:36px;height:36px;border-radius:var(--r);background:var(--blue-l);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+
+/* MISC */
+.empty{text-align:center;padding:48px 20px}
+.empty h4{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
+.empty p{font-size:12px;color:var(--text3)}
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.alert{padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;margin-bottom:10px;display:none}
+.alert.ok{background:var(--success-l);color:var(--success);border:1px solid var(--success-m);display:block}
+.alert.err{background:var(--danger-l);color:var(--danger);border:1px solid var(--danger-m);display:block}
+.rating-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rb-label{font-size:12px;color:var(--text2);width:80px;font-weight:600}
+.rb-track{flex:1;height:6px;background:var(--gray2);border-radius:3px;overflow:hidden}
+.rb-fill{height:100%;background:var(--blue);border-radius:3px}
+.rb-val{font-size:12px;font-weight:800;color:var(--text);width:24px}
+.review-mini{padding:13px 18px;border-bottom:1px solid var(--border)}
+.rm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.rm-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800}
+.rm-nm{font-size:13px;font-weight:700}.rm-sub{font-size:10px;color:var(--text3)}
+.rm-body{font-size:12px;color:var(--text2);font-style:italic;line-height:1.6;padding:8px 10px;background:var(--gray);border-radius:var(--r);margin-top:6px}
+.city-drop{display:none;position:absolute;top:100%;right:0;left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;margin-top:4px}
+.chip-notif{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--text2);transition:.1s;display:inline-block;margin:3px}
+.chip-notif.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.toast-p{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 20px;border-radius:22px;font-size:12px;font-weight:700;z-index:9999;display:none;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast-p.show{display:flex}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* MOB NAV */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:2px 0 calc(env(safe-area-inset-bottom,0px)+2px)}
+.mob-nav-inner{display:flex}
+.mni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;color:var(--text3);font-family:'Tajawal',sans-serif;transition:.1s}
+.mni svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mni span{font-size:9px;font-weight:700}.mni.on{color:var(--blue)}
+.mob-head{display:none;background:var(--white);border-bottom:1px solid var(--border);height:52px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.mob-logo{font-size:18px;font-weight:900;color:var(--text)}.mob-logo span{color:var(--blue)}
+
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.stats4{grid-template-columns:repeat(2,1fr)}.settings-grid{grid-template-columns:1fr}.browse-wrap{grid-template-columns:1fr}.filters-box{display:none}}
+@media(max-width:768px){.nav-top{display:none}.mob-head{display:flex}.mob-nav{display:block}.wrap{padding:8px 10px;padding-bottom:76px}.stats-row{gap:8px}.chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}.chat-side{display:none}.form-grid{grid-template-columns:1fr}.prof-hd{flex-direction:column;align-items:center;text-align:center}}
 </style>
 </head>
 <body>
 
 <div class="mob-head">
   <div class="mob-logo">مناقصة<span>.</span></div>
-  <div class="mob-right">
-    <button onclick="show('notifs',null,'notifs')" class="mob-ic"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></button>
-    <div class="mob-av" id="mobAv">م</div>
-    <button class="mob-ic" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button onclick="show('notifs')" style="background:none;border:none;cursor:pointer;position:relative;color:var(--text3);display:flex">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span id="mob-notif-badge" class="nbadge" style="position:absolute;top:-4px;left:-4px;display:none">0</span>
+    </button>
+    <div class="nav-av" id="mobAv" onclick="show('profile')" style="width:30px;height:30px;font-size:12px">م</div>
   </div>
 </div>
 
-<div class="side">
-  <div class="side-head">
-    <div class="logo">مناقصة<span>.</span></div>
-    <div class="user-pill">
-      <div class="av" id="userAv">م</div>
-      <div><div class="av-name" id="userName">...</div><div class="av-role">مزود خدمة</div></div>
-    </div>
+<nav class="nav-top">
+  <div class="logo">مناقصة<span>.</span></div>
+  <div class="nav-links">
+    <button class="nl on" id="nl-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية</button>
+    <button class="nl" id="nl-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع</button>
+    <button class="nl" id="nl-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>عروضي<span class="nbadge" id="bids-badge" style="display:none">0</span></button>
+    <button class="nl" id="nl-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل<span class="nbadge" id="msg-badge" style="display:none">0</span></button>
+    <button class="nl" id="nl-notifs" onclick="show('notifs')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات<span class="nbadge" id="notif-badge" style="display:none">0</span></button>
   </div>
-  <div class="nav">
-    <span class="nav-sec">القائمة</span>
-    <button class="ni on" onclick="show('home',this,'home')"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية</button>
-    <button class="ni" onclick="show('browse',this,'browse')"><div class="ni-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>تصفح المناقصات</button>
-    <button class="ni" onclick="show('my-bids',this,'my-bids')"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>عروضي</button>
-    <button class="ni" onclick="show('messages',this,'messages')"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>الرسائل<span class="ndot" id="msg-badge" style="display:none">0</span></button>
-    <button class="ni" onclick="show('notifs',this,'notifs')"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="ndot" id="notif-badge" style="display:none">0</span></button>
-    <span class="nav-sec">حسابي</span>
-    <button class="ni" onclick="show('profile',this,'profile')"><div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
-    <button class="ni" onclick="show('settings',this,'settings')"><div class="ni-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>الإعدادات</button>
-  </div>
-  <div class="side-foot">
-    <button class="logoutbtn" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
-  </div>
-</div>
-
-<div class="main">
-  <div class="topbar">
-    <div class="topbar-title" id="pageTitle">الرئيسية</div>
-    <button class="btn-browse" onclick="show('browse',null,'browse')">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المناقصات
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <div style="text-align:left"><div style="font-size:13px;font-weight:700" id="userName">مزود</div><div style="font-size:10px;color:var(--text3)">مزود خدمة</div></div>
+    <div class="nav-av" id="userAv" onclick="show('profile')">م</div>
+    <button onclick="logout()" style="padding:6px;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--text3);display:flex" title="خروج">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
   </div>
+</nav>
 
-  <div class="content">
+<div class="wrap">
 
-    <!-- HOME -->
-    <div class="page on" id="page-home">
-      <div class="hero">
-        <div class="hero-t"><h2 id="welcomeName">مرحباً 👋</h2><p>تصفح المناقصات وقدّم أفضل عروضك للحصول على مشاريع جديدة</p></div>
-        <button class="hero-btn" onclick="show('browse',null,'browse')">تصفح المناقصات</button>
+<!-- HOME -->
+<div class="page on" id="page-home">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:20px;font-weight:900" id="welcomeName">مرحباً 👋</div><div style="font-size:13px;color:var(--text3);margin-top:2px">تصفح المشاريع المتاحة وقدّم أفضل عروضك</div></div>
+    <button class="btn btn-blue btn-lg" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع</button>
+  </div>
+  <div class="stats-row">
+    <div class="sc"><div class="sn" id="s-bids">0</div><div class="st">إجمالي عروضي</div></div>
+    <div class="sc"><div class="sn" id="s-won" style="color:var(--success)">0</div><div class="st">عروض مقبولة</div></div>
+    <div class="sc"><div class="sn" id="s-done">0</div><div class="st">مشاريع مكتملة</div></div>
+    <div class="sc"><div class="sn" id="s-rating" style="color:#f59e0b">—</div><div class="st">تقييمي</div></div>
+  </div>
+  <div id="active-card" style="display:none;margin-bottom:14px"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800">آخر عروضي</div>
+        <button onclick="show('my-bids')" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">الكل</button>
       </div>
-      <div class="stat-grid">
-        <div class="sc"><div class="sic pr"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="sn" id="s-bids">0</div><div class="st">عروضي</div></div></div>
-        <div class="sc"><div class="sic su"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-won">0</div><div class="st">مقبولة</div></div></div>
-        <div class="sc"><div class="sic ac"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div><div class="sn" id="s-earnings">0</div><div class="st">الأرباح (ر.س)</div></div></div>
-        <div class="sc"><div class="sic wn"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn" id="s-rating">—</div><div class="st">تقييمي</div></div></div>
-      </div>
-      <!-- مشاريع نشطة -->
-      <div class="card" id="active-card" style="display:none">
-        <div class="ch"><h3>🔥 مشاريع قيد التنفيذ</h3></div>
-        <div class="cb" id="active-projects"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px">
-        <div>
-          <div class="card">
-            <div class="ch"><h3>آخر عروضي</h3><button class="ch-link" onclick="show('my-bids',null,'my-bids')">عرض الكل ←</button></div>
-            <div class="cb"><div id="home-bids"><div class="loading">جاري التحميل...</div></div></div>
-          </div>
-        </div>
-        <div>
-          <div class="card">
-            <div class="ch"><h3>مناقصات مقترحة</h3></div>
-            <div class="cb"><div id="home-tenders"><div class="loading">جاري التحميل...</div></div></div>
-          </div>
-        </div>
-      </div>
+      <div id="home-bids"><div class="loading">جاري التحميل...</div></div>
     </div>
-
-    <!-- BROWSE -->
-    <div class="page" id="page-browse">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:14px;font-weight:800;color:var(--t)">المناقصات المتاحة</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap" id="cat-filters"></div>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800">مشاريع مقترحة</div>
+        <button onclick="show('browse')" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">الكل</button>
       </div>
-      <div id="tenders-list"><div class="loading">جاري التحميل...</div></div>
+      <div id="home-tenders"><div class="loading">جاري التحميل...</div></div>
     </div>
+  </div>
+</div>
 
-    <!-- TENDER DETAIL -->
-    <div class="page" id="page-tender-detail">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button onclick="show('browse',null,'browse')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--t3);display:flex;align-items:center;gap:4px">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المناقصات
-        </button>
-        <span style="color:var(--t4);font-size:11px">/</span>
-        <span style="font-size:13px;font-weight:800;color:var(--t)" id="td-bc">تفاصيل</span>
-      </div>
-      <div id="tender-detail-content"></div>
-    </div>
-
-    <!-- MY BIDS -->
-    <div class="page" id="page-my-bids">
-      <div class="tabs-bar">
-        <button class="tab-btn on" onclick="filterBids('all',this)">الكل <span class="tb-cnt" id="cnt-all">0</span></button>
-        <button class="tab-btn" onclick="filterBids('pending',this)">بانتظار الرد <span class="tb-cnt" id="cnt-pend">0</span></button>
-        <button class="tab-btn" onclick="filterBids('accepted',this)">مقبولة ✅ <span class="tb-cnt" id="cnt-won">0</span></button>
-        <button class="tab-btn" onclick="filterBids('rejected',this)">مرفوضة <span class="tb-cnt" id="cnt-rej">0</span></button>
-      </div>
-      <div class="tab-content on"><div id="my-bids-list"><div class="loading">جاري التحميل...</div></div></div>
-    </div>
-
-    <!-- MESSAGES -->
-    <div class="page" id="page-messages">
-      <div class="chat-layout">
-        <div class="chat-sidebar">
-          <div class="chat-sidebar-head"><div class="chat-sidebar-title">المحادثات</div></div>
-          <div class="chat-threads" id="msg-threads"><div class="loading" style="padding:14px;font-size:12px">جاري التحميل...</div></div>
-        </div>
-        <div class="chat-main" id="chat-main-prov">
-          <div class="empty" style="margin:auto">
-            <div class="empty-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-            <h4>اختر محادثة</h4><p>اختر عميلاً من القائمة</p>
-          </div>
+<!-- BROWSE -->
+<div class="page" id="page-browse">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:18px;font-weight:900">المشاريع المتاحة</div><div style="font-size:12px;color:var(--text3);margin-top:2px" id="browse-count">...</div></div>
+    <input id="browse-search" type="text" placeholder="🔍 ابحث عن مشروع..." oninput="searchTenders()" class="fi" style="width:220px">
+  </div>
+  <div class="browse-wrap">
+    <div class="filters-box">
+      <div class="filters-head">تصفية <button onclick="clearFilters()" style="font-size:11px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">مسح</button></div>
+      <div class="filters-body">
+        <span class="fg-label">الفئة</span>
+        <button class="fc-btn on" id="fc-all" onclick="setCat('all',this)">الكل <span class="fc-cnt" id="fc-all-cnt">0</span></button>
+        <div id="cat-filter-list"></div>
+        <span class="fg-label">المدينة</span>
+        <input id="city-filter" type="text" placeholder="أي مدينة..." oninput="loadTenders()" class="fi">
+        <span class="fg-label">الميزانية (ر.س)</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <input id="budget-min" type="number" placeholder="من" oninput="loadTenders()" class="fi">
+          <input id="budget-max" type="number" placeholder="إلى" oninput="loadTenders()" class="fi">
         </div>
       </div>
     </div>
+    <div id="tenders-list"><div class="loading">جاري التحميل...</div></div>
+  </div>
+</div>
 
-    <!-- PROFILE -->
-    <div class="page" id="page-profile">
-      <div class="profile-banner">
-        <div style="display:flex;align-items:flex-start;gap:16px;position:relative">
-          <div class="prov-av-xl" id="profile-av">م</div>
-          <div style="flex:1">
-            <div class="prov-name" id="profile-name">...</div>
-            <div class="prov-sub" id="profile-sub">مزود خدمة</div>
-            <div id="profile-tags"></div>
-          </div>
-          <button class="btn btn-gh btn-sm" onclick="show('settings',null,'settings')">تعديل الملف</button>
-        </div>
+<!-- TENDER DETAIL -->
+<div class="page" id="page-tender-detail">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <button onclick="show('browse')" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:4px">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
+    </button>
+    <span style="color:var(--text4)">/</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text3)" id="td-bc">تفاصيل</span>
+  </div>
+  <div id="tender-detail-content"><div class="loading">جاري التحميل...</div></div>
+</div>
+
+<!-- MY BIDS -->
+<div class="page" id="page-my-bids">
+  <div style="font-size:18px;font-weight:900;margin-bottom:4px">عروضي</div>
+  <div class="tabs">
+    <button class="tb on" onclick="filterBids('all',this)">الكل <span class="tb-cnt" id="cnt-all">0</span></button>
+    <button class="tb" onclick="filterBids('pending',this)">بانتظار الرد <span class="tb-cnt" id="cnt-pend">0</span></button>
+    <button class="tb" onclick="filterBids('accepted',this)">مقبولة ✅ <span class="tb-cnt" id="cnt-won">0</span></button>
+    <button class="tb" onclick="filterBids('rejected',this)">مرفوضة <span class="tb-cnt" id="cnt-rej">0</span></button>
+  </div>
+  <div id="my-bids-list"><div class="loading">جاري التحميل...</div></div>
+</div>
+
+<!-- MESSAGES -->
+<div class="page" id="page-messages">
+  <div class="chat-layout">
+    <div class="chat-side">
+      <div class="chat-side-head">المحادثات</div>
+      <div class="chat-threads" id="msg-threads"><div class="loading" style="padding:16px;font-size:12px">جاري التحميل...</div></div>
+    </div>
+    <div class="chat-main" id="chat-main-prov">
+      <div class="empty" style="margin:auto"><h4>💬 اختر محادثة</h4><p>اختر عميلاً من القائمة</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="page" id="page-profile">
+  <div class="prof-hd">
+    <div class="prof-av" id="profile-av">م</div>
+    <div style="flex:1">
+      <div class="prof-name" id="profile-name">...</div>
+      <div class="prof-sub" id="profile-sub">مزود خدمة</div>
+      <div id="profile-tags"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" onclick="show('settings')">✏️ تعديل</button>
+    </div>
+  </div>
+  <div class="stats4">
+    <div class="s4"><div class="s4-v" id="ps-done">0</div><div class="s4-l">مشروع منجز</div></div>
+    <div class="s4"><div class="s4-v" id="ps-rating">—</div><div class="s4-l">التقييم</div></div>
+    <div class="s4"><div class="s4-v" id="ps-years">—</div><div class="s4-l">سنوات خبرة</div></div>
+    <div class="s4"><div class="s4-v" id="ps-rate">—</div><div class="s4-l">نسبة الإنجاز</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px">
+    <div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch"><h3>نبذة عني</h3><button class="btn btn-gray btn-sm" onclick="show('settings')">تعديل</button></div>
+        <div class="cb"><p id="profile-bio" style="font-size:13px;color:var(--text2);line-height:1.85">أضف نبذة تعريفية...</p></div>
       </div>
       <div class="card">
-        <div class="prov-stats-row">
-          <div class="ps"><div class="ps-v" id="ps-done">0</div><div class="ps-l">مشروع مكتمل</div></div>
-          <div class="ps"><div class="ps-v" id="ps-rating">—</div><div class="ps-l">متوسط التقييم</div></div>
-          <div class="ps"><div class="ps-v" id="ps-rate">—%</div><div class="ps-l">نسبة الإنجاز</div></div>
-          <div class="ps"><div class="ps-v" id="ps-years">—</div><div class="ps-l">سنوات خبرة</div></div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px">
-        <div>
-          <div class="card">
-            <div class="ch"><div style="font-size:13px;font-weight:800">نبذة عني</div><button class="btn btn-gh btn-xs" onclick="show('settings',null,'settings')">تعديل</button></div>
-            <div class="cb"><p id="profile-bio" style="font-size:13px;color:var(--t3);line-height:1.85">أضف نبذة تعريفية عن نفسك وخبراتك...</p></div>
-          </div>
-          <div class="card">
-            <div class="ch"><div style="font-size:13px;font-weight:800">أعمال سابقة</div></div>
-            <div class="cb"><div class="portfolio-grid" id="portfolio-grid"></div></div>
-          </div>
-        </div>
-        <div>
-          <div class="card">
-            <div class="ch"><div style="font-size:13px;font-weight:800">تقييم الأداء</div></div>
-            <div class="cb" id="profile-ratings">
-              <div class="rb-label" style="font-size:12px;color:var(--t3);text-align:center;padding:10px">لا يوجد تقييمات بعد</div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="ch"><div style="font-size:13px;font-weight:800">آخر التقييمات</div></div>
-            <div class="cb" id="profile-reviews"><div class="loading">جاري التحميل...</div></div>
-          </div>
-        </div>
+        <div class="ch"><h3>معرض الأعمال</h3></div>
+        <div class="cb"><div class="port-grid" id="portfolio-grid"></div></div>
       </div>
     </div>
-
-    <!-- SETTINGS -->
-    <div class="page" id="page-settings">
+    <div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch"><h3>تقييم الأداء</h3></div>
+        <div class="cb" id="profile-ratings"><div style="font-size:12px;color:var(--text3);text-align:center">لا يوجد تقييمات بعد</div></div>
+      </div>
       <div class="card">
-        <div class="ch"><h3>الإعدادات الشخصية</h3></div>
+        <div class="ch"><h3>آخر التقييمات</h3></div>
+        <div id="profile-reviews"><div class="loading">جاري التحميل...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+  <div style="font-size:18px;font-weight:900;margin-bottom:4px">الإعدادات</div>
+  <div style="font-size:13px;color:var(--text3);margin-bottom:16px">تحديث معلوماتك الشخصية والمهنية</div>
+  <div class="settings-grid">
+    <div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch"><h3>المعلومات الشخصية</h3></div>
         <div class="cb">
-          <div id="settings-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
+          <div id="settings-alert" style="display:none;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;margin-bottom:10px;border:1px solid"></div>
           <div class="form-grid">
-            <div class="fg"><label>الاسم الكامل</label><input id="s-name" type="text" placeholder="اسمك الكامل"></div>
-            <div class="fg"><label>رقم الجوال</label><input id="s-phone" type="tel" placeholder="05xxxxxxxx" inputmode="tel"></div>
+            <div class="fg"><label>الاسم الكامل</label><input id="s-name" type="text"></div>
+            <div class="fg"><label>رقم الجوال</label><input id="s-phone" type="tel" inputmode="tel"></div>
             <div class="fg"><label>التخصص الرئيسي</label><select id="s-spec"></select></div>
-            <div class="fg">
-              <label>المدينة</label>
+            <div class="fg"><label>المدينة</label>
               <div style="position:relative">
-                <input id="s-city" type="text" placeholder="مدينتك..." autocomplete="off" oninput="filterCitiesS(this.value)" onfocus="showCityListS()" onblur="setTimeout(hideCityListS,200)">
+                <input id="s-city" type="text" autocomplete="off" oninput="filterCitiesS(this.value)" onfocus="showCityListS()" onblur="setTimeout(hideCityListS,200)">
                 <div id="cityDropdownS" class="city-drop"></div>
               </div>
             </div>
-            <div class="fg ff"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك ومهاراتك..."></textarea></div>
-            <div class="fg"><label>سنوات الخبرة</label><input id="s-years" type="number" placeholder="5" inputmode="numeric"></div>
-            <div class="fg"><label>نسبة الإنجاز (%)</label><input id="s-rate" type="number" placeholder="97" inputmode="numeric"></div>
+            <div class="fg full"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك..."></textarea></div>
+            <div class="fg"><label>سنوات الخبرة</label><input id="s-years" type="number" inputmode="numeric"></div>
+            <div class="fg"><label>نسبة الإنجاز (%)</label><input id="s-rate" type="number" inputmode="numeric"></div>
           </div>
-          <div class="form-btns">
-            <button class="btn-main" id="s-btn" onclick="saveSettings()">حفظ التعديلات</button>
-            <button class="btn-sec" onclick="show('profile',null,'profile')">إلغاء</button>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-blue btn-lg" id="s-btn" onclick="saveSettings()">حفظ التعديلات</button>
+            <button class="btn btn-gray btn-lg" onclick="show('profile')">إلغاء</button>
           </div>
         </div>
       </div>
-
-      <!-- البورتفوليو — صور الورشة والأعمال -->
       <div class="card">
-        <div class="ch"><h3>📸 معرض الأعمال والورشة</h3></div>
+        <div class="ch"><h3>📸 معرض الأعمال</h3></div>
         <div class="cb">
-          <p style="font-size:12px;color:var(--t3);margin-bottom:12px">أضف صور أعمالك السابقة وورشتك — تظهر لكل عميل يرى ملفك</p>
-          <div class="img-upload-area" onclick="document.getElementById('portfolio-inp').click()" style="border:2px dashed var(--prov-m);border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:var(--prov-l)">
-            <div style="font-size:28px;margin-bottom:6px">🖼️</div>
-            <div style="font-size:13px;font-weight:700;color:var(--prov)">اضغط لإضافة صور الأعمال</div>
-            <div style="font-size:11px;color:var(--t3);margin-top:3px">JPG, PNG — حتى 10 صور</div>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px">أضف صور أعمالك — تظهر لكل عميل يرى ملفك</p>
+          <div onclick="document.getElementById('portfolio-inp').click()" style="border:2px dashed var(--border);border-radius:var(--rl);padding:22px;text-align:center;cursor:pointer;background:var(--gray);transition:.12s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:28px;margin-bottom:6px">📸</div>
+            <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">JPG, PNG — حتى 10 صور</div>
           </div>
           <input type="file" id="portfolio-inp" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
-          <div id="portfolio-preview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px"></div>
-          <button class="btn-main" id="portfolio-save-btn" onclick="savePortfolio()" style="margin-top:12px;display:none">حفظ معرض الأعمال</button>
-          <div id="portfolio-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-top:8px;border:1.5px solid"></div>
+          <div id="portfolio-preview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px"></div>
+          <button class="btn btn-blue" id="portfolio-save-btn" onclick="savePortfolio()" style="margin-top:10px;display:none">حفظ معرض الأعمال</button>
+          <div id="portfolio-alert" style="display:none;margin-top:8px;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;border:1px solid"></div>
         </div>
       </div>
-
-      <!-- إشعارات التخصصات -->
-      <div class="card">
-        <div class="ch"><h3>🔔 إشعارات المناقصات الجديدة</h3></div>
+    </div>
+    <div style="position:sticky;top:70px">
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch"><h3>🔔 إشعارات المشاريع</h3></div>
         <div class="cb">
-          <p style="font-size:12px;color:var(--t3);margin-bottom:14px">اضغط على التخصصات التي تهمك — سيصلك إشعار + إيميل فوري عند نشر مناقصة جديدة فيها</p>
-          <div id="cats-chips" style="display:flex;flex-wrap:wrap;gap:0;margin-bottom:14px"></div>
-          <button class="btn-main" id="notif-save-btn" onclick="saveNotifPrefs()">حفظ التفضيلات</button>
-          <div id="notif-prefs-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-top:10px;border:1.5px solid"></div>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اختر التخصصات لتصلك إشعارات</p>
+          <div id="cats-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
+          <button class="btn btn-blue btn-full" id="notif-save-btn" onclick="saveNotifPrefs()">حفظ التفضيلات</button>
+          <div id="notif-prefs-alert" style="display:none;margin-top:8px;padding:9px 12px;border-radius:var(--r);font-size:12px;font-weight:700;border:1px solid"></div>
         </div>
       </div>
-
-      <!-- إعدادات الإشعارات العامة -->
       <div class="card">
-        <div class="ch"><h3>إعدادات الإشعارات</h3></div>
-        <div class="cb" style="padding:0">
-          <div class="settings-item"><span>إشعارات المناقصات الجديدة</span><button class="toggle on" id="t-tenders" onclick="this.classList.toggle('on')"></button></div>
-          <div class="settings-item"><span>إشعارات قبول العروض</span><button class="toggle on" id="t-bids" onclick="this.classList.toggle('on')"></button></div>
-          <div class="settings-item"><span>إشعارات الرسائل</span><button class="toggle on" id="t-msgs" onclick="this.classList.toggle('on')"></button></div>
-          <div class="settings-item"><span>إشعارات التقييمات</span><button class="toggle" id="t-reviews" onclick="this.classList.toggle('on')"></button></div>
+        <div class="cb">
+          <button class="btn btn-danger btn-full" onclick="logout()">تسجيل الخروج</button>
         </div>
       </div>
     </div>
-
-    <!-- NOTIFS -->
-    <div class="page" id="page-notifs">
-      <div class="card">
-        <div class="ch"><h3>الإشعارات</h3><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button></div>
-        <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
-      </div>
-    </div>
-
   </div>
 </div>
 
-<div class="bnav"><div class="bnav-inner">
-  <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span class="bt">الرئيسية</span></button>
-  <button class="bni" id="bn-browse" onclick="show('browse',null,'browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="bt">تصفح</span></button>
-  <button class="bni" id="bn-my-bids" onclick="show('my-bids',null,'my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="bt">عروضي</span></button>
-  <button class="bni" id="bn-messages" onclick="show('messages',null,'messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bt">الرسائل</span></button>
-  <button class="bni" id="bn-notifs" onclick="show('notifs',null,'notifs')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="bt">إشعارات</span></button>
+<!-- NOTIFS -->
+<div class="page" id="page-notifs">
+  <div style="font-size:18px;font-weight:900;margin-bottom:14px">الإشعارات</div>
+  <div class="card">
+    <div class="ch"><h3>الإشعارات</h3><button onclick="markAllRead()" style="font-size:12px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">تحديد الكل كمقروء</button></div>
+    <div id="notifs-list"><div class="loading">جاري التحميل...</div></div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<div class="mob-nav"><div class="mob-nav-inner">
+  <button class="mni on" id="mn-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
+  <button class="mni" id="mn-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>تصفح</span></button>
+  <button class="mni" id="mn-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>عروضي</span></button>
+  <button class="mni" id="mn-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
+  <button class="mni" id="mn-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ملفي</span></button>
 </div></div>
 
-<div class="toast" id="toast"></div>
+<div class="toast-p" id="toast"></div>
 
-<script>
+
 const API = 'https://manaqasati-production.up.railway.app';
 let user = JSON.parse(localStorage.getItem('user') || '{}');
 let token = localStorage.getItem('token') || '';
@@ -638,7 +560,7 @@ function show(pg, el, key) {
   if (el) el.className = 'ni on';
   if (key) { const b = document.getElementById('bn-' + key); if (b) b.className = 'bni on'; }
   const titles = { home: 'الرئيسية', browse: 'تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
-  document.getElementById('pageTitle').textContent = titles[pg] || '';
+  document.getElementById('pageTitle') || {textContent:''}.textContent = titles[pg] || '';
   if (pg === 'home') loadHome();
   if (pg === 'browse') loadTenders();
   if (pg === 'my-bids') loadMyBids();
@@ -731,39 +653,133 @@ function bidCard(b) {
 }
 
 // ── BROWSE ──
-async function loadTenders() {
-  document.getElementById('tenders-list').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  const cats = ['الكل', ...CATS.slice(0, 8)];
-  document.getElementById('cat-filters').innerHTML = cats.map((c, i) => {
-    const isOn = (i === 0 && activeCat === 'all') || (c === activeCat);
-    return `<button onclick="setCat('${i === 0 ? 'all' : c}',this)" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:${isOn ? 'var(--prov)' : 'var(--white)'};color:${isOn ? '#fff' : 'var(--t3)'};transition:.15s;margin:2px">${c}</button>`;
-  }).join('');
-  try {
-    const url = API + '/api/requests' + (activeCat !== 'all' ? '?category=' + encodeURIComponent(activeCat) : '');
-    const r = await fetch(url, hdr());
-    const ts = safeArr(await r.json());
-    document.getElementById('tenders-list').innerHTML = ts.length ? ts.map(t => `
-      <div class="tender-item" onclick="openTender(${t.id})">
-        <div class="ti-top"><div class="ti-title">${t.title}</div><span class="tag t-open">نشط</span></div>
-        <div class="ti-meta">
-          ${t.city ? `<span class="rm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
-          ${t.category ? `<span class="rm">${t.category}</span>` : ''}
-          ${t.budget_max ? `<span class="rm">${fpr(t.budget_max)}</span>` : ''}
-          <span class="rm">${ago(t.created_at)}</span>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn btn-p btn-sm" onclick="event.stopPropagation();openTender(${t.id})">تقديم عرض</button>
-          <button class="btn btn-gh btn-sm" onclick="event.stopPropagation();openTender(${t.id})">عرض التفاصيل</button>
-        </div>
-      </div>`).join('') : emptyH('لا توجد مناقصات', 'جرب تصنيفاً مختلفاً');
-  } catch { document.getElementById('tenders-list').innerHTML = emptyH('تعذر التحميل', ''); }
-}
-function setCat(cat) { activeCat = cat; loadTenders(); }
+let allTenders = [], browseTimer = null;
 
+async function loadTenders() {
+  const listEl = document.getElementById('tenders-list');
+  const countEl = document.getElementById('browse-count');
+  if (listEl) listEl.innerHTML = '<div class="loading" style="padding:40px;text-align:center">جاري التحميل...</div>';
+
+  try {
+    const city = document.getElementById('city-filter')?.value?.trim() || '';
+    let url = API + '/api/requests';
+    const params = [];
+    if (activeCat !== 'all') params.push('category=' + encodeURIComponent(activeCat));
+    if (city) params.push('city=' + encodeURIComponent(city));
+    if (params.length) url += '?' + params.join('&');
+
+    const r = await fetch(url, hdr());
+    let ts = safeArr(await r.json());
+
+    // فلتر الميزانية
+    const bMin = parseInt(document.getElementById('budget-min')?.value) || 0;
+    const bMax = parseInt(document.getElementById('budget-max')?.value) || 0;
+    if (bMin) ts = ts.filter(t => !t.budget_max || t.budget_max >= bMin);
+    if (bMax) ts = ts.filter(t => !t.budget_max || t.budget_max <= bMax);
+
+    // بحث نصي
+    const q = document.getElementById('browse-search')?.value?.trim()?.toLowerCase() || '';
+    if (q) ts = ts.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q));
+
+    allTenders = ts;
+
+    // بناء فلاتر الفئات مع العدد
+    const catCounts = {};
+    ts.forEach(t => { if (t.category) catCounts[t.category] = (catCounts[t.category]||0)+1; });
+    const fcAll = document.getElementById('fc-all-cnt');
+    if (fcAll) fcAll.textContent = ts.length;
+    const catList = document.getElementById('cat-filter-list');
+    if (catList) {
+      catList.innerHTML = CATS.filter(c => catCounts[c]).map(c => `
+        <button class="filter-chip${activeCat===c?' on':''}" onclick="setCat('${c}',this)">
+          ${c} <span class="filter-chip-count">${catCounts[c]||0}</span>
+        </button>`).join('');
+    }
+
+    if (countEl) countEl.textContent = ts.length + ' مشروع متاح';
+
+    if (!ts.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:60px 20px;background:var(--white);border-radius:14px;border:1px solid var(--border)">
+        <div style="font-size:40px;margin-bottom:12px">🔍</div>
+        <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px">لا توجد مشاريع</div>
+        <div style="font-size:13px;color:var(--t3)">جرب تغيير الفلاتر أو تصفح الكل</div>
+        <button onclick="clearFilters()" style="margin-top:14px;padding:9px 20px;background:var(--prov);color:#fff;border:none;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer">عرض الكل</button>
+      </div>`;
+      return;
+    }
+
+    // جلب عروض المزود لمعرفة أيها قدّم عليها
+    let myBidIds = new Set();
+    try {
+      const mb = await fetch(API + '/api/provider/bids', hdr());
+      const myBids = safeArr(await mb.json());
+      myBids.forEach(b => myBidIds.add(b.request_id));
+    } catch {}
+
+    listEl.innerHTML = ts.map(t => {
+      const hasBid = myBidIds.has(t.id);
+      const desc = t.description ? t.description.substring(0, 120) + (t.description.length > 120 ? '...' : '') : '';
+      return `
+        <div class="tender-card" onclick="openTender(${t.id})">
+          <div class="tender-card-top">
+            <div class="tender-card-title">${t.title}</div>
+            ${hasBid ? '<span style="font-size:10px;background:var(--prov-l);color:var(--prov);padding:3px 10px;border-radius:20px;font-weight:800;white-space:nowrap;flex-shrink:0">✓ قدّمت عرض</span>' : ''}
+          </div>
+          ${desc ? `<div class="tender-card-desc">${desc}</div>` : ''}
+          <div class="tender-card-meta">
+            ${t.city ? `<span class="tender-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
+            ${t.category ? `<span class="tender-meta-item" style="background:var(--bg2);padding:2px 8px;border-radius:6px">${t.category}</span>` : ''}
+            ${t.deadline ? `<span class="tender-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
+          </div>
+          <div class="tender-card-footer">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="tender-bid-count">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                ${t.bid_count||0} عرض
+              </span>
+              <span style="font-size:11px;color:var(--t4)">${ago(t.created_at)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${t.budget_max ? `<span class="tender-budget">${fpr(t.budget_max)}</span>` : ''}
+              ${hasBid
+                ? `<button class="btn-bid-ghost" onclick="event.stopPropagation();openTender(${t.id})">عرضي</button>`
+                : `<button class="btn-bid" onclick="event.stopPropagation();openTender(${t.id})">تقديم عرض</button>`}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--t3)">تعذر التحميل</div>`;
+  }
+}
+
+function setCat(cat, btn) {
+  activeCat = cat;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  else { const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on'); }
+  loadTenders();
+}
+
+function clearFilters() {
+  activeCat = 'all';
+  const s = document.getElementById('browse-search'); if (s) s.value = '';
+  const c = document.getElementById('city-filter'); if (c) c.value = '';
+  const bmin = document.getElementById('budget-min'); if (bmin) bmin.value = '';
+  const bmax = document.getElementById('budget-max'); if (bmax) bmax.value = '';
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+  const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on');
+  loadTenders();
+}
+
+function searchTenders() {
+  clearTimeout(browseTimer);
+  browseTimer = setTimeout(loadTenders, 350);
+}
 // ── TENDER DETAIL ──
 async function openTender(id) {
   show('tender-detail', null, null);
-  document.getElementById('pageTitle').textContent = 'تفاصيل المناقصة';
+  document.getElementById('pageTitle') || {textContent:''}.textContent = 'تفاصيل المناقصة';
   document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
     const [rReq, rBids] = await Promise.all([
@@ -1053,15 +1069,15 @@ async function loadMessages() {
     return `<div class="thread${isOn ? ' on' : ''}" id="prov-thread-${otherId}-${c.request_id}"
       onclick="loadChatWith(${otherId},'${(c.other_name||'العميل').replace(/'/g,'')}',${c.request_id})">
       <div style="position:relative;flex-shrink:0">
-        <div class="thread-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
+        <div class="thr-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
         ${unread > 0 ? `<span style="position:absolute;top:-3px;left:-3px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${unread}</span>` : ''}
       </div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-          <div class="thread-nm">${c.other_name || 'العميل'}</div>
+          <div class="thr-name">${c.other_name || 'العميل'}</div>
           <div style="font-size:10px;color:var(--t4);flex-shrink:0">${c.last_msg_at ? ago(c.last_msg_at) : ''}</div>
         </div>
-        <div class="thread-last">${c.last_msg || c.request_title}</div>
+        <div class="thr-last">${c.last_msg || c.request_title}</div>
         <div style="margin-top:3px">
           ${isAcc
             ? '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:1px 6px;border-radius:8px;font-weight:700">✅ مقبول</span>'
@@ -1095,16 +1111,16 @@ async function loadChatWith(clientId, clientName, requestId) {
     <div style="background:var(--success-l);border-bottom:2px solid var(--success-m);padding:8px 14px;flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041">
       ✅ تم قبول عرضك — تواصل مع العميل لبدء التنفيذ
     </div>
-    <div class="chat-msgs" id="msgs-box"><div class="loading">جاري التحميل...</div></div>
+    <div class="msgs-area" id="msgs-area"><div class="loading">جاري التحميل...</div></div>
     <div id="prov-typing-ind" style="display:none;align-items:center;gap:6px;padding:6px 14px;background:var(--bg);border-top:1px solid var(--border)">
       <div style="display:flex;gap:3px">${[0,150,300].map(d=>`<span style="width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bounce .9s ${d}ms infinite"></span>`).join('')}</div>
       <span style="font-size:11px;color:var(--t3)">${clientName} يكتب...</span>
     </div>
     <div class="chat-input-row">
-      <input class="chat-inp" id="chat-inp" placeholder="اكتب رسالتك..."
+      <input class="chat-input" id="chat-inp" placeholder="اكتب رسالتك..."
         oninput="onProvTyping(${clientId},${requestId})"
         onkeydown="if(event.key==='Enter'){sendMsg(${clientId},${requestId});}">
-      <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">
+      <button class="chat-send-btn" onclick="sendMsg(${clientId},${requestId})">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>`;
@@ -1328,6 +1344,6 @@ async function markAllRead() {
 
 setInterval(loadNotifCount, 30000);
 loadHome();
-</script>
+
 </body>
 </html>
