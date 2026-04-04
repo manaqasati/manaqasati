@@ -195,6 +195,11 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewer_id INTEGER REFERENCES users(id)`,
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewed_id INTEGER REFERENCES users(id)`,
+    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS type VARCHAR(30)`,
+    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50)`,
+    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id INTEGER`,
   ];
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
@@ -702,13 +707,13 @@ async function handleSubmitBid(req, res, requestId) {
       await sendEmail(client.rows[0].email, `💼 عرض جديد: ${reqData.rows[0].title}`,
         emailTpl('وصلك عرض جديد! 💼',
           `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك <strong>"${reqData.rows[0].title}"</strong>:</p>
-           <div class="hl">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
+           <div class="hl">السعر: <strong>${Number(price).toLocaleString('en-US')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
           '👀 مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
     }
     if (provider.rows[0]?.email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
         emailTpl('تم تقديم عرضك ✅',
-          `<div class="ok">السعر: ${Number(price).toLocaleString('ar-SA')} ر.س | المدة: ${days} يوم</div>
+          `<div class="ok">السعر: ${Number(price).toLocaleString('en-US')} ر.س | المدة: ${days} يوم</div>
            <p>سنُخطرك فور رد العميل.</p>`,
           '📋 عروضي', `${SITE_URL}/dashboard-provider.html`));
     }
@@ -741,13 +746,13 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
         emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
-          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
+          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
           '💬 تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
     }
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
         emailTpl('تم إسناد مشروعك 🎉',
-          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
+          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
           '💬 تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
     }
     const rejected = await pool.query(
@@ -926,24 +931,33 @@ app.post('/api/messages', auth, async (req, res) => {
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment, type } = req.body;
-    const exists = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
-    if (exists.rows.length) return res.status(400).json({ message: 'قيّمت هذا الطلب مسبقاً' });
+    if (!request_id || !reviewed_id || !rating) {
+      return res.status(400).json({ message: 'البيانات غير مكتملة' });
+    }
+    // تحقق هل قيّم مسبقاً - آمن في حالة reviewer_id غير موجود
+    try {
+      const exists = await pool.query(
+        'SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2',
+        [request_id, req.user.id]
+      );
+      if (exists.rows.length) {
+        return res.status(400).json({ message: 'قيّمت هذا الطلب مسبقاً' });
+      }
+    } catch(checkErr) { /* reviewer_id column might not exist yet in old DB */ }
     const r = await pool.query(
       'INSERT INTO reviews(request_id,reviewer_id,reviewed_id,rating,comment,type) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
-      [request_id, req.user.id, reviewed_id, rating, comment||null, type||'client_to_provider']);
-    const reviewer = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-    await notify(reviewed_id, `⭐ تقييم جديد (${rating}/5)`, `${reviewer.rows[0].name} قيّمك بـ ${rating} نجوم`, 'review', request_id);
-    const reviewed = await pool.query('SELECT name,email FROM users WHERE id=$1', [reviewed_id]);
-    if (reviewed.rows[0]?.email) {
-      const starsText = '★'.repeat(rating)+'☆'.repeat(5-rating);
-      await sendEmail(reviewed.rows[0].email, `⭐ تقييم جديد: ${starsText}`,
-        emailTpl(`تقييم جديد ${starsText}`,
-          `<p>قيّمك <strong>${reviewer.rows[0].name}</strong> بـ <strong>${rating} من 5 نجوم</strong>.</p>
-           ${comment?`<div class="hl">"${comment}"</div>`:''}`,
-          '⭐ تقييماتي', `${SITE_URL}/dashboard-provider.html`));
-    }
+      [request_id, req.user.id, reviewed_id, rating, comment||null, type||'client_to_provider']
+    );
+    try {
+      const rv = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+      const rname = rv.rows.length ? rv.rows[0].name : 'مستخدم';
+      await notify(reviewed_id, 'تقييم جديد (' + rating + '/5)', rname + ' قيّمك');
+    } catch(ne) {}
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) {
+    console.error('POST /reviews error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.get('/api/reviews/provider/:id', async (req, res) => {
