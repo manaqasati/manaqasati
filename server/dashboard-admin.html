@@ -1561,18 +1561,19 @@ async function loadProvs(){
   document.getElementById('prov-tbody').innerHTML=list.map(p=>{
     let avg=parseFloat(p.avg_rating)||0;
     let badge=p.badge&&p.badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${p.badge}</span>`:'—';
-    const specs = Array.isArray(p.specialties)&&p.specialties.length ? p.specialties.slice(0,2).join('، ')+(p.specialties.length>2?' +'+( p.specialties.length-2):'') : '—';
+    const specs = Array.isArray(p.specialties)&&p.specialties.length ? p.specialties.join('، ') : '—';
     return`<tr>
       <td>
-        <strong style="cursor:pointer" onclick="showProvContact(${p.id},'${(p.name||'').replace(/'/g,'')}')">${p.name}</strong>
-        ${p.company_name?`<div style="font-size:10px;color:var(--blue);font-weight:600">${p.company_name}</div>`:''}
-        ${p.phone?`<div style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px"><a href="tel:${p.phone}" style="color:var(--blue);font-weight:700">${p.phone}</a></div>`:''}
+        <div style="font-size:13px;font-weight:800;color:var(--t)">${p.name}</div>
+        ${p.company_name?`<div style="font-size:11px;color:var(--blue);font-weight:600">${p.company_name}</div>`:''}
+        <a href="mailto:${p.email}" style="font-size:11px;color:var(--t3);text-decoration:none;display:block;margin-top:2px">${p.email}</a>
+        ${p.phone?`<a href="tel:${p.phone}" style="font-size:12px;color:var(--blue);font-weight:700;text-decoration:none">📞 ${p.phone}</a>`:'<span style="font-size:11px;color:var(--t4)">لا يوجد جوال</span>'}
       </td>
-      <td>${p.city||'—'}</td>
-      <td><div style="font-size:12px;color:var(--t2)">${specs}</div></td>
-      <td><span style="color:var(--accent)">${avg>0?stars(avg)+' '+avg.toFixed(1):'—'}</span><div style="font-size:10px;color:var(--t4)">${p.review_count||0} تقييم</div></td>
-      <td style="font-weight:700">${p.completed_projects||0}</td>
-      <td>${p.is_active?'<span style="color:var(--success);font-size:12px;font-weight:700">● نشط</span>':'<span style="color:var(--danger);font-size:12px;font-weight:700">● موقوف</span>'}</td>
+      <td><div style="font-weight:600">${p.city||'—'}</div></td>
+      <td><div style="font-size:12px;color:var(--t2);max-width:200px;line-height:1.6">${specs}</div></td>
+      <td><span style="color:var(--accent);font-weight:700">${avg>0?stars(avg)+' '+avg.toFixed(1):'—'}</span><div style="font-size:10px;color:var(--t4)">${p.review_count||0} تقييم</div></td>
+      <td style="font-weight:700;text-align:center">${p.completed_projects||0}<div style="font-size:10px;color:var(--t4)">${p.bid_count||0} عرض</div></td>
+      <td>${p.is_active?'<span style="color:var(--success);font-weight:800">● نشط</span>':'<span style="color:var(--danger);font-weight:800">● موقوف</span>'}</td>
       <td>${badge}</td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn-sm bs-a" onclick="openBadge(${p.id})">🏆 وسام</button>
@@ -1580,6 +1581,32 @@ async function loadProvs(){
       </div></td>
     </tr>`;
   }).join('');
+}
+
+function exportProvCSV() {
+  var city   = (document.getElementById('prov-city-filter')||{}).value||'';
+  var spec   = (document.getElementById('prov-spec-filter')||{}).value||'';
+  var url    = API + '/api/admin/export/providers?ts=' + Date.now();
+  if (city) url += '&city=' + encodeURIComponent(city);
+  if (spec) url += '&specialty=' + encodeURIComponent(spec);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'providers.csv';
+  // للملفات التي تحتاج auth header نفتحها في نافذة جديدة
+  // نبني URL مع token
+  fetch(url, hdr())
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var burl = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = burl;
+      link.download = 'مزودو_الخدمة.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function(){ URL.revokeObjectURL(burl); }, 1000);
+    })
+    .catch(function(){ showToast('تعذر التصدير'); });
 }
 function clearProvFilters() {
   var c = document.getElementById('prov-city-filter');
