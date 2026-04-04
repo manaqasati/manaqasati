@@ -829,7 +829,7 @@ p  { color: var(--t2); line-height: 1.75 }
 ───────────────────────── */
 .mob-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); z-index: 100; padding: 2px 0 calc(env(safe-area-inset-bottom,0px)+2px) }
 .mob-nav-inner { display: flex }
-.mob-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px; border: none; background: none; cursor: pointer; color: var(--t3); transition: .12s; font-family: inherit }
+.mob-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 1px; border: none; background: none; cursor: pointer; color: var(--t3); transition: .12s; font-family: inherit; min-width: 0 }
 .mob-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
 .mob-btn span { font-size: 10px; font-weight: 700; letter-spacing: .1px }
 .mob-btn.on { color: var(--blue) }
@@ -1155,22 +1155,26 @@ p  { color: var(--t2); line-height: 1.75 }
 
 <div class="mob-nav"><div class="mob-nav-inner">
   <button class="mob-btn on" id="mn-home" onclick="go('home',null)">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span>
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    <span>الرئيسية</span>
   </button>
   <button class="mob-btn" id="mn-requests" onclick="go('requests',null)">
-    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>مشاريعي</span>
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <span>مشاريعي</span>
   </button>
   <button class="mob-btn" id="mn-new" onclick="showAgree()" style="position:relative">
-    <div style="position:absolute;top:3px;width:42px;height:42px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(20,115,230,.4)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <div style="position:absolute;top:2px;width:48px;height:48px;background:linear-gradient(135deg,var(--blue),#0d5fc9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(20,115,230,.5)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </div>
-    <span style="margin-top:18px">جديد</span>
+    <span style="margin-top:24px;font-size:9px;font-weight:800;color:var(--blue)">مشروع جديد</span>
   </button>
   <button class="mob-btn" id="mn-messages" onclick="go('messages',null)">
-    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span>
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span>رسائل</span>
   </button>
-  <button class="mob-btn" id="mn-notifs" onclick="go('notifs',null)">
-    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span>إشعارات</span>
+  <button class="mob-btn" onclick="logout()" style="color:#dc2626">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span>خروج</span>
   </button>
 </div></div>
 <div class="toast" id="toast"></div>
