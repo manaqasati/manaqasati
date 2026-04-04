@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <title>مناقصة — لوحة التحكم</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ╔══════════════════════════════════════════════════
    ║  مناقصة — Design System v5 — World Class
@@ -905,10 +906,7 @@ p  { color: var(--t2); line-height: 1.75 }
     <button class="ni" id="ni-notify" onclick="go('notify',this)">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M22 17H2a3 3 0 004-3V9a8 8 0 0116 0v5a3 3 0 004 3"/></svg></div>إرسال إشعار
     </button>
-    <button class="ni" id="ni-add-user" onclick="go('add-user',this)">
-      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>إضافة مستخدم
-    </button>
-  </div>
+      </div>
   <div class="side-foot">
     <button class="logout-btn" onclick="logout()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1583,30 +1581,76 @@ async function loadProvs(){
   }).join('');
 }
 
-function exportProvCSV() {
-  var city   = (document.getElementById('prov-city-filter')||{}).value||'';
-  var spec   = (document.getElementById('prov-spec-filter')||{}).value||'';
-  var url    = API + '/api/admin/export/providers?ts=' + Date.now();
-  if (city) url += '&city=' + encodeURIComponent(city);
-  if (spec) url += '&specialty=' + encodeURIComponent(spec);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'providers.csv';
-  // للملفات التي تحتاج auth header نفتحها في نافذة جديدة
-  // نبني URL مع token
-  fetch(url, hdr())
-    .then(function(r) { return r.blob(); })
-    .then(function(blob) {
-      var burl = URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      link.href = burl;
-      link.download = 'مزودو_الخدمة.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(function(){ URL.revokeObjectURL(burl); }, 1000);
-    })
-    .catch(function(){ showToast('تعذر التصدير'); });
+async function exportProvCSV() {
+  var city = (document.getElementById('prov-city-filter')||{}).value||'';
+  var spec = (document.getElementById('prov-spec-filter')||{}).value||'';
+
+  var btn = document.querySelector('[onclick="exportProvCSV()"]');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ جاري التحميل...'; }
+
+  try {
+    var url = API + '/api/admin/export/providers';
+    var params = [];
+    if (city) params.push('city=' + encodeURIComponent(city));
+    if (spec) params.push('specialty=' + encodeURIComponent(spec));
+    if (params.length) url += '?' + params.join('&');
+
+    var r = await fetch(url, hdr());
+    var data = await r.json();
+
+    if (!Array.isArray(data) || !data.length) {
+      showToast('لا يوجد مزودون للتصدير');
+      if (btn) { btn.disabled=false; btn.textContent='⬇ تصدير Excel'; }
+      return;
+    }
+
+    // بناء صفوف البيانات
+    var rows = data.map(function(p) {
+      return {
+        'الاسم': p.name || '',
+        'البريد الإلكتروني': p.email || '',
+        'رقم الجوال': p.phone || '',
+        'المدينة': p.city || '',
+        'اسم المنشأة': p.company_name || '',
+        'التخصصات': Array.isArray(p.specialties) ? p.specialties.join(' | ') : '',
+        'الوسام': p.badge && p.badge !== 'none' ? p.badge : '',
+        'الحالة': p.is_active ? 'نشط' : 'موقوف',
+        'تاريخ التسجيل': p.created_at ? new Date(p.created_at).toLocaleDateString('ar-SA') : '',
+        'التقييم': parseFloat(p.avg_rating||0).toFixed(1),
+        'عدد العروض': parseInt(p.bid_count)||0,
+        'مشاريع مكتملة': parseInt(p.completed_projects)||0
+      };
+    });
+
+    // بناء ملف Excel بـ SheetJS
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.json_to_sheet(rows);
+
+    // عرض الأعمدة
+    ws['!cols'] = [
+      {wch:22},{wch:30},{wch:16},{wch:14},{wch:22},
+      {wch:35},{wch:12},{wch:10},{wch:16},{wch:10},{wch:12},{wch:16}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'المزودون');
+
+    // اسم الملف
+    var today = new Date();
+    var dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    var fileName = 'مزودو_الخدمة';
+    if (city) fileName += '_' + city;
+    if (spec) fileName += '_' + spec;
+    fileName += '_' + dateStr + '.xlsx';
+
+    XLSX.writeFile(wb, fileName);
+    showToast('✅ تم تحميل ' + rows.length + ' مزود بنجاح');
+
+  } catch(e) {
+    console.error('Excel export error:', e);
+    showToast('تعذر التصدير: ' + e.message);
+  }
+
+  if (btn) { btn.disabled=false; btn.textContent='⬇ تصدير Excel'; }
 }
 function clearProvFilters() {
   var c = document.getElementById('prov-city-filter');
