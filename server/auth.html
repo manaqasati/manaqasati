@@ -28,7 +28,9 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
 .fg input::placeholder{color:#94a3b8}
 .pw-wrap{position:relative}
 .pw-wrap input{padding-left:42px}
-.pw-eye{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:17px;padding:2px;line-height:1}
+.pw-eye{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:#f1f5f9;border:none;cursor:pointer;color:#64748b;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:.12s}
+.pw-eye:hover{background:#e2e8f0;color:#1473E6}
+.pw-eye svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .role-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .rc{border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:.15s;user-select:none}
 .rc:hover{border-color:#93c5fd;background:#eff6ff}
@@ -94,7 +96,9 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
       <label>كلمة المرور *</label>
       <div class="pw-wrap">
         <input id="i-pass" type="password" placeholder="كلمة المرور">
-        <button class="pw-eye" type="button" onclick="togglePass('i-pass',this)">👁</button>
+        <button class="pw-eye" type="button" onclick="togglePass('i-pass',this)" title="إظهار/إخفاء">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
       </div>
     </div>
 
@@ -103,7 +107,9 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
       <label>تأكيد كلمة المرور *</label>
       <div class="pw-wrap">
         <input id="i-pass2" type="password" placeholder="أعد كتابة كلمة المرور">
-        <button class="pw-eye" type="button" onclick="togglePass('i-pass2',this)">👁</button>
+        <button class="pw-eye" type="button" onclick="togglePass('i-pass2',this)" title="إظهار/إخفاء">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
       </div>
     </div>
 
@@ -165,8 +171,12 @@ function selRole(r) {
 
 function togglePass(id, btn) {
   var inp = document.getElementById(id);
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  var isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  // عين مفتوحة = نص ظاهر | عين مشطوبة = نص مخفي
+  var eyeOpen  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var eyeClose = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  btn.innerHTML = isPass ? eyeOpen : eyeClose;
 }
 
 function setAl(msg, type) {
