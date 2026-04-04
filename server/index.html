@@ -219,7 +219,6 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
   <div class="filter-row">
     <button class="ftab on" onclick="filter('all',this)">🗂 الكل</button>
     <button class="ftab" onclick="filter('open',this)">🟢 مفتوح للعروض</button>
-    <button class="ftab" onclick="filter('in_progress',this)">🟡 قيد التنفيذ</button>
     <button class="ftab" onclick="filter('completed',this)">🟣 تم الترسية</button>
   </div>
 
@@ -330,8 +329,7 @@ function filter(st, btn) {
   document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
   if (btn) btn.classList.add('on');
   PAGE = 9;
-  CUR = st === 'all'       ? ALL
-      : st === 'open'      ? ALL.filter(function(p){return p.status==='open';})
+  CUR = st === 'open'      ? ALL.filter(function(p){return p.status==='open';})
       : st === 'completed' ? ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';})
       : ALL;
   render(CUR);
@@ -347,14 +345,11 @@ async function load() {
     CUR = ALL;
 
     var open = ALL.filter(function(p){return p.status==='open';}).length;
-    var done = ALL.filter(function(p){return p.status==='completed';}).length;
+    var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
 
-    // مشروع منشور = حقيقي + 567
-    var totalDisplay = ALL.length + 567;
-    // مفتوح = حقيقي فقط
-    var openDisplay  = open;
-    // تم الترسية = 567 ثابت
-    var doneDisplay  = 567;
+    var totalDisplay = ALL.length + 567;     // كل المشاريع + 567
+    var openDisplay  = open;                  // مفتوح: حقيقي فقط
+    var doneDisplay  = done + 567;            // تم الترسية: حقيقي + 567
 
     document.getElementById('hs-req').textContent  = totalDisplay.toLocaleString('en-US');
     document.getElementById('hs-open').textContent = openDisplay;
