@@ -1209,6 +1209,39 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+app.post('/api/admin/users', auth, adminOnly, async (req, res) => {
+  try {
+    const { name, email, password, role, phone, city, specialties } = req.body;
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'الاسم والبريد وكلمة المرور والدور مطلوبة' });
+    }
+    const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    if (exists.rows.length) return res.status(400).json({ message: 'البريد الإلكتروني مستخدم مسبقاً' });
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+    const r = await pool.query(
+      `INSERT INTO users(name,email,password,role,phone,city,specialties,is_active)
+       VALUES($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id,name,email,role,phone,city,is_active,created_at`,
+      [name, email, hashed, role, phone||null, city||null,
+       specialties && specialties.length ? specialties : null]
+    );
+    res.json(r.rows[0]);
+  } catch(e) {
+    console.error('POST /admin/users error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['admin','client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صالح' });
+    const r = await pool.query('UPDATE users SET role=$1 WHERE id=$2 RETURNING id,name,role', [role, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query('UPDATE users SET is_active=NOT is_active WHERE id=$1 RETURNING id,name,is_active', [req.params.id]);
@@ -1266,19 +1299,50 @@ app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, role, title, body, type } = req.body;
+    const { user_id, user_ids, role, title, body, type } = req.body;
     const VALID_ROLES = ['client','provider','admin'];
+
+    let targets = [];
+
     if (user_id) {
-      await notify(user_id, title, body, type||'admin', null);
+      // مستخدم واحد
+      const u = await pool.query('SELECT id,name,email FROM users WHERE id=$1', [user_id]);
+      targets = u.rows;
+    } else if (user_ids && Array.isArray(user_ids) && user_ids.length) {
+      // قائمة محددة من المستخدمين (من فلترة المزودين)
+      const placeholders = user_ids.map((_,i) => '$'+(i+1)).join(',');
+      const u = await pool.query(`SELECT id,name,email FROM users WHERE id IN (${placeholders})`, user_ids);
+      targets = u.rows;
     } else {
-      let q = 'SELECT id FROM users WHERE is_active=TRUE';
+      // كل مستخدمي دور معين
+      let q = 'SELECT id,name,email FROM users WHERE is_active=TRUE';
       const params = [];
-      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$1`; }
-      const users = await pool.query(q, params);
-      for (const u of users.rows) await notify(u.id, title, body, type||'admin', null);
+      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ' AND role=$1'; }
+      const u = await pool.query(q, params);
+      targets = u.rows;
     }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+
+    let sent = 0, emailSent = 0;
+    for (const u of targets) {
+      // إشعار داخلي
+      await notify(u.id, title, body, type||'admin', null);
+      sent++;
+      // إيميل
+      if (u.email) {
+        const html = emailTpl(
+          title,
+          `<p style="font-size:15px;line-height:1.8;color:#374151">${body}</p>`,
+          'زيارة المنصة', SITE_URL
+        );
+        const ok = await sendEmail(u.email, title, html);
+        if (ok) emailSent++;
+      }
+    }
+    res.json({ ok: true, sent, emailSent });
+  } catch(e) {
+    console.error('POST /admin/notify error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 
