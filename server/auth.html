@@ -9,52 +9,40 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f2545,#1473E6);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .card{background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.hd{background:linear-gradient(135deg,#0f2545,#1473E6);padding:28px 28px 22px;text-align:center}
-.logo{font-size:24px;font-weight:900;color:#fff}.logo b{color:#fbbf24}
-.hd-t{font-size:15px;font-weight:700;color:rgba(255,255,255,.8);margin-top:6px}
-.hd-s{font-size:12px;color:rgba(255,255,255,.5);margin-top:3px}
+.hd{background:linear-gradient(135deg,#0f2545,#1473E6);padding:28px 28px 22px;text-align:center;position:relative;overflow:hidden}
+.hd::before{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);top:-50px;left:-30px}
+.logo{font-size:24px;font-weight:900;color:#fff;position:relative}.logo b{color:#fbbf24}
+.hd-t{font-size:15px;font-weight:700;color:rgba(255,255,255,.8);margin-top:6px;position:relative}
+.hd-s{font-size:12px;color:rgba(255,255,255,.5);margin-top:3px;position:relative}
 .tabs{display:flex;background:#f1f5f9;padding:4px;gap:4px}
 .tab{flex:1;padding:10px;border:none;background:transparent;border-radius:8px;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;font-family:inherit;transition:.15s}
 .tab.on{background:#fff;color:#1473E6;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .body{padding:24px 28px}
-.step{display:none}.step.on{display:block}
 .al{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;display:none;border:1px solid}
 .al.err{display:block;background:#fef2f2;color:#dc2626;border-color:#fca5a5}
 .al.ok{display:block;background:#f0fdf4;color:#16a34a;border-color:#86efac}
-.al.info{display:block;background:#eff6ff;color:#1473E6;border-color:#bfdbfe}
-.fg{margin-bottom:13px}
-.fg label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:5px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px}
 .fg input,.fg select{width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;font-family:inherit;outline:none;transition:.15s}
 .fg input:focus,.fg select:focus{border-color:#1473E6;box-shadow:0 0 0 3px rgba(20,115,230,.1)}
 .fg input::placeholder{color:#94a3b8}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-left:42px}
+.pw-eye{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:17px;padding:2px;line-height:1}
 .role-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.rc{border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:.15s}
+.rc{border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:.15s;user-select:none}
 .rc:hover{border-color:#93c5fd;background:#eff6ff}
 .rc.on{border-color:#1473E6;background:#EBF3FD}
 .rc .ico{font-size:24px;margin-bottom:5px}
 .rc .nm{font-size:13px;font-weight:800;color:#0f172a}
 .rc .ds{font-size:10px;color:#64748b;margin-top:2px}
-/* OTP BOXES */
-.otp-info{background:#EBF3FD;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center;margin-bottom:16px}
-.otp-em{font-size:14px;font-weight:800;color:#0f172a}
-.otp-sub{font-size:11px;color:#64748b;margin-top:3px}
-/* CODE DISPLAY BOX */
-.code-display{display:none !important}
-.code-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}
-.code-num{font-size:42px;font-weight:900;color:#fbbf24;letter-spacing:12px;font-family:monospace;margin-bottom:6px}
-.code-note{font-size:11px;color:rgba(255,255,255,.6)}
-.otp-boxes{display:flex;gap:8px;justify-content:center;margin:16px 0}
-.ob{width:48px;height:56px;border:2px solid #e2e8f0;border-radius:10px;text-align:center;font-size:24px;font-weight:900;color:#0f172a;outline:none;transition:.15s;font-family:monospace}
-.ob:focus{border-color:#1473E6;box-shadow:0 0 0 3px rgba(20,115,230,.12)}
-.timer-row{font-size:12px;color:#64748b;text-align:center;margin-bottom:14px}
-.timer-row strong{color:#dc2626}
 .btn-main{width:100%;padding:13px;background:#1473E6;border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-main:hover{background:#0d5fc9}.btn-main:disabled{opacity:.5;cursor:not-allowed}
-.btn-back{background:none;border:none;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:6px;margin-top:8px}
-.btn-resend{background:none;border:none;color:#1473E6;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:4px 8px}
-.btn-resend:disabled{color:#94a3b8;cursor:not-allowed}
+.forgot{text-align:left;margin-top:10px}
+.forgot button{background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600}
+.forgot button:hover{color:#1473E6}
 .note{font-size:11px;color:#94a3b8;text-align:center;margin-top:12px}
-.note a{color:#1473E6;font-weight:700}
+.note a{color:#1473E6;font-weight:700;text-decoration:none}
 .bh{text-align:center;margin-top:16px;font-size:12px}
 .bh a{color:rgba(255,255,255,.7);font-weight:600}
 .bh a:hover{color:#fff}
@@ -66,7 +54,7 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
   <div class="hd">
     <div class="logo">مناقصة<b>.</b></div>
     <div class="hd-t" id="hd-t">أهلاً بك</div>
-    <div class="hd-s" id="hd-s">سجّل دخولك بدون كلمة مرور</div>
+    <div class="hd-s" id="hd-s">سجّل دخولك لمتابعة مشاريعك</div>
   </div>
   <div class="tabs">
     <button class="tab on" onclick="setMode('login')">تسجيل الدخول</button>
@@ -75,79 +63,75 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
   <div class="body">
     <div class="al" id="al"></div>
 
-    <!-- STEP 1: بيانات -->
-    <div class="step on" id="s1">
-      <div class="role-g" id="role-g" style="display:none">
-        <div class="rc on" id="rc-c" onclick="selRole('client')">
-          <div class="ico">🏗</div><div class="nm">عميل</div><div class="ds">أنشر مشاريع</div>
-        </div>
-        <div class="rc" id="rc-p" onclick="selRole('provider')">
-          <div class="ico">🔧</div><div class="nm">مزود خدمة</div><div class="ds">قدّم عروض</div>
-        </div>
-      </div>
-      <div class="fg" id="fg-name" style="display:none">
-        <label>الاسم الكامل *</label>
-        <input id="i-name" type="text" placeholder="اسمك الكامل">
-      </div>
-      <div class="fg">
-        <label>البريد الإلكتروني *</label>
-        <input id="i-email" type="email" placeholder="example@email.com" inputmode="email">
-      </div>
-      <div class="fg" id="fg-city" style="display:none">
-        <label>المدينة <span style="font-weight:400;color:#94a3b8">(اختياري)</span></label>
-        <select id="i-city">
-          <option value="">اختر مدينتك</option>
-          <option>الرياض</option><option>جدة</option><option>مكة المكرمة</option>
-          <option>المدينة المنورة</option><option>الدمام</option><option>الخبر</option>
-          <option>الطائف</option><option>تبوك</option><option>بريدة</option>
-          <option>أبها</option><option>نجران</option><option>جيزان</option>
-        </select>
-      </div>
-      <button class="btn-main" id="btn1" onclick="doSend()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
-        <span id="btn1-t">إرسال رمز التحقق</span>
-      </button>
-      <p class="note" id="note-login">تسجيل الدخول بدون كلمة مرور — رمز يُرسل لبريدك</p>
-      <p class="note" id="note-reg" style="display:none">بالتسجيل توافق على <a href="#">الشروط والأحكام</a></p>
+    <!-- اسم (تسجيل) -->
+    <div class="fg" id="fg-name" style="display:none">
+      <label>الاسم الكامل *</label>
+      <input id="i-name" type="text" placeholder="اسمك الكامل">
     </div>
 
-    <!-- STEP 2: OTP -->
-    <div class="step" id="s2">
-      <div class="otp-info">
-        <div class="otp-em" id="otp-email">—</div>
-        <div class="otp-sub" id="otp-sub">أرسلنا رمز تحقق من 6 أرقام إلى بريدك</div>
+    <!-- نوع الحساب (تسجيل) -->
+    <div class="role-g" id="role-g" style="display:none">
+      <div class="rc on" id="rc-c" onclick="selRole('client')">
+        <div class="ico">🏗</div>
+        <div class="nm">عميل</div>
+        <div class="ds">أنشر مشاريع واستقبل عروض</div>
       </div>
-
-      <!-- يظهر فقط إذا فشل الإيميل -->
-      <div class="code-display" id="code-box">
-        <div class="code-label">رمز التحقق الخاص بك</div>
-        <div class="code-num" id="code-num">——</div>
-        <div class="code-note">انسخ هذا الرمز وأدخله في الخانات</div>
-      </div>
-
-      <div class="otp-boxes" style="direction:ltr">
-        <input class="ob" id="ob1" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob2')" onkeydown="bck(event,this,'')">
-        <input class="ob" id="ob2" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob3')" onkeydown="bck(event,this,'ob1')">
-        <input class="ob" id="ob3" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob4')" onkeydown="bck(event,this,'ob2')">
-        <input class="ob" id="ob4" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob5')" onkeydown="bck(event,this,'ob3')">
-        <input class="ob" id="ob5" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob6')" onkeydown="bck(event,this,'ob4')">
-        <input class="ob" id="ob6" maxlength="1" inputmode="numeric" oninput="lst(this)"       onkeydown="bck(event,this,'ob5')">
-      </div>
-
-      <div class="timer-row">ينتهي خلال: <strong id="tmr">10:00</strong></div>
-
-      <button class="btn-main" id="btn2" onclick="doVerify()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        <span id="btn2-t">تحقق وأكمل</span>
-      </button>
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
-        <button class="btn-back" onclick="goBack()">← تغيير البريد</button>
-        <button class="btn-resend" id="btn-resend" onclick="doResend()" disabled>
-          إعادة الإرسال (<span id="resend-s">60</span>)
-        </button>
+      <div class="rc" id="rc-p" onclick="selRole('provider')">
+        <div class="ico">🔧</div>
+        <div class="nm">مزود خدمة</div>
+        <div class="ds">قدّم عروض ونفّذ مشاريع</div>
       </div>
     </div>
+
+    <!-- البريد -->
+    <div class="fg">
+      <label>البريد الإلكتروني *</label>
+      <input id="i-email" type="email" placeholder="example@email.com" inputmode="email">
+    </div>
+
+    <!-- كلمة المرور -->
+    <div class="fg">
+      <label>كلمة المرور *</label>
+      <div class="pw-wrap">
+        <input id="i-pass" type="password" placeholder="كلمة المرور">
+        <button class="pw-eye" type="button" onclick="togglePass('i-pass',this)">👁</button>
+      </div>
+    </div>
+
+    <!-- تأكيد كلمة المرور (تسجيل) -->
+    <div class="fg" id="fg-pass2" style="display:none">
+      <label>تأكيد كلمة المرور *</label>
+      <div class="pw-wrap">
+        <input id="i-pass2" type="password" placeholder="أعد كتابة كلمة المرور">
+        <button class="pw-eye" type="button" onclick="togglePass('i-pass2',this)">👁</button>
+      </div>
+    </div>
+
+    <!-- المدينة (تسجيل) -->
+    <div class="fg" id="fg-city" style="display:none">
+      <label>المدينة <span style="font-weight:400;color:#94a3b8">(اختياري)</span></label>
+      <select id="i-city">
+        <option value="">اختر مدينتك</option>
+        <option>الرياض</option><option>جدة</option><option>مكة المكرمة</option>
+        <option>المدينة المنورة</option><option>الدمام</option><option>الخبر</option>
+        <option>الطائف</option><option>تبوك</option><option>بريدة</option>
+        <option>أبها</option><option>نجران</option><option>جيزان</option>
+        <option>حائل</option><option>ينبع</option><option>الجبيل</option>
+      </select>
+    </div>
+
+    <button class="btn-main" id="btn-submit" onclick="doSubmit()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <span id="btn-t">تسجيل الدخول</span>
+    </button>
+
+    <div class="forgot" id="forgot-wrap">
+      <button onclick="doForgot()">نسيت كلمة المرور؟</button>
+    </div>
+
+    <p class="note" id="note-reg" style="display:none">
+      بالتسجيل توافق على <a href="#">شروط الاستخدام</a> و<a href="#">سياسة الخصوصية</a>
+    </p>
   </div>
 </div>
 <div class="bh"><a href="index.html">← العودة للرئيسية</a></div>
@@ -155,24 +139,22 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
 
 <script>
 var API = 'https://manaqasati-production.up.railway.app';
-var MODE = 'login', ROLE = 'client', EMAIL = '';
-v
-var API = 'https://manaqasati-production.up.railway.app';
-var MODE = 'login', ROLE = 'client', EMAIL = '';
-var ti = null, ri = null;
+var MODE = 'login', ROLE = 'client';
 
 function setMode(m) {
   MODE = m;
   var isR = m === 'register';
-  document.querySelectorAll('.tab').forEach(function(t,i){ t.classList.toggle('on', i===(m==='login'?0:1)); });
-  document.getElementById('role-g').style.display   = isR ? 'grid' : 'none';
-  document.getElementById('fg-name').style.display  = isR ? 'block' : 'none';
-  document.getElementById('fg-city').style.display  = isR ? 'block' : 'none';
-  document.getElementById('note-login').style.display = isR ? 'none' : 'block';
+  document.querySelectorAll('.tab').forEach(function(t,i){ t.classList.toggle('on', i===(isR?1:0)); });
+  document.getElementById('fg-name').style.display   = isR ? 'block' : 'none';
+  document.getElementById('role-g').style.display    = isR ? 'grid'  : 'none';
+  document.getElementById('fg-pass2').style.display  = isR ? 'block' : 'none';
+  document.getElementById('fg-city').style.display   = isR ? 'block' : 'none';
+  document.getElementById('forgot-wrap').style.display = isR ? 'none' : 'block';
   document.getElementById('note-reg').style.display  = isR ? 'block' : 'none';
-  document.getElementById('hd-t').textContent  = isR ? 'إنشاء حساب' : 'أهلاً بك';
-  document.getElementById('hd-s').textContent  = isR ? 'انضم لمناقصة' : 'سجّل دخولك بدون كلمة مرور';
-  setAl('','');
+  document.getElementById('hd-t').textContent  = isR ? 'إنشاء حساب جديد' : 'أهلاً بك';
+  document.getElementById('hd-s').textContent  = isR ? 'انضم لمناقصة اليوم' : 'سجّل دخولك لمتابعة مشاريعك';
+  document.getElementById('btn-t').textContent = isR ? 'إنشاء الحساب' : 'تسجيل الدخول';
+  setAl('', '');
 }
 
 function selRole(r) {
@@ -181,162 +163,92 @@ function selRole(r) {
   document.getElementById('rc-p').classList.toggle('on', r==='provider');
 }
 
+function togglePass(id, btn) {
+  var inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
 function setAl(msg, type) {
   var el = document.getElementById('al');
   el.textContent = msg;
   el.className = 'al' + (type ? ' '+type : '');
 }
 
-async function doSend() {
-  EMAIL = (document.getElementById('i-email').value||'').trim();
-  if (!EMAIL || !EMAIL.includes('@')) { setAl('أدخل بريداً إلكترونياً صحيحاً','err'); return; }
-  if (MODE==='register' && !(document.getElementById('i-name').value||'').trim()) {
-    setAl('أدخل اسمك الكامل','err'); return;
-  }
-  var btn = document.getElementById('btn1');
+function val(id) { return (document.getElementById(id).value || '').trim(); }
+
+async function doSubmit() {
+  setAl('', '');
+  var email = val('i-email');
+  var pass  = document.getElementById('i-pass').value;
+
+  if (!email || !email.includes('@')) { setAl('أدخل بريداً إلكترونياً صحيحاً', 'err'); return; }
+  if (!pass || pass.length < 6)       { setAl('كلمة المرور 6 أحرف على الأقل', 'err'); return; }
+
+  var btn = document.getElementById('btn-submit');
   btn.disabled = true;
-  document.getElementById('btn1-t').textContent = 'جاري الإرسال...';
-  setAl('','');
-
-  try {
-    var r = await fetch(API+'/api/auth/send-otp', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ email: EMAIL, purpose: MODE })
-    });
-    var d = await r.json();
-
-    if (!r.ok) {
-      setAl(d.message||'حدث خطأ','err');
-    } else {
-      // الانتقال لخطوة OTP
-      showOTP(d);
-    }
-  } catch(e) {
-    setAl('تعذر الاتصال بالسيرفر: '+e.message, 'err');
-  }
-
-  btn.disabled = false;
-  document.getElementById('btn1-t').textContent = 'إرسال رمز التحقق';
-}
-
-function showOTP(d) {
-  document.getElementById('s1').classList.remove('on');
-  document.getElementById('s2').classList.add('on');
-  document.getElementById('otp-email').textContent = EMAIL;
-  setAl('','');
-
-  // مسح الخانات
-  ['ob1','ob2','ob3','ob4','ob5','ob6'].forEach(function(id){
-    document.getElementById(id).value='';
-  });
-
-  var codeBox  = document.getElementById('code-box');
-  var codeNum  = document.getElementById('code-num');
-  var otpSub   = document.getElementById('otp-sub');
-
-  // الكود يُرسل للإيميل فقط
-  codeBox.style.display = 'none';
-  if (d.emailSent) {
-    otpSub.textContent = 'تم إرسال رمز التحقق إلى بريدك الإلكتروني';
-    setAl('✅ تم إرسال الرمز إلى ' + EMAIL, 'ok');
-  } else {
-    otpSub.textContent = 'تحقق من بريدك الإلكتروني للحصول على الرمز';
-    setAl('⚠️ تأكد من وصول الإيميل أو أعد الإرسال', 'info');
-  }
-
-  startTimer();
-  startResend();
-  setTimeout(function(){ document.getElementById('ob1').focus(); }, 200);
-}
-
-function goBack() {
-  clearInterval(ti); clearInterval(ri);
-  document.getElementById('s2').classList.remove('on');
-  document.getElementById('s1').classList.add('on');
-  setAl('','');
-}
-
-function nxt(el, nid) { if(el.value && nid) document.getElementById(nid).focus(); }
-function bck(e,el,pid){ if(e.key==='Backspace'&&!el.value&&pid) document.getElementById(pid).focus(); }
-function lst(el){ if(el.value){ var c=getCode(); if(c.length===6) setTimeout(doVerify,200); } }
-function getCode(){ return ['ob1','ob2','ob3','ob4','ob5','ob6'].map(function(id){return document.getElementById(id).value;}).join(''); }
-
-async function doVerify() {
-  var code = getCode();
-  if(code.length!==6){ setAl('أدخل الرمز المكوّن من 6 أرقام','err'); return; }
-
-  var btn=document.getElementById('btn2'); btn.disabled=true;
-  document.getElementById('btn2-t').textContent='جاري التحقق...';
-  setAl('','');
+  document.getElementById('btn-t').textContent = 'جاري...';
 
   try {
     var url, body;
-    if(MODE==='register'){
-      url = API+'/api/auth/verify-otp-register';
-      body = {
-        name: (document.getElementById('i-name').value||'').trim(),
-        email: EMAIL,
-        password: 'OTP_' + Math.random().toString(36).slice(-8) + 'Aa1',
-        role: ROLE,
-        city: document.getElementById('i-city').value||'',
-        otp: code
-      };
+    if (MODE === 'login') {
+      url  = API + '/api/auth/login';
+      body = { email: email, password: pass };
     } else {
-      url = API+'/api/auth/verify-otp-login';
-      body = { email: EMAIL, otp: code };
+      var name  = val('i-name');
+      var pass2 = document.getElementById('i-pass2').value;
+      var city  = val('i-city');
+      if (!name)         { setAl('أدخل اسمك الكامل', 'err'); btn.disabled=false; document.getElementById('btn-t').textContent='إنشاء الحساب'; return; }
+      if (pass !== pass2){ setAl('كلمتا المرور غير متطابقتين', 'err'); btn.disabled=false; document.getElementById('btn-t').textContent='إنشاء الحساب'; return; }
+      url  = API + '/api/auth/register';
+      body = { name: name, email: email, password: pass, role: ROLE, city: city || null };
     }
 
     var r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     var d = await r.json();
 
-    if(r.ok){
-      clearInterval(ti); clearInterval(ri);
+    if (r.ok) {
       localStorage.setItem('token', d.token);
       localStorage.setItem('user', JSON.stringify(d.user));
-      setAl('✅ تم بنجاح! جاري التحويل...','ok');
-      setTimeout(function(){
+      setAl('✅ تم بنجاح! جاري التحويل...', 'ok');
+      setTimeout(function() {
         var rl = d.user.role;
         location.href = rl==='admin' ? 'dashboard-admin.html' : rl==='provider' ? 'dashboard-provider.html' : 'dashboard-client.html';
-      }, 1000);
+      }, 900);
     } else {
-      setAl(d.message||'رمز غير صحيح أو منتهي الصلاحية','err');
+      setAl(d.message || 'حدث خطأ، حاول مرة أخرى', 'err');
     }
-  } catch(e){ setAl('تعذر الاتصال','err'); }
+  } catch(e) {
+    setAl('تعذر الاتصال بالسيرفر', 'err');
+  }
 
-  btn.disabled=false;
-  document.getElementById('btn2-t').textContent='تحقق وأكمل';
+  btn.disabled = false;
+  document.getElementById('btn-t').textContent = MODE==='login' ? 'تسجيل الدخول' : 'إنشاء الحساب';
 }
 
-async function doResend(){
+async function doForgot() {
+  var email = val('i-email');
+  if (!email) { setAl('أدخل بريدك الإلكتروني أولاً', 'err'); return; }
   try {
-    var r=await fetch(API+'/api/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:EMAIL,purpose:MODE})});
-    var d=await r.json();
-    ['ob1','ob2','ob3','ob4','ob5','ob6'].forEach(function(id){document.getElementById(id).value='';});
-    showOTP(d);
-  } catch(e){}
+    var r = await fetch(API+'/api/auth/forgot-password', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: email })
+    });
+    var d = await r.json();
+    setAl(d.message || 'تم إرسال رابط إعادة التعيين', 'ok');
+  } catch(e) { setAl('تعذر الاتصال', 'err'); }
 }
 
-function startTimer(){
-  clearInterval(ti);
-  var s=600, el=document.getElementById('tmr');
-  function tick(){ var m=Math.floor(s/60); el.textContent=m+':'+(s%60<10?'0':'')+s%60; if(s--<=0) clearInterval(ti); }
-  tick(); ti=setInterval(tick,1000);
-}
+// Enter key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doSubmit();
+});
 
-function startResend(){
-  clearInterval(ri);
-  var s=60, btn=document.getElementById('btn-resend'), span=document.getElementById('resend-s');
-  btn.disabled=true; span.textContent=s;
-  ri=setInterval(function(){
-    span.textContent=--s;
-    if(s<=0){ clearInterval(ri); btn.disabled=false; btn.textContent='إعادة الإرسال'; }
-  },1000);
-}
-
-// init
 setMode('login');
+</script>
+</body>
+</html>
