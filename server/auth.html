@@ -125,7 +125,7 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
         <div class="code-note">انسخ هذا الرمز وأدخله في الخانات</div>
       </div>
 
-      <div class="otp-boxes">
+      <div class="otp-boxes" style="direction:ltr">
         <input class="ob" id="ob1" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob2')" onkeydown="bck(event,this,'')">
         <input class="ob" id="ob2" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob3')" onkeydown="bck(event,this,'ob1')">
         <input class="ob" id="ob3" maxlength="1" inputmode="numeric" oninput="nxt(this,'ob4')" onkeydown="bck(event,this,'ob2')">
@@ -240,14 +240,16 @@ function showOTP(d) {
   } else {
     // الإيميل لم يصل — نعرض الكود مباشرة
     codeBox.style.display = 'block';
-    codeNum.textContent = d.code || d.debugCode || '------';
+    codeNum.textContent = String(d.code || d.debugCode || '------');
     otpSub.textContent = 'تعذر إرسال الإيميل — الرمز يظهر أدناه';
 
     // تعبئة الخانات تلقائياً
     var code = String(d.code || d.debugCode || '');
     if (code.length === 6) {
-      ['ob1','ob2','ob3','ob4','ob5','ob6'].forEach(function(id,i){
-        document.getElementById(id).value = code[i]||'';
+      // الخانات من اليسار للأيمن (ob1=أول رقم)
+      var boxes = ['ob1','ob2','ob3','ob4','ob5','ob6'];
+      boxes.forEach(function(id,i){
+        document.getElementById(id).value = code[i] || '';
       });
     }
   }
