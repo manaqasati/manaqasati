@@ -536,8 +536,8 @@ p  { color: var(--t2); line-height: 1.75 }
 .detail-tab:hover { color: var(--t); background: var(--bg2) }
 .detail-tab.on  { color: var(--blue); border-bottom-color: var(--blue); font-weight: 800 }
 .detail-tab svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
-.tab-panel { display: none !important; padding-top: 4px }
-.tab-panel.on  { display: block !important; animation: fadeUp .2s ease }
+.tab-panel { padding-top: 4px }
+.tab-panel.on  { animation: fadeUp .2s ease }
 
 /* ─────────────────────────
    STATUS FILTER
@@ -964,11 +964,11 @@ p  { color: var(--t2); line-height: 1.75 }
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>إجراءات
     </button>
   </div>
-  <div class="tab-panel on" id="tab-bids">
+  <div class="tab-panel on" id="tab-bids" style="display:block">
     <div id="bids-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
   </div>
-  <div class="tab-panel" id="tab-chat"><div id="chat-wrap"></div></div>
-  <div class="tab-panel" id="tab-actions"><div id="actions-wrap"></div></div>
+  <div class="tab-panel" id="tab-chat" style="display:none"><div id="chat-wrap"></div></div>
+  <div class="tab-panel" id="tab-actions" style="display:none"><div id="actions-wrap"></div></div>
 </div>
 
 <div class="page" id="page-provider">
@@ -1250,6 +1250,23 @@ function setMain(i){mainImgIdx=i;renderImgGrid();}
 function removeImg(e,i){e.stopPropagation();uploadedImgs.splice(i,1);if(mainImgIdx>=uploadedImgs.length)mainImgIdx=Math.max(0,uploadedImgs.length-1);renderImgGrid();}
 
 // ── NAV ──
+
+// ── Tab Panels Helper ──
+function hideAllPanels() {
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.style.display = 'none';
+    p.classList.remove('on');
+  });
+}
+function showPanel(id) {
+  var p = document.getElementById(id);
+  if (p) { p.style.display = 'block'; p.classList.add('on'); }
+}
+function hideAllTabs() {
+  document.querySelectorAll('.detail-tab').forEach(function(b) {
+    b.classList.remove('on');
+  });
+}
 function go(pg,el){
   document.querySelectorAll('.page').forEach(p=>p.className='page');
   document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('on'));
@@ -2051,8 +2068,11 @@ function openImgFull(src){
 
 async function openDetail(id){
   curReqId=id;
-  document.querySelectorAll('.detail-tab').forEach(function(b,i){b.classList.remove('on');if(i===0)b.classList.add('on');});
-  document.querySelectorAll('.tab-panel').forEach(function(t,i){t.classList.remove('on');t.style.display='none';if(i===0){t.classList.add('on');t.style.display='block';}});
+  hideAllTabs();
+  hideAllPanels();
+  var firstTab = document.querySelector('.detail-tab');
+  if (firstTab) firstTab.classList.add('on');
+  showPanel('tab-bids');
   go('detail',null);
   try{
     let r=await GET('/api/requests/'+id);
@@ -2194,16 +2214,10 @@ async function rejectBid(bidId,reqId){
 }
 
 function switchTab(tab, el) {
-  // إخفاء كل الـ panels أولاً
-  document.querySelectorAll('.tab-panel').forEach(function(p) { 
-    p.classList.remove('on'); 
-    p.style.display = 'none'; 
-  });
-  document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
-  // إظهار الـ panel المطلوب
+  hideAllTabs();
+  hideAllPanels();
   if (el) el.classList.add('on');
-  var panel = document.getElementById('tab-' + tab);
-  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
+  showPanel('tab-' + tab);
   if (tab === 'bids') loadBids(curReqId);
   else if (tab === 'chat') loadChatTab(curReqId);
   else if (tab === 'actions') loadActions(curReqId);
@@ -2324,28 +2338,12 @@ async function openProv(provId, fromPage){
 function startChat(provId, provName, reqId) {
   curChatProv = {id: provId, name: provName};
   curReqId = reqId;
-  // لو في صفحة التفاصيل - انتقل لتبويب المحادثة مباشرة
-  if (document.getElementById('page-detail').classList.contains('on')) {
-    document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
-    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('on'); });
-    var chatBtn = document.getElementById('tbtn-chat');
-    var chatPanel = document.getElementById('tab-chat');
-    if (chatBtn) chatBtn.classList.add('on');
-    if (chatPanel) chatPanel.classList.add('on');
-    loadChatTab(reqId);
-  } else {
-    // من صفحة أخرى - اذهب لصفحة التفاصيل
-    go('detail', null);
-    setTimeout(function() {
-      document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
-      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('on'); });
-      var chatBtn = document.getElementById('tbtn-chat');
-      var chatPanel = document.getElementById('tab-chat');
-      if (chatBtn) chatBtn.classList.add('on');
-      if (chatPanel) chatPanel.classList.add('on');
-      loadChatTab(reqId);
-    }, 400);
-  }
+  hideAllTabs();
+  hideAllPanels();
+  var chatBtn = document.getElementById('tbtn-chat');
+  if (chatBtn) chatBtn.classList.add('on');
+  showPanel('tab-chat');
+  loadChatTab(reqId);
 }
 </script>
 </body>
