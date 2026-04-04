@@ -17,7 +17,7 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const RESEND_KEY = process.env.RESEND_KEY || 're_bfjMBMPj_67sGJEwKehKqnqz5B4pVqvTD';
-const FROM_EMAIL = 'cs@manaqasa.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const SITE_URL = 'https://manaqasati-production.up.railway.app';
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
 
@@ -35,15 +35,38 @@ const CATEGORIES = [
 
 // ── EMAIL ──
 async function sendEmail(to, subject, html) {
+  const key = process.env.RESEND_KEY || RESEND_KEY;
+  if (!key || key === 'undefined') {
+    console.error('[EMAIL] RESEND_KEY is not set!');
+    return false;
+  }
   try {
+    const payload = {
+      from: 'Manaqasa <onboarding@resend.dev>',
+      to: [to],
+      subject: subject,
+      html: html
+    };
+    console.log('[EMAIL] Sending to:', to, '| from:', payload.from, '| key prefix:', key.substring(0,12));
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `مناقصة <${FROM_EMAIL}>`, to: [to], subject, html })
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     });
-    if (!r.ok) console.error('Resend:', await r.text());
-    return r.ok;
-  } catch(e) { console.error('Email error:', e.message); return false; }
+    const txt = await r.text();
+    if (!r.ok) {
+      console.error('[EMAIL] Resend error', r.status, txt);
+      return false;
+    }
+    console.log('[EMAIL] Sent OK:', txt);
+    return true;
+  } catch(e) {
+    console.error('[EMAIL] Exception:', e.message);
+    return false;
+  }
 }
 
 function emailTpl(title, body, btnText, btnUrl) {
@@ -614,12 +637,22 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const code = await createOTP(email, purpose);
     const html = otpEmailTpl(code, purpose, name);
     const purposeLabel = purpose === 'register' ? 'تفعيل الحساب' : 'تسجيل الدخول';
-    const sent = await sendEmail(email, 'رمز التحقق — ' + purposeLabel + ' | مناقصة', html);
+    const sent = await sendEmail(email, 'Manaqasa OTP - ' + purposeLabel, html);
     
-    if (!sent) return res.status(500).json({ message: 'تعذر إرسال البريد، تحقق من إعدادات الإيميل' });
-    res.json({ ok: true, message: 'تم إرسال رمز التحقق إلى ' + email });
+    console.log('[OTP] code=' + code + ' email=' + email + ' sent=' + sent);
+    
+    if (!sent) {
+      // حتى لو فشل الإيميل، نُرجع الكود في الـ response للتشخيص
+      return res.status(200).json({
+        ok: true,
+        emailSent: false,
+        debugCode: code,
+        message: 'تعذر إرسال الإيميل — استخدم الكود: ' + code
+      });
+    }
+    res.json({ ok: true, emailSent: true, message: 'تم إرسال رمز التحقق إلى ' + email });
   } catch(e) {
-    console.error('send-otp error:', e.message);
+    console.error('[OTP] send-otp error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
@@ -1687,6 +1720,14 @@ app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
 });
 
 // ────────────────────────────────────────────
+// ── TEST EMAIL ENDPOINT ──
+app.get('/api/test-email', auth, async (req, res) => {
+  try {
+    const sent = await sendEmail(req.user.email, 'Test OTP - مناقصة', '<h1>Test</h1>');
+    res.json({ sent, from: FROM_EMAIL, to: req.user.email, key: RESEND_KEY.substring(0,8)+'...' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 initDB().then(() =>
   server.listen(process.env.PORT||3000, () =>
     console.log('🚀 Server running on port', process.env.PORT||3000)
