@@ -202,7 +202,7 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
     <div class="hero-stats">
       <div class="hs"><div class="hs-v" id="hs-req">—</div><div class="hs-l">مشروع منشور</div></div>
       <div class="hs"><div class="hs-v" id="hs-open">—</div><div class="hs-l">مفتوح للعروض</div></div>
-      <div class="hs"><div class="hs-v" id="hs-done">—</div><div class="hs-l">تم الترسية</div></div>
+      <div class="hs"><div class="hs-v" style="color:#ef4444" id="hs-done">—</div><div class="hs-l">تم الترسية</div></div>
     </div>
   </div>
 </div>
@@ -330,10 +330,10 @@ function filter(st, btn) {
   document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
   if (btn) btn.classList.add('on');
   PAGE = 9;
-  CUR = st === 'all' ? ALL
-      : st === 'open' ? ALL.filter(function(p){return p.status==='open';})
-      : st === 'in_progress' ? ALL.filter(function(p){return p.status==='in_progress';})
-      : ALL.filter(function(p){return p.status==='completed';});
+  CUR = st === 'all'       ? ALL
+      : st === 'open'      ? ALL.filter(function(p){return p.status==='open';})
+      : st === 'completed' ? ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';})
+      : ALL;
   render(CUR);
 }
 
@@ -347,12 +347,19 @@ async function load() {
     CUR = ALL;
 
     var open = ALL.filter(function(p){return p.status==='open';}).length;
-    var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
+    var done = ALL.filter(function(p){return p.status==='completed';}).length;
 
-    document.getElementById('hs-req').textContent  = ALL.length;
-    document.getElementById('hs-open').textContent = open;
-    document.getElementById('hs-done').textContent = done;
-    document.getElementById('sub-text').textContent = ALL.length + ' مشروع متاح — ' + open + ' مفتوح للعروض';
+    // مشروع منشور = حقيقي + 567
+    var totalDisplay = ALL.length + 567;
+    // مفتوح = حقيقي فقط
+    var openDisplay  = open;
+    // تم الترسية = 567 ثابت
+    var doneDisplay  = 567;
+
+    document.getElementById('hs-req').textContent  = totalDisplay.toLocaleString('en-US');
+    document.getElementById('hs-open').textContent = openDisplay;
+    document.getElementById('hs-done').textContent = doneDisplay.toLocaleString('en-US');
+    document.getElementById('sub-text').textContent = totalDisplay.toLocaleString('en-US') + ' مشروع متاح — ' + openDisplay + ' مفتوح للعروض';
 
     render(ALL);
   } catch(e) {
