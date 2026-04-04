@@ -39,7 +39,7 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
 .otp-em{font-size:14px;font-weight:800;color:#0f172a}
 .otp-sub{font-size:11px;color:#64748b;margin-top:3px}
 /* CODE DISPLAY BOX */
-.code-display{background:linear-gradient(135deg,#0f2545,#1473E6);border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;display:none}
+.code-display{display:none !important}
 .code-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}
 .code-num{font-size:42px;font-weight:900;color:#fbbf24;letter-spacing:12px;font-family:monospace;margin-bottom:6px}
 .code-note{font-size:11px;color:rgba(255,255,255,.6)}
@@ -156,6 +156,9 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
 <script>
 var API = 'https://manaqasati-production.up.railway.app';
 var MODE = 'login', ROLE = 'client', EMAIL = '';
+v
+var API = 'https://manaqasati-production.up.railway.app';
+var MODE = 'login', ROLE = 'client', EMAIL = '';
 var ti = null, ri = null;
 
 function setMode(m) {
@@ -232,26 +235,14 @@ function showOTP(d) {
   var codeNum  = document.getElementById('code-num');
   var otpSub   = document.getElementById('otp-sub');
 
+  // الكود يُرسل للإيميل فقط
+  codeBox.style.display = 'none';
   if (d.emailSent) {
-    // الإيميل وصل
-    codeBox.style.display = 'none';
-    otpSub.textContent = 'تم إرسال رمز من 6 أرقام إلى بريدك الإلكتروني';
+    otpSub.textContent = 'تم إرسال رمز التحقق إلى بريدك الإلكتروني';
     setAl('✅ تم إرسال الرمز إلى ' + EMAIL, 'ok');
   } else {
-    // الإيميل لم يصل — نعرض الكود مباشرة
-    codeBox.style.display = 'block';
-    codeNum.textContent = String(d.code || d.debugCode || '------');
-    otpSub.textContent = 'تعذر إرسال الإيميل — الرمز يظهر أدناه';
-
-    // تعبئة الخانات تلقائياً
-    var code = String(d.code || d.debugCode || '');
-    if (code.length === 6) {
-      // الخانات من اليسار للأيمن (ob1=أول رقم)
-      var boxes = ['ob1','ob2','ob3','ob4','ob5','ob6'];
-      boxes.forEach(function(id,i){
-        document.getElementById(id).value = code[i] || '';
-      });
-    }
+    otpSub.textContent = 'تحقق من بريدك الإلكتروني للحصول على الرمز';
+    setAl('⚠️ تأكد من وصول الإيميل أو أعد الإرسال', 'info');
   }
 
   startTimer();
@@ -349,6 +340,3 @@ function startResend(){
 
 // init
 setMode('login');
-</script>
-</body>
-</html>
