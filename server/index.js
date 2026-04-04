@@ -674,38 +674,31 @@ app.post('/api/auth/send-otp', async (req, res) => {
 // ── POST /api/auth/verify-otp-register ──
 app.post('/api/auth/verify-otp-register', async (req, res) => {
   try {
-    const { name, email, password, phone, role, city, specialties, otp } = req.body;
-    if (!otp) return res.status(400).json({ message: 'رمز OTP مطلوب' });
+    const { name, email, password, role, city, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: 'البريد والرمز مطلوبان' });
 
-    const valid = await verifyOTP(email, otp, 'register');
+    const emailLow = email.trim().toLowerCase();
+    const valid = await verifyOTP(emailLow, otp, 'register');
     if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
 
-    // إنشاء الحساب
-    const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    const exists = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1', [emailLow]);
     if (exists.rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
 
-    const hash = await bcrypt.hash(password, 10);
-    const specs = role === 'provider' ? (specialties || []) : null;
+    const finalPassword = password || ('OTP_' + Math.random().toString(36).slice(-8));
+    const hash = await bcrypt.hash(finalPassword, 10);
+    const finalRole = role || 'client';
+    const specs = finalRole === 'provider' ? [] : null;
+
     const r = await pool.query(
-      'INSERT INTO users(name,email,password,phone,role,specialties,city,is_active) VALUES($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id,name,email,role,city,badge',
-      [name, email, hash, phone||null, role||'client', specs, city||null]
+      'INSERT INTO users(name,email,password,role,specialties,city,is_active) VALUES($1,$2,$3,$4,$5,$6,TRUE) RETURNING id,name,email,role,city,badge',
+      [name || emailLow.split('@')[0], emailLow, hash, finalRole, specs, city||null]
     );
     const user = r.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-
-    // إيميل ترحيب
-    const welcomeHtml = emailTpl(
-      'مرحباً بك في مناقصة! 🎉',
-      `<p>مرحباً <strong>${name}</strong>،</p>
-       <p>تم تفعيل حسابك بنجاح! أنت الآن جزء من منصة مناقصة.</p>
-       ${role === 'provider' ? '<p>يمكنك الآن تصفح المشاريع وتقديم عروضك.</p>' : '<p>يمكنك الآن نشر مشاريعك واستقبال أفضل العروض.</p>'}`,
-      'الدخول للمنصة', SITE_URL
-    );
-    sendEmail(email, 'مرحباً بك في مناقصة! 🎉', welcomeHtml).catch(()=>{});
-
+    console.log('[REGISTER] success user:', user.id, user.role);
     res.json({ user, token });
   } catch(e) {
-    console.error('verify-otp-register error:', e.message);
+    console.error('[REGISTER] error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
@@ -714,24 +707,25 @@ app.post('/api/auth/verify-otp-register', async (req, res) => {
 app.post('/api/auth/verify-otp-login', async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!otp) return res.status(400).json({ message: 'رمز OTP مطلوب' });
+    if (!email || !otp) return res.status(400).json({ message: 'البريد والرمز مطلوبان' });
 
-    const valid = await verifyOTP(email, otp, 'login');
+    const emailLow = email.trim().toLowerCase();
+    const valid = await verifyOTP(emailLow, otp, 'login');
     if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
 
-    const r = await pool.query('SELECT * FROM users WHERE email=$1 AND is_active=TRUE', [email]);
-    if (!r.rows.length) return res.status(400).json({ message: 'المستخدم غير موجود أو موقوف' });
+    const r = await pool.query('SELECT * FROM users WHERE LOWER(email)=$1 AND is_active=TRUE', [emailLow]);
+    if (!r.rows.length) return res.status(400).json({ message: 'المستخدم غير موجود' });
 
     const user = r.rows[0];
     delete user.password; delete user.password_hash;
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    console.log('[LOGIN] success user:', user.id, user.role);
     res.json({ user, token });
   } catch(e) {
-    console.error('verify-otp-login error:', e.message);
+    console.error('[LOGIN] error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
-
 // ────────────────────────────────────────────
 
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
