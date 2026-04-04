@@ -175,6 +175,7 @@ async function initDB() {
   // إضافة أعمدة مفقودة
   const alters = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS specialties TEXT[]`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_categories TEXT[]`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`,
@@ -630,8 +631,11 @@ app.get('/api/requests/:id/bids', async (req, res) => {
 
     const bidsRes = await pool.query(
       `SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
-              u.name AS provider_name, u.city AS provider_city,
-              u.phone AS provider_phone, u.specialties AS provider_specialties, u.badge AS provider_badge
+              u.name AS provider_name,
+              COALESCE(u.city,'') AS provider_city,
+              COALESCE(u.phone,'') AS provider_phone,
+              COALESCE(u.specialties,'{}'::TEXT[]) AS provider_specialties,
+              COALESCE(u.badge,'none') AS provider_badge
        FROM bids b
        JOIN users u ON u.id = b.provider_id
        WHERE b.request_id = $1
