@@ -618,41 +618,47 @@ async function verifyOTP(email, code, purpose) {
 // ── POST /api/auth/send-otp ──
 app.post('/api/auth/send-otp', async (req, res) => {
   try {
-    const { email, purpose } = req.body; // purpose: register | login
+    const { email, purpose } = req.body;
     if (!email || !purpose) return res.status(400).json({ message: 'البريد والغرض مطلوبان' });
 
-    // التحقق من وجود المستخدم حسب الغرض
-    const existing = await pool.query('SELECT id,name,is_active FROM users WHERE email=$1', [email]);
+    const existing = await pool.query('SELECT id,name,role,is_active FROM users WHERE LOWER(email)=LOWER($1)', [email]);
+
     if (purpose === 'register' && existing.rows.length) {
       return res.status(400).json({ message: 'البريد الإلكتروني مسجل مسبقاً' });
     }
     if (purpose === 'login' && !existing.rows.length) {
-      return res.status(400).json({ message: 'البريد الإلكتروني غير مسجل' });
+      return res.status(400).json({ message: 'البريد غير مسجل — سجّل حساباً جديداً' });
     }
     if (purpose === 'login' && existing.rows[0] && existing.rows[0].is_active === false) {
       return res.status(403).json({ message: 'الحساب موقوف، تواصل مع الدعم' });
     }
 
-    const name = (existing.rows[0] && existing.rows[0].name) || '';
     const code = await createOTP(email, purpose);
-    const html = otpEmailTpl(code, purpose, name);
-    const purposeLabel = purpose === 'register' ? 'تفعيل الحساب' : 'تسجيل الدخول';
-    const sent = await sendEmail(email, 'Manaqasa OTP - ' + purposeLabel, html);
-    
-    console.log('[OTP] code=' + code + ' email=' + email + ' sent=' + sent);
-    
-    if (!sent) {
-      // حتى لو فشل الإيميل، نُرجع الكود في الـ response للتشخيص
-      return res.status(200).json({
-        ok: true,
-        emailSent: false,
-        debugCode: code,
-        message: 'تعذر إرسال الإيميل — استخدم الكود: ' + code
-      });
+    const name = (existing.rows[0] && existing.rows[0].name) || '';
+
+    console.log('[OTP]', purpose, email, 'CODE:', code);
+
+    // محاولة إرسال الإيميل (اختياري)
+    let emailSent = false;
+    try {
+      const html = otpEmailTpl(code, purpose, name);
+      const subj = purpose === 'register' ? 'Manaqasa - OTP Registration' : 'Manaqasa - OTP Login';
+      emailSent = await sendEmail(email, subj, html);
+    } catch(emailErr) {
+      console.error('[OTP] email error:', emailErr.message);
     }
-    res.json({ ok: true, emailSent: true, message: 'تم إرسال رمز التحقق إلى ' + email });
+
+    // دائماً نُرجع الكود (للتجربة والتشخيص)
+    res.json({
+      ok: true,
+      emailSent: emailSent,
+      code: code,
+      message: emailSent
+        ? 'تم إرسال الرمز إلى ' + email
+        : 'رمز التحقق: ' + code
+    });
   } catch(e) {
-    console.error('[OTP] send-otp error:', e.message);
+    console.error('[OTP] error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
