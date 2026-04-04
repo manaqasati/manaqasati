@@ -405,22 +405,21 @@ app.get('/api/setup-admin', async (req, res) => {
 });
 
 // التحقق من الحساب
-app.get('/api/check-user', auth, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT id,name,email,role,is_active FROM users WHERE id=$1', [req.user.id]);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-// ── تشخيص مؤقت: اختبار العروض بدون auth ──
 app.get('/api/debug/bids/:id', async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
     const t1 = await pool.query('SELECT id, client_id, status FROM requests WHERE id=$1', [reqId]);
     if (!t1.rows.length) return res.json({ error: 'الطلب غير موجود', reqId });
-    const t2 = await pool.query('SELECT b.id, b.provider_id, b.price, b.status, u.name FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1', [reqId]);
+    const t2 = await pool.query(`
+      SELECT b.id, b.provider_id, b.price, b.status, b.days, b.note, b.created_at,
+             u.name, u.city, u.badge
+      FROM bids b 
+      LEFT JOIN users u ON u.id = b.provider_id
+      WHERE b.request_id=$1`, [reqId]);
     res.json({ request: t1.rows[0], bids: t2.rows, count: t2.rows.length });
-  } catch(e) { res.status(500).json({ error: e.message, stack: e.stack }); }
+  } catch(e) { 
+    res.status(500).json({ error: e.message, stack: e.stack }); 
+  }
 });
 
 // ────────────────────────────────────────────
@@ -618,51 +617,45 @@ app.get('/api/requests/:id/bids', async (req, res) => {
     const reqId = parseInt(req.params.id);
     if (isNaN(reqId)) return res.status(400).json({ message: 'معرف غير صحيح' });
 
-    // تحقق اختياري من الـ token إذا موجود
-    let userId = null, userRole = 'guest';
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-      try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-        userId = decoded.id;
-        userRole = decoded.role;
-      } catch(e) { /* token غير صحيح — نتابع كـ guest */ }
-    }
-
+    // جلب العروض مع معلومات المزود
     const bidsRes = await pool.query(
-      `SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
+      `SELECT b.id, b.request_id, b.provider_id, b.price, b.days,
+              b.note, b.status, b.created_at,
               u.name AS provider_name,
-              COALESCE(u.city,'') AS provider_city,
-              COALESCE(u.phone,'') AS provider_phone,
-              COALESCE(u.specialties,'{}'::TEXT[]) AS provider_specialties,
-              COALESCE(u.badge,'none') AS provider_badge
+              u.city AS provider_city,
+              u.badge AS provider_badge,
+              u.specialties AS provider_specialties
        FROM bids b
-       JOIN users u ON u.id = b.provider_id
+       LEFT JOIN users u ON u.id = b.provider_id
        WHERE b.request_id = $1
-       ORDER BY b.created_at ASC`, [reqId]);
+       ORDER BY b.created_at ASC`,
+      [reqId]
+    );
 
     const bids = bidsRes.rows;
 
     // تقييمات المزودين
-    const providerIds = [...new Set(bids.map(b => b.provider_id))];
-    const ratingsMap = {};
-    for (const pid of providerIds) {
-      const rv = await pool.query(
-        'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1', [pid]);
-      ratingsMap[pid] = {
-        avg: parseFloat(rv.rows[0].avg) || 0,
-        cnt: parseInt(rv.rows[0].cnt) || 0
-      };
+    for (let i = 0; i < bids.length; i++) {
+      const b = bids[i];
+      try {
+        const rv = await pool.query(
+          'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1',
+          [b.provider_id]
+        );
+        b.avg_rating = parseFloat(rv.rows[0].avg) || 0;
+        b.review_count = parseInt(rv.rows[0].cnt) || 0;
+      } catch(e2) {
+        b.avg_rating = 0;
+        b.review_count = 0;
+      }
     }
-    bids.forEach(b => {
-      b.avg_rating = ratingsMap[b.provider_id]?.avg || 0;
-      b.review_count = ratingsMap[b.provider_id]?.cnt || 0;
-    });
 
-    // ترتيب: مقبول أولاً ثم pending
-    bids.sort((a, b) => {
-      const order = { accepted: 0, pending: 1, rejected: 2 };
-      return (order[a.status] ?? 1) - (order[b.status] ?? 1);
+    // ترتيب العروض
+    const order = { accepted: 0, pending: 1, rejected: 2 };
+    bids.sort(function(a, b) {
+      const oa = order[a.status] !== undefined ? order[a.status] : 1;
+      const ob = order[b.status] !== undefined ? order[b.status] : 1;
+      return oa - ob;
     });
 
     res.json(bids);
