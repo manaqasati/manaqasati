@@ -536,8 +536,8 @@ p  { color: var(--t2); line-height: 1.75 }
 .detail-tab:hover { color: var(--t); background: var(--bg2) }
 .detail-tab.on  { color: var(--blue); border-bottom-color: var(--blue); font-weight: 800 }
 .detail-tab svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
-.tab-panel { display: none; padding-top: 4px }
-.tab-panel.on  { display: block; animation: fadeUp .2s ease }
+.tab-panel { display: none !important; padding-top: 4px }
+.tab-panel.on  { display: block !important; animation: fadeUp .2s ease }
 
 /* ─────────────────────────
    STATUS FILTER
@@ -2050,9 +2050,9 @@ function openImgFull(src){
 // ── MISSING FUNCTIONS (restored) ──
 
 async function openDetail(id){
-  curReqId=id; curChatProv=null;
-  document.querySelectorAll('.detail-tab').forEach((b,i)=>{b.classList.remove('on');if(i===0)b.classList.add('on');});
-  document.querySelectorAll('.tab-panel').forEach((t,i)=>{t.classList.remove('on');if(i===0)t.classList.add('on');});
+  curReqId=id;
+  document.querySelectorAll('.detail-tab').forEach(function(b,i){b.classList.remove('on');if(i===0)b.classList.add('on');});
+  document.querySelectorAll('.tab-panel').forEach(function(t,i){t.classList.remove('on');t.style.display='none';if(i===0){t.classList.add('on');t.style.display='block';}});
   go('detail',null);
   try{
     let r=await GET('/api/requests/'+id);
@@ -2194,11 +2194,16 @@ async function rejectBid(bidId,reqId){
 }
 
 function switchTab(tab, el) {
-  document.querySelectorAll('.detail-tab').forEach(b => b.classList.remove('on'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
+  // إخفاء كل الـ panels أولاً
+  document.querySelectorAll('.tab-panel').forEach(function(p) { 
+    p.classList.remove('on'); 
+    p.style.display = 'none'; 
+  });
+  document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
+  // إظهار الـ panel المطلوب
   if (el) el.classList.add('on');
-  const panel = document.getElementById('tab-' + tab);
-  if (panel) panel.classList.add('on');
+  var panel = document.getElementById('tab-' + tab);
+  if (panel) { panel.classList.add('on'); panel.style.display = 'block'; }
   if (tab === 'bids') loadBids(curReqId);
   else if (tab === 'chat') loadChatTab(curReqId);
   else if (tab === 'actions') loadActions(curReqId);
@@ -2316,26 +2321,32 @@ async function openProv(provId, fromPage){
   }catch(e){el.innerHTML=err();}
 }
 
-function startChat(provId, provName, reqId){
-  curChatProv={id:provId, name:provName};
-  // الانتقال لتبويب المحادثة مباشرة
-  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
-  document.querySelectorAll('.tab').forEach(t=>t.className='tab');
-  let chatBtn=document.querySelector('[onclick*="chat"]');
-  if(chatBtn) chatBtn.className='tab-btn on';
-  // ابحث عن tab-btn الثاني (المحادثة)
-  let tabs=document.querySelectorAll('.tab-btn');
-  if(tabs[1]){tabs[1].className='tab-btn on';}
-  let chatTab=document.getElementById('tab-chat');
-  if(chatTab){chatTab.className='tab on';}
-  loadChatTab(reqId);
+function startChat(provId, provName, reqId) {
+  curChatProv = {id: provId, name: provName};
+  curReqId = reqId;
+  // لو في صفحة التفاصيل - انتقل لتبويب المحادثة مباشرة
+  if (document.getElementById('page-detail').classList.contains('on')) {
+    document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('on'); });
+    var chatBtn = document.getElementById('tbtn-chat');
+    var chatPanel = document.getElementById('tab-chat');
+    if (chatBtn) chatBtn.classList.add('on');
+    if (chatPanel) chatPanel.classList.add('on');
+    loadChatTab(reqId);
+  } else {
+    // من صفحة أخرى - اذهب لصفحة التفاصيل
+    go('detail', null);
+    setTimeout(function() {
+      document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.remove('on'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('on'); });
+      var chatBtn = document.getElementById('tbtn-chat');
+      var chatPanel = document.getElementById('tab-chat');
+      if (chatBtn) chatBtn.classList.add('on');
+      if (chatPanel) chatPanel.classList.add('on');
+      loadChatTab(reqId);
+    }, 400);
+  }
 }
-
-setInterval(loadNotifCount,30000);
-loadHome();
-
-
-
 </script>
 </body>
 </html>
