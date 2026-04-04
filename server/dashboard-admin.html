@@ -1058,9 +1058,19 @@ p  { color: var(--t2); line-height: 1.75 }
         </div>
         <!-- جدول النتائج -->
         <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <h3>مزودو الخدمة</h3>
-            <button class="btn btn-green btn-sm" onclick="go('add-user',null)">+ إضافة مزود</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div>
+              <h3 style="margin-bottom:2px">مزودو الخدمة <span id="prov-filtered-label" style="font-size:11px;color:var(--blue);font-weight:400"></span></h3>
+              <span id="prov-count" style="font-size:12px;color:var(--t3)"></span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-green btn-sm" id="export-excel-btn" onclick="doExportExcel(this)">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                تصدير Excel
+              </button>
+              <button class="btn btn-blue btn-sm" id="bulk-notif-btn" style="display:none" onclick="sendBulkNotif()">📢 إشعار جماعي</button>
+              <button class="btn btn-gray btn-sm" onclick="go('add-user',null)">+ إضافة مزود</button>
+            </div>
           </div>
           <div class="card">
             <div style="overflow-x:auto">
@@ -1555,6 +1565,7 @@ async function loadProvs(){
   if (cnt) cnt.textContent = list.length + ' مزود';
   const lbl = document.getElementById('prov-filtered-label');
   if (lbl) lbl.textContent = city||spec ? '— نتائج مفلترة' : '';
+  filteredProviders = list;
   if(!list.length){document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--t3)">لا يوجد مزودون بهذه المعايير</td></tr>';return;}
   document.getElementById('prov-tbody').innerHTML=list.map(p=>{
     let avg=parseFloat(p.avg_rating)||0;
@@ -1652,6 +1663,58 @@ async function exportProvCSV() {
 
   if (btn) { btn.disabled=false; btn.textContent='⬇ تصدير Excel'; }
 }
+
+async function doExportExcel(btnEl) {
+  var btn = btnEl || document.getElementById('export-excel-btn');
+  if (btn) { btn.disabled=true; btn.innerHTML='<span>⏳ جاري...</span>'; }
+  try {
+    var data = (filteredProviders && filteredProviders.length) ? filteredProviders : null;
+    if (!data) {
+      var city = (document.getElementById('prov-city-filter')||{}).value||'';
+      var spec = (document.getElementById('prov-spec-filter')||{}).value||'';
+      var url  = API + '/api/admin/export/providers';
+      var ps   = [];
+      if (city) ps.push('city='+encodeURIComponent(city));
+      if (spec) ps.push('specialty='+encodeURIComponent(spec));
+      if (ps.length) url += '?' + ps.join('&');
+      var r = await fetch(url, hdr());
+      data = await r.json();
+    }
+    if (!Array.isArray(data) || !data.length) {
+      alert('لا يوجد مزودون للتصدير');
+      return;
+    }
+    var rows = data.map(function(p) {
+      return {
+        'الاسم':            p.name||'',
+        'البريد الإلكتروني':p.email||'',
+        'رقم الجوال':       p.phone||'',
+        'المدينة':          p.city||'',
+        'اسم المنشأة':      p.company_name||'',
+        'التخصصات':         Array.isArray(p.specialties)?p.specialties.join(' | '):'',
+        'الوسام':           (p.badge&&p.badge!=='none')?p.badge:'',
+        'الحالة':           p.is_active?'نشط':'موقوف',
+        'تاريخ التسجيل':    p.created_at?new Date(p.created_at).toLocaleDateString('ar-SA'):'',
+        'التقييم':          parseFloat(p.avg_rating||0).toFixed(1),
+        'عدد العروض':       parseInt(p.bid_count)||0,
+        'مشاريع مكتملة':   parseInt(p.completed_projects)||0
+      };
+    });
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:22},{wch:30},{wch:16},{wch:14},{wch:22},{wch:35},{wch:12},{wch:10},{wch:16},{wch:10},{wch:12},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws, 'المزودون');
+    var d = new Date();
+    var dn = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    XLSX.writeFile(wb, 'مزودو_الخدمة_'+dn+'.xlsx');
+    showToast('✅ تم تحميل '+rows.length+' مزود');
+  } catch(e) {
+    console.error('Excel error:',e);
+    alert('خطأ: '+e.message);
+  }
+  if (btn) { btn.disabled=false; btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> تصدير Excel'; }
+}
+
 function clearProvFilters() {
   var c = document.getElementById('prov-city-filter');
   var s = document.getElementById('prov-spec-filter');
