@@ -1207,7 +1207,7 @@ CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.t
 function hdr() { return { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } }; }
 function ac(id) { return AVC[(+id || 0) % AVC.length]; }
 function ago(d) { const s = (new Date() - new Date(d)) / 1000; if (s < 60) return 'الآن'; if (s < 3600) return ~~(s / 60) + ' د'; if (s < 86400) return ~~(s / 3600) + ' س'; return ~~(s / 86400) + ' يوم'; }
-function fpr(p) { return p ? Number(p).toLocaleString('ar-SA') + ' ر.س' : '—'; }
+function fpr(p) { return p ? Number(p).toLocaleString('en-US') + ' ر.س' : '—'; }
 function fdt(d) { return d ? new Date(d).toLocaleDateString('ar-SA') : '—'; }
 function starsStr(n) { let s = ''; for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆'; return s; }
 function emptyH(t, s) { return `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>${t}</h4>${s ? `<p>${s}</p>` : ''}</div>`; }
@@ -1293,7 +1293,7 @@ async function loadHome() {
     const earnings = won.reduce((s, b) => s + Number(b.price || 0), 0);
     document.getElementById('s-bids').textContent = bids.length;
     document.getElementById('s-won').textContent = won.length;
-    document.getElementById('s-earnings').textContent = earnings > 0 ? Math.round(earnings).toLocaleString('ar-SA') : '0';
+    document.getElementById('s-earnings').textContent = earnings > 0 ? Math.round(earnings).toLocaleString('en-US') : '0';
 
     // مشاريع نشطة
     const active = won.filter(b => b.request_status === 'in_progress');
