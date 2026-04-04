@@ -2,12 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<title>مناقصة — لوحة التحكم</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<title>مناقصة — لوحة التحكم</title>
 <style>
 /* ╔══════════════════════════════════════════════════
    ║  مناقصة — Design System v5 — World Class
@@ -862,13 +862,11 @@ p  { color: var(--t2); line-height: 1.75 }
   .detail-tabs{top:54px}
 }
 
-.sc { display:flex; align-items:center; gap:12px }
-.sic { width:40px; height:40px; border-radius:var(--rl); display:flex; align-items:center; justify-content:center; flex-shrink:0 }
-.sic svg { width:18px; height:18px; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
 </style>
 </head>
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
   <div class="side-logo">
     <div style="font-size:19px;font-weight:900;letter-spacing:-.3px">مناقصة<b style="color:var(--blue)">.</b></div>
@@ -891,9 +889,6 @@ p  { color: var(--t2); line-height: 1.75 }
     <button class="ni" id="ni-users" onclick="go('users',this)">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>المستخدمون
     </button>
-    <button class="ni" id="ni-add-user" onclick="go('add-user',null)">
-      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>إضافة مستخدم
-    </button>
     <button class="ni" id="ni-providers" onclick="go('providers',this)">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>مزودو الخدمة
     </button>
@@ -906,7 +901,10 @@ p  { color: var(--t2); line-height: 1.75 }
     <button class="ni" id="ni-notify" onclick="go('notify',this)">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M22 17H2a3 3 0 004-3V9a8 8 0 0116 0v5a3 3 0 004 3"/></svg></div>إرسال إشعار
     </button>
-      </div>
+    <button class="ni" id="ni-add-user" onclick="go('add-user',this)">
+      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>إضافة مستخدم
+    </button>
+  </div>
   <div class="side-foot">
     <button class="logout-btn" onclick="logout()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -915,6 +913,7 @@ p  { color: var(--t2); line-height: 1.75 }
   </div>
 </div>
 
+<!-- MAIN -->
 <div class="main">
   <div class="topbar">
     <div class="topbar-title" id="pageTitle">الرئيسية</div>
@@ -923,78 +922,52 @@ p  { color: var(--t2); line-height: 1.75 }
         <input id="global-search" type="text" placeholder="🔍 بحث سريع..." oninput="globalSearch()" class="srch" style="width:200px">
         <div id="search-results" style="display:none"></div>
       </div>
-      <button onclick="exportCSV()" class="btn btn-green btn-sm">⬇ تصدير CSV</button>
       <span style="font-size:10px;color:var(--blue);background:var(--blue-l);padding:4px 10px;border-radius:20px;font-weight:800;border:1px solid var(--blue-m)">🛡️ مدير</span>
     </div>
   </div>
+
   <div class="content">
 
+    <!-- HOME -->
     <div class="page on" id="page-home">
       <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--blue-l)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
-          <div><div class="sn" id="s-users">0</div><div class="st">المستخدمون</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--green-l)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-          <div><div class="sn" id="s-reqs">0</div><div class="st">المشاريع</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--yellow-l)"><svg viewBox="0 0 24 24" style="stroke:var(--yellow)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          <div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--green-l)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--yellow-l)"><svg viewBox="0 0 24 24" style="stroke:var(--yellow)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div>
-          <div><div class="sn" id="s-pend">0</div><div class="st">قيد المراجعة</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--purple-l)"><svg viewBox="0 0 24 24" style="stroke:var(--purple)"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-          <div><div class="sn" id="s-provs">0</div><div class="st">المزودون</div></div>
-        </div>
-        <div class="stat-card sc">
-          <div class="sic" style="background:var(--blue-l)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-          <div><div class="sn" id="s-bids">0</div><div class="st">العروض</div></div>
-        </div>
-        <div class="stat-card sc" style="cursor:pointer" onclick="go('charts',null)">
-          <div class="sic" style="background:var(--green-l)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-          <div><div class="sn" style="font-size:20px">📊</div><div class="st">الإحصائيات</div></div>
-        </div>
+        <div class="stat-card sc"><div class="sic" style="background:var(--blue-l)"><svg viewBox="0 0 24 24" style="stroke:var(--blue);fill:none;stroke-width:2;width:18px;height:18px;stroke-linecap:round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="sn" id="s-users">0</div><div class="st">المستخدمون</div></div></div>
+        <div class="stat-card sc"><div class="sic" style="background:var(--green-l)"><svg viewBox="0 0 24 24" style="stroke:var(--green);fill:none;stroke-width:2;width:18px;height:18px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div><div><div class="sn" id="s-reqs">0</div><div class="st">المشاريع</div></div></div>
+        <div class="stat-card sc"><div class="sic" style="background:var(--purple-l)"><svg viewBox="0 0 24 24" style="stroke:var(--purple);fill:none;stroke-width:2;width:18px;height:18px"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div><div class="sn" id="s-provs">0</div><div class="st">المزودون</div></div></div>
+        <div class="stat-card sc"><div class="sic" style="background:var(--green-l)"><svg viewBox="0 0 24 24" style="stroke:var(--green);fill:none;stroke-width:2;width:18px;height:18px"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
       </div>
       <div class="card">
-        <div class="ch"><h3>📋 آخر المشاريع المنشورة</h3><button onclick="go('requests',null)" class="btn btn-edit btn-sm">عرض الكل</button></div>
+        <div class="ch"><h3>📋 آخر المشاريع</h3><button onclick="go('requests',null)" class="btn btn-edit btn-sm">عرض الكل</button></div>
         <div id="pend-reqs"><div class="loading">جاري التحميل...</div></div>
       </div>
     </div>
 
+    <!-- REQUESTS -->
     <div class="page" id="page-requests">
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input class="srch" id="req-srch" type="text" placeholder="🔍 بحث بالعنوان أو العميل..." oninput="filterReqs()" style="flex:1;min-width:180px">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input class="srch" id="req-srch" type="text" placeholder="🔍 بحث..." oninput="filterReqs()" style="flex:1">
         <select id="req-status" onchange="loadReqs()" class="srch" style="width:auto">
           <option value="">جميع الحالات</option>
           <option value="open">مفتوحة</option>
           <option value="in_progress">قيد التنفيذ</option>
           <option value="completed">مكتملة</option>
         </select>
-        <button onclick="exportCSV()" class="btn btn-green btn-sm">⬇ تصدير</button>
       </div>
       <div class="card">
         <div class="ch"><h3>📋 المشاريع</h3><span id="req-cnt" style="font-size:11px;color:var(--t3)"></span></div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>المشروع</th><th>العميل</th><th>المدينة</th><th>التصنيف</th><th>العروض</th><th>الحالة</th><th>التاريخ</th><th>الإجراءات</th></tr></thead>
+            <thead><tr><th>المشروع</th><th>العميل</th><th>المدينة</th><th>التصنيف</th><th>العروض</th><th>الحالة</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
             <tbody id="req-tbody"><tr><td colspan="8" class="loading">جاري التحميل...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- USERS -->
     <div class="page" id="page-users">
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <input class="srch" id="usr-srch" type="text" placeholder="🔍 بحث بالاسم أو البريد..." oninput="filterUsrs()" style="flex:1;min-width:180px">
+        <input class="srch" id="usr-srch" type="text" placeholder="🔍 بحث..." oninput="filterUsrs()" style="flex:1">
         <select id="usr-role" onchange="loadUsers()" class="srch" style="width:auto">
           <option value="">الجميع</option>
           <option value="client">العملاء</option>
@@ -1006,66 +979,55 @@ p  { color: var(--t2); line-height: 1.75 }
         <div class="ch"><h3>👥 المستخدمون</h3><span id="usr-cnt" style="font-size:11px;color:var(--t3)"></span></div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ التسجيل</th><th>إجراءات</th></tr></thead>
+            <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>الحالة</th><th>تاريخ التسجيل</th><th>إجراءات</th></tr></thead>
             <tbody id="usr-tbody"><tr><td colspan="6" class="loading">جاري التحميل...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- PROVIDERS -->
     <div class="page" id="page-providers">
-      <!-- فلتر رئيسي -->
       <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start">
-        <!-- لوحة الفلترة -->
+        <!-- Filter Panel -->
         <div class="card" style="position:sticky;top:60px">
           <div class="ch" style="background:var(--blue);border-radius:var(--rl) var(--rl) 0 0">
             <h3 style="color:#fff">⚙️ الفلترة</h3>
-            <button onclick="clearProvFilters()" style="font-size:11px;color:rgba(255,255,255,.7);background:none;border:none;cursor:pointer">مسح الكل</button>
+            <button onclick="clearProvFilters()" style="font-size:11px;color:rgba(255,255,255,.7);background:none;border:none;cursor:pointer">مسح</button>
           </div>
           <div class="cb" style="display:flex;flex-direction:column;gap:12px">
             <div class="fg">
-              <label>🏙 المدينة</label>
+              <label>المدينة</label>
               <select id="prov-city-filter" onchange="loadProvs()" class="f-input">
                 <option value="">كل المدن</option>
               </select>
             </div>
             <div class="fg">
-              <label>🔧 التخصص</label>
+              <label>التخصص</label>
               <select id="prov-spec-filter" onchange="loadProvs()" class="f-input">
                 <option value="">كل التخصصات</option>
               </select>
             </div>
             <div class="fg">
-              <label>📊 الحالة</label>
+              <label>الحالة</label>
               <select id="prov-status-filter" onchange="loadProvs()" class="f-input">
-                <option value="">الجميع</option>
+                <option value="">الكل</option>
                 <option value="active">نشط فقط</option>
                 <option value="inactive">موقوف</option>
               </select>
             </div>
-            <div class="fg">
-              <label>🔍 بحث بالاسم</label>
-              <input id="prov-name-filter" type="text" placeholder="اسم المزود..." class="f-input" oninput="filterProvsLocal()">
-            </div>
-            <div style="background:var(--blue-l);border-radius:var(--r);padding:10px;text-align:center">
-              <div style="font-size:22px;font-weight:900;color:var(--blue)" id="prov-result-count">0</div>
-              <div style="font-size:11px;color:var(--t3)">مزود في النتائج</div>
-            </div>
-            <button class="btn btn-blue btn-full" onclick="sendBulkNotif()" id="bulk-notif-btn" disabled>
-              📢 إشعار جماعي للنتائج
-            </button>
           </div>
         </div>
-        <!-- جدول النتائج -->
+        <!-- Table -->
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <div>
-              <h3 style="margin-bottom:2px">مزودو الخدمة <span id="prov-filtered-label" style="font-size:11px;color:var(--blue);font-weight:400"></span></h3>
+              <h3>مزودو الخدمة</h3>
               <span id="prov-count" style="font-size:12px;color:var(--t3)"></span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <button class="btn btn-green btn-sm" id="export-excel-btn" onclick="doExportExcel(this)">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-green btn-sm" id="export-excel-btn" onclick="exportExcel()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 تصدير Excel
               </button>
               <button class="btn btn-blue btn-sm" id="bulk-notif-btn" style="display:none" onclick="sendBulkNotif()">📢 إشعار جماعي</button>
@@ -1075,39 +1037,29 @@ p  { color: var(--t2); line-height: 1.75 }
           <div class="card">
             <div style="overflow-x:auto">
               <table class="tbl">
-                <thead>
-                  <tr>
-                    <th>المزود</th>
-                    <th>المدينة</th>
-                    <th>التخصصات</th>
-                    <th>التقييم</th>
-                    <th>المشاريع</th>
-                    <th>الحالة</th>
-                    <th>إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody id="prov-tbody">
-                  <tr><td colspan="7" class="loading">جاري التحميل...</td></tr>
-                </tbody>
+                <thead><tr><th>الاسم والتواصل</th><th>المدينة</th><th>التخصصات</th><th>التقييم</th><th>الإنجاز</th><th>الحالة</th><th>الوسام</th><th>إجراءات</th></tr></thead>
+                <tbody id="prov-tbody"><tr><td colspan="8" class="loading">جاري التحميل...</td></tr></tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
-    </div></div>
+    </div>
 
+    <!-- REVIEWS -->
     <div class="page" id="page-reviews">
       <div class="card">
         <div class="ch"><h3>⭐ التقييمات</h3><span id="rev-cnt" style="font-size:11px;color:var(--t3)"></span></div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>المقيِّم</th><th>المزود</th><th>التقييم</th><th>التعليق</th><th>المشروع</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
-            <tbody id="rev-tbody"><tr><td colspan="7" class="loading">جاري التحميل...</td></tr></tbody>
+            <thead><tr><th>المقيِّم</th><th>المزود</th><th>التقييم</th><th>التعليق</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
+            <tbody id="rev-tbody"><tr><td colspan="6" class="loading">جاري التحميل...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- CHARTS -->
     <div class="page" id="page-charts">
       <div class="charts-grid">
         <div class="card"><div class="ch"><h3>📊 توزيع المشاريع</h3></div><div class="cb" style="height:200px;position:relative"><canvas id="chart-status"></canvas></div></div>
@@ -1116,76 +1068,14 @@ p  { color: var(--t2); line-height: 1.75 }
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
         <div class="card"><div class="ch"><h3>🏆 أفضل المزودين</h3></div><div class="cb" id="top-providers-list"><div class="loading">جاري التحميل...</div></div></div>
-        <div class="card"><div class="ch"><h3>🕐 آخر النشاطات</h3></div><div id="recent-activity-list" style="max-height:280px;overflow-y:auto"><div class="loading">جاري التحميل...</div></div></div>
+        <div class="card"><div class="ch"><h3>🕐 آخر النشاطات</h3></div><div id="recent-activity-list"><div class="loading">جاري التحميل...</div></div></div>
       </div>
     </div>
 
-    <div class="page" id="page-add-user">
-      <div style="max-width:700px">
-        <h2 style="margin-bottom:4px">➕ إضافة مستخدم جديد</h2>
-        <p style="margin-bottom:20px;color:var(--t3)">إنشاء حساب جديد وتحديد صلاحياته</p>
-        <div class="card">
-          <div class="ch"><h3>معلومات الحساب</h3></div>
-          <div class="cb">
-            <div class="alert" id="add-user-alert"></div>
-            <!-- نوع الصلاحية -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px">
-              <label id="role-card-client" onclick="setRole('client')" style="border:2px solid var(--blue);border-radius:var(--rl);padding:14px;cursor:pointer;text-align:center;background:var(--blue-l);transition:.15s">
-                <div style="font-size:22px;margin-bottom:5px">👤</div>
-                <div style="font-size:13px;font-weight:800;color:var(--blue)">عميل</div>
-                <div style="font-size:10px;color:var(--t3);margin-top:3px">صاحب مشروع</div>
-              </label>
-              <label id="role-card-provider" onclick="setRole('provider')" style="border:2px solid var(--border);border-radius:var(--rl);padding:14px;cursor:pointer;text-align:center;background:var(--white);transition:.15s">
-                <div style="font-size:22px;margin-bottom:5px">🔧</div>
-                <div style="font-size:13px;font-weight:800;color:var(--t2)">مزود خدمة</div>
-                <div style="font-size:10px;color:var(--t3);margin-top:3px">يقدم العروض</div>
-              </label>
-              <label id="role-card-admin" onclick="setRole('admin')" style="border:2px solid var(--border);border-radius:var(--rl);padding:14px;cursor:pointer;text-align:center;background:var(--white);transition:.15s">
-                <div style="font-size:22px;margin-bottom:5px">🛡️</div>
-                <div style="font-size:13px;font-weight:800;color:var(--t2)">مدير النظام</div>
-                <div style="font-size:10px;color:var(--t3);margin-top:3px">صلاحية كاملة</div>
-              </label>
-            </div>
-            <input type="hidden" id="au-role" value="client">
-            <!-- البيانات الأساسية -->
-            <div class="form-grid" style="margin-bottom:12px">
-              <div class="fg"><label>الاسم الكامل *</label><input id="au-name" type="text" placeholder="محمد عبدالله"></div>
-              <div class="fg"><label>رقم الجوال</label><input id="au-phone" type="tel" placeholder="05xxxxxxxx" inputmode="tel"></div>
-              <div class="fg"><label>البريد الإلكتروني *</label><input id="au-email" type="email" placeholder="user@email.com"></div>
-              <div class="fg"><label>كلمة المرور *</label>
-                <div style="position:relative">
-                  <input id="au-pass" type="password" placeholder="6 أحرف على الأقل">
-                  <button type="button" onclick="togglePassVis('au-pass',this)" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t3);font-size:12px">👁</button>
-                </div>
-              </div>
-              <div class="fg"><label>المدينة</label>
-                <select id="au-city" class="f-input">
-                  <option value="">اختر المدينة</option>
-                </select>
-              </div>
-              <div class="fg" id="au-spec-section" style="display:none"><label>التخصص الرئيسي</label>
-                <select id="au-spec" class="f-input">
-                  <option value="">اختر التخصص</option>
-                </select>
-              </div>
-            </div>
-            <!-- صندوق الصلاحيات -->
-            <div id="role-permissions-box" style="background:var(--blue-l);border:1px solid var(--blue-m);border-radius:var(--rl);padding:14px;margin-bottom:16px">
-              <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:8px">✓ صلاحيات هذه الحساب</div>
-              <div id="role-permissions-list" style="font-size:12px;color:var(--t2);line-height:2"></div>
-            </div>
-            <div style="display:flex;gap:10px">
-              <button class="btn btn-blue btn-lg" id="au-btn" onclick="createUser()">✓ إنشاء الحساب</button>
-              <button class="btn btn-gray btn-lg" onclick="go('users',null)">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <!-- NOTIFY -->
     <div class="page" id="page-notify">
       <div class="card" style="max-width:640px">
-        <div class="ch"><h3>📢 إرسال إشعار + إيميل للمستخدمين</h3></div>
+        <div class="ch"><h3>📢 إرسال إشعار + إيميل</h3></div>
         <div class="cb">
           <div class="alert" id="notif-alert"></div>
           <div class="fg" style="margin-bottom:12px">
@@ -1196,24 +1086,57 @@ p  { color: var(--t2); line-height: 1.75 }
               <option value="provider">المزودون فقط</option>
             </select>
           </div>
-          <div class="fg" style="margin-bottom:12px">
-            <label>عنوان الإشعار *</label>
-            <input id="notif-title" type="text" placeholder="مثال: تحديث مهم في المنصة">
-          </div>
-          <div class="fg" style="margin-bottom:16px">
-            <label>نص الإشعار *</label>
-            <textarea id="notif-body" placeholder="اكتب نص الإشعار الذي سيصل للمستخدمين..."></textarea>
-          </div>
+          <div class="fg" style="margin-bottom:12px"><label>عنوان الإشعار *</label><input id="notif-title" type="text" placeholder="مثال: تحديث مهم"></div>
+          <div class="fg" style="margin-bottom:16px"><label>نص الإشعار *</label><textarea id="notif-body" placeholder="اكتب نص الإشعار..."></textarea></div>
           <div style="display:flex;gap:10px">
             <button class="btn btn-blue btn-lg" onclick="sendNotif()">📤 إرسال الإشعار</button>
-            <button class="btn btn-gray btn-lg" onclick="clearNotif()">🗑️ مسح</button>
+            <button class="btn btn-gray btn-lg" onclick="clearNotif()">مسح</button>
           </div>
         </div>
       </div>
     </div>
 
-  </div>
-</div>
+    <!-- ADD USER -->
+    <div class="page" id="page-add-user">
+      <div class="card" style="max-width:660px">
+        <div class="ch"><h3>➕ إضافة مستخدم جديد</h3></div>
+        <div class="cb">
+          <div class="alert" id="add-user-alert"></div>
+          <div class="form-grid" style="margin-bottom:12px">
+            <div class="fg"><label>الاسم الكامل *</label><input id="au-name" type="text" placeholder="اسم المستخدم"></div>
+            <div class="fg"><label>البريد الإلكتروني *</label><input id="au-email" type="email" placeholder="example@email.com"></div>
+            <div class="fg"><label>كلمة المرور *</label><input id="au-pass" type="password" placeholder="6 أحرف على الأقل"></div>
+            <div class="fg"><label>رقم الجوال</label><input id="au-phone" type="tel" placeholder="05xxxxxxxx"></div>
+            <div class="fg"><label>المدينة</label><select id="au-city" class="f-input"><option value="">اختر المدينة</option></select></div>
+            <div class="fg"><label>الدور *</label>
+              <select id="au-role" onchange="onAuRoleChange()">
+                <option value="client">🏗 عميل</option>
+                <option value="provider">🔧 مزود خدمة</option>
+                <option value="admin">🛡️ مدير</option>
+              </select>
+            </div>
+          </div>
+          <div id="au-spec-section" style="display:none;margin-bottom:12px">
+            <div class="fg"><label>التخصص الرئيسي</label><select id="au-spec" class="f-input"><option value="">اختر</option></select></div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--r);padding:14px;margin-bottom:16px;font-size:12px;border:1px solid var(--border)">
+            <div style="font-weight:800;margin-bottom:8px">📋 الصلاحيات:</div>
+            <div style="display:grid;gap:4px;color:var(--t2)">
+              <div>🏗 <b>عميل:</b> نشر مشاريع واستقبال عروض</div>
+              <div>🔧 <b>مزود:</b> تقديم عروض وتنفيذ مشاريع</div>
+              <div>🛡️ <b>مدير:</b> جميع الصلاحيات + لوحة التحكم</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-blue btn-lg" id="au-btn" onclick="createUser()">➕ إنشاء الحساب</button>
+            <button class="btn btn-gray btn-lg" onclick="go('users',null)">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- content -->
+</div><!-- main -->
 
 <!-- EDIT REQUEST MODAL -->
 <div class="modal-overlay" id="edit-req-ov">
@@ -1225,36 +1148,16 @@ p  { color: var(--t2); line-height: 1.75 }
       <div class="fg" style="margin-bottom:12px"><label>العنوان</label><input id="er-title" type="text"></div>
       <div class="fg" style="margin-bottom:12px"><label>الوصف</label><textarea id="er-desc"></textarea></div>
       <div class="fg2" style="margin-bottom:12px">
-        <div class="fg"><label>الميزانية (ر.س)</label><input id="er-budget" type="number"></div>
+        <div class="fg"><label>الميزانية</label><input id="er-budget" type="number"></div>
         <div class="fg"><label>الموعد النهائي</label><input id="er-deadline" type="date"></div>
         <div class="fg"><label>المدينة</label><input id="er-city" type="text"></div>
         <div class="fg"><label>التصنيف</label><input id="er-cat" type="text"></div>
       </div>
-      <div class="fg"><label>ملاحظات الإدارة</label><textarea id="er-notes" placeholder="ملاحظات داخلية..."></textarea></div>
+      <div class="fg"><label>ملاحظات الإدارة</label><textarea id="er-notes"></textarea></div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-blue btn-full btn-lg" onclick="saveEditReq()">💾 حفظ التعديلات</button>
+      <button class="btn btn-blue btn-full btn-lg" onclick="saveEditReq()">💾 حفظ</button>
       <button class="btn btn-gray btn-lg" onclick="closeEditReq()">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- BULK NOTIFY MODAL -->
-<div class="modal-overlay" id="bulk-notif-ov">
-  <div class="modal-box">
-    <div class="modal-handle"></div>
-    <div class="modal-head"><h3>📢 إشعار جماعي للمزودين</h3><button class="modal-close" onclick="closeBulkNotif()">✕</button></div>
-    <div class="modal-body">
-      <div class="alert" id="bulk-notif-alert"></div>
-      <div style="background:var(--blue-l);border:1px solid var(--blue-m);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px">
-        سيُرسل الإشعار لـ <strong id="bulk-prov-count" style="color:var(--blue)">0</strong> مزود من نتائج الفلترة الحالية
-      </div>
-      <div class="fg" style="margin-bottom:12px"><label>عنوان الإشعار *</label><input id="bulk-title" type="text" placeholder="مثال: فرصة عمل جديدة في مجالك"></div>
-      <div class="fg"><label>نص الإشعار *</label><textarea id="bulk-body" placeholder="اكتب تفاصيل الإشعار..." style="min-height:80px"></textarea></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-blue btn-full btn-lg" onclick="confirmBulkNotif()">📤 إرسال الإشعار</button>
-      <button class="btn btn-gray btn-lg" onclick="closeBulkNotif()">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1263,28 +1166,51 @@ p  { color: var(--t2); line-height: 1.75 }
 <div class="modal-overlay" id="badge-ov">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-head"><h3>🏆 منح وسام للمزود</h3><button class="modal-close" onclick="closeBadge()">✕</button></div>
+    <div class="modal-head"><h3>🏆 منح وسام</h3><button class="modal-close" onclick="closeBadge()">✕</button></div>
     <div class="modal-body">
       <div class="fg">
-        <label>اختر الوسام المناسب</label>
+        <label>اختر الوسام</label>
         <select id="badge-sel" style="font-size:14px">
           <option value="none">— بدون وسام</option>
-          <option value="موثوق">⭐ موثوق — مزود موثوق من الإدارة</option>
-          <option value="محترف">🏆 محترف — مستوى احترافي عالي</option>
-          <option value="متميز">💎 متميز — أداء متميز ومتسق</option>
-          <option value="الأفضل">🥇 الأفضل — أفضل مزود في الفئة</option>
+          <option value="موثوق">⭐ موثوق</option>
+          <option value="محترف">🏆 محترف</option>
+          <option value="متميز">💎 متميز</option>
+          <option value="الأفضل">🥇 الأفضل</option>
         </select>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-blue btn-full btn-lg" onclick="saveBadge()">✅ حفظ الوسام</button>
+      <button class="btn btn-blue btn-full btn-lg" onclick="saveBadge()">✅ حفظ</button>
       <button class="btn btn-gray btn-lg" onclick="closeBadge()">إلغاء</button>
     </div>
   </div>
 </div>
 
+<!-- BULK NOTIFY MODAL -->
+<div class="modal-overlay" id="bulk-notif-ov">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-head"><h3>📢 إشعار جماعي</h3><button class="modal-close" onclick="closeBulkNotif()">✕</button></div>
+    <div class="modal-body">
+      <div class="alert" id="bulk-notif-alert"></div>
+      <div style="background:var(--blue-l);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px">
+        سيُرسل الإشعار لـ <strong id="bulk-prov-count" style="color:var(--blue)">0</strong> مزود من نتائج الفلترة
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>عنوان الإشعار *</label><input id="bulk-title" type="text" placeholder="عنوان الإشعار"></div>
+      <div class="fg"><label>نص الإشعار *</label><textarea id="bulk-body" style="min-height:80px" placeholder="نص الإشعار..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-blue btn-full btn-lg" onclick="confirmBulkNotif()">📤 إرسال</button>
+      <button class="btn btn-gray btn-lg" onclick="closeBulkNotif()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
+
 <script>
+
+
 const API='https://manaqasati-production.up.railway.app';
 let user=JSON.parse(localStorage.getItem('user')||'{}');
 let token=localStorage.getItem('token')||'';
@@ -1403,9 +1329,11 @@ function go(pg,el){
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='users')loadUsers();
-  if(pg==='providers'){loadProvs();initProvSpecFilter();}
+  if(pg==='providers')loadProvs();
   if(pg==='reviews')loadRevs();
   if(pg==='charts')loadCharts();
+  if(pg==='providers'){initProvFilters();loadProvs();}
+  if(pg==='add-user'){setTimeout(function(){initProvFilters();onAuRoleChange();},100);}
   window.scrollTo(0,0);
 }
 
@@ -1415,13 +1343,13 @@ async function loadHome(){
     let r=await GET('/api/admin/stats');
     let s=await r.json();
     document.getElementById('s-users').textContent=s.total_users||0;
-    (document.getElementById('s-pend')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).textContent=s.pending_review||0;
+    document.getElementById('s-pend').textContent=s.pending_review||0;
     document.getElementById('s-prog').textContent=s.in_progress||0;
     document.getElementById('s-done').textContent=s.completed||0;
-    (document.getElementById('s-provs')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).textContent=s.providers||0;
-    (document.getElementById('s-bids')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).textContent=s.total_bids||0;
+    document.getElementById('s-provs').textContent=s.providers||0;
+    document.getElementById('s-bids').textContent=s.total_bids||0;
     document.getElementById('s-reqs').textContent=s.requests||0;
-    let pb=(document.getElementById('pend-badge')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}});if(pb)pb.style.display='none';
+    let pb=document.getElementById('pend-badge');if(pb)pb.style.display='none';
   }catch{}
   // آخر الطلبات المنشورة
   let reqs=await safeArr('/api/admin/requests');
@@ -1476,17 +1404,17 @@ function renderReqs(list){
 
 function openReview(id){
   curReviewId=id;
-  (document.getElementById('review-reason')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).value='';
-  (document.getElementById('review-alert')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).className='alert';
+  document.getElementById('review-reason').value='';
+  document.getElementById('review-alert').className='alert';
   GET('/api/requests/'+id).then(r=>r.json()).then(req=>{
-    (document.getElementById('review-title')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).textContent='مراجعة: '+req.title;
-    (document.getElementById('review-detail')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).innerHTML=`<strong>${req.title}</strong><br>${req.city?'📍 '+req.city+' | ':''}${req.category?req.category+' | ':''}${req.budget_max?'💰 '+req.budget_max+' ر.س':''}<br><br>${req.description||'لا يوجد وصف'}`;
-    (document.getElementById('review-ov')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).classList.add('open');
+    document.getElementById('review-title').textContent='مراجعة: '+req.title;
+    document.getElementById('review-detail').innerHTML=`<strong>${req.title}</strong><br>${req.city?'📍 '+req.city+' | ':''}${req.category?req.category+' | ':''}${req.budget_max?'💰 '+req.budget_max+' ر.س':''}<br><br>${req.description||'لا يوجد وصف'}`;
+    document.getElementById('review-ov').classList.add('open');
   });
 }
-function closeReview(){(document.getElementById('review-ov')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).classList.remove('open');}
+function closeReview(){document.getElementById('review-ov').classList.remove('open');}
 async function doReview(action){
-  let reason=(document.getElementById('review-reason')||{style:{},textContent:'',innerHTML:'',classList:{add:function(){},remove:function(){}}}).value;
+  let reason=document.getElementById('review-reason').value;
   let btn=document.getElementById(action+'-btn');if(btn)btn.disabled=true;
   try{
     let r=await PUT('/api/admin/requests/'+curReviewId+'/review',{action,reason});
@@ -1553,187 +1481,25 @@ async function delUser(id){if(!confirm('حذف هذا المستخدم نهائ�
 // ── PROVIDERS ──
 async function loadProvs(){
   document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" class="loading">جاري التحميل...</td></tr>';
-  const city = (document.getElementById('prov-city-filter')||{}).value||'';
-  const spec = (document.getElementById('prov-spec-filter')||{}).value||'';
-  let url = '/api/admin/providers';
-  const params = [];
-  if (city.trim()) params.push('city='+encodeURIComponent(city.trim()));
-  if (spec) params.push('specialty='+encodeURIComponent(spec));
-  if (params.length) url += '?' + params.join('&');
-  let list=await safeArr(url);
-  const cnt = document.getElementById('prov-count');
-  if (cnt) cnt.textContent = list.length + ' مزود';
-  const lbl = document.getElementById('prov-filtered-label');
-  if (lbl) lbl.textContent = city||spec ? '— نتائج مفلترة' : '';
-  filteredProviders = list;
-  if(!list.length){document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--t3)">لا يوجد مزودون بهذه المعايير</td></tr>';return;}
+  let list=await safeArr('/api/admin/providers');
+  if(!list.length){document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" class="empty">لا يوجد مزودون</td></tr>';return;}
   document.getElementById('prov-tbody').innerHTML=list.map(p=>{
     let avg=parseFloat(p.avg_rating)||0;
     let badge=p.badge&&p.badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${p.badge}</span>`:'—';
-    const specs = Array.isArray(p.specialties)&&p.specialties.length ? p.specialties.join('، ') : '—';
     return`<tr>
-      <td>
-        <div style="font-size:13px;font-weight:800;color:var(--t)">${p.name}</div>
-        ${p.company_name?`<div style="font-size:11px;color:var(--blue);font-weight:600">${p.company_name}</div>`:''}
-        <a href="mailto:${p.email}" style="font-size:11px;color:var(--t3);text-decoration:none;display:block;margin-top:2px">${p.email}</a>
-        ${p.phone?`<a href="tel:${p.phone}" style="font-size:12px;color:var(--blue);font-weight:700;text-decoration:none">📞 ${p.phone}</a>`:'<span style="font-size:11px;color:var(--t4)">لا يوجد جوال</span>'}
-      </td>
-      <td><div style="font-weight:600">${p.city||'—'}</div></td>
-      <td><div style="font-size:12px;color:var(--t2);max-width:200px;line-height:1.6">${specs}</div></td>
-      <td><span style="color:var(--accent);font-weight:700">${avg>0?stars(avg)+' '+avg.toFixed(1):'—'}</span><div style="font-size:10px;color:var(--t4)">${p.review_count||0} تقييم</div></td>
-      <td style="font-weight:700;text-align:center">${p.completed_projects||0}<div style="font-size:10px;color:var(--t4)">${p.bid_count||0} عرض</div></td>
-      <td>${p.is_active?'<span style="color:var(--success);font-weight:800">● نشط</span>':'<span style="color:var(--danger);font-weight:800">● موقوف</span>'}</td>
+      <td><strong>${p.name}</strong>${p.phone?`<div style="font-size:10px;color:var(--t4)">${p.phone}</div>`:''}</td>
+      <td>${p.city||'—'}</td>
+      <td><span style="color:var(--accent)">${avg>0?stars(avg)+' '+avg.toFixed(1):'—'}</span><div style="font-size:10px;color:var(--t4)">${p.review_count||0} تقييم</div></td>
+      <td>${p.completed_projects||0}</td><td>${p.bid_count||0}</td>
+      <td>${p.is_active?'<span style="color:var(--success);font-size:12px;font-weight:700">● نشط</span>':'<span style="color:var(--danger);font-size:12px;font-weight:700">● موقوف</span>'}</td>
       <td>${badge}</td>
-      <td><div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn-sm bs-a" onclick="openBadge(${p.id})">🏆 وسام</button>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn-sm bs-a" onclick="openBadge(${p.id})">وسام</button>
         <button class="btn-sm ${p.is_active?'bs-r':'bs-g'}" onclick="toggleUser(${p.id},${p.is_active})">${p.is_active?'إيقاف':'تفعيل'}</button>
       </div></td>
     </tr>`;
   }).join('');
 }
-
-async function exportProvCSV() {
-  var city = (document.getElementById('prov-city-filter')||{}).value||'';
-  var spec = (document.getElementById('prov-spec-filter')||{}).value||'';
-
-  var btn = document.querySelector('[onclick="exportProvCSV()"]');
-  if (btn) { btn.disabled=true; btn.textContent='⏳ جاري التحميل...'; }
-
-  try {
-    var url = API + '/api/admin/export/providers';
-    var params = [];
-    if (city) params.push('city=' + encodeURIComponent(city));
-    if (spec) params.push('specialty=' + encodeURIComponent(spec));
-    if (params.length) url += '?' + params.join('&');
-
-    var r = await fetch(url, hdr());
-    var data = await r.json();
-
-    if (!Array.isArray(data) || !data.length) {
-      showToast('لا يوجد مزودون للتصدير');
-      if (btn) { btn.disabled=false; btn.textContent='⬇ تصدير Excel'; }
-      return;
-    }
-
-    // بناء صفوف البيانات
-    var rows = data.map(function(p) {
-      return {
-        'الاسم': p.name || '',
-        'البريد الإلكتروني': p.email || '',
-        'رقم الجوال': p.phone || '',
-        'المدينة': p.city || '',
-        'اسم المنشأة': p.company_name || '',
-        'التخصصات': Array.isArray(p.specialties) ? p.specialties.join(' | ') : '',
-        'الوسام': p.badge && p.badge !== 'none' ? p.badge : '',
-        'الحالة': p.is_active ? 'نشط' : 'موقوف',
-        'تاريخ التسجيل': p.created_at ? new Date(p.created_at).toLocaleDateString('ar-SA') : '',
-        'التقييم': parseFloat(p.avg_rating||0).toFixed(1),
-        'عدد العروض': parseInt(p.bid_count)||0,
-        'مشاريع مكتملة': parseInt(p.completed_projects)||0
-      };
-    });
-
-    // بناء ملف Excel بـ SheetJS
-    var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.json_to_sheet(rows);
-
-    // عرض الأعمدة
-    ws['!cols'] = [
-      {wch:22},{wch:30},{wch:16},{wch:14},{wch:22},
-      {wch:35},{wch:12},{wch:10},{wch:16},{wch:10},{wch:12},{wch:16}
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'المزودون');
-
-    // اسم الملف
-    var today = new Date();
-    var dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-    var fileName = 'مزودو_الخدمة';
-    if (city) fileName += '_' + city;
-    if (spec) fileName += '_' + spec;
-    fileName += '_' + dateStr + '.xlsx';
-
-    XLSX.writeFile(wb, fileName);
-    showToast('✅ تم تحميل ' + rows.length + ' مزود بنجاح');
-
-  } catch(e) {
-    console.error('Excel export error:', e);
-    showToast('تعذر التصدير: ' + e.message);
-  }
-
-  if (btn) { btn.disabled=false; btn.textContent='⬇ تصدير Excel'; }
-}
-
-async function doExportExcel(btnEl) {
-  var btn = btnEl || document.getElementById('export-excel-btn');
-  if (btn) { btn.disabled=true; btn.innerHTML='<span>⏳ جاري...</span>'; }
-  try {
-    var data = (filteredProviders && filteredProviders.length) ? filteredProviders : null;
-    if (!data) {
-      var city = (document.getElementById('prov-city-filter')||{}).value||'';
-      var spec = (document.getElementById('prov-spec-filter')||{}).value||'';
-      var url  = API + '/api/admin/export/providers';
-      var ps   = [];
-      if (city) ps.push('city='+encodeURIComponent(city));
-      if (spec) ps.push('specialty='+encodeURIComponent(spec));
-      if (ps.length) url += '?' + ps.join('&');
-      var r = await fetch(url, hdr());
-      data = await r.json();
-    }
-    if (!Array.isArray(data) || !data.length) {
-      alert('لا يوجد مزودون للتصدير');
-      return;
-    }
-    var rows = data.map(function(p) {
-      return {
-        'الاسم':            p.name||'',
-        'البريد الإلكتروني':p.email||'',
-        'رقم الجوال':       p.phone||'',
-        'المدينة':          p.city||'',
-        'اسم المنشأة':      p.company_name||'',
-        'التخصصات':         Array.isArray(p.specialties)?p.specialties.join(' | '):'',
-        'الوسام':           (p.badge&&p.badge!=='none')?p.badge:'',
-        'الحالة':           p.is_active?'نشط':'موقوف',
-        'تاريخ التسجيل':    p.created_at?new Date(p.created_at).toLocaleDateString('ar-SA'):'',
-        'التقييم':          parseFloat(p.avg_rating||0).toFixed(1),
-        'عدد العروض':       parseInt(p.bid_count)||0,
-        'مشاريع مكتملة':   parseInt(p.completed_projects)||0
-      };
-    });
-    var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{wch:22},{wch:30},{wch:16},{wch:14},{wch:22},{wch:35},{wch:12},{wch:10},{wch:16},{wch:10},{wch:12},{wch:16}];
-    XLSX.utils.book_append_sheet(wb, ws, 'المزودون');
-    var d = new Date();
-    var dn = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    XLSX.writeFile(wb, 'مزودو_الخدمة_'+dn+'.xlsx');
-    showToast('✅ تم تحميل '+rows.length+' مزود');
-  } catch(e) {
-    console.error('Excel error:',e);
-    alert('خطأ: '+e.message);
-  }
-  if (btn) { btn.disabled=false; btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> تصدير Excel'; }
-}
-
-function clearProvFilters() {
-  var c = document.getElementById('prov-city-filter');
-  var s = document.getElementById('prov-spec-filter');
-  if(c) c.value='';
-  if(s) s.value='';
-  loadProvs();
-}
-
-function showProvContact(id, name) {
-  showToast('📋 ' + name);
-}
-
-function initProvSpecFilter() {
-  var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-  var sel = document.getElementById('prov-spec-filter');
-  if(!sel || sel.options.length > 1) return;
-  CATS.forEach(function(cat){ var o=document.createElement('option'); o.value=cat; o.textContent=cat; sel.appendChild(o); });
-}
-
 
 function openBadge(id){curBadgeId=id;document.getElementById('badge-ov').classList.add('open');}
 function closeBadge(){document.getElementById('badge-ov').classList.remove('open');}
@@ -1745,130 +1511,6 @@ async function saveBadge(){
 }
 
 // ── REVIEWS ──
-// ── Provider Filter State ──
-var filteredProviders = [];
-var ADMIN_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-var ADMIN_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','تبوك','بريدة','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','الخرج'];
-
-function initProvSpecFilter() {
-  var selSpec = document.getElementById('prov-spec-filter');
-  if(selSpec && selSpec.options.length <= 1) {
-    ADMIN_CATS.forEach(function(cat){ var o=document.createElement('option'); o.value=cat; o.textContent=cat; selSpec.appendChild(o); });
-  }
-  var selCity = document.getElementById('prov-city-filter');
-  if(selCity && selCity.tagName==='SELECT' && selCity.options.length <= 1) {
-    ADMIN_CITIES.forEach(function(city){ var o=document.createElement('option'); o.value=city; o.textContent=city; selCity.appendChild(o); });
-  }
-  var auCity = document.getElementById('au-city');
-  if(auCity && auCity.options.length <= 1) {
-    ADMIN_CITIES.forEach(function(city){ var o=document.createElement('option'); o.value=city; o.textContent=city; auCity.appendChild(o); });
-  }
-  var auSpec = document.getElementById('au-spec');
-  if(auSpec && auSpec.options.length <= 1) {
-    ADMIN_CATS.forEach(function(cat){ var o=document.createElement('option'); o.value=cat; o.textContent=cat; auSpec.appendChild(o); });
-  }
-}
-
-function clearProvFilters() {
-  ['prov-city-filter','prov-spec-filter','prov-status-filter'].forEach(function(id) {
-    var el=document.getElementById(id); if(el) el.value='';
-  });
-  loadProvs();
-}
-
-function sendBulkNotif() {
-  var cnt = document.getElementById('bulk-prov-count');
-  if(cnt) cnt.textContent = filteredProviders.length;
-  var el = document.getElementById('bulk-notif-ov');
-  if(el) el.classList.add('open');
-  ['bulk-title','bulk-body'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
-  var al = document.getElementById('bulk-notif-alert');
-  if(al) al.className='alert';
-}
-function closeBulkNotif() {
-  var el = document.getElementById('bulk-notif-ov');
-  if(el) el.classList.remove('open');
-}
-
-async function confirmBulkNotif() {
-  var title = document.getElementById('bulk-title').value.trim();
-  var body  = document.getElementById('bulk-body').value.trim();
-  var al    = document.getElementById('bulk-notif-alert');
-  if(!title||!body){ al.textContent='عنوان ونص الإشعار مطلوبان'; al.className='alert err'; return; }
-  var btn = document.querySelector('#bulk-notif-ov .modal-foot .btn-blue');
-  btn.disabled=true; btn.textContent='جاري الإرسال...';
-  try {
-    var r = await fetch(API+'/api/admin/notify', {
-      method:'POST',
-      body: JSON.stringify({ title:title, body:body, user_ids: filteredProviders.map(function(p){return p.id;}) }),
-      ...hdr()
-    });
-    var d = await r.json();
-    if(r.ok) {
-      al.textContent = 'تم الإرسال: '+d.sent+' إشعار داخلي + '+d.emailSent+' إيميل';
-      al.className = 'alert ok';
-      setTimeout(closeBulkNotif, 3000);
-    } else {
-      al.textContent = d.message||'حدث خطأ';
-      al.className = 'alert err';
-    }
-  } catch(e){ al.textContent='تعذر الاتصال'; al.className='alert err'; }
-  btn.disabled=false; btn.textContent='إرسال';
-}
-
-// ── Add User ──
-function onAuRoleChange() {
-  var role = (document.getElementById('au-role')||{}).value||'client';
-  var sec  = document.getElementById('au-spec-section');
-  if(sec) sec.style.display = role==='provider' ? 'block' : 'none';
-}
-
-async function createUser() {
-  var name  = document.getElementById('au-name').value.trim();
-  var email = document.getElementById('au-email').value.trim();
-  var pass  = document.getElementById('au-pass').value;
-  var phone = document.getElementById('au-phone').value.trim();
-  var city  = document.getElementById('au-city').value;
-  var role  = document.getElementById('au-role').value;
-  var specEl= document.getElementById('au-spec');
-  var spec  = specEl ? specEl.value : '';
-  var al    = document.getElementById('add-user-alert');
-
-  if(!name||!email||!pass){ al.textContent='الاسم والبريد وكلمة المرور مطلوبة'; al.className='alert err'; return; }
-  if(pass.length<6){ al.textContent='كلمة المرور 6 أحرف على الأقل'; al.className='alert err'; return; }
-
-  var btn = document.getElementById('au-btn');
-  btn.disabled=true; btn.textContent='جاري الإنشاء...';
-
-  try {
-    var r = await fetch(API+'/api/admin/users', {
-      method:'POST',
-      body: JSON.stringify({ name:name, email:email, password:pass, role:role, phone:phone||null, city:city||null, specialties:spec?[spec]:null }),
-      ...hdr()
-    });
-    var d = await r.json();
-    if(r.ok){
-      al.textContent = 'تم إنشاء حساب ' + d.name + ' بصلاحية ' + (role==='admin'?'مدير':role==='provider'?'مزود':'عميل');
-      al.className='alert ok';
-      ['au-name','au-email','au-pass','au-phone'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
-      document.getElementById('au-role').value='client';
-      document.getElementById('au-city').value='';
-      if(specEl) specEl.value='';
-      onAuRoleChange();
-    } else { al.textContent=d.message||'حدث خطأ'; al.className='alert err'; }
-  } catch(e){ al.textContent='تعذر الاتصال'; al.className='alert err'; }
-  btn.disabled=false; btn.textContent='إنشاء الحساب';
-}
-
-function showProvContact(id, name) {
-  var p = filteredProviders.find(function(x){ return x.id==id; });
-  if(!p) return;
-  var info = name;
-  if(p.phone) info += ' — ' + p.phone;
-  if(p.city) info += ' — ' + p.city;
-  showToast(info);
-}
-
 async function loadRevs(){
   document.getElementById('rev-tbody').innerHTML='<tr><td colspan="7" class="loading">جاري التحميل...</td></tr>';
   let list=await safeArr('/api/admin/reviews');
@@ -1905,90 +1547,165 @@ function clearNotif(){document.getElementById('notif-title').value='';document.g
 loadHome();
 
 
-// ── PROVIDER FILTER & ROLE MANAGEMENT ──
 var filteredProviders = [];
 var PROV_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-var PROV_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','تبوك','بريدة','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف'];
+var PROV_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','تبوك','بريدة','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','الخرج'];
 
-function renderProvs(list) {
-  document.getElementById('prov-tbody').innerHTML = list.map(function(p) {
-    var avg = parseFloat(p.avg_rating)||0;
-    var specs = Array.isArray(p.specialties) && p.specialties.length
-      ? p.specialties.map(function(s){ return '<span style="background:var(--blue-l);color:var(--blue);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin:1px;display:inline-block">'+s+'</span>'; }).join('')
-      : '<span style="color:var(--t4)">—</span>';
-    var badge = p.badge && p.badge !== 'none'
-      ? ' <span style="background:var(--accent-l);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">'+p.badge+'</span>' : '';
-    return '<tr>' +
-      '<td><div style="font-weight:800;font-size:13px">'+p.name+badge+'</div>' +
-      (p.company_name ? '<div style="font-size:11px;color:var(--blue);font-weight:600">🏢 '+p.company_name+'</div>' : '') +
-      (p.phone ? '<a href="tel:'+p.phone+'" style="font-size:11px;color:var(--green);font-weight:700;text-decoration:none">📞 '+p.phone+'</a>' : '<span style="font-size:11px;color:var(--t4)">لا يوجد هاتف</span>') +
-      '<div style="font-size:10px;color:var(--t4)">'+p.email+'</div></td>' +
-      '<td style="font-weight:600">'+(p.city||'<span style="color:var(--t4)">—</span>')+'</td>' +
-      '<td>'+specs+'</td>' +
-      '<td>'+(avg>0?'<span style="color:var(--accent);font-weight:700">'+stars(avg)+' '+avg.toFixed(1)+'</span><div style="font-size:10px;color:var(--t4)">'+(p.review_count||0)+' تقييم</div>':'<span style="color:var(--t4)">—</span>')+'</td>' +
-      '<td style="font-weight:700;text-align:center">'+(p.completed_projects||0)+'</td>' +
-      '<td>'+(p.is_active?'<span style="color:var(--success);font-weight:700">● نشط</span>':'<span style="color:var(--danger);font-weight:700">● موقوف</span>')+'</td>' +
-      '<td><div style="display:flex;gap:4px"><button class="btn-sm bs-a" onclick="openBadge('+p.id+')">🏆</button><button class="btn-sm '+(p.is_active?'bs-r':'bs-g')+'" onclick="toggleUser('+p.id+','+p.is_active+')">'+(p.is_active?'إيقاف':'تفعيل')+'</button></div></td>' +
-    '</tr>';
+function initProvFilters() {
+  ['prov-spec-filter','au-spec'].forEach(function(id) {
+    var sel=document.getElementById(id);
+    if(sel&&sel.options.length<=1) PROV_CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  });
+  ['prov-city-filter','au-city'].forEach(function(id) {
+    var sel=document.getElementById(id);
+    if(sel&&sel.options.length<=1) PROV_CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  });
+}
+
+async function loadProvs() {
+  var tbody=document.getElementById('prov-tbody');
+  if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="8" class="loading">جاري التحميل...</td></tr>';
+  var city=(document.getElementById('prov-city-filter')||{}).value||'';
+  var spec=(document.getElementById('prov-spec-filter')||{}).value||'';
+  var status=(document.getElementById('prov-status-filter')||{}).value||'';
+  var url='/api/admin/export/providers';
+  var ps=[];
+  if(city) ps.push('city='+encodeURIComponent(city));
+  if(spec) ps.push('specialty='+encodeURIComponent(spec));
+  if(ps.length) url+='?'+ps.join('&');
+  var list=await safeArr(url);
+  if(status==='active') list=list.filter(function(p){return p.is_active;});
+  if(status==='inactive') list=list.filter(function(p){return !p.is_active;});
+  filteredProviders=list;
+  var cnt=document.getElementById('prov-count'); if(cnt) cnt.textContent=list.length+' مزود';
+  var bulkBtn=document.getElementById('bulk-notif-btn'); if(bulkBtn) bulkBtn.style.display=list.length?'inline-flex':'none';
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--t3)">لا يوجد مزودون</td></tr>';return;}
+  tbody.innerHTML=list.map(function(p){
+    var avg=parseFloat(p.avg_rating)||0;
+    var badge=(p.badge&&p.badge!=='none')?'<span style="font-size:10px;background:var(--yellow-l);color:var(--yellow);padding:2px 8px;border-radius:10px;font-weight:700;border:1px solid var(--yellow-m)">'+p.badge+'</span>':'—';
+    var specs=Array.isArray(p.specialties)&&p.specialties.length?p.specialties.join(' · '):'—';
+    return '<tr>'+
+      '<td><div style="font-size:13px;font-weight:800">'+p.name+'</div>'+
+      (p.company_name?'<div style="font-size:11px;color:var(--blue);font-weight:600">'+p.company_name+'</div>':'')+
+      '<a href="mailto:'+p.email+'" style="font-size:11px;color:var(--t3);text-decoration:none">'+p.email+'</a><br>'+
+      (p.phone?'<a href="tel:'+p.phone+'" style="font-size:12px;color:var(--blue);font-weight:700;text-decoration:none">📞 '+p.phone+'</a>':'<span style="font-size:11px;color:var(--t4)">—</span>')+
+      '</td>'+
+      '<td>'+(p.city||'—')+'</td>'+
+      '<td style="max-width:180px;font-size:11px;color:var(--t2);line-height:1.7">'+specs+'</td>'+
+      '<td><span style="color:var(--accent);font-weight:700">'+(avg>0?stars(avg)+' '+avg.toFixed(1):'—')+'</span><div style="font-size:10px;color:var(--t4)">'+(p.review_count||0)+' تقييم</div></td>'+
+      '<td style="text-align:center;font-weight:700">'+(p.completed_projects||0)+'<div style="font-size:10px;color:var(--t4)">'+(p.bid_count||0)+' عرض</div></td>'+
+      '<td>'+(p.is_active?'<span style="color:var(--success);font-weight:800">● نشط</span>':'<span style="color:var(--danger);font-weight:800">● موقوف</span>')+'</td>'+
+      '<td>'+badge+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        '<button class="btn-sm bs-a" onclick="openBadge('+p.id+')">وسام</button>'+
+        '<button class="btn-sm '+(p.is_active?'bs-r':'bs-g')+'" onclick="toggleUser('+p.id+','+p.is_active+')">'+(p.is_active?'إيقاف':'تفعيل')+'</button>'+
+      '</div></td></tr>';
   }).join('');
 }
 
-function filterProvsLocal() {
-  var q = ((document.getElementById('prov-name-filter')||{}).value||'').toLowerCase();
-  var shown = q ? filteredProviders.filter(function(p){ return (p.name||'').toLowerCase().includes(q)||(p.company_name||'').toLowerCase().includes(q); }) : filteredProviders;
-  var cnt = document.getElementById('prov-result-count');
-  if(cnt) cnt.textContent = shown.length;
-  renderProvs(shown);
+function clearProvFilters(){
+  ['prov-city-filter','prov-spec-filter','prov-status-filter'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  loadProvs();
 }
 
-var ROLE_PERMS = {
-  client: ['نشر المشاريع والمناقصات','استقبال العروض ومراجعتها','التواصل مع المزودين','تقييم الخدمة بعد الإنجاز'],
-  provider: ['تصفح المشاريع المتاحة','تقديم العروض والمزايدة','التواصل مع العملاء','إدارة ملف المزود ومعرض الأعمال'],
-  admin: ['جميع صلاحيات المزود والعميل','إدارة المستخدمين وتعديل الصلاحيات','مراجعة المشاريع والتقييمات','الإحصائيات والتقارير المتقدمة','إرسال الإشعارات الجماعية']
-};
-
-function setRole(role) {
-  document.getElementById('au-role').value = role;
-  ['client','provider','admin'].forEach(function(r) {
-    var card = document.getElementById('role-card-'+r);
-    if(!card) return;
-    if(r===role){
-      card.style.borderColor='var(--blue)'; card.style.background='var(--blue-l)';
-    } else {
-      card.style.borderColor='var(--border)'; card.style.background='var(--white)';
+async function exportExcel() {
+  var btn=document.getElementById('export-excel-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ جاري التحميل...';}
+  try {
+    var data = filteredProviders && filteredProviders.length ? filteredProviders : [];
+    if(!data.length) {
+      var city=(document.getElementById('prov-city-filter')||{}).value||'';
+      var spec=(document.getElementById('prov-spec-filter')||{}).value||'';
+      var url='/api/admin/export/providers';
+      var ps=[];
+      if(city) ps.push('city='+encodeURIComponent(city));
+      if(spec) ps.push('specialty='+encodeURIComponent(spec));
+      if(ps.length) url+='?'+ps.join('&');
+      var r=await GET(url);
+      data=await r.json();
     }
-  });
-  var permBox = document.getElementById('role-permissions-list');
-  if(permBox) permBox.innerHTML = (ROLE_PERMS[role]||[]).map(function(p){ return '✓ '+p; }).join('<br>');
-  var sec = document.getElementById('au-spec-section');
-  if(sec) sec.style.display = role==='provider'?'block':'none';
-  var box = document.getElementById('role-permissions-box');
-  if(box){
-    var colors={client:'var(--blue)',provider:'var(--green)',admin:'var(--purple)'};
-    var bgs={client:'var(--blue-l)',provider:'var(--green-l)',admin:'var(--purple-l)'};
-    box.style.borderColor=colors[role]; box.style.background=bgs[role];
-    var lbl=box.querySelector('div');
-    if(lbl) lbl.style.color=colors[role];
-  }
+    if(!Array.isArray(data)||!data.length){alert('لا يوجد مزودون');return;}
+    var rows=data.map(function(p){
+      return {
+        'الاسم':p.name||'',
+        'البريد الإلكتروني':p.email||'',
+        'رقم الجوال':p.phone||'',
+        'المدينة':p.city||'',
+        'اسم المنشأة':p.company_name||'',
+        'التخصصات':Array.isArray(p.specialties)?p.specialties.join(' | '):'',
+        'الوسام':(p.badge&&p.badge!=='none')?p.badge:'',
+        'الحالة':p.is_active?'نشط':'موقوف',
+        'تاريخ التسجيل':p.created_at?new Date(p.created_at).toLocaleDateString('ar-SA'):'',
+        'التقييم':parseFloat(p.avg_rating||0).toFixed(1),
+        'عدد العروض':parseInt(p.bid_count)||0,
+        'مشاريع مكتملة':parseInt(p.completed_projects)||0
+      };
+    });
+    var wb=XLSX.utils.book_new();
+    var ws=XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[{wch:22},{wch:30},{wch:16},{wch:14},{wch:22},{wch:35},{wch:12},{wch:10},{wch:16},{wch:10},{wch:12},{wch:16}];
+    XLSX.utils.book_append_sheet(wb,ws,'المزودون');
+    var d=new Date();
+    var dn=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    XLSX.writeFile(wb,'مزودو_الخدمة_'+dn+'.xlsx');
+    alert('تم تصدير '+rows.length+' مزود بنجاح ✅');
+  }catch(e){alert('خطأ: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='⬇ تصدير Excel';}
 }
 
-function togglePassVis(id, btn) {
-  var inp = document.getElementById(id);
-  if(!inp) return;
-  inp.type = inp.type==='password'?'text':'password';
-  btn.textContent = inp.type==='password'?'👁':'🙈';
+function onAuRoleChange(){
+  var role=(document.getElementById('au-role')||{}).value||'';
+  var sec=document.getElementById('au-spec-section');
+  if(sec) sec.style.display=role==='provider'?'block':'none';
 }
 
-function initProvSpecFilter() {
-  var specSel=document.getElementById('prov-spec-filter');
-  if(specSel&&specSel.options.length<=1) PROV_CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;specSel.appendChild(o);});
-  var citySel=document.getElementById('prov-city-filter');
-  if(citySel&&citySel.options.length<=1) PROV_CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;citySel.appendChild(o);});
-  var auCity=document.getElementById('au-city');
-  if(auCity&&auCity.options.length<=1) PROV_CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;auCity.appendChild(o);});
-  var auSpec=document.getElementById('au-spec');
-  if(auSpec&&auSpec.options.length<=1) PROV_CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;auSpec.appendChild(o);});
+async function createUser(){
+  var name=(document.getElementById('au-name')||{}).value.trim();
+  var email=(document.getElementById('au-email')||{}).value.trim();
+  var pass=(document.getElementById('au-pass')||{}).value;
+  var phone=(document.getElementById('au-phone')||{}).value.trim();
+  var city=(document.getElementById('au-city')||{}).value;
+  var role=(document.getElementById('au-role')||{}).value||'client';
+  var spec=(document.getElementById('au-spec')||{}).value;
+  var al=document.getElementById('add-user-alert');
+  if(!name||!email||!pass){al.textContent='الاسم والبريد وكلمة المرور مطلوبة';al.className='alert err';return;}
+  if(pass.length<6){al.textContent='كلمة المرور 6 أحرف على الأقل';al.className='alert err';return;}
+  var btn=document.getElementById('au-btn');btn.disabled=true;btn.textContent='جاري الإنشاء...';
+  try{
+    var r=await fetch(API+'/api/admin/users',{method:'POST',body:JSON.stringify({name,email,password:pass,role,phone:phone||null,city:city||null,specialties:spec?[spec]:null}),...hdr()});
+    var d=await r.json();
+    if(r.ok){al.textContent='✅ تم إنشاء حساب '+d.name;al.className='alert ok';['au-name','au-email','au-pass','au-phone'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});}
+    else{al.textContent=d.message||'خطأ';al.className='alert err';}
+  }catch(e){al.textContent='تعذر الاتصال';al.className='alert err';}
+  btn.disabled=false;btn.textContent='➕ إنشاء الحساب';
 }
+
+function sendBulkNotif(){
+  var cnt=document.getElementById('bulk-prov-count');if(cnt)cnt.textContent=filteredProviders.length;
+  var ov=document.getElementById('bulk-notif-ov');if(ov)ov.classList.add('open');
+  ['bulk-title','bulk-body'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+}
+function closeBulkNotif(){var ov=document.getElementById('bulk-notif-ov');if(ov)ov.classList.remove('open');}
+
+async function confirmBulkNotif(){
+  var title=(document.getElementById('bulk-title')||{}).value.trim();
+  var body=(document.getElementById('bulk-body')||{}).value.trim();
+  var al=document.getElementById('bulk-notif-alert');
+  if(!title||!body){al.textContent='عنوان ونص مطلوبان';al.className='alert err';return;}
+  var btn=document.querySelector('#bulk-notif-ov .btn-blue');
+  if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  try{
+    var ids=filteredProviders.map(function(p){return p.id;});
+    var r=await fetch(API+'/api/admin/notify',{method:'POST',body:JSON.stringify({title,body,user_ids:ids}),...hdr()});
+    var d=await r.json();
+    al.textContent=r.ok?'تم الإرسال لـ '+filteredProviders.length+' مزود':(d.message||'خطأ');
+    al.className=r.ok?'alert ok':'alert err';
+    if(r.ok)setTimeout(closeBulkNotif,2500);
+  }catch(e){al.textContent='خطأ: '+e.message;al.className='alert err';}
+  if(btn){btn.disabled=false;btn.textContent='📤 إرسال';}
+}
+
 </script>
 </body>
 </html>
