@@ -1383,7 +1383,7 @@ function renderProjs(reqs){
     let meta=[];
     if(r.city) meta.push(`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${r.city}</span>`);
     if(r.category) meta.push(`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${r.category}</span>`);
-    if(r.budget_max) meta.push(`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${Number(r.budget_max).toLocaleString('ar-SA')} ر.س</span>`);
+    if(r.budget_max) meta.push(`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${Number(r.budget_max).toLocaleString('en-US')} ر.س</span>`);
     meta.push(`<span class="proj-meta-item" style="color:var(--text4)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ago(r.created_at)}</span>`);
 
     // action button
@@ -1499,7 +1499,7 @@ function renderBidsList(bids, id){
           ${specs.length?`<div class="bid-specs">${specs.map(s=>`<span class="bid-spec">📍 ${s}</span>`).join('')}</div>`:''}
         </div>
         <div class="bid-price-row">
-          <div class="bid-price">${Number(b.price).toLocaleString('ar-SA')}</div>
+          <div class="bid-price">${Number(b.price).toLocaleString('en-US')}</div>
           <div class="bid-price-unit">ر.س</div>
           <div class="bid-days">⏱ ${b.days} يوم</div>
         </div>
@@ -1509,7 +1509,7 @@ function renderBidsList(bids, id){
         <div style="display:flex;align-items:center;gap:16px">
           <div>
             <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:2px">قيمة العرض</div>
-            <div style="font-size:18px;font-weight:900;color:var(--blue);letter-spacing:-.3px">${Number(b.price).toLocaleString('ar-SA')} <span style="font-size:11px;color:var(--text3);font-weight:600">ر.س</span></div>
+            <div style="font-size:18px;font-weight:900;color:var(--blue);letter-spacing:-.3px">${Number(b.price).toLocaleString('en-US')} <span style="font-size:11px;color:var(--text3);font-weight:600">ر.س</span></div>
           </div>
           <div style="width:1px;height:30px;background:var(--border)"></div>
           <div>
@@ -1602,7 +1602,7 @@ function connectWS(){
                       <span class="bid-rating">${b.avg_rating>0?b.avg_rating.toFixed(1)+' ('+b.review_count+' تقييم)':'لا يوجد تقييم'}</span></div>
                   </div>
                   <div style="text-align:left;flex-shrink:0">
-                    <div style="font-size:18px;font-weight:900;color:var(--client)">${Number(b.price).toLocaleString('ar-SA')}</div>
+                    <div style="font-size:18px;font-weight:900;color:var(--client)">${Number(b.price).toLocaleString('en-US')}</div>
                     <div style="font-size:10px;color:var(--t3);text-align:center">ر.س</div>
                   </div>
                 </div>
@@ -1610,7 +1610,7 @@ function connectWS(){
                 <div class="bid-price-bar">
                   <div style="display:flex;gap:16px;align-items:center">
                     <div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">قيمة العرض</div>
-                    <div class="bid-price">${Number(b.price).toLocaleString('ar-SA')} <span>ر.س</span></div></div>
+                    <div class="bid-price">${Number(b.price).toLocaleString('en-US')} <span>ر.س</span></div></div>
                     <div style="width:1px;height:32px;background:var(--border)"></div>
                     <div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">مدة التنفيذ</div>
                     <div style="font-size:16px;font-weight:800">${b.days} <span style="font-size:11px;font-weight:600;color:var(--t3)">يوم</span></div></div>
@@ -2101,7 +2101,7 @@ async function openDetail(id){
         <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;opacity:.8;position:relative">
           ${req.city?`<span>📍 ${req.city}</span>`:''}
           ${req.category?`<span>🏷 ${req.category}</span>`:''}
-          ${req.budget_max?`<span>💰 ${Number(req.budget_max).toLocaleString('ar-SA')} ر.س</span>`:''}
+          ${req.budget_max?`<span>💰 ${Number(req.budget_max).toLocaleString('en-US')} ر.س</span>`:''}
           ${req.deadline?`<span>📅 ${req.deadline.toString().slice(0,10)}</span>`:''}
         </div>
         ${req.description?`<div style="margin-top:10px;font-size:13px;line-height:1.8;opacity:.85;position:relative;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">${req.description}</div>`:''}
