@@ -2051,8 +2051,8 @@ function openImgFull(src){
 
 async function openDetail(id){
   curReqId=id; curChatProv=null;
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.className=i===0?'tab-btn on':'tab-btn');
-  document.querySelectorAll('.tab').forEach((t,i)=>t.className=i===0?'tab on':'tab');
+  document.querySelectorAll('.detail-tab').forEach((b,i)=>{b.classList.remove('on');if(i===0)b.classList.add('on');});
+  document.querySelectorAll('.tab-panel').forEach((t,i)=>{t.classList.remove('on');if(i===0)t.classList.add('on');});
   go('detail',null);
   try{
     let r=await GET('/api/requests/'+id);
@@ -2185,14 +2185,15 @@ async function rejectBid(bidId,reqId){
   else alert('حدث خطأ في الرفض');
 }
 
-function switchTab(t,el){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
-  document.querySelectorAll('.tab').forEach(x=>x.className='tab');
-  el.className='tab-btn on';
-  document.getElementById('tab-'+t).className='tab on';
-  if(t==='bids')loadBids(curReqId);
-  if(t==='chat')loadChatTab(curReqId);
-  if(t==='actions')loadActions(curReqId);
+function switchTab(tab, el) {
+  document.querySelectorAll('.detail-tab').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
+  if (el) el.classList.add('on');
+  const panel = document.getElementById('tab-' + tab);
+  if (panel) panel.classList.add('on');
+  if (tab === 'bids') loadBids(curReqId);
+  else if (tab === 'chat') loadChatTab(curReqId);
+  else if (tab === 'actions') loadActions(curReqId);
 }
 
 async function openProv(provId, fromPage){
