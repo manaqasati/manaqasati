@@ -1246,7 +1246,7 @@ function go(pg,el){
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='users')loadUsers();
-  if(pg==='providers')loadProvs();
+  if(pg==='providers'){loadProvs();initProvSpecFilter();}
   if(pg==='reviews')loadRevs();
   if(pg==='charts')loadCharts();
   window.scrollTo(0,0);
@@ -1396,25 +1396,61 @@ async function delUser(id){if(!confirm('حذف هذا المستخدم نهائ�
 // ── PROVIDERS ──
 async function loadProvs(){
   document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" class="loading">جاري التحميل...</td></tr>';
-  let list=await safeArr('/api/admin/providers');
-  if(!list.length){document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" class="empty">لا يوجد مزودون</td></tr>';return;}
+  const city = (document.getElementById('prov-city-filter')||{}).value||'';
+  const spec = (document.getElementById('prov-spec-filter')||{}).value||'';
+  let url = '/api/admin/providers';
+  const params = [];
+  if (city.trim()) params.push('city='+encodeURIComponent(city.trim()));
+  if (spec) params.push('specialty='+encodeURIComponent(spec));
+  if (params.length) url += '?' + params.join('&');
+  let list=await safeArr(url);
+  const cnt = document.getElementById('prov-count');
+  if (cnt) cnt.textContent = list.length + ' مزود';
+  const lbl = document.getElementById('prov-filtered-label');
+  if (lbl) lbl.textContent = city||spec ? '— نتائج مفلترة' : '';
+  if(!list.length){document.getElementById('prov-tbody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--t3)">لا يوجد مزودون بهذه المعايير</td></tr>';return;}
   document.getElementById('prov-tbody').innerHTML=list.map(p=>{
     let avg=parseFloat(p.avg_rating)||0;
     let badge=p.badge&&p.badge!=='none'?`<span style="font-size:10px;background:var(--accent-l);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:700">${p.badge}</span>`:'—';
+    const specs = Array.isArray(p.specialties)&&p.specialties.length ? p.specialties.slice(0,2).join('، ')+(p.specialties.length>2?' +'+( p.specialties.length-2):'') : '—';
     return`<tr>
-      <td><strong>${p.name}</strong>${p.phone?`<div style="font-size:10px;color:var(--t4)">${p.phone}</div>`:''}</td>
+      <td>
+        <strong style="cursor:pointer" onclick="showProvContact(${p.id},'${(p.name||'').replace(/'/g,'')}')">${p.name}</strong>
+        ${p.company_name?`<div style="font-size:10px;color:var(--blue);font-weight:600">${p.company_name}</div>`:''}
+        ${p.phone?`<div style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px"><a href="tel:${p.phone}" style="color:var(--blue);font-weight:700">${p.phone}</a></div>`:''}
+      </td>
       <td>${p.city||'—'}</td>
+      <td><div style="font-size:12px;color:var(--t2)">${specs}</div></td>
       <td><span style="color:var(--accent)">${avg>0?stars(avg)+' '+avg.toFixed(1):'—'}</span><div style="font-size:10px;color:var(--t4)">${p.review_count||0} تقييم</div></td>
-      <td>${p.completed_projects||0}</td><td>${p.bid_count||0}</td>
+      <td style="font-weight:700">${p.completed_projects||0}</td>
       <td>${p.is_active?'<span style="color:var(--success);font-size:12px;font-weight:700">● نشط</span>':'<span style="color:var(--danger);font-size:12px;font-weight:700">● موقوف</span>'}</td>
       <td>${badge}</td>
-      <td><div style="display:flex;gap:4px">
-        <button class="btn-sm bs-a" onclick="openBadge(${p.id})">وسام</button>
+      <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn-sm bs-a" onclick="openBadge(${p.id})">🏆 وسام</button>
         <button class="btn-sm ${p.is_active?'bs-r':'bs-g'}" onclick="toggleUser(${p.id},${p.is_active})">${p.is_active?'إيقاف':'تفعيل'}</button>
       </div></td>
     </tr>`;
   }).join('');
 }
+function clearProvFilters() {
+  var c = document.getElementById('prov-city-filter');
+  var s = document.getElementById('prov-spec-filter');
+  if(c) c.value='';
+  if(s) s.value='';
+  loadProvs();
+}
+
+function showProvContact(id, name) {
+  showToast('📋 ' + name);
+}
+
+function initProvSpecFilter() {
+  var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
+  var sel = document.getElementById('prov-spec-filter');
+  if(!sel || sel.options.length > 1) return;
+  CATS.forEach(function(cat){ var o=document.createElement('option'); o.value=cat; o.textContent=cat; sel.appendChild(o); });
+}
+
 
 function openBadge(id){curBadgeId=id;document.getElementById('badge-ov').classList.add('open');}
 function closeBadge(){document.getElementById('badge-ov').classList.remove('open');}
