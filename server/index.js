@@ -606,18 +606,18 @@ app.post('/api/auth/send-otp', async (req, res) => {
     if (purpose === 'login' && !existing.rows.length) {
       return res.status(400).json({ message: 'البريد الإلكتروني غير مسجل' });
     }
-    if (purpose === 'login' && existing.rows[0] && !existing.rows[0].is_active) {
+    if (purpose === 'login' && existing.rows[0] && existing.rows[0].is_active === false) {
       return res.status(403).json({ message: 'الحساب موقوف، تواصل مع الدعم' });
     }
 
-    const name = existing.rows[0]?.name || '';
+    const name = (existing.rows[0] && existing.rows[0].name) || '';
     const code = await createOTP(email, purpose);
     const html = otpEmailTpl(code, purpose, name);
     const purposeLabel = purpose === 'register' ? 'تفعيل الحساب' : 'تسجيل الدخول';
-    const sent = await sendEmail(email, `رمز التحقق — ${purposeLabel} | مناقصة`, html);
+    const sent = await sendEmail(email, 'رمز التحقق — ' + purposeLabel + ' | مناقصة', html);
     
     if (!sent) return res.status(500).json({ message: 'تعذر إرسال البريد، تحقق من إعدادات الإيميل' });
-    res.json({ ok: true, message: `تم إرسال رمز التحقق إلى ${email}` });
+    res.json({ ok: true, message: 'تم إرسال رمز التحقق إلى ' + email });
   } catch(e) {
     console.error('send-otp error:', e.message);
     res.status(500).json({ message: e.message });
@@ -848,7 +848,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
     if (req2.assigned_provider_id) {
       const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.assigned_provider_id]);
       await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
-      if (prov.rows[0]?.email) {
+      if (prov.rows[0] && prov.rows[0].email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
           emailTpl('مبروك! اكتمل المشروع 🎉',
             `<p>أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong>.</p>`,
@@ -856,7 +856,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
       }
     }
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
-    if (client.rows[0]?.email) {
+    if (client.rows[0] && client.rows[0].email) {
       setTimeout(async () => {
         await sendEmail(client.rows[0].email, `⭐ قيّم تجربتك: ${req2.title}`,
           emailTpl('قيّم المزود الآن ⭐',
@@ -959,7 +959,7 @@ async function handleSubmitBid(req, res, requestId) {
     });
     const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
-    if (client.rows[0]?.email) {
+    if (client.rows[0] && client.rows[0].email) {
       await sendEmail(client.rows[0].email, `💼 عرض جديد: ${reqData.rows[0].title}`,
         emailTpl('وصلك عرض جديد! 💼',
           `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك <strong>"${reqData.rows[0].title}"</strong>:</p>
@@ -999,13 +999,13 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     await notify(b.provider_id, '✅ تم قبول عرضك', `تم قبول عرضك على: ${b.title}`, 'accepted', b.request_id);
     const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
-    if (prov.rows[0]?.email) {
+    if (prov.rows[0] && prov.rows[0].email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
         emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
           `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
           '💬 تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
     }
-    if (client.rows[0]?.email) {
+    if (client.rows[0] && client.rows[0].email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
         emailTpl('تم إسناد مشروعك 🎉',
           `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
@@ -1070,7 +1070,7 @@ app.put('/api/bids/:id/revise', auth, async (req, res) => {
       await notify(b.client_id, '✏️ تعديل على العرض', notifMsg, 'bid', b.req_id);
       
       const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
-      if (client.rows[0]?.email) {
+      if (client.rows[0] && client.rows[0].email) {
         const emailHtml = emailTpl(
           'تعديل على عرض مقبول ✏️',
           `<p>قام المزود بتعديل قيمة العرض:</p>
@@ -1431,7 +1431,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.client_id]);
     if (newStatus === 'open') {
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك', `طلبك "${req2.title}" نُشر الآن`, 'approved', req2.id);
-      if (client.rows[0]?.email) {
+      if (client.rows[0] && client.rows[0].email) {
         await sendEmail(client.rows[0].email, `✅ تمت الموافقة: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
             `<div class="ok">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
@@ -1440,7 +1440,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       notifyInterestedProviders(req2.id, req2.title, req2.category, req2.city).catch(()=>{});
     } else {
       await notify(req2.client_id, '❌ تم رفض طلبك', `طلبك "${req2.title}". السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
-      if (client.rows[0]?.email) {
+      if (client.rows[0] && client.rows[0].email) {
         await sendEmail(client.rows[0].email, `❌ تم رفض طلبك: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
             `<div class="ng">تم رفض طلبك <strong>"${req2.title}"</strong>. السبب: ${reason||'غير محدد'}</div>`,
@@ -1551,7 +1551,7 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
     if (specialty) { vals.push(specialty); conditions.push('$' + vals.length + '=ANY(specialties)'); }
     const where = conditions.join(' AND ');
     const r = await pool.query(`
-      SELECT id,name,email,phone,city,specialties,badge,is_active,bio,company_name,
+      SELECT id,name,email,phone,city,specialties,badge,is_active,bio,company_name,created_at,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,
@@ -1654,6 +1654,43 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
 });
 
 // ── ADMIN EXPORT CSV ──
+app.get('/api/admin/export/providers', auth, adminOnly, async (req, res) => {
+  try {
+    const city = req.query.city || '';
+    const specialty = req.query.specialty || '';
+    const conditions = ["role='provider'"];
+    const vals = [];
+    if (city) { vals.push('%' + city + '%'); conditions.push('city ILIKE $' + vals.length); }
+    if (specialty) { vals.push(specialty); conditions.push('$' + vals.length + '=ANY(specialties)'); }
+    const where = conditions.join(' AND ');
+    const dbRes = await pool.query(
+      'SELECT name,email,phone,city,company_name,specialties,badge,is_active,created_at,' +
+      'COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,' +
+      '(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,' +
+      '(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status=$' + (vals.length+1) + ') as completed ' +
+      'FROM users WHERE ' + where + ' ORDER BY avg_rating DESC',
+      vals.concat(['completed'])
+    );
+    const provRows = dbRes.rows;
+    const cols = ['الاسم','البريد','الجوال','المدينة','المنشأة','التخصصات','الوسام','الحالة','تاريخ التسجيل','التقييم','عروض','مشاريع مكتملة'];
+    const lines = ['\uFEFF' + cols.join(',')];
+    provRows.forEach(function(p) {
+      const cells = [
+        p.name||'', p.email||'', p.phone||'', p.city||'', p.company_name||'',
+        (Array.isArray(p.specialties) ? p.specialties.join(' | ') : ''),
+        p.badge||'', p.is_active ? 'نشط' : 'موقوف',
+        p.created_at ? new Date(p.created_at).toISOString().slice(0,10) : '',
+        parseFloat(p.avg_rating||0).toFixed(1), p.bid_count||0, p.completed||0
+      ];
+      lines.push(cells.map(function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }).join(','));
+    });
+    const csvContent = lines.join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="providers.csv"');
+    res.send(csvContent);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.project_number,r.title,r.category,r.city,r.status,r.budget_max,r.created_at,r.completed_at,u.name as client_name,p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id ORDER BY r.created_at DESC`);
