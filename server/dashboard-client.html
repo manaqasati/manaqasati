@@ -1400,15 +1400,20 @@ function renderProjs(reqs){
       actionBtn=`<span style="font-size:12px;color:var(--yellow);font-weight:700;background:var(--yellow-l);padding:4px 10px;border-radius:20px;border:1px solid var(--yellow-m)">⏳ قيد المراجعة</span>`;
     }
 
+    // صورة المشروع
+    const imgs = Array.isArray(r.images) && r.images.length ? r.images : (r.image_url ? [r.image_url] : []);
+    const mainImg = imgs[r.main_image_index || 0] || imgs[0] || null;
+    
     return`<div class="proj-card" id="proj-${r.id}">
+      ${mainImg ? `<img src="${mainImg}" style="width:100%;height:180px;object-fit:cover;display:block;border-bottom:1px solid var(--border)" loading="lazy" onclick="openDetail(${r.id})" onerror="this.style.display='none'">` : ''}
       <div class="proj-card-body" onclick="openDetail(${r.id})">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
           <div class="proj-title">${r.title}</div>
-          <span style="font-size:11px;font-weight:800;background:${st.bg};color:${st.color};padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:1px solid ${st.color}33">${st.label}</span>
+          <span style="font-size:11px;font-weight:800;background:${st.bg};color:${st.color};padding:4px 11px;border-radius:20px;white-space:nowrap;flex-shrink:0;border:1px solid ${st.color}33">${st.label}</span>
         </div>
         ${r.description?`<div class="proj-desc">${r.description}</div>`:''}
         <div class="proj-meta">${meta.join('')}</div>
-        ${r.project_number?`<div style="font-size:10px;color:var(--text4);margin-top:6px;font-weight:600"># ${r.project_number}</div>`:''}
+        ${r.project_number?`<div style="font-size:10px;color:var(--t4);margin-top:6px;font-weight:600"># ${r.project_number}</div>`:''}
       </div>
       <div class="proj-footer">
         <div style="display:flex;align-items:center;gap:8px">
@@ -2039,6 +2044,282 @@ function openImgFull(src){
   ov.onclick=()=>document.body.removeChild(ov);
   let img=document.createElement('img');img.src=src;img.style.cssText='max-width:95vw;max-height:95vh;border-radius:8px;object-fit:contain';
   ov.appendChild(img);document.body.appendChild(ov);
+}
+
+
+// ── MISSING FUNCTIONS (restored) ──
+
+async function openDetail(id){
+  curReqId=id; curChatProv=null;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.className=i===0?'tab-btn on':'tab-btn');
+  document.querySelectorAll('.tab').forEach((t,i)=>t.className=i===0?'tab on':'tab');
+  go('detail',null);
+  try{
+    let r=await GET('/api/requests/'+id);
+    if(!r.ok) throw new Error('فشل تحميل الطلب');
+    let req=await r.json();
+
+    // ── header ──
+    let imgs=Array.isArray(req.images)&&req.images.length?req.images:(req.image_url?[req.image_url]:[]);
+    let mainIdx=req.main_image_index||0;
+
+    // شريط الحالة
+    let statusBars={
+      pending_review:`<div style="background:var(--warn-l);border:1.5px solid var(--warn-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">⏳</span>
+        <div><div style="font-size:13px;font-weight:800;color:#633806">طلبك قيد المراجعة</div>
+        <div style="font-size:11px;color:#92400e">سيُراجعه المدير ويُنشر قريباً — ستصلك إشعار عند الموافقة</div></div>
+      </div>`,
+      open:`<div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">✅</span>
+        <div><div style="font-size:13px;font-weight:800;color:#085041">طلبك منشور ويستقبل العروض</div>
+        <div style="font-size:11px;color:var(--success)">راجع العروض واختر المناسب</div></div>
+      </div>`,
+      in_progress:`<div style="background:var(--info-l);border:1.5px solid var(--info-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🔨</span>
+        <div><div style="font-size:13px;font-weight:800;color:#0C447C">المشروع قيد التنفيذ</div>
+        <div style="font-size:11px;color:var(--info)">المزود يعمل على طلبك — تواصل معه من تبويب المحادثة</div></div>
+      </div>`,
+      completed:`<div style="background:var(--admin-l);border:1.5px solid var(--admin-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🎉</span>
+        <div><div style="font-size:13px;font-weight:800;color:var(--admin-d)">المشروع مكتمل</div>
+        <div style="font-size:11px;color:var(--admin)">تم إنجاز الطلب بنجاح</div></div>
+      </div>`,
+      rejected:`<div style="background:var(--danger-l);border:1.5px solid var(--danger-m);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">❌</span>
+        <div><div style="font-size:13px;font-weight:800;color:#7f1d1d">تم رفض الطلب</div>
+        ${req.admin_notes?`<div style="font-size:11px;color:var(--danger)">السبب: ${req.admin_notes}</div>`:''}
+        </div>
+      </div>`
+    };
+
+    document.getElementById('detail-hd').innerHTML=`
+      ${statusBars[req.status]||''}
+      <div style="background:var(--primary);border-radius:14px;padding:18px 20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden">
+        <div style="position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.04);top:-40px;left:-20px"></div>
+        <div style="font-size:17px;font-weight:900;margin-bottom:6px;position:relative">${req.title}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;opacity:.8;position:relative">
+          ${req.city?`<span>📍 ${req.city}</span>`:''}
+          ${req.category?`<span>🏷 ${req.category}</span>`:''}
+          ${req.budget_max?`<span>💰 ${Number(req.budget_max).toLocaleString('ar-SA')} ر.س</span>`:''}
+          ${req.deadline?`<span>📅 ${req.deadline.toString().slice(0,10)}</span>`:''}
+        </div>
+        ${req.description?`<div style="margin-top:10px;font-size:13px;line-height:1.8;opacity:.85;position:relative;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">${req.description}</div>`:''}
+      </div>
+      ${imgs.length?`<div style="margin-bottom:14px">
+        <img id="det-main-img" src="${imgs[mainIdx]}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;cursor:pointer;margin-bottom:6px" onclick="openImgFull(this.src)">
+        ${imgs.length>1?`<div style="display:flex;gap:6px;overflow-x:auto">${imgs.map((s,i)=>`<img src="${s}" onclick="document.getElementById('det-main-img').src=this.src" style="width:56px;height:56px;object-fit:cover;border-radius:7px;cursor:pointer;border:${i===mainIdx?'2px solid var(--client)':'1px solid var(--border)'};">`).join('')}</div>`:''}
+      </div>`:''}`;
+
+    // ── assigned provider box ──
+    let ab=document.getElementById('assigned-box');
+    if((req.status==='in_progress'||req.status==='completed')&&req.provider_name){
+      ab.innerHTML=`<div style="background:var(--success-l);border:2px solid var(--success-m);border-radius:14px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;color:var(--success);font-weight:800;margin-bottom:10px">✅ المزود المُسند لهذا المشروع</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="width:46px;height:46px;border-radius:50%;background:${ac(req.assigned_provider_id)};color:#fff;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name.charAt(0)}</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:800;cursor:pointer" onclick="openProv(${req.assigned_provider_id},'detail')">${req.provider_name}</div>
+            ${req.provider_phone?`<a href="tel:${req.provider_phone}" style="font-size:12px;color:var(--success);text-decoration:none">📞 ${req.provider_phone}</a>`:''}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-sm bs-dk" onclick="openChatWith(${req.assigned_provider_id},'${req.provider_name.replace(/'/g,'')}',${id})">💬 تواصل</button>
+            <button class="btn-sm bs-cl" onclick="openProv(${req.assigned_provider_id},'detail')">👤 ملفه</button>
+            <button class="btn-sm bs-a" onclick="openRate(${id},${req.assigned_provider_id})">⭐ تقييم</button>
+          </div>
+        </div>
+      </div>`;
+    } else { ab.innerHTML=''; }
+
+    loadBids(id);
+  }catch(e){
+    document.getElementById('detail-hd').innerHTML=`<div class="empty"><h4>تعذر تحميل الطلب</h4><p style="font-size:11px">${e.message}</p><button class="btn-sm bs-cl" style="margin-top:8px" onclick="openDetail(${id})">إعادة المحاولة</button></div>`;
+  }
+}
+
+async function loadBids(id){
+  let el=document.getElementById('bids-list');
+  if(!el)return;
+  el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  try{
+    let r=await GET('/api/requests/'+id+'/bids');
+    if(!r.ok){
+      el.innerHTML=`<div class="empty"><h4>تعذر تحميل العروض</h4><p style="font-size:11px">كود الخطأ: ${r.status}</p></div>`;
+      return;
+    }
+    let bids=await r.json();
+    if(!Array.isArray(bids)) bids=[];
+    let cnt=document.getElementById('bids-count');
+    if(cnt)cnt.textContent=bids.length?'('+bids.length+')':'';
+    renderBidsList(bids, id);
+  }catch(e){
+    el.innerHTML=`<div class="empty"><h4>خطأ في التحميل</h4><p style="font-size:11px">${e.message||'تحقق من اتصالك'}</p><button class="btn-sm bs-cl" style="margin-top:8px" onclick="loadBids(${id})">إعادة المحاولة</button></div>`;
+  }
+}
+
+async function acceptBid(bidId,reqId){
+  if(!confirm('هل تريد قبول هذا العرض؟'))return;
+  try{
+    let r=await PUT('/api/bids/'+bidId+'/accept');
+    if(r.ok){
+      // إرسال رسالة ترحيب للمزود
+      let bidsR=await GET('/api/requests/'+reqId+'/bids');
+      if(bidsR.ok){
+        let bids=await bidsR.json();
+        let acc=Array.isArray(bids)?bids.find(b=>b.status==='accepted'):null;
+        if(acc) await POST('/api/messages',{request_id:reqId,receiver_id:acc.provider_id,content:'✅ تم قبول عرضك! يسعدنا العمل معك، ننتظر بدء التنفيذ.'}).catch(()=>{});
+      }
+      showToast('✅ تم قبول العرض بنجاح');
+      openDetail(reqId);
+    }else{
+      let d=await r.json();
+      alert(d.message||'حدث خطأ في القبول');
+    }
+  }catch(e){ alert('حدث خطأ: '+e.message); }
+}
+
+async function rejectBid(bidId,reqId){
+  if(!confirm('هل تريد رفض هذا العرض؟'))return;
+  let r=await PUT('/api/bids/'+bidId+'/reject').catch(()=>({ok:false}));
+  if(r.ok) loadBids(reqId);
+  else alert('حدث خطأ في الرفض');
+}
+
+function switchTab(t,el){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
+  document.querySelectorAll('.tab').forEach(x=>x.className='tab');
+  el.className='tab-btn on';
+  document.getElementById('tab-'+t).className='tab on';
+  if(t==='bids')loadBids(curReqId);
+  if(t==='chat')loadChatTab(curReqId);
+  if(t==='actions')loadActions(curReqId);
+}
+
+async function openProv(provId, fromPage){
+  prevPage=fromPage||'detail';
+  go('provider',null);
+  const el=document.getElementById('prov-content');
+  el.innerHTML='<div class="loading" style="padding:40px;text-align:center">جاري تحميل الملف...</div>';
+  try{
+    const [r1,r2]=await Promise.all([
+      GET('/api/provider/'+provId+'/profile').then(r=>r.ok?r.json():null),
+      GET('/api/reviews/provider/'+provId).then(r=>r.ok?r.json():{reviews:[],count:0,average:0}).catch(()=>({reviews:[],count:0,average:0}))
+    ]);
+    if(!r1){el.innerHTML=err();return;}
+    const p=r1, rev=r2;
+    const avg=parseFloat(p.avg_rating)||0;
+    const pName=p.name.replace(/'/g,'');
+    const portfolio=Array.isArray(p.portfolio_images)?p.portfolio_images:[];
+    const specs=Array.isArray(p.specialties)?p.specialties:[];
+
+    // نجوم التقييم
+    let starsHtml='';
+    for(let i=1;i<=5;i++) starsHtml+=`<span style="color:${i<=Math.round(avg)?'#f59e0b':'#e5e7eb'};font-size:16px">★</span>`;
+
+    el.innerHTML=`
+      <!-- HEADER -->
+      <div style="background:var(--primary);border-radius:16px;padding:24px 20px;margin-bottom:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04);top:-50px;left:-30px"></div>
+        <div style="display:flex;align-items:flex-start;gap:14px;position:relative">
+          <div style="width:64px;height:64px;border-radius:18px;background:${ac(provId)};color:#fff;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:3px solid rgba(255,255,255,.2)">${p.name.charAt(0)}</div>
+          <div style="flex:1">
+            <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:2px">${p.name}
+              ${p.badge&&p.badge!=='none'?`<span style="font-size:11px;background:rgba(212,151,58,.3);color:#f6c96b;padding:3px 9px;border-radius:20px;font-weight:700;margin-right:4px">${p.badge}</span>`:''}
+            </div>
+            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:8px">${p.city?'📍 '+p.city:''}${p.experience_years?' • '+p.experience_years+' سنوات خبرة':''}</div>
+            <div style="display:flex;align-items:center;gap:4px">${starsHtml}<span style="font-size:13px;color:#f6c96b;font-weight:700;margin-right:4px">${avg>0?avg.toFixed(1):''}</span><span style="font-size:11px;color:rgba(255,255,255,.5)">${rev.count?'('+rev.count+' تقييم)':''}</span></div>
+          </div>
+        </div>
+        <!-- إحصائيات -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;position:relative">
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:900;color:#fff">${p.completed_projects||0}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6)">مشروع منجز</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:900;color:#fff">${avg>0?avg.toFixed(1):'—'}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6)">التقييم</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:22px;font-weight:900;color:#fff">${rev.count||0}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6)">تقييم</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- أزرار التواصل -->
+      <div style="display:grid;grid-template-columns:1fr${p.phone?' 1fr':''};gap:8px;margin-bottom:16px">
+        <button class="btn-accept" style="justify-content:center;padding:12px" onclick="openChatFromProv(${provId},'${pName}')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          إرسال رسالة
+        </button>
+        ${p.phone?`<a href="tel:${p.phone}" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:var(--success-l);color:var(--success);border:1.5px solid var(--success-m);border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9a2 2 0 012-2.18h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.91 14a16 16 0 006.12 6.12l.41-.41a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          اتصال مباشر
+        </a>`:''}
+      </div>
+
+      <!-- التخصصات -->
+      ${specs.length?`<div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>التخصصات</h3></div>
+        <div class="cb" style="display:flex;gap:6px;flex-wrap:wrap">
+          ${specs.map(s=>`<span style="padding:5px 12px;background:var(--client-l);color:var(--client);border-radius:20px;font-size:12px;font-weight:700">${s}</span>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- نبذة -->
+      ${p.bio?`<div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>نبذة عن المزود</h3></div>
+        <div class="cb"><p style="font-size:13px;line-height:1.9;color:var(--t)">${p.bio}</p></div>
+      </div>`:''}
+
+      <!-- البورتفوليو (صور الورشة وأعمال سابقة) -->
+      ${portfolio.length?`<div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>معرض الأعمال</h3><span style="font-size:11px;color:var(--t3)">${portfolio.length} صورة</span></div>
+        <div class="cb">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+            ${portfolio.map(img=>`<img src="${img}" onclick="openImgFull('${img}')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--border)">`).join('')}
+          </div>
+        </div>
+      </div>`:''}
+
+      <!-- التقييمات -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>تقييمات العملاء</h3><span style="font-size:12px;color:var(--t3);font-weight:700">${rev.count||0} تقييم${avg>0?' • ⭐ '+avg.toFixed(1):''}</span></div>
+        ${rev.reviews&&rev.reviews.length?rev.reviews.map(rv=>{
+          let rStars='';
+          for(let i=1;i<=5;i++) rStars+=`<span style="color:${i<=rv.rating?'#f59e0b':'#e5e7eb'};font-size:13px">★</span>`;
+          return`<div style="padding:13px 16px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--client-l);color:var(--client);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${(rv.reviewer_name||'؟').charAt(0)}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:700">${rv.reviewer_name||'مجهول'}</div>
+                  <div style="font-size:10px;color:var(--t4)">${ago(rv.created_at)}</div>
+                </div>
+              </div>
+              <div>${rStars}</div>
+            </div>
+            ${rv.comment?`<div style="font-size:13px;color:var(--t);line-height:1.7;padding:8px 10px;background:var(--bg);border-radius:8px">"${rv.comment}"</div>`:''}
+          </div>`;
+        }).join(''):`<div class="cb" style="text-align:center;color:var(--t3);font-size:13px;padding:20px">لا يوجد تقييمات بعد</div>`}
+      </div>`;
+  }catch(e){el.innerHTML=err();}
+}
+
+function startChat(provId, provName, reqId){
+  curChatProv={id:provId, name:provName};
+  // الانتقال لتبويب المحادثة مباشرة
+  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab');
+  let chatBtn=document.querySelector('[onclick*="chat"]');
+  if(chatBtn) chatBtn.className='tab-btn on';
+  // ابحث عن tab-btn الثاني (المحادثة)
+  let tabs=document.querySelectorAll('.tab-btn');
+  if(tabs[1]){tabs[1].className='tab-btn on';}
+  let chatTab=document.getElementById('tab-chat');
+  if(chatTab){chatTab.className='tab on';}
+  loadChatTab(reqId);
 }
 
 setInterval(loadNotifCount,30000);
