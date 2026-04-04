@@ -863,6 +863,11 @@ p  { color: var(--t2); line-height: 1.75 }
 /* client extras */
 .prov-hd { background:linear-gradient(135deg,#0f2545 0%,var(--blue) 100%); border-radius:var(--rxl); padding:22px 20px; margin-bottom:16px; position:relative; overflow:hidden }
 .prov-hd::before { content:''; position:absolute; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,.04); top:-60px; left:-40px }
+
+@keyframes sk {
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
 </style>
 </head>
 <body>
@@ -1286,33 +1291,48 @@ function go(pg,el){
 
 // ── HOME ──
 async function loadHome(){
-  let reqs=await safeArr('/api/requests/my');
-  document.getElementById('s-total').textContent=reqs.length;
-  document.getElementById('s-open').textContent=reqs.filter(r=>r.status==='open').length;
-  document.getElementById('s-prog').textContent=reqs.filter(r=>r.status==='in_progress').length;
-  document.getElementById('s-done').textContent=reqs.filter(r=>r.status==='completed'||r.status==='done').length;
+  // ① عرض skeleton فوراً
+  ['s-total','s-open','s-prog','s-done'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.textContent = '...';
+  });
+  var homeEl = document.getElementById('home-reqs');
+  if(homeEl) homeEl.innerHTML = [1,2,3].map(function(){
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:8px">'+
+      '<div style="height:12px;background:#f1f5f9;border-radius:6px;width:60%;margin-bottom:10px;animation:sk 1.2s infinite"></div>'+
+      '<div style="height:12px;background:#f1f5f9;border-radius:6px;width:40%"></div></div>';
+  }).join('');
 
-  // بطاقات الطلبات الأخيرة مع إظهار عدد العروض
-  let el=document.getElementById('home-reqs');
+  // ② جلب البيانات
+  var reqs = await safeArr('/api/requests/my');
+  allProjs = reqs;
+
+  // ③ تحديث الأرقام
+  document.getElementById('s-total').textContent = reqs.length;
+  document.getElementById('s-open').textContent  = reqs.filter(function(r){return r.status==='open';}).length;
+  document.getElementById('s-prog').textContent  = reqs.filter(function(r){return r.status==='in_progress';}).length;
+  document.getElementById('s-done').textContent  = reqs.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
+
+  // ④ عرض البطاقات
   if(!reqs.length){
-    el.innerHTML=empty('لا يوجد طلبات','انشر طلبك الأول الآن');
+    homeEl.innerHTML = empty('لا يوجد طلبات','انشر طلبك الأول الآن');
   } else {
-    el.innerHTML=reqs.slice(0,5).map(riCard).join('');
+    homeEl.innerHTML = reqs.slice(0,5).map(riCard).join('');
   }
 
-  // تحذير إذا في طلبات مفتوحة عندها عروض جديدة
-  let openWithBids=reqs.filter(r=>r.status==='open'&&+r.bid_count>0);
+  // ⑤ banner العروض الجديدة
+  var openWithBids = reqs.filter(function(r){return r.status==='open' && +r.bid_count>0;});
   if(openWithBids.length){
-    let banner=document.getElementById('bids-banner');
+    var banner = document.getElementById('bids-banner');
     if(!banner){
-      banner=document.createElement('div');
-      banner.id='bids-banner';
-      banner.style.cssText='background:var(--accent-l);border:1.5px solid var(--accent-m);border-radius:12px;padding:12px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:10px';
-      banner.onclick=()=>{activeFilter='open';go('requests',document.getElementById('ni-requests'));};
-      document.getElementById('home-reqs').before(banner);
+      banner = document.createElement('div');
+      banner.id = 'bids-banner';
+      banner.style.cssText = 'background:var(--accent-l);border:1.5px solid var(--accent-m);border-radius:12px;padding:12px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:10px';
+      banner.onclick = function(){ activeFilter='open'; go('requests',document.getElementById('ni-requests')); };
+      homeEl.before(banner);
     }
-    let total=openWithBids.reduce((s,r)=>s+(+r.bid_count||0),0);
-    banner.innerHTML=`<span style="font-size:24px">💼</span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:#78350f">لديك ${total} عرض جديد!</div><div style="font-size:11px;color:#92400e">على ${openWithBids.length} طلب — راجعهم الآن واختر المناسب</div></div><svg width="14" height="14" fill="none" stroke="#92400e" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>`;
+    var total = openWithBids.reduce(function(s,r){return s+(+r.bid_count||0);},0);
+    banner.innerHTML = '<span style="font-size:24px">💼</span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:#78350f">لديك '+total+' عرض جديد!</div><div style="font-size:11px;color:#92400e">على '+openWithBids.length+' طلب — راجعهم الآن</div></div>';
   }
 
   loadNotifCount();
