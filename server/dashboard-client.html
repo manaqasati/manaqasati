@@ -1331,6 +1331,22 @@ function riCard(r){
   </div>`;
 }
 
+
+// ── State ──
+let allProjs = [], activeFilter = 'all';
+
+// ── REQUESTS ──
+async function loadReqs() {
+  let el = document.getElementById('all-reqs');
+  if (el) el.innerHTML = '<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  let reqs = await safeArr('/api/requests/my');
+  allProjs = reqs;
+  // تحديث عداد الكل
+  let cnt = document.getElementById('cnt-all');
+  if (cnt) cnt.textContent = reqs.length ? '(' + reqs.length + ')' : '';
+  filterProjs(activeFilter);
+}
+
 function filterProjs(status, btn){
   activeFilter=status;
   document.querySelectorAll('.sf-btn').forEach(t=>t.classList.remove('on'));
@@ -1339,7 +1355,7 @@ function filterProjs(status, btn){
   renderProjs(list);
 }
 
-async function renderProjs(reqs){
+function renderProjs(reqs){
   let el=document.getElementById('all-reqs');
   if(!reqs.length){
     el.innerHTML=`<div class="empty-state">
