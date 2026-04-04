@@ -656,14 +656,12 @@ app.post('/api/auth/send-otp', async (req, res) => {
       console.error('[OTP] email error:', emailErr.message);
     }
 
-    // دائماً نُرجع الكود (للتجربة والتشخيص)
     res.json({
       ok: true,
       emailSent: emailSent,
-      code: code,
       message: emailSent
         ? 'تم إرسال الرمز إلى ' + email
-        : 'رمز التحقق: ' + code
+        : 'تم إنشاء الرمز — تحقق من بريدك'
     });
   } catch(e) {
     console.error('[OTP] error:', e.message);
