@@ -2140,11 +2140,19 @@ async function openDetail(id){
 async function loadBids(id){
   let el=document.getElementById('bids-list');
   if(!el)return;
-  el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  if(!id){el.innerHTML='<div class="empty-state"><h3>خطأ</h3><p>معرّف المشروع غير صحيح</p></div>';return;}
+  el.innerHTML='<div class="loading"><div class="spinner"></div>جاري تحميل العروض...</div>';
   try{
     let r=await GET('/api/requests/'+id+'/bids');
     if(!r.ok){
-      el.innerHTML=`<div class="empty"><h4>تعذر تحميل العروض</h4><p style="font-size:11px">كود الخطأ: ${r.status}</p></div>`;
+      let errMsg='';
+      try{const ed=await r.json();errMsg=ed.message||'';}catch{}
+      el.innerHTML=`<div class="empty-state">
+        <div class="empty-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/></svg></div>
+        <h3>تعذر تحميل العروض</h3>
+        <p>${errMsg||'كود الخطأ: '+r.status}</p>
+        <button class="btn btn-blue btn-sm" style="margin-top:12px" onclick="loadBids(${id})">إعادة المحاولة</button>
+      </div>`;
       return;
     }
     let bids=await r.json();
