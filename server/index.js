@@ -1044,26 +1044,52 @@ app.put('/api/bids/:id/reject', auth, async (req, res) => {
 app.put('/api/bids/:id/revise', auth, async (req, res) => {
   try {
     const { price, days, revision_note } = req.body;
-    if (!price || !days || !revision_note?.trim()) return res.status(400).json({ message: 'السعر والمدة وسبب التعديل مطلوبة' });
+    if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
     const bid = await pool.query(
       'SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1 AND b.provider_id=$2',
       [req.params.id, req.user.id]);
     if (!bid.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
     const b = bid.rows[0];
-    if (b.status !== 'accepted') return res.status(400).json({ message: 'يمكن التعديل فقط على العروض المقبولة' });
-    const note = `تعديل: السعر ${b.price}→${price} ر.س، المدة ${b.days}→${days} يوم. السبب: ${revision_note}`;
-    await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, note, req.params.id]);
-    await notify(b.client_id, '✏️ تعديل على العرض', note, 'bid', b.req_id);
-    const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
-    for (const a of admins.rows) await notify(a.id, '✏️ تعديل عرض', `${b.title}: ${note}`, 'bid', b.req_id);
-    const client = await pool.query('SELECT email FROM users WHERE id=$1', [b.client_id]);
-    if (client.rows[0]?.email) {
-      await sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`,
-        emailTpl('تعديل على عرض مقبول ✏️',
-          `<div class="hl">السعر: ${b.price}→${price} ر.س | المدة: ${b.days}→${days} يوم | السبب: ${revision_note}</div>`,
-          '📋 مراجعة', `${SITE_URL}/dashboard-client.html`));
+    // السماح بالتعديل على pending و accepted فقط (ليس rejected)
+    if (b.status === 'rejected') return res.status(400).json({ message: 'لا يمكن تعديل عرض مرفوض' });
+    
+    const oldPrice = b.price;
+    const oldDays  = b.days;
+    const noteText = revision_note ? revision_note.trim() : '';
+    
+    // تحديث العرض مع الملاحظة الجديدة إن وجدت
+    const bidNote = noteText 
+      ? `تعديل: السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم. السبب: ${noteText}`
+      : (b.note || null);
+    
+    await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, bidNote, req.params.id]);
+    
+    // إشعار العميل فقط إذا كان المشروع قيد التنفيذ (accepted)
+    if (b.status === 'accepted') {
+      const notifMsg = `تعديل على العرض: السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم${noteText?' | '+noteText:''}`;
+      await notify(b.client_id, '✏️ تعديل على العرض', notifMsg, 'bid', b.req_id);
+      
+      const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
+      if (client.rows[0]?.email) {
+        const emailHtml = emailTpl(
+          'تعديل على عرض مقبول ✏️',
+          `<p>قام المزود بتعديل قيمة العرض:</p>
+           <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+             <tr><td style="padding:10px;background:#f8f9fb;font-weight:700;color:#374151;border-radius:8px 0 0 8px">💰 القيمة</td>
+                 <td style="padding:10px;color:#dc2626;text-decoration:line-through">${oldPrice.toLocaleString()} ر.س</td>
+                 <td style="padding:10px;color:#16a34a;font-weight:900">${Number(price).toLocaleString()} ر.س</td></tr>
+             <tr><td style="padding:10px;background:#f8f9fb;font-weight:700;color:#374151">⏱ المدة</td>
+                 <td style="padding:10px;color:#dc2626;text-decoration:line-through">${oldDays} يوم</td>
+                 <td style="padding:10px;color:#16a34a;font-weight:900">${days} يوم</td></tr>
+           </table>
+           ${noteText ? `<p style="background:#fffbeb;padding:12px;border-radius:8px;border-right:4px solid #d97706;color:#92400e">سبب التعديل: <strong>${noteText}</strong></p>` : ''}`,
+          'مراجعة المشروع', `${SITE_URL}/dashboard-client.html`
+        );
+        sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`, emailHtml).catch(()=>{});
+      }
     }
-    res.json({ message: 'تم تعديل العرض', price, days });
+    
+    res.json({ ok: true, message: 'تم تعديل العرض بنجاح', price: +price, days: +days });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
