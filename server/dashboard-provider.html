@@ -1735,17 +1735,17 @@ function wsSend(data) {
 }
 
 function appendProvMsg(m) {
-  const box = document.getElementById('msg-threads');
+  const box = document.getElementById('chat-msgs');
   if (!box) return;
   if (!curChatClient) return;
   const relevant = (m.sender_id == user.id && m.receiver_id == curChatClient.id) ||
     (m.sender_id == curChatClient.id && m.receiver_id == user.id);
-  if (!relevant && !m.content?.startsWith('✅')) return;
+  if (!relevant && !m.content && m.content.startsWith('✅')) return;
   if (box.querySelector('[data-msg-id="' + m.id + '"]')) return;
   box.querySelectorAll('.loading').forEach(el => el.remove());
   const isMe = m.sender_id == user.id;
   const el = document.createElement('div');
-  if (m.content?.startsWith('✅')) {
+  if (m.content && m.content.startsWith('✅')) {
     el.className = 'msg-sys'; el.dataset.msgId = m.id; el.textContent = m.content;
   } else {
     el.className = isMe ? 'msg-me' : 'msg-other';
@@ -1814,10 +1814,11 @@ async function loadMessages() {
       </div>
     </div>`;
   }).join('');
-  if (curChatClient) loadChatWith(curChatClient.id, curChatClient.name, curChatClient.reqId);
-  else if (convs.length) {
-    const c = convs[0];
-    loadChatWith(c.other_id || c.provider_id, c.other_name || 'العميل', c.request_id);
+  const firstConv = curChatClient
+    ? { id: curChatClient.id, name: curChatClient.name, reqId: curChatClient.reqId }
+    : (convs.length ? { id: convs[0].other_id, name: convs[0].other_name || 'العميل', reqId: convs[0].request_id } : null);
+  if (firstConv && firstConv.id) {
+    setTimeout(function() { loadChatWith(firstConv.id, firstConv.name, firstConv.reqId); }, 100);
   }
 }
 
@@ -1856,19 +1857,30 @@ async function loadChatWith(clientId, clientName, requestId) {
   try {
     const r = await fetch(API + '/api/messages/' + requestId, hdr());
     const msgs = safeArr(await r.json());
-    const box = document.getElementById('msg-threads'); if (!box) return;
-    const filtered = msgs.filter(m => (m.sender_id == user.id && m.receiver_id == clientId) || (m.sender_id == clientId && m.receiver_id == user.id) || m.content?.startsWith('✅'));
-    if (!filtered.length) { box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة مع العميل 👋</div>'; return; }
+    const box = document.getElementById('chat-msgs');
+    if (!box) return;
+    const filtered = msgs.filter(function(m) {
+      return (m.sender_id == user.id && m.receiver_id == clientId) ||
+             (m.sender_id == clientId && m.receiver_id == user.id) ||
+             (m.content && m.content.startsWith('✅'));
+    });
+    if (!filtered.length) {
+      box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:13px;padding:40px 20px">ابدأ المحادثة مع العميل 👋</div>';
+      return;
+    }
     box.innerHTML = '';
-    filtered.forEach(m => appendProvMsg(m));
+    filtered.forEach(function(m) { appendProvMsg(m); });
     box.scrollTop = box.scrollHeight;
     wsSend({ type: 'read', request_id: requestId, sender_id: clientId });
-  } catch { const b = document.getElementById('msg-threads'); if (b) b.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة 👋</div>'; }
+  } catch(e) {
+    const b = document.getElementById('chat-msgs');
+    if (b) b.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;padding:20px">ابدأ المحادثة 👋</div>';
+  }
 }
 
 function sendMsg(receiverId, requestId) {
   const inp = document.getElementById('chat-input');
-  if (!inp?.value.trim()) return;
+  if (!inp && inp.value ? inp.value.trim() : '') return;
   const content = inp.value.trim(); inp.value = '';
   stopProvTyping(receiverId, requestId);
   if (!wsSend({ type: 'message', request_id: requestId, receiver_id: receiverId, content })) {
