@@ -198,6 +198,7 @@ async function initDB() {
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewer_id INTEGER REFERENCES users(id)`,
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewed_id INTEGER REFERENCES users(id)`,
     `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS type VARCHAR(30)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50)`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id INTEGER`,
   ];
@@ -317,13 +318,15 @@ setInterval(() => {
   });
 }, 30000);
 
-async function notifyInterestedProviders(reqId, title, category) {
+async function notifyInterestedProviders(reqId, title, category, city) {
   if (!category) return;
   try {
+    // فلتر: التخصص يتوافق + (المدينة تتوافق أو المزود لم يحدد مدينة)
     const provs = await pool.query(
-      `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
-       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)`,
-      [category]
+      `SELECT id,name,email,city FROM users WHERE role='provider' AND is_active=TRUE
+       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)
+       AND ($2::text IS NULL OR city IS NULL OR city='' OR city=$2)`,
+      [category, city||null]
     );
     for (const p of provs.rows) {
       await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
@@ -577,7 +580,7 @@ app.post('/api/requests', auth, async (req, res) => {
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) await notify(a.id, '📋 طلب جديد', `${title} — نُشر تلقائياً`, 'new_request', req2.id);
     // إشعار المزودين المهتمين بهذا التصنيف
-    notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
+    notifyInterestedProviders(req2.id, req2.title, req2.category, req2.city).catch(()=>{});
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1028,13 +1031,13 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, portfolio_images } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, portfolio_images, company_name } = req.body;
     const r = await pool.query(
       `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,
-       experience_years=$6,portfolio_images=$7
-       WHERE id=$8 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images`,
+       experience_years=$6,portfolio_images=$7,company_name=$8
+       WHERE id=$9 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images,company_name`,
       [name, phone||null, city||null, bio||null, specialties||null,
-       experience_years||null, portfolio_images||null, req.user.id]);
+       experience_years||null, portfolio_images||null, company_name||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1155,7 +1158,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
             `<div class="ok">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
             '📋 متابعة طلبي', `${SITE_URL}/dashboard-client.html`));
       }
-      notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
+      notifyInterestedProviders(req2.id, req2.title, req2.category, req2.city).catch(()=>{});
     } else {
       await notify(req2.client_id, '❌ تم رفض طلبك', `طلبك "${req2.title}". السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
       if (client.rows[0]?.email) {
@@ -1229,13 +1232,19 @@ app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
 
 app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   try {
+    const { city, specialty } = req.query;
+    const conditions = ["role='provider'"];
+    const vals = [];
+    if (city) { vals.push('%' + city + '%'); conditions.push('city ILIKE $' + vals.length); }
+    if (specialty) { vals.push(specialty); conditions.push('$' + vals.length + '=ANY(specialties)'); }
+    const where = conditions.join(' AND ');
     const r = await pool.query(`
-      SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,
+      SELECT id,name,email,phone,city,specialties,badge,is_active,bio,company_name,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,
       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
-      FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
+      FROM users WHERE ${where} ORDER BY avg_rating DESC`, vals);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
