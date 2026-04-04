@@ -47,26 +47,138 @@ async function sendEmail(to, subject, html) {
 }
 
 function emailTpl(title, body, btnText, btnUrl) {
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>
-    body{font-family:Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:20px}
-    .box{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-    .head{background:#1B3A6B;padding:24px;text-align:center}
-    .head h1{color:#fff;margin:0;font-size:20px}
-    .head p{color:rgba(255,255,255,.7);margin:6px 0 0;font-size:13px}
-    .body{padding:28px 32px}.body p{color:#374151;font-size:14px;line-height:1.9;margin:0 0 14px}
-    .btn{display:inline-block;background:#2C5282;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;margin:8px 0}
-    .hl{background:#E6EEF8;border-right:3px solid #2C5282;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#1B2B4B}
-    .ok{background:#E1F5EE;border-right:3px solid #1D9E75;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#085041}
-    .ng{background:#FCEBEB;border-right:3px solid #E24B4A;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#7f1d1d}
-    .foot{background:#f9fafb;padding:14px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
-  </style></head><body><div class="box">
-    <div class="head"><h1>🏆 مناقصة</h1><p>منصة مناقصة للخدمات</p></div>
-    <div class="body"><p><strong>${title}</strong></p>${body}
-      ${btnText&&btnUrl?`<p style="text-align:center;margin-top:20px"><a href="${btnUrl}" class="btn">${btnText}</a></p>`:''}
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Tajawal',Tahoma,Arial,sans-serif;background:#f0f2f5;padding:32px 16px;direction:rtl}
+  .wrap{max-width:560px;margin:0 auto}
+  .card{background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
+  .header{background:linear-gradient(135deg,#0f2545 0%,#1473E6 100%);padding:32px 36px;text-align:center;position:relative}
+  .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:20px;background:#fff;border-radius:50% 50% 0 0/20px 20px 0 0}
+  .logo{font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-bottom:4px}
+  .logo span{color:rgba(255,255,255,0.5)}
+  .header-sub{font-size:13px;color:rgba(255,255,255,0.65);margin-top:4px}
+  .body{padding:32px 36px 28px}
+  .title{font-size:20px;font-weight:900;color:#0f172a;margin-bottom:16px;line-height:1.3}
+  .content{font-size:14px;color:#374151;line-height:1.9;margin-bottom:20px}
+  .btn-wrap{text-align:center;margin:28px 0}
+  .btn{display:inline-block;background:linear-gradient(135deg,#1473E6,#0d5fc9);color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.2px;box-shadow:0 4px 14px rgba(20,115,230,0.35)}
+  .divider{border:none;border-top:1px solid #e8ecf0;margin:24px 0}
+  .footer{background:#f8f9fb;padding:20px 36px;text-align:center}
+  .footer p{font-size:12px;color:#9ca3af;line-height:1.8}
+  .footer a{color:#1473E6;text-decoration:none;font-weight:600}
+  .badge{display:inline-block;background:#EBF3FD;color:#1473E6;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <div class="logo">مناقصة<span>.</span></div>
+      <div class="header-sub">منصة خدمات موثوقة</div>
     </div>
-    <div class="foot">© 2025 منصة مناقصة — manaqasa.com</div>
-  </div></body></html>`;
+    <div class="body">
+      <span class="badge">إشعار رسمي</span>
+      <div class="title">${title}</div>
+      <div class="content">${body}</div>
+      ${btnText && btnUrl ? `<div class="btn-wrap"><a href="${btnUrl}" class="btn">${btnText}</a></div>` : ''}
+      <hr class="divider">
+      <p style="font-size:12px;color:#9ca3af;text-align:center;line-height:1.8">
+        هذا البريد أُرسل تلقائياً من منصة مناقصة.<br>
+        إذا لم تطلب هذا البريد، يمكنك تجاهله بأمان.
+      </p>
+    </div>
+    <div class="footer">
+      <p>
+        <strong style="color:#374151">مناقصة.</strong> — منصة خدمات موثوقة<br>
+        <a href="${'https://manaqasati-production.up.railway.app'}">manaqasa.com</a>
+        &nbsp;·&nbsp;
+        <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>
+      </p>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
 }
+
+function otpEmailTpl(otp, purpose, name) {
+  const purposeText = {
+    register: 'تفعيل حسابك الجديد',
+    login: 'تسجيل الدخول',
+    reset: 'إعادة تعيين كلمة المرور',
+  }[purpose] || purpose;
+
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>رمز التحقق — مناقصة</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Tajawal',Tahoma,Arial,sans-serif;background:#f0f2f5;padding:32px 16px;direction:rtl}
+  .wrap{max-width:500px;margin:0 auto}
+  .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
+  .header{background:linear-gradient(135deg,#0f2545 0%,#1473E6 100%);padding:28px 32px;text-align:center;position:relative}
+  .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:18px;background:#fff;border-radius:50% 50% 0 0/18px 18px 0 0}
+  .logo{font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px}
+  .logo span{color:rgba(255,255,255,0.45)}
+  .body{padding:32px}
+  .greeting{font-size:15px;color:#374151;margin-bottom:6px}
+  .purpose{font-size:14px;color:#6b7280;margin-bottom:28px;line-height:1.7}
+  .otp-box{background:linear-gradient(135deg,#f0f8ff,#e8f2ff);border:2px solid #b3d4f8;border-radius:14px;padding:28px;text-align:center;margin:0 auto 28px;max-width:320px}
+  .otp-label{font-size:12px;color:#1473E6;font-weight:700;margin-bottom:10px;letter-spacing:0.5px;text-transform:uppercase}
+  .otp-code{font-size:44px;font-weight:900;color:#0f2545;letter-spacing:10px;font-family:monospace,Tahoma;margin-bottom:8px}
+  .otp-expire{font-size:12px;color:#9ca3af;margin-top:8px}
+  .warning{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;font-size:13px;color:#92400e;margin-bottom:24px;line-height:1.7}
+  .divider{border:none;border-top:1px solid #e8ecf0;margin:20px 0}
+  .footer{background:#f8f9fb;padding:18px 32px;text-align:center;font-size:12px;color:#9ca3af;line-height:1.8}
+  .footer a{color:#1473E6;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <div class="logo">مناقصة<span>.</span></div>
+    </div>
+    <div class="body">
+      <p class="greeting">مرحباً ${name || ''}،</p>
+      <p class="purpose">
+        طلبنا هذا الرمز لـ <strong>${purposeText}</strong>.<br>
+        أدخل الرمز التالي في التطبيق لإتمام العملية:
+      </p>
+      <div class="otp-box">
+        <div class="otp-label">رمز التحقق الخاص بك</div>
+        <div class="otp-code">${otp}</div>
+        <div class="otp-expire">⏱ صالح لمدة <strong>10 دقائق</strong> فقط</div>
+      </div>
+      <div class="warning">
+        🔒 لا تشارك هذا الرمز مع أي شخص. فريق مناقصة لن يطلب منك رمز التحقق أبداً.
+      </div>
+      <hr class="divider">
+      <p style="font-size:12px;color:#9ca3af;text-align:center">
+        إذا لم تطلب هذا الرمز، تجاهل هذا البريد وتأكد من أمان حسابك.
+      </p>
+    </div>
+    <div class="footer">
+      <strong style="color:#374151">مناقصة.</strong> — منصة خدمات موثوقة<br>
+      <a href="https://manaqasati-production.up.railway.app">manaqasa.com</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 
 function genProjectNum(id, date) {
   const d = new Date(date);
@@ -202,6 +314,20 @@ async function initDB() {
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50)`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id INTEGER`,
   ];
+
+  // جدول OTP
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      code VARCHAR(10) NOT NULL,
+      purpose VARCHAR(30) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `).catch(()=>{});
+  
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
   // توليد أرقام المشاريع المفقودة
@@ -432,6 +558,133 @@ app.get('/api/debug/bids/:id', async (req, res) => {
 
 // ────────────────────────────────────────────
 // ── AUTH ──
+
+// ────────────────────────────────────────────
+// ── OTP SYSTEM ──
+// ────────────────────────────────────────────
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function createOTP(email, purpose) {
+  const code = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
+  // إلغاء أي OTP سابق
+  await pool.query(
+    'UPDATE otp_codes SET used=TRUE WHERE email=$1 AND purpose=$2 AND used=FALSE',
+    [email, purpose]
+  ).catch(()=>{});
+  await pool.query(
+    'INSERT INTO otp_codes(email,code,purpose,expires_at) VALUES($1,$2,$3,$4)',
+    [email, code, purpose, expiresAt]
+  );
+  return code;
+}
+
+async function verifyOTP(email, code, purpose) {
+  const r = await pool.query(
+    'SELECT id FROM otp_codes WHERE email=$1 AND code=$2 AND purpose=$3 AND used=FALSE AND expires_at > NOW()',
+    [email, code, purpose]
+  );
+  if (!r.rows.length) return false;
+  await pool.query('UPDATE otp_codes SET used=TRUE WHERE id=$1', [r.rows[0].id]);
+  return true;
+}
+
+// ── POST /api/auth/send-otp ──
+app.post('/api/auth/send-otp', async (req, res) => {
+  try {
+    const { email, purpose } = req.body; // purpose: register | login
+    if (!email || !purpose) return res.status(400).json({ message: 'البريد والغرض مطلوبان' });
+
+    // التحقق من وجود المستخدم حسب الغرض
+    const existing = await pool.query('SELECT id,name,is_active FROM users WHERE email=$1', [email]);
+    if (purpose === 'register' && existing.rows.length) {
+      return res.status(400).json({ message: 'البريد الإلكتروني مسجل مسبقاً' });
+    }
+    if (purpose === 'login' && !existing.rows.length) {
+      return res.status(400).json({ message: 'البريد الإلكتروني غير مسجل' });
+    }
+    if (purpose === 'login' && existing.rows[0] && !existing.rows[0].is_active) {
+      return res.status(403).json({ message: 'الحساب موقوف، تواصل مع الدعم' });
+    }
+
+    const name = existing.rows[0]?.name || '';
+    const code = await createOTP(email, purpose);
+    const html = otpEmailTpl(code, purpose, name);
+    const purposeLabel = purpose === 'register' ? 'تفعيل الحساب' : 'تسجيل الدخول';
+    const sent = await sendEmail(email, `رمز التحقق — ${purposeLabel} | مناقصة`, html);
+    
+    if (!sent) return res.status(500).json({ message: 'تعذر إرسال البريد، تحقق من إعدادات الإيميل' });
+    res.json({ ok: true, message: `تم إرسال رمز التحقق إلى ${email}` });
+  } catch(e) {
+    console.error('send-otp error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── POST /api/auth/verify-otp-register ──
+app.post('/api/auth/verify-otp-register', async (req, res) => {
+  try {
+    const { name, email, password, phone, role, city, specialties, otp } = req.body;
+    if (!otp) return res.status(400).json({ message: 'رمز OTP مطلوب' });
+
+    const valid = await verifyOTP(email, otp, 'register');
+    if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
+
+    // إنشاء الحساب
+    const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    if (exists.rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
+
+    const hash = await bcrypt.hash(password, 10);
+    const specs = role === 'provider' ? (specialties || []) : null;
+    const r = await pool.query(
+      'INSERT INTO users(name,email,password,phone,role,specialties,city,is_active) VALUES($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id,name,email,role,city,badge',
+      [name, email, hash, phone||null, role||'client', specs, city||null]
+    );
+    const user = r.rows[0];
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+
+    // إيميل ترحيب
+    const welcomeHtml = emailTpl(
+      'مرحباً بك في مناقصة! 🎉',
+      `<p>مرحباً <strong>${name}</strong>،</p>
+       <p>تم تفعيل حسابك بنجاح! أنت الآن جزء من منصة مناقصة.</p>
+       ${role === 'provider' ? '<p>يمكنك الآن تصفح المشاريع وتقديم عروضك.</p>' : '<p>يمكنك الآن نشر مشاريعك واستقبال أفضل العروض.</p>'}`,
+      'الدخول للمنصة', SITE_URL
+    );
+    sendEmail(email, 'مرحباً بك في مناقصة! 🎉', welcomeHtml).catch(()=>{});
+
+    res.json({ user, token });
+  } catch(e) {
+    console.error('verify-otp-register error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── POST /api/auth/verify-otp-login ──
+app.post('/api/auth/verify-otp-login', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!otp) return res.status(400).json({ message: 'رمز OTP مطلوب' });
+
+    const valid = await verifyOTP(email, otp, 'login');
+    if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
+
+    const r = await pool.query('SELECT * FROM users WHERE email=$1 AND is_active=TRUE', [email]);
+    if (!r.rows.length) return res.status(400).json({ message: 'المستخدم غير موجود أو موقوف' });
+
+    const user = r.rows[0];
+    delete user.password; delete user.password_hash;
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ user, token });
+  } catch(e) {
+    console.error('verify-otp-login error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ────────────────────────────────────────────
 
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
