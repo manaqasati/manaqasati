@@ -591,27 +591,35 @@ function generateOTP() {
 }
 
 async function createOTP(email, purpose) {
+  const emailLow = (email||'').trim().toLowerCase();
   const code = generateOTP();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
-  // إلغاء أي OTP سابق
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await pool.query(
-    'UPDATE otp_codes SET used=TRUE WHERE email=$1 AND purpose=$2 AND used=FALSE',
-    [email, purpose]
+    'UPDATE otp_codes SET used=TRUE WHERE LOWER(email)=$1 AND purpose=$2 AND used=FALSE',
+    [emailLow, purpose]
   ).catch(()=>{});
   await pool.query(
     'INSERT INTO otp_codes(email,code,purpose,expires_at) VALUES($1,$2,$3,$4)',
-    [email, code, purpose, expiresAt]
+    [emailLow, code, purpose, expiresAt]
   );
+  console.log('[OTP] created code='+code+' for='+emailLow+' expires='+expiresAt);
   return code;
 }
 
 async function verifyOTP(email, code, purpose) {
+  const emailLow = (email||'').trim().toLowerCase();
+  const codeStr  = String(code).trim();
+  console.log('[VERIFY] email='+emailLow+' code='+codeStr+' purpose='+purpose);
   const r = await pool.query(
-    'SELECT id FROM otp_codes WHERE email=$1 AND code=$2 AND purpose=$3 AND used=FALSE AND expires_at > NOW()',
-    [email, code, purpose]
+    'SELECT id,code,expires_at FROM otp_codes WHERE LOWER(email)=$1 AND purpose=$2 AND used=FALSE ORDER BY created_at DESC LIMIT 1',
+    [emailLow, purpose]
   );
+  console.log('[VERIFY] found rows:', r.rows.length, r.rows[0] ? 'db_code='+r.rows[0].code+' expires='+r.rows[0].expires_at : '');
   if (!r.rows.length) return false;
-  await pool.query('UPDATE otp_codes SET used=TRUE WHERE id=$1', [r.rows[0].id]);
+  const row = r.rows[0];
+  if (String(row.code).trim() !== codeStr) { console.log('[VERIFY] code mismatch'); return false; }
+  if (new Date(row.expires_at) < new Date()) { console.log('[VERIFY] expired'); return false; }
+  await pool.query('UPDATE otp_codes SET used=TRUE WHERE id=$1', [row.id]);
   return true;
 }
 
