@@ -1667,27 +1667,11 @@ app.get('/api/admin/export/providers', auth, adminOnly, async (req, res) => {
       'SELECT name,email,phone,city,company_name,specialties,badge,is_active,created_at,' +
       'COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,' +
       '(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,' +
-      '(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status=$' + (vals.length+1) + ') as completed ' +
+      '(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status=$' + (vals.length+1) + ') as completed_projects ' +
       'FROM users WHERE ' + where + ' ORDER BY avg_rating DESC',
       vals.concat(['completed'])
     );
-    const provRows = dbRes.rows;
-    const cols = ['الاسم','البريد','الجوال','المدينة','المنشأة','التخصصات','الوسام','الحالة','تاريخ التسجيل','التقييم','عروض','مشاريع مكتملة'];
-    const lines = ['\uFEFF' + cols.join(',')];
-    provRows.forEach(function(p) {
-      const cells = [
-        p.name||'', p.email||'', p.phone||'', p.city||'', p.company_name||'',
-        (Array.isArray(p.specialties) ? p.specialties.join(' | ') : ''),
-        p.badge||'', p.is_active ? 'نشط' : 'موقوف',
-        p.created_at ? new Date(p.created_at).toISOString().slice(0,10) : '',
-        parseFloat(p.avg_rating||0).toFixed(1), p.bid_count||0, p.completed||0
-      ];
-      lines.push(cells.map(function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }).join(','));
-    });
-    const csvContent = lines.join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="providers.csv"');
-    res.send(csvContent);
+    res.json(dbRes.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
