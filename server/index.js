@@ -54,6 +54,23 @@ app.use(function(req, res, next) {
   next();
 });
 
+// Sitemap
+app.get('/sitemap.xml', function(req, res) {
+  res.setHeader('Content-Type', 'application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://manaqasa.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://manaqasa.com/index.html</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://manaqasa.com/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+</urlset>`);
+});
+
+// Robots.txt
+app.get('/robots.txt', function(req, res) {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send('User-agent: *\nAllow: /\nSitemap: https://manaqasa.com/sitemap.xml');
+});
+
 // Google Search Console verification
 app.get('/google0ed958111c5d0ae7.html', function(req, res) {
   res.send('google-site-verification: google0ed958111c5d0ae7.html');
