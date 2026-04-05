@@ -421,6 +421,7 @@ async function initDB() {
 
   // ── إضافة portfolio column ──
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio TEXT[] DEFAULT ARRAY[]::TEXT[]').catch(()=>{});
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT').catch(()=>{});
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)').catch(()=>{});
 
   // جدول OTP
