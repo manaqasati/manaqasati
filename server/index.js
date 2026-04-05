@@ -10,20 +10,50 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 
+// Security Headers
+app.use(function(req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors({
-  origin: [
-    'https://manaqasa.com',
-    'https://www.manaqasa.com',
-    'https://manaqasati-production.up.railway.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:5500'
-  ],
+  origin: function(origin, callback) {
+    // قبول كل الطلبات (سنُقيّد لاحقاً بعد تفعيل HTTPS)
+    const allowed = [
+      'https://manaqasa.com',
+      'https://www.manaqasa.com',
+      'http://manaqasa.com',
+      'http://www.manaqasa.com',
+      'https://manaqasati-production.up.railway.app',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5500',
+    ];
+    if (!origin || allowed.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // مؤقتاً نقبل الكل
+    }
+  },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization']
 }));
 app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ extended: true, limit: '3mb' }));
+// إعادة توجيه HTTP → HTTPS في production
+app.use(function(req, res, next) {
+  if (process.env.NODE_ENV === 'production' &&
+      req.headers['x-forwarded-proto'] &&
+      req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  next();
+});
+
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
@@ -384,6 +414,21 @@ async function initDB() {
     )
   `).catch(()=>{});
   
+  // ── DB Indexes للأداء ──
+  const idxQueries = [
+    'CREATE INDEX IF NOT EXISTS idx_req_client   ON requests(client_id)',
+    'CREATE INDEX IF NOT EXISTS idx_req_status   ON requests(status)',
+    'CREATE INDEX IF NOT EXISTS idx_req_created  ON requests(created_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_bids_req     ON bids(request_id)',
+    'CREATE INDEX IF NOT EXISTS idx_bids_prov    ON bids(provider_id)',
+    'CREATE INDEX IF NOT EXISTS idx_msgs_req     ON messages(request_id)',
+    'CREATE INDEX IF NOT EXISTS idx_msgs_created ON messages(created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id,is_read)',
+    'CREATE INDEX IF NOT EXISTS idx_users_email  ON users(lower(email))',
+    'CREATE INDEX IF NOT EXISTS idx_otp_email    ON otp_codes(email,purpose,used)'
+  ];
+  for (const q of idxQueries) await pool.query(q).catch(function(){});
+
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
   // توليد أرقام المشاريع المفقودة
