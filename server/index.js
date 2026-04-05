@@ -54,6 +54,11 @@ app.use(function(req, res, next) {
   next();
 });
 
+// Google Search Console verification
+app.get('/google0ed958111c5d0ae7.html', function(req, res) {
+  res.send('google-site-verification: google0ed958111c5d0ae7.html');
+});
+
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
