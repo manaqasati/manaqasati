@@ -2070,6 +2070,52 @@ function openRate(reqId,provId){
 }
 function closeRate(){document.getElementById('rate-ov').classList.remove('open');}
 function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach((s,i)=>s.className=i<n?'sp on':'sp');}
+
+// ── IMAGE HELPERS ──
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    if (file.size > 2 * 1024 * 1024) { reject(new Error('الصورة كبيرة — الحد 2MB')); return; }
+    var reader = new FileReader();
+    reader.onload  = function(e) { resolve(e.target.result); };
+    reader.onerror = function()  { reject(new Error('تعذر قراءة الصورة')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImagesToAPI(files) {
+  var b64List = [];
+  for (var i = 0; i < Math.min(files.length, 5); i++) {
+    try { b64List.push(await fileToBase64(files[i])); } catch(e) { console.warn(e.message); }
+  }
+  if (!b64List.length) return [];
+  try {
+    var r = await fetch(API+'/api/upload/images', {
+      method:'POST', body:JSON.stringify({images:b64List,type:'project'}), ...hdr()
+    });
+    var d = await r.json();
+    return d.ok ? d.urls : b64List;
+  } catch(e) { return b64List; }
+}
+
+// معاينة صور قبل الرفع
+function previewImages(input, previewId) {
+  var preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = '';
+  var files = Array.from(input.files).slice(0, 5);
+  files.forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)';
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+
 async function submitRate(){
   if(!selRating){showAlert('rate-alert','يرجى اختيار تقييم','err');return;}
   let btn=document.getElementById('rate-btn');btn.disabled=true;btn.textContent='جاري الإرسال...';
