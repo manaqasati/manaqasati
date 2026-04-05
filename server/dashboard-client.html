@@ -1200,7 +1200,15 @@ function hdr(){return{headers:{'Content-Type':'application/json','Authorization'
 function GET(url){return fetch(API+url,hdr());}
 function POST(url,b){return fetch(API+url,{...hdr(),method:'POST',body:JSON.stringify(b)});}
 function PUT(url,b){return fetch(API+url,{...hdr(),method:'PUT',body:b?JSON.stringify(b):undefined});}
-async function safeArr(url){try{let r=await GET(url);let d=await r.json();return Array.isArray(d)?d:[];}catch{return[];}}
+async function safeArr(url){
+  try{
+    let r=await GET(url);
+    let d=await r.json();
+    if(Array.isArray(d)) return d;
+    if(d && Array.isArray(d.data)) return d.data; // pagination response
+    return [];
+  }catch{return[];}
+}
 function ago(d){let s=(new Date()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function empty(t,s=''){return`<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></div><h4>${t}</h4>${s?`<p style="font-size:11px">${s}</p>`:''}</div>`;}
 function err(){return'<div class="empty"><h4>تعذر التحميل</h4><p style="font-size:11px">تحقق من اتصالك أو أعد المحاولة</p></div>';}
@@ -1764,6 +1772,31 @@ async function loadChatTab(id){
   if(!curChatProv){wrap.innerHTML=empty('اختر مزوداً','اضغط "محادثة" في تبويب العروض');return;}
   await renderChat(id,wrap);
 }
+var chatPollInterval = null;
+var lastMsgTime = 0;
+
+function startChatPolling(reqId) {
+  stopChatPolling();
+  chatPollInterval = setInterval(async function() {
+    if (!reqId) return;
+    try {
+      var r = await fetch(API + '/api/messages/poll?request_id=' + reqId + '&since=' + lastMsgTime, hdr());
+      var msgs = await r.json();
+      if (Array.isArray(msgs) && msgs.length) {
+        msgs.forEach(function(msg) {
+          appendClientMsg(msg);
+          lastMsgTime = Math.max(lastMsgTime, new Date(msg.created_at).getTime());
+        });
+      }
+    } catch(e) {}
+  }, 4000); // كل 4 ثوان
+}
+
+function stopChatPolling() {
+  if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+}
+
+
 
 async function renderChat(reqId,wrap){
   let msgs=await safeArr('/api/messages/'+reqId);
@@ -2367,7 +2400,9 @@ function startChat(provId, provName, reqId) {
   var chatBtn = document.getElementById('tbtn-chat');
   if (chatBtn) chatBtn.classList.add('on');
   showPanel('tab-chat');
+  lastMsgTime = Date.now() - 60000; // آخر دقيقة
   loadChatTab(reqId);
+  startChatPolling(reqId);
 }
 </script>
 </body>
