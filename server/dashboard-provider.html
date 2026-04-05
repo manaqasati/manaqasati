@@ -1531,6 +1531,105 @@ function stopProvChatPoll(){
 }
 
 
+// ── IMAGE UPLOAD HELPERS ──
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    if (file.size > 2 * 1024 * 1024) { reject(new Error('حجم الصورة كبير — الحد 2MB')); return; }
+    var reader = new FileReader();
+    reader.onload  = function(e) { resolve(e.target.result); };
+    reader.onerror = function()  { reject(new Error('تعذر قراءة الصورة')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadBase64(b64, type) {
+  var r = await fetch(API+'/api/upload/image', {
+    method: 'POST',
+    body: JSON.stringify({ data: b64, type: type || 'portfolio' }),
+    ...hdr()
+  });
+  var d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'فشل رفع الصورة');
+  return d.url;
+}
+
+async function uploadMultipleFiles(files, type) {
+  var results = [];
+  for (var i = 0; i < Math.min(files.length, 5); i++) {
+    try {
+      var b64 = await fileToBase64(files[i]);
+      results.push(b64); // نحفظ base64 مباشرة
+    } catch(e) { console.error('upload err:', e.message); }
+  }
+  if (!results.length) return [];
+  var r = await fetch(API+'/api/upload/images', {
+    method: 'POST',
+    body: JSON.stringify({ images: results, type: type || 'portfolio' }),
+    ...hdr()
+  });
+  var d = await r.json();
+  return d.ok ? d.urls : results; // fallback to base64 if API fails
+}
+
+
+async function saveProfile() {
+  var al = document.getElementById('profile-alert') || document.createElement('div');
+  al.className = 'alert';
+
+  var name     = (document.getElementById('p-name') || {}).value || '';
+  var phone    = (document.getElementById('p-phone') || {}).value || '';
+  var city     = (document.getElementById('p-city') || {}).value || '';
+  var bio      = (document.getElementById('p-bio') || {}).value || '';
+  var company  = (document.getElementById('p-company') || {}).value || '';
+  var specEls  = document.querySelectorAll('.spec-check:checked');
+  var specs    = Array.from(specEls).map(function(el){ return el.value; });
+
+  // صور البورتفوليو
+  var portfolioInput = document.getElementById('portfolio-input');
+  var newPortfolio = [];
+  if (portfolioInput && portfolioInput.files.length) {
+    al.textContent = 'جاري رفع الصور...'; al.className = 'alert info';
+    try {
+      newPortfolio = await uploadMultipleFiles(portfolioInput.files, 'portfolio');
+    } catch(e) { al.textContent = e.message; al.className = 'alert err'; return; }
+  }
+
+  // دمج الصور القديمة مع الجديدة
+  var existingImgs = Array.from(document.querySelectorAll('.portfolio-img')).map(function(img){ return img.src; });
+  var allPortfolio = existingImgs.concat(newPortfolio).slice(0, 5);
+
+  var btn = document.getElementById('save-profile-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
+
+  try {
+    var r = await fetch(API+'/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: name.trim(), phone: phone.trim(), city: city,
+        bio: bio.trim(), company_name: company.trim(),
+        specialties: specs.length ? specs : null,
+        portfolio: allPortfolio.length ? allPortfolio : null
+      }),
+      ...hdr()
+    });
+    var d = await r.json();
+    if (r.ok) {
+      al.textContent = '✅ تم حفظ الملف الشخصي بنجاح';
+      al.className = 'alert ok';
+      // تحديث localStorage
+      var user = JSON.parse(localStorage.getItem('user') || '{}');
+      Object.assign(user, d);
+      localStorage.setItem('user', JSON.stringify(user));
+      setTimeout(function(){ al.className = 'alert'; }, 3000);
+    } else {
+      al.textContent = d.message || 'حدث خطأ';
+      al.className = 'alert err';
+    }
+  } catch(e) { al.textContent = 'تعذر الاتصال'; al.className = 'alert err'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'حفظ التغييرات'; }
+}
+
+
 function handleNotif(refId, type) {
   if (type === 'message') show('messages', null, 'messages');
   else if (['bid', 'accepted', 'bid_accepted'].includes(type) && refId) { show('browse', null, 'browse'); setTimeout(() => openTender(refId), 300); }
