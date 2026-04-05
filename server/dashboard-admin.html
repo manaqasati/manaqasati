@@ -1107,7 +1107,111 @@ p  { color: var(--t2); line-height: 1.75 }
             <div class="fg"><label>البريد الإلكتروني *</label><input id="au-email" type="email" placeholder="example@email.com"></div>
             <div class="fg"><label>كلمة المرور *</label><input id="au-pass" type="password" placeholder="6 أحرف على الأقل"></div>
             <div class="fg"><label>رقم الجوال</label><input id="au-phone" type="tel" placeholder="05xxxxxxxx"></div>
-            <div class="fg"><label>المدينة</label><select id="au-city" class="f-input"><option value="">اختر المدينة</option></select></div>
+            <div class="fg"><label>المدينة</label><select id="au-city" class="f-input"><option value="">اختر المدينة</option>
+          <option>أبها</option>
+          <option>أبو عريش</option>
+          <option>أحد رفيدة</option>
+          <option>أملج</option>
+          <option>الأحساء</option>
+          <option>الأفلاج</option>
+          <option>الباحة</option>
+          <option>البدائع</option>
+          <option>البرك</option>
+          <option>البكيرية</option>
+          <option>الجبيل</option>
+          <option>الجموم</option>
+          <option>الحرث</option>
+          <option>الحريق</option>
+          <option>الحناكية</option>
+          <option>الخبر</option>
+          <option>الخرج</option>
+          <option>الخفجي</option>
+          <option>الدرب</option>
+          <option>الدرعية</option>
+          <option>الدمام</option>
+          <option>الدوادمي</option>
+          <option>الرس</option>
+          <option>الرياض</option>
+          <option>الريث</option>
+          <option>الزلفي</option>
+          <option>السليل</option>
+          <option>الشماسية</option>
+          <option>الطائف</option>
+          <option>الظهران</option>
+          <option>العارضة</option>
+          <option>العقيق</option>
+          <option>العلا</option>
+          <option>العوامية</option>
+          <option>الغاط</option>
+          <option>الغزالة</option>
+          <option>القريات</option>
+          <option>القطيف</option>
+          <option>القنفذة</option>
+          <option>القويعية</option>
+          <option>الكامل</option>
+          <option>الليث</option>
+          <option>المجمعة</option>
+          <option>المخواة</option>
+          <option>المدينة المنورة</option>
+          <option>المذنب</option>
+          <option>المزاحمية</option>
+          <option>المندق</option>
+          <option>المويه</option>
+          <option>النماص</option>
+          <option>الوجه</option>
+          <option>بدر</option>
+          <option>بريدة</option>
+          <option>بقعاء</option>
+          <option>بلجرشي</option>
+          <option>بيش</option>
+          <option>بيشة</option>
+          <option>تبوك</option>
+          <option>تثليث</option>
+          <option>تيماء</option>
+          <option>ثادق</option>
+          <option>جازان</option>
+          <option>جدة</option>
+          <option>حائل</option>
+          <option>حبونا</option>
+          <option>حريملاء</option>
+          <option>حفر الباطن</option>
+          <option>حقل</option>
+          <option>خليص</option>
+          <option>خميس مشيط</option>
+          <option>خيبر</option>
+          <option>دومة الجندل</option>
+          <option>رأس تنورة</option>
+          <option>رابغ</option>
+          <option>رجال ألمع</option>
+          <option>رفحاء</option>
+          <option>رماح</option>
+          <option>رياض الخبراء</option>
+          <option>سراة عبيدة</option>
+          <option>سكاكا</option>
+          <option>سميراء</option>
+          <option>سيهات</option>
+          <option>شرورة</option>
+          <option>شقراء</option>
+          <option>صامطة</option>
+          <option>صبيا</option>
+          <option>صفوى</option>
+          <option>ضباء</option>
+          <option>ضرما</option>
+          <option>ضرية</option>
+          <option>طريف</option>
+          <option>ظهران الجنوب</option>
+          <option>عرعر</option>
+          <option>عفيف</option>
+          <option>عنيزة</option>
+          <option>فيفا</option>
+          <option>قلوة</option>
+          <option>محايل عسير</option>
+          <option>مكة المكرمة</option>
+          <option>ميسان</option>
+          <option>نجران</option>
+          <option>وادي الدواسر</option>
+          <option>يدمة</option>
+          <option>ينبع</option></select></div>
             <div class="fg"><label>الدور *</label>
               <select id="au-role" onchange="onAuRoleChange()">
                 <option value="client">🏗 عميل</option>
@@ -1549,7 +1653,7 @@ loadHome();
 
 var filteredProviders = [];
 var PROV_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-var PROV_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','تبوك','بريدة','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','الخرج'];
+var PROV_CITIES = ['أبها','أبو عريش','أحد رفيدة','أملج','الأحساء','الأفلاج','الباحة','البدائع','البرك','البكيرية','الجبيل','الجموم','الحرث','الحريق','الحناكية','الخبر','الخرج','الخفجي','الدرب','الدرعية','الدمام','الدوادمي','الرس','الرياض','الريث','الزلفي','السليل','الشماسية','الطائف','الظهران','العارضة','العقيق','العلا','العوامية','الغاط','الغزالة','القريات','القطيف','القنفذة','القويعية','الكامل','الليث','المجمعة','المخواة','المدينة المنورة','المذنب','المزاحمية','المندق','المويه','النماص','الوجه','بدر','بريدة','بقعاء','بلجرشي','بيش','بيشة','تبوك','تثليث','تيماء','ثادق','جازان','جدة','حائل','حبونا','حريملاء','حفر الباطن','حقل','خليص','خميس مشيط','خيبر','دومة الجندل','رأس تنورة','رابغ','رجال ألمع','رفحاء','رماح','رياض الخبراء','سراة عبيدة','سكاكا','سميراء','سيهات','شرورة','شقراء','صامطة','صبيا','صفوى','ضباء','ضرما','ضرية','طريف','ظهران الجنوب','عرعر','عفيف','عنيزة','فيفا','قلوة','محايل عسير','مكة المكرمة','ميسان','نجران','وادي الدواسر','يدمة','ينبع'];
 
 function initProvFilters() {
   ['prov-spec-filter','au-spec'].forEach(function(id) {
