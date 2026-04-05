@@ -364,7 +364,7 @@ async function initDB() {
 
 // ── MIDDLEWARE ──
 function auth(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'غير مصرح' });
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch { res.status(401).json({ message: 'جلسة منتهية' }); }
@@ -422,14 +422,14 @@ wss.on('connection', (ws, req) => {
 
       if (data.type === 'message') {
         const { request_id, receiver_id, content } = data;
-        if (!content?.trim() || !receiver_id || !request_id) return;
+        if (!content || !content.trim() || !receiver_id || !request_id) return;
         const r = await pool.query(
           'INSERT INTO messages(request_id,sender_id,receiver_id,content) VALUES($1,$2,$3,$4) RETURNING *',
           [request_id, ws.userId, receiver_id, content.trim()]);
         const msg = r.rows[0];
         const senderInfo = await pool.query('SELECT name,role FROM users WHERE id=$1', [ws.userId]);
-        msg.sender_name = senderInfo.rows[0]?.name || '';
-        msg.sender_role = senderInfo.rows[0]?.role || '';
+        msg.sender_name = senderInfo.rows[0] && senderInfo.rows[0].name || '';
+        msg.sender_role = senderInfo.rows[0] && senderInfo.rows[0].role || '';
         broadcast([ws.userId, receiver_id], { type: 'message', message: msg });
         await notify(receiver_id, '💬 رسالة جديدة',
           `${msg.sender_name}: ${content.substring(0,50)}`, 'message', request_id);
@@ -628,6 +628,15 @@ app.post('/api/auth/send-otp', async (req, res) => {
   try {
     const { email, purpose } = req.body;
     if (!email || !purpose) return res.status(400).json({ message: 'البريد والغرض مطلوبان' });
+    
+    // Rate limit: max 3 OTPs per 10 minutes per email
+    const rateLimitCheck = await pool.query(
+      'SELECT COUNT(*) FROM otp_codes WHERE LOWER(email)=$1 AND created_at > NOW() - INTERVAL \'10 minutes\'',
+      [email.toLowerCase()]
+    );
+    if (parseInt(rateLimitCheck.rows[0].count) >= 3) {
+      return res.status(429).json({ message: 'تم إرسال الحد الأقصى من الرموز، حاول بعد 10 دقائق' });
+    }
 
     const existing = await pool.query('SELECT id,name,role,is_active FROM users WHERE LOWER(email)=LOWER($1)', [email]);
 
@@ -770,19 +779,27 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
-    if (!r.rows.length) return res.json({ ok: true });
+    if (!email) return res.status(400).json({ message: 'البريد مطلوب' });
+    const r = await pool.query('SELECT id,name FROM users WHERE LOWER(email)=LOWER($1)', [email]);
+    // دائماً نُرجع ok لمنع كشف البريد
+    res.json({ ok: true, message: 'إذا كان البريد مسجلاً سيصلك رابط إعادة التعيين' });
+    if (!r.rows.length) return;
     const user = r.rows[0];
     const resetToken = jwt.sign({ id: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
-    const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
-    await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
-      emailTpl(`مرحباً ${user.name}،`,
-        `<p>اضغط الزر لإعادة تعيين كلمة المرور خلال ساعة.</p>`,
-        '🔑 إعادة تعيين كلمة المرور', resetUrl));
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+    const resetUrl = SITE_URL + '/auth.html?reset=' + resetToken;
+    const html = emailTpl(
+      'إعادة تعيين كلمة المرور',
+      '<p>مرحباً <strong>' + user.name + '</strong>،</p>' +
+      '<p>طلبنا إعادة تعيين كلمة المرور لحسابك على مناقصة.</p>' +
+      '<p>الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.</p>',
+      'إعادة تعيين كلمة المرور', resetUrl
+    );
+    sendEmail(email, 'إعادة تعيين كلمة المرور — مناقصة', html).catch(function(e){ console.error('forgot email err:', e.message); });
+  } catch(e) {
+    console.error('forgot-password error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
-
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { token, new_password } = req.body;
@@ -1005,7 +1022,7 @@ async function handleSubmitBid(req, res, requestId) {
            <div class="hl">السعر: <strong>${Number(price).toLocaleString('en-US')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
           '👀 مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
     }
-    if (provider.rows[0]?.email) {
+    if (provider.rows[0] && provider.rows[0].email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
         emailTpl('تم تقديم عرضك ✅',
           `<div class="ok">السعر: ${Number(price).toLocaleString('en-US')} ر.س | المدة: ${days} يوم</div>
@@ -1138,7 +1155,7 @@ app.get('/api/bids/my', auth, async (req, res) => {
       SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
       r.client_id,r.project_number,r.image_url
       FROM bids b JOIN requests r ON b.request_id=r.id
-      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 50`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1152,7 +1169,7 @@ app.get('/api/provider/bids', auth, async (req, res) => {
       FROM bids b
       JOIN requests r ON b.request_id=r.id
       JOIN users u ON r.client_id=u.id
-      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 50`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1227,14 +1244,14 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
 app.post('/api/messages', auth, async (req, res) => {
   try {
     const { request_id, receiver_id, content } = req.body;
-    if (!content?.trim()) return res.status(400).json({ message: 'الرسالة فارغة' });
+    if (!content || !content.trim()) return res.status(400).json({ message: 'الرسالة فارغة' });
     const r = await pool.query(
       'INSERT INTO messages(request_id,sender_id,receiver_id,content) VALUES($1,$2,$3,$4) RETURNING *',
       [request_id, req.user.id, receiver_id, content]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await notify(receiver_id, '💬 رسالة جديدة', `${sender.rows[0].name}: ${content.substring(0,50)}`, 'message', request_id);
     const receiver = await pool.query('SELECT name,email,role FROM users WHERE id=$1', [receiver_id]);
-    if (receiver.rows[0]?.email) {
+    if (receiver.rows[0] && receiver.rows[0].email) {
       await sendEmail(receiver.rows[0].email, `💬 رسالة من ${sender.rows[0].name}`,
         emailTpl('رسالة جديدة 💬',
           `<p>أرسل لك <strong>${sender.rows[0].name}</strong>:</p>
