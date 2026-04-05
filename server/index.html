@@ -347,14 +347,10 @@ async function load() {
     var open = ALL.filter(function(p){return p.status==='open';}).length;
     var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
 
-    var totalDisplay = ALL.length + 567;     // كل المشاريع + 567
-    var openDisplay  = open;                  // مفتوح: حقيقي فقط
-    var doneDisplay  = done + 567;            // تم الترسية: حقيقي + 567
-
-    document.getElementById('hs-req').textContent  = totalDisplay.toLocaleString('en-US');
-    document.getElementById('hs-open').textContent = openDisplay;
-    document.getElementById('hs-done').textContent = doneDisplay.toLocaleString('en-US');
-    document.getElementById('sub-text').textContent = totalDisplay.toLocaleString('en-US') + ' مشروع — ' + openDisplay + ' مفتوح للعروض';
+    document.getElementById('hs-req').textContent  = ALL.length;
+    document.getElementById('hs-open').textContent = open;
+    document.getElementById('hs-done').textContent = done;
+    document.getElementById('sub-text').textContent = ALL.length + ' مشروع — ' + open + ' مفتوح للعروض';
 
     render(ALL);
   } catch(e) {
