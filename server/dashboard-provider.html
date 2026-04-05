@@ -1219,6 +1219,9 @@ function openChatWith(clientId, clientName, reqId) {
   curChatClient = { id: clientId, name: clientName, reqId };
   show('messages', null, 'messages');
   setTimeout(() => loadChatWith(clientId, clientName, reqId), 400);
+
+  provLastMsg = Date.now()-60000;
+  startProvChatPoll(reqId || curReqId);
 }
 
 async function loadMessages() {
@@ -1502,6 +1505,31 @@ async function loadNotifs() {
     markAllRead();
   } catch { document.getElementById('notifs-list').innerHTML = emptyH('تعذر التحميل', ''); }
 }
+
+var provChatPoll = null;
+var provLastMsg  = 0;
+
+function startProvChatPoll(reqId) {
+  stopProvChatPoll();
+  provChatPoll = setInterval(async function(){
+    if(!reqId) return;
+    try{
+      var r = await fetch(API+'/api/messages/poll?request_id='+reqId+'&since='+provLastMsg, hdr());
+      var msgs = await r.json();
+      if(Array.isArray(msgs) && msgs.length){
+        msgs.forEach(function(m){
+          appendProvMsg(m);
+          provLastMsg = Math.max(provLastMsg, new Date(m.created_at).getTime());
+        });
+      }
+    }catch(e){}
+  }, 4000);
+}
+
+function stopProvChatPoll(){
+  if(provChatPoll){clearInterval(provChatPoll);provChatPoll=null;}
+}
+
 
 function handleNotif(refId, type) {
   if (type === 'message') show('messages', null, 'messages');
