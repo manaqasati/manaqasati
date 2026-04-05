@@ -144,6 +144,46 @@ html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f
 </div>
 
 <script>
+// Reset password from URL token
+(function() {
+  var params = new URLSearchParams(location.search);
+  var resetToken = params.get('reset');
+  if (!resetToken) return;
+  
+  // إظهار نموذج إعادة التعيين
+  document.body.innerHTML = '<div style="font-family:Tajawal,sans-serif;min-height:100vh;background:linear-gradient(135deg,#0f2545,#1473E6);display:flex;align-items:center;justify-content:center;padding:20px">' +
+    '<div style="background:#fff;border-radius:20px;width:100%;max-width:380px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+    '<div style="background:linear-gradient(135deg,#0f2545,#1473E6);padding:24px;text-align:center">' +
+    '<div style="font-size:22px;font-weight:900;color:#fff">مناقصة<b style=color:#fbbf24>.</b></div>' +
+    '<div style="font-size:14px;color:rgba(255,255,255,.7);margin-top:6px">إعادة تعيين كلمة المرور</div></div>' +
+    '<div style="padding:24px">' +
+    '<div id="reset-al" style="display:none;padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid"></div>' +
+    '<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">كلمة المرور الجديدة *</label>' +
+    '<input id="rp1" type="password" placeholder="6 أحرف على الأقل" style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:Tajawal,sans-serif;outline:none"></div>' +
+    '<div style="margin-bottom:18px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">تأكيد كلمة المرور *</label>' +
+    '<input id="rp2" type="password" placeholder="أعد الكتابة" style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:Tajawal,sans-serif;outline:none"></div>' +
+    '<button onclick="doReset()" style="width:100%;padding:13px;background:#1473E6;border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تعيين كلمة المرور</button>' +
+    '</div></div></div>';
+  
+  window.doReset = async function() {
+    var p1 = document.getElementById('rp1').value;
+    var p2 = document.getElementById('rp2').value;
+    var al = document.getElementById('reset-al');
+    if (!p1 || p1.length < 6) { al.textContent='6 أحرف على الأقل'; al.style.cssText='display:block;background:#fef2f2;color:#dc2626;border-color:#fca5a5;padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid'; return; }
+    if (p1 !== p2) { al.textContent='كلمتا المرور غير متطابقتين'; al.style.cssText='display:block;background:#fef2f2;color:#dc2626;border-color:#fca5a5;padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid'; return; }
+    try {
+      var r = await fetch('https://manaqasati-production.up.railway.app/api/auth/reset-password', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token: resetToken, password: p1 })
+      });
+      var d = await r.json();
+      if (r.ok) { al.textContent='✅ تم التعيين بنجاح! جاري التحويل...'; al.style.cssText='display:block;background:#f0fdf4;color:#16a34a;border-color:#86efac;padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid'; setTimeout(function(){location.href='auth.html';},2000); }
+      else { al.textContent=d.message||'حدث خطأ'; al.style.cssText='display:block;background:#fef2f2;color:#dc2626;border-color:#fca5a5;padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;border:1px solid'; }
+    } catch(e) { al.textContent='تعذر الاتصال'; }
+  };
+})();
+
+
 var API = 'https://manaqasati-production.up.railway.app';
 var MODE = 'login', ROLE = 'client';
 
