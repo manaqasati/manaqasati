@@ -10,20 +10,37 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors());
-app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+app.use(cors({
+  origin: [
+    'https://manaqasa.com',
+    'https://www.manaqasa.com',
+    'https://manaqasati-production.up.railway.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500'
+  ],
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+}));
+app.use(express.json({ limit: '3mb' }));
+app.use(express.urlencoded({ extended: true, limit: '3mb' }));
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const RESEND_KEY = process.env.RESEND_KEY || 're_bfjMBMPj_67sGJEwKehKqnqz5B4pVqvTD';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const SITE_URL = 'https://manaqasati-production.up.railway.app';
-const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET must be set in production!');
+  return 'manaqasa_dev_secret_2024_change_in_prod';
+})();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 const CATEGORIES = [
@@ -1773,12 +1790,13 @@ app.post('/api/upload/image', auth, async (req, res) => {
   try {
     const { data, type } = req.body;
     if (!data || !data.startsWith('data:image/')) return res.status(400).json({ message: 'صورة غير صالحة' });
-    if (data.length > 2800000) return res.status(400).json({ message: 'حجم الصورة كبير — الحد 2MB' });
+    if (data.length > 2000000) return res.status(400).json({ message: 'حجم الصورة كبير — الحد 1.5MB' });
+    // تخزين مباشر في جدول images (مؤقت - يُنصح بـ S3/Cloudflare في الإنتاج)
     const r = await pool.query(
-      'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING id,url',
+      'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING id,created_at',
       [req.user.id, data, type||'project']
     );
-    res.json({ ok: true, url: r.rows[0].url, id: r.rows[0].id });
+    res.json({ ok: true, url: data, id: r.rows[0].id });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
