@@ -338,6 +338,22 @@ async function initDB() {
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id INTEGER`,
   ];
 
+  // جدول images
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS images (
+      id SERIAL PRIMARY KEY,
+      user_id INT REFERENCES users(id) ON DELETE CASCADE,
+      request_id INT REFERENCES requests(id) ON DELETE CASCADE,
+      url TEXT NOT NULL,
+      type VARCHAR(20) DEFAULT 'project',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `).catch(()=>{});
+
+  // ── إضافة portfolio column ──
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio TEXT[] DEFAULT ARRAY[]::TEXT[]').catch(()=>{});
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)').catch(()=>{});
+
   // جدول OTP
   await pool.query(`
     CREATE TABLE IF NOT EXISTS otp_codes (
@@ -851,7 +867,7 @@ app.get('/api/requests/my', auth, async (req, res) => {
       SELECT r.*,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r JOIN users u ON r.client_id=u.id
-      WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
+      WHERE r.client_id=$1 ORDER BY r.created_at DESC LIMIT 50`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1749,6 +1765,55 @@ app.get('/api/test-email', auth, async (req, res) => {
     const sent = await sendEmail(req.user.email, 'Test OTP - مناقصة', '<h1>Test</h1>');
     res.json({ sent, from: FROM_EMAIL, to: req.user.email, key: RESEND_KEY.substring(0,8)+'...' });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// ── UPLOAD IMAGE ──
+app.post('/api/upload/image', auth, async (req, res) => {
+  try {
+    const { data, type } = req.body;
+    if (!data || !data.startsWith('data:image/')) return res.status(400).json({ message: 'صورة غير صالحة' });
+    if (data.length > 2800000) return res.status(400).json({ message: 'حجم الصورة كبير — الحد 2MB' });
+    const r = await pool.query(
+      'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING id,url',
+      [req.user.id, data, type||'project']
+    );
+    res.json({ ok: true, url: r.rows[0].url, id: r.rows[0].id });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/upload/images', auth, async (req, res) => {
+  try {
+    const { images, type } = req.body;
+    if (!images || !Array.isArray(images)) return res.status(400).json({ message: 'مصفوفة الصور مطلوبة' });
+    if (images.length > 5) return res.status(400).json({ message: 'الحد الأقصى 5 صور' });
+    const urls = [];
+    for (const data of images) {
+      if (!data || !data.startsWith('data:image/') || data.length > 2800000) continue;
+      const r = await pool.query(
+        'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING url',
+        [req.user.id, data, type||'project']
+      );
+      urls.push(r.rows[0].url);
+    }
+    res.json({ ok: true, urls });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/messages/poll', auth, async (req, res) => {
+  try {
+    const { request_id, since } = req.query;
+    if (!request_id) return res.status(400).json({ message: 'request_id مطلوب' });
+    const sinceDate = since ? new Date(parseInt(since)) : new Date(Date.now() - 60000);
+    const r = await pool.query(
+      `SELECT m.*, u.name as sender_name, u.role as sender_role
+       FROM messages m JOIN users u ON m.sender_id=u.id
+       WHERE m.request_id=$1 AND m.created_at > $2
+       ORDER BY m.created_at ASC`,
+      [request_id, sinceDate]
+    );
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 initDB().then(() =>
