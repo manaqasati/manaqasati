@@ -306,6 +306,54 @@ h3{font-size:15px;font-weight:800}
   border: 1.5px solid #e2e8f0;
 }
 
+
+.pv-card { background:#fff; border-radius:16px; overflow:hidden; border:1px solid #e8edf2; box-shadow:0 2px 8px rgba(15,23,42,.06); cursor:pointer; transition:all .22s cubic-bezier(.4,0,.2,1); }
+.pv-card:hover { box-shadow:0 12px 40px rgba(20,115,230,.16); transform:translateY(-4px); border-color:#b3d4f8; }
+.pv-card:hover .pv-img { transform:scale(1.05); }
+.pv-img-wrap { height:160px; overflow:hidden; position:relative; }
+.pv-img { width:100%; height:160px; object-fit:cover; display:block; transition:transform .4s ease; }
+.pv-img-grad { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 50%,rgba(15,23,42,.35)); }
+.pv-float-top { position:absolute; top:10px; right:10px; display:flex; gap:6px; flex-wrap:wrap; }
+.pv-no-img { height:90px; display:flex; align-items:center; justify-content:center; position:relative; }
+.pv-cat-pill { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700; }
+.pv-s-open { background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+.pv-s-dot { width:6px; height:6px; border-radius:50%; background:#16a34a; display:inline-block; }
+.pv-s-bid { background:#EBF3FD; color:#1473E6; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+.pv-body { padding:14px 16px; }
+.pv-title { font-size:15px; font-weight:800; color:#0f172a; margin-bottom:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.pv-desc { font-size:12px; color:#64748b; line-height:1.7; margin-bottom:10px; }
+.pv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.pv-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:#f1f5f9; border-radius:20px; font-size:11px; font-weight:600; color:#334155; }
+.pv-footer { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid #f1f5f9; }
+.pv-budget { font-size:16px; font-weight:900; color:#1473E6; letter-spacing:-.3px; }
+.pv-meta { font-size:11px; color:#94a3b8; margin-top:2px; }
+.pv-bid-btn { padding:7px 16px; background:#0f2545; color:#fff; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; white-space:nowrap; }
+.pv-bid-btn:hover { background:#1473E6; }
+.pv-bid-done { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:#16a34a; background:#dcfce7; padding:6px 12px; border-radius:9px; }
+
+
+.bd-card { background:#fff; border-radius:14px; overflow:hidden; border:1px solid #e8edf2; box-shadow:0 2px 8px rgba(15,23,42,.05); margin-bottom:12px; transition:box-shadow .2s,transform .2s; }
+.bd-card:hover { box-shadow:0 6px 24px rgba(15,23,42,.1); transform:translateY(-2px); }
+.bd-won { border-color:#86efac; }
+.bd-rej { opacity:.7; }
+.bd-status-bar { display:flex; justify-content:space-between; align-items:center; padding:8px 16px; font-size:12px; }
+.bd-status-label { font-weight:800; }
+.bd-status-time { font-size:11px; opacity:.7; }
+.bd-body { padding:14px 16px; }
+.bd-proj-name { font-size:14px; font-weight:800; color:#1473E6; margin-bottom:12px; cursor:pointer; }
+.bd-proj-name:hover { color:#0d5fc9; text-decoration:underline; }
+.bd-price-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:10px; }
+.bd-price { font-size:20px; font-weight:900; color:#0f172a; letter-spacing:-.5px; }
+.bd-dur { font-size:11px; color:#94a3b8; margin-top:2px; }
+.bd-accepted-badge { display:inline-flex; align-items:center; gap:6px; background:#dcfce7; color:#15803d; padding:7px 14px; border-radius:10px; font-size:12px; font-weight:800; white-space:nowrap; }
+.bd-edit-btn { padding:7px 14px; background:#EBF3FD; color:#1473E6; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:.15s; }
+.bd-edit-btn:hover { background:#1473E6; color:#fff; }
+.bd-del-btn { padding:7px 14px; background:#fee2e2; color:#dc2626; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:.15s; }
+.bd-del-btn:hover { background:#dc2626; color:#fff; }
+.bd-note { font-size:12px; color:#64748b; line-height:1.7; background:#f8fafc; border-radius:8px; padding:10px 12px; margin-bottom:10px; border-right:3px solid #e2e8f0; }
+.bd-chat-btn { width:100%; padding:10px; background:#0f2545; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; }
+.bd-chat-btn:hover { background:#1473E6; }
+
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
@@ -776,41 +824,46 @@ async function loadHome() {
 }
 
 function bidCard(b) {
- const stMap = { accepted: ['t-won', 'مقبول '], rejected: ['t-rej', 'مرفوض'], pending: ['t-pend', 'بانتظار الرد'] };
- const [sc, sl] = stMap[b.status] || ['t-rev', 'مراجعة'];
- return `<div class="bi${b.status === 'accepted' ? ' won' : b.status === 'rejected' ? ' rejected' : ''}">
- <div class="bi-top">
- <div><div class="bi-req" onclick="openTender(${b.request_id})">${b.request_title || '—'}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${b.city || ''}</div></div>
- <div style="text-align:left"><div class="bi-price">${fpr(b.price)}</div><span class="tag ${sc}" style="margin-top:4px">${sl}</span></div>
- </div>
- <div class="bi-meta">
- <span class="rm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${b.days || '—'} يوم</span>
- <span class="rm">${ago(b.created_at)}</span>
- </div>
- <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
- ${b.status==='accepted'?`<button class="btn btn-p btn-sm" style="margin:0" onclick="openChatWith(${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}',${b.request_id})">تواصل</button>`:''}
- ${(b.status==='pending'||b.status==='accepted')?`<button onclick="openEditBid(${b.id},${b.price},${b.days})" style="padding:6px 12px;background:var(--yellow-l);color:var(--yellow);border:1.5px solid var(--yellow-m);border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">تعديل العرض</button>`:''}
- <button class="btn btn-gh btn-sm" onclick="openTender(${b.request_id})">تفاصيل</button>
- </div>
- <div class="edit-bid-form" id="edit-form-${b.id}" style="display:none;margin-top:12px;padding:16px;background:var(--blue-l);border-radius:var(--rl);border:1.5px solid var(--blue-m)">
- <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px">تعديل قيمة العرض</div>
- <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
- <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">القيمة (ر.س) *</label>
- <input id="edit-price-${b.id}" type="number" inputmode="numeric" value="${b.price}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
- <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">المدة (يوم) *</label>
- <input id="edit-days-${b.id}" type="number" inputmode="numeric" value="${b.days}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
- </div>
- <div style="margin-bottom:12px">
- <label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">سبب التعديل <span style="font-weight:400;color:var(--t3)">(اختياري)</span></label>
- <input id="edit-note-${b.id}" type="text" placeholder="مثال: تغيير في تكلفة المواد" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;outline:none">
- </div>
- <div id="edit-alert-${b.id}" class="alert" style="margin-bottom:10px"></div>
- <div style="display:flex;gap:8px">
- <button onclick="saveEditBid(${b.id})" style="padding:9px 18px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"> حفظ التعديل</button>
- <button onclick="closeEditBid(${b.id})" style="padding:9px 14px;background:var(--bg2);color:var(--t2);border:1px solid var(--bord2);border-radius:var(--r);font-size:13px;cursor:pointer;font-family:inherit">إلغاء</button>
- </div>
- </div>
- </div>`;
+  var stMap = {
+    accepted: { bg:'#dcfce7', color:'#15803d', label:'مقبول' },
+    rejected: { bg:'#fee2e2', color:'#b91c1c', label:'مرفوض' },
+    pending:  { bg:'#fef9c3', color:'#a16207', label:'بانتظار الرد' },
+  };
+  var st = stMap[b.status] || { bg:'#f1f5f9', color:'#475569', label:'مراجعة' };
+  var isAcc = b.status === 'accepted';
+  var isRej = b.status === 'rejected';
+  var price = Number(b.price).toLocaleString('en-US') + ' ر.س';
+  var timeAgo = b.created_at ? ago(new Date(b.created_at)) : '';
+  var reqTitle = (b.request_title || ('مشروع #' + b.request_id));
+
+  var editBtns = isAcc || isRej ? '' : (
+    '<div style="display:flex;gap:8px">' +
+    '<button class="bd-edit-btn" onclick="event.stopPropagation();openEditBid(' + b.id + ')">تعديل</button>' +
+    '<button class="bd-del-btn" onclick="event.stopPropagation();withdrawBid(' + b.id + ')">سحب</button>' +
+    '</div>'
+  );
+
+  var accBadge = isAcc ? '<span class="bd-accepted-badge">العرض مقبول</span>' : '';
+
+  var chatBtn = isAcc ? (
+    '<button class="bd-chat-btn" onclick="event.stopPropagation();openChatWith(' + (b.client_id||0) + ')">' +
+    'تواصل مع العميل</button>'
+  ) : '';
+
+  return '<div class="bd-card' + (isAcc?' bd-won':isRej?' bd-rej':'') + '">' +
+    '<div class="bd-status-bar" style="background:' + st.bg + ';color:' + st.color + '">' +
+      '<span class="bd-status-label">' + st.label + '</span>' +
+      '<span class="bd-status-time">' + timeAgo + '</span>' +
+    '</div>' +
+    '<div class="bd-body">' +
+      '<div class="bd-proj-name" onclick="event.stopPropagation();openTender(' + b.request_id + ')">' + reqTitle + '</div>' +
+      '<div class="bd-price-row">' +
+        '<div><div class="bd-price">' + price + '</div>' + (b.duration ? '<div class="bd-dur">' + b.duration + ' يوم تنفيذ</div>' : '') + '</div>' +
+        (accBadge || editBtns) +
+      '</div>' +
+      (b.note ? '<div class="bd-note">' + b.note + '</div>' : '') +
+      chatBtn +
+    '</div></div>';
 }
 
 // ── BROWSE ──
@@ -819,37 +872,39 @@ let allTenders = [], browseTimer = null;
 
 // ── بطاقة المشروع الموحدة ──
 function buildTenderCard(t, hasBid) {
- const imgs = Array.isArray(t.images) && t.images.length ? t.images : (t.image_url ? [t.image_url] : []);
- const mainImg = imgs[t.main_image_index || 0] || imgs[0] || null;
- const desc = t.description ? t.description.substring(0, 140) + (t.description.length > 140 ? '...' : '') : '';
- return `<div class="tender-card" onclick="openTender(${t.id})">
- ${mainImg ? `<img src="${mainImg}" style="width:100%;height:140px;object-fit:cover;border-radius:var(--rl) var(--rl) 0 0;display:block;border-bottom:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">` : ''}
- <div style="padding:16px 18px">
- <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
- <div style="font-size:16px;font-weight:900;color:var(--text);line-height:1.3;letter-spacing:-.1px">${t.title}</div>
- <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
- <span style="background:var(--green-l);color:var(--green);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;border:1px solid var(--green-m)">نشط</span>
- ${hasBid ? '<span style="background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">قدّمت عرض</span>' : ''}
- </div>
- </div>
- ${desc ? `<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px">${desc}</div>` : ''}
- <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:14px">
- ${t.city ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
- ${t.category ? `<span style="background:var(--blue-l);color:var(--blue);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${t.category}</span>` : ''}
- ${t.budget_max ? `<span style="display:flex;align-items:center;gap:4px;font-weight:700;color:var(--blue)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(t.budget_max)}</span>` : ''}
- ${t.deadline ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
- </div>
- <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border)">
- <span style="font-size:12px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:5px">
- <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
- ${t.bid_count||0} عرض • ${ago(t.created_at)}
- </span>
- ${hasBid
- ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">عرضي المقدَّم</button>`
- : `<button class="btn btn-blue btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">تقديم عرض</button>`}
- </div>
- </div>
- </div>`;
+  var imgs = Array.isArray(t.images) && t.images.length ? t.images : (t.image_url ? [t.image_url] : []);
+  var mainImg = imgs[t.main_image_index || 0] || imgs[0] || null;
+  var desc = t.description ? (t.description.length > 90 ? t.description.substring(0,90) + '…' : t.description) : '';
+  var budget = t.budget_max ? Number(t.budget_max).toLocaleString('en-US') + ' ر.س' : null;
+  var bc = parseInt(t.bid_count) || 0;
+  var timeAgo = t.created_at ? ago(new Date(t.created_at)) : '';
+  var catColors = {'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','مكافحة حشرات':'#15803d','ألمنيوم':'#94a3b8','مسابح (تنفيذ وصيانة)':'#0284c7','كاميرات مراقبة وأمن':'#7c3aed','شبكات وإنترنت':'#2563eb'};
+  var cc = catColors[t.category] || '#1473E6';
+
+  var statusBadge = '<span class="pv-s-open"><span class="pv-s-dot"></span>مفتوح للعروض</span>';
+  var hasBidBadge = hasBid ? '<span class="pv-s-bid">قدّمت عرضاً</span>' : '';
+
+  var imgHtml = mainImg
+    ? ('<div class="pv-img-wrap"><img src="' + mainImg + '" class="pv-img" loading="lazy"><div class="pv-img-grad"></div><div class="pv-float-top">' + statusBadge + hasBidBadge + '</div></div>')
+    : ('<div class="pv-no-img" style="background:linear-gradient(135deg,' + cc + '18,' + cc + '06)"><span class="pv-cat-pill" style="background:' + cc + '22;color:' + cc + '">' + (t.category||'مشروع') + '</span><div class="pv-float-top">' + statusBadge + hasBidBadge + '</div></div>');
+
+  var html = '<div class="pv-card" onclick="openTender(' + t.id + ')">';
+  html += imgHtml;
+  html += '<div class="pv-body">';
+  html += '<div class="pv-title">' + t.title + '</div>';
+  if (desc) html += '<div class="pv-desc">' + desc + '</div>';
+  html += '<div class="pv-chips">';
+  if (t.city) html += '<span class="pv-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' + t.city + '</span>';
+  if (t.category) html += '<span class="pv-chip" style="background:' + cc + '11;color:' + cc + '">' + t.category + '</span>';
+  if (t.deadline) html += '<span class="pv-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + String(t.deadline).slice(0,10) + '</span>';
+  html += '</div>';
+  html += '<div class="pv-footer">';
+  html += '<div>' + (budget ? '<div class="pv-budget">' + budget + '</div>' : '') + '<div class="pv-meta">' + timeAgo + (bc ? ' · ' + bc + ' عرض' : '') + '</div></div>';
+  html += hasBid
+    ? '<span class="pv-bid-done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>عرضك مُقدَّم</span>'
+    : '<button class="pv-bid-btn" onclick="event.stopPropagation();openTender(' + t.id + ')">تقديم عرض</button>';
+  html += '</div></div></div>';
+  return html;
 }
 
 async function loadTenders() {
