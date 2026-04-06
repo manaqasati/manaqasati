@@ -1019,7 +1019,24 @@ p { color: var(--t2); line-height: 1.75 }
  <div class="fg"><label>عنوان المشروع *</label>
  <input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت في الرياض"></div>
  <div class="form-grid">
- <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"><option value="">اختر المدينة</option><option value="أبها">أبها</option><option value="أبو عريش">أبو عريش</option><option value="أحد رفيدة">أحد رفيدة</option><option value="أملج">أملج</option><option value="الأحساء">الأحساء</option><option value="الأفلاج">الأفلاج</option><option value="الباحة">الباحة</option><option value="البدائع">البدائع</option><option value="البرك">البرك</option><option value="البكيرية">البكيرية</option><option value="الجبيل">الجبيل</option><option value="الجموم">الجموم</option><option value="الحرث">الحرث</option><option value="الحريق">الحريق</option><option value="الحناكية">الحناكية</option><option value="الخبر">الخبر</option><option value="الخرج">الخرج</option><option value="الخفجي">الخفجي</option><option value="الدرب">الدرب</option><option value="الدرعية">الدرعية</option><option value="الدمام">الدمام</option><option value="الدوادمي">الدوادمي</option><option value="الرس">الرس</option><option value="الرياض">الرياض</option><option value="الريث">الريث</option><option value="الزلفي">الزلفي</option><option value="السليل">السليل</option><option value="الشماسية">الشماسية</option><option value="الطائف">الطائف</option><option value="الظهران">الظهران</option><option value="العارضة">العارضة</option><option value="العقيق">العقيق</option><option value="العلا">العلا</option><option value="العوامية">العوامية</option><option value="الغاط">الغاط</option><option value="الغزالة">الغزالة</option><option value="القريات">القريات</option><option value="القطيف">القطيف</option><option value="القنفذة">القنفذة</option><option value="القويعية">القويعية</option><option value="الكامل">الكامل</option><option value="الليث">الليث</option><option value="المجمعة">المجمعة</option><option value="المخواة">المخواة</option><option value="المدينة المنورة">المدينة المنورة</option><option value="المذنب">المذنب</option><option value="المزاحمية">المزاحمية</option><option value="المندق">المندق</option><option value="المويه">المويه</option><option value="النماص">النماص</option><option value="الوجه">الوجه</option><option value="بدر">بدر</option><option value="بريدة">بريدة</option><option value="بقعاء">بقعاء</option><option value="بلجرشي">بلجرشي</option><option value="بيش">بيش</option><option value="بيشة">بيشة</option><option value="تبوك">تبوك</option><option value="تثليث">تثليث</option><option value="تيماء">تيماء</option><option value="ثادق">ثادق</option><option value="جازان">جازان</option><option value="جدة">جدة</option><option value="حائل">حائل</option><option value="حبونا">حبونا</option><option value="حريملاء">حريملاء</option><option value="حفر الباطن">حفر الباطن</option><option value="حقل">حقل</option><option value="خليص">خليص</option><option value="خميس مشيط">خميس مشيط</option><option value="خيبر">خيبر</option><option value="دومة الجندل">دومة الجندل</option><option value="رأس تنورة">رأس تنورة</option><option value="رابغ">رابغ</option><option value="رجال ألمع">رجال ألمع</option><option value="رفحاء">رفحاء</option><option value="رماح">رماح</option><option value="رياض الخبراء">رياض الخبراء</option><option value="سراة عبيدة">سراة عبيدة</option><option value="سكاكا">سكاكا</option><option value="سميراء">سميراء</option><option value="سيهات">سيهات</option><option value="شرورة">شرورة</option><option value="شقراء">شقراء</option><option value="صامطة">صامطة</option><option value="صبيا">صبيا</option><option value="صفوى">صفوى</option><option value="ضباء">ضباء</option><option value="ضرما">ضرما</option><option value="ضرية">ضرية</option><option value="طريف">طريف</option><option value="ظهران الجنوب">ظهران الجنوب</option><option value="عرعر">عرعر</option><option value="عفيف">عفيف</option><option value="عنيزة">عنيزة</option><option value="فيفا">فيفا</option><option value="قلوة">قلوة</option><option value="محايل عسير">محايل عسير</option><option value="مكة المكرمة">مكة المكرمة</option><option value="ميسان">ميسان</option><option value="نجران">نجران</option><option value="وادي الدواسر">وادي الدواسر</option><option value="يدمة">يدمة</option><option value="ينبع">ينبع</option></select></div>
+ <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"><option value="">اختر التصنيف</option>
+<option value="تبريد وتكييف">تبريد وتكييف</option>
+<option value="كهرباء">كهرباء</option>
+<option value="سباكة">سباكة</option>
+<option value="نجارة">نجارة</option>
+<option value="تنظيف">تنظيف</option>
+<option value="نقل عفش">نقل عفش</option>
+<option value="حدادة">حدادة</option>
+<option value="ألمنيوم">ألمنيوم</option>
+<option value="مسابح (تنفيذ وصيانة)">مسابح (تنفيذ وصيانة)</option>
+<option value="كاميرات مراقبة وأمن">كاميرات مراقبة وأمن</option>
+<option value="شبكات وإنترنت">شبكات وإنترنت</option>
+<option value="مظلات وسواتر">مظلات وسواتر</option>
+<option value="عزل حراري وأسطح">عزل حراري وأسطح</option>
+<option value="أبواب">أبواب</option>
+<option value="أعمال جبس وطباشير">أعمال جبس وطباشير</option>
+<option value="مكافحة حشرات">مكافحة حشرات</option>
+<option value="أخرى">أخرى</option></select></div>
  <div class="fg" id="other-wrap" style="display:none"><label>التخصص</label><input id="n-other" type="text"></div>
  <div class="fg"><label>المدينة *</label>
  <div style="position:relative">
@@ -1111,7 +1128,16 @@ p { color: var(--t2); line-height: 1.75 }
  <p style="font-size:13px;font-weight:700;color:#78350f;line-height:2.2">﴿ وَأَوْفُوا بِالْعَهْدِ إِنَّ الْعَهْدَ كَانَ مَسْئُولًا ﴾</p>
  </div>
  <div style="background:var(--bg);border-radius:var(--rl);padding:15px;margin-bottom:14px">
- <p style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:7px"> شروط النشر</p>
+ <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+  <div style="flex-shrink:0;width:20px;height:20px;background:#f59e0b;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:1px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" style="width:12px;height:12px"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  </div>
+  <div>
+    <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:3px">عمولة المنصة 1%</div>
+    <div style="font-size:11px;color:#b45309;line-height:1.6">تُحتسب عمولة 1% من قيمة العرض المقبول عند إتمام الصفقة فقط. النشر والتصفح مجاني.</div>
+  </div>
+</div>
+<p style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:7px"> شروط النشر</p>
  <p style="font-size:12px;color:var(--t);line-height:2">يجب أن تكون التفاصيل دقيقة وواضحة. لا يُسمح بنشر معلومات مضللة أو مشاريع وهمية. يُعدّ النشر التزاماً بالتعاقد مع المزود المناسب وإتمام المشروع.</p>
  </div>
  <div onclick="document.getElementById('agree-chk').click()"
@@ -1384,6 +1410,9 @@ function riCard(r){
  const st=stMap[r.status]||{label:r.status,cls:'tag-gray'};
  const bc=parseInt(r.bid_count)||0;
  return`<div class="proj-card" onclick="openDetail(${r.id})">
+ ${mainImg ? `<div style="height:160px;overflow:hidden;border-radius:12px 12px 0 0;background:#f1f5f9">
+   <img src="${mainImg}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'" loading="lazy">
+ </div>` : ''}
  <div class="proj-card-body">
  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
  <div class="proj-title">${r.title}</div>
@@ -2449,8 +2478,37 @@ async function openProv(provId, fromPage){
  <div style="width:32px;height:32px;border-radius:50%;background:var(--client-l);color:var(--client);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${(rv.reviewer_name||'؟').charAt(0)}</div>
  <div>
  <div style="font-size:13px;font-weight:700">${rv.reviewer_name||'مجهول'}</div>
- <div style="font-size:10px;color:var(--t4)">${ago(rv.created_at)}</div>
- </div>
+ <div style="font-
+var ALL_CITIES = ['الرياض', 'الخرج', 'الدوادمي', 'الزلفي', 'المجمعة', 'القويعية', 'وادي الدواسر', 'مكة المكرمة', 'جدة', 'الطائف', 'رابغ', 'القنفذة', 'الليث', 'الدمام', 'الخبر', 'الظهران', 'الأحساء', 'القطيف', 'الجبيل', 'الخفجي', 'حفر الباطن', 'المدينة المنورة', 'ينبع', 'العلا', 'بدر', 'خيبر', 'بريدة', 'عنيزة', 'الرس', 'المذنب', 'البكيرية', 'أبها', 'خميس مشيط', 'بيشة', 'النماص', 'تثليث', 'تبوك', 'الوجه', 'ضباء', 'حقل', 'أملج', 'تيماء', 'حائل', 'بقعاء', 'الغزالة', 'سميراء', 'عرعر', 'طريف', 'رفحاء', 'سكاكا', 'دومة الجندل', 'القريات', 'الباحة', 'بلجرشي', 'المندق', 'جازان', 'صبيا', 'أبو عريش', 'صامطة', 'نجران', 'شرورة', 'حبونا'];
+
+function filterCities(q) {
+  var dd = document.getElementById('city-dd');
+  if (!dd) return;
+  if (!q) { dd.innerHTML = ''; dd.style.display = 'none'; return; }
+  var filtered = ALL_CITIES.filter(function(c) { return c.includes(q); });
+  if (!filtered.length) { dd.innerHTML = '<div class="city-opt">لا توجد نتائج</div>'; dd.style.display = 'block'; return; }
+  dd.innerHTML = filtered.map(function(c) {
+    return '<div class="city-opt" onmousedown="selectCity(\''+c+'\')">' + c + '</div>';
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function showCities() {
+  filterCities(document.getElementById('n-city') ? document.getElementById('n-city').value : '');
+}
+
+function hideCities() {
+  var dd = document.getElementById('city-dd');
+  if (dd) dd.style.display = 'none';
+}
+
+function selectCity(city) {
+  var inp = document.getElementById('n-city');
+  if (inp) inp.value = city;
+  hideCities();
+}
+
+if(typeof lucide !== "undefined") lucide.createIcons(); </div>
  </div>
  <div>${rStars}</div>
  </div>
