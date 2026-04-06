@@ -1056,7 +1056,10 @@ p { color: var(--t2); line-height: 1.75 }
  </div>
  <div class="nav-right">
  <div><div class="nav-user-name" id="userName">عميل</div><div class="nav-user-role">صاحب مشروع</div></div>
- <div class="nav-av" id="userAv">ع</div>
+ <div class="nav-av" id="userAv" onclick="showClientProfile()" style="cursor:pointer;overflow:hidden;position:relative">
+  <img id="userAvImg" style="width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0">
+  <span id="userAvText">ع</span>
+</div>
  <button class="btn btn-blue btn-sm" onclick="showAgree()">
  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> مشروع جديد
  </button>
@@ -1262,6 +1265,36 @@ p { color: var(--t2); line-height: 1.75 }
 
 </div>
 
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profile-modal-ov">
+ <div class="modal-box" style="max-height:85vh">
+  <div class="modal-handle"></div>
+  <div style="background:linear-gradient(135deg,#0f2545,#1473E6);padding:20px;text-align:center">
+   <div style="position:relative;width:80px;height:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('client-avatar-input').click()">
+    <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;overflow:hidden;border:3px solid rgba(255,255,255,.3)">
+     <img id="client-av-img" style="width:100%;height:100%;object-fit:cover;display:none">
+     <span id="client-av-text" style="color:#fff;font-size:28px;font-weight:900"></span>
+    </div>
+    <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:#f59e0b;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff">
+     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" style="width:12px;height:12px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    </div>
+   </div>
+   <input type="file" id="client-avatar-input" accept="image/*" style="display:none" onchange="previewClientAvatar(this)">
+   <div style="color:#fff;font-size:16px;font-weight:800" id="client-profile-name"></div>
+   <div style="color:rgba(255,255,255,.6);font-size:12px;margin-top:2px">صاحب مشروع</div>
+  </div>
+  <div class="modal-body">
+   <div id="client-profile-alert" class="alert"></div>
+   <div class="fg"><label>الاسم الكامل</label><input id="cp-name" type="text"></div>
+   <div class="fg"><label>النبذة التعريفية</label><textarea id="cp-bio" style="min-height:90px" placeholder="اكتب نبذة عنك..."></textarea></div>
+  </div>
+  <div class="modal-foot">
+   <button class="btn btn-blue btn-full btn-lg" onclick="saveClientProfile()">حفظ الملف الشخصي</button>
+   <button class="btn btn-gray btn-lg" onclick="document.getElementById('profile-modal-ov').classList.remove('open')">إغلاق</button>
+  </div>
+ </div>
+</div>
+
 <!-- AGREE MODAL -->
 <div class="modal-overlay" id="agree-ov">
  <div class="modal-box">
@@ -1419,7 +1452,74 @@ p { color: var(--t2); line-height: 1.75 }
  </button>
 </div></div>
 <div class="toast" id="toast"></div>
-<script>var ALL_CITIES = ['أبها','أبو عريش','أحد رفيدة','أملج','الأحساء','الأفلاج','الباحة','البدائع','البرك','البكيرية','الجبيل','الجموم','الحرث','الحريق','الحناكية','الخبر','الخرج','الخفجي','الدرب','الدرعية','الدمام','الدوادمي','الرس','الرياض','الريث','الزلفي','السليل','الشماسية','الطائف','الظهران','العارضة','العقيق','العلا','العوامية','الغاط','الغزالة','القريات','القطيف','القنفذة','القويعية','الكامل','الليث','المجمعة','المخواة','المدينة المنورة','المذنب','المزاحمية','المندق','المويه','النماص','الوجه','بدر','بريدة','بقعاء','بلجرشي','بيش','بيشة','تبوك','تثليث','تيماء','ثادق','جازان','جدة','حائل','حبونا','حريملاء','حفر الباطن','حقل','خليص','خميس مشيط','خيبر','دومة الجندل','رأس تنورة','رابغ','رجال ألمع','رفحاء','رماح','رياض الخبراء','سراة عبيدة','سكاكا','سميراء','سيهات','شرورة','شقراء','صامطة','صبيا','صفوى','ضباء','ضرما','ضرية','طريف','ظهران الجنوب','عرعر','عفيف','عنيزة','فيفا','قلوة','محايل عسير','مكة المكرمة','ميسان','نجران','وادي الدواسر','يدمة','ينبع'];
+<script>
+var clientAvatarB64 = null;
+
+function showClientProfile() {
+  var cp = document.getElementById('cp-name');
+  var cpb = document.getElementById('cp-bio');
+  var cpn = document.getElementById('client-profile-name');
+  if (cp) cp.value = user.name || '';
+  if (cpb) cpb.value = user.bio || '';
+  if (cpn) cpn.textContent = user.name || '';
+  // عرض الصورة
+  var img = document.getElementById('client-av-img');
+  var txt = document.getElementById('client-av-text');
+  if (user.avatar) {
+    if (img) { img.src = user.avatar; img.style.display = 'block'; }
+    if (txt) txt.style.display = 'none';
+  } else {
+    if (txt) { txt.textContent = (user.name||'ع').charAt(0); txt.style.display = 'block'; }
+    if (img) img.style.display = 'none';
+  }
+  document.getElementById('profile-modal-ov').classList.add('open');
+}
+
+function previewClientAvatar(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    clientAvatarB64 = e.target.result;
+    var img = document.getElementById('client-av-img');
+    var txt = document.getElementById('client-av-text');
+    if (img) { img.src = clientAvatarB64; img.style.display = 'block'; }
+    if (txt) txt.style.display = 'none';
+    // تحديث nav
+    var navImg = document.getElementById('userAvImg');
+    var navTxt = document.getElementById('userAvText');
+    if (navImg) { navImg.src = clientAvatarB64; navImg.style.display = 'block'; }
+    if (navTxt) navTxt.style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function saveClientProfile() {
+  var al = document.getElementById('client-profile-alert');
+  var name = (document.getElementById('cp-name')||{}).value || '';
+  var bio  = (document.getElementById('cp-bio')||{}).value  || '';
+  try {
+    var r = await fetch(API + '/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ name: name.trim(), bio: bio.trim(), avatar: clientAvatarB64 || null })
+    });
+    if (r.ok) {
+      user.name = name; user.bio = bio;
+      if (clientAvatarB64) user.avatar = clientAvatarB64;
+      localStorage.setItem('user', JSON.stringify(user));
+      document.getElementById('userName').textContent = name;
+      document.getElementById('userAv').querySelector('#userAvText').textContent = name.charAt(0);
+      document.getElementById('client-profile-name').textContent = name;
+      if (al) { al.textContent = 'تم الحفظ بنجاح'; al.className = 'alert ok'; }
+      setTimeout(function(){ document.getElementById('profile-modal-ov').classList.remove('open'); }, 1500);
+    } else {
+      if (al) { al.textContent = 'حدث خطأ'; al.className = 'alert err'; }
+    }
+  } catch(e) {
+    if (al) { al.textContent = 'تعذر الاتصال'; al.className = 'alert err'; }
+  }
+}
+var ALL_CITIES = ['أبها','أبو عريش','أحد رفيدة','أملج','الأحساء','الأفلاج','الباحة','البدائع','البرك','البكيرية','الجبيل','الجموم','الحرث','الحريق','الحناكية','الخبر','الخرج','الخفجي','الدرب','الدرعية','الدمام','الدوادمي','الرس','الرياض','الريث','الزلفي','السليل','الشماسية','الطائف','الظهران','العارضة','العقيق','العلا','العوامية','الغاط','الغزالة','القريات','القطيف','القنفذة','القويعية','الكامل','الليث','المجمعة','المخواة','المدينة المنورة','المذنب','المزاحمية','المندق','المويه','النماص','الوجه','بدر','بريدة','بقعاء','بلجرشي','بيش','بيشة','تبوك','تثليث','تيماء','ثادق','جازان','جدة','حائل','حبونا','حريملاء','حفر الباطن','حقل','خليص','خميس مشيط','خيبر','دومة الجندل','رأس تنورة','رابغ','رجال ألمع','رفحاء','رماح','رياض الخبراء','سراة عبيدة','سكاكا','سميراء','سيهات','شرورة','شقراء','صامطة','صبيا','صفوى','ضباء','ضرما','ضرية','طريف','ظهران الجنوب','عرعر','عفيف','عنيزة','فيفا','قلوة','محايل عسير','مكة المكرمة','ميسان','نجران','وادي الدواسر','يدمة','ينبع'];
 
 function fillCitySelect(id) {
  var sel = document.getElementById(id);
