@@ -96,7 +96,11 @@ a { text-decoration: none; color: inherit; }
 .ftab.on { background: #1473E6; color: #fff; border-color: #1473E6; box-shadow: 0 2px 8px rgba(20,115,230,.25); }
 
 /* GRID */
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
 
 /* PROJECT CARD */
 .card {
@@ -184,8 +188,16 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
 .flink:hover { color: rgba(255,255,255,.7); }
 .fcopy { font-size: 11px; color: rgba(255,255,255,.2); }
 
-@media(max-width:900px){ .grid{grid-template-columns:repeat(2,1fr)} }
-@media(max-width:600px){ .grid{grid-template-columns:1fr} .main{padding:20px 16px} .nav{padding:0 16px} .hero{padding:36px 20px} .hero h1{font-size:26px} }
+@media(max-width:900px){ .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+} }
+@media(max-width:600px){ .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+} .main{padding:20px 16px} .nav{padding:0 16px} .hero{padding:36px 20px} .hero h1{font-size:26px} }
 
 .proj-card, .tender-card, .card-item {
   transition: box-shadow .15s, transform .15s;
@@ -204,6 +216,31 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
   flex-shrink: 0;
   border: 1.5px solid #e2e8f0;
 }
+
+
+.pub-card { background:#fff; border-radius:16px; overflow:hidden; border:1px solid #e8edf2; box-shadow:0 2px 8px rgba(15,23,42,.06); cursor:pointer; transition:all .22s cubic-bezier(.4,0,.2,1); }
+.pub-card:hover { box-shadow:0 12px 40px rgba(20,115,230,.16); transform:translateY(-4px); border-color:#b3d4f8; }
+.pub-card:hover .pub-img { transform:scale(1.05); }
+.pub-img-wrap { height:160px; overflow:hidden; position:relative; }
+.pub-img { width:100%; height:160px; object-fit:cover; display:block; transition:transform .4s ease; }
+.pub-img-grad { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 50%,rgba(15,23,42,.35)); }
+.pub-s-float { position:absolute; top:10px; right:10px; }
+.pub-no-img { height:80px; display:flex; align-items:center; justify-content:center; position:relative; }
+.pub-cat-pill { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700; }
+.pub-s-open { background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+.pub-s-dot { width:6px; height:6px; border-radius:50%; background:#16a34a; display:inline-block; }
+.pub-s-done { background:#f1f5f9; color:#475569; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+.pub-body { padding:14px 16px; }
+.pub-title { font-size:15px; font-weight:800; color:#0f172a; margin-bottom:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.pub-desc { font-size:12px; color:#64748b; line-height:1.7; margin-bottom:10px; }
+.pub-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.pub-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:#f1f5f9; border-radius:20px; font-size:11px; font-weight:600; color:#334155; }
+.pub-footer { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid #f1f5f9; }
+.pub-budget { font-size:16px; font-weight:900; color:#1473E6; letter-spacing:-.3px; }
+.pub-time { font-size:11px; color:#94a3b8; margin-top:1px; }
+.pub-btn { padding:7px 16px; background:#0f2545; color:#fff; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; white-space:nowrap; }
+.pub-btn:hover { background:#1473E6; }
+.pub-done-label { font-size:12px; color:#94a3b8; font-weight:600; }
 
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -359,52 +396,36 @@ function iconBg(cat){
 }
 
 function card(p, i) {
- var icon = ICONS[p.category] || '';
- var isOpen = p.status === 'open';
- var isDone = p.status === 'completed';
- var isProg = p.status === 'in_progress';
+  var isOpen = p.status === 'open';
+  var imgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
+  var imgSrc = imgs[0] || null;
+  var budget = p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : null;
+  var bids = parseInt(p.bid_count) || 0;
+  var timeAgo = p.created_at ? ago(new Date(p.created_at)) : '';
+  var catColors = {'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','مكافحة حشرات':'#15803d'};
+  var cc = catColors[p.category] || '#1473E6';
+  var desc = p.description ? (p.description.length > 85 ? p.description.substring(0,85) + '…' : p.description) : '';
+  var statusHtml = isOpen
+    ? '<span class="pub-s-open"><span class="pub-s-dot"></span>مفتوح للعروض</span>'
+    : '<span class="pub-s-done">تمت الترسية</span>';
+  var imgHtml = imgSrc
+    ? ('<div class="pub-img-wrap"><img src="' + imgSrc + '" class="pub-img" loading="lazy"><div class="pub-img-grad"></div><div class="pub-s-float">' + statusHtml + '</div></div>')
+    : ('<div class="pub-no-img" style="background:linear-gradient(135deg,' + cc + '18,' + cc + '06)"><span class="pub-cat-pill" style="background:' + cc + '22;color:' + cc + '">' + (p.category||'مشروع') + '</span><div class="pub-s-float">' + statusHtml + '</div></div>');
 
- var badge = isOpen
- ? '<span class="s-open">مفتوح للعروض</span>'
- : isProg
- ? '<span class="s-progress">⏳ قيد التنفيذ</span>'
- : '<span class="s-awarded">تم الترسية</span>';
-
- var imgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
- var imgEl = imgs.length
- ? '<img class="card-img" src="'+imgs[0]+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=card-img-ph style=background:'+iconBg(p.category)+'>\'+\''+icon+'</div>\'">'
- : '<div class="card-img-ph" style="background:'+iconBg(p.category)+'">'+icon+'</div>';
-
- var act = isOpen
- ? '<button class="btn-apply" onclick="event.stopPropagation();location.href=\'auth.html\'">تقديم عرض</button>'
- : isDone
- ? '<span class="btn-tag-done">تمت الترسية </span>'
- : '<span class="btn-tag-prog">قيد التنفيذ ⏳</span>';
-
- var awBar = (isDone || isProg)
- ? '<div class="aw-bar"><div class="aw-av" style="background:'+av(i)+'">'+pn(i).charAt(0)+'</div><div class="aw-name">'+pn(i)+'<span style="font-size:10px;font-weight:400;color:#a78bfa;margin-right:4px"> — المزود المُسند</span></div><div class="aw-price">'+Number(pp(i)).toLocaleString('en-US')+' ر.س</div></div>'
- : '';
-
- return '<div class="card" onclick="location.href=\'auth.html\'">' +
- imgEl +
- '<div class="card-body">' +
- '<div class="card-row1"><span class="card-cat">'+icon+' '+(p.category||'عام')+'</span>'+badge+'</div>' +
- '<div class="card-title">'+p.title+'</div>' +
- (p.description ? '<div class="card-desc">'+p.description+'</div>' : '') +
- '<div class="card-meta">' +
- (p.city ? '<span class="cm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+p.city+'</span>' : '') +
- (p.budget_max ? '<span class="cm" style="color:#1473E6;font-weight:800"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'+fpr(p.budget_max)+'</span>' : '') +
- (p.deadline ? '<span class="cm"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>'+String(p.deadline).slice(0,10)+'</span>' : '') +
- '<span class="cm"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+(p.bid_count||0)+' عرض</span>' +
- '<span class="cm">'+ago(p.created_at)+'</span>' +
- '</div>' +
- '</div>' +
- awBar +
- '<div class="card-footer">' +
- '<div><div class="cf-budget">'+(p.budget_max ? fpr(p.budget_max) : 'مفتوح')+'</div><div class="cf-sub">'+(p.bid_count||0)+' عرض مقدَّم</div></div>' +
- act +
- '</div>' +
- '</div>';
+  var html = '<div class="pub-card" onclick="location.href=\'auth.html\'">';
+  html += imgHtml;
+  html += '<div class="pub-body">';
+  html += '<div class="pub-title">' + p.title + '</div>';
+  if (desc) html += '<div class="pub-desc">' + desc + '</div>';
+  html += '<div class="pub-chips">';
+  if (p.city) html += '<span class="pub-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' + p.city + '</span>';
+  if (p.category) html += '<span class="pub-chip" style="background:' + cc + '11;color:' + cc + '">' + p.category + '</span>';
+  html += '</div>';
+  html += '<div class="pub-footer">';
+  html += '<div>' + (budget ? '<div class="pub-budget">' + budget + '</div>' : '') + '<div class="pub-time">' + timeAgo + (bids ? ' · ' + bids + ' عرض' : '') + '</div></div>';
+  html += isOpen ? '<button class="pub-btn" onclick="event.stopPropagation();location.href=\'auth.html\'">تقديم عرض</button>' : '<span class="pub-done-label">مكتمل</span>';
+  html += '</div></div></div>';
+  return html;
 }
 
 function render(list) {
