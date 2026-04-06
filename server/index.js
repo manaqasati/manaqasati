@@ -10,89 +10,20 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const server = http.createServer(app);
 
-// Security Headers
-app.use(function(req, res, next) {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  next();
-});
-
-app.use(cors({
-  origin: function(origin, callback) {
-    // قبول كل الطلبات (سنُقيّد لاحقاً بعد تفعيل HTTPS)
-    const allowed = [
-      'https://manaqasa.com',
-      'https://www.manaqasa.com',
-      'http://manaqasa.com',
-      'http://www.manaqasa.com',
-      'https://manaqasati-production.up.railway.app',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5500',
-    ];
-    if (!origin || allowed.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(null, true); // مؤقتاً نقبل الكل
-    }
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
-}));
-app.use(express.json({ limit: '3mb' }));
-app.use(express.urlencoded({ extended: true, limit: '3mb' }));
-// إعادة توجيه HTTP → HTTPS في production
-app.use(function(req, res, next) {
-  if (process.env.NODE_ENV === 'production' &&
-      req.headers['x-forwarded-proto'] &&
-      req.headers['x-forwarded-proto'] !== 'https') {
-    return res.redirect(301, 'https://' + req.headers.host + req.url);
-  }
-  next();
-});
-
-// Sitemap
-app.get('/sitemap.xml', function(req, res) {
-  res.setHeader('Content-Type', 'application/xml');
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://manaqasa.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://manaqasa.com/index.html</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://manaqasa.com/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-</urlset>`);
-});
-
-// Robots.txt
-app.get('/robots.txt', function(req, res) {
-  res.setHeader('Content-Type', 'text/plain');
-  res.send('User-agent: *\nAllow: /\nSitemap: https://manaqasa.com/sitemap.xml');
-});
-
-// Google Search Console verification
-app.get('/google0ed958111c5d0ae7.html', function(req, res) {
-  res.send('google-site-verification: google0ed958111c5d0ae7.html');
-});
-
+app.use(cors());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const RESEND_KEY = process.env.RESEND_KEY || 're_bfjMBMPj_67sGJEwKehKqnqz5B4pVqvTD';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+const FROM_EMAIL = 'cs@manaqasa.com';
 const SITE_URL = 'https://manaqasati-production.up.railway.app';
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET must be set in production!');
-  return 'manaqasa_dev_secret_2024_change_in_prod';
-})();
+const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa_secret_2024';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  ssl: { rejectUnauthorized: false }
 });
 
 const CATEGORIES = [
@@ -104,173 +35,38 @@ const CATEGORIES = [
 
 // ── EMAIL ──
 async function sendEmail(to, subject, html) {
-  const key = process.env.RESEND_KEY || RESEND_KEY;
-  if (!key || key === 'undefined') {
-    console.error('[EMAIL] RESEND_KEY is not set!');
-    return false;
-  }
   try {
-    const payload = {
-      from: 'Manaqasa <onboarding@resend.dev>',
-      to: [to],
-      subject: subject,
-      html: html
-    };
-    console.log('[EMAIL] Sending to:', to, '| from:', payload.from, '| key prefix:', key.substring(0,12));
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + key,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `مناقصة <${FROM_EMAIL}>`, to: [to], subject, html })
     });
-    const txt = await r.text();
-    if (!r.ok) {
-      console.error('[EMAIL] Resend error', r.status, txt);
-      return false;
-    }
-    console.log('[EMAIL] Sent OK:', txt);
-    return true;
-  } catch(e) {
-    console.error('[EMAIL] Exception:', e.message);
-    return false;
-  }
+    if (!r.ok) console.error('Resend:', await r.text());
+    return r.ok;
+  } catch(e) { console.error('Email error:', e.message); return false; }
 }
 
 function emailTpl(title, body, btnText, btnUrl) {
-  return `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Tajawal',Tahoma,Arial,sans-serif;background:#f0f2f5;padding:32px 16px;direction:rtl}
-  .wrap{max-width:560px;margin:0 auto}
-  .card{background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
-  .header{background:linear-gradient(135deg,#0f2545 0%,#1473E6 100%);padding:32px 36px;text-align:center;position:relative}
-  .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:20px;background:#fff;border-radius:50% 50% 0 0/20px 20px 0 0}
-  .logo{font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-bottom:4px}
-  .logo span{color:rgba(255,255,255,0.5)}
-  .header-sub{font-size:13px;color:rgba(255,255,255,0.65);margin-top:4px}
-  .body{padding:32px 36px 28px}
-  .title{font-size:20px;font-weight:900;color:#0f172a;margin-bottom:16px;line-height:1.3}
-  .content{font-size:14px;color:#374151;line-height:1.9;margin-bottom:20px}
-  .btn-wrap{text-align:center;margin:28px 0}
-  .btn{display:inline-block;background:linear-gradient(135deg,#1473E6,#0d5fc9);color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.2px;box-shadow:0 4px 14px rgba(20,115,230,0.35)}
-  .divider{border:none;border-top:1px solid #e8ecf0;margin:24px 0}
-  .footer{background:#f8f9fb;padding:20px 36px;text-align:center}
-  .footer p{font-size:12px;color:#9ca3af;line-height:1.8}
-  .footer a{color:#1473E6;text-decoration:none;font-weight:600}
-  .badge{display:inline-block;background:#EBF3FD;color:#1473E6;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:20px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="header">
-      <div class="logo">مناقصة<span>.</span></div>
-      <div class="header-sub">منصة خدمات موثوقة</div>
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>
+    body{font-family:Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:20px}
+    .box{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    .head{background:#1B3A6B;padding:24px;text-align:center}
+    .head h1{color:#fff;margin:0;font-size:20px}
+    .head p{color:rgba(255,255,255,.7);margin:6px 0 0;font-size:13px}
+    .body{padding:28px 32px}.body p{color:#374151;font-size:14px;line-height:1.9;margin:0 0 14px}
+    .btn{display:inline-block;background:#2C5282;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;margin:8px 0}
+    .hl{background:#E6EEF8;border-right:3px solid #2C5282;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#1B2B4B}
+    .ok{background:#E1F5EE;border-right:3px solid #1D9E75;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#085041}
+    .ng{background:#FCEBEB;border-right:3px solid #E24B4A;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#7f1d1d}
+    .foot{background:#f9fafb;padding:14px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
+  </style></head><body><div class="box">
+    <div class="head"><h1>🏆 مناقصة</h1><p>منصة مناقصة للخدمات</p></div>
+    <div class="body"><p><strong>${title}</strong></p>${body}
+      ${btnText&&btnUrl?`<p style="text-align:center;margin-top:20px"><a href="${btnUrl}" class="btn">${btnText}</a></p>`:''}
     </div>
-    <div class="body">
-      <span class="badge">إشعار رسمي</span>
-      <div class="title">${title}</div>
-      <div class="content">${body}</div>
-      ${btnText && btnUrl ? `<div class="btn-wrap"><a href="${btnUrl}" class="btn">${btnText}</a></div>` : ''}
-      <hr class="divider">
-      <p style="font-size:12px;color:#9ca3af;text-align:center;line-height:1.8">
-        هذا البريد أُرسل تلقائياً من منصة مناقصة.<br>
-        إذا لم تطلب هذا البريد، يمكنك تجاهله بأمان.
-      </p>
-    </div>
-    <div class="footer">
-      <p>
-        <strong style="color:#374151">مناقصة.</strong> — منصة خدمات موثوقة<br>
-        <a href="${'https://manaqasati-production.up.railway.app'}">manaqasa.com</a>
-        &nbsp;·&nbsp;
-        <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>
-      </p>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
+    <div class="foot">© 2025 منصة مناقصة — manaqasa.com</div>
+  </div></body></html>`;
 }
-
-function otpEmailTpl(otp, purpose, name) {
-  const purposeText = {
-    register: 'تفعيل حسابك الجديد',
-    login: 'تسجيل الدخول',
-    reset: 'إعادة تعيين كلمة المرور',
-  }[purpose] || purpose;
-
-  return `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>رمز التحقق — مناقصة</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Tajawal',Tahoma,Arial,sans-serif;background:#f0f2f5;padding:32px 16px;direction:rtl}
-  .wrap{max-width:500px;margin:0 auto}
-  .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
-  .header{background:linear-gradient(135deg,#0f2545 0%,#1473E6 100%);padding:28px 32px;text-align:center;position:relative}
-  .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:18px;background:#fff;border-radius:50% 50% 0 0/18px 18px 0 0}
-  .logo{font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px}
-  .logo span{color:rgba(255,255,255,0.45)}
-  .body{padding:32px}
-  .greeting{font-size:15px;color:#374151;margin-bottom:6px}
-  .purpose{font-size:14px;color:#6b7280;margin-bottom:28px;line-height:1.7}
-  .otp-box{background:linear-gradient(135deg,#f0f8ff,#e8f2ff);border:2px solid #b3d4f8;border-radius:14px;padding:28px;text-align:center;margin:0 auto 28px;max-width:320px}
-  .otp-label{font-size:12px;color:#1473E6;font-weight:700;margin-bottom:10px;letter-spacing:0.5px;text-transform:uppercase}
-  .otp-code{font-size:44px;font-weight:900;color:#0f2545;letter-spacing:10px;font-family:monospace,Tahoma;margin-bottom:8px}
-  .otp-expire{font-size:12px;color:#9ca3af;margin-top:8px}
-  .warning{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;font-size:13px;color:#92400e;margin-bottom:24px;line-height:1.7}
-  .divider{border:none;border-top:1px solid #e8ecf0;margin:20px 0}
-  .footer{background:#f8f9fb;padding:18px 32px;text-align:center;font-size:12px;color:#9ca3af;line-height:1.8}
-  .footer a{color:#1473E6;text-decoration:none;font-weight:600}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="header">
-      <div class="logo">مناقصة<span>.</span></div>
-    </div>
-    <div class="body">
-      <p class="greeting">مرحباً ${name || ''}،</p>
-      <p class="purpose">
-        طلبنا هذا الرمز لـ <strong>${purposeText}</strong>.<br>
-        أدخل الرمز التالي في التطبيق لإتمام العملية:
-      </p>
-      <div class="otp-box">
-        <div class="otp-label">رمز التحقق الخاص بك</div>
-        <div class="otp-code">${otp}</div>
-        <div class="otp-expire">⏱ صالح لمدة <strong>10 دقائق</strong> فقط</div>
-      </div>
-      <div class="warning">
-        🔒 لا تشارك هذا الرمز مع أي شخص. فريق مناقصة لن يطلب منك رمز التحقق أبداً.
-      </div>
-      <hr class="divider">
-      <p style="font-size:12px;color:#9ca3af;text-align:center">
-        إذا لم تطلب هذا الرمز، تجاهل هذا البريد وتأكد من أمان حسابك.
-      </p>
-    </div>
-    <div class="footer">
-      <strong style="color:#374151">مناقصة.</strong> — منصة خدمات موثوقة<br>
-      <a href="https://manaqasati-production.up.railway.app">manaqasa.com</a>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
-}
-
 
 function genProjectNum(id, date) {
   const d = new Date(date);
@@ -399,59 +195,7 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewer_id INTEGER REFERENCES users(id)`,
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewed_id INTEGER REFERENCES users(id)`,
-    `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS type VARCHAR(30)`,
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`,
-    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50)`,
-    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id INTEGER`,
   ];
-
-  // جدول images
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS images (
-      id SERIAL PRIMARY KEY,
-      user_id INT REFERENCES users(id) ON DELETE CASCADE,
-      request_id INT REFERENCES requests(id) ON DELETE CASCADE,
-      url TEXT NOT NULL,
-      type VARCHAR(20) DEFAULT 'project',
-      created_at TIMESTAMP DEFAULT NOW()
-    )
-  `).catch(()=>{});
-
-  // ── إضافة portfolio column ──
-  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio TEXT[] DEFAULT ARRAY[]::TEXT[]').catch(()=>{});
-  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT').catch(()=>{});
-  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)').catch(()=>{});
-
-  // جدول OTP
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS otp_codes (
-      id SERIAL PRIMARY KEY,
-      email VARCHAR(255) NOT NULL,
-      code VARCHAR(10) NOT NULL,
-      purpose VARCHAR(30) NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      used BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT NOW()
-    )
-  `).catch(()=>{});
-  
-  // ── DB Indexes للأداء ──
-  const idxQueries = [
-    'CREATE INDEX IF NOT EXISTS idx_req_client   ON requests(client_id)',
-    'CREATE INDEX IF NOT EXISTS idx_req_status   ON requests(status)',
-    'CREATE INDEX IF NOT EXISTS idx_req_created  ON requests(created_at DESC)',
-    'CREATE INDEX IF NOT EXISTS idx_bids_req     ON bids(request_id)',
-    'CREATE INDEX IF NOT EXISTS idx_bids_prov    ON bids(provider_id)',
-    'CREATE INDEX IF NOT EXISTS idx_msgs_req     ON messages(request_id)',
-    'CREATE INDEX IF NOT EXISTS idx_msgs_created ON messages(created_at)',
-    'CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id,is_read)',
-    'CREATE INDEX IF NOT EXISTS idx_users_email  ON users(lower(email))',
-    'CREATE INDEX IF NOT EXISTS idx_otp_email    ON otp_codes(email,purpose,used)'
-  ];
-  for (const q of idxQueries) await pool.query(q).catch(function(){});
-
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
   // توليد أرقام المشاريع المفقودة
@@ -465,7 +209,7 @@ async function initDB() {
 
 // ── MIDDLEWARE ──
 function auth(req, res, next) {
-  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
+  const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'غير مصرح' });
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch { res.status(401).json({ message: 'جلسة منتهية' }); }
@@ -523,14 +267,14 @@ wss.on('connection', (ws, req) => {
 
       if (data.type === 'message') {
         const { request_id, receiver_id, content } = data;
-        if (!content || !content.trim() || !receiver_id || !request_id) return;
+        if (!content?.trim() || !receiver_id || !request_id) return;
         const r = await pool.query(
           'INSERT INTO messages(request_id,sender_id,receiver_id,content) VALUES($1,$2,$3,$4) RETURNING *',
           [request_id, ws.userId, receiver_id, content.trim()]);
         const msg = r.rows[0];
         const senderInfo = await pool.query('SELECT name,role FROM users WHERE id=$1', [ws.userId]);
-        msg.sender_name = senderInfo.rows[0] && senderInfo.rows[0].name || '';
-        msg.sender_role = senderInfo.rows[0] && senderInfo.rows[0].role || '';
+        msg.sender_name = senderInfo.rows[0]?.name || '';
+        msg.sender_role = senderInfo.rows[0]?.role || '';
         broadcast([ws.userId, receiver_id], { type: 'message', message: msg });
         await notify(receiver_id, '💬 رسالة جديدة',
           `${msg.sender_name}: ${content.substring(0,50)}`, 'message', request_id);
@@ -568,15 +312,13 @@ setInterval(() => {
   });
 }, 30000);
 
-async function notifyInterestedProviders(reqId, title, category, city) {
+async function notifyInterestedProviders(reqId, title, category) {
   if (!category) return;
   try {
-    // فلتر: التخصص يتوافق + (المدينة تتوافق أو المزود لم يحدد مدينة)
     const provs = await pool.query(
-      `SELECT id,name,email,city FROM users WHERE role='provider' AND is_active=TRUE
-       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)
-       AND ($2::text IS NULL OR city IS NULL OR city='' OR city=$2)`,
-      [category, city||null]
+      `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
+       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)`,
+      [category]
     );
     for (const p of provs.rows) {
       await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
@@ -682,158 +424,6 @@ app.get('/api/debug/bids/:id', async (req, res) => {
 
 // ────────────────────────────────────────────
 // ── AUTH ──
-
-// ────────────────────────────────────────────
-// ── OTP SYSTEM ──
-// ────────────────────────────────────────────
-
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-async function createOTP(email, purpose) {
-  const emailLow = (email||'').trim().toLowerCase();
-  const code = generateOTP();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await pool.query(
-    'UPDATE otp_codes SET used=TRUE WHERE LOWER(email)=$1 AND purpose=$2 AND used=FALSE',
-    [emailLow, purpose]
-  ).catch(()=>{});
-  await pool.query(
-    'INSERT INTO otp_codes(email,code,purpose,expires_at) VALUES($1,$2,$3,$4)',
-    [emailLow, code, purpose, expiresAt]
-  );
-  console.log('[OTP] created code='+code+' for='+emailLow+' expires='+expiresAt);
-  return code;
-}
-
-async function verifyOTP(email, code, purpose) {
-  const emailLow = (email||'').trim().toLowerCase();
-  const codeStr  = String(code).trim();
-  console.log('[VERIFY] email='+emailLow+' code='+codeStr+' purpose='+purpose);
-  const r = await pool.query(
-    'SELECT id,code,expires_at FROM otp_codes WHERE LOWER(email)=$1 AND purpose=$2 AND used=FALSE ORDER BY created_at DESC LIMIT 1',
-    [emailLow, purpose]
-  );
-  console.log('[VERIFY] found rows:', r.rows.length, r.rows[0] ? 'db_code='+r.rows[0].code+' expires='+r.rows[0].expires_at : '');
-  if (!r.rows.length) return false;
-  const row = r.rows[0];
-  if (String(row.code).trim() !== codeStr) { console.log('[VERIFY] code mismatch'); return false; }
-  if (new Date(row.expires_at) < new Date()) { console.log('[VERIFY] expired'); return false; }
-  await pool.query('UPDATE otp_codes SET used=TRUE WHERE id=$1', [row.id]);
-  return true;
-}
-
-// ── POST /api/auth/send-otp ──
-app.post('/api/auth/send-otp', async (req, res) => {
-  try {
-    const { email, purpose } = req.body;
-    if (!email || !purpose) return res.status(400).json({ message: 'البريد والغرض مطلوبان' });
-    
-    // Rate limit: max 3 OTPs per 10 minutes per email
-    const rateLimitCheck = await pool.query(
-      'SELECT COUNT(*) FROM otp_codes WHERE LOWER(email)=$1 AND created_at > NOW() - INTERVAL \'10 minutes\'',
-      [email.toLowerCase()]
-    );
-    if (parseInt(rateLimitCheck.rows[0].count) >= 3) {
-      return res.status(429).json({ message: 'تم إرسال الحد الأقصى من الرموز، حاول بعد 10 دقائق' });
-    }
-
-    const existing = await pool.query('SELECT id,name,role,is_active FROM users WHERE LOWER(email)=LOWER($1)', [email]);
-
-    if (purpose === 'register' && existing.rows.length) {
-      return res.status(400).json({ message: 'البريد الإلكتروني مسجل مسبقاً' });
-    }
-    if (purpose === 'login' && !existing.rows.length) {
-      return res.status(400).json({ message: 'البريد غير مسجل — سجّل حساباً جديداً' });
-    }
-    if (purpose === 'login' && existing.rows[0] && existing.rows[0].is_active === false) {
-      return res.status(403).json({ message: 'الحساب موقوف، تواصل مع الدعم' });
-    }
-
-    const code = await createOTP(email, purpose);
-    const name = (existing.rows[0] && existing.rows[0].name) || '';
-
-    console.log('[OTP]', purpose, email, 'CODE:', code);
-
-    // محاولة إرسال الإيميل (اختياري)
-    let emailSent = false;
-    try {
-      const html = otpEmailTpl(code, purpose, name);
-      const subj = purpose === 'register' ? 'Manaqasa - OTP Registration' : 'Manaqasa - OTP Login';
-      emailSent = await sendEmail(email, subj, html);
-    } catch(emailErr) {
-      console.error('[OTP] email error:', emailErr.message);
-    }
-
-    res.json({
-      ok: true,
-      emailSent: emailSent,
-      message: emailSent
-        ? 'تم إرسال الرمز إلى ' + email
-        : 'تم إنشاء الرمز — تحقق من بريدك'
-    });
-  } catch(e) {
-    console.error('[OTP] error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// ── POST /api/auth/verify-otp-register ──
-app.post('/api/auth/verify-otp-register', async (req, res) => {
-  try {
-    const { name, email, password, role, city, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'البريد والرمز مطلوبان' });
-
-    const emailLow = email.trim().toLowerCase();
-    const valid = await verifyOTP(emailLow, otp, 'register');
-    if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
-
-    const exists = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1', [emailLow]);
-    if (exists.rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
-
-    const finalPassword = password || ('OTP_' + Math.random().toString(36).slice(-8));
-    const hash = await bcrypt.hash(finalPassword, 10);
-    const finalRole = role || 'client';
-    const specs = finalRole === 'provider' ? [] : null;
-
-    const r = await pool.query(
-      'INSERT INTO users(name,email,password,role,specialties,city,is_active) VALUES($1,$2,$3,$4,$5,$6,TRUE) RETURNING id,name,email,role,city,badge',
-      [name || emailLow.split('@')[0], emailLow, hash, finalRole, specs, city||null]
-    );
-    const user = r.rows[0];
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    console.log('[REGISTER] success user:', user.id, user.role);
-    res.json({ user, token });
-  } catch(e) {
-    console.error('[REGISTER] error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// ── POST /api/auth/verify-otp-login ──
-app.post('/api/auth/verify-otp-login', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'البريد والرمز مطلوبان' });
-
-    const emailLow = email.trim().toLowerCase();
-    const valid = await verifyOTP(emailLow, otp, 'login');
-    if (!valid) return res.status(400).json({ message: 'رمز التحقق غير صحيح أو منتهي الصلاحية' });
-
-    const r = await pool.query('SELECT * FROM users WHERE LOWER(email)=$1 AND is_active=TRUE', [emailLow]);
-    if (!r.rows.length) return res.status(400).json({ message: 'المستخدم غير موجود' });
-
-    const user = r.rows[0];
-    delete user.password; delete user.password_hash;
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    console.log('[LOGIN] success user:', user.id, user.role);
-    res.json({ user, token });
-  } catch(e) {
-    console.error('[LOGIN] error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
-});
 // ────────────────────────────────────────────
 
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
@@ -880,27 +470,19 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'البريد مطلوب' });
-    const r = await pool.query('SELECT id,name FROM users WHERE LOWER(email)=LOWER($1)', [email]);
-    // دائماً نُرجع ok لمنع كشف البريد
-    res.json({ ok: true, message: 'إذا كان البريد مسجلاً سيصلك رابط إعادة التعيين' });
-    if (!r.rows.length) return;
+    const r = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    if (!r.rows.length) return res.json({ ok: true });
     const user = r.rows[0];
     const resetToken = jwt.sign({ id: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
-    const resetUrl = SITE_URL + '/auth.html?reset=' + resetToken;
-    const html = emailTpl(
-      'إعادة تعيين كلمة المرور',
-      '<p>مرحباً <strong>' + user.name + '</strong>،</p>' +
-      '<p>طلبنا إعادة تعيين كلمة المرور لحسابك على مناقصة.</p>' +
-      '<p>الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.</p>',
-      'إعادة تعيين كلمة المرور', resetUrl
-    );
-    sendEmail(email, 'إعادة تعيين كلمة المرور — مناقصة', html).catch(function(e){ console.error('forgot email err:', e.message); });
-  } catch(e) {
-    console.error('forgot-password error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
+    const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
+    await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
+      emailTpl(`مرحباً ${user.name}،`,
+        `<p>اضغط الزر لإعادة تعيين كلمة المرور خلال ساعة.</p>`,
+        '🔑 إعادة تعيين كلمة المرور', resetUrl));
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
 });
+
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { token, new_password } = req.body;
@@ -952,7 +534,7 @@ app.get('/api/requests/my', auth, async (req, res) => {
       SELECT r.*,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r JOIN users u ON r.client_id=u.id
-      WHERE r.client_id=$1 ORDER BY r.created_at DESC LIMIT 50`, [req.user.id]);
+      WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -990,7 +572,7 @@ app.post('/api/requests', auth, async (req, res) => {
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) await notify(a.id, '📋 طلب جديد', `${title} — نُشر تلقائياً`, 'new_request', req2.id);
     // إشعار المزودين المهتمين بهذا التصنيف
-    notifyInterestedProviders(req2.id, req2.title, req2.category, req2.city).catch(()=>{});
+    notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1005,7 +587,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
     if (req2.assigned_provider_id) {
       const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.assigned_provider_id]);
       await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
-      if (prov.rows[0] && prov.rows[0].email) {
+      if (prov.rows[0]?.email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
           emailTpl('مبروك! اكتمل المشروع 🎉',
             `<p>أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong>.</p>`,
@@ -1013,7 +595,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
       }
     }
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
-    if (client.rows[0] && client.rows[0].email) {
+    if (client.rows[0]?.email) {
       setTimeout(async () => {
         await sendEmail(client.rows[0].email, `⭐ قيّم تجربتك: ${req2.title}`,
           emailTpl('قيّم المزود الآن ⭐',
@@ -1116,17 +698,17 @@ async function handleSubmitBid(req, res, requestId) {
     });
     const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
-    if (client.rows[0] && client.rows[0].email) {
+    if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `💼 عرض جديد: ${reqData.rows[0].title}`,
         emailTpl('وصلك عرض جديد! 💼',
           `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك <strong>"${reqData.rows[0].title}"</strong>:</p>
-           <div class="hl">السعر: <strong>${Number(price).toLocaleString('en-US')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
+           <div class="hl">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
           '👀 مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
     }
-    if (provider.rows[0] && provider.rows[0].email) {
+    if (provider.rows[0]?.email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
         emailTpl('تم تقديم عرضك ✅',
-          `<div class="ok">السعر: ${Number(price).toLocaleString('en-US')} ر.س | المدة: ${days} يوم</div>
+          `<div class="ok">السعر: ${Number(price).toLocaleString('ar-SA')} ر.س | المدة: ${days} يوم</div>
            <p>سنُخطرك فور رد العميل.</p>`,
           '📋 عروضي', `${SITE_URL}/dashboard-provider.html`));
     }
@@ -1156,16 +738,16 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     await notify(b.provider_id, '✅ تم قبول عرضك', `تم قبول عرضك على: ${b.title}`, 'accepted', b.request_id);
     const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
-    if (prov.rows[0] && prov.rows[0].email) {
+    if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
         emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
-          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
+          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
           '💬 تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
     }
-    if (client.rows[0] && client.rows[0].email) {
+    if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
         emailTpl('تم إسناد مشروعك 🎉',
-          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('en-US')} ر.س</strong></div>`,
+          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
           '💬 تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
     }
     const rejected = await pool.query(
@@ -1201,52 +783,26 @@ app.put('/api/bids/:id/reject', auth, async (req, res) => {
 app.put('/api/bids/:id/revise', auth, async (req, res) => {
   try {
     const { price, days, revision_note } = req.body;
-    if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
+    if (!price || !days || !revision_note?.trim()) return res.status(400).json({ message: 'السعر والمدة وسبب التعديل مطلوبة' });
     const bid = await pool.query(
       'SELECT b.*,r.client_id,r.title,r.id as req_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1 AND b.provider_id=$2',
       [req.params.id, req.user.id]);
     if (!bid.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
     const b = bid.rows[0];
-    // السماح بالتعديل على pending و accepted فقط (ليس rejected)
-    if (b.status === 'rejected') return res.status(400).json({ message: 'لا يمكن تعديل عرض مرفوض' });
-    
-    const oldPrice = b.price;
-    const oldDays  = b.days;
-    const noteText = revision_note ? revision_note.trim() : '';
-    
-    // تحديث العرض مع الملاحظة الجديدة إن وجدت
-    const bidNote = noteText 
-      ? `تعديل: السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم. السبب: ${noteText}`
-      : (b.note || null);
-    
-    await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, bidNote, req.params.id]);
-    
-    // إشعار العميل فقط إذا كان المشروع قيد التنفيذ (accepted)
-    if (b.status === 'accepted') {
-      const notifMsg = `تعديل على العرض: السعر ${oldPrice}→${price} ر.س، المدة ${oldDays}→${days} يوم${noteText?' | '+noteText:''}`;
-      await notify(b.client_id, '✏️ تعديل على العرض', notifMsg, 'bid', b.req_id);
-      
-      const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
-      if (client.rows[0] && client.rows[0].email) {
-        const emailHtml = emailTpl(
-          'تعديل على عرض مقبول ✏️',
-          `<p>قام المزود بتعديل قيمة العرض:</p>
-           <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
-             <tr><td style="padding:10px;background:#f8f9fb;font-weight:700;color:#374151;border-radius:8px 0 0 8px">💰 القيمة</td>
-                 <td style="padding:10px;color:#dc2626;text-decoration:line-through">${oldPrice.toLocaleString()} ر.س</td>
-                 <td style="padding:10px;color:#16a34a;font-weight:900">${Number(price).toLocaleString()} ر.س</td></tr>
-             <tr><td style="padding:10px;background:#f8f9fb;font-weight:700;color:#374151">⏱ المدة</td>
-                 <td style="padding:10px;color:#dc2626;text-decoration:line-through">${oldDays} يوم</td>
-                 <td style="padding:10px;color:#16a34a;font-weight:900">${days} يوم</td></tr>
-           </table>
-           ${noteText ? `<p style="background:#fffbeb;padding:12px;border-radius:8px;border-right:4px solid #d97706;color:#92400e">سبب التعديل: <strong>${noteText}</strong></p>` : ''}`,
-          'مراجعة المشروع', `${SITE_URL}/dashboard-client.html`
-        );
-        sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`, emailHtml).catch(()=>{});
-      }
+    if (b.status !== 'accepted') return res.status(400).json({ message: 'يمكن التعديل فقط على العروض المقبولة' });
+    const note = `تعديل: السعر ${b.price}→${price} ر.س، المدة ${b.days}→${days} يوم. السبب: ${revision_note}`;
+    await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, note, req.params.id]);
+    await notify(b.client_id, '✏️ تعديل على العرض', note, 'bid', b.req_id);
+    const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
+    for (const a of admins.rows) await notify(a.id, '✏️ تعديل عرض', `${b.title}: ${note}`, 'bid', b.req_id);
+    const client = await pool.query('SELECT email FROM users WHERE id=$1', [b.client_id]);
+    if (client.rows[0]?.email) {
+      await sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`,
+        emailTpl('تعديل على عرض مقبول ✏️',
+          `<div class="hl">السعر: ${b.price}→${price} ر.س | المدة: ${b.days}→${days} يوم | السبب: ${revision_note}</div>`,
+          '📋 مراجعة', `${SITE_URL}/dashboard-client.html`));
     }
-    
-    res.json({ ok: true, message: 'تم تعديل العرض بنجاح', price: +price, days: +days });
+    res.json({ message: 'تم تعديل العرض', price, days });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -1256,7 +812,7 @@ app.get('/api/bids/my', auth, async (req, res) => {
       SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
       r.client_id,r.project_number,r.image_url
       FROM bids b JOIN requests r ON b.request_id=r.id
-      WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 50`, [req.user.id]);
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1270,7 +826,7 @@ app.get('/api/provider/bids', auth, async (req, res) => {
       FROM bids b
       JOIN requests r ON b.request_id=r.id
       JOIN users u ON r.client_id=u.id
-      WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 50`, [req.user.id]);
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1345,14 +901,14 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
 app.post('/api/messages', auth, async (req, res) => {
   try {
     const { request_id, receiver_id, content } = req.body;
-    if (!content || !content.trim()) return res.status(400).json({ message: 'الرسالة فارغة' });
+    if (!content?.trim()) return res.status(400).json({ message: 'الرسالة فارغة' });
     const r = await pool.query(
       'INSERT INTO messages(request_id,sender_id,receiver_id,content) VALUES($1,$2,$3,$4) RETURNING *',
       [request_id, req.user.id, receiver_id, content]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await notify(receiver_id, '💬 رسالة جديدة', `${sender.rows[0].name}: ${content.substring(0,50)}`, 'message', request_id);
     const receiver = await pool.query('SELECT name,email,role FROM users WHERE id=$1', [receiver_id]);
-    if (receiver.rows[0] && receiver.rows[0].email) {
+    if (receiver.rows[0]?.email) {
       await sendEmail(receiver.rows[0].email, `💬 رسالة من ${sender.rows[0].name}`,
         emailTpl('رسالة جديدة 💬',
           `<p>أرسل لك <strong>${sender.rows[0].name}</strong>:</p>
@@ -1370,33 +926,24 @@ app.post('/api/messages', auth, async (req, res) => {
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment, type } = req.body;
-    if (!request_id || !reviewed_id || !rating) {
-      return res.status(400).json({ message: 'البيانات غير مكتملة' });
-    }
-    // تحقق هل قيّم مسبقاً - آمن في حالة reviewer_id غير موجود
-    try {
-      const exists = await pool.query(
-        'SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2',
-        [request_id, req.user.id]
-      );
-      if (exists.rows.length) {
-        return res.status(400).json({ message: 'قيّمت هذا الطلب مسبقاً' });
-      }
-    } catch(checkErr) { /* reviewer_id column might not exist yet in old DB */ }
+    const exists = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
+    if (exists.rows.length) return res.status(400).json({ message: 'قيّمت هذا الطلب مسبقاً' });
     const r = await pool.query(
       'INSERT INTO reviews(request_id,reviewer_id,reviewed_id,rating,comment,type) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
-      [request_id, req.user.id, reviewed_id, rating, comment||null, type||'client_to_provider']
-    );
-    try {
-      const rv = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-      const rname = rv.rows.length ? rv.rows[0].name : 'مستخدم';
-      await notify(reviewed_id, 'تقييم جديد (' + rating + '/5)', rname + ' قيّمك');
-    } catch(ne) {}
+      [request_id, req.user.id, reviewed_id, rating, comment||null, type||'client_to_provider']);
+    const reviewer = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await notify(reviewed_id, `⭐ تقييم جديد (${rating}/5)`, `${reviewer.rows[0].name} قيّمك بـ ${rating} نجوم`, 'review', request_id);
+    const reviewed = await pool.query('SELECT name,email FROM users WHERE id=$1', [reviewed_id]);
+    if (reviewed.rows[0]?.email) {
+      const starsText = '★'.repeat(rating)+'☆'.repeat(5-rating);
+      await sendEmail(reviewed.rows[0].email, `⭐ تقييم جديد: ${starsText}`,
+        emailTpl(`تقييم جديد ${starsText}`,
+          `<p>قيّمك <strong>${reviewer.rows[0].name}</strong> بـ <strong>${rating} من 5 نجوم</strong>.</p>
+           ${comment?`<div class="hl">"${comment}"</div>`:''}`,
+          '⭐ تقييماتي', `${SITE_URL}/dashboard-provider.html`));
+    }
     res.json(r.rows[0]);
-  } catch(e) {
-    console.error('POST /reviews error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
+  } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/reviews/provider/:id', async (req, res) => {
@@ -1467,13 +1014,13 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, portfolio_images, company_name } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, portfolio_images } = req.body;
     const r = await pool.query(
       `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,
-       experience_years=$6,portfolio_images=$7,company_name=$8
-       WHERE id=$9 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images,company_name`,
+       experience_years=$6,portfolio_images=$7
+       WHERE id=$8 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images`,
       [name, phone||null, city||null, bio||null, specialties||null,
-       experience_years||null, portfolio_images||null, company_name||null, req.user.id]);
+       experience_years||null, portfolio_images||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1588,16 +1135,16 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.client_id]);
     if (newStatus === 'open') {
       await notify(req2.client_id, '✅ تمت الموافقة على طلبك', `طلبك "${req2.title}" نُشر الآن`, 'approved', req2.id);
-      if (client.rows[0] && client.rows[0].email) {
+      if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `✅ تمت الموافقة: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
             `<div class="ok">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
             '📋 متابعة طلبي', `${SITE_URL}/dashboard-client.html`));
       }
-      notifyInterestedProviders(req2.id, req2.title, req2.category, req2.city).catch(()=>{});
+      notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
     } else {
       await notify(req2.client_id, '❌ تم رفض طلبك', `طلبك "${req2.title}". السبب: ${reason||'غير محدد'}`, 'rejected', req2.id);
-      if (client.rows[0] && client.rows[0].email) {
+      if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `❌ تم رفض طلبك: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
             `<div class="ng">تم رفض طلبك <strong>"${req2.title}"</strong>. السبب: ${reason||'غير محدد'}</div>`,
@@ -1645,39 +1192,6 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-app.post('/api/admin/users', auth, adminOnly, async (req, res) => {
-  try {
-    const { name, email, password, role, phone, city, specialties } = req.body;
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'الاسم والبريد وكلمة المرور والدور مطلوبة' });
-    }
-    const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
-    if (exists.rows.length) return res.status(400).json({ message: 'البريد الإلكتروني مستخدم مسبقاً' });
-    const bcrypt = require('bcrypt');
-    const hashed = await bcrypt.hash(password, 10);
-    const r = await pool.query(
-      `INSERT INTO users(name,email,password,role,phone,city,specialties,is_active)
-       VALUES($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id,name,email,role,phone,city,is_active,created_at`,
-      [name, email, hashed, role, phone||null, city||null,
-       specialties && specialties.length ? specialties : null]
-    );
-    res.json(r.rows[0]);
-  } catch(e) {
-    console.error('POST /admin/users error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
-  try {
-    const { role } = req.body;
-    if (!['admin','client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صالح' });
-    const r = await pool.query('UPDATE users SET role=$1 WHERE id=$2 RETURNING id,name,role', [role, req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query('UPDATE users SET is_active=NOT is_active WHERE id=$1 RETURNING id,name,is_active', [req.params.id]);
@@ -1701,19 +1215,13 @@ app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
 
 app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   try {
-    const { city, specialty } = req.query;
-    const conditions = ["role='provider'"];
-    const vals = [];
-    if (city) { vals.push('%' + city + '%'); conditions.push('city ILIKE $' + vals.length); }
-    if (specialty) { vals.push(specialty); conditions.push('$' + vals.length + '=ANY(specialties)'); }
-    const where = conditions.join(' AND ');
     const r = await pool.query(`
-      SELECT id,name,email,phone,city,specialties,badge,is_active,bio,company_name,created_at,
+      SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,
       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
-      FROM users WHERE ${where} ORDER BY avg_rating DESC`, vals);
+      FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1735,50 +1243,19 @@ app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, user_ids, role, title, body, type } = req.body;
+    const { user_id, role, title, body, type } = req.body;
     const VALID_ROLES = ['client','provider','admin'];
-
-    let targets = [];
-
     if (user_id) {
-      // مستخدم واحد
-      const u = await pool.query('SELECT id,name,email FROM users WHERE id=$1', [user_id]);
-      targets = u.rows;
-    } else if (user_ids && Array.isArray(user_ids) && user_ids.length) {
-      // قائمة محددة من المستخدمين (من فلترة المزودين)
-      const placeholders = user_ids.map((_,i) => '$'+(i+1)).join(',');
-      const u = await pool.query(`SELECT id,name,email FROM users WHERE id IN (${placeholders})`, user_ids);
-      targets = u.rows;
+      await notify(user_id, title, body, type||'admin', null);
     } else {
-      // كل مستخدمي دور معين
-      let q = 'SELECT id,name,email FROM users WHERE is_active=TRUE';
+      let q = 'SELECT id FROM users WHERE is_active=TRUE';
       const params = [];
-      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ' AND role=$1'; }
-      const u = await pool.query(q, params);
-      targets = u.rows;
+      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$1`; }
+      const users = await pool.query(q, params);
+      for (const u of users.rows) await notify(u.id, title, body, type||'admin', null);
     }
-
-    let sent = 0, emailSent = 0;
-    for (const u of targets) {
-      // إشعار داخلي
-      await notify(u.id, title, body, type||'admin', null);
-      sent++;
-      // إيميل
-      if (u.email) {
-        const html = emailTpl(
-          title,
-          `<p style="font-size:15px;line-height:1.8;color:#374151">${body}</p>`,
-          'زيارة المنصة', SITE_URL
-        );
-        const ok = await sendEmail(u.email, title, html);
-        if (ok) emailSent++;
-      }
-    }
-    res.json({ ok: true, sent, emailSent });
-  } catch(e) {
-    console.error('POST /admin/notify error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
 
@@ -1811,27 +1288,6 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
 });
 
 // ── ADMIN EXPORT CSV ──
-app.get('/api/admin/export/providers', auth, adminOnly, async (req, res) => {
-  try {
-    const city = req.query.city || '';
-    const specialty = req.query.specialty || '';
-    const conditions = ["role='provider'"];
-    const vals = [];
-    if (city) { vals.push('%' + city + '%'); conditions.push('city ILIKE $' + vals.length); }
-    if (specialty) { vals.push(specialty); conditions.push('$' + vals.length + '=ANY(specialties)'); }
-    const where = conditions.join(' AND ');
-    const dbRes = await pool.query(
-      'SELECT name,email,phone,city,company_name,specialties,badge,is_active,created_at,' +
-      'COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,' +
-      '(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,' +
-      '(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status=$' + (vals.length+1) + ') as completed_projects ' +
-      'FROM users WHERE ' + where + ' ORDER BY avg_rating DESC',
-      vals.concat(['completed'])
-    );
-    res.json(dbRes.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
 app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.project_number,r.title,r.category,r.city,r.status,r.budget_max,r.created_at,r.completed_at,u.name as client_name,p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id ORDER BY r.created_at DESC`);
@@ -1844,64 +1300,6 @@ app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
 });
 
 // ────────────────────────────────────────────
-// ── TEST EMAIL ENDPOINT ──
-app.get('/api/test-email', auth, async (req, res) => {
-  try {
-    const sent = await sendEmail(req.user.email, 'Test OTP - مناقصة', '<h1>Test</h1>');
-    res.json({ sent, from: FROM_EMAIL, to: req.user.email, key: RESEND_KEY.substring(0,8)+'...' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// ── UPLOAD IMAGE ──
-app.post('/api/upload/image', auth, async (req, res) => {
-  try {
-    const { data, type } = req.body;
-    if (!data || !data.startsWith('data:image/')) return res.status(400).json({ message: 'صورة غير صالحة' });
-    if (data.length > 2000000) return res.status(400).json({ message: 'حجم الصورة كبير — الحد 1.5MB' });
-    // تخزين مباشر في جدول images (مؤقت - يُنصح بـ S3/Cloudflare في الإنتاج)
-    const r = await pool.query(
-      'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING id,created_at',
-      [req.user.id, data, type||'project']
-    );
-    res.json({ ok: true, url: data, id: r.rows[0].id });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-app.post('/api/upload/images', auth, async (req, res) => {
-  try {
-    const { images, type } = req.body;
-    if (!images || !Array.isArray(images)) return res.status(400).json({ message: 'مصفوفة الصور مطلوبة' });
-    if (images.length > 5) return res.status(400).json({ message: 'الحد الأقصى 5 صور' });
-    const urls = [];
-    for (const data of images) {
-      if (!data || !data.startsWith('data:image/') || data.length > 2800000) continue;
-      const r = await pool.query(
-        'INSERT INTO images(user_id,url,type) VALUES($1,$2,$3) RETURNING url',
-        [req.user.id, data, type||'project']
-      );
-      urls.push(r.rows[0].url);
-    }
-    res.json({ ok: true, urls });
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
-app.get('/api/messages/poll', auth, async (req, res) => {
-  try {
-    const { request_id, since } = req.query;
-    if (!request_id) return res.status(400).json({ message: 'request_id مطلوب' });
-    const sinceDate = since ? new Date(parseInt(since)) : new Date(Date.now() - 60000);
-    const r = await pool.query(
-      `SELECT m.*, u.name as sender_name, u.role as sender_role
-       FROM messages m JOIN users u ON m.sender_id=u.id
-       WHERE m.request_id=$1 AND m.created_at > $2
-       ORDER BY m.created_at ASC`,
-      [request_id, sinceDate]
-    );
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
-});
-
 initDB().then(() =>
   server.listen(process.env.PORT||3000, () =>
     console.log('🚀 Server running on port', process.env.PORT||3000)
