@@ -9,15 +9,15 @@
 /* ===== SHARED CSS (مناقصة — نمط مستقل) ===== */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --blue:#1473E6;--blue-d:#0d5fc9;--blue-l:#EBF3FD;--blue-m:#b3d4f8;
-  --green:#16a34a;--green-l:#f0fdf4;--green-m:#86efac;
-  --red:#dc2626;--red-l:#fef2f2;--red-m:#fca5a5;
-  --yellow:#d97706;--yellow-l:#fffbeb;--yellow-m:#fcd34d;
-  --purple:#7c3aed;--purple-l:#f5f3ff;
-  --gray:#f7f8fa;--gray2:#eef0f3;--gray3:#dde1e7;
-  --text:#1a1a2e;--text2:#4a5568;--text3:#8a97a8;--text4:#b0bac5;
-  --white:#fff;--border:#e8ecf0;
-  --r:8px;--rl:12px;--rxl:16px;
+ --blue:#1473E6;--blue-d:#0d5fc9;--blue-l:#EBF3FD;--blue-m:#b3d4f8;
+ --green:#16a34a;--green-l:#f0fdf4;--green-m:#86efac;
+ --red:#dc2626;--red-l:#fef2f2;--red-m:#fca5a5;
+ --yellow:#d97706;--yellow-l:#fffbeb;--yellow-m:#fcd34d;
+ --purple:#7c3aed;--purple-l:#f5f3ff;
+ --gray:#f7f8fa;--gray2:#eef0f3;--gray3:#dde1e7;
+ --text:#1a1a2e;--text2:#4a5568;--text3:#8a97a8;--text4:#b0bac5;
+ --white:#fff;--border:#e8ecf0;
+ --r:8px;--rl:12px;--rxl:16px;
 }
 body{font-family:'Tajawal',sans-serif;background:var(--gray);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:'Tajawal',sans-serif;font-size:14px}
@@ -191,15 +191,15 @@ h3{font-size:15px;font-weight:800}
 
 /* ── RESPONSIVE ── */
 @media(max-width:900px){
-  .stat-grid{grid-template-columns:repeat(2,1fr)}
-  .form-grid{grid-template-columns:1fr}
+ .stat-grid{grid-template-columns:repeat(2,1fr)}
+ .form-grid{grid-template-columns:1fr}
 }
 @media(max-width:768px){
-  .nav{display:none}.mob-head{display:flex}.mob-nav{display:block}
-  .wrap{padding:8px 10px;padding-bottom:76px}
-  .stat-grid{gap:8px}
-  .chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}
-  .chat-sidebar{display:none}
+ .nav{display:none}.mob-head{display:flex}.mob-nav{display:block}
+ .wrap{padding:8px 10px;padding-bottom:76px}
+ .stat-grid{gap:8px}
+ .chat-layout{grid-template-columns:1fr;height:calc(100vh - 100px)}
+ .chat-sidebar{display:none}
 }
 
 
@@ -271,10 +271,10 @@ h3{font-size:15px;font-weight:800}
 .bid-form-title{font-size:15px;font-weight:800;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:8px}
 
 @media(max-width:768px){
-  .browse-layout{grid-template-columns:1fr}.filters-panel{display:none}
-  .settings-layout{grid-template-columns:1fr}
-  .stats4{grid-template-columns:repeat(2,1fr)}
-  .prof-banner{padding:18px}
+ .browse-layout{grid-template-columns:1fr}.filters-panel{display:none}
+ .settings-layout{grid-template-columns:1fr}
+ .stats4{grid-template-columns:repeat(2,1fr)}
+ .prof-banner{padding:18px}
 }
 
 /* ── TENDER CARD NEW CLASSES ── */
@@ -288,275 +288,283 @@ h3{font-size:15px;font-weight:800}
 .btn-bid-ghost{padding:8px 16px;background:var(--white);color:var(--blue);border:1.5px solid var(--blue);border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;transition:.12s}
 .btn-bid-ghost:hover{background:var(--blue-l)}
 </style>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* Lucide Icons */
+.icon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:inline-block; vertical-align:middle; }
+.icon-sm { width:14px; height:14px; }
+.icon-lg { width:22px; height:22px; }
+.nav-icon { width:20px; height:20px; }
+</style>
 </head>
 <body>
 
 <div class="mob-head">
-  <div class="mob-logo"><b>مناقصة</b>.</div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <button class="mob-icon-btn" onclick="show('notifs')" style="position:relative">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span id="mob-notif-dot" style="display:none;position:absolute;top:3px;left:3px;width:8px;height:8px;border-radius:50%;background:var(--red)"></span>
-    </button>
-    <div class="nav-av" id="mobAv" onclick="show('profile')" style="width:30px;height:30px;font-size:11px">م</div>
-  </div>
+ <div class="mob-logo"><b>مناقصة</b>.</div>
+ <div style="display:flex;align-items:center;gap:8px">
+ <button class="mob-icon-btn" onclick="show('notifs')" style="position:relative">
+ <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+ <span id="mob-notif-dot" style="display:none;position:absolute;top:3px;left:3px;width:8px;height:8px;border-radius:50%;background:var(--red)"></span>
+ </button>
+ <div class="nav-av" id="mobAv" onclick="show('profile')" style="width:30px;height:30px;font-size:11px">م</div>
+ </div>
 </div>
 
 <nav class="nav">
-  <div class="nav-logo"><b>مناقصة</b>.</div>
-  <div class="nav-links">
-    <button class="nav-btn on" id="nl-home" onclick="show('home')">
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية
-    </button>
-    <button class="nav-btn" id="nl-browse" onclick="show('browse')">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
-    </button>
-    <button class="nav-btn" id="nl-my-bids" onclick="show('my-bids')">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>عروضي
-      <span class="nav-badge" id="bids-badge" style="display:none">0</span>
-    </button>
-    <button class="nav-btn" id="nl-messages" onclick="show('messages')">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل
-      <span class="nav-badge" id="msg-badge" style="display:none">0</span>
-    </button>
-    <button class="nav-btn" id="nl-notifs" onclick="show('notifs')">
-      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات
-      <span class="nav-badge" id="notif-badge" style="display:none">0</span>
-    </button>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <div style="text-align:left">
-      <div style="font-size:13px;font-weight:700" id="userName">مزود</div>
-      <div style="font-size:10px;color:var(--text3)">مزود خدمة</div>
-    </div>
-    <div class="nav-av" id="userAv" onclick="show('profile')">م</div>
-    <button onclick="logout()" class="btn btn-gray btn-sm">خروج</button>
-  </div>
+ <div class="nav-logo"><b>مناقصة</b>.</div>
+ <div class="nav-links">
+ <button class="nav-btn on" id="nl-home" onclick="show('home')">
+ <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>الرئيسية
+ </button>
+ <button class="nav-btn" id="nl-browse" onclick="show('browse')">
+ <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
+ </button>
+ <button class="nav-btn" id="nl-my-bids" onclick="show('my-bids')">
+ <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>عروضي
+ <span class="nav-badge" id="bids-badge" style="display:none">0</span>
+ </button>
+ <button class="nav-btn" id="nl-messages" onclick="show('messages')">
+ <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>الرسائل
+ <span class="nav-badge" id="msg-badge" style="display:none">0</span>
+ </button>
+ <button class="nav-btn" id="nl-notifs" onclick="show('notifs')">
+ <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>الإشعارات
+ <span class="nav-badge" id="notif-badge" style="display:none">0</span>
+ </button>
+ </div>
+ <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+ <div style="text-align:left">
+ <div style="font-size:13px;font-weight:700" id="userName">مزود</div>
+ <div style="font-size:10px;color:var(--text3)">مزود خدمة</div>
+ </div>
+ <div class="nav-av" id="userAv" onclick="show('profile')">م</div>
+ <button onclick="logout()" class="btn btn-gray btn-sm">خروج</button>
+ </div>
 </nav>
 
 <div class="wrap">
 
 <!-- HOME -->
 <div class="page on" id="page-home">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-    <div><h1 id="welcomeName">مرحباً 👋</h1><p style="font-size:13px;color:var(--text3);margin-top:3px">تصفح المشاريع المتاحة وقدّم أفضل عروضك</p></div>
-    <button class="btn btn-blue btn-lg" onclick="show('browse')">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
-    </button>
-  </div>
-  <div class="stat-grid">
-    <div class="stat-card"><div class="stat-num" id="s-bids">0</div><div class="stat-label">عروضي</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-won" style="color:var(--green)">0</div><div class="stat-label">عروض مقبولة</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-done">0</div><div class="stat-label">مشاريع منجزة</div></div>
-    <div class="stat-card"><div class="stat-num" id="s-rating" style="color:#f59e0b">—</div><div class="stat-label">تقييمي</div></div>
-  </div>
-  <div id="active-card" style="display:none;margin-bottom:14px"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:800">آخر عروضي</div>
-        <button onclick="show('my-bids')" class="btn btn-gray btn-sm">الكل</button>
-      </div>
-      <div id="home-bids"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
-    </div>
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:800">مشاريع مقترحة</div>
-        <button onclick="show('browse')" class="btn btn-gray btn-sm">الكل</button>
-      </div>
-      <div id="home-tenders"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
-    </div>
-  </div>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+ <div><h1 id="welcomeName">مرحباً </h1><p style="font-size:13px;color:var(--text3);margin-top:3px">تصفح المشاريع المتاحة وقدّم أفضل عروضك</p></div>
+ <button class="btn btn-blue btn-lg" onclick="show('browse')">
+ <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع
+ </button>
+ </div>
+ <div class="stat-grid">
+ <div class="stat-card"><div class="stat-num" id="s-bids">0</div><div class="stat-label">عروضي</div></div>
+ <div class="stat-card"><div class="stat-num" id="s-won" style="color:var(--green)">0</div><div class="stat-label">عروض مقبولة</div></div>
+ <div class="stat-card"><div class="stat-num" id="s-done">0</div><div class="stat-label">مشاريع منجزة</div></div>
+ <div class="stat-card"><div class="stat-num" id="s-rating" style="color:#f59e0b">—</div><div class="stat-label">تقييمي</div></div>
+ </div>
+ <div id="active-card" style="display:none;margin-bottom:14px"></div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+ <div>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+ <div style="font-size:13px;font-weight:800">آخر عروضي</div>
+ <button onclick="show('my-bids')" class="btn btn-gray btn-sm">الكل</button>
+ </div>
+ <div id="home-bids"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ </div>
+ <div>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+ <div style="font-size:13px;font-weight:800">مشاريع مقترحة</div>
+ <button onclick="show('browse')" class="btn btn-gray btn-sm">الكل</button>
+ </div>
+ <div id="home-tenders"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ </div>
+ </div>
 </div>
 
 <!-- BROWSE -->
 <div class="page" id="page-browse">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div><h2>المشاريع المتاحة</h2><p style="font-size:12px;color:var(--text3);margin-top:2px" id="browse-count"></p></div>
-    <input id="browse-search" type="text" placeholder="🔍 ابحث عن مشروع..." oninput="searchTenders()" class="f-input" style="width:220px">
-  </div>
-  <div class="browse-layout">
-    <div class="filters-panel">
-      <div class="filters-head">تصفية <button onclick="clearFilters()" style="font-size:11px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">مسح الكل</button></div>
-      <div class="filters-body">
-        <span class="f-section-label">الفئة</span>
-        <button class="f-btn on" id="fc-all" onclick="setCat('all',this)">الكل <span class="f-cnt" id="fc-all-cnt">0</span></button>
-        <div id="cat-filter-list"></div>
-        <span class="f-section-label">المدينة</span>
-        <input id="city-filter" type="text" placeholder="أي مدينة..." oninput="loadTenders()" class="f-input">
-        <span class="f-section-label">الميزانية (ر.س)</span>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <input id="budget-min" type="number" placeholder="من" oninput="loadTenders()" class="f-input">
-          <input id="budget-max" type="number" placeholder="إلى" oninput="loadTenders()" class="f-input">
-        </div>
-      </div>
-    </div>
-    <div id="tenders-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
-  </div>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+ <div><h2>المشاريع المتاحة</h2><p style="font-size:12px;color:var(--text3);margin-top:2px" id="browse-count"></p></div>
+ <input id="browse-search" type="text" placeholder=" ابحث عن مشروع..." oninput="searchTenders()" class="f-input" style="width:220px">
+ </div>
+ <div class="browse-layout">
+ <div class="filters-panel">
+ <div class="filters-head">تصفية <button onclick="clearFilters()" style="font-size:11px;color:var(--blue);font-weight:700;background:none;border:none;cursor:pointer">مسح الكل</button></div>
+ <div class="filters-body">
+ <span class="f-section-label">الفئة</span>
+ <button class="f-btn on" id="fc-all" onclick="setCat('all',this)">الكل <span class="f-cnt" id="fc-all-cnt">0</span></button>
+ <div id="cat-filter-list"></div>
+ <span class="f-section-label">المدينة</span>
+ <input id="city-filter" type="text" placeholder="أي مدينة..." oninput="loadTenders()" class="f-input">
+ <span class="f-section-label">الميزانية (ر.س)</span>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+ <input id="budget-min" type="number" placeholder="من" oninput="loadTenders()" class="f-input">
+ <input id="budget-max" type="number" placeholder="إلى" oninput="loadTenders()" class="f-input">
+ </div>
+ </div>
+ </div>
+ <div id="tenders-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ </div>
 </div>
 
 <!-- TENDER DETAIL -->
 <div class="page" id="page-tender-detail">
-  <button onclick="show('browse')" class="btn btn-gray btn-sm" style="margin-bottom:14px">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
-  </button>
-  <div id="tender-detail-content"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ <button onclick="show('browse')" class="btn btn-gray btn-sm" style="margin-bottom:14px">
+ <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>المشاريع
+ </button>
+ <div id="tender-detail-content"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
 </div>
 
 <!-- MY BIDS -->
 <div class="page" id="page-my-bids">
-  <h2 style="margin-bottom:14px">عروضي</h2>
-  <div class="tabs-bar">
-    <button class="tabs-btn on" onclick="filterBids('all',this)">الكل <span class="tabs-cnt" id="cnt-all">0</span></button>
-    <button class="tabs-btn" onclick="filterBids('pending',this)">بانتظار الرد <span class="tabs-cnt" id="cnt-pend">0</span></button>
-    <button class="tabs-btn" onclick="filterBids('accepted',this)">مقبولة ✅ <span class="tabs-cnt" id="cnt-won">0</span></button>
-    <button class="tabs-btn" onclick="filterBids('rejected',this)">مرفوضة <span class="tabs-cnt" id="cnt-rej">0</span></button>
-  </div>
-  <div id="my-bids-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ <h2 style="margin-bottom:14px">عروضي</h2>
+ <div class="tabs-bar">
+ <button class="tabs-btn on" onclick="filterBids('all',this)">الكل <span class="tabs-cnt" id="cnt-all">0</span></button>
+ <button class="tabs-btn" onclick="filterBids('pending',this)">بانتظار الرد <span class="tabs-cnt" id="cnt-pend">0</span></button>
+ <button class="tabs-btn" onclick="filterBids('accepted',this)">مقبولة <span class="tabs-cnt" id="cnt-won">0</span></button>
+ <button class="tabs-btn" onclick="filterBids('rejected',this)">مرفوضة <span class="tabs-cnt" id="cnt-rej">0</span></button>
+ </div>
+ <div id="my-bids-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
 </div>
 
 <!-- MESSAGES -->
 <div class="page" id="page-messages">
-  <div class="chat-layout">
-    <div class="chat-sidebar">
-      <div class="chat-sidebar-head">المحادثات</div>
-      <div class="chat-threads" id="msg-threads"><div class="loading">جاري التحميل...</div></div>
-    </div>
-    <div class="chat-main" id="chat-main-prov">
-      <div class="empty-state" style="margin:auto">
-        <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <h3>اختر محادثة</h3><p>اختر عميلاً من القائمة</p>
-      </div>
-    </div>
-  </div>
+ <div class="chat-layout">
+ <div class="chat-sidebar">
+ <div class="chat-sidebar-head">المحادثات</div>
+ <div class="chat-threads" id="msg-threads"><div class="loading">جاري التحميل...</div></div>
+ </div>
+ <div class="chat-main" id="chat-main-prov">
+ <div class="empty-state" style="margin:auto">
+ <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+ <h3>اختر محادثة</h3><p>اختر عميلاً من القائمة</p>
+ </div>
+ </div>
+ </div>
 </div>
 
 <!-- PROFILE -->
 <div class="page" id="page-profile">
-  <div class="prof-banner">
-    <div style="position:relative">
-      <div class="prof-av" id="profile-av">م</div>
-      <div class="prof-name" id="profile-name">...</div>
-      <div class="prof-sub" id="profile-sub">مزود خدمة</div>
-      <div id="profile-tags"></div>
-    </div>
-  </div>
-  <div class="stats4">
-    <div class="s4"><div class="s4-v" id="ps-done">0</div><div class="s4-l">مشروع منجز</div></div>
-    <div class="s4"><div class="s4-v" id="ps-rating">—</div><div class="s4-l">التقييم</div></div>
-    <div class="s4"><div class="s4-v" id="ps-years">—</div><div class="s4-l">سنوات خبرة</div></div>
-    <div class="s4"><div class="s4-v" id="ps-rate">—%</div><div class="s4-l">نسبة الإنجاز</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px">
-    <div>
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-head"><div class="card-title">نبذة عني</div><button onclick="show('settings')" class="btn btn-gray btn-sm">تعديل</button></div>
-        <div class="card-body"><p id="profile-bio" style="font-size:13px;color:var(--text2);line-height:1.85">أضف نبذة تعريفية...</p></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">معرض الأعمال</div></div>
-        <div class="card-body"><div class="img-grid" id="portfolio-grid"></div></div>
-      </div>
-    </div>
-    <div>
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-head"><div class="card-title">تقييم الأداء</div></div>
-        <div class="card-body" id="profile-ratings"><p style="font-size:12px;color:var(--text3);text-align:center">لا يوجد تقييمات بعد</p></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">آخر التقييمات</div></div>
-        <div id="profile-reviews"><div class="loading">جاري التحميل...</div></div>
-      </div>
-    </div>
-  </div>
+ <div class="prof-banner">
+ <div style="position:relative">
+ <div class="prof-av" id="profile-av">م</div>
+ <div class="prof-name" id="profile-name">...</div>
+ <div class="prof-sub" id="profile-sub">مزود خدمة</div>
+ <div id="profile-tags"></div>
+ </div>
+ </div>
+ <div class="stats4">
+ <div class="s4"><div class="s4-v" id="ps-done">0</div><div class="s4-l">مشروع منجز</div></div>
+ <div class="s4"><div class="s4-v" id="ps-rating">—</div><div class="s4-l">التقييم</div></div>
+ <div class="s4"><div class="s4-v" id="ps-years">—</div><div class="s4-l">سنوات خبرة</div></div>
+ <div class="s4"><div class="s4-v" id="ps-rate">—%</div><div class="s4-l">نسبة الإنجاز</div></div>
+ </div>
+ <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px">
+ <div>
+ <div class="card" style="margin-bottom:12px">
+ <div class="card-head"><div class="card-title">نبذة عني</div><button onclick="show('settings')" class="btn btn-gray btn-sm"><i data-lucide="edit-2" class="icon-sm"></i> تعديل</button></div>
+ <div class="card-body"><p id="profile-bio" style="font-size:13px;color:var(--text2);line-height:1.85">أضف نبذة تعريفية...</p></div>
+ </div>
+ <div class="card">
+ <div class="card-head"><div class="card-title">معرض الأعمال</div></div>
+ <div class="card-body"><div class="img-grid" id="portfolio-grid"></div></div>
+ </div>
+ </div>
+ <div>
+ <div class="card" style="margin-bottom:12px">
+ <div class="card-head"><div class="card-title">تقييم الأداء</div></div>
+ <div class="card-body" id="profile-ratings"><p style="font-size:12px;color:var(--text3);text-align:center">لا يوجد تقييمات بعد</p></div>
+ </div>
+ <div class="card">
+ <div class="card-head"><div class="card-title">آخر التقييمات</div></div>
+ <div id="profile-reviews"><div class="loading">جاري التحميل...</div></div>
+ </div>
+ </div>
+ </div>
 </div>
 
 <!-- SETTINGS -->
 <div class="page" id="page-settings">
-  <h2 style="margin-bottom:4px">الإعدادات</h2>
-  <p style="font-size:13px;color:var(--text3);margin-bottom:18px">تحديث معلوماتك الشخصية والمهنية</p>
-  <div class="settings-layout">
-    <div>
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-head"><div class="card-title">المعلومات الشخصية</div></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
-          <div id="settings-alert" class="alert"></div>
-          <div class="form-grid">
-            <div class="fg"><label>الاسم الكامل</label><input id="s-name" type="text"></div>
-            <div class="fg"><label>رقم الجوال</label><input id="s-phone" type="tel" inputmode="tel"></div>
-            <div class="fg"><label>التخصص الرئيسي</label><select id="s-spec"><option value="">اختر المدينة</option><option value="أبها">أبها</option><option value="أبو عريش">أبو عريش</option><option value="أحد رفيدة">أحد رفيدة</option><option value="أملج">أملج</option><option value="الأحساء">الأحساء</option><option value="الأفلاج">الأفلاج</option><option value="الباحة">الباحة</option><option value="البدائع">البدائع</option><option value="البرك">البرك</option><option value="البكيرية">البكيرية</option><option value="الجبيل">الجبيل</option><option value="الجموم">الجموم</option><option value="الحرث">الحرث</option><option value="الحريق">الحريق</option><option value="الحناكية">الحناكية</option><option value="الخبر">الخبر</option><option value="الخرج">الخرج</option><option value="الخفجي">الخفجي</option><option value="الدرب">الدرب</option><option value="الدرعية">الدرعية</option><option value="الدمام">الدمام</option><option value="الدوادمي">الدوادمي</option><option value="الرس">الرس</option><option value="الرياض">الرياض</option><option value="الريث">الريث</option><option value="الزلفي">الزلفي</option><option value="السليل">السليل</option><option value="الشماسية">الشماسية</option><option value="الطائف">الطائف</option><option value="الظهران">الظهران</option><option value="العارضة">العارضة</option><option value="العقيق">العقيق</option><option value="العلا">العلا</option><option value="العوامية">العوامية</option><option value="الغاط">الغاط</option><option value="الغزالة">الغزالة</option><option value="القريات">القريات</option><option value="القطيف">القطيف</option><option value="القنفذة">القنفذة</option><option value="القويعية">القويعية</option><option value="الكامل">الكامل</option><option value="الليث">الليث</option><option value="المجمعة">المجمعة</option><option value="المخواة">المخواة</option><option value="المدينة المنورة">المدينة المنورة</option><option value="المذنب">المذنب</option><option value="المزاحمية">المزاحمية</option><option value="المندق">المندق</option><option value="المويه">المويه</option><option value="النماص">النماص</option><option value="الوجه">الوجه</option><option value="بدر">بدر</option><option value="بريدة">بريدة</option><option value="بقعاء">بقعاء</option><option value="بلجرشي">بلجرشي</option><option value="بيش">بيش</option><option value="بيشة">بيشة</option><option value="تبوك">تبوك</option><option value="تثليث">تثليث</option><option value="تيماء">تيماء</option><option value="ثادق">ثادق</option><option value="جازان">جازان</option><option value="جدة">جدة</option><option value="حائل">حائل</option><option value="حبونا">حبونا</option><option value="حريملاء">حريملاء</option><option value="حفر الباطن">حفر الباطن</option><option value="حقل">حقل</option><option value="خليص">خليص</option><option value="خميس مشيط">خميس مشيط</option><option value="خيبر">خيبر</option><option value="دومة الجندل">دومة الجندل</option><option value="رأس تنورة">رأس تنورة</option><option value="رابغ">رابغ</option><option value="رجال ألمع">رجال ألمع</option><option value="رفحاء">رفحاء</option><option value="رماح">رماح</option><option value="رياض الخبراء">رياض الخبراء</option><option value="سراة عبيدة">سراة عبيدة</option><option value="سكاكا">سكاكا</option><option value="سميراء">سميراء</option><option value="سيهات">سيهات</option><option value="شرورة">شرورة</option><option value="شقراء">شقراء</option><option value="صامطة">صامطة</option><option value="صبيا">صبيا</option><option value="صفوى">صفوى</option><option value="ضباء">ضباء</option><option value="ضرما">ضرما</option><option value="ضرية">ضرية</option><option value="طريف">طريف</option><option value="ظهران الجنوب">ظهران الجنوب</option><option value="عرعر">عرعر</option><option value="عفيف">عفيف</option><option value="عنيزة">عنيزة</option><option value="فيفا">فيفا</option><option value="قلوة">قلوة</option><option value="محايل عسير">محايل عسير</option><option value="مكة المكرمة">مكة المكرمة</option><option value="ميسان">ميسان</option><option value="نجران">نجران</option><option value="وادي الدواسر">وادي الدواسر</option><option value="يدمة">يدمة</option><option value="ينبع">ينبع</option></select></div>
-            <div class="fg"><label>المدينة</label>
-              <div style="position:relative">
-                <input id="s-city" type="text" autocomplete="off" oninput="filterCitiesS(this.value)" onfocus="showCityListS()" onblur="setTimeout(hideCityListS,200)">
-                <div id="cityDropdownS" class="city-dd"></div>
-              </div>
-            </div>
-            <div class="fg"><label>سنوات الخبرة</label><input id="s-years" type="number" inputmode="numeric"></div>
-            <div class="fg"><label>نسبة الإنجاز (%)</label><input id="s-rate" type="number" inputmode="numeric"></div>
-          </div>
-          <div class="fg"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك ومهاراتك..." style="min-height:90px"></textarea></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-blue btn-lg" id="s-btn" onclick="saveSettings()">حفظ التعديلات</button>
-            <button class="btn btn-gray btn-lg" onclick="show('profile')">إلغاء</button>
-          </div>
-        </div>
-      </div>
-      <!-- معرض الأعمال -->
-      <div class="card">
-        <div class="card-head"><div class="card-title">📸 معرض الأعمال</div></div>
-        <div class="card-body">
-          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">أضف صور أعمالك — تظهر لكل عميل يرى ملفك</p>
-          <div class="img-upload-zone" onclick="document.getElementById('portfolio-inp').click()">
-            <div style="font-size:28px;margin-bottom:6px">📸</div>
-            <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">JPG, PNG — حتى 10 صور</div>
-          </div>
-          <input type="file" id="portfolio-inp" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
-          <div class="img-grid" id="portfolio-preview" style="margin-top:10px"></div>
-          <button class="btn btn-blue" id="portfolio-save-btn" onclick="savePortfolio()" style="display:none;margin-top:10px">حفظ معرض الأعمال</button>
-          <div id="portfolio-alert" class="alert"></div>
-        </div>
-      </div>
-    </div>
-    <!-- جانب الإعدادات -->
-    <div style="position:sticky;top:68px">
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-head"><div class="card-title">🔔 إشعارات المشاريع</div></div>
-        <div class="card-body">
-          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اختر التخصصات التي تهمك</p>
-          <div id="cats-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
-          <button class="btn btn-blue btn-full" id="notif-save-btn" onclick="saveNotifPrefs()">حفظ التفضيلات</button>
-          <div id="notif-prefs-alert" class="alert"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-body">
-          <button class="btn btn-red-soft btn-full" onclick="logout()">تسجيل الخروج</button>
-        </div>
-      </div>
-    </div>
-  </div>
+ <h2 style="margin-bottom:4px">الإعدادات</h2>
+ <p style="font-size:13px;color:var(--text3);margin-bottom:18px">تحديث معلوماتك الشخصية والمهنية</p>
+ <div class="settings-layout">
+ <div>
+ <div class="card" style="margin-bottom:12px">
+ <div class="card-head"><div class="card-title">المعلومات الشخصية</div></div>
+ <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+ <div id="settings-alert" class="alert"></div>
+ <div class="form-grid">
+ <div class="fg"><label>الاسم الكامل</label><input id="s-name" type="text"></div>
+ <div class="fg"><label>رقم الجوال</label><input id="s-phone" type="tel" inputmode="tel"></div>
+ <div class="fg"><label>التخصص الرئيسي</label><select id="s-spec"><option value="">اختر المدينة</option><option value="أبها">أبها</option><option value="أبو عريش">أبو عريش</option><option value="أحد رفيدة">أحد رفيدة</option><option value="أملج">أملج</option><option value="الأحساء">الأحساء</option><option value="الأفلاج">الأفلاج</option><option value="الباحة">الباحة</option><option value="البدائع">البدائع</option><option value="البرك">البرك</option><option value="البكيرية">البكيرية</option><option value="الجبيل">الجبيل</option><option value="الجموم">الجموم</option><option value="الحرث">الحرث</option><option value="الحريق">الحريق</option><option value="الحناكية">الحناكية</option><option value="الخبر">الخبر</option><option value="الخرج">الخرج</option><option value="الخفجي">الخفجي</option><option value="الدرب">الدرب</option><option value="الدرعية">الدرعية</option><option value="الدمام">الدمام</option><option value="الدوادمي">الدوادمي</option><option value="الرس">الرس</option><option value="الرياض">الرياض</option><option value="الريث">الريث</option><option value="الزلفي">الزلفي</option><option value="السليل">السليل</option><option value="الشماسية">الشماسية</option><option value="الطائف">الطائف</option><option value="الظهران">الظهران</option><option value="العارضة">العارضة</option><option value="العقيق">العقيق</option><option value="العلا">العلا</option><option value="العوامية">العوامية</option><option value="الغاط">الغاط</option><option value="الغزالة">الغزالة</option><option value="القريات">القريات</option><option value="القطيف">القطيف</option><option value="القنفذة">القنفذة</option><option value="القويعية">القويعية</option><option value="الكامل">الكامل</option><option value="الليث">الليث</option><option value="المجمعة">المجمعة</option><option value="المخواة">المخواة</option><option value="المدينة المنورة">المدينة المنورة</option><option value="المذنب">المذنب</option><option value="المزاحمية">المزاحمية</option><option value="المندق">المندق</option><option value="المويه">المويه</option><option value="النماص">النماص</option><option value="الوجه">الوجه</option><option value="بدر">بدر</option><option value="بريدة">بريدة</option><option value="بقعاء">بقعاء</option><option value="بلجرشي">بلجرشي</option><option value="بيش">بيش</option><option value="بيشة">بيشة</option><option value="تبوك">تبوك</option><option value="تثليث">تثليث</option><option value="تيماء">تيماء</option><option value="ثادق">ثادق</option><option value="جازان">جازان</option><option value="جدة">جدة</option><option value="حائل">حائل</option><option value="حبونا">حبونا</option><option value="حريملاء">حريملاء</option><option value="حفر الباطن">حفر الباطن</option><option value="حقل">حقل</option><option value="خليص">خليص</option><option value="خميس مشيط">خميس مشيط</option><option value="خيبر">خيبر</option><option value="دومة الجندل">دومة الجندل</option><option value="رأس تنورة">رأس تنورة</option><option value="رابغ">رابغ</option><option value="رجال ألمع">رجال ألمع</option><option value="رفحاء">رفحاء</option><option value="رماح">رماح</option><option value="رياض الخبراء">رياض الخبراء</option><option value="سراة عبيدة">سراة عبيدة</option><option value="سكاكا">سكاكا</option><option value="سميراء">سميراء</option><option value="سيهات">سيهات</option><option value="شرورة">شرورة</option><option value="شقراء">شقراء</option><option value="صامطة">صامطة</option><option value="صبيا">صبيا</option><option value="صفوى">صفوى</option><option value="ضباء">ضباء</option><option value="ضرما">ضرما</option><option value="ضرية">ضرية</option><option value="طريف">طريف</option><option value="ظهران الجنوب">ظهران الجنوب</option><option value="عرعر">عرعر</option><option value="عفيف">عفيف</option><option value="عنيزة">عنيزة</option><option value="فيفا">فيفا</option><option value="قلوة">قلوة</option><option value="محايل عسير">محايل عسير</option><option value="مكة المكرمة">مكة المكرمة</option><option value="ميسان">ميسان</option><option value="نجران">نجران</option><option value="وادي الدواسر">وادي الدواسر</option><option value="يدمة">يدمة</option><option value="ينبع">ينبع</option></select></div>
+ <div class="fg"><label>المدينة</label>
+ <div style="position:relative">
+ <input id="s-city" type="text" autocomplete="off" oninput="filterCitiesS(this.value)" onfocus="showCityListS()" onblur="setTimeout(hideCityListS,200)">
+ <div id="cityDropdownS" class="city-dd"></div>
+ </div>
+ </div>
+ <div class="fg"><label>سنوات الخبرة</label><input id="s-years" type="number" inputmode="numeric"></div>
+ <div class="fg"><label>نسبة الإنجاز (%)</label><input id="s-rate" type="number" inputmode="numeric"></div>
+ </div>
+ <div class="fg"><label>نبذة تعريفية</label><textarea id="s-bio" placeholder="اكتب نبذة عن خبرتك ومهاراتك..." style="min-height:90px"></textarea></div>
+ <div style="display:flex;gap:8px">
+ <button class="btn btn-blue btn-lg" id="s-btn" onclick="saveSettings()">حفظ التعديلات</button>
+ <button class="btn btn-gray btn-lg" onclick="show('profile')">إلغاء</button>
+ </div>
+ </div>
+ </div>
+ <!-- معرض الأعمال -->
+ <div class="card">
+ <div class="card-head"><div class="card-title"> معرض الأعمال</div></div>
+ <div class="card-body">
+ <p style="font-size:12px;color:var(--text3);margin-bottom:10px">أضف صور أعمالك — تظهر لكل عميل يرى ملفك</p>
+ <div class="img-upload-zone" onclick="document.getElementById('portfolio-inp').click()">
+ <div style="font-size:28px;margin-bottom:6px"></div>
+ <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور</div>
+ <div style="font-size:11px;color:var(--text3);margin-top:2px">JPG, PNG — حتى 10 صور</div>
+ </div>
+ <input type="file" id="portfolio-inp" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
+ <div class="img-grid" id="portfolio-preview" style="margin-top:10px"></div>
+ <button class="btn btn-blue" id="portfolio-save-btn" onclick="savePortfolio()" style="display:none;margin-top:10px">حفظ معرض الأعمال</button>
+ <div id="portfolio-alert" class="alert"></div>
+ </div>
+ </div>
+ </div>
+ <!-- جانب الإعدادات -->
+ <div style="position:sticky;top:68px">
+ <div class="card" style="margin-bottom:12px">
+ <div class="card-head"><div class="card-title"> إشعارات المشاريع</div></div>
+ <div class="card-body">
+ <p style="font-size:12px;color:var(--text3);margin-bottom:10px">اختر التخصصات التي تهمك</p>
+ <div id="cats-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px"></div>
+ <button class="btn btn-blue btn-full" id="notif-save-btn" onclick="saveNotifPrefs()">حفظ التفضيلات</button>
+ <div id="notif-prefs-alert" class="alert"></div>
+ </div>
+ </div>
+ <div class="card">
+ <div class="card-body">
+ <button class="btn btn-red-soft btn-full" onclick="logout()">تسجيل الخروج</button>
+ </div>
+ </div>
+ </div>
+ </div>
 </div>
 
 <!-- NOTIFS -->
 <div class="page" id="page-notifs">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <h2>الإشعارات</h2>
-    <button onclick="markAllRead()" class="btn btn-gray btn-sm">تحديد الكل كمقروء</button>
-  </div>
-  <div class="card">
-    <div id="notifs-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
-  </div>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+ <h2>الإشعارات</h2>
+ <button onclick="markAllRead()" class="btn btn-gray btn-sm">تحديد الكل كمقروء</button>
+ </div>
+ <div class="card">
+ <div id="notifs-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+ </div>
 </div>
 
 </div><!-- end wrap -->
 
 <div class="mob-nav"><div class="mob-nav-inner">
-  <button class="mob-btn on" id="mn-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
-  <button class="mob-btn" id="mn-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>تصفح</span></button>
-  <button class="mob-btn" id="mn-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>عروضي</span></button>
-  <button class="mob-btn" id="mn-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
-  <button class="mob-btn" id="mn-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ملفي</span></button>
+ <button class="mob-btn on" id="mn-home" onclick="show('home')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>الرئيسية</span></button>
+ <button class="mob-btn" id="mn-browse" onclick="show('browse')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>تصفح</span></button>
+ <button class="mob-btn" id="mn-my-bids" onclick="show('my-bids')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>عروضي</span></button>
+ <button class="mob-btn" id="mn-messages" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>رسائل</span></button>
+ <button class="mob-btn" id="mn-profile" onclick="show('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>ملفي</span></button>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -578,7 +586,7 @@ let selectedNotifCats = [], toastTimer;
 // init
 const nm = user.name || 'المزود';
 document.getElementById('userName').textContent = nm;
-document.getElementById('welcomeName').textContent = `مرحباً، ${nm.split(' ')[0]} 👋`;
+document.getElementById('welcomeName').textContent = `مرحباً، ${nm.split(' ')[0]} `;
 document.getElementById('userAv').textContent = nm.charAt(0);
 document.getElementById('mobAv').textContent = nm.charAt(0);
 document.getElementById('profile-av').textContent = nm.charAt(0);
@@ -588,7 +596,7 @@ const specSel = document.getElementById('s-spec');
 CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; specSel.appendChild(o); });
 
 function hdr() {
-  return { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
+ return { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
 }
 function GET(url) { return fetch(API + url, hdr()); }
 function POST(url, body) { return fetch(API + url, { method: 'POST', body: JSON.stringify(body), ...hdr() }); }
@@ -604,36 +612,36 @@ async function safeFetch(url) { try { const r = await fetch(url, hdr()); const d
 function logout() { localStorage.clear(); location.href = 'auth.html'; }
 
 function toast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  const col = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--prov)';
-  el.innerHTML = `<span style="display:none">${col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'i'}</span>${msg}`;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+ const el = document.getElementById('toast');
+ const col = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--prov)';
+ el.innerHTML = `<span style="display:none">${col};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${type === 'success' ? '' : type === 'error' ? '' : 'i'}</span>${msg}`;
+ el.classList.add('show');
+ clearTimeout(toastTimer);
+ toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
 function showSettingsAlert(t, type) {
-  const e = document.getElementById('settings-alert');
-  e.textContent = t; e.style.display = 'block';
-  e.style.background = type === 'ok' ? 'var(--success-l)' : 'var(--danger-l)';
-  e.style.color = type === 'ok' ? '#085041' : '#7f1d1d';
-  e.style.borderColor = type === 'ok' ? 'var(--success-m)' : 'var(--danger-m)';
-  setTimeout(() => e.style.display = 'none', 5000);
+ const e = document.getElementById('settings-alert');
+ e.textContent = t; e.style.display = 'block';
+ e.style.background = type === 'ok' ? 'var(--success-l)' : 'var(--danger-l)';
+ e.style.color = type === 'ok' ? '#085041' : '#7f1d1d';
+ e.style.borderColor = type === 'ok' ? 'var(--success-m)' : 'var(--danger-m)';
+ setTimeout(() => e.style.display = 'none', 5000);
 }
 
 // city dropdowns
 function filterCities(q) {
-  const dd = document.getElementById('cityDropdownS'); if (!dd) return;
-  const f = q ? ALL_CITIES.filter(c => c.includes(q)) : ALL_CITIES;
-  dd.innerHTML = f.map(c => `<div class="city-drop-item" onmousedown="selCity('${c}')">${c}</div>`).join('');
-  dd.style.display = f.length ? 'block' : 'none';
+ const dd = document.getElementById('cityDropdownS'); if (!dd) return;
+ const f = q ? ALL_CITIES.filter(c => c.includes(q)) : ALL_CITIES;
+ dd.innerHTML = f.map(c => `<div class="city-drop-item" onmousedown="selCity('${c}')">${c}</div>`).join('');
+ dd.style.display = f.length ? 'block' : 'none';
 }
 function selCity(c) { const i = document.getElementById('s-city'); if (i) i.value = c; document.getElementById('cityDropdownS').style.display = 'none'; }
 function filterCitiesS(q) {
-  const dd = document.getElementById('cityDropdownS'); if (!dd) return;
-  const f = q ? ALL_CITIES.filter(c => c.includes(q)) : ALL_CITIES;
-  dd.innerHTML = f.map(c => `<div class="city-drop-item" onmousedown="selCityS('${c}')">${c}</div>`).join('');
-  dd.style.display = f.length ? 'block' : 'none';
+ const dd = document.getElementById('cityDropdownS'); if (!dd) return;
+ const f = q ? ALL_CITIES.filter(c => c.includes(q)) : ALL_CITIES;
+ dd.innerHTML = f.map(c => `<div class="city-drop-item" onmousedown="selCityS('${c}')">${c}</div>`).join('');
+ dd.style.display = f.length ? 'block' : 'none';
 }
 function selCityS(c) { const i = document.getElementById('s-city'); if (i) i.value = c; document.getElementById('cityDropdownS').style.display = 'none'; }
 function showCityListS() { filterCitiesS(document.getElementById('s-city')?.value || ''); }
@@ -641,138 +649,138 @@ function hideCityListS() { const d = document.getElementById('cityDropdownS'); i
 
 // notify cats chips
 function buildChips() {
-  const el = document.getElementById('cats-chips');
-  if (!el) return;
-  el.innerHTML = CATS.map(c => `<span class="cat-chip${selectedNotifCats.includes(c) ? ' on' : ''}" onclick="toggleChip('${c.replace(/'/g, "\\'")}')">${c}</span>`).join('');
+ const el = document.getElementById('cats-chips');
+ if (!el) return;
+ el.innerHTML = CATS.map(c => `<span class="cat-chip${selectedNotifCats.includes(c) ? ' on' : ''}" onclick="toggleChip('${c.replace(/'/g, "\\'")}')">${c}</span>`).join('');
 }
 function toggleChip(c) {
-  const i = selectedNotifCats.indexOf(c);
-  if (i >= 0) selectedNotifCats.splice(i, 1); else selectedNotifCats.push(c);
-  buildChips();
+ const i = selectedNotifCats.indexOf(c);
+ if (i >= 0) selectedNotifCats.splice(i, 1); else selectedNotifCats.push(c);
+ buildChips();
 }
 
 // navigation
 function show(pg, el, key) {
-  document.querySelectorAll('.page').forEach(p => p.className = 'page');
-  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('on'));
-  document.querySelectorAll('.mob-btn').forEach(n => n.classList.remove('on'));
-  document.getElementById('page-' + pg).className = 'page on';
-  if(el){el.classList.add('on');}
-  if (key) { const b = document.getElementById('mn-' + key) || document.getElementById('nl-' + key); if(b) b.classList.add('on'); }
-  const titles = { home: 'الرئيسية', browse: 'تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
-  const _pt = document.getElementById('pageTitle'); if(_pt) _pt.textContent = titles[pg] || '';
-  if (pg === 'home') // تحميل الصفحة
+ document.querySelectorAll('.page').forEach(p => p.className = 'page');
+ document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('on'));
+ document.querySelectorAll('.mob-btn').forEach(n => n.classList.remove('on'));
+ document.getElementById('page-' + pg).className = 'page on';
+ if(el){el.classList.add('on');}
+ if (key) { const b = document.getElementById('mn-' + key) || document.getElementById('nl-' + key); if(b) b.classList.add('on'); }
+ const titles = { home: 'الرئيسية', browse: '<i data-lucide="search" class="icon-sm"></i> تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
+ const _pt = document.getElementById('pageTitle'); if(_pt) _pt.textContent = titles[pg] || '';
+ if (pg === 'home') // تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-  try {
-    populateCities('p-city');
-    populateCities('b-city');
-  } catch(e) {}
-  loadHome();
-  loadNotifCount();
+ try {
+ populateCities('p-city');
+ populateCities('b-city');
+ } catch(e) {}
+ loadHome();
+ loadNotifCount();
 });
-  if (pg === 'browse') loadTenders();
-  if (pg === 'my-bids') loadMyBids();
-  if (pg === 'messages') loadMessages();
-  if (pg === 'profile') loadProfile();
-  if (pg === 'settings') loadSettingsForm();
-  if (pg === 'notifs') loadNotifs();
-  window.scrollTo(0, 0);
+ if (pg === 'browse') loadTenders();
+ if (pg === 'my-bids') loadMyBids();
+ if (pg === 'messages') loadMessages();
+ if (pg === 'profile') loadProfile();
+ if (pg === 'settings') loadSettingsForm();
+ if (pg === 'notifs') loadNotifs();
+ window.scrollTo(0, 0);
 }
 
 // ── HOME ──
 async function loadHome() {
-  try {
-    const r = await fetch(API + '/api/provider/bids', hdr());
-    const bids = safeArr(await r.json());
-    allMyBids = bids;
-    const won = bids.filter(b => b.status === 'accepted');
-    const earnings = won.reduce((s, b) => s + Number(b.price || 0), 0);
-    document.getElementById('s-bids').textContent = bids.length;
-    document.getElementById('s-won').textContent = won.length;
-    document.getElementById('s-earnings').textContent = earnings > 0 ? Math.round(earnings).toLocaleString('ar-SA') : '0';
+ try {
+ const r = await fetch(API + '/api/provider/bids', hdr());
+ const bids = safeArr(await r.json());
+ allMyBids = bids;
+ const won = bids.filter(b => b.status === 'accepted');
+ const earnings = won.reduce((s, b) => s + Number(b.price || 0), 0);
+ document.getElementById('s-bids').textContent = bids.length;
+ document.getElementById('s-won').textContent = won.length;
+ document.getElementById('s-earnings').textContent = earnings > 0 ? Math.round(earnings).toLocaleString('ar-SA') : '0';
 
-    // مشاريع نشطة
-    const active = won.filter(b => b.request_status === 'in_progress');
-    const ac2 = document.getElementById('active-card');
-    const ap = document.getElementById('active-projects');
-    if (active.length && ac2 && ap) {
-      ac2.style.display = 'block';
-      ap.innerHTML = active.map(b => `
-        <div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div>
-            <div style="font-size:14px;font-weight:800">✅ ${b.request_title}</div>
-            <div style="font-size:11px;color:var(--t3);margin-top:3px">${fpr(b.price)} • ⏱ ${b.days} يوم${b.city ? ' • 📍' + b.city : ''}</div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-p btn-sm" onclick="openChatWith(${b.client_id || 0},'${(b.client_name || 'العميل').replace(/'/g, '')}',${b.request_id})">💬 تواصل</button>
-            <button class="btn btn-gh btn-sm" onclick="openTender(${b.request_id})">تفاصيل</button>
-          </div>
-        </div>`).join('');
-    } else if (ac2) ac2.style.display = 'none';
+ // مشاريع نشطة
+ const active = won.filter(b => b.request_status === 'in_progress');
+ const ac2 = document.getElementById('active-card');
+ const ap = document.getElementById('active-projects');
+ if (active.length && ac2 && ap) {
+ ac2.style.display = 'block';
+ ap.innerHTML = active.map(b => `
+ <div style="background:var(--success-l);border:1.5px solid var(--success-m);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+ <div>
+ <div style="font-size:14px;font-weight:800">${b.request_title}</div>
+ <div style="font-size:11px;color:var(--t3);margin-top:3px">${fpr(b.price)} • ⏱ ${b.days} يوم${b.city ? ' • ' + b.city : ''}</div>
+ </div>
+ <div style="display:flex;gap:6px">
+ <button class="btn btn-p btn-sm" onclick="openChatWith(${b.client_id || 0},'${(b.client_name || 'العميل').replace(/'/g, '')}',${b.request_id})"><i data-lucide="message-square" class="icon-sm"></i> تواصل</button>
+ <button class="btn btn-gh btn-sm" onclick="openTender(${b.request_id})">تفاصيل</button>
+ </div>
+ </div>`).join('');
+ } else if (ac2) ac2.style.display = 'none';
 
-    const hb = document.getElementById('home-bids');
-    if (hb) hb.innerHTML = bids.length ? bids.slice(0, 4).map(bidCard).join('') : emptyH('لا يوجد عروض بعد', 'تصفح المناقصات وقدّم عرضك الأول');
-  } catch {
-    const hb = document.getElementById('home-bids');
-    if (hb) hb.innerHTML = emptyH('تعذر التحميل', '');
-  }
+ const hb = document.getElementById('home-bids');
+ if (hb) hb.innerHTML = bids.length ? bids.slice(0, 4).map(bidCard).join('') : emptyH('لا يوجد عروض بعد', 'تصفح المناقصات وقدّم عرضك الأول');
+ } catch {
+ const hb = document.getElementById('home-bids');
+ if (hb) hb.innerHTML = emptyH('تعذر التحميل', '');
+ }
 
-  // تقييم
-  try {
-    const r = await fetch(API + '/api/reviews/provider/' + user.id, hdr());
-    const rv = await r.json();
-    const arr = rv.reviews || (Array.isArray(rv) ? rv : []);
-    const avg = arr.length ? arr.reduce((s, x) => s + x.rating, 0) / arr.length : 0;
-    document.getElementById('s-rating').textContent = avg ? avg.toFixed(1) : '—';
-  } catch {}
+ // تقييم
+ try {
+ const r = await fetch(API + '/api/reviews/provider/' + user.id, hdr());
+ const rv = await r.json();
+ const arr = rv.reviews || (Array.isArray(rv) ? rv : []);
+ const avg = arr.length ? arr.reduce((s, x) => s + x.rating, 0) / arr.length : 0;
+ document.getElementById('s-rating').textContent = avg ? avg.toFixed(1) : '—';
+ } catch {}
 
-  // مناقصات مقترحة
-  try {
-    const r = await fetch(API + '/api/requests', hdr());
-    const ts = safeArr(await r.json());
-    const ht = document.getElementById('home-tenders');
-    if (ht) ht.innerHTML = ts.slice(0, 4).map(t => buildTenderCard(t, false)).join('') || '<div class="empty-state"><h3>لا توجد مشاريع</h3></div>';
-  } catch {}
+ // مناقصات مقترحة
+ try {
+ const r = await fetch(API + '/api/requests', hdr());
+ const ts = safeArr(await r.json());
+ const ht = document.getElementById('home-tenders');
+ if (ht) ht.innerHTML = ts.slice(0, 4).map(t => buildTenderCard(t, false)).join('') || '<div class="empty-state"><h3>لا توجد مشاريع</h3></div>';
+ } catch {}
 
-  loadNotifCount();
+ loadNotifCount();
 }
 
 function bidCard(b) {
-  const stMap = { accepted: ['t-won', 'مقبول ✓'], rejected: ['t-rej', 'مرفوض'], pending: ['t-pend', 'بانتظار الرد'] };
-  const [sc, sl] = stMap[b.status] || ['t-rev', 'مراجعة'];
-  return `<div class="bi${b.status === 'accepted' ? ' won' : b.status === 'rejected' ? ' rejected' : ''}">
-    <div class="bi-top">
-      <div><div class="bi-req" onclick="openTender(${b.request_id})">${b.request_title || '—'}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${b.city || ''}</div></div>
-      <div style="text-align:left"><div class="bi-price">${fpr(b.price)}</div><span class="tag ${sc}" style="margin-top:4px">${sl}</span></div>
-    </div>
-    <div class="bi-meta">
-      <span class="rm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${b.days || '—'} يوم</span>
-      <span class="rm">${ago(b.created_at)}</span>
-    </div>
-    <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
-      ${b.status==='accepted'?`<button class="btn btn-p btn-sm" style="margin:0" onclick="openChatWith(${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}',${b.request_id})">💬 تواصل</button>`:''}
-      ${(b.status==='pending'||b.status==='accepted')?`<button onclick="openEditBid(${b.id},${b.price},${b.days})" style="padding:6px 12px;background:var(--yellow-l);color:var(--yellow);border:1.5px solid var(--yellow-m);border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ تعديل العرض</button>`:''}
-      <button class="btn btn-gh btn-sm" onclick="openTender(${b.request_id})">تفاصيل</button>
-    </div>
-    <div class="edit-bid-form" id="edit-form-${b.id}" style="display:none;margin-top:12px;padding:16px;background:var(--blue-l);border-radius:var(--rl);border:1.5px solid var(--blue-m)">
-      <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px">✏️ تعديل قيمة العرض</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">القيمة (ر.س) *</label>
-             <input id="edit-price-${b.id}" type="number" inputmode="numeric" value="${b.price}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
-        <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">المدة (يوم) *</label>
-             <input id="edit-days-${b.id}" type="number" inputmode="numeric" value="${b.days}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
-      </div>
-      <div style="margin-bottom:12px">
-        <label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">سبب التعديل <span style="font-weight:400;color:var(--t3)">(اختياري)</span></label>
-        <input id="edit-note-${b.id}" type="text" placeholder="مثال: تغيير في تكلفة المواد" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;outline:none">
-      </div>
-      <div id="edit-alert-${b.id}" class="alert" style="margin-bottom:10px"></div>
-      <div style="display:flex;gap:8px">
-        <button onclick="saveEditBid(${b.id})" style="padding:9px 18px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 حفظ التعديل</button>
-        <button onclick="closeEditBid(${b.id})" style="padding:9px 14px;background:var(--bg2);color:var(--t2);border:1px solid var(--bord2);border-radius:var(--r);font-size:13px;cursor:pointer;font-family:inherit">إلغاء</button>
-      </div>
-    </div>
-  </div>`;
+ const stMap = { accepted: ['t-won', 'مقبول '], rejected: ['t-rej', 'مرفوض'], pending: ['t-pend', 'بانتظار الرد'] };
+ const [sc, sl] = stMap[b.status] || ['t-rev', 'مراجعة'];
+ return `<div class="bi${b.status === 'accepted' ? ' won' : b.status === 'rejected' ? ' rejected' : ''}">
+ <div class="bi-top">
+ <div><div class="bi-req" onclick="openTender(${b.request_id})">${b.request_title || '—'}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${b.city || ''}</div></div>
+ <div style="text-align:left"><div class="bi-price">${fpr(b.price)}</div><span class="tag ${sc}" style="margin-top:4px">${sl}</span></div>
+ </div>
+ <div class="bi-meta">
+ <span class="rm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${b.days || '—'} يوم</span>
+ <span class="rm">${ago(b.created_at)}</span>
+ </div>
+ <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
+ ${b.status==='accepted'?`<button class="btn btn-p btn-sm" style="margin:0" onclick="openChatWith(${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}',${b.request_id})">تواصل</button>`:''}
+ ${(b.status==='pending'||b.status==='accepted')?`<button onclick="openEditBid(${b.id},${b.price},${b.days})" style="padding:6px 12px;background:var(--yellow-l);color:var(--yellow);border:1.5px solid var(--yellow-m);border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">تعديل العرض</button>`:''}
+ <button class="btn btn-gh btn-sm" onclick="openTender(${b.request_id})">تفاصيل</button>
+ </div>
+ <div class="edit-bid-form" id="edit-form-${b.id}" style="display:none;margin-top:12px;padding:16px;background:var(--blue-l);border-radius:var(--rl);border:1.5px solid var(--blue-m)">
+ <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px">تعديل قيمة العرض</div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+ <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">القيمة (ر.س) *</label>
+ <input id="edit-price-${b.id}" type="number" inputmode="numeric" value="${b.price}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
+ <div><label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">المدة (يوم) *</label>
+ <input id="edit-days-${b.id}" type="number" inputmode="numeric" value="${b.days}" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none"></div>
+ </div>
+ <div style="margin-bottom:12px">
+ <label style="font-size:12px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px">سبب التعديل <span style="font-weight:400;color:var(--t3)">(اختياري)</span></label>
+ <input id="edit-note-${b.id}" type="text" placeholder="مثال: تغيير في تكلفة المواد" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit;outline:none">
+ </div>
+ <div id="edit-alert-${b.id}" class="alert" style="margin-bottom:10px"></div>
+ <div style="display:flex;gap:8px">
+ <button onclick="saveEditBid(${b.id})" style="padding:9px 18px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit"> حفظ التعديل</button>
+ <button onclick="closeEditBid(${b.id})" style="padding:9px 14px;background:var(--bg2);color:var(--t2);border:1px solid var(--bord2);border-radius:var(--r);font-size:13px;cursor:pointer;font-family:inherit">إلغاء</button>
+ </div>
+ </div>
+ </div>`;
 }
 
 // ── BROWSE ──
@@ -781,361 +789,361 @@ let allTenders = [], browseTimer = null;
 
 // ── بطاقة المشروع الموحدة ──
 function buildTenderCard(t, hasBid) {
-  const imgs = Array.isArray(t.images) && t.images.length ? t.images : (t.image_url ? [t.image_url] : []);
-  const mainImg = imgs[t.main_image_index || 0] || imgs[0] || null;
-  const desc = t.description ? t.description.substring(0, 140) + (t.description.length > 140 ? '...' : '') : '';
-  return `<div class="tender-card" onclick="openTender(${t.id})">
-    ${mainImg ? `<img src="${mainImg}" style="width:100%;height:160px;object-fit:cover;border-radius:var(--rl) var(--rl) 0 0;display:block;border-bottom:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">` : ''}
-    <div style="padding:16px 18px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
-        <div style="font-size:16px;font-weight:900;color:var(--text);line-height:1.3;letter-spacing:-.1px">${t.title}</div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-          <span style="background:var(--green-l);color:var(--green);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;border:1px solid var(--green-m)">نشط</span>
-          ${hasBid ? '<span style="background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">✓ قدّمت عرض</span>' : ''}
-        </div>
-      </div>
-      ${desc ? `<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px">${desc}</div>` : ''}
-      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:14px">
-        ${t.city ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
-        ${t.category ? `<span style="background:var(--blue-l);color:var(--blue);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${t.category}</span>` : ''}
-        ${t.budget_max ? `<span style="display:flex;align-items:center;gap:4px;font-weight:700;color:var(--blue)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(t.budget_max)}</span>` : ''}
-        ${t.deadline ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border)">
-        <span style="font-size:12px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:5px">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          ${t.bid_count||0} عرض • ${ago(t.created_at)}
-        </span>
-        ${hasBid
-          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">عرضي المقدَّم</button>`
-          : `<button class="btn btn-blue btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">تقديم عرض</button>`}
-      </div>
-    </div>
-  </div>`;
+ const imgs = Array.isArray(t.images) && t.images.length ? t.images : (t.image_url ? [t.image_url] : []);
+ const mainImg = imgs[t.main_image_index || 0] || imgs[0] || null;
+ const desc = t.description ? t.description.substring(0, 140) + (t.description.length > 140 ? '...' : '') : '';
+ return `<div class="tender-card" onclick="openTender(${t.id})">
+ ${mainImg ? `<img src="${mainImg}" style="width:100%;height:160px;object-fit:cover;border-radius:var(--rl) var(--rl) 0 0;display:block;border-bottom:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">` : ''}
+ <div style="padding:16px 18px">
+ <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+ <div style="font-size:16px;font-weight:900;color:var(--text);line-height:1.3;letter-spacing:-.1px">${t.title}</div>
+ <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+ <span style="background:var(--green-l);color:var(--green);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;border:1px solid var(--green-m)">نشط</span>
+ ${hasBid ? '<span style="background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">قدّمت عرض</span>' : ''}
+ </div>
+ </div>
+ ${desc ? `<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px">${desc}</div>` : ''}
+ <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:14px">
+ ${t.city ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.city}</span>` : ''}
+ ${t.category ? `<span style="background:var(--blue-l);color:var(--blue);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${t.category}</span>` : ''}
+ ${t.budget_max ? `<span style="display:flex;align-items:center;gap:4px;font-weight:700;color:var(--blue)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(t.budget_max)}</span>` : ''}
+ ${t.deadline ? `<span style="display:flex;align-items:center;gap:4px;font-weight:600"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${t.deadline.toString().slice(0,10)}</span>` : ''}
+ </div>
+ <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border)">
+ <span style="font-size:12px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:5px">
+ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+ ${t.bid_count||0} عرض • ${ago(t.created_at)}
+ </span>
+ ${hasBid
+ ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">عرضي المقدَّم</button>`
+ : `<button class="btn btn-blue btn-sm" onclick="event.stopPropagation();openTender(${t.id})" style="font-size:12px">تقديم عرض</button>`}
+ </div>
+ </div>
+ </div>`;
 }
 
 async function loadTenders() {
-  const listEl = document.getElementById('tenders-list');
-  const countEl = document.getElementById('browse-count');
-  if (listEl) listEl.innerHTML = '<div class="loading" style="padding:40px;text-align:center">جاري التحميل...</div>';
+ const listEl = document.getElementById('tenders-list');
+ const countEl = document.getElementById('browse-count');
+ if (listEl) listEl.innerHTML = '<div class="loading" style="padding:40px;text-align:center">جاري التحميل...</div>';
 
-  try {
-    const city = document.getElementById('city-filter')?.value?.trim() || '';
-    let url = API + '/api/requests';
-    const params = [];
-    if (activeCat !== 'all') params.push('category=' + encodeURIComponent(activeCat));
-    if (city) params.push('city=' + encodeURIComponent(city));
-    if (params.length) url += '?' + params.join('&');
+ try {
+ const city = document.getElementById('city-filter')?.value?.trim() || '';
+ let url = API + '/api/requests';
+ const params = [];
+ if (activeCat !== 'all') params.push('category=' + encodeURIComponent(activeCat));
+ if (city) params.push('city=' + encodeURIComponent(city));
+ if (params.length) url += '?' + params.join('&');
 
-    const r = await fetch(url, hdr());
-    let ts = safeArr(await r.json());
+ const r = await fetch(url, hdr());
+ let ts = safeArr(await r.json());
 
-    // فلتر الميزانية
-    const bMin = parseInt(document.getElementById('budget-min')?.value) || 0;
-    const bMax = parseInt(document.getElementById('budget-max')?.value) || 0;
-    if (bMin) ts = ts.filter(t => !t.budget_max || t.budget_max >= bMin);
-    if (bMax) ts = ts.filter(t => !t.budget_max || t.budget_max <= bMax);
+ // فلتر الميزانية
+ const bMin = parseInt(document.getElementById('budget-min')?.value) || 0;
+ const bMax = parseInt(document.getElementById('budget-max')?.value) || 0;
+ if (bMin) ts = ts.filter(t => !t.budget_max || t.budget_max >= bMin);
+ if (bMax) ts = ts.filter(t => !t.budget_max || t.budget_max <= bMax);
 
-    // بحث نصي
-    const q = document.getElementById('browse-search')?.value?.trim()?.toLowerCase() || '';
-    if (q) ts = ts.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q));
+ // بحث نصي
+ const q = document.getElementById('browse-search')?.value?.trim()?.toLowerCase() || '';
+ if (q) ts = ts.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q));
 
-    allTenders = ts;
+ allTenders = ts;
 
-    // بناء فلاتر الفئات مع العدد
-    const catCounts = {};
-    ts.forEach(t => { if (t.category) catCounts[t.category] = (catCounts[t.category]||0)+1; });
-    const fcAll = document.getElementById('fc-all-cnt');
-    if (fcAll) fcAll.textContent = ts.length;
-    const catList = document.getElementById('cat-filter-list');
-    if (catList) {
-      catList.innerHTML = CATS.filter(c => catCounts[c]).map(c => `
-        <button class="filter-chip${activeCat===c?' on':''}" onclick="setCat('${c}',this)">
-          ${c} <span class="filter-chip-count">${catCounts[c]||0}</span>
-        </button>`).join('');
-    }
+ // بناء فلاتر الفئات مع العدد
+ const catCounts = {};
+ ts.forEach(t => { if (t.category) catCounts[t.category] = (catCounts[t.category]||0)+1; });
+ const fcAll = document.getElementById('fc-all-cnt');
+ if (fcAll) fcAll.textContent = ts.length;
+ const catList = document.getElementById('cat-filter-list');
+ if (catList) {
+ catList.innerHTML = CATS.filter(c => catCounts[c]).map(c => `
+ <button class="filter-chip${activeCat===c?' on':''}" onclick="setCat('${c}',this)">
+ ${c} <span class="filter-chip-count">${catCounts[c]||0}</span>
+ </button>`).join('');
+ }
 
-    if (countEl) countEl.textContent = ts.length + ' مشروع متاح';
+ if (countEl) countEl.textContent = ts.length + ' مشروع متاح';
 
-    if (!ts.length) {
-      listEl.innerHTML = `<div style="text-align:center;padding:60px 20px;background:var(--white);border-radius:14px;border:1px solid var(--border)">
-        <div style="font-size:40px;margin-bottom:12px">🔍</div>
-        <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px">لا توجد مشاريع</div>
-        <div style="font-size:13px;color:var(--t3)">جرب تغيير الفلاتر أو تصفح الكل</div>
-        <button onclick="clearFilters()" style="margin-top:14px;padding:9px 20px;background:var(--prov);color:#fff;border:none;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer">عرض الكل</button>
-      </div>`;
-      return;
-    }
+ if (!ts.length) {
+ listEl.innerHTML = `<div style="text-align:center;padding:60px 20px;background:var(--white);border-radius:14px;border:1px solid var(--border)">
+ <div style="font-size:40px;margin-bottom:12px"></div>
+ <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px">لا توجد مشاريع</div>
+ <div style="font-size:13px;color:var(--t3)">جرب تغيير الفلاتر أو تصفح الكل</div>
+ <button onclick="clearFilters()" style="margin-top:14px;padding:9px 20px;background:var(--prov);color:#fff;border:none;border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer">عرض الكل</button>
+ </div>`;
+ return;
+ }
 
-    // جلب عروض المزود لمعرفة أيها قدّم عليها
-    let myBidIds = new Set();
-    try {
-      const mb = await fetch(API + '/api/provider/bids', hdr());
-      const myBids = safeArr(await mb.json());
-      myBids.forEach(b => myBidIds.add(b.request_id));
-    } catch {}
+ // جلب عروض المزود لمعرفة أيها قدّم عليها
+ let myBidIds = new Set();
+ try {
+ const mb = await fetch(API + '/api/provider/bids', hdr());
+ const myBids = safeArr(await mb.json());
+ myBids.forEach(b => myBidIds.add(b.request_id));
+ } catch {}
 
-    listEl.innerHTML = ts.map(t => buildTenderCard(t, myBidIds.has(t.id))).join('');
-  } catch(e) {
-    if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--t3)">تعذر التحميل</div>`;
-  }
+ listEl.innerHTML = ts.map(t => buildTenderCard(t, myBidIds.has(t.id))).join('');
+ } catch(e) {
+ if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--t3)">تعذر التحميل</div>`;
+ }
 }
 
 function setCat(cat, btn) {
-  activeCat = cat;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  else { const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on'); }
-  loadTenders();
+ activeCat = cat;
+ document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+ if (btn) btn.classList.add('on');
+ else { const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on'); }
+ loadTenders();
 }
 
 function clearFilters() {
-  activeCat = 'all';
-  const s = document.getElementById('browse-search'); if (s) s.value = '';
-  const c = document.getElementById('city-filter'); if (c) c.value = '';
-  const bmin = document.getElementById('budget-min'); if (bmin) bmin.value = '';
-  const bmax = document.getElementById('budget-max'); if (bmax) bmax.value = '';
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
-  const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on');
-  loadTenders();
+ activeCat = 'all';
+ const s = document.getElementById('browse-search'); if (s) s.value = '';
+ const c = document.getElementById('city-filter'); if (c) c.value = '';
+ const bmin = document.getElementById('budget-min'); if (bmin) bmin.value = '';
+ const bmax = document.getElementById('budget-max'); if (bmax) bmax.value = '';
+ document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+ const fc = document.getElementById('fc-all'); if (fc) fc.classList.add('on');
+ loadTenders();
 }
 
 function searchTenders() {
-  clearTimeout(browseTimer);
-  browseTimer = setTimeout(loadTenders, 350);
+ clearTimeout(browseTimer);
+ browseTimer = setTimeout(loadTenders, 350);
 }
 // ── TENDER DETAIL ──
 async function openTender(id) {
-  show('tender-detail', null, null);
-  (function(){const _p=null;if(_p)_p.textContent='تفاصيل المناقصة';})();
-  document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    // جلب تفاصيل الطلب
-    let rReq = null, rBids = [];
-    try {
-      const resp = await fetch(API + '/api/requests/' + id, hdr());
-      if (resp.ok) {
-        rReq = await resp.json();
-      } else {
-        const errText = await resp.text().catch(() => resp.status);
-        document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', 'كود الخطأ: ' + resp.status);
-        return;
-      }
-    } catch(fetchErr) {
-      console.error('fetch error:', fetchErr);
-      document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', fetchErr?.message || 'تحقق من اتصالك');
-      return;
-    }
-    try {
-      const resp2 = await fetch(API + '/api/requests/' + id + '/bids', hdr());
-      if (resp2.ok) rBids = await resp2.json();
-    } catch {}
-    if (!rReq || typeof rReq !== 'object') { document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', ''); return; }
-    if (!rReq.title) rReq.title = 'مشروع';
-    const req = rReq;
-    const bids = safeArr(rBids);
-    document.getElementById('td-bc').textContent = req.title;
-    const myBid = bids.find(b => b.provider_id == user.id);
-    const imgs = Array.isArray(req.images) && req.images.length ? req.images : (req.image_url ? [req.image_url] : []);
-    const mainIdx = req.main_image_index || 0;
-    const clientName = (req.client_name || 'العميل').replace(/'/g, '');
-    const clientId = req.client_id || 0;
-    const minPrice = bids.length ? Math.min(...bids.map(b => +b.price)) : 0;
+ show('tender-detail', null, null);
+ (function(){const _p=null;if(_p)_p.textContent='تفاصيل المناقصة';})();
+ document.getElementById('tender-detail-content').innerHTML = '<div class="loading">جاري التحميل...</div>';
+ try {
+ // جلب تفاصيل الطلب
+ let rReq = null, rBids = [];
+ try {
+ const resp = await fetch(API + '/api/requests/' + id, hdr());
+ if (resp.ok) {
+ rReq = await resp.json();
+ } else {
+ const errText = await resp.text().catch(() => resp.status);
+ document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', 'كود الخطأ: ' + resp.status);
+ return;
+ }
+ } catch(fetchErr) {
+ console.error('fetch error:', fetchErr);
+ document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', fetchErr?.message || 'تحقق من اتصالك');
+ return;
+ }
+ try {
+ const resp2 = await fetch(API + '/api/requests/' + id + '/bids', hdr());
+ if (resp2.ok) rBids = await resp2.json();
+ } catch {}
+ if (!rReq || typeof rReq !== 'object') { document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', ''); return; }
+ if (!rReq.title) rReq.title = 'مشروع';
+ const req = rReq;
+ const bids = safeArr(rBids);
+ document.getElementById('td-bc').textContent = req.title;
+ const myBid = bids.find(b => b.provider_id == user.id);
+ const imgs = Array.isArray(req.images) && req.images.length ? req.images : (req.image_url ? [req.image_url] : []);
+ const mainIdx = req.main_image_index || 0;
+ const clientName = (req.client_name || 'العميل').replace(/'/g, '');
+ const clientId = req.client_id || 0;
+ const minPrice = bids.length ? Math.min(...bids.map(b => +b.price)) : 0;
 
-    let html = `<div class="detail-banner">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px;position:relative">
-        <div class="db-title">${req.title}</div><span style="background:rgba(29,158,117,.25);color:#9FE1CB;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">نشط</span>
-      </div>
-      <div class="db-meta">
-        ${req.city ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${req.city}</div>` : ''}
-        ${req.category ? `<div class="db-meta-item">${req.category}</div>` : ''}
-        ${req.budget_max ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(req.budget_max)}</div>` : ''}
-        ${req.deadline ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${req.deadline}</div>` : ''}
-      </div>
-      ${req.description ? `<div class="db-desc">${req.description}</div>` : ''}
-    </div>`;
+ let html = `<div class="detail-banner">
+ <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px;position:relative">
+ <div class="db-title">${req.title}</div><span style="background:rgba(29,158,117,.25);color:#9FE1CB;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">نشط</span>
+ </div>
+ <div class="db-meta">
+ ${req.city ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${req.city}</div>` : ''}
+ ${req.category ? `<div class="db-meta-item">${req.category}</div>` : ''}
+ ${req.budget_max ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>${fpr(req.budget_max)}</div>` : ''}
+ ${req.deadline ? `<div class="db-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${req.deadline}</div>` : ''}
+ </div>
+ ${req.description ? `<div class="db-desc">${req.description}</div>` : ''}
+ </div>`;
 
-    // صور المشروع
-    if (imgs.length) {
-      html += `<div style="margin-bottom:14px">
-        <img class="img-main" id="main-td-img" src="${imgs[mainIdx]}" onclick="fullImg(this.src)">
-        ${imgs.length > 1 ? `<div class="img-thumbs">${imgs.map((s, i) => `<img class="img-thumb${i === mainIdx ? ' on' : ''}" src="${s}" onclick="switchTdImg(this,'${s}')">`).join('')}</div>` : ''}
-      </div>`;
-    }
+ // صور المشروع
+ if (imgs.length) {
+ html += `<div style="margin-bottom:14px">
+ <img class="img-main" id="main-td-img" src="${imgs[mainIdx]}" onclick="fullImg(this.src)">
+ ${imgs.length > 1 ? `<div class="img-thumbs">${imgs.map((s, i) => `<img class="img-thumb${i === mainIdx ? ' on' : ''}" src="${s}" onclick="switchTdImg(this,'${s}')">`).join('')}</div>` : ''}
+ </div>`;
+ }
 
-    // إحصائيات
-    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${bids.length}</div><div class="st">عروض</div></div>
-      <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${minPrice ? fpr(minPrice) : '—'}</div><div class="st">أقل سعر</div></div>
-      <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${req.budget_max ? fpr(req.budget_max) : '—'}</div><div class="st">الميزانية</div></div>
-    </div>`;
+ // إحصائيات
+ html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+ <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${bids.length}</div><div class="st">عروض</div></div>
+ <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${minPrice ? fpr(minPrice) : '—'}</div><div class="st">أقل سعر</div></div>
+ <div class="sc" style="flex-direction:column;text-align:center;padding:12px"><div class="sn">${req.budget_max ? fpr(req.budget_max) : '—'}</div><div class="st">الميزانية</div></div>
+ </div>`;
 
-    if (myBid) {
-      const isAcc = myBid.status === 'accepted', isRej = myBid.status === 'rejected';
-      html += `<div class="bid-form-box" style="background:${isAcc ? 'var(--success-l)' : 'var(--warn-l)'};border-color:${isAcc ? 'var(--success-m)' : 'var(--warn-m)'}">
-        <div class="bid-form-title">
-          ${isAcc ? '✅ تم قبول عرضك!' : isRej ? '❌ تم رفض عرضك' : '⏳ في انتظار رد العميل'}
-        </div>
-        <div style="font-size:13px;color:var(--t2)">القيمة: <strong>${fpr(myBid.price)}</strong> • المدة: <strong>${myBid.days} يوم</strong>${myBid.note ? ` • ${myBid.note}` : ''}</div>
-        ${isAcc ? `<button class="btn btn-p" style="margin-top:12px;width:100%" onclick="openChatWith(${clientId},'${clientName}',${id})">💬 تواصل مع العميل الآن</button>` : ''}
-      </div>`;
-      // نموذج تعديل العرض المقبول
-      if (isAcc) {
-        html += `<div class="bid-form-box">
-          <div class="bid-form-title">✏️ طلب تعديل على العرض المقبول</div>
-          <div id="revise-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
-          <div class="form-grid">
-            <div class="fg"><label>السعر الجديد (ر.س)</label><input id="rev-price" type="number" value="${myBid.price}" inputmode="numeric"></div>
-            <div class="fg"><label>المدة الجديدة (يوم)</label><input id="rev-days" type="number" value="${myBid.days}" inputmode="numeric"></div>
-            <div class="fg ff"><label>سبب التعديل * <small style="font-weight:400;color:var(--t3)">(يظهر للعميل والمدير)</small></label>
-              <textarea id="rev-note" placeholder="مثال: ارتفعت تكلفة المواد..." style="min-height:70px"></textarea>
-            </div>
-          </div>
-          <button class="btn-main" style="background:var(--warn)" onclick="submitRevision(${myBid.id})">إرسال طلب التعديل</button>
-        </div>`;
-      }
-    } else if (req.status === 'open') {
-      html += `<div class="bid-form-box">
-        <div class="bid-form-title"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>تقديم عرضك</div>
-        <div id="bid-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
-        <div class="form-grid">
-          <div class="fg"><label>قيمة العرض (ر.س) *</label><input id="b-price" type="number" placeholder="مثال: 2500" inputmode="numeric"></div>
-          <div class="fg"><label>مدة التنفيذ (أيام) *</label><input id="b-days" type="number" placeholder="مثال: 14" inputmode="numeric"></div>
-          <div class="fg ff"><label>ملاحظاتك للعميل</label><textarea id="b-note" placeholder="اشرح تجربتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>
-        </div>
-        <div class="form-btns">
-          <button class="btn-main" id="bid-btn" onclick="submitBid(${req.id})">تقديم العرض</button>
-          <button class="btn-sec" onclick="show('browse',null,'browse')">رجوع</button>
-        </div>
-      </div>`;
-    } else {
-      html += `<div class="card"><div class="cb"><p style="text-align:center;color:var(--t3);font-size:13px;padding:8px">هذه المناقصة ${req.status === 'in_progress' ? 'قيد التنفيذ' : 'مغلقة'}</p></div></div>`;
-    }
+ if (myBid) {
+ const isAcc = myBid.status === 'accepted', isRej = myBid.status === 'rejected';
+ html += `<div class="bid-form-box" style="background:${isAcc ? 'var(--success-l)' : 'var(--warn-l)'};border-color:${isAcc ? 'var(--success-m)' : 'var(--warn-m)'}">
+ <div class="bid-form-title">
+ ${isAcc ? 'تم قبول عرضك!' : isRej ? 'تم رفض عرضك' : '⏳ في انتظار رد العميل'}
+ </div>
+ <div style="font-size:13px;color:var(--t2)">القيمة: <strong>${fpr(myBid.price)}</strong> • المدة: <strong>${myBid.days} يوم</strong>${myBid.note ? ` • ${myBid.note}` : ''}</div>
+ ${isAcc ? `<button class="btn btn-p" style="margin-top:12px;width:100%" onclick="openChatWith(${clientId},'${clientName}',${id})">تواصل مع العميل الآن</button>` : ''}
+ </div>`;
+ // نموذج تعديل العرض المقبول
+ if (isAcc) {
+ html += `<div class="bid-form-box">
+ <div class="bid-form-title"> طلب تعديل على العرض المقبول</div>
+ <div id="revise-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
+ <div class="form-grid">
+ <div class="fg"><label>السعر الجديد (ر.س)</label><input id="rev-price" type="number" value="${myBid.price}" inputmode="numeric"></div>
+ <div class="fg"><label>المدة الجديدة (يوم)</label><input id="rev-days" type="number" value="${myBid.days}" inputmode="numeric"></div>
+ <div class="fg ff"><label>سبب التعديل * <small style="font-weight:400;color:var(--t3)">(يظهر للعميل والمدير)</small></label>
+ <textarea id="rev-note" placeholder="مثال: ارتفعت تكلفة المواد..." style="min-height:70px"></textarea>
+ </div>
+ </div>
+ <button class="btn-main" style="background:var(--warn)" onclick="submitRevision(${myBid.id})">إرسال طلب التعديل</button>
+ </div>`;
+ }
+ } else if (req.status === 'open') {
+ html += `<div class="bid-form-box">
+ <div class="bid-form-title"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>تقديم عرضك</div>
+ <div id="bid-alert" style="display:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;border:1.5px solid"></div>
+ <div class="form-grid">
+ <div class="fg"><label>قيمة العرض (ر.س) *</label><input id="b-price" type="number" placeholder="مثال: 2500" inputmode="numeric"></div>
+ <div class="fg"><label>مدة التنفيذ (أيام) *</label><input id="b-days" type="number" placeholder="مثال: 14" inputmode="numeric"></div>
+ <div class="fg ff"><label>ملاحظاتك للعميل</label><textarea id="b-note" placeholder="اشرح تجربتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>
+ </div>
+ <div class="form-btns">
+ <button class="btn-main" id="bid-btn" onclick="submitBid(${req.id})">تقديم العرض</button>
+ <button class="btn-sec" onclick="show('browse',null,'browse')">رجوع</button>
+ </div>
+ </div>`;
+ } else {
+ html += `<div class="card"><div class="cb"><p style="text-align:center;color:var(--t3);font-size:13px;padding:8px">هذه المناقصة ${req.status === 'in_progress' ? 'قيد التنفيذ' : 'مغلقة'}</p></div></div>`;
+ }
 
-    document.getElementById('tender-detail-content').innerHTML = html;
-  } catch (e) {
-    console.error('openTender error:', e);
-    document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', e?.message || 'خطأ غير معروف');
-  }
+ document.getElementById('tender-detail-content').innerHTML = html;
+ } catch (e) {
+ console.error('openTender error:', e);
+ document.getElementById('tender-detail-content').innerHTML = emptyH('تعذر التحميل', e?.message || 'خطأ غير معروف');
+ }
 }
 
 function switchTdImg(el, src) {
-  const m = document.getElementById('main-td-img'); if (m) m.src = src;
-  document.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('on'));
-  el.classList.add('on');
+ const m = document.getElementById('main-td-img'); if (m) m.src = src;
+ document.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('on'));
+ el.classList.add('on');
 }
 function fullImg(src) {
-  const ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
-  ov.onclick = () => document.body.removeChild(ov);
-  const img = document.createElement('img');
-  img.src = src; img.style.cssText = 'max-width:95vw;max-height:95vh;border-radius:8px;object-fit:contain';
-  ov.appendChild(img); document.body.appendChild(ov);
+ const ov = document.createElement('div');
+ ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+ ov.onclick = () => document.body.removeChild(ov);
+ const img = document.createElement('img');
+ img.src = src; img.style.cssText = 'max-width:95vw;max-height:95vh;border-radius:8px;object-fit:contain';
+ ov.appendChild(img); document.body.appendChild(ov);
 }
 
 async function submitBid(reqId) {
-  const price = document.getElementById('b-price')?.value;
-  const days = document.getElementById('b-days')?.value;
-  const note = document.getElementById('b-note')?.value || '';
-  if (!price || !days) { showBidAlert('يرجى تعبئة السعر والمدة', 'error'); return; }
-  const btn = document.getElementById('bid-btn'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
-  try {
-    const r = await fetch(API + '/api/bids', { method: 'POST', body: JSON.stringify({ request_id: reqId, price: +price, days: +days, note }), ...hdr() });
-    const d = await r.json();
-    if (r.ok) { toast('تم تقديم عرضك بنجاح ✅', 'success'); allMyBids.push({ ...d, request_id: reqId, status: 'pending', price, days, note, created_at: new Date() }); openTender(reqId); }
-    else showBidAlert(d.message || 'حدث خطأ', 'error');
-  } catch { showBidAlert('تعذر الاتصال', 'error'); }
-  btn.disabled = false; btn.textContent = 'تقديم العرض';
+ const price = document.getElementById('b-price')?.value;
+ const days = document.getElementById('b-days')?.value;
+ const note = document.getElementById('b-note')?.value || '';
+ if (!price || !days) { showBidAlert('يرجى تعبئة السعر والمدة', 'error'); return; }
+ const btn = document.getElementById('bid-btn'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
+ try {
+ const r = await fetch(API + '/api/bids', { method: 'POST', body: JSON.stringify({ request_id: reqId, price: +price, days: +days, note }), ...hdr() });
+ const d = await r.json();
+ if (r.ok) { toast('تم تقديم عرضك بنجاح ', 'success'); allMyBids.push({ ...d, request_id: reqId, status: 'pending', price, days, note, created_at: new Date() }); openTender(reqId); }
+ else showBidAlert(d.message || 'حدث خطأ', 'error');
+ } catch { showBidAlert('تعذر الاتصال', 'error'); }
+ btn.disabled = false; btn.textContent = 'تقديم العرض';
 }
 function showBidAlert(t, type) {
-  const e = document.getElementById('bid-alert'); if (!e) return;
-  e.textContent = t; e.style.display = 'block';
-  e.style.background = type === 'success' ? 'var(--success-l)' : 'var(--danger-l)';
-  e.style.color = type === 'success' ? '#085041' : '#7f1d1d';
-  e.style.borderColor = type === 'success' ? 'var(--success-m)' : 'var(--danger-m)';
-  setTimeout(() => { if (e) e.style.display = 'none'; }, 5000);
+ const e = document.getElementById('bid-alert'); if (!e) return;
+ e.textContent = t; e.style.display = 'block';
+ e.style.background = type === 'success' ? 'var(--success-l)' : 'var(--danger-l)';
+ e.style.color = type === 'success' ? '#085041' : '#7f1d1d';
+ e.style.borderColor = type === 'success' ? 'var(--success-m)' : 'var(--danger-m)';
+ setTimeout(() => { if (e) e.style.display = 'none'; }, 5000);
 }
 
 
 function openEditBid(bidId, price, days) {
-  document.querySelectorAll('.edit-bid-form').forEach(function(f){f.style.display='none';});
-  var form=document.getElementById('edit-form-'+bidId);
-  if(!form)return;
-  form.style.display='block';
-  var p=document.getElementById('edit-price-'+bidId);
-  var d=document.getElementById('edit-days-'+bidId);
-  if(p)p.value=price;
-  if(d)d.value=days;
-  form.scrollIntoView({behavior:'smooth',block:'nearest'});
+ document.querySelectorAll('.edit-bid-form').forEach(function(f){f.style.display='none';});
+ var form=document.getElementById('edit-form-'+bidId);
+ if(!form)return;
+ form.style.display='block';
+ var p=document.getElementById('edit-price-'+bidId);
+ var d=document.getElementById('edit-days-'+bidId);
+ if(p)p.value=price;
+ if(d)d.value=days;
+ form.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function closeEditBid(bidId){
-  var f=document.getElementById('edit-form-'+bidId);
-  if(f)f.style.display='none';
+ var f=document.getElementById('edit-form-'+bidId);
+ if(f)f.style.display='none';
 }
 async function saveEditBid(bidId){
-  var p=document.getElementById('edit-price-'+bidId);
-  var d=document.getElementById('edit-days-'+bidId);
-  var n=document.getElementById('edit-note-'+bidId);
-  var al=document.getElementById('edit-alert-'+bidId);
-  var price=parseInt(p?p.value:0),days=parseInt(d?d.value:0),note=n?(n.value||'').trim():'';
-  if(!price||price<1){al.textContent='أدخل قيمة صحيحة';al.className='alert err';return;}
-  if(!days||days<1){al.textContent='أدخل عدد أيام';al.className='alert err';return;}
-  al.className='alert';
-  try{
-    var r=await fetch(API+'/api/bids/'+bidId+'/revise',{method:'PUT',body:JSON.stringify({price,days,revision_note:note}),...hdr()});
-    var res=await r.json();
-    if(r.ok){
-      var pd=document.getElementById('bid-price-disp-'+bidId);
-      var dd=document.getElementById('bid-days-disp-'+bidId);
-      if(pd)pd.textContent=fpr(price);
-      if(dd)dd.textContent=days+' يوم';
-      al.textContent='✅ تم تعديل العرض بنجاح';al.className='alert ok';
-      toast('تم تعديل العرض ✅','success');
-      setTimeout(function(){closeEditBid(bidId);al.className='alert';},2000);
-    }else{al.textContent=res.message||'حدث خطأ';al.className='alert err';}
-  }catch{al.textContent='تعذر الاتصال';al.className='alert err';}
+ var p=document.getElementById('edit-price-'+bidId);
+ var d=document.getElementById('edit-days-'+bidId);
+ var n=document.getElementById('edit-note-'+bidId);
+ var al=document.getElementById('edit-alert-'+bidId);
+ var price=parseInt(p?p.value:0),days=parseInt(d?d.value:0),note=n?(n.value||'').trim():'';
+ if(!price||price<1){al.textContent='أدخل قيمة صحيحة';al.className='alert err';return;}
+ if(!days||days<1){al.textContent='أدخل عدد أيام';al.className='alert err';return;}
+ al.className='alert';
+ try{
+ var r=await fetch(API+'/api/bids/'+bidId+'/revise',{method:'PUT',body:JSON.stringify({price,days,revision_note:note}),...hdr()});
+ var res=await r.json();
+ if(r.ok){
+ var pd=document.getElementById('bid-price-disp-'+bidId);
+ var dd=document.getElementById('bid-days-disp-'+bidId);
+ if(pd)pd.textContent=fpr(price);
+ if(dd)dd.textContent=days+' يوم';
+ al.textContent='تم تعديل العرض بنجاح';al.className='alert ok';
+ toast('تم تعديل العرض ','success');
+ setTimeout(function(){closeEditBid(bidId);al.className='alert';},2000);
+ }else{al.textContent=res.message||'حدث خطأ';al.className='alert err';}
+ }catch{al.textContent='تعذر الاتصال';al.className='alert err';}
 }
 async function submitRevision(bidId) {
-  const price = document.getElementById('rev-price')?.value;
-  const days = document.getElementById('rev-days')?.value;
-  const note = document.getElementById('rev-note')?.value?.trim();
-  if (!price || !days) { showRevAlert('يرجى تعبئة السعر والمدة', 'error'); return; }
-  if (!note) { showRevAlert('يرجى كتابة سبب التعديل', 'error'); return; }
-  try {
-    const r = await fetch(API + '/api/bids/' + bidId + '/revise', { method: 'PUT', body: JSON.stringify({ price: +price, days: +days, revision_note: note }), ...hdr() });
-    const d = await r.json();
-    if (r.ok) { showRevAlert('✓ تم إرسال طلب التعديل للعميل والمدير', 'success'); toast('تم إرسال طلب التعديل ✅', 'success'); }
-    else showRevAlert(d.message || 'حدث خطأ', 'error');
-  } catch { showRevAlert('تعذر الاتصال', 'error'); }
+ const price = document.getElementById('rev-price')?.value;
+ const days = document.getElementById('rev-days')?.value;
+ const note = document.getElementById('rev-note')?.value?.trim();
+ if (!price || !days) { showRevAlert('يرجى تعبئة السعر والمدة', 'error'); return; }
+ if (!note) { showRevAlert('يرجى كتابة سبب التعديل', 'error'); return; }
+ try {
+ const r = await fetch(API + '/api/bids/' + bidId + '/revise', { method: 'PUT', body: JSON.stringify({ price: +price, days: +days, revision_note: note }), ...hdr() });
+ const d = await r.json();
+ if (r.ok) { showRevAlert('تم إرسال طلب التعديل للعميل والمدير', 'success'); toast('تم إرسال طلب التعديل ', 'success'); }
+ else showRevAlert(d.message || 'حدث خطأ', 'error');
+ } catch { showRevAlert('تعذر الاتصال', 'error'); }
 }
 function showRevAlert(t, type) {
-  const e = document.getElementById('revise-alert'); if (!e) return;
-  e.textContent = t; e.style.display = 'block';
-  e.style.background = type === 'success' ? 'var(--success-l)' : 'var(--danger-l)';
-  e.style.color = type === 'success' ? '#085041' : '#7f1d1d';
-  e.style.borderColor = type === 'success' ? 'var(--success-m)' : 'var(--danger-m)';
+ const e = document.getElementById('revise-alert'); if (!e) return;
+ e.textContent = t; e.style.display = 'block';
+ e.style.background = type === 'success' ? 'var(--success-l)' : 'var(--danger-l)';
+ e.style.color = type === 'success' ? '#085041' : '#7f1d1d';
+ e.style.borderColor = type === 'success' ? 'var(--success-m)' : 'var(--danger-m)';
 }
 
 // ── MY BIDS ──
 async function loadMyBids() {
-  document.getElementById('my-bids-list').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    const r = await fetch(API + '/api/provider/bids', hdr());
-    allMyBids = safeArr(await r.json());
-    document.getElementById('cnt-all').textContent = allMyBids.length;
-    document.getElementById('cnt-pend').textContent = allMyBids.filter(b => b.status === 'pending').length;
-    document.getElementById('cnt-won').textContent = allMyBids.filter(b => b.status === 'accepted').length;
-    document.getElementById('cnt-rej').textContent = allMyBids.filter(b => b.status === 'rejected').length;
-    renderBids(allMyBids);
-  } catch { document.getElementById('my-bids-list').innerHTML = emptyH('تعذر التحميل', ''); }
+ document.getElementById('my-bids-list').innerHTML = '<div class="loading">جاري التحميل...</div>';
+ try {
+ const r = await fetch(API + '/api/provider/bids', hdr());
+ allMyBids = safeArr(await r.json());
+ document.getElementById('cnt-all').textContent = allMyBids.length;
+ document.getElementById('cnt-pend').textContent = allMyBids.filter(b => b.status === 'pending').length;
+ document.getElementById('cnt-won').textContent = allMyBids.filter(b => b.status === 'accepted').length;
+ document.getElementById('cnt-rej').textContent = allMyBids.filter(b => b.status === 'rejected').length;
+ renderBids(allMyBids);
+ } catch { document.getElementById('my-bids-list').innerHTML = emptyH('تعذر التحميل', ''); }
 }
 function filterBids(status, btn) {
-  document.querySelectorAll('.tabs-btn').forEach(b => b.className = 'tabs-btn');
-  btn.className = 'tabs-btn on';
-  renderBids(status === 'all' ? allMyBids : allMyBids.filter(b => b.status === status));
+ document.querySelectorAll('.tabs-btn').forEach(b => b.className = 'tabs-btn');
+ btn.className = 'tabs-btn on';
+ renderBids(status === 'all' ? allMyBids : allMyBids.filter(b => b.status === status));
 }
 function renderBids(bids) {
-  document.getElementById('my-bids-list').innerHTML = bids.length ? bids.map(bidCard).join('') : emptyH('لا يوجد عروض', '');
+ document.getElementById('my-bids-list').innerHTML = bids.length ? bids.map(bidCard).join('') : emptyH('لا يوجد عروض', '');
 }
 
 // ── WEBSOCKET CHAT (PROVIDER) ──
@@ -1143,528 +1151,529 @@ let ws = null, wsReady = false;
 let typingTimer = null, isTypingNow = false;
 
 function wsUrl() {
-  const base = API.replace('https://', 'wss://').replace('http://', 'ws://');
-  return base + '/?token=' + token;
+ const base = API.replace('https://', 'wss://').replace('http://', 'ws://');
+ return base + '/?token=' + token;
 }
 
 function connectWS() {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
-  try {
-    ws = new WebSocket(wsUrl());
-    ws.onopen = () => { wsReady = true; };
-    ws.onclose = () => { wsReady = false; setTimeout(connectWS, 3000); };
-    ws.onerror = () => { wsReady = false; };
-    ws.onmessage = e => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.type === 'message') {
-          const m = d.message;
-          appendProvMsg(m);
-          if (m.sender_id != user.id) {
-            const box = document.getElementById('msg-threads');
-            if (!box || !box.offsetParent) {
-              const b = document.getElementById('notif-badge');
-              if (b) { const n = parseInt(b.textContent || 0) + 1; b.textContent = n; b.style.display = 'flex'; }
-            } else {
-              wsSend({ type: 'read', request_id: m.request_id, sender_id: m.sender_id });
-            }
-          }
-        }
-        if (d.type === 'typing') {
-          const ind = document.getElementById('prov-typing-ind');
-          if (ind && curChatClient && d.from == curChatClient.id) {
-            ind.style.display = d.is_typing ? 'flex' : 'none';
-          }
-        }
-        if (d.type === 'read') {
-          document.querySelectorAll('.msg-tick').forEach(el => {
-            if (el.dataset.reqId == d.request_id) el.textContent = '✓✓';
-          });
-        }
-      } catch {}
-    };
-  } catch {}
+ if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+ try {
+ ws = new WebSocket(wsUrl());
+ ws.onopen = () => { wsReady = true; };
+ ws.onclose = () => { wsReady = false; setTimeout(connectWS, 3000); };
+ ws.onerror = () => { wsReady = false; };
+ ws.onmessage = e => {
+ try {
+ const d = JSON.parse(e.data);
+ if (d.type === 'message') {
+ const m = d.message;
+ appendProvMsg(m);
+ if (m.sender_id != user.id) {
+ const box = document.getElementById('msg-threads');
+ if (!box || !box.offsetParent) {
+ const b = document.getElementById('notif-badge');
+ if (b) { const n = parseInt(b.textContent || 0) + 1; b.textContent = n; b.style.display = 'flex'; }
+ } else {
+ wsSend({ type: 'read', request_id: m.request_id, sender_id: m.sender_id });
+ }
+ }
+ }
+ if (d.type === 'typing') {
+ const ind = document.getElementById('prov-typing-ind');
+ if (ind && curChatClient && d.from == curChatClient.id) {
+ ind.style.display = d.is_typing ? 'flex' : 'none';
+ }
+ }
+ if (d.type === 'read') {
+ document.querySelectorAll('.msg-tick').forEach(el => {
+ if (el.dataset.reqId == d.request_id) el.textContent = '';
+ });
+ }
+ } catch {}
+ };
+ } catch {}
 }
 
 function wsSend(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify(data)); return true; }
-  return false;
+ if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify(data)); return true; }
+ return false;
 }
 
 function appendProvMsg(m) {
-  const box = document.getElementById('msg-threads');
-  if (!box) return;
-  if (!curChatClient) return;
-  const relevant = (m.sender_id == user.id && m.receiver_id == curChatClient.id) ||
-    (m.sender_id == curChatClient.id && m.receiver_id == user.id);
-  if (!relevant && !m.content?.startsWith('✅')) return;
-  if (box.querySelector('[data-msg-id="' + m.id + '"]')) return;
-  box.querySelectorAll('.loading').forEach(el => el.remove());
-  const isMe = m.sender_id == user.id;
-  const el = document.createElement('div');
-  if (m.content?.startsWith('✅')) {
-    el.className = 'msg-sys'; el.dataset.msgId = m.id; el.textContent = m.content;
-  } else {
-    el.className = isMe ? 'msg-me' : 'msg-other';
-    el.dataset.msgId = m.id;
-    el.innerHTML = (!isMe ? `<div class="msg-name">${m.sender_name || curChatClient.name}</div>` : '') +
-      `<span>${m.content}</span><div class="msg-time" style="display:flex;align-items:center;justify-content:${isMe ? 'flex-end' : 'flex-start'};gap:3px">${ago(m.created_at)}${isMe ? `<span class="msg-tick" data-req-id="${m.request_id}" style="font-size:9px;opacity:.6">${m.is_read ? '✓✓' : '✓'}</span>` : ''}</div>`;
-  }
-  box.appendChild(el);
-  box.scrollTop = box.scrollHeight;
+ const box = document.getElementById('msg-threads');
+ if (!box) return;
+ if (!curChatClient) return;
+ const relevant = (m.sender_id == user.id && m.receiver_id == curChatClient.id) ||
+ (m.sender_id == curChatClient.id && m.receiver_id == user.id);
+ if (!relevant && !m.content?.startsWith('')) return;
+ if (box.querySelector('[data-msg-id="' + m.id + '"]')) return;
+ box.querySelectorAll('.loading').forEach(el => el.remove());
+ const isMe = m.sender_id == user.id;
+ const el = document.createElement('div');
+ if (m.content?.startsWith('')) {
+ el.className = 'msg-sys'; el.dataset.msgId = m.id; el.textContent = m.content;
+ } else {
+ el.className = isMe ? 'msg-me' : 'msg-other';
+ el.dataset.msgId = m.id;
+ el.innerHTML = (!isMe ? `<div class="msg-name">${m.sender_name || curChatClient.name}</div>` : '') +
+ `<span>${m.content}</span><div class="msg-time" style="display:flex;align-items:center;justify-content:${isMe ? 'flex-end' : 'flex-start'};gap:3px">${ago(m.created_at)}${isMe ? `<span class="msg-tick" data-req-id="${m.request_id}" style="font-size:9px;opacity:.6">${m.is_read ? '' : ''}</span>` : ''}</div>`;
+ }
+ box.appendChild(el);
+ box.scrollTop = box.scrollHeight;
 }
 
 function onProvTyping(receiverId, reqId) {
-  if (!isTypingNow) { isTypingNow = true; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: true }); }
-  clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => stopProvTyping(receiverId, reqId), 2000);
+ if (!isTypingNow) { isTypingNow = true; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: true }); }
+ clearTimeout(typingTimer);
+ typingTimer = setTimeout(() => stopProvTyping(receiverId, reqId), 2000);
 }
 
 function stopProvTyping(receiverId, reqId) {
-  if (isTypingNow) { isTypingNow = false; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: false }); }
-  clearTimeout(typingTimer);
+ if (isTypingNow) { isTypingNow = false; wsSend({ type: 'typing', receiver_id: receiverId, request_id: reqId, is_typing: false }); }
+ clearTimeout(typingTimer);
 }
 
 connectWS();
 
 // ── MESSAGES ──
 function openChatWith(clientId, clientName, reqId) {
-  curChatClient = { id: clientId, name: clientName, reqId };
-  show('messages', null, 'messages');
-  setTimeout(() => loadChatWith(clientId, clientName, reqId), 400);
+ curChatClient = { id: clientId, name: clientName, reqId };
+ show('messages', null, 'messages');
+ setTimeout(() => loadChatWith(clientId, clientName, reqId), 400);
 
-  provLastMsg = Date.now()-60000;
-  startProvChatPoll(reqId || curReqId);
+ provLastMsg = Date.now()-60000;
+ startProvChatPoll(reqId || curReqId);
 }
 
 async function loadMessages() {
-  const el = document.getElementById('msg-threads');
-  el.innerHTML = '<div class="loading" style="padding:14px;font-size:12px">جاري التحميل...</div>';
-  const convs = await safeFetch(API + '/api/conversations');
-  if (!convs.length) {
-    el.innerHTML = `<div style="padding:24px 16px;text-align:center">
-      <div style="font-size:28px;margin-bottom:8px">💬</div>
-      <div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px">لا يوجد محادثات</div>
-      <div style="font-size:11px;color:var(--t3)">ستظهر هنا بعد تقديم عروضك</div>
-    </div>`;
-    return;
-  }
-  el.innerHTML = convs.map(c => {
-    const otherId = c.other_id || c.provider_id;
-    const isAcc = c.bid_status === 'accepted';
-    const unread = parseInt(c.unread_count) || 0;
-    const isOn = curChatClient?.id == otherId && curChatClient?.reqId == c.request_id;
-    return `<div class="thread${isOn ? ' on' : ''}" id="prov-thread-${otherId}-${c.request_id}"
-      onclick="loadChatWith(${otherId},'${(c.other_name||'العميل').replace(/'/g,'')}',${c.request_id})">
-      <div style="position:relative;flex-shrink:0">
-        <div class="thread-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
-        ${unread > 0 ? `<span style="position:absolute;top:-3px;left:-3px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${unread}</span>` : ''}
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-          <div class="thread-name">${c.other_name || 'العميل'}</div>
-          <div style="font-size:10px;color:var(--t4);flex-shrink:0">${c.last_msg_at ? ago(c.last_msg_at) : ''}</div>
-        </div>
-        <div class="thread-last">${c.last_msg || c.request_title}</div>
-        <div style="margin-top:3px">
-          ${isAcc
-            ? '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:1px 6px;border-radius:8px;font-weight:700">✅ مقبول</span>'
-            : '<span style="font-size:9px;background:var(--warn-l);color:var(--warn);padding:1px 6px;border-radius:8px;font-weight:700">⏳ عرض</span>'}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-  if (curChatClient) loadChatWith(curChatClient.id, curChatClient.name, curChatClient.reqId);
-  else if (convs.length) {
-    const c = convs[0];
-    loadChatWith(c.other_id || c.provider_id, c.other_name || 'العميل', c.request_id);
-  }
+ const el = document.getElementById('msg-threads');
+ el.innerHTML = '<div class="loading" style="padding:14px;font-size:12px">جاري التحميل...</div>';
+ const convs = await safeFetch(API + '/api/conversations');
+ if (!convs.length) {
+ el.innerHTML = `<div style="padding:24px 16px;text-align:center">
+ <div style="font-size:28px;margin-bottom:8px"></div>
+ <div style="font-size:13px;font-weight:700;color:var(--t);margin-bottom:4px">لا يوجد محادثات</div>
+ <div style="font-size:11px;color:var(--t3)">ستظهر هنا بعد تقديم عروضك</div>
+ </div>`;
+ return;
+ }
+ el.innerHTML = convs.map(c => {
+ const otherId = c.other_id || c.provider_id;
+ const isAcc = c.bid_status === 'accepted';
+ const unread = parseInt(c.unread_count) || 0;
+ const isOn = curChatClient?.id == otherId && curChatClient?.reqId == c.request_id;
+ return `<div class="thread${isOn ? ' on' : ''}" id="prov-thread-${otherId}-${c.request_id}"
+ onclick="loadChatWith(${otherId},'${(c.other_name||'العميل').replace(/'/g,'')}',${c.request_id})">
+ <div style="position:relative;flex-shrink:0">
+ <div class="thread-av" style="background:#1B3A6B">${(c.other_name||'ع').charAt(0)}</div>
+ ${unread > 0 ? `<span style="position:absolute;top:-3px;left:-3px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${unread}</span>` : ''}
+ </div>
+ <div style="flex:1;min-width:0">
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+ <div class="thread-name">${c.other_name || 'العميل'}</div>
+ <div style="font-size:10px;color:var(--t4);flex-shrink:0">${c.last_msg_at ? ago(c.last_msg_at) : ''}</div>
+ </div>
+ <div class="thread-last">${c.last_msg || c.request_title}</div>
+ <div style="margin-top:3px">
+ ${isAcc
+ ? '<span style="font-size:9px;background:var(--success-l);color:var(--success);padding:1px 6px;border-radius:8px;font-weight:700">مقبول</span>'
+ : '<span style="font-size:9px;background:var(--warn-l);color:var(--warn);padding:1px 6px;border-radius:8px;font-weight:700">⏳ عرض</span>'}
+ </div>
+ </div>
+ </div>`;
+ }).join('');
+ if (curChatClient) loadChatWith(curChatClient.id, curChatClient.name, curChatClient.reqId);
+ else if (convs.length) {
+ const c = convs[0];
+ loadChatWith(c.other_id || c.provider_id, c.other_name || 'العميل', c.request_id);
+ }
 }
 
 async function loadChatWith(clientId, clientName, requestId) {
-  curChatClient = { id: clientId, name: clientName, reqId: requestId };
-  document.querySelectorAll('.thread').forEach(t => t.classList.remove('on'));
-  const main = document.getElementById('chat-main-prov');
-  main.innerHTML = `
-    <div class="chat-header">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="position:relative">
-          <div style="width:36px;height:36px;border-radius:50%;background:#1B3A6B;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center">${clientName.charAt(0)}</div>
-          <span style="position:absolute;bottom:1px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid #fff"></span>
-        </div>
-        <div><div class="chat-name">${clientName}</div><div class="chat-online">متصل الآن</div></div>
-      </div>
-      <button class="btn btn-gh btn-sm" onclick="openTender(${requestId})">عرض المشروع</button>
-    </div>
-    <div style="background:var(--success-l);border-bottom:2px solid var(--success-m);padding:8px 14px;flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041">
-      ✅ تم قبول عرضك — تواصل مع العميل لبدء التنفيذ
-    </div>
-    <div class="chat-msgs" id="chat-msgs"><div class="loading">جاري التحميل...</div></div>
-    <div id="prov-typing-ind" style="display:none;align-items:center;gap:6px;padding:6px 14px;background:var(--bg);border-top:1px solid var(--border)">
-      <div style="display:flex;gap:3px">${[0,150,300].map(d=>`<span style="width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bounce .9s ${d}ms infinite"></span>`).join('')}</div>
-      <span style="font-size:11px;color:var(--t3)">${clientName} يكتب...</span>
-    </div>
-    <div class="chat-input-row">
-      <input class="chat-input" id="chat-input" placeholder="اكتب رسالتك..."
-        oninput="onProvTyping(${clientId},${requestId})"
-        onkeydown="if(event.key==='Enter'){sendMsg(${clientId},${requestId});}">
-      <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
-    </div>`;
+ curChatClient = { id: clientId, name: clientName, reqId: requestId };
+ document.querySelectorAll('.thread').forEach(t => t.classList.remove('on'));
+ const main = document.getElementById('chat-main-prov');
+ main.innerHTML = `
+ <div class="chat-header">
+ <div style="display:flex;align-items:center;gap:10px">
+ <div style="position:relative">
+ <div style="width:36px;height:36px;border-radius:50%;background:#1B3A6B;color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center">${clientName.charAt(0)}</div>
+ <span style="position:absolute;bottom:1px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--success);border:2px solid #fff"></span>
+ </div>
+ <div><div class="chat-name">${clientName}</div><div class="chat-online">متصل الآن</div></div>
+ </div>
+ <button class="btn btn-gh btn-sm" onclick="openTender(${requestId})">عرض المشروع</button>
+ </div>
+ <div style="background:var(--success-l);border-bottom:2px solid var(--success-m);padding:8px 14px;flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#085041">
+ تم قبول عرضك — تواصل مع العميل لبدء التنفيذ
+ </div>
+ <div class="chat-msgs" id="chat-msgs"><div class="loading">جاري التحميل...</div></div>
+ <div id="prov-typing-ind" style="display:none;align-items:center;gap:6px;padding:6px 14px;background:var(--bg);border-top:1px solid var(--border)">
+ <div style="display:flex;gap:3px">${[0,150,300].map(d=>`<span style="width:6px;height:6px;border-radius:50%;background:var(--t3);animation:bounce .9s ${d}ms infinite"></span>`).join('')}</div>
+ <span style="font-size:11px;color:var(--t3)">${clientName} يكتب...</span>
+ </div>
+ <div class="chat-input-row">
+ <input class="chat-input" id="chat-input" placeholder="اكتب رسالتك..."
+ oninput="onProvTyping(${clientId},${requestId})"
+ onkeydown="if(event.key==='Enter'){sendMsg(${clientId},${requestId});}">
+ <button class="chat-send" onclick="sendMsg(${clientId},${requestId})">
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+ </button>
+ </div>`;
 
-  try {
-    const r = await fetch(API + '/api/messages/' + requestId, hdr());
-    const msgs = safeArr(await r.json());
-    const box = document.getElementById('msg-threads'); if (!box) return;
-    const filtered = msgs.filter(m => (m.sender_id == user.id && m.receiver_id == clientId) || (m.sender_id == clientId && m.receiver_id == user.id) || m.content?.startsWith('✅'));
-    if (!filtered.length) { box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة مع العميل 👋</div>'; return; }
-    box.innerHTML = '';
-    filtered.forEach(m => appendProvMsg(m));
-    box.scrollTop = box.scrollHeight;
-    wsSend({ type: 'read', request_id: requestId, sender_id: clientId });
-  } catch { const b = document.getElementById('msg-threads'); if (b) b.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة 👋</div>'; }
+ try {
+ const r = await fetch(API + '/api/messages/' + requestId, hdr());
+ const msgs = safeArr(await r.json());
+ const box = document.getElementById('msg-threads'); if (!box) return;
+ const filtered = msgs.filter(m => (m.sender_id == user.id && m.receiver_id == clientId) || (m.sender_id == clientId && m.receiver_id == user.id) || m.content?.startsWith(''));
+ if (!filtered.length) { box.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto;padding:20px">ابدأ المحادثة مع العميل </div>'; return; }
+ box.innerHTML = '';
+ filtered.forEach(m => appendProvMsg(m));
+ box.scrollTop = box.scrollHeight;
+ wsSend({ type: 'read', request_id: requestId, sender_id: clientId });
+ } catch { const b = document.getElementById('msg-threads'); if (b) b.innerHTML = '<div style="text-align:center;color:var(--t3);font-size:12px;margin:auto">ابدأ المحادثة </div>'; }
 }
 
 function sendMsg(receiverId, requestId) {
-  const inp = document.getElementById('chat-input');
-  if (!inp?.value.trim()) return;
-  const content = inp.value.trim(); inp.value = '';
-  stopProvTyping(receiverId, requestId);
-  if (!wsSend({ type: 'message', request_id: requestId, receiver_id: receiverId, content })) {
-    fetch(API + '/api/messages', { method: 'POST', body: JSON.stringify({ request_id: requestId, receiver_id: receiverId, content }), ...hdr() }).catch(() => {});
-  }
+ const inp = document.getElementById('chat-input');
+ if (!inp?.value.trim()) return;
+ const content = inp.value.trim(); inp.value = '';
+ stopProvTyping(receiverId, requestId);
+ if (!wsSend({ type: 'message', request_id: requestId, receiver_id: receiverId, content })) {
+ fetch(API + '/api/messages', { method: 'POST', body: JSON.stringify({ request_id: requestId, receiver_id: receiverId, content }), ...hdr() }).catch(() => {});
+ }
 }
 
 // ── PROFILE ──
 async function loadProfile() {
-  try {
-    const r = await fetch(API + '/api/provider/profile', hdr());
-    const p = await r.json();
-    document.getElementById('profile-av').textContent = p.name.charAt(0);
-    document.getElementById('profile-name').textContent = p.name;
-    document.getElementById('profile-sub').textContent = (p.city ? '📍 ' + p.city : '') + (p.phone ? ' • 📞 ' + p.phone : '');
-    if (p.bio) document.getElementById('profile-bio').textContent = p.bio;
-    if (p.experience_years) document.getElementById('ps-years').textContent = p.experience_years;
-    if (p.completion_rate) document.getElementById('ps-rate').textContent = p.completion_rate + '%';
-    const specs = Array.isArray(p.specialties) ? p.specialties.slice(0, 5) : [];
-    document.getElementById('profile-tags').innerHTML = specs.map(s => `<span class="prof-tag">${s}</span>`).join('');
-    document.getElementById('ps-done').textContent = p.completed_projects || 0;
-    const portfolio = document.getElementById('portfolio-grid');
-    const pItems = ['تبريد وتكييف', 'كهرباء', 'سباكة', 'نجارة', 'تنظيف'];
-    portfolio.innerHTML = pItems.slice(0, 5).map((item, i) => `<div class="pg-item" style="background:linear-gradient(135deg,${['#1B3A6B,#2C5282', '#1D6A5A,#0f4a3d', '#D4973A,#b07020', '#185FA5,#0f4080', '#7c3aed,#5b21b6'][i % 5]})">${item}</div>`).join('') + '<div class="pg-item" style="background:var(--bg3);color:var(--t3);font-size:20px">+</div>';
-  } catch {}
+ try {
+ const r = await fetch(API + '/api/provider/profile', hdr());
+ const p = await r.json();
+ document.getElementById('profile-av').textContent = p.name.charAt(0);
+ document.getElementById('profile-name').textContent = p.name;
+ document.getElementById('profile-sub').textContent = (p.city ? ' ' + p.city : '') + (p.phone ? ' • ' + p.phone : '');
+ if (p.bio) document.getElementById('profile-bio').textContent = p.bio;
+ if (p.experience_years) document.getElementById('ps-years').textContent = p.experience_years;
+ if (p.completion_rate) document.getElementById('ps-rate').textContent = p.completion_rate + '%';
+ const specs = Array.isArray(p.specialties) ? p.specialties.slice(0, 5) : [];
+ document.getElementById('profile-tags').innerHTML = specs.map(s => `<span class="prof-tag">${s}</span>`).join('');
+ document.getElementById('ps-done').textContent = p.completed_projects || 0;
+ const portfolio = document.getElementById('portfolio-grid');
+ const pItems = ['تبريد وتكييف', 'كهرباء', 'سباكة', 'نجارة', 'تنظيف'];
+ portfolio.innerHTML = pItems.slice(0, 5).map((item, i) => `<div class="pg-item" style="background:linear-gradient(135deg,${['#1B3A6B,#2C5282', '#1D6A5A,#0f4a3d', '#D4973A,#b07020', '#185FA5,#0f4080', '#7c3aed,#5b21b6'][i % 5]})">${item}</div>`).join('') + '<div class="pg-item" style="background:var(--bg3);color:var(--t3);font-size:20px">+</div>';
+ } catch {}
 
-  // تقييمات
-  try {
-    const r = await fetch(API + '/api/reviews/provider/' + user.id, hdr());
-    const rv = await r.json();
-    const arr = rv.reviews || (Array.isArray(rv) ? rv : []);
-    const avg = arr.length ? arr.reduce((s, x) => s + x.rating, 0) / arr.length : 0;
-    if (avg) {
-      document.getElementById('ps-rating').textContent = avg.toFixed(1);
-      document.getElementById('s-rating').textContent = avg.toFixed(1);
-      document.getElementById('profile-ratings').innerHTML = `
-        <div class="rating-bar"><div class="rb-label">جودة العمل</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>
-        <div class="rating-bar"><div class="rb-label">الالتزام بالمواعيد</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%;background:var(--info)"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>
-        <div class="rating-bar"><div class="rb-label">التواصل</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%;background:var(--success)"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>`;
-    }
-    document.getElementById('profile-reviews').innerHTML = arr.length ? arr.slice(0, 3).map(rv => `
-      <div class="review-mini">
-        <div class="rm-top">
-          <div style="display:flex;align-items:center;gap:7px">
-            <div class="rm-av" style="background:${ac(rv.reviewer_id)}">${(rv.reviewer_name || '?').charAt(0)}</div>
-            <div><div class="rm-nm">${rv.reviewer_name || '—'}</div><div class="rm-sub">${fdt(rv.created_at)}</div></div>
-          </div>
-          <span class="strs" style="font-size:11px">${starsStr(rv.rating)}</span>
-        </div>
-        ${rv.comment ? `<div class="rm-body">"${rv.comment}"</div>` : ''}
-      </div>`).join('') : emptyH('لا يوجد تقييمات بعد', '');
-  } catch { document.getElementById('profile-reviews').innerHTML = emptyH('تعذر التحميل', ''); }
+ // تقييمات
+ try {
+ const r = await fetch(API + '/api/reviews/provider/' + user.id, hdr());
+ const rv = await r.json();
+ const arr = rv.reviews || (Array.isArray(rv) ? rv : []);
+ const avg = arr.length ? arr.reduce((s, x) => s + x.rating, 0) / arr.length : 0;
+ if (avg) {
+ document.getElementById('ps-rating').textContent = avg.toFixed(1);
+ document.getElementById('s-rating').textContent = avg.toFixed(1);
+ document.getElementById('profile-ratings').innerHTML = `
+ <div class="rating-bar"><div class="rb-label">جودة العمل</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>
+ <div class="rating-bar"><div class="rb-label">الالتزام بالمواعيد</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%;background:var(--info)"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>
+ <div class="rating-bar"><div class="rb-label">التواصل</div><div class="rb-track"><div class="rb-fill" style="width:${Math.min(100, avg * 20)}%;background:var(--success)"></div></div><div class="rb-val">${avg.toFixed(1)}</div></div>`;
+ }
+ document.getElementById('profile-reviews').innerHTML = arr.length ? arr.slice(0, 3).map(rv => `
+ <div class="review-mini">
+ <div class="rm-top">
+ <div style="display:flex;align-items:center;gap:7px">
+ <div class="rm-av" style="background:${ac(rv.reviewer_id)}">${(rv.reviewer_name || '?').charAt(0)}</div>
+ <div><div class="rm-nm">${rv.reviewer_name || '—'}</div><div class="rm-sub">${fdt(rv.created_at)}</div></div>
+ </div>
+ <span class="strs" style="font-size:11px">${starsStr(rv.rating)}</span>
+ </div>
+ ${rv.comment ? `<div class="rm-body">"${rv.comment}"</div>` : ''}
+ </div>`).join('') : emptyH('لا يوجد تقييمات بعد', '');
+ } catch { document.getElementById('profile-reviews').innerHTML = emptyH('تعذر التحميل', ''); }
 }
 
 // ── SETTINGS ──
 let portfolioImgs = [];
 
 async function loadSettingsForm() {
-  try {
-    const r = await fetch(API + '/api/provider/profile', hdr());
-    const p = await r.json();
-    document.getElementById('s-name').value = p.name || '';
-    document.getElementById('s-phone').value = p.phone || '';
-    document.getElementById('s-city').value = p.city || '';
-    document.getElementById('s-bio').value = p.bio || '';
-    document.getElementById('s-years').value = p.experience_years || '';
-    document.getElementById('s-rate').value = p.completion_rate || '';
-    if (Array.isArray(p.specialties) && p.specialties[0]) document.getElementById('s-spec').value = p.specialties[0];
-    selectedNotifCats = Array.isArray(p.notify_categories) ? p.notify_categories : [];
-    buildChips();
-    // تحميل صور البورتفوليو الحالية
-    portfolioImgs = Array.isArray(p.portfolio_images) ? p.portfolio_images : [];
-    renderPortfolioPreview();
-  } catch {}
+ try {
+ const r = await fetch(API + '/api/provider/profile', hdr());
+ const p = await r.json();
+ document.getElementById('s-name').value = p.name || '';
+ document.getElementById('s-phone').value = p.phone || '';
+ document.getElementById('s-city').value = p.city || '';
+ document.getElementById('s-bio').value = p.bio || '';
+ document.getElementById('s-years').value = p.experience_years || '';
+ document.getElementById('s-rate').value = p.completion_rate || '';
+ if (Array.isArray(p.specialties) && p.specialties[0]) document.getElementById('s-spec').value = p.specialties[0];
+ selectedNotifCats = Array.isArray(p.notify_categories) ? p.notify_categories : [];
+ buildChips();
+ // تحميل صور البورتفوليو الحالية
+ portfolioImgs = Array.isArray(p.portfolio_images) ? p.portfolio_images : [];
+ renderPortfolioPreview();
+ } catch {}
 }
 
 function addPortfolioImgs(input) {
-  const files = Array.from(input.files);
-  let loaded = 0;
-  files.forEach(file => {
-    if (portfolioImgs.length >= 10) return;
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      portfolioImgs.push(e.target.result);
-      loaded++;
-      if (loaded === files.length) renderPortfolioPreview();
-    };
-    reader.readAsDataURL(file);
-  });
-  input.value = '';
+ const files = Array.from(input.files);
+ let loaded = 0;
+ files.forEach(file => {
+ if (portfolioImgs.length >= 10) return;
+ if (!file.type.startsWith('image/')) return;
+ const reader = new FileReader();
+ reader.onload = e => {
+ portfolioImgs.push(e.target.result);
+ loaded++;
+ if (loaded === files.length) renderPortfolioPreview();
+ };
+ reader.readAsDataURL(file);
+ });
+ input.value = '';
 }
 
 function renderPortfolioPreview() {
-  const el = document.getElementById('portfolio-preview');
-  const saveBtn = document.getElementById('portfolio-save-btn');
-  if (!el) return;
-  if (!portfolioImgs.length) { el.innerHTML = ''; if (saveBtn) saveBtn.style.display = 'none'; return; }
-  if (saveBtn) saveBtn.style.display = 'block';
-  el.innerHTML = portfolioImgs.map((src, i) => `
-    <div style="position:relative">
-      <img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-      <button onclick="removePortfolioImg(${i})" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800">✕</button>
-    </div>`).join('');
+ const el = document.getElementById('portfolio-preview');
+ const saveBtn = document.getElementById('portfolio-save-btn');
+ if (!el) return;
+ if (!portfolioImgs.length) { el.innerHTML = ''; if (saveBtn) saveBtn.style.display = 'none'; return; }
+ if (saveBtn) saveBtn.style.display = 'block';
+ el.innerHTML = portfolioImgs.map((src, i) => `
+ <div style="position:relative">
+ <img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+ <button onclick="removePortfolioImg(${i})" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800"></button>
+ </div>`).join('');
 }
 
 function removePortfolioImg(i) {
-  portfolioImgs.splice(i, 1);
-  renderPortfolioPreview();
+ portfolioImgs.splice(i, 1);
+ renderPortfolioPreview();
 }
 
 async function savePortfolio() {
-  const btn = document.getElementById('portfolio-save-btn');
-  const al = document.getElementById('portfolio-alert');
-  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
-  try {
-    const r = await fetch(API + '/api/provider/profile', { method: 'PUT', ...hdr(), body: JSON.stringify({ portfolio_images: portfolioImgs }) });
-    if (r.ok) {
-      al.textContent = '✅ تم حفظ معرض الأعمال'; al.style.display = 'block';
-      al.style.background = 'var(--success-l)'; al.style.color = '#085041'; al.style.borderColor = 'var(--success-m)';
-      toast('تم حفظ معرض الأعمال ✅', 'success');
-    } else { al.textContent = 'حدث خطأ'; al.style.display = 'block'; al.style.background = 'var(--danger-l)'; al.style.color = '#7f1d1d'; al.style.borderColor = 'var(--danger-m)'; }
-  } catch { al.textContent = 'تعذر الاتصال'; al.style.display = 'block'; }
-  btn.disabled = false; btn.textContent = 'حفظ معرض الأعمال';
+ const btn = document.getElementById('portfolio-save-btn');
+ const al = document.getElementById('portfolio-alert');
+ btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+ try {
+ const r = await fetch(API + '/api/provider/profile', { method: 'PUT', ...hdr(), body: JSON.stringify({ portfolio_images: portfolioImgs }) });
+ if (r.ok) {
+ al.textContent = 'تم حفظ معرض الأعمال'; al.style.display = 'block';
+ al.style.background = 'var(--success-l)'; al.style.color = '#085041'; al.style.borderColor = 'var(--success-m)';
+ toast('تم حفظ معرض الأعمال ', 'success');
+ } else { al.textContent = 'حدث خطأ'; al.style.display = 'block'; al.style.background = 'var(--danger-l)'; al.style.color = '#7f1d1d'; al.style.borderColor = 'var(--danger-m)'; }
+ } catch { al.textContent = 'تعذر الاتصال'; al.style.display = 'block'; }
+ btn.disabled = false; btn.textContent = 'حفظ معرض الأعمال';
 }
 
 async function saveSettings() {
-  const btn = document.getElementById('s-btn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
-  const body = {
-    name: document.getElementById('s-name').value.trim(),
-    phone: document.getElementById('s-phone').value.trim(),
-    city: document.getElementById('s-city').value.trim(),
-    bio: document.getElementById('s-bio').value.trim(),
-    experience_years: parseInt(document.getElementById('s-years').value) || null,
-    specialties: [document.getElementById('s-spec').value],
-    portfolio_images: portfolioImgs
-  };
-  try {
-    const r = await fetch(API + '/api/provider/profile', { method: 'PUT', body: JSON.stringify(body), ...hdr() });
-    const d = await r.json();
-    if (r.ok) {
-      user.name = d.name; localStorage.setItem('user', JSON.stringify(user));
-      document.getElementById('userName').textContent = d.name;
-      document.getElementById('userAv').textContent = d.name.charAt(0);
-      toast('تم حفظ التعديلات ✅', 'success');
-      setTimeout(() => show('profile', null, 'profile'), 1200);
-    } else showSettingsAlert(d.message || 'حدث خطأ', 'error');
-  } catch { showSettingsAlert('تعذر الاتصال', 'error'); }
-  btn.disabled = false; btn.textContent = 'حفظ التعديلات';
+ const btn = document.getElementById('s-btn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+ const body = {
+ name: document.getElementById('s-name').value.trim(),
+ phone: document.getElementById('s-phone').value.trim(),
+ city: document.getElementById('s-city').value.trim(),
+ bio: document.getElementById('s-bio').value.trim(),
+ experience_years: parseInt(document.getElementById('s-years').value) || null,
+ specialties: [document.getElementById('s-spec').value],
+ portfolio_images: portfolioImgs
+ };
+ try {
+ const r = await fetch(API + '/api/provider/profile', { method: 'PUT', body: JSON.stringify(body), ...hdr() });
+ const d = await r.json();
+ if (r.ok) {
+ user.name = d.name; localStorage.setItem('user', JSON.stringify(user));
+ document.getElementById('userName').textContent = d.name;
+ document.getElementById('userAv').textContent = d.name.charAt(0);
+ toast('تم حفظ التعديلات ', 'success');
+ setTimeout(() => show('profile', null, 'profile'), 1200);
+ } else showSettingsAlert(d.message || 'حدث خطأ', 'error');
+ } catch { showSettingsAlert('تعذر الاتصال', 'error'); }
+ btn.disabled = false; btn.textContent = 'حفظ التعديلات';
 }
 
 async function saveNotifPrefs() {
-  const btn = document.getElementById('notif-save-btn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
-  const el = document.getElementById('notif-prefs-alert');
-  try {
-    const r = await fetch(API + '/api/provider/notify-prefs', { method: 'PUT', body: JSON.stringify({ notify_categories: selectedNotifCats }), ...hdr() });
-    if (r.ok) {
-      el.textContent = `✓ تم الحفظ — ستصلك إشعارات عند نشر مناقصات في: ${selectedNotifCats.slice(0, 3).join('، ')}${selectedNotifCats.length > 3 ? '...' : ''}`;
-      el.style.display = 'block'; el.style.background = 'var(--success-l)'; el.style.color = '#085041'; el.style.borderColor = 'var(--success-m)';
-      toast('تم حفظ تفضيلات الإشعارات ✅', 'success');
-    } else { el.textContent = 'حدث خطأ'; el.style.display = 'block'; el.style.background = 'var(--danger-l)'; el.style.color = '#7f1d1d'; el.style.borderColor = 'var(--danger-m)'; }
-  } catch { el.textContent = 'تعذر الاتصال'; el.style.display = 'block'; el.style.background = 'var(--danger-l)'; el.style.color = '#7f1d1d'; el.style.borderColor = 'var(--danger-m)'; }
-  btn.disabled = false; btn.textContent = 'حفظ التفضيلات';
+ const btn = document.getElementById('notif-save-btn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+ const el = document.getElementById('notif-prefs-alert');
+ try {
+ const r = await fetch(API + '/api/provider/notify-prefs', { method: 'PUT', body: JSON.stringify({ notify_categories: selectedNotifCats }), ...hdr() });
+ if (r.ok) {
+ el.textContent = `تم الحفظ — ستصلك إشعارات عند نشر مناقصات في: ${selectedNotifCats.slice(0, 3).join('، ')}${selectedNotifCats.length > 3 ? '...' : ''}`;
+ el.style.display = 'block'; el.style.background = 'var(--success-l)'; el.style.color = '#085041'; el.style.borderColor = 'var(--success-m)';
+ toast('تم حفظ تفضيلات الإشعارات ', 'success');
+ } else { el.textContent = 'حدث خطأ'; el.style.display = 'block'; el.style.background = 'var(--danger-l)'; el.style.color = '#7f1d1d'; el.style.borderColor = 'var(--danger-m)'; }
+ } catch { el.textContent = 'تعذر الاتصال'; el.style.display = 'block'; el.style.background = 'var(--danger-l)'; el.style.color = '#7f1d1d'; el.style.borderColor = 'var(--danger-m)'; }
+ btn.disabled = false; btn.textContent = 'حفظ التفضيلات';
 }
 
 // ── NOTIFS ──
 async function loadNotifCount() {
-  try {
-    const r = await fetch(API + '/api/notifications', hdr());
-    const ns = safeArr(await r.json());
-    const u = ns.filter(n => !n.is_read).length;
-    const b = document.getElementById('notif-badge'); if (b) { b.textContent = u; b.style.display = u > 0 ? 'flex' : 'none'; }
-  } catch {}
+ try {
+ const r = await fetch(API + '/api/notifications', hdr());
+ const ns = safeArr(await r.json());
+ const u = ns.filter(n => !n.is_read).length;
+ const b = document.getElementById('notif-badge'); if (b) { b.textContent = u; b.style.display = u > 0 ? 'flex' : 'none'; }
+ } catch {}
 }
 
 async function loadNotifs() {
-  document.getElementById('notifs-list').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    const r = await fetch(API + '/api/notifications', hdr());
-    const ns = safeArr(await r.json());
-    if (!ns.length) { document.getElementById('notifs-list').innerHTML = emptyH('لا يوجد إشعارات', ''); return; }
-    document.getElementById('notifs-list').innerHTML = ns.map(n => `
-      <div class="notif-item${n.is_read ? '' : ' unread'}" onclick="handleNotif(${n.ref_id},'${n.type}')">
-        <div class="notif-ic">${n.title.charAt(0)}</div>
-        <div><div class="notif-title">${n.title}</div><div class="notif-body">${n.body || ''}</div><div class="notif-time">${ago(n.created_at)}</div></div>
-      </div>`).join('');
-    markAllRead();
-  } catch { document.getElementById('notifs-list').innerHTML = emptyH('تعذر التحميل', ''); }
+ document.getElementById('notifs-list').innerHTML = '<div class="loading">جاري التحميل...</div>';
+ try {
+ const r = await fetch(API + '/api/notifications', hdr());
+ const ns = safeArr(await r.json());
+ if (!ns.length) { document.getElementById('notifs-list').innerHTML = emptyH('لا يوجد إشعارات', ''); return; }
+ document.getElementById('notifs-list').innerHTML = ns.map(n => `
+ <div class="notif-item${n.is_read ? '' : ' unread'}" onclick="handleNotif(${n.ref_id},'${n.type}')">
+ <div class="notif-ic">${n.title.charAt(0)}</div>
+ <div><div class="notif-title">${n.title}</div><div class="notif-body">${n.body || ''}</div><div class="notif-time">${ago(n.created_at)}</div></div>
+ </div>`).join('');
+ markAllRead();
+ } catch { document.getElementById('notifs-list').innerHTML = emptyH('تعذر التحميل', ''); }
 }
 
 var provChatPoll = null;
-var provLastMsg  = 0;
+var provLastMsg = 0;
 
 function startProvChatPoll(reqId) {
-  stopProvChatPoll();
-  provChatPoll = setInterval(async function(){
-    if(!reqId) return;
-    try{
-      var r = await fetch(API+'/api/messages/poll?request_id='+reqId+'&since='+provLastMsg, hdr());
-      var msgs = await r.json();
-      if(Array.isArray(msgs) && msgs.length){
-        msgs.forEach(function(m){
-          appendProvMsg(m);
-          provLastMsg = Math.max(provLastMsg, new Date(m.created_at).getTime());
-        });
-      }
-    }catch(e){}
-  }, 4000);
+ stopProvChatPoll();
+ provChatPoll = setInterval(async function(){
+ if(!reqId) return;
+ try{
+ var r = await fetch(API+'/api/messages/poll?request_id='+reqId+'&since='+provLastMsg, hdr());
+ var msgs = await r.json();
+ if(Array.isArray(msgs) && msgs.length){
+ msgs.forEach(function(m){
+ appendProvMsg(m);
+ provLastMsg = Math.max(provLastMsg, new Date(m.created_at).getTime());
+ });
+ }
+ }catch(e){}
+ }, 4000);
 }
 
 function stopProvChatPoll(){
-  if(provChatPoll){clearInterval(provChatPoll);provChatPoll=null;}
+ if(provChatPoll){clearInterval(provChatPoll);provChatPoll=null;}
 }
 
 
 // ── IMAGE UPLOAD HELPERS ──
 function fileToBase64(file) {
-  return new Promise(function(resolve, reject) {
-    if (file.size > 2 * 1024 * 1024) { reject(new Error('حجم الصورة كبير — الحد 2MB')); return; }
-    var reader = new FileReader();
-    reader.onload  = function(e) { resolve(e.target.result); };
-    reader.onerror = function()  { reject(new Error('تعذر قراءة الصورة')); };
-    reader.readAsDataURL(file);
-  });
+ return new Promise(function(resolve, reject) {
+ if (file.size > 2 * 1024 * 1024) { reject(new Error('حجم الصورة كبير — الحد 2MB')); return; }
+ var reader = new FileReader();
+ reader.onload = function(e) { resolve(e.target.result); };
+ reader.onerror = function() { reject(new Error('تعذر قراءة الصورة')); };
+ reader.readAsDataURL(file);
+ });
 }
 
 async function uploadBase64(b64, type) {
-  var r = await fetch(API+'/api/upload/image', {
-    method: 'POST',
-    body: JSON.stringify({ data: b64, type: type || 'portfolio' }),
-    ...hdr()
-  });
-  var d = await r.json();
-  if (!r.ok) throw new Error(d.message || 'فشل رفع الصورة');
-  return d.url;
+ var r = await fetch(API+'/api/upload/image', {
+ method: 'POST',
+ body: JSON.stringify({ data: b64, type: type || 'portfolio' }),
+ ...hdr()
+ });
+ var d = await r.json();
+ if (!r.ok) throw new Error(d.message || 'فشل رفع الصورة');
+ return d.url;
 }
 
 async function uploadMultipleFiles(files, type) {
-  var results = [];
-  for (var i = 0; i < Math.min(files.length, 5); i++) {
-    try {
-      var b64 = await fileToBase64(files[i]);
-      results.push(b64); // نحفظ base64 مباشرة
-    } catch(e) { console.error('upload err:', e.message); }
-  }
-  if (!results.length) return [];
-  var r = await fetch(API+'/api/upload/images', {
-    method: 'POST',
-    body: JSON.stringify({ images: results, type: type || 'portfolio' }),
-    ...hdr()
-  });
-  var d = await r.json();
-  return d.ok ? d.urls : results; // fallback to base64 if API fails
+ var results = [];
+ for (var i = 0; i < Math.min(files.length, 5); i++) {
+ try {
+ var b64 = await fileToBase64(files[i]);
+ results.push(b64); // نحفظ base64 مباشرة
+ } catch(e) { console.error('upload err:', e.message); }
+ }
+ if (!results.length) return [];
+ var r = await fetch(API+'/api/upload/images', {
+ method: 'POST',
+ body: JSON.stringify({ images: results, type: type || 'portfolio' }),
+ ...hdr()
+ });
+ var d = await r.json();
+ return d.ok ? d.urls : results; // fallback to base64 if API fails
 }
 
 
 async function saveProfile() {
-  var al = document.getElementById('profile-alert') || document.createElement('div');
-  al.className = 'alert';
+ var al = document.getElementById('profile-alert') || document.createElement('div');
+ al.className = 'alert';
 
-  var name     = (document.getElementById('p-name') || {}).value || '';
-  var phone    = (document.getElementById('p-phone') || {}).value || '';
-  var city     = (document.getElementById('p-city') || {}).value || '';
-  var bio      = (document.getElementById('p-bio') || {}).value || '';
-  var company  = (document.getElementById('p-company') || {}).value || '';
-  var specEls  = document.querySelectorAll('.spec-check:checked');
-  var specs    = Array.from(specEls).map(function(el){ return el.value; });
+ var name = (document.getElementById('p-name') || {}).value || '';
+ var phone = (document.getElementById('p-phone') || {}).value || '';
+ var city = (document.getElementById('p-city') || {}).value || '';
+ var bio = (document.getElementById('p-bio') || {}).value || '';
+ var company = (document.getElementById('p-company') || {}).value || '';
+ var specEls = document.querySelectorAll('.spec-check:checked');
+ var specs = Array.from(specEls).map(function(el){ return el.value; });
 
-  // صور البورتفوليو
-  var portfolioInput = document.getElementById('portfolio-input');
-  var newPortfolio = [];
-  if (portfolioInput && portfolioInput.files.length) {
-    al.textContent = 'جاري رفع الصور...'; al.className = 'alert info';
-    try {
-      newPortfolio = await uploadMultipleFiles(portfolioInput.files, 'portfolio');
-    } catch(e) { al.textContent = e.message; al.className = 'alert err'; return; }
-  }
+ // صور البورتفوليو
+ var portfolioInput = document.getElementById('portfolio-input');
+ var newPortfolio = [];
+ if (portfolioInput && portfolioInput.files.length) {
+ al.textContent = 'جاري رفع الصور...'; al.className = 'alert info';
+ try {
+ newPortfolio = await uploadMultipleFiles(portfolioInput.files, 'portfolio');
+ } catch(e) { al.textContent = e.message; al.className = 'alert err'; return; }
+ }
 
-  // دمج الصور القديمة مع الجديدة
-  var existingImgs = Array.from(document.querySelectorAll('.portfolio-img')).map(function(img){ return img.src; });
-  var allPortfolio = existingImgs.concat(newPortfolio).slice(0, 5);
+ // دمج الصور القديمة مع الجديدة
+ var existingImgs = Array.from(document.querySelectorAll('.portfolio-img')).map(function(img){ return img.src; });
+ var allPortfolio = existingImgs.concat(newPortfolio).slice(0, 5);
 
-  var btn = document.getElementById('save-profile-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
+ var btn = document.getElementById('save-profile-btn');
+ if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
 
-  try {
-    var r = await fetch(API+'/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify({
-        name: name.trim(), phone: phone.trim(), city: city,
-        bio: bio.trim(), company_name: company.trim(),
-        specialties: specs.length ? specs : null,
-        portfolio: allPortfolio.length ? allPortfolio : null
-      }),
-      ...hdr()
-    });
-    var d = await r.json();
-    if (r.ok) {
-      al.textContent = '✅ تم حفظ الملف الشخصي بنجاح';
-      al.className = 'alert ok';
-      // تحديث localStorage
-      var user = JSON.parse(localStorage.getItem('user') || '{}');
-      Object.assign(user, d);
-      localStorage.setItem('user', JSON.stringify(user));
-      setTimeout(function(){ al.className = 'alert'; }, 3000);
-    } else {
-      al.textContent = d.message || 'حدث خطأ';
-      al.className = 'alert err';
-    }
-  } catch(e) { al.textContent = 'تعذر الاتصال'; al.className = 'alert err'; }
-  if (btn) { btn.disabled = false; btn.textContent = 'حفظ التغييرات'; }
+ try {
+ var r = await fetch(API+'/api/profile', {
+ method: 'PUT',
+ body: JSON.stringify({
+ name: name.trim(), phone: phone.trim(), city: city,
+ bio: bio.trim(), company_name: company.trim(),
+ specialties: specs.length ? specs : null,
+ portfolio: allPortfolio.length ? allPortfolio : null
+ }),
+ ...hdr()
+ });
+ var d = await r.json();
+ if (r.ok) {
+ al.textContent = 'تم حفظ الملف الشخصي بنجاح';
+ al.className = 'alert ok';
+ // تحديث localStorage
+ var user = JSON.parse(localStorage.getItem('user') || '{}');
+ Object.assign(user, d);
+ localStorage.setItem('user', JSON.stringify(user));
+ setTimeout(function(){ al.className = 'alert'; }, 3000);
+ } else {
+ al.textContent = d.message || 'حدث خطأ';
+ al.className = 'alert err';
+ }
+ } catch(e) { al.textContent = 'تعذر الاتصال'; al.className = 'alert err'; }
+ if (btn) { btn.disabled = false; btn.textContent = 'حفظ التغييرات'; }
 }
 
 
 function handleNotif(refId, type) {
-  if (type === 'message') show('messages', null, 'messages');
-  else if (['bid', 'accepted', 'bid_accepted'].includes(type) && refId) { show('browse', null, 'browse'); setTimeout(() => openTender(refId), 300); }
-  else if (type === 'bid_rejected') show('my-bids', null, 'my-bids');
+ if (type === 'message') show('messages', null, 'messages');
+ else if (['bid', 'accepted', 'bid_accepted'].includes(type) && refId) { show('browse', null, 'browse'); setTimeout(() => openTender(refId), 300); }
+ else if (type === 'bid_rejected') show('my-bids', null, 'my-bids');
 }
 
 async function markAllRead() {
-  await fetch(API + '/api/notifications/read-all', { method: 'PUT', ...hdr() }).catch(() => {});
-  const b = document.getElementById('notif-badge'); if (b) b.style.display = 'none';
+ await fetch(API + '/api/notifications/read-all', { method: 'PUT', ...hdr() }).catch(() => {});
+ const b = document.getElementById('notif-badge'); if (b) b.style.display = 'none';
 }
 
 setInterval(loadNotifCount, 30000);
 // تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-  try {
-    populateCities('p-city');
-    populateCities('b-city');
-  } catch(e) {}
-  loadHome();
-  loadNotifCount();
+ try {
+ populateCities('p-city');
+ populateCities('b-city');
+ } catch(e) {}
+ loadHome();
+ loadNotifCount();
 });
 
 </script>
+<script>if(typeof lucide !== "undefined") lucide.createIcons();</script>
 </body>
 </html>
