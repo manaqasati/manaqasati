@@ -1075,7 +1075,7 @@ p { color: var(--t2); line-height: 1.75 }
  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>نشر مشروع جديد
  </button>
  </div>
- <div id="bids-banner"></div>
+ 
  <div id="bids-notif-bar"></div>
  <div class="stat-grid">
  <div class="stat-card" style="border-top:3px solid var(--blue)"><div class="stat-num" id="s-total" style="color:var(--blue)">0</div><div class="stat-label">إجمالي مشاريعي</div></div>
@@ -1562,20 +1562,7 @@ async function loadHome(){
  homeEl.innerHTML = reqs.slice(0,5).map(riCard).join('');
  }
 
- // ⑤ banner العروض الجديدة
- var openWithBids = reqs.filter(function(r){return r.status==='open' && +r.bid_count>0;});
- if(openWithBids.length){
- var banner = document.getElementById('bids-banner');
- if(!banner){
- banner = document.createElement('div');
- banner.id = 'bids-banner';
- banner.style.cssText = 'background:var(--accent-l);border:1.5px solid var(--accent-m);border-radius:12px;padding:12px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:10px';
- banner.onclick = function(){ activeFilter='open'; go('requests',document.getElementById('ni-requests')); };
- homeEl.before(banner);
- }
- var total = openWithBids.reduce(function(s,r){return s+(+r.bid_count||0);},0);
- banner.innerHTML = '<span style="font-size:24px"></span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:#78350f">لديك '+total+' عرض جديد!</div><div style="font-size:11px;color:#92400e">على '+openWithBids.length+' طلب — راجعهم الآن</div></div>';
- }
+ 
 
  loadNotifCount();
 }
