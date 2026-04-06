@@ -998,6 +998,11 @@ p { color: var(--t2); line-height: 1.75 }
 }
 .ri-detail-btn:hover { background: #1473E6; }
 
+
+.city-dd { position:absolute; top:100%; right:0; left:0; background:#fff; border:1.5px solid var(--border); border-radius:0 0 10px 10px; box-shadow:0 8px 20px rgba(0,0,0,.1); z-index:999; display:none; max-height:200px; overflow-y:auto; }
+.city-opt { padding:10px 14px; font-size:13px; color:var(--t); cursor:pointer; border-bottom:1px solid var(--bg); }
+.city-opt:hover { background:var(--blue-l); color:var(--blue); }
+
 </style>
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -1417,7 +1422,7 @@ let selRating=0,selProvId=null,selReqId=null;
 let uploadedImgs=[],mainImgIdx=0;
 
 const CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
-const CITIES = ['أبها','أبو عريش','أحد رفيدة','أملج','الأحساء','الأفلاج','الباحة','البدائع','البرك','البكيرية','الجبيل','الجموم','الحرث','الحريق','الحناكية','الخبر','الخرج','الخفجي','الدرب','الدرعية','الدمام','الدوادمي','الرس','الرياض','الريث','الزلفي','السليل','الشماسية','الطائف','الظهران','العارضة','العقيق','العلا','العوامية','الغاط','الغزالة','القريات','القطيف','القنفذة','القويعية','الكامل','الليث','المجمعة','المخواة','المدينة المنورة','المذنب','المزاحمية','المندق','المويه','النماص','الوجه','بدر','بريدة','بقعاء','بلجرشي','بيش','بيشة','تبوك','تثليث','تيماء','ثادق','جازان','جدة','حائل','حبونا','حريملاء','حفر الباطن','حقل','خليص','خميس مشيط','خيبر','دومة الجندل','رأس تنورة','رابغ','رجال ألمع','رفحاء','رماح','رياض الخبراء','سراة عبيدة','سكاكا','سميراء','سيهات','شرورة','شقراء','صامطة','صبيا','صفوى','ضباء','ضرما','ضرية','طريف','ظهران الجنوب','عرعر','عفيف','عنيزة','فيفا','قلوة','محايل عسير','مكة المكرمة','ميسان','نجران','وادي الدواسر','يدمة','ينبع'];
+
 const AVC=['#1B3A6B','#1D6A5A','#1e40af','#166534','#92400e','#7c3aed','#0891b2','#991b1b'];
 
 function ac(id){return AVC[(+id||0)%AVC.length];}
@@ -2292,7 +2297,7 @@ async function submitReq(){
  let city=document.getElementById('n-city').value.trim();
  let cat=document.getElementById('n-cat').value;
  if(cat==='أخرى'){let o=document.getElementById('n-other').value.trim();if(o)cat='أخرى: '+o;}
- if(!title||!desc||!city){showAlert('new-alert','يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}
+ if(!title||!desc){showAlert('new-alert','يرجى تعبئة العنوان والتفاصيل','err');return;}
  let btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';
  let mainImg=uploadedImgs.length?uploadedImgs[mainImgIdx]:null;
  let body={title,description:desc,category:cat,city,
@@ -2681,7 +2686,7 @@ async function openProv(provId, fromPage){
  <div>
  <div style="font-size:13px;font-weight:700">${rv.reviewer_name||'مجهول'}</div>
  <div style="font-
-var ALL_CITIES = ['الرياض', 'الخرج', 'الدوادمي', 'الزلفي', 'المجمعة', 'القويعية', 'وادي الدواسر', 'مكة المكرمة', 'جدة', 'الطائف', 'رابغ', 'القنفذة', 'الليث', 'الدمام', 'الخبر', 'الظهران', 'الأحساء', 'القطيف', 'الجبيل', 'الخفجي', 'حفر الباطن', 'المدينة المنورة', 'ينبع', 'العلا', 'بدر', 'خيبر', 'بريدة', 'عنيزة', 'الرس', 'المذنب', 'البكيرية', 'أبها', 'خميس مشيط', 'بيشة', 'النماص', 'تثليث', 'تبوك', 'الوجه', 'ضباء', 'حقل', 'أملج', 'تيماء', 'حائل', 'بقعاء', 'الغزالة', 'سميراء', 'عرعر', 'طريف', 'رفحاء', 'سكاكا', 'دومة الجندل', 'القريات', 'الباحة', 'بلجرشي', 'المندق', 'جازان', 'صبيا', 'أبو عريش', 'صامطة', 'نجران', 'شرورة', 'حبونا'];
+
 
 function filterCities(q) {
   var dd = document.getElementById('city-dd');
