@@ -19,22 +19,22 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  font-family: 'Tajawal', sans-serif;
-  background: #f8f9fb;
-  color: #0f172a;
-  min-height: 100vh;
+ font-family: 'Tajawal', sans-serif;
+ background: #f8f9fb;
+ color: #0f172a;
+ min-height: 100vh;
 }
 a { text-decoration: none; color: inherit; }
 
 /* NAV */
 .nav {
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-  height: 62px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 32px;
-  position: sticky; top: 0; z-index: 100;
-  box-shadow: 0 1px 8px rgba(0,0,0,.05);
+ background: #fff;
+ border-bottom: 1px solid #e2e8f0;
+ height: 62px;
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 0 32px;
+ position: sticky; top: 0; z-index: 100;
+ box-shadow: 0 1px 8px rgba(0,0,0,.05);
 }
 .logo { font-size: 21px; font-weight: 900; color: #0f172a; }
 .logo b { color: #1473E6; }
@@ -46,24 +46,24 @@ a { text-decoration: none; color: inherit; }
 
 /* HERO BANNER */
 .hero {
-  background: linear-gradient(135deg, #0f2545 0%, #1473E6 100%);
-  padding: 52px 32px;
-  text-align: center;
-  position: relative; overflow: hidden;
+ background: linear-gradient(135deg, #0f2545 0%, #1473E6 100%);
+ padding: 52px 32px;
+ text-align: center;
+ position: relative; overflow: hidden;
 }
 .hero::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 70% 50%, rgba(255,255,255,.07), transparent 60%);
+ content: '';
+ position: absolute; inset: 0;
+ background: radial-gradient(circle at 70% 50%, rgba(255,255,255,.07), transparent 60%);
 }
 .hero-inner { position: relative; z-index: 1; max-width: 600px; margin: 0 auto; }
 .hero-badge {
-  display: inline-block;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.2);
-  color: rgba(255,255,255,.9);
-  padding: 5px 16px; border-radius: 20px;
-  font-size: 12px; font-weight: 700; margin-bottom: 18px;
+ display: inline-block;
+ background: rgba(255,255,255,.12);
+ border: 1px solid rgba(255,255,255,.2);
+ color: rgba(255,255,255,.9);
+ padding: 5px 16px; border-radius: 20px;
+ font-size: 12px; font-weight: 700; margin-bottom: 18px;
 }
 .hero h1 { font-size: 38px; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 12px; letter-spacing: -.4px; }
 .hero h1 em { font-style: normal; color: #fbbf24; }
@@ -83,8 +83,8 @@ a { text-decoration: none; color: inherit; }
 
 /* TOP BAR */
 .top-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px; flex-wrap: wrap; gap: 14px;
+ display: flex; align-items: center; justify-content: space-between;
+ margin-bottom: 20px; flex-wrap: wrap; gap: 14px;
 }
 .top-bar-left h2 { font-size: 20px; font-weight: 800; color: #0f172a; }
 .top-bar-left p { font-size: 13px; color: #64748b; margin-top: 2px; }
@@ -100,62 +100,62 @@ a { text-decoration: none; color: inherit; }
 
 /* PROJECT CARD */
 .card {
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 14px;
-  overflow: hidden;
-  transition: .18s;
-  cursor: pointer;
+ background: #fff;
+ border: 1.5px solid #e2e8f0;
+ border-radius: 14px;
+ overflow: hidden;
+ transition: .18s;
+ cursor: pointer;
 }
 .card:hover {
-  border-color: #1473E6;
-  box-shadow: 0 6px 24px rgba(20,115,230,.1);
-  transform: translateY(-2px);
+ border-color: #1473E6;
+ box-shadow: 0 6px 24px rgba(20,115,230,.1);
+ transform: translateY(-2px);
 }
 /* card image */
 .card-img { width: 100%; height: 160px; object-fit: cover; display: block; border-bottom: 1px solid #e2e8f0; }
 .card-img-ph {
-  height: 160px; display: flex; align-items: center; justify-content: center;
-  font-size: 42px; border-bottom: 1px solid #e2e8f0;
+ height: 160px; display: flex; align-items: center; justify-content: center;
+ font-size: 42px; border-bottom: 1px solid #e2e8f0;
 }
 .card-body { padding: 16px 18px; }
 .card-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .card-cat { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; background: #f1f5f9; color: #475569; }
 
 /* STATUS */
-.s-open     { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 4px; }
-.s-awarded  { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; display: inline-flex; align-items: center; gap: 4px; }
+.s-open { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 4px; }
+.s-awarded { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; display: inline-flex; align-items: center; gap: 4px; }
 .s-progress { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 4px; }
 
 .card-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 6px; line-height: 1.35; }
-.card-desc  { font-size: 12px; color: #64748b; line-height: 1.75; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card-meta  { display: flex; gap: 12px; flex-wrap: wrap; }
+.card-desc { font-size: 12px; color: #64748b; line-height: 1.75; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
 .cm { font-size: 11px; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 3px; }
 .cm svg { width: 11px; height: 11px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
 /* AWARDED BAR */
 .aw-bar {
-  padding: 10px 18px;
-  background: #faf5ff;
-  border-top: 1px solid #ede9fe;
-  display: flex; align-items: center; gap: 10px;
+ padding: 10px 18px;
+ background: #faf5ff;
+ border-top: 1px solid #ede9fe;
+ display: flex; align-items: center; gap: 10px;
 }
 .aw-av {
-  width: 28px; height: 28px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 900; color: #fff; flex-shrink: 0;
+ width: 28px; height: 28px; border-radius: 50%;
+ display: flex; align-items: center; justify-content: center;
+ font-size: 11px; font-weight: 900; color: #fff; flex-shrink: 0;
 }
 .aw-name { font-size: 12px; font-weight: 700; color: #7c3aed; flex: 1; }
 .aw-price { font-size: 13px; font-weight: 900; color: #7c3aed; }
 
 .card-footer {
-  padding: 12px 18px;
-  background: #f8f9fb;
-  border-top: 1px solid #e2e8f0;
-  display: flex; align-items: center; justify-content: space-between;
+ padding: 12px 18px;
+ background: #f8f9fb;
+ border-top: 1px solid #e2e8f0;
+ display: flex; align-items: center; justify-content: space-between;
 }
 .cf-budget { font-size: 17px; font-weight: 900; color: #1473E6; }
-.cf-sub    { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+.cf-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
 .btn-apply { padding: 8px 18px; background: #1473E6; border: none; color: #fff; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .12s; }
 .btn-apply:hover { background: #0d5fc9; }
 .btn-tag-done { padding: 8px 14px; background: #f5f3ff; border: 1px solid #ddd6fe; color: #7c3aed; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: inherit; }
@@ -190,75 +190,83 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
 @media(max-width:900px){ .grid{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:600px){ .grid{grid-template-columns:1fr} .main{padding:20px 16px} .nav{padding:0 16px} .hero{padding:36px 20px} .hero h1{font-size:26px} }
 </style>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* Lucide Icons */
+.icon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:inline-block; vertical-align:middle; }
+.icon-sm { width:14px; height:14px; }
+.icon-lg { width:22px; height:22px; }
+.nav-icon { width:20px; height:20px; }
+</style>
 </head>
 <body>
 
 <nav class="nav">
-  <div class="logo">مناقصة<b>.</b></div>
-  <div class="nav-right">
-    <button class="btn-outline" onclick="location.href='auth.html'">تسجيل الدخول</button>
-    <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعك</button>
-  </div>
+ <div class="logo">مناقصة<b>.</b></div>
+ <div class="nav-right">
+ <button class="btn-outline" onclick="location.href='auth.html'">تسجيل الدخول</button>
+ <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعك</button>
+ </div>
 </nav>
 
 <div class="hero">
-  <div class="hero-inner">
-    <div class="hero-badge">✦ منصة سعودية موثوقة</div>
-    <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
-    <p>تصفح المشاريع المتاحة وقدّم عرضك، أو أنشر مشروعك واستقبل أفضل المزودين.</p>
-    <div class="hero-btns">
-      <button class="btn-yellow" onclick="location.href='auth.html'">+ أنشر مشروعك مجاناً</button>
-      <button class="btn-white-outline" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
-    </div>
-    <div class="hero-stats">
-      <div class="hs"><div class="hs-v" id="hs-req">—</div><div class="hs-l">مشروع منشور</div></div>
-      <div class="hs"><div class="hs-v" id="hs-open">—</div><div class="hs-l">مفتوح للعروض</div></div>
-      <div class="hs"><div class="hs-v" style="color:#ef4444" id="hs-done">—</div><div class="hs-l">تم الترسية</div></div>
-    </div>
-  </div>
+ <div class="hero-inner">
+ <div class="hero-badge">✦ منصة سعودية موثوقة</div>
+ <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
+ <p>تصفح المشاريع المتاحة وقدّم عرضك، أو أنشر مشروعك واستقبل أفضل المزودين.</p>
+ <div class="hero-btns">
+ <button class="btn-yellow" onclick="location.href='auth.html'">+ أنشر مشروعك مجاناً</button>
+ <button class="btn-white-outline" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
+ </div>
+ <div class="hero-stats">
+ <div class="hs"><div class="hs-v" id="hs-req">—</div><div class="hs-l">مشروع منشور</div></div>
+ <div class="hs"><div class="hs-v" id="hs-open">—</div><div class="hs-l">مفتوح للعروض</div></div>
+ <div class="hs"><div class="hs-v" style="color:#ef4444" id="hs-done">—</div><div class="hs-l">تم الترسية</div></div>
+ </div>
+ </div>
 </div>
 
 <div class="main">
-  <div class="top-bar">
-    <div class="top-bar-left">
-      <h2>المشاريع المتاحة</h2>
-      <p id="sub-text">جاري التحميل...</p>
-    </div>
-    <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعاً</button>
-  </div>
+ <div class="top-bar">
+ <div class="top-bar-left">
+ <h2>المشاريع المتاحة</h2>
+ <p id="sub-text">جاري التحميل...</p>
+ </div>
+ <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعاً</button>
+ </div>
 
-  <div class="filter-row">
-    <button class="ftab on" onclick="filter('all',this)">🗂 الكل</button>
-    <button class="ftab" onclick="filter('open',this)">🟢 مفتوح للعروض</button>
-    <button class="ftab" onclick="filter('completed',this)">🟣 تم الترسية</button>
-  </div>
+ <div class="filter-row">
+ <button class="ftab on" onclick="filter('all',this)"> <i data-lucide="layers" class="icon-sm"></i> الكل</button>
+ <button class="ftab" onclick="filter('open',this)"> مفتوح للعروض</button>
+ <button class="ftab" onclick="filter('completed',this)"> <i data-lucide="check-circle" class="icon-sm"></i> تم الترسية</button>
+ </div>
 
-  <div class="grid" id="grid">
-    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:65%"></div></div></div>
-    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:70%"></div></div></div>
-    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:35%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:60%"></div></div></div>
-  </div>
+ <div class="grid" id="grid">
+ <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:65%"></div></div></div>
+ <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:70%"></div></div></div>
+ <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:35%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:60%"></div></div></div>
+ </div>
 
-  <div class="load-more" id="load-more" style="display:none">
-    <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
-  </div>
+ <div class="load-more" id="load-more" style="display:none">
+ <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
+ </div>
 </div>
 
 <footer>
-  <div class="foot">
-    <div class="flogo">مناقصة<b>.</b></div>
-    <div class="flinks">
-      <span class="flink">الشروط والأحكام</span>
-      <span class="flink">سياسة الخصوصية</span>
-      <span class="flink">تواصل معنا</span>
-    </div>
-    <div class="fcopy">© 2025 مناقصة · جميع الحقوق محفوظة</div>
-  </div>
+ <div class="foot">
+ <div class="flogo">مناقصة<b>.</b></div>
+ <div class="flinks">
+ <span class="flink">الشروط والأحكام</span>
+ <span class="flink">سياسة الخصوصية</span>
+ <span class="flink">تواصل معنا</span>
+ </div>
+ <div class="fcopy">© 2025 مناقصة · جميع الحقوق محفوظة</div>
+ </div>
 </footer>
 
 <script>
 var API = 'https://manaqasati-production.up.railway.app';
-var ICONS = {'تبريد وتكييف':'❄️','كهرباء':'⚡','سباكة':'🔧','نجارة':'🪵','تنظيف':'🧹','نقل عفش':'🚚','حدادة':'🔩','ألمنيوم':'🪟','مسابح (تنفيذ وصيانة)':'🏊','كاميرات مراقبة وأمن':'📷','شبكات وإنترنت':'🌐','مظلات وسواتر':'⛱','عزل حراري وأسطح':'🏠','أبواب':'🚪','أعمال جبس وطباشير':'🖌','مكافحة حشرات':'🐛','أخرى':'⚙️'};
+var ICONS = {'تبريد وتكييف':'','كهرباء':'','سباكة':'','نجارة':'','تنظيف':'','نقل عفش':'','حدادة':'','ألمنيوم':'','مسابح (تنفيذ وصيانة)':'','كاميرات مراقبة وأمن':'','شبكات وإنترنت':'','مظلات وسواتر':'','عزل حراري وأسطح':'','أبواب':'','أعمال جبس وطباشير':'','مكافحة حشرات':'','أخرى':''};
 var AVC = ['#1473E6','#16a34a','#7c3aed','#d97706','#dc2626','#0891b2','#be185d'];
 var PNAMES = ['محمد العتيبي','أحمد الغامدي','فهد السهلي','سعد المطيري','عمر الشهري','خالد الحربي'];
 var PRICES = [650,900,1200,450,800,1500,550,750,1100];
@@ -272,104 +280,105 @@ function pn(i){ return PNAMES[i%PNAMES.length]; }
 function pp(i){ return PRICES[i%PRICES.length]; }
 
 function iconBg(cat){
-  var map = {'تبريد وتكييف':'#dbeafe','كهرباء':'#fef9c3','سباكة':'#dbeafe','نجارة':'#ffedd5','تنظيف':'#dcfce7','نقل عفش':'#ede9fe','حدادة':'#f1f5f9','مسابح (تنفيذ وصيانة)':'#dbeafe','كاميرات مراقبة وأمن':'#fce7f3'};
-  return map[cat] || '#f1f5f9';
+ var map = {'تبريد وتكييف':'#dbeafe','كهرباء':'#fef9c3','سباكة':'#dbeafe','نجارة':'#ffedd5','تنظيف':'#dcfce7','نقل عفش':'#ede9fe','حدادة':'#f1f5f9','مسابح (تنفيذ وصيانة)':'#dbeafe','كاميرات مراقبة وأمن':'#fce7f3'};
+ return map[cat] || '#f1f5f9';
 }
 
 function card(p, i) {
-  var icon = ICONS[p.category] || '⚙️';
-  var isOpen = p.status === 'open';
-  var isDone = p.status === 'completed';
-  var isProg = p.status === 'in_progress';
+ var icon = ICONS[p.category] || '';
+ var isOpen = p.status === 'open';
+ var isDone = p.status === 'completed';
+ var isProg = p.status === 'in_progress';
 
-  var badge = isOpen
-    ? '<span class="s-open">● مفتوح للعروض</span>'
-    : isProg
-      ? '<span class="s-progress">⏳ قيد التنفيذ</span>'
-      : '<span class="s-awarded">✓ تم الترسية</span>';
+ var badge = isOpen
+ ? '<span class="s-open">مفتوح للعروض</span>'
+ : isProg
+ ? '<span class="s-progress">⏳ قيد التنفيذ</span>'
+ : '<span class="s-awarded">تم الترسية</span>';
 
-  var imgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
-  var imgEl = imgs.length
-    ? '<img class="card-img" src="'+imgs[0]+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=card-img-ph style=background:'+iconBg(p.category)+'>\'+\''+icon+'</div>\'">'
-    : '<div class="card-img-ph" style="background:'+iconBg(p.category)+'">'+icon+'</div>';
+ var imgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
+ var imgEl = imgs.length
+ ? '<img class="card-img" src="'+imgs[0]+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=card-img-ph style=background:'+iconBg(p.category)+'>\'+\''+icon+'</div>\'">'
+ : '<div class="card-img-ph" style="background:'+iconBg(p.category)+'">'+icon+'</div>';
 
-  var act = isOpen
-    ? '<button class="btn-apply" onclick="event.stopPropagation();location.href=\'auth.html\'">تقديم عرض</button>'
-    : isDone
-      ? '<span class="btn-tag-done">تمت الترسية ✓</span>'
-      : '<span class="btn-tag-prog">قيد التنفيذ ⏳</span>';
+ var act = isOpen
+ ? '<button class="btn-apply" onclick="event.stopPropagation();location.href=\'auth.html\'">تقديم عرض</button>'
+ : isDone
+ ? '<span class="btn-tag-done">تمت الترسية </span>'
+ : '<span class="btn-tag-prog">قيد التنفيذ ⏳</span>';
 
-  var awBar = (isDone || isProg)
-    ? '<div class="aw-bar"><div class="aw-av" style="background:'+av(i)+'">'+pn(i).charAt(0)+'</div><div class="aw-name">'+pn(i)+'<span style="font-size:10px;font-weight:400;color:#a78bfa;margin-right:4px"> — المزود المُسند</span></div><div class="aw-price">'+Number(pp(i)).toLocaleString('en-US')+' ر.س</div></div>'
-    : '';
+ var awBar = (isDone || isProg)
+ ? '<div class="aw-bar"><div class="aw-av" style="background:'+av(i)+'">'+pn(i).charAt(0)+'</div><div class="aw-name">'+pn(i)+'<span style="font-size:10px;font-weight:400;color:#a78bfa;margin-right:4px"> — المزود المُسند</span></div><div class="aw-price">'+Number(pp(i)).toLocaleString('en-US')+' ر.س</div></div>'
+ : '';
 
-  return '<div class="card" onclick="location.href=\'auth.html\'">' +
-    imgEl +
-    '<div class="card-body">' +
-      '<div class="card-row1"><span class="card-cat">'+icon+' '+(p.category||'عام')+'</span>'+badge+'</div>' +
-      '<div class="card-title">'+p.title+'</div>' +
-      (p.description ? '<div class="card-desc">'+p.description+'</div>' : '') +
-      '<div class="card-meta">' +
-        (p.city ? '<span class="cm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+p.city+'</span>' : '') +
-        (p.budget_max ? '<span class="cm" style="color:#1473E6;font-weight:800"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'+fpr(p.budget_max)+'</span>' : '') +
-        (p.deadline ? '<span class="cm"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>'+String(p.deadline).slice(0,10)+'</span>' : '') +
-        '<span class="cm"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+(p.bid_count||0)+' عرض</span>' +
-        '<span class="cm">'+ago(p.created_at)+'</span>' +
-      '</div>' +
-    '</div>' +
-    awBar +
-    '<div class="card-footer">' +
-      '<div><div class="cf-budget">'+(p.budget_max ? fpr(p.budget_max) : 'مفتوح')+'</div><div class="cf-sub">'+(p.bid_count||0)+' عرض مقدَّم</div></div>' +
-      act +
-    '</div>' +
-  '</div>';
+ return '<div class="card" onclick="location.href=\'auth.html\'">' +
+ imgEl +
+ '<div class="card-body">' +
+ '<div class="card-row1"><span class="card-cat">'+icon+' '+(p.category||'عام')+'</span>'+badge+'</div>' +
+ '<div class="card-title">'+p.title+'</div>' +
+ (p.description ? '<div class="card-desc">'+p.description+'</div>' : '') +
+ '<div class="card-meta">' +
+ (p.city ? '<span class="cm"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+p.city+'</span>' : '') +
+ (p.budget_max ? '<span class="cm" style="color:#1473E6;font-weight:800"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'+fpr(p.budget_max)+'</span>' : '') +
+ (p.deadline ? '<span class="cm"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>'+String(p.deadline).slice(0,10)+'</span>' : '') +
+ '<span class="cm"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+(p.bid_count||0)+' عرض</span>' +
+ '<span class="cm">'+ago(p.created_at)+'</span>' +
+ '</div>' +
+ '</div>' +
+ awBar +
+ '<div class="card-footer">' +
+ '<div><div class="cf-budget">'+(p.budget_max ? fpr(p.budget_max) : 'مفتوح')+'</div><div class="cf-sub">'+(p.bid_count||0)+' عرض مقدَّم</div></div>' +
+ act +
+ '</div>' +
+ '</div>';
 }
 
 function render(list) {
-  var g = document.getElementById('grid');
-  if (!list.length) {
-    g.innerHTML = '<div class="empty"><div class="empty-ico">🔍</div><h3>لا توجد مشاريع</h3><p>جرّب فلتراً مختلفاً</p></div>';
-    document.getElementById('load-more').style.display = 'none';
-    return;
-  }
-  g.innerHTML = list.slice(0, PAGE).map(card).join('');
-  document.getElementById('load-more').style.display = list.length > PAGE ? 'block' : 'none';
+ var g = document.getElementById('grid');
+ if (!list.length) {
+ g.innerHTML = '<div class="empty"><div class="empty-ico"></div><h3>لا توجد مشاريع</h3><p>جرّب فلتراً مختلفاً</p></div>';
+ document.getElementById('load-more').style.display = 'none';
+ return;
+ }
+ g.innerHTML = list.slice(0, PAGE).map(card).join('');
+ document.getElementById('load-more').style.display = list.length > PAGE ? 'block' : 'none';
 }
 
 function filter(st, btn) {
-  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
-  if (btn) btn.classList.add('on');
-  PAGE = 9;
-  CUR = st === 'open'      ? ALL.filter(function(p){return p.status==='open';})
-      : st === 'completed' ? ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';})
-      : ALL;
-  render(CUR);
+ document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
+ if (btn) btn.classList.add('on');
+ PAGE = 9;
+ CUR = st === 'open' ? ALL.filter(function(p){return p.status==='open';})
+ : st === 'completed' ? ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';})
+ : ALL;
+ render(CUR);
 }
 
 function showMore() { PAGE += 9; render(CUR); }
 
 async function load() {
-  try {
-    var r = await fetch(API + '/api/requests');
-    var data = await r.json();
-    ALL = Array.isArray(data) ? data : [];
-    CUR = ALL;
+ try {
+ var r = await fetch(API + '/api/requests');
+ var data = await r.json();
+ ALL = Array.isArray(data) ? data : [];
+ CUR = ALL;
 
-    var open = ALL.filter(function(p){return p.status==='open';}).length;
-    var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
+ var open = ALL.filter(function(p){return p.status==='open';}).length;
+ var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
 
-    document.getElementById('hs-req').textContent  = ALL.length;
-    document.getElementById('hs-open').textContent = open;
-    document.getElementById('hs-done').textContent = done;
-    document.getElementById('sub-text').textContent = ALL.length + ' مشروع — ' + open + ' مفتوح للعروض';
+ document.getElementById('hs-req').textContent = ALL.length;
+ document.getElementById('hs-open').textContent = open;
+ document.getElementById('hs-done').textContent = done;
+ document.getElementById('sub-text').textContent = ALL.length + ' مشروع — ' + open + ' مفتوح للعروض';
 
-    render(ALL);
-  } catch(e) {
-    document.getElementById('grid').innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';
-  }
+ render(ALL);
+ } catch(e) {
+ document.getElementById('grid').innerHTML = '<div class="empty"><div class="empty-ico"></div><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';
+ }
 }
 
 load();
 </script>
+<script>if(typeof lucide !== "undefined") lucide.createIcons();</script>
 </body>
 </html>
