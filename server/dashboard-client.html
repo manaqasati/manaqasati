@@ -2846,6 +2846,29 @@ function startChat(provId, provName, reqId) {
  loadChatTab(reqId);
  startChatPolling(reqId);
 }
+
+// ── تهيئة الصفحة ──
+(function init() {
+  // تهيئة اسم المستخدم
+  if (user && user.name) {
+    var uName = document.getElementById('userName');
+    var uAv   = document.getElementById('userAv');
+    if (uName) uName.textContent = user.name;
+    if (uAv) {
+      var txt = document.getElementById('userAvText');
+      if (txt) txt.textContent = user.name.charAt(0);
+      else uAv.textContent = user.name.charAt(0);
+      if (user.avatar) {
+        var img = document.getElementById('userAvImg');
+        if (img) { img.src = user.avatar; img.style.display = 'block'; }
+        if (txt) txt.style.display = 'none';
+      }
+    }
+  }
+  // تحميل البيانات
+  loadHome();
+  loadNotifCount();
+})();
 </script>
 <script>if(typeof lucide !== "undefined") lucide.createIcons();</script>
 </body>
