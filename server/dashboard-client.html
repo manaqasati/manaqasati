@@ -891,6 +891,113 @@ p { color: var(--t2); line-height: 1.75 }
   border: 1.5px solid #e2e8f0;
 }
 
+
+/* ── بطاقات المشاريع الجديدة ── */
+.ri-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e8edf2;
+  box-shadow: 0 2px 8px rgba(15,23,42,.06);
+  cursor: pointer;
+  transition: all .22s cubic-bezier(.4,0,.2,1);
+  margin-bottom: 14px;
+}
+.ri-card:hover {
+  box-shadow: 0 8px 32px rgba(20,115,230,.14);
+  transform: translateY(-3px);
+  border-color: #b3d4f8;
+}
+.ri-img-wrap {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+}
+.ri-img {
+  width: 100%; height: 160px;
+  object-fit: cover;
+  display: block;
+  transition: transform .4s ease;
+}
+.ri-card:hover .ri-img { transform: scale(1.04); }
+.ri-img-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(15,23,42,.4));
+}
+.ri-no-img {
+  height: 100px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.ri-cat-badge {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px; font-weight: 700;
+}
+.ri-status-float {
+  position: absolute; top: 10px; right: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.1);
+}
+.ri-body { padding: 14px 16px 14px; }
+.ri-title {
+  font-size: 15px; font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ri-desc {
+  font-size: 12px; color: #64748b;
+  line-height: 1.7; margin-bottom: 10px;
+}
+.ri-meta {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 12px;
+}
+.ri-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 600; color: #334155;
+}
+.ri-chip svg { width: 11px; height: 11px; flex-shrink: 0; }
+.ri-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+.ri-footer-right { display: flex; flex-direction: column; gap: 2px; }
+.ri-footer-left  { display: flex; align-items: center; gap: 8px; }
+.ri-budget {
+  font-size: 16px; font-weight: 900; color: #1473E6;
+  letter-spacing: -.3px;
+}
+.ri-time { font-size: 11px; color: #94a3b8; }
+.ri-bids {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700; color: #1473E6;
+  background: #EBF3FD; padding: 4px 10px; border-radius: 20px;
+}
+.ri-bids-empty { color: #94a3b8 !important; background: #f8fafc !important; }
+.ri-detail-btn {
+  padding: 6px 14px;
+  background: #0f2545; color: #fff;
+  border: none; border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s;
+}
+.ri-detail-btn:hover { background: #1473E6; }
+
 </style>
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -1455,39 +1562,63 @@ async function loadHome(){
  loadNotifCount();
 }
 
-function riCard(r){
- const stMap={
- open:{label:'نشط',cls:'tag-green'},
- in_progress:{label:'قيد التنفيذ',cls:'tag-blue'},
- completed:{label:'مكتمل',cls:'tag-gray'},
- pending_review:{label:'قيد المراجعة',cls:'tag-yellow'},
- rejected:{label:'مرفوض',cls:'tag-red'},
- };
- const st=stMap[r.status]||{label:r.status,cls:'tag-gray'};
- const bc=parseInt(r.bid_count)||0;
- const imgs=Array.isArray(r.images)&&r.images.length?r.images:(r.image_url?[r.image_url]:[]);
- const mainImg=imgs[r.main_image_index||0]||imgs[0]||null;
- return`<div class="proj-card" onclick="openDetail(${r.id})">
- ${mainImg?`<div style="width:100%;height:140px;overflow:hidden;border-radius:12px 12px 0 0;background:#f1f5f9;margin-bottom:0">
-  <img src="${mainImg}" style="width:100%;height:140px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'" loading="lazy">
-</div>`:''}
- <div class="proj-card-body">
- <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
- <div class="proj-title">${r.title}</div>
- <span class="tag ${st.cls}" style="flex-shrink:0">${st.label}</span>
- </div>
- <div class="proj-meta">
- ${r.city?`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${r.city}</span>`:''}
- ${r.category?`<span class="proj-meta-item"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${r.category}</span>`:''}
- ${bc?`<span class="proj-meta-item" style="color:var(--blue);font-weight:700"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${bc} عرض</span>`:''}
- <span class="proj-meta-item" style="color:var(--text4)">${ago(r.created_at)}</span>
- </div>
- </div>
- <div class="proj-footer">
- <span style="font-size:12px;color:var(--text3)">${r.project_number||''}</span>
- <button class="btn btn-gray btn-sm" onclick="event.stopPropagation();openDetail(${r.id})">التفاصيل</button>
- </div>
- </div>`;
+function riCard(r) {
+  const stMap = {
+    open:           { label:'نشط',           bg:'#dcfce7', color:'#15803d', dot:'#16a34a' },
+    in_progress:    { label:'قيد التنفيذ',   bg:'#dbeafe', color:'#1d4ed8', dot:'#3b82f6' },
+    completed:      { label:'مكتمل',          bg:'#f1f5f9', color:'#475569', dot:'#94a3b8' },
+    pending_review: { label:'قيد المراجعة',  bg:'#fef9c3', color:'#a16207', dot:'#d97706' },
+    rejected:       { label:'مرفوض',          bg:'#fee2e2', color:'#b91c1c', dot:'#dc2626' },
+  };
+  const st  = stMap[r.status] || stMap.open;
+  const bc  = parseInt(r.bid_count) || 0;
+  const imgs = Array.isArray(r.images) && r.images.length ? r.images : (r.image_url ? [r.image_url] : []);
+  const mainImg = imgs[r.main_image_index || 0] || imgs[0] || null;
+  const budget = r.budget_max ? Number(r.budget_max).toLocaleString('en-US') + ' ر.س' : null;
+  const timeAgo = r.created_at ? ago(new Date(r.created_at)) : '';
+
+  const catColors = {
+    'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e',
+    'تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','مكافحة حشرات':'#15803d',
+  };
+  const catColor = catColors[r.category] || '#1473E6';
+
+  return `<div class="ri-card" onclick="openDetail(${r.id})">
+    ${mainImg ? `
+    <div class="ri-img-wrap">
+      <img src="${mainImg}" class="ri-img" onerror="this.parentElement.style.display='none'" loading="lazy">
+      <div class="ri-img-overlay"></div>
+      <span class="ri-status-float" style="background:${st.bg};color:${st.color}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${st.dot};display:inline-block;margin-left:5px"></span>
+        ${st.label}
+      </span>
+    </div>` : `
+    <div class="ri-no-img" style="background:linear-gradient(135deg,${catColor}18,${catColor}08)">
+      <div class="ri-cat-badge" style="background:${catColor}22;color:${catColor}">${r.category || 'مشروع'}</div>
+      <span class="ri-status-float" style="background:${st.bg};color:${st.color}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${st.dot};display:inline-block;margin-left:5px"></span>
+        ${st.label}
+      </span>
+    </div>`}
+    <div class="ri-body">
+      <div class="ri-title">${r.title}</div>
+      ${r.description ? `<div class="ri-desc">${r.description.substring(0,90)}${r.description.length>90?'…':''}</div>` : ''}
+      <div class="ri-meta">
+        ${r.city ? `<span class="ri-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${r.city}</span>` : ''}
+        ${r.category ? `<span class="ri-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${r.category}</span>` : ''}
+      </div>
+      <div class="ri-footer">
+        <div class="ri-footer-right">
+          ${budget ? `<span class="ri-budget">${budget}</span>` : ''}
+          <span class="ri-time">${timeAgo}</span>
+        </div>
+        <div class="ri-footer-left">
+          ${bc ? `<span class="ri-bids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${bc} عرض</span>` : '<span class="ri-bids ri-bids-empty">لا يوجد عروض</span>'}
+          <button class="ri-detail-btn" onclick="event.stopPropagation();openDetail(${r.id})">التفاصيل</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
 }
 
 
