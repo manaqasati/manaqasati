@@ -235,11 +235,58 @@ footer { background: #0f172a; padding: 32px; margin-top: 60px; }
  <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعاً</button>
  </div>
 
- <div class="filter-row">
- <button class="ftab on" onclick="filter('all',this)"> <i data-lucide="layers" class="icon-sm"></i> الكل</button>
- <button class="ftab" onclick="filter('open',this)"> مفتوح للعروض</button>
- <button class="ftab" onclick="filter('completed',this)"> <i data-lucide="check-circle" class="icon-sm"></i> تم الترسية</button>
- </div>
+ <!-- فلاتر الحالة -->
+<div class="filter-row">
+  <button class="ftab on" onclick="filter('all',this)">الكل</button>
+  <button class="ftab" onclick="filter('open',this)">مفتوح للعروض</button>
+  <button class="ftab" onclick="filter('completed',this)">تم الترسية</button>
+</div>
+
+<!-- فلاتر التخصص والمدينة -->
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+  <select id="f-cat" onchange="applyAll()" style="flex:1;min-width:160px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;color:#0f172a;background:#fff;cursor:pointer;font-family:inherit">
+    <option value="">كل التخصصات</option>
+    <option>تبريد وتكييف</option>
+    <option>كهرباء</option>
+    <option>سباكة</option>
+    <option>نجارة</option>
+    <option>تنظيف</option>
+    <option>نقل عفش</option>
+    <option>حدادة</option>
+    <option>ألمنيوم</option>
+    <option>مسابح (تنفيذ وصيانة)</option>
+    <option>كاميرات مراقبة وأمن</option>
+    <option>شبكات وإنترنت</option>
+    <option>مظلات وسواتر</option>
+    <option>عزل حراري وأسطح</option>
+    <option>أبواب</option>
+    <option>أعمال جبس وطباشير</option>
+    <option>مكافحة حشرات</option>
+    <option>أخرى</option>
+  </select>
+  <select id="f-city" onchange="applyAll()" style="flex:1;min-width:160px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;color:#0f172a;background:#fff;cursor:pointer;font-family:inherit">
+    <option value="">كل المدن</option>
+    <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>الزلفي</option>
+    <option>مكة المكرمة</option><option>جدة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option>
+    <option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>الخفجي</option><option>حفر الباطن</option>
+    <option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>بدر</option><option>خيبر</option>
+    <option>بريدة</option><option>عنيزة</option><option>الرس</option><option>المذنب</option>
+    <option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>تثليث</option>
+    <option>تبوك</option><option>الوجه</option><option>ضباء</option><option>حقل</option><option>أملج</option><option>تيماء</option>
+    <option>حائل</option><option>بقعاء</option><option>الغزالة</option><option>سميراء</option>
+    <option>عرعر</option><option>طريف</option><option>رفحاء</option>
+    <option>سكاكا</option><option>دومة الجندل</option><option>القريات</option>
+    <option>الباحة</option><option>بلجرشي</option><option>المندق</option>
+    <option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option>
+    <option>نجران</option><option>شرورة</option><option>حبونا</option>
+  </select>
+  <button onclick="clearAll()" style="padding:10px 18px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;color:#64748b;background:#fff;cursor:pointer;white-space:nowrap;font-family:inherit">
+    مسح الفلتر
+  </button>
+</div>
+
+<!-- عداد النتائج -->
+<div id="result-count" style="font-size:12px;color:#94a3b8;margin-bottom:12px;display:none"></div>
 
  <div class="grid" id="grid">
  <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:65%"></div></div></div>
@@ -344,14 +391,55 @@ function render(list) {
  document.getElementById('load-more').style.display = list.length > PAGE ? 'block' : 'none';
 }
 
+var ACTIVE_ST  = 'all';
+var ACTIVE_CAT = '';
+var ACTIVE_CITY = '';
+
 function filter(st, btn) {
- document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
- if (btn) btn.classList.add('on');
- PAGE = 9;
- CUR = st === 'open' ? ALL.filter(function(p){return p.status==='open';})
- : st === 'completed' ? ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';})
- : ALL;
- render(CUR);
+  ACTIVE_ST = st;
+  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
+  if (btn) btn.classList.add('on');
+  applyAll();
+}
+
+function applyAll() {
+  ACTIVE_CAT  = (document.getElementById('f-cat')  || {}).value || '';
+  ACTIVE_CITY = (document.getElementById('f-city') || {}).value || '';
+  PAGE = 9;
+
+  CUR = ALL.filter(function(p) {
+    if (ACTIVE_ST === 'open'      && p.status !== 'open') return false;
+    if (ACTIVE_ST === 'completed' && p.status !== 'completed' && p.status !== 'in_progress') return false;
+    if (ACTIVE_CAT  && p.category !== ACTIVE_CAT)  return false;
+    if (ACTIVE_CITY && p.city     !== ACTIVE_CITY)  return false;
+    return true;
+  });
+
+  render(CUR);
+
+  var cnt = document.getElementById('result-count');
+  if (cnt) {
+    var hasFilter = ACTIVE_ST !== 'all' || ACTIVE_CAT || ACTIVE_CITY;
+    cnt.style.display = hasFilter ? 'block' : 'none';
+    cnt.textContent = 'عرض ' + CUR.length + ' من ' + ALL.length + ' مشروع';
+  }
+}
+
+function clearAll() {
+  ACTIVE_ST   = 'all';
+  ACTIVE_CAT  = '';
+  ACTIVE_CITY = '';
+  var fCat  = document.getElementById('f-cat');
+  var fCity = document.getElementById('f-city');
+  if (fCat)  fCat.value  = '';
+  if (fCity) fCity.value = '';
+  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
+  var first = document.querySelector('.ftab');
+  if (first) first.classList.add('on');
+  var cnt = document.getElementById('result-count');
+  if (cnt) cnt.style.display = 'none';
+  CUR = ALL; PAGE = 9;
+  render(CUR);
 }
 
 function showMore() { PAGE += 9; render(CUR); }
@@ -386,10 +474,6 @@ load();
       <a href="terms.html" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">اتفاقية الاستخدام</a>
       <a href="terms.html#privacy" onclick="localStorage.setItem('terms_tab','privacy')" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">سياسة الخصوصية</a>
       <a href="terms.html#faq" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">الأسئلة الشائعة</a>
-      <a href="mailto:cs@manaqasa.com" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">تواصل معنا</a>
+      <a href="/cdn-cgi/l/email-protection#b5d6c6f5d8d4dbd4c4d4c6d49bd6dad8" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">تواصل معنا</a>
     </div>
-    <div style="font-size:12px">© 2026 مناقصة — جميع الحقوق محفوظة</div>
-  </div>
-</footer>
-</body>
-</html>
+    <div style="font-size:12px">© 2026 مناقصة — جميع الحقوق محفوظة</di
