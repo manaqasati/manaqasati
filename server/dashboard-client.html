@@ -1362,6 +1362,32 @@ p { color: var(--t2); line-height: 1.75 }
 </div>
 
  <div class="modal-foot">
+ <button class="btn btn-blue btn-full btn-lg" id="agree-btn" disabled onclick="acceptAgree()">متابعة وإضافة المشروع ←</button>
+ <button class="btn btn-gray btn-lg" onclick="closeAgree()">إلغاء</button>
+ </div>
+</div>
+</div>
+
+<!-- RATE MODAL -->
+<div class="modal-overlay" id="rate-ov">
+ <div class="modal-box">
+ <div class="modal-handle"></div>
+ <div class="modal-head"><h3>تقييم المزود</h3><button class="modal-close" onclick="closeRate()">✕</button></div>
+ <div class="modal-body">
+ <div class="alert" id="rate-alert"></div>
+ <p style="text-align:center;font-size:14px;margin-bottom:3px;color:var(--t2)">كيف كانت تجربتك مع هذا المزود؟</p>
+ <div class="stars-picker">
+ <span class="sp" onclick="setStar(1)">★</span>
+ <span class="sp" onclick="setStar(2)">★</span>
+ <span class="sp" onclick="setStar(3)">★</span>
+ <span class="sp" onclick="setStar(4)">★</span>
+ <span class="sp" onclick="setStar(5)">★</span>
+ </div>
+ <div class="fg"><label>تعليق (اختياري)</label>
+ <textarea id="rate-comment" style="min-height:80px" placeholder="شارك تجربتك..."></textarea>
+ </div>
+ </div>
+ <div class="modal-foot">
  <button class="btn btn-blue btn-full btn-lg" id="rate-btn" onclick="submitRate()">إرسال التقييم</button>
  <button class="btn btn-gray btn-lg" onclick="closeRate()">إلغاء</button>
  </div>
