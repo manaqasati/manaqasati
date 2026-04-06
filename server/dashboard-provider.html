@@ -566,7 +566,7 @@ h3{font-size:15px;font-weight:800}
 const API = 'https://manaqasati-production.up.railway.app';
 let user = JSON.parse(localStorage.getItem('user') || '{}');
 let token = localStorage.getItem('token') || '';
-if (!user.id) location.href = 'auth.html';
+if (!user.id || !token) { location.href = 'auth.html'; }
 
 const ALL_CITIES = ['أبها','أبو عريش','أحد رفيدة','أملج','الأحساء','الأفلاج','الباحة','البدائع','البرك','البكيرية','الجبيل','الجموم','الحرث','الحريق','الحناكية','الخبر','الخرج','الخفجي','الدرب','الدرعية','الدمام','الدوادمي','الرس','الرياض','الريث','الزلفي','السليل','الشماسية','الطائف','الظهران','العارضة','العقيق','العلا','العوامية','الغاط','الغزالة','القريات','القطيف','القنفذة','القويعية','الكامل','الليث','المجمعة','المخواة','المدينة المنورة','المذنب','المزاحمية','المندق','المويه','النماص','الوجه','بدر','بريدة','بقعاء','بلجرشي','بيش','بيشة','تبوك','تثليث','تيماء','ثادق','جازان','جدة','حائل','حبونا','حريملاء','حفر الباطن','حقل','خليص','خميس مشيط','خيبر','دومة الجندل','رأس تنورة','رابغ','رجال ألمع','رفحاء','رماح','رياض الخبراء','سراة عبيدة','سكاكا','سميراء','سيهات','شرورة','شقراء','صامطة','صبيا','صفوى','ضباء','ضرما','ضرية','طريف','ظهران الجنوب','عرعر','عفيف','عنيزة','فيفا','قلوة','محايل عسير','مكة المكرمة','ميسان','نجران','وادي الدواسر','يدمة','ينبع'];
 const CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
@@ -587,14 +587,19 @@ document.getElementById('profile-name').textContent = nm;
 const specSel = document.getElementById('s-spec');
 CATS.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; specSel.appendChild(o); });
 
-function hdr() { return { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } }; }
+function hdr() {
+  return { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } };
+}
+function GET(url) { return fetch(API + url, hdr()); }
+function POST(url, body) { return fetch(API + url, { method: 'POST', body: JSON.stringify(body), ...hdr() }); }
+function PUT(url, body) { return fetch(API + url, { method: 'PUT', body: JSON.stringify(body), ...hdr() }); }
 function ac(id) { return AVC[(+id || 0) % AVC.length]; }
 function ago(d) { const s = (new Date() - new Date(d)) / 1000; if (s < 60) return 'الآن'; if (s < 3600) return ~~(s / 60) + ' د'; if (s < 86400) return ~~(s / 3600) + ' س'; return ~~(s / 86400) + ' يوم'; }
 function fpr(p) { return p ? Number(p).toLocaleString('ar-SA') + ' ر.س' : '—'; }
 function fdt(d) { return d ? new Date(d).toLocaleDateString('ar-SA') : '—'; }
 function starsStr(n) { let s = ''; for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆'; return s; }
 function emptyH(t, s) { return `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>${t}</h4>${s ? `<p>${s}</p>` : ''}</div>`; }
-function safeArr(r) { try { return Array.isArray(r) ? r : []; } catch { return []; } }
+function safeArr(r) { try { if (Array.isArray(r)) return r; if (r && Array.isArray(r.data)) return r.data; return []; } catch { return []; } }
 async function safeFetch(url) { try { const r = await fetch(url, hdr()); const d = await r.json(); return Array.isArray(d) ? d : []; } catch { return []; } }
 function logout() { localStorage.clear(); location.href = 'auth.html'; }
 
@@ -656,7 +661,15 @@ function show(pg, el, key) {
   if (key) { const b = document.getElementById('mn-' + key) || document.getElementById('nl-' + key); if(b) b.classList.add('on'); }
   const titles = { home: 'الرئيسية', browse: 'تصفح المناقصات', 'my-bids': 'عروضي', messages: 'الرسائل', profile: 'ملفي الشخصي', settings: 'الإعدادات', notifs: 'الإشعارات', 'tender-detail': 'تفاصيل المناقصة' };
   const _pt = document.getElementById('pageTitle'); if(_pt) _pt.textContent = titles[pg] || '';
-  if (pg === 'home') loadHome();
+  if (pg === 'home') // تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    populateCities('p-city');
+    populateCities('b-city');
+  } catch(e) {}
+  loadHome();
+  loadNotifCount();
+});
   if (pg === 'browse') loadTenders();
   if (pg === 'my-bids') loadMyBids();
   if (pg === 'messages') loadMessages();
@@ -1642,7 +1655,15 @@ async function markAllRead() {
 }
 
 setInterval(loadNotifCount, 30000);
-loadHome();
+// تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    populateCities('p-city');
+    populateCities('b-city');
+  } catch(e) {}
+  loadHome();
+  loadNotifCount();
+});
 
 </script>
 </body>
