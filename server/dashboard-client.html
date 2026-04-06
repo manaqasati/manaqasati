@@ -1159,99 +1159,107 @@ p { color: var(--t2); line-height: 1.75 }
 
 <div class="page" id="page-new">
  <h2 style="margin-bottom:4px">نشر مشروع جديد</h2>
- <p style="margin-bottom:22px">أضف تفاصيل مشروعك ليصلك أفضل العروض من المزودين المحترفين</p>
+ <p style="margin-bottom:22px;font-size:13px;color:var(--t3)">أضف تفاصيل مشروعك ليصلك أفضل العروض</p>
+
  <div class="new-layout">
- <div>
- <div class="alert" id="new-alert"></div>
- <div class="card">
- <div class="card-head"><div class="card-title">تفاصيل المشروع</div></div>
- <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
- <div class="fg"><label>عنوان المشروع *</label>
- <input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت في الرياض"></div>
- <div class="form-grid">
- <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"><option value="">اختر التصنيف</option>
-<option value="تبريد وتكييف">تبريد وتكييف</option>
-<option value="كهرباء">كهرباء</option>
-<option value="سباكة">سباكة</option>
-<option value="نجارة">نجارة</option>
-<option value="تنظيف">تنظيف</option>
-<option value="نقل عفش">نقل عفش</option>
-<option value="حدادة">حدادة</option>
-<option value="ألمنيوم">ألمنيوم</option>
-<option value="مسابح (تنفيذ وصيانة)">مسابح (تنفيذ وصيانة)</option>
-<option value="كاميرات مراقبة وأمن">كاميرات مراقبة وأمن</option>
-<option value="شبكات وإنترنت">شبكات وإنترنت</option>
-<option value="مظلات وسواتر">مظلات وسواتر</option>
-<option value="عزل حراري وأسطح">عزل حراري وأسطح</option>
-<option value="أبواب">أبواب</option>
-<option value="أعمال جبس وطباشير">أعمال جبس وطباشير</option>
-<option value="مكافحة حشرات">مكافحة حشرات</option>
-<option value="أخرى">أخرى</option></select></div>
- <div class="fg" id="other-wrap" style="display:none"><label>التخصص</label><input id="n-other" type="text"></div>
- <div class="fg"><label>المدينة *</label>
- <div style="position:relative">
- <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off"
- oninput="filterCities(this.value)" onfocus="showCities()" onblur="setTimeout(hideCities,200)">
- <div id="city-dd" class="city-dd"></div>
- </div>
- </div>
- <div class="fg"><label>الميزانية المتوقعة (ر.س)</label>
- <input id="n-budget" type="number" placeholder="مثال: 2000" inputmode="numeric"></div>
- <div class="fg"><label>الموعد المطلوب</label><input id="n-deadline" type="date"></div>
- <div class="fg"><label>العنوان التفصيلي</label>
- <input id="n-address" type="text" placeholder="الحي، الشارع..."></div>
- </div>
- <div class="fg full"><label>تفاصيل المشروع *</label>
- <textarea id="n-desc" style="min-height:120px"
- placeholder="اشرح مشروعك بالتفاصيل: المساحة، النوع، أي معلومات تساعد المزودين على تقديم عرض دقيق..."></textarea>
- </div>
- </div>
- </div>
- <div class="card" style="margin-top:12px">
- <div class="card-head">
- <div class="card-title"> صور المشروع</div>
- <span style="font-size:11px;color:var(--t3)">اختياري — حتى 5 صور</span>
- </div>
- <div class="card-body">
- <div class="img-upload-zone" onclick="document.getElementById('n-imgs').click()">
- <div style="font-size:32px;margin-bottom:8px"></div>
- <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور المشروع</div>
- <div style="font-size:11px;color:var(--t3);margin-top:3px">JPG, PNG — حتى 5 صور، 5MB لكل صورة</div>
- </div>
- <input type="file" id="n-imgs" accept="image/*" multiple style="display:none" onchange="previewImgs(this)">
- <div class="img-grid" id="img-grid"></div>
- </div>
- </div>
- <div style="display:flex;gap:10px;margin-top:16px">
- <button class="btn btn-blue btn-lg btn-full" id="n-btn" onclick="submitReq()">
- نشر المشروع الآن
- </button>
- <button class="btn btn-gray btn-lg" onclick="go('home',null)">إلغاء</button>
- </div>
- </div>
- <div>
- <div class="tip-box" style="background:linear-gradient(135deg,var(--green-l),#e6ffe9);border:1.5px solid var(--green-m)">
- <div style="font-size:14px;font-weight:800;color:var(--green);margin-bottom:12px"> ابدأ في دقائق</div>
- <div style="color:#166534;display:flex;flex-direction:column;gap:7px;font-weight:600">
- <span>انشر مشروعك مجاناً فوراً</span>
- <span>استقبل عروض خلال دقائق</span>
- <span>قارن المزودين وتقييماتهم</span>
- <span>اقبل العرض المناسب</span>
- <span>تواصل مع المزود مباشرة</span>
- </div>
- </div>
- <div class="tip-box" style="background:var(--blue-l);border:1.5px solid var(--blue-m)">
- <div style="font-size:14px;font-weight:800;color:var(--blue);margin-bottom:12px"> للحصول على أفضل العروض</div>
- <div style="color:var(--t2);display:flex;flex-direction:column;gap:7px">
- <span> وصف واضح ومفصّل</span>
- <span> حدد مدينتك وحيك بدقة</span>
- <span> ميزانية واقعية</span>
- <span> أضف صوراً للمكان أو المشروع</span>
- </div>
- </div>
- </div>
+
+  <!-- العمود الأول: النموذج -->
+  <div>
+   <div class="alert" id="new-alert"></div>
+
+   <!-- تفاصيل المشروع -->
+   <div class="card">
+    <div class="card-head"><div class="card-title">تفاصيل المشروع</div></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+     <div class="fg"><label>عنوان المشروع *</label>
+      <input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت في الرياض"></div>
+     <div class="form-grid">
+      <div class="fg"><label>التصنيف *</label>
+       <select id="n-cat" onchange="checkOther()">
+        <option value="">اختر التصنيف</option>
+        <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
+        <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
+        <option>حدادة</option><option>ألمنيوم</option><option>مسابح (تنفيذ وصيانة)</option>
+        <option>كاميرات مراقبة وأمن</option><option>شبكات وإنترنت</option>
+        <option>مظلات وسواتر</option><option>عزل حراري وأسطح</option>
+        <option>أبواب</option><option>أعمال جبس وطباشير</option>
+        <option>مكافحة حشرات</option><option>أخرى</option>
+       </select>
+      </div>
+      <div class="fg" id="other-wrap" style="display:none"><label>التخصص</label><input id="n-other" type="text"></div>
+      <div class="fg"><label>المدينة</label>
+       <div style="position:relative">
+        <input id="n-city" type="text" placeholder="ابحث عن مدينتك..." autocomplete="off"
+         oninput="filterCities(this.value)" onfocus="showCities()" onblur="setTimeout(hideCities,200)">
+        <div id="city-dd" class="city-dd"></div>
+       </div>
+      </div>
+      <div class="fg"><label>الميزانية المتوقعة (ر.س)</label>
+       <input id="n-budget" type="number" placeholder="مثال: 2000" inputmode="numeric"></div>
+      <div class="fg"><label>الموعد المطلوب</label><input id="n-deadline" type="date"></div>
+      <div class="fg"><label>العنوان التفصيلي</label>
+       <input id="n-address" type="text" placeholder="الحي، الشارع..."></div>
+     </div>
+     <div class="fg full"><label>تفاصيل المشروع *</label>
+      <textarea id="n-desc" style="min-height:120px"
+       placeholder="اشرح مشروعك بالتفاصيل: المساحة، النوع، أي معلومات تساعد المزودين على تقديم عرض دقيق..."></textarea>
+     </div>
+    </div>
+   </div>
+
+   <!-- صور المشروع -->
+   <div class="card" style="margin-top:12px">
+    <div class="card-head">
+     <div class="card-title">صور المشروع</div>
+     <span style="font-size:11px;color:var(--t3)">اختياري — حتى 5 صور</span>
+    </div>
+    <div class="card-body">
+     <div class="img-upload-zone" onclick="document.getElementById('n-imgs').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-linecap="round" style="width:36px;height:36px;margin-bottom:8px"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+      <div style="font-size:13px;font-weight:700;color:var(--blue)">اضغط لإضافة صور المشروع</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px">JPG, PNG — حتى 5 صور، 5MB لكل صورة</div>
+     </div>
+     <input type="file" id="n-imgs" accept="image/*" multiple style="display:none" onchange="previewImgs(this)">
+     <div class="img-grid" id="img-grid"></div>
+    </div>
+   </div>
+
+   <!-- أزرار -->
+   <div style="display:flex;gap:10px;margin-top:16px">
+    <button class="btn btn-blue btn-lg btn-full" id="n-btn" onclick="submitReq()">
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:16px;height:16px"><polyline points="20 6 9 17 4 12"/></svg>
+     نشر المشروع الآن
+    </button>
+    <button class="btn btn-gray btn-lg" onclick="go('home',null)">إلغاء</button>
+   </div>
+  </div>
+
+  <!-- العمود الثاني: نصائح -->
+  <div>
+   <div class="tip-box" style="background:linear-gradient(135deg,var(--green-l),#e6ffe9);border:1.5px solid var(--green-m)">
+    <div style="font-size:14px;font-weight:800;color:var(--green);margin-bottom:12px">ابدأ في دقائق</div>
+    <div style="color:#166534;display:flex;flex-direction:column;gap:7px;font-weight:600">
+     <span>انشر مشروعك مجاناً فوراً</span>
+     <span>استقبل عروض خلال دقائق</span>
+     <span>قارن المزودين وتقييماتهم</span>
+     <span>اقبل العرض المناسب</span>
+     <span>تواصل مع المزود مباشرة</span>
+    </div>
+   </div>
+   <div class="tip-box" style="background:var(--blue-l);border:1.5px solid var(--blue-m);margin-top:12px">
+    <div style="font-size:14px;font-weight:800;color:var(--blue);margin-bottom:12px">للحصول على أفضل العروض</div>
+    <div style="color:var(--t2);display:flex;flex-direction:column;gap:7px">
+     <span>وصف واضح ومفصّل</span>
+     <span>حدد مدينتك وحيك بدقة</span>
+     <span>ميزانية واقعية</span>
+     <span>أضف صوراً للمكان أو المشروع</span>
+    </div>
+   </div>
+  </div>
+
  </div>
 </div>
+
 
 <div class="page" id="page-notifs">
  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
