@@ -47,25 +47,59 @@ async function sendEmail(to, subject, html) {
 }
 
 function emailTpl(title, body, btnText, btnUrl) {
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>
-    body{font-family:Tahoma,Arial,sans-serif;background:#f3f4f6;margin:0;padding:20px}
-    .box{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-    .head{background:#1B3A6B;padding:24px;text-align:center}
-    .head h1{color:#fff;margin:0;font-size:20px}
-    .head p{color:rgba(255,255,255,.7);margin:6px 0 0;font-size:13px}
-    .body{padding:28px 32px}.body p{color:#374151;font-size:14px;line-height:1.9;margin:0 0 14px}
-    .btn{display:inline-block;background:#2C5282;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;margin:8px 0}
-    .hl{background:#E6EEF8;border-right:3px solid #2C5282;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#1B2B4B}
-    .ok{background:#E1F5EE;border-right:3px solid #1D9E75;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#085041}
-    .ng{background:#FCEBEB;border-right:3px solid #E24B4A;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:13px;color:#7f1d1d}
-    .foot{background:#f9fafb;padding:14px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
-  </style></head><body><div class="box">
-    <div class="head"><h1>🏆 مناقصة</h1><p>منصة مناقصة للخدمات</p></div>
-    <div class="body"><p><strong>${title}</strong></p>${body}
-      ${btnText&&btnUrl?`<p style="text-align:center;margin-top:20px"><a href="${btnUrl}" class="btn">${btnText}</a></p>`:''}
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Tahoma,Arial,sans-serif;background:#f0f4f8;padding:24px 16px;direction:rtl}
+.wrap{max-width:560px;margin:0 auto}
+.head{background:linear-gradient(135deg,#0d1f3c 0%,#1B3A6B 100%);border-radius:16px 16px 0 0;padding:32px 28px 28px;text-align:center;position:relative;overflow:hidden}
+.head::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(240,165,0,0.08);top:-60px;right:-40px}
+.head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#F0A500,transparent)}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:#F0A500;display:inline-block}
+.logo-txt{font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px}
+.head-sub{font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px}
+.body{background:#ffffff;padding:32px 32px 24px;border-right:4px solid #1B3A6B}
+.body-title{font-size:16px;font-weight:700;color:#0d1f3c;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e8eef7}
+.body p{color:#374151;font-size:14px;line-height:2;margin:0 0 12px}
+.hl{background:#e8eef7;border-right:4px solid #1B3A6B;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#0d1f3c;line-height:1.9}
+.ok{background:#f0fdf4;border-right:4px solid #16a34a;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#15803d;line-height:1.9}
+.ng{background:#fef2f2;border-right:4px solid #dc2626;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#991b1b;line-height:1.9}
+.gold-box{background:#fff8e7;border-right:4px solid #F0A500;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#92400e;line-height:1.9}
+.btn-wrap{text-align:center;margin:24px 0 8px}
+.btn{display:inline-block;background:linear-gradient(135deg,#1B3A6B,#2C5282);color:#ffffff !important;padding:13px 32px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.3px;box-shadow:0 4px 14px rgba(27,58,107,0.3)}
+.foot{background:#f4f7fb;border-radius:0 0 16px 16px;padding:16px 28px;text-align:center;border-top:1px solid #e8eef7}
+.foot-logo{font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:6px}
+.foot-links a{color:#1B3A6B;text-decoration:none;margin:0 6px;font-size:11px}
+.foot-copy{font-size:10px;color:#94a3b8;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="logo-row"><span class="logo-dot"></span><span class="logo-txt">مناقصة</span></div>
+    <div class="head-sub">منصة مناقصة للخدمات المنزلية والتجارية</div>
+  </div>
+  <div class="body">
+    <div class="body-title">${title}</div>
+    ${body}
+    ${btnText&&btnUrl?`<div class="btn-wrap"><a href="${btnUrl}" class="btn">${btnText}</a></div>`:''}
+  </div>
+  <div class="foot">
+    <div class="foot-logo">● مناقصة</div>
+    <div>
+      <a href="https://manaqasa.com">الرئيسية</a>
+      <a href="https://manaqasa.com/terms.html">الشروط</a>
+      <a href="https://manaqasa.com/privacy.html">الخصوصية</a>
     </div>
-    <div class="foot">© 2025 منصة مناقصة — manaqasa.com</div>
-  </div></body></html>`;
+    <div class="foot-copy">© 2025 منصة مناقصة — manaqasa.com · هذا البريد أُرسل تلقائياً</div>
+  </div>
+</div>
+</body></html>`;
 }
 
 function genProjectNum(id, date) {
@@ -75,7 +109,6 @@ function genProjectNum(id, date) {
 
 // ── DB INIT ──
 async function initDB() {
-  // إنشاء الجداول
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -157,7 +190,6 @@ async function initDB() {
     );
   `);
 
-  // ترحيل: إعادة تسمية password_hash → password
   try {
     await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`);
     console.log('✅ تم تسمية password_hash → password');
@@ -167,12 +199,8 @@ async function initDB() {
     }
   }
 
-  // إزالة NOT NULL عن password
-  try {
-    await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`);
-  } catch(e) {}
+  try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); } catch(e) {}
 
-  // إضافة أعمدة مفقودة
   const alters = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`,
@@ -198,7 +226,6 @@ async function initDB() {
   ];
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
-  // توليد أرقام المشاريع المفقودة
   const rows = await pool.query(`SELECT id,created_at FROM requests WHERE project_number IS NULL`);
   for (const row of rows.rows) {
     await pool.query(`UPDATE requests SET project_number=$1 WHERE id=$2`,
@@ -227,13 +254,8 @@ async function notify(userId, title, body, type, refId) {
   ).catch(()=>{});
 }
 
-// ────────────────────────────────────────────
-// ── WEBSOCKET SERVER ──
-// ────────────────────────────────────────────
-
+// ── WEBSOCKET ──
 const wss = new WebSocketServer({ server });
-
-// Map: userId => Set<ws>
 const clients = new Map();
 
 function wsAuth(token) {
@@ -264,7 +286,6 @@ wss.on('connection', (ws, req) => {
   ws.on('message', async (raw) => {
     try {
       const data = JSON.parse(raw);
-
       if (data.type === 'message') {
         const { request_id, receiver_id, content } = data;
         if (!content?.trim() || !receiver_id || !request_id) return;
@@ -279,13 +300,11 @@ wss.on('connection', (ws, req) => {
         await notify(receiver_id, '💬 رسالة جديدة',
           `${msg.sender_name}: ${content.substring(0,50)}`, 'message', request_id);
       }
-
       if (data.type === 'typing') {
         const { receiver_id, request_id, is_typing } = data;
         if (!receiver_id) return;
         broadcast([receiver_id], { type: 'typing', from: ws.userId, request_id, is_typing });
       }
-
       if (data.type === 'read') {
         const { request_id, sender_id } = data;
         await pool.query(
@@ -293,7 +312,6 @@ wss.on('connection', (ws, req) => {
           [request_id, ws.userId, sender_id]);
         broadcast([sender_id], { type: 'read', request_id, reader_id: ws.userId });
       }
-
     } catch (e) { console.error('ws error:', e.message); }
   });
 
@@ -324,11 +342,11 @@ async function notifyInterestedProviders(reqId, title, category) {
       await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
       if (p.email) {
         await sendEmail(p.email, `🔔 مناقصة جديدة: ${title}`,
-          emailTpl('مناقصة جديدة تهمك! 🔔',
+          emailTpl('مناقصة جديدة تهمك!',
             `<p>مرحباً <strong>${p.name}</strong>،</p>
              <p>نُشرت مناقصة جديدة في مجال <strong>${category}</strong>:</p>
              <div class="hl"><strong>${title}</strong></div>`,
-            '💼 تقديم عرض', `${SITE_URL}/dashboard-provider.html`
+            'تقديم عرض', `${SITE_URL}/dashboard-provider.html`
           )
         );
       }
@@ -336,12 +354,7 @@ async function notifyInterestedProviders(reqId, title, category) {
   } catch(e) { console.error('notifyProviders:', e.message); }
 }
 
-// ────────────────────────────────────────────
-// ── SETUP / FIX ENDPOINTS ──
-// ────────────────────────────────────────────
-
-// إصلاح قاعدة البيانات مباشرة
-// /api/fix-db?secret=manaqasa2024
+// ── SETUP ENDPOINTS ──
 app.get('/api/fix-db', async (req, res) => {
   try {
     if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رمز خاطئ' });
@@ -353,21 +366,15 @@ app.get('/api/fix-db', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// تعيين المدير مباشرة + إعادة تعيين كلمة المرور
-// /api/direct-admin?secret=manaqasa2024&email=EMAIL&password=PASS
 app.get('/api/direct-admin', async (req, res) => {
   try {
     if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رمز خاطئ' });
     const { email, password } = req.query;
     if (!email || !password) return res.json({ usage: '/api/direct-admin?secret=manaqasa2024&email=EMAIL&password=PASS' });
-
-    // إصلاح العمود أولاً
     try { await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`); } catch(e) {}
     try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); } catch(e) {}
-
     const hash = await bcrypt.hash(password, 10);
     const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
-
     if (exists.rows.length) {
       await pool.query(`UPDATE users SET password=$1, role='admin', is_active=TRUE WHERE email=$2`, [hash, email]);
       res.json({ ok: true, message: '✅ تم تحديث كلمة المرور ودور المدير بنجاح', email });
@@ -378,15 +385,12 @@ app.get('/api/direct-admin', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// إنشاء حساب المدير
-// /api/setup-admin?secret=manaqasa2024&email=EMAIL&password=PASS&name=الاسم
 app.get('/api/setup-admin', async (req, res) => {
   try {
     if (req.query.secret !== 'manaqasa2024') return res.status(403).json({ message: 'رابط غير صحيح' });
     const { email, password, name } = req.query;
     if (!email || !password || !name) return res.json({
-      usage: '?secret=manaqasa2024&email=EMAIL&password=PASS&name=الاسم',
-      example: `${req.protocol}://${req.get('host')}/api/setup-admin?secret=manaqasa2024&email=admin@manaqasa.com&password=Admin@123&name=المدير`
+      usage: '?secret=manaqasa2024&email=EMAIL&password=PASS&name=الاسم'
     });
     try { await pool.query(`ALTER TABLE users RENAME COLUMN password_hash TO password`); } catch(e) {}
     try { await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`); } catch(e) {}
@@ -394,17 +398,16 @@ app.get('/api/setup-admin', async (req, res) => {
     const exists = await pool.query('SELECT id,role FROM users WHERE email=$1', [email]);
     if (exists.rows.length) {
       await pool.query(`UPDATE users SET password=$1, role='admin', is_active=TRUE WHERE email=$2`, [hash, email]);
-      return res.json({ ok: true, message: `✅ تم ترقية الحساب ${email} لمدير وتحديث كلمة المرور` });
+      return res.json({ ok: true, message: `✅ تم ترقية الحساب ${email} لمدير` });
     }
     const r = await pool.query(
       `INSERT INTO users(name,email,password,role) VALUES($1,$2,$3,'admin') RETURNING id,name,email,role`,
       [name, email, hash]
     );
-    res.json({ ok: true, message: '✅ تم إنشاء حساب المدير بنجاح', user: r.rows[0] });
+    res.json({ ok: true, message: '✅ تم إنشاء حساب المدير', user: r.rows[0] });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// التحقق من الحساب
 app.get('/api/debug/bids/:id', async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
@@ -413,19 +416,13 @@ app.get('/api/debug/bids/:id', async (req, res) => {
     const t2 = await pool.query(`
       SELECT b.id, b.provider_id, b.price, b.status, b.days, b.note, b.created_at,
              u.name, u.city, u.badge
-      FROM bids b 
-      LEFT JOIN users u ON u.id = b.provider_id
+      FROM bids b LEFT JOIN users u ON u.id = b.provider_id
       WHERE b.request_id=$1`, [reqId]);
     res.json({ request: t1.rows[0], bids: t2.rows, count: t2.rows.length });
-  } catch(e) { 
-    res.status(500).json({ error: e.message, stack: e.stack }); 
-  }
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── AUTH ──
-// ────────────────────────────────────────────
-
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
 
 app.post('/api/auth/register', async (req, res) => {
@@ -455,14 +452,12 @@ app.post('/api/auth/login', async (req, res) => {
     if (!r.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    // يدعم كلا العمودين: password و password_hash
     const storedHash = user.password || user.password_hash || '';
-    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة — استخدم رابط إعادة التعيين' });
+    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة' });
     const ok = await bcrypt.compare(password, storedHash);
     if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    delete user.password;
-    delete user.password_hash;
+    delete user.password; delete user.password_hash;
     res.json({ user, token });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -477,8 +472,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
     await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
       emailTpl(`مرحباً ${user.name}،`,
-        `<p>اضغط الزر لإعادة تعيين كلمة المرور خلال ساعة.</p>`,
-        '🔑 إعادة تعيين كلمة المرور', resetUrl));
+        `<p>طلبت إعادة تعيين كلمة المرور. اضغط الزر أدناه خلال ساعة واحدة.</p>
+         <div class="gold-box">الرابط صالح لمدة ساعة واحدة فقط</div>`,
+        'إعادة تعيين كلمة المرور', resetUrl));
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -508,10 +504,7 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── REQUESTS ──
-// ────────────────────────────────────────────
-
 app.get('/api/requests', async (req, res) => {
   try {
     const { category, city } = req.query;
@@ -558,7 +551,6 @@ app.post('/api/requests', auth, async (req, res) => {
     if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
     const mainIdx = parseInt(main_image_index) || 0;
     const mainImg = image_url || (images && images[mainIdx]) || null;
-    // ── النشر مباشرة بحالة open ──
     const r = await pool.query(
       `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,images,main_image_index,client_id,status)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open') RETURNING *`,
@@ -568,12 +560,21 @@ app.post('/api/requests', auth, async (req, res) => {
     const num = genProjectNum(req2.id, req2.created_at);
     await pool.query('UPDATE requests SET project_number=$1 WHERE id=$2', [num, req2.id]);
     req2.project_number = num;
-    // إشعار الأدمن
     const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
     for (const a of admins.rows) await notify(a.id, '📋 طلب جديد', `${title} — نُشر تلقائياً`, 'new_request', req2.id);
-    // إشعار المزودين المهتمين بهذا التصنيف
     notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
     res.json(req2);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/requests/:id/status', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const r = await pool.query(
+      `UPDATE requests SET status=$1 WHERE id=$2 AND client_id=$3 RETURNING *`,
+      [status, req.params.id, req.user.id]);
+    if (!r.rows.length) return res.status(403).json({ message: 'غير مصرح' });
+    res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -589,80 +590,42 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
       await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
       if (prov.rows[0]?.email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
-          emailTpl('مبروك! اكتمل المشروع 🎉',
-            `<p>أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong>.</p>`,
-            '⭐ ملفي الشخصي', `${SITE_URL}/dashboard-provider.html`));
+          emailTpl(`مبروك ${prov.rows[0].name}!`,
+            `<div class="ok">أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong> بنجاح.</div>`,
+            'ملفي الشخصي', `${SITE_URL}/dashboard-provider.html`));
       }
-    }
-    const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
-    if (client.rows[0]?.email) {
-      setTimeout(async () => {
-        await sendEmail(client.rows[0].email, `⭐ قيّم تجربتك: ${req2.title}`,
-          emailTpl('قيّم المزود الآن ⭐',
-            `<p>اكتمل مشروعك <strong>"${req2.title}"</strong>! رأيك يساعد العملاء الآخرين.</p>`,
-            '⭐ تقييم المزود', `${SITE_URL}/dashboard-client.html`)
-        ).catch(()=>{});
-      }, 3600000);
     }
     res.json(req2);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── BIDS ──
-// ────────────────────────────────────────────
-
 app.get('/api/requests/:id/bids', async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
     if (isNaN(reqId)) return res.status(400).json({ message: 'معرف غير صحيح' });
-
-    // جلب العروض مع معلومات المزود
     const bidsRes = await pool.query(
       `SELECT b.id, b.request_id, b.provider_id, b.price, b.days,
               b.note, b.status, b.created_at,
-              u.name AS provider_name,
-              u.city AS provider_city,
-              u.badge AS provider_badge,
-              u.specialties AS provider_specialties
-       FROM bids b
-       LEFT JOIN users u ON u.id = b.provider_id
-       WHERE b.request_id = $1
-       ORDER BY b.created_at ASC`,
-      [reqId]
-    );
-
+              u.name AS provider_name, u.city AS provider_city,
+              u.badge AS provider_badge, u.specialties AS provider_specialties
+       FROM bids b LEFT JOIN users u ON u.id = b.provider_id
+       WHERE b.request_id = $1 ORDER BY b.created_at ASC`, [reqId]);
     const bids = bidsRes.rows;
-
-    // تقييمات المزودين
     for (let i = 0; i < bids.length; i++) {
       const b = bids[i];
       try {
         const rv = await pool.query(
           'SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1',
-          [b.provider_id]
-        );
+          [b.provider_id]);
         b.avg_rating = parseFloat(rv.rows[0].avg) || 0;
         b.review_count = parseInt(rv.rows[0].cnt) || 0;
-      } catch(e2) {
-        b.avg_rating = 0;
-        b.review_count = 0;
-      }
+      } catch(e2) { b.avg_rating = 0; b.review_count = 0; }
     }
-
-    // ترتيب العروض
     const order = { accepted: 0, pending: 1, rejected: 2 };
-    bids.sort(function(a, b) {
-      const oa = order[a.status] !== undefined ? order[a.status] : 1;
-      const ob = order[b.status] !== undefined ? order[b.status] : 1;
-      return oa - ob;
-    });
-
+    bids.sort((a, b) => (order[a.status]??1) - (order[b.status]??1));
     res.json(bids);
-  } catch(e) {
-    console.error('GET /bids error:', e.message);
-    res.status(500).json({ message: e.message });
-  }
+  } catch(e) { console.error('GET /bids error:', e.message); res.status(500).json({ message: e.message }); }
 });
 
 async function handleSubmitBid(req, res, requestId) {
@@ -676,41 +639,34 @@ async function handleSubmitBid(req, res, requestId) {
     if (existing.rows.length) return res.status(400).json({ message: 'قدمت عرضاً على هذا الطلب مسبقاً' });
     const r = await pool.query(
       'INSERT INTO bids(request_id,provider_id,price,days,note) VALUES($1,$2,$3,$4,$5) RETURNING *',
-      [requestId, req.user.id, price, days, note||null]
-    );
+      [requestId, req.user.id, price, days, note||null]);
     await notify(reqData.rows[0].client_id, '💼 عرض جديد', `وصلك عرض جديد على: ${reqData.rows[0].title}`, 'bid', requestId);
-    // إشعار WebSocket فوري للعميل
     const providerInfo = await pool.query('SELECT name,city,specialties,badge FROM users WHERE id=$1', [req.user.id]);
     const pInfo = providerInfo.rows[0] || {};
     const avgR = await pool.query('SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1', [req.user.id]);
     broadcast([reqData.rows[0].client_id], {
       type: 'new_bid',
-      bid: {
-        ...r.rows[0],
-        provider_name: pInfo.name,
-        provider_city: pInfo.city,
-        provider_specialties: pInfo.specialties,
-        provider_badge: pInfo.badge,
-        avg_rating: parseFloat(avgR.rows[0].avg) || 0,
-        review_count: parseInt(avgR.rows[0].cnt) || 0
-      },
+      bid: { ...r.rows[0], provider_name: pInfo.name, provider_city: pInfo.city,
+             provider_specialties: pInfo.specialties, provider_badge: pInfo.badge,
+             avg_rating: parseFloat(avgR.rows[0].avg)||0, review_count: parseInt(avgR.rows[0].cnt)||0 },
       request_id: requestId
     });
     const provider = await pool.query('SELECT name,email FROM users WHERE id=$1', [req.user.id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
     if (client.rows[0]?.email) {
-      await sendEmail(client.rows[0].email, `💼 عرض جديد: ${reqData.rows[0].title}`,
-        emailTpl('وصلك عرض جديد! 💼',
-          `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك <strong>"${reqData.rows[0].title}"</strong>:</p>
-           <div class="hl">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
-          '👀 مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
+      await sendEmail(client.rows[0].email, `💼 عرض جديد على طلبك: ${reqData.rows[0].title}`,
+        emailTpl('وصلك عرض جديد!',
+          `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك:</p>
+           <div class="hl"><strong>${reqData.rows[0].title}</strong><br>
+           السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
+          'مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
     }
     if (provider.rows[0]?.email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
-        emailTpl('تم تقديم عرضك ✅',
-          `<div class="ok">السعر: ${Number(price).toLocaleString('ar-SA')} ر.س | المدة: ${days} يوم</div>
+        emailTpl('تم تقديم عرضك بنجاح',
+          `<div class="ok">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>
            <p>سنُخطرك فور رد العميل.</p>`,
-          '📋 عروضي', `${SITE_URL}/dashboard-provider.html`));
+          'عروضي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json(r.rows[0]);
   } catch(e) { console.error('submitBid:', e.message); res.status(500).json({ message: e.message }); }
@@ -740,15 +696,17 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
     if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
-        emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
-          `<div class="ok">المشروع: <strong>${b.title}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
-          '💬 تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
+        emailTpl(`مبروك ${prov.rows[0].name}!`,
+          `<div class="ok">تم قبول عرضك على مشروع <strong>"${b.title}"</strong><br>
+           القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
+          'تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
     }
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
-        emailTpl('تم إسناد مشروعك 🎉',
-          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong> | القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
-          '💬 تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
+        emailTpl('تم إسناد مشروعك بنجاح',
+          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong><br>
+           القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
+          'تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
     }
     const rejected = await pool.query(
       'SELECT b.provider_id,u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2',
@@ -758,8 +716,9 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
       if (rb.email) {
         await sendEmail(rb.email, `❌ تم رفض عرضك: ${b.title}`,
           emailTpl('نأسف لإخبارك',
-            `<div class="ng">المشروع: <strong>${b.title}</strong></div><p>هناك مناقصات أخرى تنتظرك!</p>`,
-            '🔍 تصفح المناقصات', `${SITE_URL}/dashboard-provider.html`));
+            `<div class="ng">تم اختيار مزود آخر لمشروع <strong>"${b.title}"</strong></div>
+             <p>لا تيأس، هناك مناقصات أخرى تنتظرك!</p>`,
+            'تصفح المناقصات', `${SITE_URL}/dashboard-provider.html`));
       }
     }
     res.json({ message: 'تم قبول العرض' });
@@ -793,14 +752,12 @@ app.put('/api/bids/:id/revise', auth, async (req, res) => {
     const note = `تعديل: السعر ${b.price}→${price} ر.س، المدة ${b.days}→${days} يوم. السبب: ${revision_note}`;
     await pool.query('UPDATE bids SET price=$1,days=$2,note=$3 WHERE id=$4', [price, days, note, req.params.id]);
     await notify(b.client_id, '✏️ تعديل على العرض', note, 'bid', b.req_id);
-    const admins = await pool.query(`SELECT id FROM users WHERE role='admin'`);
-    for (const a of admins.rows) await notify(a.id, '✏️ تعديل عرض', `${b.title}: ${note}`, 'bid', b.req_id);
     const client = await pool.query('SELECT email FROM users WHERE id=$1', [b.client_id]);
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `✏️ تعديل على عرض: ${b.title}`,
-        emailTpl('تعديل على عرض مقبول ✏️',
-          `<div class="hl">السعر: ${b.price}→${price} ر.س | المدة: ${b.days}→${days} يوم | السبب: ${revision_note}</div>`,
-          '📋 مراجعة', `${SITE_URL}/dashboard-client.html`));
+        emailTpl('تعديل على عرض مقبول',
+          `<div class="hl">السعر: ${b.price}→${price} ر.س | المدة: ${b.days}→${days} يوم<br>السبب: ${revision_note}</div>`,
+          'مراجعة', `${SITE_URL}/dashboard-client.html`));
     }
     res.json({ message: 'تم تعديل العرض', price, days });
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -821,30 +778,21 @@ app.get('/api/provider/bids', auth, async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT b.*,r.title as request_title,r.city,r.category,r.status as request_status,
-      r.client_id,r.project_number,r.image_url,r.client_id,
-      u.name as client_name
-      FROM bids b
-      JOIN requests r ON b.request_id=r.id
-      JOIN users u ON r.client_id=u.id
+      r.client_id,r.project_number,r.image_url,u.name as client_name
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id
       WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── MESSAGES ──
-// ────────────────────────────────────────────
-
-// جلب كل المحادثات للمستخدم (مرتبطة بالعروض)
 app.get('/api/conversations', auth, async (req, res) => {
   try {
     let rows;
     if (req.user.role === 'client') {
-      // العميل: جلب كل العروض على طلباته مع آخر رسالة
       const r = await pool.query(`
         SELECT DISTINCT ON (b.provider_id, b.request_id)
-          b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status,
-          b.price, b.days,
+          b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status, b.price, b.days,
           u.name as other_name, u.city as other_city,
           rq.title as request_title, rq.project_number, rq.status as request_status,
           (SELECT content FROM messages WHERE request_id=b.request_id
@@ -853,31 +801,21 @@ app.get('/api/conversations', auth, async (req, res) => {
            AND (sender_id=b.provider_id OR receiver_id=b.provider_id) ORDER BY created_at DESC LIMIT 1) as last_msg_at,
           (SELECT COUNT(*) FROM messages WHERE request_id=b.request_id
            AND receiver_id=$1 AND is_read=FALSE) as unread_count
-        FROM bids b
-        JOIN users u ON b.provider_id=u.id
-        JOIN requests rq ON b.request_id=rq.id
+        FROM bids b JOIN users u ON b.provider_id=u.id JOIN requests rq ON b.request_id=rq.id
         WHERE rq.client_id=$1
-        ORDER BY b.provider_id, b.request_id, last_msg_at DESC NULLS LAST`,
-        [req.user.id]);
+        ORDER BY b.provider_id, b.request_id, last_msg_at DESC NULLS LAST`, [req.user.id]);
       rows = r.rows;
     } else {
-      // المزود: جلب كل عروضه مع آخر رسالة
       const r = await pool.query(`
-        SELECT b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status,
-          b.price, b.days,
+        SELECT b.id as bid_id, b.provider_id, b.request_id, b.status as bid_status, b.price, b.days,
           u.name as other_name, u.city as other_city,
-          rq.title as request_title, rq.project_number, rq.status as request_status,
-          rq.client_id as other_id,
+          rq.title as request_title, rq.project_number, rq.status as request_status, rq.client_id as other_id,
           (SELECT content FROM messages WHERE request_id=b.request_id ORDER BY created_at DESC LIMIT 1) as last_msg,
           (SELECT created_at FROM messages WHERE request_id=b.request_id ORDER BY created_at DESC LIMIT 1) as last_msg_at,
           (SELECT COUNT(*) FROM messages WHERE request_id=b.request_id
            AND receiver_id=$1 AND is_read=FALSE) as unread_count
-        FROM bids b
-        JOIN requests rq ON b.request_id=rq.id
-        JOIN users u ON rq.client_id=u.id
-        WHERE b.provider_id=$1
-        ORDER BY last_msg_at DESC NULLS LAST`,
-        [req.user.id]);
+        FROM bids b JOIN requests rq ON b.request_id=rq.id JOIN users u ON rq.client_id=u.id
+        WHERE b.provider_id=$1 ORDER BY last_msg_at DESC NULLS LAST`, [req.user.id]);
       rows = r.rows;
     }
     res.json(rows);
@@ -910,19 +848,16 @@ app.post('/api/messages', auth, async (req, res) => {
     const receiver = await pool.query('SELECT name,email,role FROM users WHERE id=$1', [receiver_id]);
     if (receiver.rows[0]?.email) {
       await sendEmail(receiver.rows[0].email, `💬 رسالة من ${sender.rows[0].name}`,
-        emailTpl('رسالة جديدة 💬',
+        emailTpl('رسالة جديدة',
           `<p>أرسل لك <strong>${sender.rows[0].name}</strong>:</p>
            <div class="hl">${content.substring(0,200)}</div>`,
-          '💬 الرد', `${SITE_URL}/dashboard-${receiver.rows[0].role==='provider'?'provider':'client'}.html`));
+          'الرد على الرسالة', `${SITE_URL}/dashboard-${receiver.rows[0].role==='provider'?'provider':'client'}.html`));
     }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── REVIEWS ──
-// ────────────────────────────────────────────
-
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment, type } = req.body;
@@ -940,7 +875,7 @@ app.post('/api/reviews', auth, async (req, res) => {
         emailTpl(`تقييم جديد ${starsText}`,
           `<p>قيّمك <strong>${reviewer.rows[0].name}</strong> بـ <strong>${rating} من 5 نجوم</strong>.</p>
            ${comment?`<div class="hl">"${comment}"</div>`:''}`,
-          '⭐ تقييماتي', `${SITE_URL}/dashboard-provider.html`));
+          'تقييماتي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -957,14 +892,32 @@ app.get('/api/reviews/provider/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── NOTIFICATIONS ──
-// ────────────────────────────────────────────
-
 app.get('/api/notifications', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id]);
     res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/provider/notifications', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/notifications/read', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/provider/notifications/read', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1', [req.user.id]);
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -975,10 +928,7 @@ app.put('/api/notifications/read-all', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── PROFILE ──
-// ────────────────────────────────────────────
-
 app.get('/api/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(
@@ -1016,11 +966,9 @@ app.put('/api/provider/profile', auth, async (req, res) => {
   try {
     const { name, phone, city, bio, specialties, experience_years, portfolio_images } = req.body;
     const r = await pool.query(
-      `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,
-       experience_years=$6,portfolio_images=$7
+      `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,experience_years=$6,portfolio_images=$7
        WHERE id=$8 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images`,
-      [name, phone||null, city||null, bio||null, specialties||null,
-       experience_years||null, portfolio_images||null, req.user.id]);
+      [name, phone||null, city||null, bio||null, specialties||null, experience_years||null, portfolio_images||null, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1033,7 +981,27 @@ app.put('/api/provider/notify-prefs', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ── ملف المزود العام (يراه العميل) ──
+app.get('/api/provider/projects', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.*,u.name as client_name,
+        (SELECT b.price FROM bids b WHERE b.id=r.accepted_bid_id LIMIT 1) as price
+      FROM requests r JOIN users u ON r.client_id=u.id
+      WHERE r.assigned_provider_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/provider/reviews', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.*,u.name as reviewer_name,rq.title as request_title
+      FROM reviews rv JOIN users u ON rv.reviewer_id=u.id JOIN requests rq ON rv.request_id=rq.id
+      WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const r = await pool.query(`
@@ -1047,7 +1015,6 @@ app.get('/api/provider/:id/profile', async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ── التحقق من إمكانية التقييم ──
 app.get('/api/reviews/can-rate/:requestId', auth, async (req, res) => {
   try {
     const req2 = await pool.query('SELECT status,client_id,assigned_provider_id FROM requests WHERE id=$1', [req.params.requestId]);
@@ -1083,10 +1050,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ────────────────────────────────────────────
 // ── ADMIN ──
-// ────────────────────────────────────────────
-
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const [u,r,b,p,pending,inprog,done] = await Promise.all([
@@ -1112,13 +1076,9 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
     const VALID_STATUSES = ['pending_review','open','in_progress','completed','rejected'];
     let q = `SELECT r.*,u.name as client_name,p.name as provider_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
-      FROM requests r JOIN users u ON r.client_id=u.id
-      LEFT JOIN users p ON r.assigned_provider_id=p.id`;
+      FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id`;
     const params = [];
-    if (status && VALID_STATUSES.includes(status)) {
-      params.push(status);
-      q += ` WHERE r.status=$1`;
-    }
+    if (status && VALID_STATUSES.includes(status)) { params.push(status); q += ` WHERE r.status=$1`; }
     q += ' ORDER BY r.created_at DESC';
     res.json((await pool.query(q, params)).rows);
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -1138,8 +1098,8 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `✅ تمت الموافقة: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
-            `<div class="ok">✅ طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
-            '📋 متابعة طلبي', `${SITE_URL}/dashboard-client.html`));
+            `<div class="ok">طلبك <strong>"${req2.title}"</strong> نُشر ومتاح للعروض الآن.</div>`,
+            'متابعة طلبي', `${SITE_URL}/dashboard-client.html`));
       }
       notifyInterestedProviders(req2.id, req2.title, req2.category).catch(()=>{});
     } else {
@@ -1147,8 +1107,8 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       if (client.rows[0]?.email) {
         await sendEmail(client.rows[0].email, `❌ تم رفض طلبك: ${req2.title}`,
           emailTpl(`مرحباً ${client.rows[0].name}،`,
-            `<div class="ng">تم رفض طلبك <strong>"${req2.title}"</strong>. السبب: ${reason||'غير محدد'}</div>`,
-            '✏️ تعديل الطلب', `${SITE_URL}/dashboard-client.html`));
+            `<div class="ng">تم رفض طلبك <strong>"${req2.title}"</strong><br>السبب: ${reason||'غير محدد'}</div>`,
+            'تعديل الطلب', `${SITE_URL}/dashboard-client.html`));
       }
     }
     res.json(req2);
@@ -1258,8 +1218,6 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-
-// ── ADMIN CHARTS ──
 app.get('/api/admin/charts', auth, adminOnly, async (req, res) => {
   try {
     const [byStatus, byCategory, byMonth, topProviders, recentActivity] = await Promise.all([
@@ -1273,7 +1231,6 @@ app.get('/api/admin/charts', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ── ADMIN SEARCH ──
 app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
   try {
     const { q } = req.query;
@@ -1287,7 +1244,6 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ── ADMIN EXPORT CSV ──
 app.get('/api/admin/export/requests', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.project_number,r.title,r.category,r.city,r.status,r.budget_max,r.created_at,r.completed_at,u.name as client_name,p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id ORDER BY r.created_at DESC`);
