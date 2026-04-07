@@ -46,6 +46,39 @@ async function sendEmail(to, subject, html) {
   } catch(e) { console.error('Email error:', e.message); return false; }
 }
 
+// ── PUSH NOTIFICATIONS ──
+async function sendPush(userIds, title, body, data = {}) {
+  if (!userIds || !userIds.length) return;
+  try {
+    const ids = Array.isArray(userIds) ? userIds : [userIds];
+    const rows = await pool.query(
+      `SELECT token FROM push_tokens WHERE user_id = ANY($1)`,
+      [ids]
+    );
+    if (!rows.rows.length) return;
+    const messages = rows.rows.map(r => ({
+      to: r.token,
+      sound: 'default',
+      title,
+      body,
+      data,
+      priority: 'high',
+      channelId: 'default',
+    }));
+    // إرسال كـ chunks بحد أقصى 100 رسالة
+    for (let i = 0; i < messages.length; i += 100) {
+      const chunk = messages.slice(i, i + 100);
+      const r = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(chunk)
+      });
+      const result = await r.json();
+      if (result.errors) console.error('Push errors:', result.errors);
+    }
+  } catch(e) { console.error('sendPush error:', e.message); }
+}
+
 function emailTpl(title, body, btnText, btnUrl) {
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -187,6 +220,14 @@ async function initDB() {
       ref_id INTEGER,
       is_read BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS push_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL,
+      platform VARCHAR(20),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, token)
     );
   `);
 
@@ -340,6 +381,7 @@ async function notifyInterestedProviders(reqId, title, category) {
     );
     for (const p of provs.rows) {
       await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
+      await sendPush([p.id], '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}"`, { type: 'new_request', reqId });
       if (p.email) {
         await sendEmail(p.email, `🔔 مناقصة جديدة: ${title}`,
           emailTpl('مناقصة جديدة تهمك!',
@@ -424,6 +466,29 @@ app.get('/api/debug/bids/:id', async (req, res) => {
 
 // ── AUTH ──
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
+
+// ── PUSH TOKEN ──
+app.post('/api/push-token', auth, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform)
+       VALUES($1, $2, $3)
+       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
+      [req.user.id, token, platform || 'expo']
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/push-token', auth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [req.user.id, token]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
 
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -588,6 +653,7 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
     if (req2.assigned_provider_id) {
       const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [req2.assigned_provider_id]);
       await notify(req2.assigned_provider_id, '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل`, 'completed', req2.id);
+      await sendPush([req2.assigned_provider_id], '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل بنجاح!`, { type: 'completed', requestId: req2.id });
       if (prov.rows[0]?.email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
           emailTpl(`مبروك ${prov.rows[0].name}!`,
@@ -641,6 +707,7 @@ async function handleSubmitBid(req, res, requestId) {
       'INSERT INTO bids(request_id,provider_id,price,days,note) VALUES($1,$2,$3,$4,$5) RETURNING *',
       [requestId, req.user.id, price, days, note||null]);
     await notify(reqData.rows[0].client_id, '💼 عرض جديد', `وصلك عرض جديد على: ${reqData.rows[0].title}`, 'bid', requestId);
+    await sendPush([reqData.rows[0].client_id], '💼 عرض جديد', `وصلك عرض جديد على: ${reqData.rows[0].title}`, { type: 'bid', requestId });
     const providerInfo = await pool.query('SELECT name,city,specialties,badge FROM users WHERE id=$1', [req.user.id]);
     const pInfo = providerInfo.rows[0] || {};
     const avgR = await pool.query('SELECT COALESCE(AVG(rating),0) as avg, COUNT(*) as cnt FROM reviews WHERE reviewed_id=$1', [req.user.id]);
@@ -692,6 +759,7 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     await pool.query('UPDATE requests SET status=$1,accepted_bid_id=$2,assigned_provider_id=$3,assigned_at=NOW() WHERE id=$4',
       ['in_progress', req.params.id, b.provider_id, b.request_id]);
     await notify(b.provider_id, '✅ تم قبول عرضك', `تم قبول عرضك على: ${b.title}`, 'accepted', b.request_id);
+    await sendPush([b.provider_id], '✅ تم قبول عرضك!', `مبروك! تم قبول عرضك على: ${b.title}`, { type: 'accepted', requestId: b.request_id });
     const prov = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.provider_id]);
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
     if (prov.rows[0]?.email) {
@@ -845,6 +913,7 @@ app.post('/api/messages', auth, async (req, res) => {
       [request_id, req.user.id, receiver_id, content]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await notify(receiver_id, '💬 رسالة جديدة', `${sender.rows[0].name}: ${content.substring(0,50)}`, 'message', request_id);
+    await sendPush([receiver_id], `💬 ${sender.rows[0].name}`, content.substring(0,80), { type: 'message', requestId: request_id });
     const receiver = await pool.query('SELECT name,email,role FROM users WHERE id=$1', [receiver_id]);
     if (receiver.rows[0]?.email) {
       await sendEmail(receiver.rows[0].email, `💬 رسالة من ${sender.rows[0].name}`,
