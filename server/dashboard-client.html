@@ -156,6 +156,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .agree-foot{padding:12px 18px;display:flex;gap:8px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
 .btn-agree{flex:1;padding:12px;background:var(--gold);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
 .btn-agree:disabled{opacity:.4;cursor:not-allowed}
+.agree-summary{background:var(--p-light);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.agree-sum-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(27,58,107,0.1);font-size:12px;color:var(--text)}
+.agree-sum-row:last-child{border-bottom:none}
+.agree-sum-ic{font-size:14px;flex-shrink:0}
+.agree-sum-row strong{color:var(--p)}
 .btn-back{padding:12px 14px;background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
 .stars-pick{display:flex;gap:8px;justify-content:center;margin:12px 0}
 .sp{font-size:32px;cursor:pointer;opacity:.3;transition:.15s;filter:grayscale(1)}
@@ -213,7 +218,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="nav-sec">القائمة</div>
     <button class="ni on" onclick="show('home',this,'home')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية</button>
     <button class="ni" onclick="show('requests',this,'requests')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي</button>
-    <button class="ni" onclick="showAgreement()"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>طلب جديد</button>
     <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="badge" id="notif-badge" style="display:none">0</span></button>
   </div>
   <div class="side-foot">
@@ -313,11 +317,32 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="agree-modal">
     <div class="agree-hd"><h2>اتفاقية الرسوم</h2><p>يرجى قراءة الاتفاقية كاملةً قبل النشر</p></div>
     <div class="agree-body">
-      <div class="quran-box"><div class="quran-title">بسم الله الرحمن الرحيم</div><div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا ﴾</div><div class="quran-src">صدق الله العظيم</div></div>
-      <div class="agree-sec"><div class="agree-sec-t">أولًا: التعهد والالتزام</div><p>أُقرّ وأتعهد بدفع رسوم الموقع البالغة <strong>(1%) واحد بالمائة</strong> من إجمالي قيمة العقد المتفق عليه، ويشمل أي اتفاق تم عبر الموقع أو بسببه، سواء كان مكتوبًا أو شفهيًا.</p></div>
-      <div class="agree-sec"><div class="agree-sec-t">ثانيًا: استحقاق الرسوم وآلية السداد</div><p>تستحق الرسوم بمجرد اكتمال الاتفاق النهائي، ويلتزم طالب الخدمة بسدادها خلال <strong>(10) عشرة أيام</strong> من تاريخ الاكتمال.</p></div>
-      <div class="note-sec"><div class="agree-sec-t">ثالثًا: مسؤولية السداد</div><p>هذه الرسوم التزام مالي واجب السداد، ولا تبرأ ذمتك إلا بعد السداد الكامل.</p></div>
-      <div class="agree-check"><input type="checkbox" id="agreeCheck" onchange="document.getElementById('agreeBtn').disabled=!this.checked"><label for="agreeCheck">أُقرّ بأنني اطلعت على اتفاقية الرسوم وأتعهد بسداد رسوم المنصة <strong>(1%)</strong> خلال عشرة أيام من تاريخ اكتمال الاتفاق</label></div>
+      <div class="quran-box">
+        <div class="quran-title">بسم الله الرحمن الرحيم</div>
+        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا ﴾</div>
+        <div class="quran-src">سورة النحل — صدق الله العظيم</div>
+      </div>
+      <div class="agree-sec">
+        <div class="agree-sec-t">أولًا: التعهد والالتزام</div>
+        <p>أُقرّ وأتعهد بدفع رسوم الموقع البالغة <strong>(1%) واحد بالمائة</strong> من إجمالي قيمة العقد المتفق عليه، ويشمل أي اتفاق تم عبر الموقع أو بسببه، سواء كان مكتوبًا أو شفهيًا.</p>
+      </div>
+      <div class="agree-sec">
+        <div class="agree-sec-t">ثانيًا: استحقاق الرسوم وآلية السداد</div>
+        <p>تستحق الرسوم بمجرد اكتمال الاتفاق النهائي، ويلتزم طالب الخدمة بسدادها خلال <strong>(10) عشرة أيام</strong> من تاريخ الاكتمال.</p>
+      </div>
+      <div class="note-sec">
+        <div class="agree-sec-t">ثالثًا: مسؤولية السداد</div>
+        <p>هذه الرسوم التزام مالي واجب السداد، ولا تبرأ ذمتك إلا بعد السداد الكامل.</p>
+      </div>
+      <div class="agree-summary">
+        <div class="agree-sum-row"><span class="agree-sum-ic">📋</span><span>نسبة الرسوم: <strong>1%</strong> من قيمة العقد</span></div>
+        <div class="agree-sum-row"><span class="agree-sum-ic">📅</span><span>مهلة السداد: <strong>10 أيام</strong> من الإكمال</span></div>
+        <div class="agree-sum-row"><span class="agree-sum-ic">⚖️</span><span>الالتزام: <strong>ملزم قانونياً</strong> بمجرد الاتفاق</span></div>
+      </div>
+      <div class="agree-check">
+        <input type="checkbox" id="agreeCheck" onchange="document.getElementById('agreeBtn').disabled=!this.checked">
+        <label for="agreeCheck">أُقرّ بأنني اطلعت على اتفاقية الرسوم كاملةً وأتعهد بسداد رسوم المنصة <strong>(1%)</strong> خلال عشرة أيام من تاريخ اكتمال الاتفاق</label>
+      </div>
     </div>
     <div class="agree-foot"><button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر طلبي</button><button class="btn-back" onclick="closeAgree()">رجوع</button></div>
   </div>
