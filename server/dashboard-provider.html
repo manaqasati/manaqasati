@@ -485,18 +485,22 @@ async function pgProfile(){
   const portfolioHtml=(p.portfolio_images||[]).map((img,i)=>`
     <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1">
       <img src="${img}" style="width:100%;height:100%;object-fit:cover">
-      <button onclick="removePortfolioImg(${i})" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,0.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;font-family:inherit">×</button>
+      <button onclick="removePortfolioImg(${i})" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,0.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit">×</button>
     </div>`).join('');
+
+  const citySelect=`<select class="fis" id="pCit">
+    <option value="">اختر المدينة</option>
+    ${CITIES.map(c=>`<option${c===p.city?' selected':''}>${c}</option>`).join('')}
+  </select>`;
+
   setPage(`
     <div class="pghd"><div><div class="pg-t">الملف الشخصي</div><div class="pg-s">معلوماتك كمزود خدمة</div></div></div>
 
-    <!-- صورة البروفايل -->
+    <!-- صورة الحساب -->
     <div class="card" style="margin-bottom:12px">
       <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.usr,'#1B3A6B')}</div><div class="ch-t">صورة الحساب</div></div></div>
       <div class="cb" style="display:flex;align-items:center;gap:16px">
-        <div id="avatarPreview" style="width:72px;height:72px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid #e8eef7">
-          ${avatarHtml}
-        </div>
+        <div id="avatarPreview" style="width:72px;height:72px;border-radius:50%;background:#1B3A6B;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid #e8eef7">${avatarHtml}</div>
         <div>
           <div style="font-size:12px;color:var(--g3);margin-bottom:8px">صورة واضحة للوجه أو شعار المنشأة</div>
           <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(this)">
@@ -508,103 +512,79 @@ async function pgProfile(){
       </div>
     </div>
 
-    <div class="c2">
-      <!-- معلومات شخصية -->
-      <div>
-        <div class="card" style="margin-bottom:12px">
-          <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.usr,'#1B3A6B')}</div><div class="ch-t">معلومات شخصية</div></div></div>
-          <div class="cb">
-            <div class="fg"><label class="fl">الاسم</label><input type="text" class="fi" id="pNm" value="${p.name||''}"></div>
-            <div class="fg"><label class="fl">البريد الإلكتروني</label><input type="email" class="fi" value="${p.email||''}" disabled style="background:var(--g1);color:var(--g3)"></div>
-            <div class="fg"><label class="fl">الجوال</label><input type="text" class="fi" id="pPh" value="${p.phone||''}" placeholder="05xxxxxxxx"></div>
-            <div class="fg"><label class="fl">المدينة</label><select class="fis" id="pCit">${cityOpts(p.city)}</select></div>
-          </div>
+    <!-- المعلومات الشخصية -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.usr,'#1B3A6B')}</div><div class="ch-t">المعلومات الشخصية</div></div></div>
+      <div class="cb">
+        <div class="g2">
+          <div class="fg"><label class="fl">الاسم الكامل</label><input type="text" class="fi" id="pNm" value="${p.name||''}" placeholder="اسمك الكامل"></div>
+          <div class="fg"><label class="fl">رقم الجوال</label><input type="text" class="fi" id="pPh" value="${p.phone||''}" placeholder="05xxxxxxxx"></div>
         </div>
+        <div class="fg"><label class="fl">البريد الإلكتروني</label><input type="email" class="fi" value="${p.email||''}" disabled style="background:var(--g1);color:var(--g3)"></div>
+        <div class="fg"><label class="fl">المدينة</label>${citySelect}</div>
+      </div>
+    </div>
 
-        <!-- نبذة عن المنشأة -->
-        <div class="card" style="margin-bottom:12px">
-          <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.fold,'#1B3A6B')}</div><div class="ch-t">نبذة عن المنشأة</div></div></div>
-          <div class="cb">
-            <div class="fg">
-              <label class="fl">اكتب نبذة مختصرة عن خدماتك وخبرتك</label>
-              <textarea class="fta" id="pBio" style="min-height:110px" placeholder="مثال: نحن شركة متخصصة في تركيب وصيانة أجهزة التكييف بخبرة 10 سنوات في الرياض...">${p.bio||''}</textarea>
-            </div>
-            <div class="fg">
-              <label class="fl">سنوات الخبرة</label>
-              <input type="number" class="fi" id="pExp" value="${p.experience_years||''}" placeholder="مثال: 5" min="0" max="50">
-            </div>
-          </div>
+    <!-- نبذة عن المنشأة -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.fold,'#1B3A6B')}</div><div class="ch-t">نبذة عن المنشأة</div></div></div>
+      <div class="cb">
+        <div class="fg">
+          <label class="fl">نبذة مختصرة عن خدماتك وخبرتك</label>
+          <textarea class="fta" id="pBio" style="min-height:110px" placeholder="مثال: متخصصون في تركيب وصيانة أجهزة التكييف بخبرة 10 سنوات...">${p.bio||''}</textarea>
         </div>
-
-        <!-- زر الحفظ الموحد -->
-        <div class="card" style="margin-bottom:12px;background:var(--g0);border:none">
-          <div class="cb" style="padding:8px 0">
-            <button class="btn btn-dk" style="width:100%;justify-content:center;padding:13px" onclick="saveAllProfile()">${S(I.save)} حفظ جميع التغييرات</button>
-          </div>
-        </div>
-
-        <!-- كلمة المرور -->
-        <div class="card">
-          <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#1B3A6B" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><div class="ch-t">تغيير كلمة المرور</div></div></div>
-          <div class="cb">
-            <div class="fg"><label class="fl">كلمة المرور الحالية</label><input type="password" class="fi" id="pwOld"></div>
-            <div class="fg"><label class="fl">كلمة المرور الجديدة</label><input type="password" class="fi" id="pwNew"></div>
-            <button class="btn btn-gh btn-sm" onclick="changePw()">تغيير</button>
-          </div>
+        <div class="fg" style="max-width:180px">
+          <label class="fl">سنوات الخبرة</label>
+          <input type="number" class="fi" id="pExp" value="${p.experience_years||''}" placeholder="مثال: 5" min="0" max="50">
         </div>
       </div>
+    </div>
 
-      <!-- العمود الثاني -->
-      <div>
-        <!-- التخصصات -->
-        <div class="card" style="margin-bottom:12px">
-          <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div class="ch-t">التخصصات</div></div></div>
-          <div class="cb">
-            <div style="display:flex;gap:5px;flex-wrap:wrap">${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="this.classList.toggle('on');this.style.background=this.classList.contains('on')?'#1B3A6B':'var(--g0)';this.style.color=this.classList.contains('on')?'#fff':'var(--g5)'" style="padding:5px 11px;border-radius:20px;border:1px solid var(--g2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--g0)'};color:${on?'#fff':'var(--g5)'};transition:all .12s;margin-bottom:4px" class="${on?'on':''}">${c}</button>`;}).join('')}</div>
-            <div style="margin-top:12px"><button class="btn btn-gh btn-sm" onclick="saveSpecs()">حفظ التخصصات</button></div>
-          </div>
+    <!-- التخصصات -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div class="ch-t">التخصصات</div></div></div>
+      <div class="cb">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          ${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="this.classList.toggle('on');this.style.background=this.classList.contains('on')?'#1B3A6B':'var(--g0)';this.style.color=this.classList.contains('on')?'#fff':'var(--g5)'" style="padding:6px 13px;border-radius:20px;border:1px solid var(--g2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--g0)'};color:${on?'#fff':'var(--g5)'};transition:all .12s;margin-bottom:4px" class="${on?'on':''}">${c}</button>`;}).join('')}
         </div>
-
-        <!-- معرض الأعمال -->
-        <div class="card">
-          <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.eye,'#1B3A6B')}</div><div class="ch-t">معرض الأعمال</div><div class="ch-s">${(p.portfolio_images||[]).length}/6 صور</div></div></div>
-          <div class="cb">
-            <div id="portfolioGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-              ${portfolioHtml}
-              ${(p.portfolio_images||[]).length<6?`
-              <div onclick="document.getElementById('portfolioInput').click()" style="border:2px dashed var(--g2);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;background:var(--g0);transition:.15s" onmouseover="this.style.borderColor='#1B3A6B'" onmouseout="this.style.borderColor='var(--g2)'">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b85a8" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span style="font-size:10px;color:var(--g3)">إضافة</span>
-              </div>`:''}
-            </div>
-            <input type="file" id="portfolioInput" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
-            <div style="font-size:10px;color:var(--g3)">أضف صور أعمالك السابقة (حد أقصى 6 صور)</div>
-          </div>
-        </div>
+        <button class="btn btn-gh btn-sm" onclick="saveSpecs()">حفظ التخصصات</button>
       </div>
-    </div>`);
-}
+    </div>
 
-function previewAvatar(input){
-  const file=input.files[0];
-  if(!file)return;
-  if(file.size>3*1024*1024){toast('الحجم الأقصى 3MB','error');return;}
-  const reader=new FileReader();
-  reader.onload=e=>{
-    document.getElementById('avatarPreview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-    window._newAvatar=e.target.result;
-    saveAvatar(e.target.result);
-  };
-  reader.readAsDataURL(file);
-}
-async function saveAvatar(base64){
-  await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:base64})});
-  toast('تم حفظ الصورة','success');
-}
-async function removeAvatar(){
-  await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:null})});
-  toast('تم حذف الصورة','success');
-  pgProfile();
+    <!-- معرض الأعمال -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.eye,'#1B3A6B')}</div><div class="ch-t">معرض الأعمال</div></div><div class="ch-s">${(p.portfolio_images||[]).length}/6 صور</div></div>
+      <div class="cb">
+        <div id="portfolioGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          ${portfolioHtml}
+          ${(p.portfolio_images||[]).length<6?`
+          <div onclick="document.getElementById('portfolioInput').click()" style="border:2px dashed var(--g2);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:5px;background:var(--g0)" onmouseover="this.style.borderColor='#1B3A6B'" onmouseout="this.style.borderColor='var(--g2)'">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#6b85a8" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span style="font-size:11px;color:var(--g3)">إضافة</span>
+          </div>`:''}
+        </div>
+        <input type="file" id="portfolioInput" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
+        <div style="font-size:10px;color:var(--g3)">أضف صور أعمالك السابقة — حد أقصى 6 صور، 5MB للصورة</div>
+      </div>
+    </div>
+
+    <!-- تغيير كلمة المرور -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#1B3A6B" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><div class="ch-t">تغيير كلمة المرور</div></div></div>
+      <div class="cb">
+        <div class="g2">
+          <div class="fg"><label class="fl">كلمة المرور الحالية</label><input type="password" class="fi" id="pwOld"></div>
+          <div class="fg"><label class="fl">كلمة المرور الجديدة</label><input type="password" class="fi" id="pwNew"></div>
+        </div>
+        <button class="btn btn-gh btn-sm" onclick="changePw()">تغيير كلمة المرور</button>
+      </div>
+    </div>
+
+    <!-- زر الحفظ الموحد في الأسفل -->
+    <div style="position:sticky;bottom:0;background:var(--g0);padding:12px 0;margin-top:4px;border-top:1px solid var(--g2)">
+      <button class="btn btn-dk" id="saveAllBtn" style="width:100%;justify-content:center;padding:14px;font-size:14px" onclick="saveAllProfile()">${S(I.save)} حفظ جميع التغييرات</button>
+    </div>
+  `);
 }
 
 async function saveProfile(){
@@ -619,23 +599,24 @@ async function saveBio(){
   toast('تم حفظ النبذة','success');
 }
 async function saveAllProfile(){
-  const btn=document.querySelector('[onclick="saveAllProfile()"]');
+  const btn=document.getElementById('saveAllBtn');
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   try{
-    const body={
-      name:document.getElementById('pNm')?.value?.trim()||'',
-      phone:document.getElementById('pPh')?.value||'',
-      city:document.getElementById('pCit')?.value||'',
-      bio:document.getElementById('pBio')?.value||'',
-      experience_years:parseInt(document.getElementById('pExp')?.value||0)||null
-    };
+    const name=document.getElementById('pNm')?.value?.trim()||'';
+    const phone=document.getElementById('pPh')?.value?.trim()||'';
+    const city=document.getElementById('pCit')?.value||'';
+    const bio=document.getElementById('pBio')?.value||'';
+    const exp=parseInt(document.getElementById('pExp')?.value||0)||null;
+    if(!name){toast('الاسم مطلوب','error');return;}
+    const body={name,phone,city,bio,experience_years:exp};
     const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
     if(r.id){
       document.getElementById('sbNm').textContent=r.name||'المزود';
       toast('تم حفظ جميع التغييرات','success');
     } else toast(r.message||'حدث خطأ','error');
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
+  } catch(e){toast('تعذر الحفظ','error');}
+  finally{
+    if(btn){btn.disabled=false;btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> حفظ جميع التغييرات`;}
   }
 }
 
