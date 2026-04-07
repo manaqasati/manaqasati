@@ -697,7 +697,8 @@ app.get('/api/requests/:id/bids', async (req, res) => {
 
 async function handleSubmitBid(req, res, requestId) {
   try {
-    const { price, days, note } = req.body;
+    const { price, note } = req.body;
+    const days = req.body.days || req.body.delivery_days;
     if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
     const reqData = await pool.query('SELECT * FROM requests WHERE id=$1', [requestId]);
     if (!reqData.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
