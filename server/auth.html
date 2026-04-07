@@ -3,547 +3,308 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <title>مناقصة — الدخول</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0f2545,#1473E6);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.hd{background:linear-gradient(135deg,#0f2545,#1473E6);padding:28px 28px 22px;text-align:center;position:relative;overflow:hidden}
-.hd::before{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);top:-50px;left:-30px}
-.logo{font-size:24px;font-weight:900;color:#fff;position:relative}.logo b{color:#fbbf24}
-.hd-t{font-size:15px;font-weight:700;color:rgba(255,255,255,.8);margin-top:6px;position:relative}
+html,body{font-family:'Tajawal',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#0d1f3c;position:relative;overflow:hidden}
+
+/* خلفية هندسية */
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 60% at 20% 20%, rgba(240,165,0,0.12) 0%, transparent 60%),
+  radial-gradient(ellipse 60% 80% at 80% 80%, rgba(44,82,130,0.4) 0%, transparent 60%),
+  linear-gradient(135deg,#0d1f3c 0%,#1B3A6B 50%,#0d1f3c 100%);
+  z-index:0}
+body::after{content:'';position:fixed;inset:0;background-image:
+  radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:28px 28px;z-index:0}
+
+.page-wrap{position:relative;z-index:1;width:100%;max-width:440px}
+
+/* البطاقة */
+.card{background:rgba(255,255,255,.97);border-radius:22px;width:100%;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.1)}
+
+/* الهيدر */
+.hd{background:linear-gradient(135deg,#0d1f3c 0%,#1B3A6B 100%);padding:30px 28px 24px;text-align:center;position:relative;overflow:hidden}
+.hd::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04);top:-60px;left:-40px}
+.hd::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#F0A500,transparent)}
+.logo{font-size:26px;font-weight:900;color:#fff;position:relative;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:#F0A500;display:inline-block;margin-bottom:2px}
+.hd-t{font-size:15px;font-weight:700;color:rgba(255,255,255,.9);position:relative}
 .hd-s{font-size:12px;color:rgba(255,255,255,.5);margin-top:3px;position:relative}
+
+/* التابز */
 .tabs{display:flex;background:#f1f5f9;padding:4px;gap:4px}
-.tab{flex:1;padding:10px;border:none;background:transparent;border-radius:8px;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;font-family:inherit;transition:.15s}
-.tab.on{background:#fff;color:#1473E6;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.body{padding:24px 28px}
+.tab{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-size:13px;font-weight:700;color:#6b85a8;cursor:pointer;font-family:inherit;transition:.15s}
+.tab.on{background:#fff;color:#1B3A6B;box-shadow:0 2px 8px rgba(27,58,107,.12)}
+
+/* الجسم */
+.body{padding:22px 26px}
+
+/* الإشعار */
 .al{padding:10px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;display:none;border:1px solid}
 .al.err{display:block;background:#fef2f2;color:#dc2626;border-color:#fca5a5}
 .al.ok{display:block;background:#f0fdf4;color:#16a34a;border-color:#86efac}
+
+/* طريقة الدخول */
 .method-toggle{display:flex;background:#f1f5f9;border-radius:10px;padding:3px;gap:3px;margin-bottom:16px}
-.mt-btn{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:5px}
-.mt-btn.on{background:#fff;color:#1473E6;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+.mt-btn{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-size:12px;font-weight:700;color:#6b85a8;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.mt-btn.on{background:#fff;color:#1B3A6B;box-shadow:0 1px 6px rgba(27,58,107,.12)}
+
+/* الحقول */
 .fg{margin-bottom:14px}
-.fg label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px}
-.fg input,.fg select{width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;font-family:inherit;outline:none;transition:.15s;background:#fff}
-.fg input:focus,.fg select:focus{border-color:#1473E6;box-shadow:0 0 0 3px rgba(20,115,230,.1)}
+.fg label{display:block;font-size:12px;font-weight:700;color:#1B3A6B;margin-bottom:6px}
+.fg input,.fg select{width:100%;padding:11px 14px;border:1.5px solid #dce5f0;border-radius:10px;font-size:14px;color:#0d1f3c;font-family:inherit;outline:none;transition:.15s;background:#fff}
+.fg input:focus,.fg select:focus{border-color:#1B3A6B;box-shadow:0 0 0 3px rgba(27,58,107,.1)}
 .fg input::placeholder{color:#94a3b8}
-.phone-wrap{display:flex;gap:6px}
-.phone-code{width:80px;padding:11px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:700;color:#374151;text-align:center;background:#f8f9fb;font-family:inherit;outline:none}
-.phone-num{flex:1;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;font-family:inherit;outline:none;transition:.15s}
-.phone-num:focus{border-color:#1473E6;box-shadow:0 0 0 3px rgba(20,115,230,.1)}
+
+/* كلمة المرور */
 .pw-wrap{position:relative}
 .pw-wrap input{padding-left:44px}
-.pw-eye{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:#f1f5f9;border:none;cursor:pointer;color:#64748b;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:.12s}
-.pw-eye:hover{background:#e2e8f0;color:#1473E6}
-.pw-eye svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pw-eye{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:#f4f7fb;border:none;cursor:pointer;color:#6b85a8;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:.12s}
+.pw-eye:hover{background:#e8eef7;color:#1B3A6B}
+.pw-eye svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/* نوع الحساب */
 .role-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.rc{border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:.15s;user-select:none}
-.rc:hover{border-color:#93c5fd;background:#eff6ff}
-.rc.on{border-color:#1473E6;background:#EBF3FD}
-.rc .ico{font-size:24px;margin-bottom:5px}
-.rc .nm{font-size:13px;font-weight:800;color:#0f172a}
-.rc .ds{font-size:10px;color:#64748b;margin-top:2px}
-.btn-main{width:100%;padding:13px;background:#1473E6;border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-main:hover{background:#0d5fc9}.btn-main:disabled{opacity:.5;cursor:not-allowed}
-.link-btn{background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600}
-.link-btn:hover{color:#1473E6}
+.rc{border:2px solid #dce5f0;border-radius:13px;padding:14px 12px;cursor:pointer;text-align:center;transition:.2s;user-select:none;position:relative}
+.rc:hover{border-color:#c5d6ee;background:#f4f7fb}
+.rc.on{border-color:#1B3A6B;background:#e8eef7}
+.rc.on::after{content:'✓';position:absolute;top:8px;left:10px;font-size:11px;font-weight:900;color:#1B3A6B}
+.rc .ico{font-size:26px;margin-bottom:6px;line-height:1}
+.rc .nm{font-size:13px;font-weight:800;color:#0d1f3c}
+.rc .ds{font-size:10px;color:#6b85a8;margin-top:2px}
+
+/* الزر الرئيسي */
+.btn-main{width:100%;padding:13px;background:linear-gradient(135deg,#1B3A6B,#2C5282);border:none;color:#fff;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(27,58,107,.3)}
+.btn-main:hover{background:linear-gradient(135deg,#142d54,#1B3A6B);box-shadow:0 6px 20px rgba(27,58,107,.4);transform:translateY(-1px)}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* الروابط */
+.link-btn{background:none;border:none;color:#6b85a8;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600}
+.link-btn:hover{color:#1B3A6B}
 .note{font-size:11px;color:#94a3b8;text-align:center;margin-top:12px}
-.note a{color:#1473E6;font-weight:700;text-decoration:none}
+.note a{color:#1B3A6B;font-weight:700;text-decoration:none}
+
+/* رابط العودة */
 .bh{text-align:center;margin-top:16px;font-size:12px}
-.bh a{color:rgba(255,255,255,.7);font-weight:600}
-</style>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<style>
-/* Lucide Icons */
-.icon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:inline-block; vertical-align:middle; }
-.icon-sm { width:14px; height:14px; }
-.icon-lg { width:22px; height:22px; }
-.nav-icon { width:20px; height:20px; }
+.bh a{color:rgba(255,255,255,.55);font-weight:600;text-decoration:none;transition:.15s}
+.bh a:hover{color:rgba(255,255,255,.85)}
+
+/* الجوال */
+.phone-input{width:100%;padding:11px 14px;border:1.5px solid #dce5f0;border-radius:10px;font-size:14px;color:#0d1f3c;font-family:inherit;outline:none;transition:.15s}
+.phone-input:focus{border-color:#1B3A6B;box-shadow:0 0 0 3px rgba(27,58,107,.1)}
+
+/* فاصل */
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#e8eef7}
+.divider span{font-size:10px;font-weight:700;color:#c5d6ee;white-space:nowrap}
 </style>
 </head>
 <body>
 
-<!-- صفحة reset password - تظهر فقط عند وجود ?reset= في URL -->
-<div id="reset-page" style="display:none;width:100%;max-width:400px">
- <div class="card">
- <div class="hd">
- <div class="logo">مناقصة<b>.</b></div>
- <div class="hd-t">إعادة تعيين كلمة المرور</div>
- </div>
- <div class="body">
- <div class="al" id="reset-al"></div>
- <div class="fg"><label>كلمة المرور الجديدة *</label>
- <div class="pw-wrap">
- <input id="rp1" type="password" placeholder="6 أحرف على الأقل">
- <button class="pw-eye" type="button" onclick="togglePass('rp1',this)">
- <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
- </button>
- </div>
- </div>
- <div class="fg"><label>تأكيد كلمة المرور *</label>
- <div class="pw-wrap">
- <input id="rp2" type="password" placeholder="أعد الكتابة">
- <button class="pw-eye" type="button" onclick="togglePass('rp2',this)">
- <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
- </button>
- </div>
- </div>
- <button class="btn-main" onclick="doReset()">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
- تعيين كلمة المرور
- </button>
- </div>
- </div>
+<!-- صفحة reset password -->
+<div id="reset-page" style="display:none;width:100%;max-width:440px;position:relative;z-index:1">
+  <div class="card">
+    <div class="hd">
+      <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+      <div class="hd-t">إعادة تعيين كلمة المرور</div>
+      <div class="hd-s">أنشئ كلمة مرور جديدة لحسابك</div>
+    </div>
+    <div class="body">
+      <div class="al" id="reset-al"></div>
+      <div class="fg"><label>كلمة المرور الجديدة *</label>
+        <div class="pw-wrap">
+          <input id="rp1" type="password" placeholder="6 أحرف على الأقل">
+          <button class="pw-eye" type="button" onclick="togglePass('rp1',this)">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fg"><label>تأكيد كلمة المرور *</label>
+        <div class="pw-wrap">
+          <input id="rp2" type="password" placeholder="أعد الكتابة">
+          <button class="pw-eye" type="button" onclick="togglePass('rp2',this)">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="btn-main" onclick="doReset()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        تعيين كلمة المرور
+      </button>
+    </div>
+  </div>
+  <div class="bh"><a href="auth.html">العودة لتسجيل الدخول</a></div>
 </div>
 
-<!-- صفحة الدخول/التسجيل الرئيسية -->
-<div id="auth-page">
- <div class="card">
- <div class="hd">
- <div class="logo">مناقصة<b>.</b></div>
- <div class="hd-t" id="hd-t">أهلاً بك</div>
- <div class="hd-s" id="hd-s">سجّل دخولك لمتابعة مشاريعك</div>
- </div>
- <div class="tabs">
- <button class="tab on" onclick="setMode('login')">تسجيل الدخول</button>
- <button class="tab" onclick="setMode('register')">حساب جديد</button>
- </div>
- <div class="body">
- <div class="al" id="al"></div>
+<!-- صفحة الدخول/التسجيل -->
+<div id="auth-page" class="page-wrap">
+  <div class="card">
+    <div class="hd">
+      <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+      <div class="hd-t" id="hd-t">أهلاً بك</div>
+      <div class="hd-s" id="hd-s">سجّل دخولك لمتابعة مشاريعك</div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" onclick="setMode('login')">تسجيل الدخول</button>
+      <button class="tab" onclick="setMode('register')">حساب جديد</button>
+    </div>
+    <div class="body">
+      <div class="al" id="al"></div>
 
- <!-- طريقة الدخول -->
- <div id="method-section" style="margin-bottom:4px">
- <div class="method-toggle">
- <button class="mt-btn on" id="mt-email" onclick="setMethod('email')">
- <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
- بريد إلكتروني
- </button>
- <button class="mt-btn" id="mt-phone" onclick="setMethod('phone')">
- <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
- جوال
- </button>
- </div>
- </div>
+      <!-- طريقة الدخول -->
+      <div id="method-section">
+        <div class="method-toggle">
+          <button class="mt-btn on" id="mt-email" onclick="setMethod('email')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+            بريد إلكتروني
+          </button>
+          <button class="mt-btn" id="mt-phone" onclick="setMethod('phone')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            جوال
+          </button>
+        </div>
+      </div>
 
- <!-- الاسم (تسجيل) -->
- <div class="fg" id="fg-name" style="display:none">
- <label>الاسم الكامل *</label>
- <input id="i-name" type="text" placeholder="اسمك الكامل">
- </div>
+      <!-- الاسم (تسجيل) -->
+      <div class="fg" id="fg-name" style="display:none">
+        <label>الاسم الكامل *</label>
+        <input id="i-name" type="text" placeholder="اسمك الكامل">
+      </div>
 
- <!-- نوع الحساب (تسجيل) -->
- <div class="role-g" id="role-g" style="display:none">
- <div class="rc on" id="rc-c" onclick="selRole('client')">
- <div class="ico"></div><div class="nm">عميل</div><div class="ds">أنشر مشاريع</div>
- </div>
- <div class="rc" id="rc-p" onclick="selRole('provider')">
- <div class="ico"></div><div class="nm">مزود خدمة</div><div class="ds">قدّم عروض</div>
- </div>
- </div>
+      <!-- نوع الحساب (تسجيل) -->
+      <div class="role-g" id="role-g" style="display:none">
+        <div class="rc on" id="rc-c" onclick="selRole('client')">
+          <div class="ico">👤</div><div class="nm">عميل</div><div class="ds">أنشر مشاريع</div>
+        </div>
+        <div class="rc" id="rc-p" onclick="selRole('provider')">
+          <div class="ico">🔧</div><div class="nm">مزود خدمة</div><div class="ds">قدّم عروض</div>
+        </div>
+      </div>
 
- <!-- البريد (دخول بريد / تسجيل) -->
- <div class="fg" id="fg-email">
- <label>البريد الإلكتروني *</label>
- <input id="i-email" type="email" placeholder="example@email.com" inputmode="email">
- </div>
+      <!-- البريد -->
+      <div class="fg" id="fg-email">
+        <label>البريد الإلكتروني *</label>
+        <input id="i-email" type="email" placeholder="example@email.com" inputmode="email">
+      </div>
 
- <!-- الجوال (دخول بجوال) -->
- <div class="fg" id="fg-phone" style="display:none">
- <label>رقم الجوال *</label>
- <input id="i-phone" type="tel" placeholder="مثال: 0501234567" inputmode="numeric" maxlength="10"
- style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;font-family:inherit;outline:none;transition:.15s"
- onfocus="this.style.borderColor='#1473E6';this.style.boxShadow='0 0 0 3px rgba(20,115,230,.1)'"
- onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
- </div>
+      <!-- الجوال (دخول بجوال) -->
+      <div class="fg" id="fg-phone" style="display:none">
+        <label>رقم الجوال *</label>
+        <input id="i-phone" class="phone-input" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+      </div>
 
- <!-- كلمة المرور -->
- <div class="fg">
- <label>كلمة المرور *</label>
- <div class="pw-wrap">
- <input id="i-pass" type="password" placeholder="كلمة المرور">
- <button class="pw-eye" type="button" onclick="togglePass('i-pass',this)">
- <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
- </button>
- </div>
- </div>
+      <!-- كلمة المرور -->
+      <div class="fg">
+        <label>كلمة المرور *</label>
+        <div class="pw-wrap">
+          <input id="i-pass" type="password" placeholder="كلمة المرور">
+          <button class="pw-eye" type="button" onclick="togglePass('i-pass',this)">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
 
- <!-- تأكيد كلمة المرور (تسجيل) -->
- <div class="fg" id="fg-pass2" style="display:none">
- <label>تأكيد كلمة المرور *</label>
- <div class="pw-wrap">
- <input id="i-pass2" type="password" placeholder="أعد كتابة كلمة المرور">
- <button class="pw-eye" type="button" onclick="togglePass('i-pass2',this)">
- <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
- </button>
- </div>
- </div>
+      <!-- تأكيد كلمة المرور (تسجيل) -->
+      <div class="fg" id="fg-pass2" style="display:none">
+        <label>تأكيد كلمة المرور *</label>
+        <div class="pw-wrap">
+          <input id="i-pass2" type="password" placeholder="أعد كتابة كلمة المرور">
+          <button class="pw-eye" type="button" onclick="togglePass('i-pass2',this)">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
 
- <!-- الجوال الإلزامي (تسجيل) -->
- <div class="fg" id="fg-reg-phone" style="display:none">
- <label>رقم الجوال *</label>
- <input id="i-reg-phone" type="tel" placeholder="مثال: 0501234567" inputmode="numeric" maxlength="10"
- style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;font-family:inherit;outline:none;transition:.15s"
- onfocus="this.style.borderColor='#1473E6';this.style.boxShadow='0 0 0 3px rgba(20,115,230,.1)'"
- onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
- </div>
+      <!-- الجوال (تسجيل) -->
+      <div class="fg" id="fg-reg-phone" style="display:none">
+        <label>رقم الجوال *</label>
+        <input id="i-reg-phone" class="phone-input" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+      </div>
 
- <!-- المدينة (تسجيل) -->
- <div class="fg" id="fg-city" style="display:none">
- <label>المدينة <span style="font-weight:400;color:#94a3b8">(اختياري)</span></label>
- <select id="i-city">
- <option value="">اختر مدينتك</option>
- <option>أبها</option>
- <option>أبو عريش</option>
- <option>أحد رفيدة</option>
- <option>أملج</option>
- <option>الأحساء</option>
- <option>الأفلاج</option>
- <option>الباحة</option>
- <option>البدائع</option>
- <option>البرك</option>
- <option>البكيرية</option>
- <option>الجبيل</option>
- <option>الجموم</option>
- <option>الحرث</option>
- <option>الحريق</option>
- <option>الحناكية</option>
- <option>الخبر</option>
- <option>الخرج</option>
- <option>الخفجي</option>
- <option>الدرب</option>
- <option>الدرعية</option>
- <option>الدمام</option>
- <option>الدوادمي</option>
- <option>الرس</option>
- <option>الرياض</option>
- <option>الريث</option>
- <option>الزلفي</option>
- <option>السليل</option>
- <option>الشماسية</option>
- <option>الطائف</option>
- <option>الظهران</option>
- <option>العارضة</option>
- <option>العقيق</option>
- <option>العلا</option>
- <option>العوامية</option>
- <option>الغاط</option>
- <option>الغزالة</option>
- <option>القريات</option>
- <option>القطيف</option>
- <option>القنفذة</option>
- <option>القويعية</option>
- <option>الكامل</option>
- <option>الليث</option>
- <option>المجمعة</option>
- <option>المخواة</option>
- <option>المدينة المنورة</option>
- <option>المذنب</option>
- <option>المزاحمية</option>
- <option>المندق</option>
- <option>المويه</option>
- <option>النماص</option>
- <option>الوجه</option>
- <option>بدر</option>
- <option>بريدة</option>
- <option>بقعاء</option>
- <option>بلجرشي</option>
- <option>بيش</option>
- <option>بيشة</option>
- <option>تبوك</option>
- <option>تثليث</option>
- <option>تيماء</option>
- <option>ثادق</option>
- <option>جازان</option>
- <option>جدة</option>
- <option>حائل</option>
- <option>حبونا</option>
- <option>حريملاء</option>
- <option>حفر الباطن</option>
- <option>حقل</option>
- <option>خليص</option>
- <option>خميس مشيط</option>
- <option>خيبر</option>
- <option>دومة الجندل</option>
- <option>رأس تنورة</option>
- <option>رابغ</option>
- <option>رجال ألمع</option>
- <option>رفحاء</option>
- <option>رماح</option>
- <option>رياض الخبراء</option>
- <option>سراة عبيدة</option>
- <option>سكاكا</option>
- <option>سميراء</option>
- <option>سيهات</option>
- <option>شرورة</option>
- <option>شقراء</option>
- <option>صامطة</option>
- <option>صبيا</option>
- <option>صفوى</option>
- <option>ضباء</option>
- <option>ضرما</option>
- <option>ضرية</option>
- <option>طريف</option>
- <option>ظهران الجنوب</option>
- <option>عرعر</option>
- <option>عفيف</option>
- <option>عنيزة</option>
- <option>فيفا</option>
- <option>قلوة</option>
- <option>محايل عسير</option>
- <option>مكة المكرمة</option>
- <option>ميسان</option>
- <option>نجران</option>
- <option>وادي الدواسر</option>
- <option>يدمة</option>
- <option>ينبع</option></select>
- </div>
+      <!-- المدينة (تسجيل) -->
+      <div class="fg" id="fg-city" style="display:none">
+        <label>المدينة <span style="font-weight:400;color:#94a3b8">(اختياري)</span></label>
+        <select id="i-city">
+          <option value="">اختر مدينتك</option>
+          <option>أبها</option><option>أبو عريش</option><option>أحد رفيدة</option><option>أملج</option><option>الأحساء</option><option>الأفلاج</option><option>الباحة</option><option>البدائع</option><option>البرك</option><option>البكيرية</option><option>الجبيل</option><option>الجموم</option><option>الحرث</option><option>الحريق</option><option>الحناكية</option><option>الخبر</option><option>الخرج</option><option>الخفجي</option><option>الدرب</option><option>الدرعية</option><option>الدمام</option><option>الدوادمي</option><option>الرس</option><option>الرياض</option><option>الريث</option><option>الزلفي</option><option>السليل</option><option>الشماسية</option><option>الطائف</option><option>الظهران</option><option>العارضة</option><option>العقيق</option><option>العلا</option><option>العوامية</option><option>الغاط</option><option>الغزالة</option><option>القريات</option><option>القطيف</option><option>القنفذة</option><option>القويعية</option><option>الكامل</option><option>الليث</option><option>المجمعة</option><option>المخواة</option><option>المدينة المنورة</option><option>المذنب</option><option>المزاحمية</option><option>المندق</option><option>المويه</option><option>النماص</option><option>الوجه</option><option>بدر</option><option>بريدة</option><option>بقعاء</option><option>بلجرشي</option><option>بيش</option><option>بيشة</option><option>تبوك</option><option>تثليث</option><option>تيماء</option><option>ثادق</option><option>جازان</option><option>جدة</option><option>حائل</option><option>حبونا</option><option>حريملاء</option><option>حفر الباطن</option><option>حقل</option><option>خليص</option><option>خميس مشيط</option><option>خيبر</option><option>دومة الجندل</option><option>رأس تنورة</option><option>رابغ</option><option>رجال ألمع</option><option>رفحاء</option><option>رماح</option><option>رياض الخبراء</option><option>سراة عبيدة</option><option>سكاكا</option><option>سميراء</option><option>سيهات</option><option>شرورة</option><option>شقراء</option><option>صامطة</option><option>صبيا</option><option>صفوى</option><option>ضباء</option><option>ضرما</option><option>ضرية</option><option>طريف</option><option>ظهران الجنوب</option><option>عرعر</option><option>عفيف</option><option>عنيزة</option><option>فيفا</option><option>قلوة</option><option>محايل عسير</option><option>مكة المكرمة</option><option>ميسان</option><option>نجران</option><option>وادي الدواسر</option><option>يدمة</option><option>ينبع</option>
+        </select>
+      </div>
 
- <button class="btn-main" id="btn-submit" onclick="doSubmit()">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
- <span id="btn-t">تسجيل الدخول</span>
- </button>
+      <button class="btn-main" id="btn-submit" onclick="doSubmit()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span id="btn-t">تسجيل الدخول</span>
+      </button>
 
- <div style="text-align:left;margin-top:10px" id="forgot-wrap">
- <button class="link-btn" onclick="doForgot()">نسيت كلمة المرور؟</button>
- </div>
+      <div style="text-align:center;margin-top:11px" id="forgot-wrap">
+        <button class="link-btn" onclick="doForgot()">نسيت كلمة المرور؟</button>
+      </div>
 
- <p class="note" id="note-reg" style="display:none">
- بالتسجيل توافق على <a href="terms.html">شروط الاستخدام</a> و<a href="terms.html">سياسة الخصوصية</a>
- </p>
- </div>
- </div>
- <div class="bh"><a href="index.html">العودة للرئيسية</a></div>
+      <p class="note" id="note-reg" style="display:none">
+        بالتسجيل توافق على <a href="terms.html">شروط الاستخدام</a> و<a href="privacy.html">سياسة الخصوصية</a>
+      </p>
+    </div>
+  </div>
+  <div class="bh"><a href="index.html">العودة للرئيسية</a></div>
 </div>
 
 <script>
-var API = 'https://manaqasati-production.up.railway.app';
-var MODE = 'login';
-var ROLE = 'client';
-var METHOD = 'email';
+var API='https://manaqasati-production.up.railway.app';
+var MODE='login',ROLE='client',METHOD='email';
 
-// ── Reset Password ──
-function checkReset() {
- var params = new URLSearchParams(location.search);
- var token = params.get('reset');
- if (!token) return;
- document.getElementById('reset-page').style.display = 'block';
- document.getElementById('auth-page').style.display = 'none';
- window._resetToken = token;
+function checkReset(){var p=new URLSearchParams(location.search);var t=p.get('reset');if(!t)return;document.getElementById('reset-page').style.display='block';document.getElementById('auth-page').style.display='none';window._resetToken=t;}
+async function doReset(){var p1=document.getElementById('rp1').value;var p2=document.getElementById('rp2').value;var al=document.getElementById('reset-al');if(!p1||p1.length<6){al.textContent='كلمة المرور 6 أحرف على الأقل';al.className='al err';return;}if(p1!==p2){al.textContent='كلمتا المرور غير متطابقتين';al.className='al err';return;}try{var r=await fetch(API+'/api/auth/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:window._resetToken,password:p1})});var d=await r.json();if(r.ok){al.textContent='تم التعيين بنجاح! جاري التحويل...';al.className='al ok';setTimeout(function(){location.href='auth.html';},2000);}else{al.textContent=d.message||'حدث خطأ';al.className='al err';}}catch(e){al.textContent='تعذر الاتصال';al.className='al err';}}
+
+function setMode(m){MODE=m;var isR=m==='register';document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===(isR?1:0));});show('method-section',!isR);show('fg-name',isR);showGrid('role-g',isR);show('fg-pass2',isR);show('fg-reg-phone',isR);show('fg-city',isR);show('forgot-wrap',!isR);show('note-reg',isR);document.getElementById('hd-t').textContent=isR?'إنشاء حساب جديد':'أهلاً بك';document.getElementById('hd-s').textContent=isR?'انضم لمناقصة اليوم':'سجّل دخولك لمتابعة مشاريعك';document.getElementById('btn-t').textContent=isR?'إنشاء الحساب':'تسجيل الدخول';if(isR){show('fg-email',true);show('fg-phone',false);}else{setMethod(METHOD);}setAl('','');}
+function show(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'block':'none';}
+function showGrid(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'grid':'none';}
+function setMethod(m){METHOD=m;document.getElementById('mt-email').classList.toggle('on',m==='email');document.getElementById('mt-phone').classList.toggle('on',m==='phone');show('fg-email',m==='email');show('fg-phone',m==='phone');}
+function selRole(r){ROLE=r;document.getElementById('rc-c').classList.toggle('on',r==='client');document.getElementById('rc-p').classList.toggle('on',r==='provider');}
+function togglePass(id,btn){var inp=document.getElementById(id);var s=inp.type==='password';inp.type=s?'text':'password';btn.innerHTML=s?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';}
+function setAl(msg,type){var el=document.getElementById('al');el.textContent=msg;el.className='al'+(type?' '+type:'');}
+function getVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+function formatPhone(raw){var d=raw.replace(/[^0-9]/g,'');if(d.startsWith('966'))return d;if(d.startsWith('0'))d=d.slice(1);return'966'+d;}
+function validatePhone(raw){var d=raw.replace(/[^0-9]/g,'');return d.length===10&&d.startsWith('05');}
+
+async function doSubmit(){
+  setAl('','');
+  var pass=document.getElementById('i-pass').value;
+  if(!pass||pass.length<6){setAl('كلمة المرور 6 أحرف على الأقل','err');return;}
+  var btn=document.getElementById('btn-submit');
+  btn.disabled=true;document.getElementById('btn-t').textContent='جاري...';
+  try{
+    var url,body;
+    if(MODE==='login'){
+      if(METHOD==='email'){var email=getVal('i-email');if(!email||!email.includes('@')){setAl('أدخل بريداً إلكترونياً صحيحاً','err');return;}body={email:email,password:pass};}
+      else{var phone=getVal('i-phone');if(!phone){setAl('أدخل رقم الجوال','err');return;}if(!validatePhone(phone)){setAl('أدخل رقم جوال سعودي صحيح (10 أرقام يبدأ بـ 05)','err');return;}body={phone:formatPhone(phone),password:pass};}
+      url=API+'/api/auth/login';
+    }else{
+      var name=getVal('i-name');var email2=getVal('i-email');var pass2=document.getElementById('i-pass2').value;var rPhone=getVal('i-reg-phone');var city=getVal('i-city');
+      if(!name){setAl('أدخل اسمك الكامل','err');return;}
+      if(!email2||!email2.includes('@')){setAl('أدخل بريداً إلكترونياً صحيحاً','err');return;}
+      if(pass!==pass2){setAl('كلمتا المرور غير متطابقتين','err');return;}
+      if(!rPhone){setAl('رقم الجوال مطلوب','err');return;}
+      if(!validatePhone(rPhone)){setAl('أدخل رقم جوال سعودي صحيح (10 أرقام يبدأ بـ 05)','err');return;}
+      url=API+'/api/auth/register';
+      body={name:name,email:email2,password:pass,role:ROLE,city:city||null,phone:formatPhone(rPhone)};
+    }
+    var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(r.ok){
+      localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(d.user));
+      setAl('تم بنجاح! جاري التحويل...','ok');
+      setTimeout(function(){var rl=d.user.role;location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';},900);
+    }else{setAl(d.message||'حدث خطأ، حاول مرة أخرى','err');}
+  }catch(e){setAl('تعذر الاتصال بالسيرفر','err');}
+  finally{btn.disabled=false;document.getElementById('btn-t').textContent=MODE==='login'?'تسجيل الدخول':'إنشاء الحساب';}
 }
 
-async function doReset() {
- var p1 = document.getElementById('rp1').value;
- var p2 = document.getElementById('rp2').value;
- var al = document.getElementById('reset-al');
- if (!p1 || p1.length < 6) { al.textContent = 'كلمة المرور 6 أحرف على الأقل'; al.className = 'al err'; return; }
- if (p1 !== p2) { al.textContent = 'كلمتا المرور غير متطابقتين'; al.className = 'al err'; return; }
- try {
- var r = await fetch(API + '/api/auth/reset-password', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ token: window._resetToken, password: p1 })
- });
- var d = await r.json();
- if (r.ok) {
- al.textContent = 'تم التعيين بنجاح! جاري التحويل...';
- al.className = 'al ok';
- setTimeout(function() { location.href = 'auth.html'; }, 2000);
- } else {
- al.textContent = d.message || 'حدث خطأ';
- al.className = 'al err';
- }
- } catch(e) { al.textContent = 'تعذر الاتصال'; al.className = 'al err'; }
-}
+async function doForgot(){var id=METHOD==='email'?getVal('i-email'):getVal('i-phone');if(!id){setAl('أدخل بريدك الإلكتروني أو جوالك أولاً','err');return;}try{var r=await fetch(API+'/api/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:id})});var d=await r.json();setAl(d.message||'تم إرسال رابط إعادة التعيين','ok');}catch(e){setAl('تعذر الاتصال','err');}}
 
-// ── Mode ──
-function setMode(m) {
- MODE = m;
- var isR = m === 'register';
- document.querySelectorAll('.tab').forEach(function(t, i) {
- t.classList.toggle('on', i === (isR ? 1 : 0));
- });
- show('method-section', !isR);
- show('fg-name', isR);
- showGrid('role-g', isR);
- show('fg-pass2', isR);
- show('fg-reg-phone', isR);
- show('fg-city', isR);
- show('forgot-wrap', !isR);
- show('note-reg', isR);
- document.getElementById('hd-t').textContent = isR ? 'إنشاء حساب جديد' : 'أهلاً بك';
- document.getElementById('hd-s').textContent = isR ? 'انضم لمناقصة اليوم' : 'سجّل دخولك لمتابعة مشاريعك';
- document.getElementById('btn-t').textContent = isR ? 'إنشاء الحساب' : 'تسجيل الدخول';
- if (isR) {
- show('fg-email', true);
- show('fg-phone', false);
- } else {
- setMethod(METHOD);
- }
- setAl('', '');
-}
-
-function show(id, visible) {
- var el = document.getElementById(id);
- if (el) el.style.display = visible ? 'block' : 'none';
-}
-
-function showGrid(id, visible) {
- var el = document.getElementById(id);
- if (el) el.style.display = visible ? 'grid' : 'none';
-}
-
-// ── Method ──
-function setMethod(m) {
- METHOD = m;
- document.getElementById('mt-email').classList.toggle('on', m === 'email');
- document.getElementById('mt-phone').classList.toggle('on', m === 'phone');
- show('fg-email', m === 'email');
- show('fg-phone', m === 'phone');
-}
-
-// ── Role ──
-function selRole(r) {
- ROLE = r;
- document.getElementById('rc-c').classList.toggle('on', r === 'client');
- document.getElementById('rc-p').classList.toggle('on', r === 'provider');
-}
-
-// ── Password Toggle ──
-function togglePass(id, btn) {
- var inp = document.getElementById(id);
- var show = inp.type === 'password';
- inp.type = show ? 'text' : 'password';
- btn.innerHTML = show
- ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
- : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-}
-
-// ── Alert ──
-function setAl(msg, type) {
- var el = document.getElementById('al');
- el.textContent = msg;
- el.className = 'al' + (type ? ' ' + type : '');
-}
-
-function getVal(id) {
- var el = document.getElementById(id);
- return el ? el.value.trim() : '';
-}
-
-function formatPhone(raw) {
- // إزالة كل ما ليس رقماً
- var digits = raw.replace(/[^0-9]/g, '');
- // إذا بدأ بـ 966 نتركه، إذا بدأ بـ 0 نحذف الصفر ونضيف 966
- if (digits.startsWith('966')) return digits;
- if (digits.startsWith('0')) digits = digits.slice(1);
- return '966' + digits;
-}
-
-function validatePhone(raw) {
- var digits = raw.replace(/[^0-9]/g, '');
- // يجب أن يكون 10 أرقام ويبدأ بـ 05
- if (digits.length !== 10) return false;
- if (!digits.startsWith('05')) return false;
- return true;
-}
-
-// ── Submit ──
-async function doSubmit() {
- setAl('', '');
- var pass = document.getElementById('i-pass').value;
- if (!pass || pass.length < 6) { setAl('كلمة المرور 6 أحرف على الأقل', 'err'); return; }
-
- var btn = document.getElementById('btn-submit');
- btn.disabled = true;
- document.getElementById('btn-t').textContent = 'جاري...';
-
- try {
- var url, body;
-
- if (MODE === 'login') {
- if (METHOD === 'email') {
- var email = getVal('i-email');
- if (!email || !email.includes('@')) { setAl('أدخل بريداً إلكترونياً صحيحاً', 'err'); return; }
- body = { email: email, password: pass };
- } else {
- var phone = getVal('i-phone');
- if (!phone) { setAl('أدخل رقم الجوال', 'err'); return; }
- if (!validatePhone(phone)) { setAl('أدخل رقم جوال سعودي صحيح (10 أرقام يبدأ بـ 05)', 'err'); return; }
- body = { phone: formatPhone(phone), password: pass };
- }
- url = API + '/api/auth/login';
-
- } else {
- var name = getVal('i-name');
- var email2 = getVal('i-email');
- var pass2 = document.getElementById('i-pass2').value;
- var rPhone = getVal('i-reg-phone');
- var city = getVal('i-city');
-
- if (!name) { setAl('أدخل اسمك الكامل', 'err'); return; }
- if (!email2 || !email2.includes('@')) { setAl('أدخل بريداً إلكترونياً صحيحاً', 'err'); return; }
- if (pass !== pass2) { setAl('كلمتا المرور غير متطابقتين', 'err'); return; }
- if (!rPhone) { setAl('رقم الجوال مطلوب', 'err'); return; }
- if (!validatePhone(rPhone)) { setAl('أدخل رقم جوال سعودي صحيح (10 أرقام يبدأ بـ 05)', 'err'); return; }
- var fPhone = formatPhone(rPhone);
-
- url = API + '/api/auth/register';
- body = { name: name, email: email2, password: pass, role: ROLE, city: city || null, phone: fPhone };
- }
-
- var r = await fetch(url, {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify(body)
- });
- var d = await r.json();
-
- if (r.ok) {
- localStorage.setItem('token', d.token);
- localStorage.setItem('user', JSON.stringify(d.user));
- setAl('تم بنجاح! جاري التحويل...', 'ok');
- setTimeout(function() {
- var rl = d.user.role;
- location.href = rl === 'admin' ? 'dashboard-admin.html'
- : rl === 'provider' ? 'dashboard-provider.html'
- : 'dashboard-client.html';
- }, 900);
- } else {
- setAl(d.message || 'حدث خطأ، حاول مرة أخرى', 'err');
- }
- } catch(e) {
- setAl('تعذر الاتصال بالسيرفر', 'err');
- } finally {
- btn.disabled = false;
- document.getElementById('btn-t').textContent = MODE === 'login' ? 'تسجيل الدخول' : 'إنشاء الحساب';
- }
-}
-
-// ── Forgot Password ──
-async function doForgot() {
- var id = METHOD === 'email' ? getVal('i-email') : getVal('i-phone');
- if (!id) { setAl('أدخل بريدك الإلكتروني أو جوالك أولاً', 'err'); return; }
- try {
- var r = await fetch(API + '/api/auth/forgot-password', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ email: id })
- });
- var d = await r.json();
- setAl(d.message || 'تم إرسال رابط إعادة التعيين', 'ok');
- } catch(e) { setAl('تعذر الاتصال', 'err'); }
-}
-
-document.addEventListener('keydown', function(e) {
- if (e.key === 'Enter') doSubmit();
-});
-
-// Init
+document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();});
 checkReset();
 setMode('login');
 </script>
-<script>if(typeof lucide !== "undefined") lucide.createIcons();</script>
 </body>
 </html>
