@@ -253,6 +253,7 @@ async function initDB() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio_images TEXT[]`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS project_number VARCHAR(50)`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS address TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE`,
@@ -1021,7 +1022,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT id,name,email,phone,city,specialties,notify_categories,bio,badge,
-             experience_years,portfolio_images,created_at,
+             experience_years,portfolio_images,profile_image,created_at,
              COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
              COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
              (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects,
@@ -1033,11 +1034,24 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, portfolio_images } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, portfolio_images, profile_image } = req.body;
+    // بناء الاستعلام ديناميكياً
+    const fields = [];
+    const vals = [];
+    let idx = 1;
+    if (name !== undefined) { fields.push(`name=$${idx++}`); vals.push(name); }
+    if (phone !== undefined) { fields.push(`phone=$${idx++}`); vals.push(phone||null); }
+    if (city !== undefined) { fields.push(`city=$${idx++}`); vals.push(city||null); }
+    if (bio !== undefined) { fields.push(`bio=$${idx++}`); vals.push(bio||null); }
+    if (specialties !== undefined) { fields.push(`specialties=$${idx++}`); vals.push(specialties||null); }
+    if (experience_years !== undefined) { fields.push(`experience_years=$${idx++}`); vals.push(experience_years||null); }
+    if (portfolio_images !== undefined) { fields.push(`portfolio_images=$${idx++}`); vals.push(portfolio_images||null); }
+    if (profile_image !== undefined) { fields.push(`profile_image=$${idx++}`); vals.push(profile_image); }
+    if (!fields.length) return res.status(400).json({ message: 'لا يوجد بيانات للتحديث' });
+    vals.push(req.user.id);
     const r = await pool.query(
-      `UPDATE users SET name=$1,phone=$2,city=$3,bio=$4,specialties=$5,experience_years=$6,portfolio_images=$7
-       WHERE id=$8 RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images`,
-      [name, phone||null, city||null, bio||null, specialties||null, experience_years||null, portfolio_images||null, req.user.id]);
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,badge,experience_years,portfolio_images,profile_image`,
+      vals);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1047,6 +1061,32 @@ app.put('/api/provider/notify-prefs', auth, async (req, res) => {
     const { notify_categories } = req.body;
     await pool.query('UPDATE users SET notify_categories=$1 WHERE id=$2', [notify_categories||[], req.user.id]);
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── معرض الأعمال ──
+app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'الصورة مطلوبة' });
+    const r = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = r.rows[0]?.portfolio_images || [];
+    if (imgs.length >= 6) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
+    imgs.push(image);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/provider/profile/portfolio/:index', auth, async (req, res) => {
+  try {
+    const idx = parseInt(req.params.index);
+    const r = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = r.rows[0]?.portfolio_images || [];
+    if (idx < 0 || idx >= imgs.length) return res.status(400).json({ message: 'صورة غير موجودة' });
+    imgs.splice(idx, 1);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -1074,7 +1114,7 @@ app.get('/api/provider/reviews', auth, async (req, res) => {
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT id,name,city,specialties,bio,badge,experience_years,portfolio_images,created_at,
+      SELECT id,name,city,specialties,bio,badge,experience_years,portfolio_images,profile_image,created_at,
              COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
              COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
              (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
