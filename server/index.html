@@ -5,468 +5,454 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
 <title>مناقصة — منصة المشاريع والخدمات في السعودية</title>
-<meta name="google-site-verification" content="E39K9c78ZeDejVxE1">
-<meta name="description" content="مناقصة — منصة سعودية لربط أصحاب المشاريع بمزودي الخدمات. أنشر مشروعك مجاناً واستقبل أفضل العروض من مزودين معتمدين في جميع مدن المملكة.">
-<meta name="keywords" content="مناقصة, مشاريع, خدمات, كهرباء, سباكة, تكييف, نجارة, تنظيف, مقاولات, السعودية, الرياض, جدة">
-<meta name="author" content="مناقصة">
+<meta name="description" content="مناقصة — منصة سعودية لربط أصحاب المشاريع بمزودي الخدمات. أنشر مشروعك مجاناً واستقبل أفضل العروض.">
+<meta name="keywords" content="مناقصة, مشاريع, خدمات, كهرباء, سباكة, تكييف, نجارة, تنظيف, مقاولات, السعودية">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="مناقصة — منصة المشاريع والخدمات في السعودية">
-<meta property="og:description" content="أنشر مشروعك مجاناً واستقبل أفضل العروض من مزودين معتمدين">
 <meta property="og:url" content="https://manaqasa.com">
 <meta property="og:type" content="website">
-<meta property="og:locale" content="ar_SA">
 <link rel="canonical" href="https://manaqasa.com">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
- font-family: 'Tajawal', sans-serif;
- background: #f8f9fb;
- color: #0f172a;
- min-height: 100vh;
+/* ═══════════════════════════════
+   مناقصة — هوية موحدة
+   Navy: #1B3A6B | Gold: #F0A500
+═══════════════════════════════ */
+:root {
+  --navy:    #1B3A6B;
+  --navyD:   #142d54;
+  --navyL:   #e8eef7;
+  --gold:    #F0A500;
+  --goldD:   #c78500;
+  --bg:      #f4f7fb;
+  --white:   #ffffff;
+  --border:  #dce5f0;
+  --t:       #0d1f3c;
+  --t2:      #2d4a6e;
+  --t3:      #6b85a8;
+  --t4:      #9db3cc;
+  --green:   #16a34a;
+  --greenL:  #dcfce7;
+  --red:     #dc2626;
 }
-a { text-decoration: none; color: inherit; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { font-family:'Tajawal',sans-serif; background:var(--bg); color:var(--t); min-height:100vh; }
+a { text-decoration:none; color:inherit; }
 
-/* NAV */
+/* ── NAV ── */
 .nav {
- background: #fff;
- border-bottom: 1px solid #e2e8f0;
- height: 62px;
- display: flex; align-items: center; justify-content: space-between;
- padding: 0 32px;
- position: sticky; top: 0; z-index: 100;
- box-shadow: 0 1px 8px rgba(0,0,0,.05);
+  background:var(--navy);
+  height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px;
+  position:sticky; top:0; z-index:100;
+  border-bottom:3px solid var(--gold);
 }
-.logo { font-size: 21px; font-weight: 900; color: #0f172a; }
-.logo b { color: #1473E6; }
-.nav-right { display: flex; gap: 10px; align-items: center; }
-.btn-outline { padding: 8px 18px; border: 1.5px solid #e2e8f0; background: #fff; color: #374151; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .12s; }
-.btn-outline:hover { border-color: #1473E6; color: #1473E6; }
-.btn-blue { padding: 9px 20px; background: #1473E6; border: none; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; transition: .12s; }
-.btn-blue:hover { background: #0d5fc9; }
+.logo {
+  font-size:22px; font-weight:900; color:#fff;
+  display:flex; align-items:center; gap:4px;
+}
+.logo-dot { width:10px; height:10px; border-radius:50%; background:var(--gold); display:inline-block; margin-right:2px; }
+.nav-right { display:flex; gap:10px; align-items:center; }
+.btn-outline {
+  padding:8px 18px; border:1.5px solid rgba(255,255,255,0.3);
+  background:transparent; color:#fff; border-radius:10px;
+  font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:.15s;
+}
+.btn-outline:hover { border-color:#fff; background:rgba(255,255,255,0.1); }
+.btn-gold {
+  padding:9px 20px; background:var(--gold); border:none; color:#fff;
+  border-radius:10px; font-size:13px; font-weight:800; cursor:pointer;
+  font-family:inherit; transition:.15s;
+}
+.btn-gold:hover { background:var(--goldD); }
 
-/* HERO BANNER */
+/* ── HERO ── */
 .hero {
- background: linear-gradient(135deg, #0f2545 0%, #1473E6 100%);
- padding: 52px 32px;
- text-align: center;
- position: relative; overflow: hidden;
+  background:var(--navy);
+  padding:60px 32px 50px;
+  text-align:center;
+  position:relative; overflow:hidden;
 }
-.hero::before {
- content: '';
- position: absolute; inset: 0;
- background: radial-gradient(circle at 70% 50%, rgba(255,255,255,.07), transparent 60%);
+/* شبكة النقاط */
+.hero-net { position:absolute; inset:0; pointer-events:none; }
+.hero-net span {
+  position:absolute; border-radius:50%;
+  background:rgba(255,255,255,0.12);
 }
-.hero-inner { position: relative; z-index: 1; max-width: 600px; margin: 0 auto; }
+.hero-net .d1 { width:8px; height:8px; top:30px; left:8%; }
+.hero-net .d2 { width:12px; height:12px; top:55px; left:22%; background:rgba(255,255,255,0.18); }
+.hero-net .d3 { width:8px; height:8px; top:25px; left:38%; }
+.hero-net .d4 { width:10px; height:10px; top:60px; left:55%; background:rgba(240,165,0,0.5); }
+.hero-net .d5 { width:7px; height:7px; top:35px; right:30%; }
+.hero-net .d6 { width:9px; height:9px; top:50px; right:15%; background:rgba(255,255,255,0.18); }
+.hero-net .l1 { width:160px; height:1px; border-radius:0; background:rgba(255,255,255,0.08); top:46px; left:10%; transform:rotate(12deg); }
+.hero-net .l2 { width:120px; height:1px; border-radius:0; background:rgba(255,255,255,0.08); top:42px; left:30%; transform:rotate(-8deg); }
+.hero-net .l3 { width:100px; height:1px; border-radius:0; background:rgba(240,165,0,0.2); top:56px; left:48%; transform:rotate(5deg); }
+.hero-goldbar { position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--gold); }
+.hero-inner { position:relative; z-index:1; max-width:640px; margin:0 auto; }
 .hero-badge {
- display: inline-block;
- background: rgba(255,255,255,.12);
- border: 1px solid rgba(255,255,255,.2);
- color: rgba(255,255,255,.9);
- padding: 5px 16px; border-radius: 20px;
- font-size: 12px; font-weight: 700; margin-bottom: 18px;
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(240,165,0,0.15); border:1px solid rgba(240,165,0,0.4);
+  color:var(--gold); padding:6px 18px; border-radius:20px;
+  font-size:12px; font-weight:700; margin-bottom:22px;
 }
-.hero h1 { font-size: 38px; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 12px; letter-spacing: -.4px; }
-.hero h1 em { font-style: normal; color: #fbbf24; }
-.hero p { font-size: 15px; color: rgba(255,255,255,.7); line-height: 1.8; margin-bottom: 28px; }
-.hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.btn-yellow { padding: 12px 28px; background: #fbbf24; border: none; color: #0f172a; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; transition: .12s; box-shadow: 0 4px 16px rgba(251,191,36,.4); }
-.btn-yellow:hover { background: #f59e0b; transform: translateY(-1px); }
-.btn-white-outline { padding: 12px 24px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.3); color: #fff; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .12s; }
-.btn-white-outline:hover { background: rgba(255,255,255,.18); }
-.hero-stats { display: flex; gap: 28px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
-.hs { text-align: center; }
-.hs-v { font-size: 26px; font-weight: 900; color: #fff; }
-.hs-l { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 2px; }
-
-/* MAIN */
-.main { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
-
-/* TOP BAR */
-.top-bar {
- display: flex; align-items: center; justify-content: space-between;
- margin-bottom: 20px; flex-wrap: wrap; gap: 14px;
+.hero h1 { font-size:42px; font-weight:900; color:#fff; line-height:1.2; margin-bottom:14px; }
+.hero h1 em { font-style:normal; color:var(--gold); }
+.hero p { font-size:15px; color:rgba(255,255,255,0.65); line-height:1.85; margin-bottom:30px; }
+.hero-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.btn-hero-gold {
+  padding:13px 30px; background:var(--gold); border:none; color:#fff;
+  border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;
+  font-family:inherit; transition:.15s; box-shadow:0 4px 16px rgba(240,165,0,0.35);
 }
-.top-bar-left h2 { font-size: 20px; font-weight: 800; color: #0f172a; }
-.top-bar-left p { font-size: 13px; color: #64748b; margin-top: 2px; }
-
-/* FILTER TABS */
-.filter-row { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
-.ftab { padding: 8px 18px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1.5px solid #e2e8f0; background: #fff; color: #64748b; transition: .12s; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.ftab:hover { border-color: #1473E6; color: #1473E6; background: #EBF3FD; }
-.ftab.on { background: #1473E6; color: #fff; border-color: #1473E6; box-shadow: 0 2px 8px rgba(20,115,230,.25); }
-
-/* GRID */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
+.btn-hero-gold:hover { background:var(--goldD); transform:translateY(-1px); }
+.btn-hero-outline {
+  padding:13px 26px; background:rgba(255,255,255,0.1);
+  border:1.5px solid rgba(255,255,255,0.3); color:#fff;
+  border-radius:12px; font-size:14px; font-weight:700; cursor:pointer;
+  font-family:inherit; transition:.15s;
 }
-
-/* PROJECT CARD */
-.card {
- background: #fff;
- border: 1.5px solid #e2e8f0;
- border-radius: 14px;
- overflow: hidden;
- transition: .18s;
- cursor: pointer;
+.btn-hero-outline:hover { background:rgba(255,255,255,0.18); }
+.hero-stats { display:flex; gap:0; justify-content:center; margin-top:40px; flex-wrap:wrap; }
+.hs {
+  text-align:center; padding:0 32px;
+  border-left:1px solid rgba(255,255,255,0.15);
 }
-.card:hover {
- border-color: #1473E6;
- box-shadow: 0 6px 24px rgba(20,115,230,.1);
- transform: translateY(-2px);
+.hs:last-child { border-left:none; }
+.hs-v { font-size:28px; font-weight:900; color:#fff; }
+.hs-v.gold { color:var(--gold); }
+.hs-l { font-size:11px; color:rgba(255,255,255,0.5); margin-top:3px; font-weight:600; }
+
+/* ── MAIN ── */
+.main { max-width:1200px; margin:0 auto; padding:28px 24px; }
+
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:14px; }
+.top-bar h2 { font-size:20px; font-weight:900; color:var(--t); }
+.top-bar p { font-size:13px; color:var(--t3); margin-top:3px; }
+
+/* ── FILTERS ── */
+.filter-row { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.ftab {
+  padding:8px 18px; border-radius:20px; font-size:12px; font-weight:700;
+  cursor:pointer; border:1.5px solid var(--border); background:#fff;
+  color:var(--t3); transition:.15s; font-family:inherit;
 }
-/* card image */
-.card-img { width:100%; height:140px; object-fit:cover; display:block; border-radius:10px 10px 0 0; }
-.card-img-ph { width:100%; height:140px; display:flex; align-items:center; justify-content:center; font-size:36px; border-radius:10px 10px 0 0; }
-.card-body { padding: 16px 18px; }
-.card-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.card-cat { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; background: #f1f5f9; color: #475569; }
+.ftab:hover { border-color:var(--navy); color:var(--navy); background:var(--navyL); }
+.ftab.on { background:var(--navy); color:#fff; border-color:var(--navy); box-shadow:0 2px 8px rgba(27,58,107,0.25); }
 
-/* STATUS */
-.s-open { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 4px; }
-.s-awarded { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; display: inline-flex; align-items: center; gap: 4px; }
-.s-progress { font-size: 10px; font-weight: 800; padding: 4px 11px; border-radius: 20px; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 4px; }
-
-.card-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 6px; line-height: 1.35; }
-.card-desc { font-size: 12px; color: #64748b; line-height: 1.75; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
-.cm { font-size: 11px; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.cm svg { width: 11px; height: 11px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-
-/* AWARDED BAR */
-.aw-bar {
- padding: 10px 18px;
- background: #faf5ff;
- border-top: 1px solid #ede9fe;
- display: flex; align-items: center; gap: 10px;
+.filter-selects { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.filter-selects select {
+  flex:1; min-width:160px; padding:10px 14px;
+  border:1.5px solid var(--border); border-radius:10px;
+  font-size:13px; color:var(--t); background:#fff;
+  cursor:pointer; font-family:inherit; transition:.15s;
 }
-.aw-av {
- width: 28px; height: 28px; border-radius: 50%;
- display: flex; align-items: center; justify-content: center;
- font-size: 11px; font-weight: 900; color: #fff; flex-shrink: 0;
+.filter-selects select:focus { outline:none; border-color:var(--navy); }
+.btn-clear {
+  padding:10px 18px; border:1.5px solid var(--border); border-radius:10px;
+  font-size:12px; font-weight:700; color:var(--t3); background:#fff;
+  cursor:pointer; white-space:nowrap; font-family:inherit; transition:.15s;
 }
-.aw-name { font-size: 12px; font-weight: 700; color: #7c3aed; flex: 1; }
-.aw-price { font-size: 13px; font-weight: 900; color: #7c3aed; }
+.btn-clear:hover { border-color:var(--navy); color:var(--navy); }
+#result-count { font-size:12px; color:var(--t4); margin-bottom:12px; display:none; }
 
-.card-footer {
- padding: 12px 18px;
- background: #f8f9fb;
- border-top: 1px solid #e2e8f0;
- display: flex; align-items: center; justify-content: space-between;
+/* ── GRID ── */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:18px; }
+
+/* ── CARD ── */
+.pub-card {
+  background:#fff; border-radius:16px; overflow:hidden;
+  border:1.5px solid var(--border);
+  box-shadow:0 2px 8px rgba(27,58,107,0.06);
+  cursor:pointer; transition:all .22s;
 }
-.cf-budget { font-size: 17px; font-weight: 900; color: #1473E6; }
-.cf-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
-.btn-apply { padding: 8px 18px; background: #1473E6; border: none; color: #fff; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .12s; }
-.btn-apply:hover { background: #0d5fc9; }
-.btn-tag-done { padding: 8px 14px; background: #f5f3ff; border: 1px solid #ddd6fe; color: #7c3aed; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: inherit; }
-.btn-tag-prog { padding: 8px 14px; background: #fffbeb; border: 1px solid #fde68a; color: #d97706; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: inherit; }
-
-/* EMPTY */
-.empty { text-align: center; padding: 60px 20px; grid-column: 1/-1; }
-.empty-ico { font-size: 48px; margin-bottom: 14px; }
-.empty h3 { font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
-.empty p { font-size: 13px; color: #64748b; }
-
-/* LOADING SKEL */
-.skel-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; overflow: hidden; }
-.skel { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200%; animation: sk 1.4s infinite; }
-@keyframes sk { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* MORE BTN */
-.load-more { text-align: center; margin-top: 28px; }
-.btn-more { padding: 12px 32px; background: #fff; border: 1.5px solid #e2e8f0; color: #374151; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .12s; }
-.btn-more:hover { border-color: #1473E6; color: #1473E6; }
-
-/* FOOTER */
-footer { background: #0f172a; padding: 32px; margin-top: 60px; }
-.foot { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
-.flogo { font-size: 18px; font-weight: 900; color: #fff; }
-.flogo b { color: #1473E6; }
-.flinks { display: flex; gap: 18px; }
-.flink { font-size: 12px; color: rgba(255,255,255,.35); cursor: pointer; }
-.flink:hover { color: rgba(255,255,255,.7); }
-.fcopy { font-size: 11px; color: rgba(255,255,255,.2); }
-
-@media(max-width:900px){ .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
-} }
-@media(max-width:600px){ .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
-} .main{padding:20px 16px} .nav{padding:0 16px} .hero{padding:36px 20px} .hero h1{font-size:26px} }
-
-.proj-card, .tender-card, .card-item {
-  transition: box-shadow .15s, transform .15s;
-  border-radius: 14px;
-  overflow: hidden;
+.pub-card:hover {
+  box-shadow:0 8px 32px rgba(27,58,107,0.14);
+  transform:translateY(-3px);
+  border-color:rgba(27,58,107,0.3);
 }
-.proj-card:hover, .tender-card:hover {
-  box-shadow: 0 8px 28px rgba(20,115,230,.13);
-  transform: translateY(-2px);
-}
-.proj-img-thumb {
-  width: 68px;
-  height: 68px;
-  border-radius: 10px;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1.5px solid #e2e8f0;
-}
-
-
-.pub-card { background:#fff; border-radius:16px; overflow:hidden; border:1px solid #e8edf2; box-shadow:0 2px 8px rgba(15,23,42,.06); cursor:pointer; transition:all .22s cubic-bezier(.4,0,.2,1); }
-.pub-card:hover { box-shadow:0 12px 40px rgba(20,115,230,.16); transform:translateY(-4px); border-color:#b3d4f8; }
-.pub-card:hover .pub-img { transform:scale(1.05); }
+.pub-card:hover .pub-img { transform:scale(1.04); }
 .pub-img-wrap { height:160px; overflow:hidden; position:relative; }
 .pub-img { width:100%; height:160px; object-fit:cover; display:block; transition:transform .4s ease; }
-.pub-img-grad { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 50%,rgba(15,23,42,.35)); }
+.pub-img-grad { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 50%,rgba(15,23,42,0.4)); }
 .pub-s-float { position:absolute; top:10px; right:10px; }
-.pub-no-img { height:80px; display:flex; align-items:center; justify-content:center; position:relative; }
-.pub-cat-pill { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700; }
-.pub-s-open { background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(0,0,0,.1); }
-.pub-s-dot { width:6px; height:6px; border-radius:50%; background:#16a34a; display:inline-block; }
-.pub-s-done { background:#f1f5f9; color:#475569; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.08); }
-.pub-body { padding:14px 16px; }
-.pub-title { font-size:15px; font-weight:800; color:#0f172a; margin-bottom:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.pub-desc { font-size:12px; color:#64748b; line-height:1.7; margin-bottom:10px; }
-.pub-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-.pub-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:#f1f5f9; border-radius:20px; font-size:11px; font-weight:600; color:#334155; }
-.pub-footer { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid #f1f5f9; }
-.pub-budget { font-size:16px; font-weight:900; color:#1473E6; letter-spacing:-.3px; }
-.pub-time { font-size:11px; color:#94a3b8; margin-top:1px; }
-.pub-btn { padding:7px 16px; background:#0f2545; color:#fff; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; white-space:nowrap; }
-.pub-btn:hover { background:#1473E6; }
-.pub-done-label { font-size:12px; color:#94a3b8; font-weight:600; }
-
-</style>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<style>
-/* Lucide Icons */
-.icon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:inline-block; vertical-align:middle; }
-.icon-sm { width:14px; height:14px; }
-.icon-lg { width:22px; height:22px; }
-.nav-icon { width:20px; height:20px; }
-</style>
-
-<style>
-.proj-card, .tender-card {
-  transition: box-shadow .18s, transform .18s !important;
+.pub-no-img { height:90px; display:flex; align-items:center; justify-content:center; position:relative; }
+.pub-cat-pill { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; }
+.pub-s-open {
+  background:#dcfce7; color:#15803d; padding:5px 12px; border-radius:20px;
+  font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:5px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
-.proj-card:hover, .tender-card:hover {
-  box-shadow: 0 10px 32px rgba(20,115,230,.14) !important;
-  transform: translateY(-3px) !important;
-  cursor: pointer;
+.pub-s-dot { width:6px; height:6px; border-radius:50%; background:#16a34a; display:inline-block; }
+.pub-s-done { background:#f1f5f9; color:#475569; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; }
+.pub-body { padding:16px; }
+.pub-title { font-size:15px; font-weight:800; color:var(--t); margin-bottom:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.pub-desc { font-size:12px; color:var(--t3); line-height:1.75; margin-bottom:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.pub-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.pub-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--navyL); border-radius:20px; font-size:11px; font-weight:600; color:var(--navy); }
+.pub-footer { display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid var(--border); }
+.pub-budget { font-size:17px; font-weight:900; color:var(--navy); }
+.pub-time { font-size:11px; color:var(--t4); margin-top:2px; }
+.pub-btn {
+  padding:8px 18px; background:var(--navy); color:#fff; border:none;
+  border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;
+  font-family:inherit; transition:.15s; white-space:nowrap;
+}
+.pub-btn:hover { background:var(--gold); }
+.pub-done-label { font-size:12px; color:var(--t4); font-weight:600; }
+
+/* ── SKELETON ── */
+.skel-card { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; }
+.skel { background:linear-gradient(90deg,#f4f7fb 25%,#e8eef7 50%,#f4f7fb 75%); background-size:200%; animation:sk 1.4s infinite; }
+@keyframes sk { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── EMPTY ── */
+.empty { text-align:center; padding:60px 20px; grid-column:1/-1; }
+.empty h3 { font-size:16px; font-weight:800; color:var(--t); margin-bottom:8px; margin-top:16px; }
+.empty p { font-size:13px; color:var(--t3); }
+
+/* ── LOAD MORE ── */
+.load-more { text-align:center; margin-top:28px; }
+.btn-more {
+  padding:12px 36px; background:#fff; border:1.5px solid var(--border);
+  color:var(--t2); border-radius:12px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:.15s;
+}
+.btn-more:hover { border-color:var(--navy); color:var(--navy); }
+
+/* ── FOOTER ── */
+footer {
+  background:var(--navy); padding:36px 32px; margin-top:60px;
+  border-top:3px solid var(--gold);
+}
+.foot { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+.flogo { font-size:20px; font-weight:900; color:#fff; display:flex; align-items:center; gap:4px; }
+.flogo-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); display:inline-block; }
+.flinks { display:flex; gap:20px; flex-wrap:wrap; }
+.flink { font-size:12px; color:rgba(255,255,255,0.5); cursor:pointer; font-weight:600; transition:.15s; }
+.flink:hover { color:rgba(255,255,255,0.9); }
+.fcopy { font-size:11px; color:rgba(255,255,255,0.25); }
+
+@media(max-width:600px) {
+  .main { padding:20px 16px; }
+  .nav { padding:0 16px; }
+  .hero { padding:40px 20px 36px; }
+  .hero h1 { font-size:28px; }
+  .hs { padding:0 16px; }
+  .grid { grid-template-columns:1fr; }
 }
 </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav class="nav">
- <div class="logo">مناقصة<b>.</b></div>
- <div class="nav-right">
- <button class="btn-outline" onclick="location.href='auth.html'">تسجيل الدخول</button>
- <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعك</button>
- </div>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    مناقصة
+  </div>
+  <div class="nav-right">
+    <button class="btn-outline" onclick="location.href='auth.html'">تسجيل الدخول</button>
+    <button class="btn-gold" onclick="location.href='auth.html'">+ أنشر مشروعك</button>
+  </div>
 </nav>
 
+<!-- HERO -->
 <div class="hero">
- <div class="hero-inner">
- <div class="hero-badge">✦ منصة سعودية موثوقة</div>
- <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
- <p>تصفح المشاريع المتاحة وقدّم عرضك، أو أنشر مشروعك واستقبل أفضل المزودين.</p>
- <div class="hero-btns">
- <button class="btn-yellow" onclick="location.href='auth.html'">+ أنشر مشروعك مجاناً</button>
- <button class="btn-white-outline" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
- </div>
- <div class="hero-stats">
- <div class="hs"><div class="hs-v" id="hs-req">—</div><div class="hs-l">مشروع منشور</div></div>
- <div class="hs"><div class="hs-v" id="hs-open">—</div><div class="hs-l">مفتوح للعروض</div></div>
- <div class="hs"><div class="hs-v" style="color:#ef4444" id="hs-done">—</div><div class="hs-l">تم الترسية</div></div>
- </div>
- </div>
+  <div class="hero-net">
+    <span class="d1"></span><span class="d2"></span><span class="d3"></span>
+    <span class="d4"></span><span class="d5"></span><span class="d6"></span>
+    <span class="l1"></span><span class="l2"></span><span class="l3"></span>
+  </div>
+  <div class="hero-goldbar"></div>
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block"></span>
+      منصة سعودية موثوقة
+    </div>
+    <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
+    <p>تصفح المشاريع المتاحة وقدّم عرضك، أو أنشر مشروعك واستقبل أفضل المزودين في منطقتك.</p>
+    <div class="hero-btns">
+      <button class="btn-hero-gold" onclick="location.href='auth.html'">+ أنشر مشروعك مجاناً</button>
+      <button class="btn-hero-outline" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
+    </div>
+    <div class="hero-stats">
+      <div class="hs">
+        <div class="hs-v" id="hs-req">—</div>
+        <div class="hs-l">مشروع منشور</div>
+      </div>
+      <div class="hs">
+        <div class="hs-v" id="hs-open">—</div>
+        <div class="hs-l">مفتوح للعروض</div>
+      </div>
+      <div class="hs">
+        <div class="hs-v gold" id="hs-done">—</div>
+        <div class="hs-l">تم الترسية</div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- MAIN -->
 <div class="main">
- <div class="top-bar">
- <div class="top-bar-left">
- <h2>المشاريع المتاحة</h2>
- <p id="sub-text">جاري التحميل...</p>
- </div>
- <button class="btn-blue" onclick="location.href='auth.html'">+ أنشر مشروعاً</button>
- </div>
+  <div class="top-bar">
+    <div>
+      <h2>المشاريع المتاحة</h2>
+      <p id="sub-text">جاري التحميل...</p>
+    </div>
+    <button class="btn-gold" onclick="location.href='auth.html'">+ أنشر مشروعاً</button>
+  </div>
 
- <!-- فلاتر الحالة -->
-<div class="filter-row">
-  <button class="ftab on" onclick="filter('all',this)">الكل</button>
-  <button class="ftab" onclick="filter('open',this)">مفتوح للعروض</button>
-  <button class="ftab" onclick="filter('completed',this)">تم الترسية</button>
-</div>
+  <div class="filter-row">
+    <button class="ftab on" onclick="filter('all',this)">الكل</button>
+    <button class="ftab" onclick="filter('open',this)">مفتوح للعروض</button>
+    <button class="ftab" onclick="filter('completed',this)">تم الترسية</button>
+  </div>
 
-<!-- فلاتر التخصص والمدينة -->
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-  <select id="f-cat" onchange="applyAll()" style="flex:1;min-width:160px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;color:#0f172a;background:#fff;cursor:pointer;font-family:inherit">
-    <option value="">كل التخصصات</option>
-    <option>تبريد وتكييف</option>
-    <option>كهرباء</option>
-    <option>سباكة</option>
-    <option>نجارة</option>
-    <option>تنظيف</option>
-    <option>نقل عفش</option>
-    <option>حدادة</option>
-    <option>ألمنيوم</option>
-    <option>مسابح (تنفيذ وصيانة)</option>
-    <option>كاميرات مراقبة وأمن</option>
-    <option>شبكات وإنترنت</option>
-    <option>مظلات وسواتر</option>
-    <option>عزل حراري وأسطح</option>
-    <option>أبواب</option>
-    <option>أعمال جبس وطباشير</option>
-    <option>مكافحة حشرات</option>
-    <option>أخرى</option>
-  </select>
-  <select id="f-city" onchange="applyAll()" style="flex:1;min-width:160px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;color:#0f172a;background:#fff;cursor:pointer;font-family:inherit">
-    <option value="">كل المدن</option>
-    <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>الزلفي</option>
-    <option>مكة المكرمة</option><option>جدة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option>
-    <option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>الخفجي</option><option>حفر الباطن</option>
-    <option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>بدر</option><option>خيبر</option>
-    <option>بريدة</option><option>عنيزة</option><option>الرس</option><option>المذنب</option>
-    <option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>تثليث</option>
-    <option>تبوك</option><option>الوجه</option><option>ضباء</option><option>حقل</option><option>أملج</option><option>تيماء</option>
-    <option>حائل</option><option>بقعاء</option><option>الغزالة</option><option>سميراء</option>
-    <option>عرعر</option><option>طريف</option><option>رفحاء</option>
-    <option>سكاكا</option><option>دومة الجندل</option><option>القريات</option>
-    <option>الباحة</option><option>بلجرشي</option><option>المندق</option>
-    <option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option>
-    <option>نجران</option><option>شرورة</option><option>حبونا</option>
-  </select>
-  <button onclick="clearAll()" style="padding:10px 18px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:700;color:#64748b;background:#fff;cursor:pointer;white-space:nowrap;font-family:inherit">
-    مسح الفلتر
-  </button>
-</div>
+  <div class="filter-selects">
+    <select id="f-cat" onchange="applyAll()">
+      <option value="">كل التخصصات</option>
+      <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
+      <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
+      <option>حدادة</option><option>ألمنيوم</option><option>مسابح (تنفيذ وصيانة)</option>
+      <option>كاميرات مراقبة وأمن</option><option>شبكات وإنترنت</option>
+      <option>مظلات وسواتر</option><option>عزل حراري وأسطح</option><option>أبواب</option>
+      <option>أعمال جبس وطباشير</option><option>مكافحة حشرات</option><option>أخرى</option>
+    </select>
+    <select id="f-city" onchange="applyAll()">
+      <option value="">كل المدن</option>
+      <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>الزلفي</option>
+      <option>مكة المكرمة</option><option>جدة</option><option>الطائف</option><option>رابغ</option>
+      <option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option>
+      <option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option>
+      <option>المدينة المنورة</option><option>ينبع</option><option>العلا</option>
+      <option>بريدة</option><option>عنيزة</option>
+      <option>أبها</option><option>خميس مشيط</option><option>بيشة</option>
+      <option>تبوك</option><option>الوجه</option><option>ضباء</option>
+      <option>حائل</option><option>بقعاء</option>
+      <option>عرعر</option><option>طريف</option><option>رفحاء</option>
+      <option>سكاكا</option><option>دومة الجندل</option><option>القريات</option>
+      <option>الباحة</option><option>بلجرشي</option>
+      <option>جازان</option><option>صبيا</option><option>أبو عريش</option>
+      <option>نجران</option><option>شرورة</option>
+    </select>
+    <button class="btn-clear" onclick="clearAll()">مسح الفلتر</button>
+  </div>
 
-<!-- عداد النتائج -->
-<div id="result-count" style="font-size:12px;color:#94a3b8;margin-bottom:12px;display:none"></div>
+  <div id="result-count"></div>
 
- <div class="grid" id="grid">
- <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:65%"></div></div></div>
- <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:70%"></div></div></div>
- <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px 18px"><div class="skel" style="height:11px;border-radius:5px;width:35%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:60%"></div></div></div>
- </div>
+  <div class="grid" id="grid">
+    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px"><div class="skel" style="height:11px;border-radius:5px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:65%"></div></div></div>
+    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px"><div class="skel" style="height:11px;border-radius:5px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:70%"></div></div></div>
+    <div class="skel-card"><div class="skel" style="height:160px"></div><div style="padding:16px"><div class="skel" style="height:11px;border-radius:5px;width:35%;margin-bottom:10px"></div><div class="skel" style="height:16px;border-radius:5px;margin-bottom:8px"></div><div class="skel" style="height:11px;border-radius:5px;width:60%"></div></div></div>
+  </div>
 
- <div class="load-more" id="load-more" style="display:none">
- <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
- </div>
+  <div class="load-more" id="load-more" style="display:none">
+    <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
+  </div>
 </div>
 
 <footer>
- <div class="foot">
- <div class="flogo">مناقصة<b>.</b></div>
- <div class="flinks">
- <span class="flink">الشروط والأحكام</span>
- <span class="flink">سياسة الخصوصية</span>
- <span class="flink">تواصل معنا</span>
- </div>
- <div class="fcopy">© 2025 مناقصة · جميع الحقوق محفوظة</div>
- </div>
+  <div class="foot">
+    <div class="flogo"><span class="flogo-dot"></span> مناقصة</div>
+    <div class="flinks">
+      <a href="terms.html" class="flink">اتفاقية الاستخدام</a>
+      <a href="terms.html#privacy" class="flink">سياسة الخصوصية</a>
+      <a href="terms.html#faq" class="flink">الأسئلة الشائعة</a>
+      <span class="flink">تواصل معنا</span>
+    </div>
+    <div class="fcopy">© 2026 مناقصة — جميع الحقوق محفوظة</div>
+  </div>
 </footer>
 
 <script>
 var API = 'https://manaqasati-production.up.railway.app';
-var ICONS = {'تبريد وتكييف':'','كهرباء':'','سباكة':'','نجارة':'','تنظيف':'','نقل عفش':'','حدادة':'','ألمنيوم':'','مسابح (تنفيذ وصيانة)':'','كاميرات مراقبة وأمن':'','شبكات وإنترنت':'','مظلات وسواتر':'','عزل حراري وأسطح':'','أبواب':'','أعمال جبس وطباشير':'','مكافحة حشرات':'','أخرى':''};
-var AVC = ['#1473E6','#16a34a','#7c3aed','#d97706','#dc2626','#0891b2','#be185d'];
-var PNAMES = ['محمد العتيبي','أحمد الغامدي','فهد السهلي','سعد المطيري','عمر الشهري','خالد الحربي'];
-var PRICES = [650,900,1200,450,800,1500,550,750,1100];
-
 var ALL = [], CUR = [], PAGE = 9;
+var ACTIVE_ST = 'all', ACTIVE_CAT = '', ACTIVE_CITY = '';
 
-function fpr(n){ return n ? Number(n).toLocaleString('en-US') + ' ر.س' : 'مفتوح'; }
-function ago(d){ if(!d) return ''; var diff=Date.now()-new Date(d).getTime(); var m=Math.floor(diff/60000); if(m<60) return m+' د'; var h=Math.floor(m/60); if(h<24) return h+' س'; return Math.floor(h/24)+' يوم'; }
-function av(i){ return AVC[i%AVC.length]; }
-function pn(i){ return PNAMES[i%PNAMES.length]; }
-function pp(i){ return PRICES[i%PRICES.length]; }
-
-function iconBg(cat){
- var map = {'تبريد وتكييف':'#dbeafe','كهرباء':'#fef9c3','سباكة':'#dbeafe','نجارة':'#ffedd5','تنظيف':'#dcfce7','نقل عفش':'#ede9fe','حدادة':'#f1f5f9','مسابح (تنفيذ وصيانة)':'#dbeafe','كاميرات مراقبة وأمن':'#fce7f3'};
- return map[cat] || '#f1f5f9';
+function ago(d) {
+  if(!d) return '';
+  var diff = Date.now() - new Date(d).getTime();
+  var m = Math.floor(diff/60000);
+  if(m < 60) return m + ' د';
+  var h = Math.floor(m/60);
+  if(h < 24) return h + ' س';
+  return Math.floor(h/24) + ' يوم';
 }
 
-function card(p, i) {
+var CAT_COLORS = {
+  'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6',
+  'نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1',
+  'حدادة':'#64748b','مكافحة حشرات':'#15803d','كاميرات مراقبة وأمن':'#7c3aed',
+  'شبكات وإنترنت':'#0891b2','مظلات وسواتر':'#d97706'
+};
+
+function card(p) {
   var isOpen = p.status === 'open';
   var imgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
   var imgSrc = imgs[0] || null;
   var budget = p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : null;
   var bids = parseInt(p.bid_count) || 0;
-  var timeAgo = p.created_at ? ago(new Date(p.created_at)) : '';
-  var catColors = {'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','مكافحة حشرات':'#15803d'};
-  var cc = catColors[p.category] || '#1473E6';
-  var desc = p.description ? (p.description.length > 85 ? p.description.substring(0,85) + '…' : p.description) : '';
+  var cc = CAT_COLORS[p.category] || '#1B3A6B';
+  var desc = p.description ? (p.description.length > 90 ? p.description.substring(0,90) + '…' : p.description) : '';
   var statusHtml = isOpen
     ? '<span class="pub-s-open"><span class="pub-s-dot"></span>مفتوح للعروض</span>'
     : '<span class="pub-s-done">تمت الترسية</span>';
   var imgHtml = imgSrc
-    ? ('<div class="pub-img-wrap"><img src="' + imgSrc + '" class="pub-img" loading="lazy"><div class="pub-img-grad"></div><div class="pub-s-float">' + statusHtml + '</div></div>')
-    : ('<div class="pub-no-img" style="background:linear-gradient(135deg,' + cc + '18,' + cc + '06)"><span class="pub-cat-pill" style="background:' + cc + '22;color:' + cc + '">' + (p.category||'مشروع') + '</span><div class="pub-s-float">' + statusHtml + '</div></div>');
+    ? '<div class="pub-img-wrap"><img src="' + imgSrc + '" class="pub-img" loading="lazy"><div class="pub-img-grad"></div><div class="pub-s-float">' + statusHtml + '</div></div>'
+    : '<div class="pub-no-img" style="background:linear-gradient(135deg,' + cc + '18,' + cc + '08);height:80px"><span class="pub-cat-pill" style="background:' + cc + '22;color:' + cc + '">' + (p.category||'مشروع') + '</span><div class="pub-s-float">' + statusHtml + '</div></div>';
+
+  var locSvg = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
   var html = '<div class="pub-card" onclick="location.href=\'auth.html\'">';
   html += imgHtml;
   html += '<div class="pub-body">';
   html += '<div class="pub-title">' + p.title + '</div>';
-  if (desc) html += '<div class="pub-desc">' + desc + '</div>';
+  if(desc) html += '<div class="pub-desc">' + desc + '</div>';
   html += '<div class="pub-chips">';
-  if (p.city) html += '<span class="pub-chip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' + p.city + '</span>';
-  if (p.category) html += '<span class="pub-chip" style="background:' + cc + '11;color:' + cc + '">' + p.category + '</span>';
+  if(p.city) html += '<span class="pub-chip">' + locSvg + p.city + '</span>';
+  if(p.category && !imgSrc) html += '<span class="pub-chip" style="background:' + cc + '11;color:' + cc + '">' + p.category + '</span>';
+  if(bids) html += '<span class="pub-chip">' + bids + ' عرض</span>';
   html += '</div>';
   html += '<div class="pub-footer">';
-  html += '<div>' + (budget ? '<div class="pub-budget">' + budget + '</div>' : '') + '<div class="pub-time">' + timeAgo + (bids ? ' · ' + bids + ' عرض' : '') + '</div></div>';
+  html += '<div>' + (budget ? '<div class="pub-budget">' + budget + '</div>' : '<div class="pub-budget">مفتوح</div>') + '<div class="pub-time">' + ago(p.created_at) + '</div></div>';
   html += isOpen ? '<button class="pub-btn" onclick="event.stopPropagation();location.href=\'auth.html\'">تقديم عرض</button>' : '<span class="pub-done-label">مكتمل</span>';
   html += '</div></div></div>';
   return html;
 }
 
 function render(list) {
- var g = document.getElementById('grid');
- if (!list.length) {
- g.innerHTML = '<div class="empty"><div class="empty-ico"></div><h3>لا توجد مشاريع</h3><p>جرّب فلتراً مختلفاً</p></div>';
- document.getElementById('load-more').style.display = 'none';
- return;
- }
- g.innerHTML = list.slice(0, PAGE).map(card).join('');
- document.getElementById('load-more').style.display = list.length > PAGE ? 'block' : 'none';
+  var g = document.getElementById('grid');
+  if(!list.length) {
+    g.innerHTML = '<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9db3cc" stroke-width="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><h3>لا توجد مشاريع</h3><p>جرّب فلتراً مختلفاً</p></div>';
+    document.getElementById('load-more').style.display = 'none';
+    return;
+  }
+  g.innerHTML = list.slice(0, PAGE).map(card).join('');
+  document.getElementById('load-more').style.display = list.length > PAGE ? 'block' : 'none';
 }
-
-var ACTIVE_ST  = 'all';
-var ACTIVE_CAT = '';
-var ACTIVE_CITY = '';
 
 function filter(st, btn) {
   ACTIVE_ST = st;
-  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
-  if (btn) btn.classList.add('on');
+  document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
   applyAll();
 }
 
 function applyAll() {
-  ACTIVE_CAT  = (document.getElementById('f-cat')  || {}).value || '';
-  ACTIVE_CITY = (document.getElementById('f-city') || {}).value || '';
+  ACTIVE_CAT  = (document.getElementById('f-cat')  ||{}).value || '';
+  ACTIVE_CITY = (document.getElementById('f-city') ||{}).value || '';
   PAGE = 9;
-
   CUR = ALL.filter(function(p) {
-    if (ACTIVE_ST === 'open'      && p.status !== 'open') return false;
-    if (ACTIVE_ST === 'completed' && p.status !== 'completed' && p.status !== 'in_progress') return false;
-    if (ACTIVE_CAT  && p.category !== ACTIVE_CAT)  return false;
-    if (ACTIVE_CITY && p.city     !== ACTIVE_CITY)  return false;
+    if(ACTIVE_ST === 'open'      && p.status !== 'open') return false;
+    if(ACTIVE_ST === 'completed' && p.status !== 'completed' && p.status !== 'in_progress') return false;
+    if(ACTIVE_CAT  && p.category !== ACTIVE_CAT)  return false;
+    if(ACTIVE_CITY && p.city     !== ACTIVE_CITY)  return false;
     return true;
   });
-
   render(CUR);
-
   var cnt = document.getElementById('result-count');
-  if (cnt) {
+  if(cnt) {
     var hasFilter = ACTIVE_ST !== 'all' || ACTIVE_CAT || ACTIVE_CITY;
     cnt.style.display = hasFilter ? 'block' : 'none';
     cnt.textContent = 'عرض ' + CUR.length + ' من ' + ALL.length + ' مشروع';
@@ -474,18 +460,16 @@ function applyAll() {
 }
 
 function clearAll() {
-  ACTIVE_ST   = 'all';
-  ACTIVE_CAT  = '';
-  ACTIVE_CITY = '';
-  var fCat  = document.getElementById('f-cat');
+  ACTIVE_ST = 'all'; ACTIVE_CAT = ''; ACTIVE_CITY = '';
+  var fCat = document.getElementById('f-cat');
   var fCity = document.getElementById('f-city');
-  if (fCat)  fCat.value  = '';
-  if (fCity) fCity.value = '';
-  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
+  if(fCat) fCat.value = '';
+  if(fCity) fCity.value = '';
+  document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('on'); });
   var first = document.querySelector('.ftab');
-  if (first) first.classList.add('on');
+  if(first) first.classList.add('on');
   var cnt = document.getElementById('result-count');
-  if (cnt) cnt.style.display = 'none';
+  if(cnt) cnt.style.display = 'none';
   CUR = ALL; PAGE = 9;
   render(CUR);
 }
@@ -493,35 +477,23 @@ function clearAll() {
 function showMore() { PAGE += 9; render(CUR); }
 
 async function load() {
- try {
- var r = await fetch(API + '/api/requests');
- var data = await r.json();
- ALL = Array.isArray(data) ? data : [];
- CUR = ALL;
-
- var open = ALL.filter(function(p){return p.status==='open';}).length;
- var done = ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
-
- document.getElementById('hs-req').textContent = ALL.length;
- document.getElementById('hs-open').textContent = open;
- document.getElementById('hs-done').textContent = done;
- document.getElementById('sub-text').textContent = ALL.length + ' مشروع — ' + open + ' مفتوح للعروض';
-
- render(ALL);
- } catch(e) {
- document.getElementById('grid').innerHTML = '<div class="empty"><div class="empty-ico"></div><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';
- }
+  try {
+    var r = await fetch(API + '/api/requests');
+    var data = await r.json();
+    ALL = Array.isArray(data) ? data : [];
+    CUR = ALL;
+    var open = ALL.filter(function(p){ return p.status === 'open'; }).length;
+    var done = ALL.filter(function(p){ return p.status === 'completed' || p.status === 'in_progress'; }).length;
+    document.getElementById('hs-req').textContent = ALL.length;
+    document.getElementById('hs-open').textContent = open;
+    document.getElementById('hs-done').textContent = done;
+    document.getElementById('sub-text').textContent = ALL.length + ' مشروع — ' + open + ' مفتوح للعروض';
+    render(ALL);
+  } catch(e) {
+    document.getElementById('grid').innerHTML = '<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9db3cc" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h3>تعذر الاتصال</h3><p>تحقق من الاتصال بالإنترنت</p></div>';
+  }
 }
-
 load();
 </script>
-<script>if(typeof lucide !== "undefined") lucide.createIcons();</script>
-<footer style="background:#0f2545;color:rgba(255,255,255,0.6);padding:24px;text-align:center;font-size:13px;margin-top:40px">
-  <div style="max-width:800px;margin:0 auto">
-    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:12px">
-      <a href="terms.html" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">اتفاقية الاستخدام</a>
-      <a href="terms.html#privacy" onclick="localStorage.setItem('terms_tab','privacy')" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">سياسة الخصوصية</a>
-      <a href="terms.html#faq" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">الأسئلة الشائعة</a>
-      <a href="/cdn-cgi/l/email-protection#b5d6c6f5d8d4dbd4c4d4c6d49bd6dad8" style="color:rgba(255,255,255,0.7);font-weight:600;text-decoration:none">تواصل معنا</a>
-    </div>
-    <div style="font-size:12px">© 2026 مناقصة — جميع الحقوق محفوظة</di
+</body>
+</html>
