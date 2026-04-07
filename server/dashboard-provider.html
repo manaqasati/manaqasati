@@ -262,7 +262,7 @@ const me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!token||me.role!=='provider')location.href='auth.html';
 
 const CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
-const CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','الطائف','تبوك','بريدة','خميس مشيط','أبها','نجران','جيزان','حائل','ينبع','الجبيل','القطيف','سكاكا','عرعر','الباحة','الرس','رابغ','بيشة','وادي الدواسر','الزلفي','القريات'];
+const CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','المزاحمية','ضرما','رماح','الغاط','ثادق','حريملاء','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الجموم','خليص','الليث','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','الخفجي','رأس تنورة','سيهات','صفوى','العوامية','المدينة المنورة','ينبع','العلا','بدر','خيبر','بريدة','عنيزة','الرس','البكيرية','البدائع','رياض الخبراء','الشماسية','عيون الجواء','أبها','خميس مشيط','بيشة','النماص','محايل عسير','أحد رفيدة','سراة عبيدة','رجال ألمع','تبوك','الوجه','ضباء','تيماء','حقل','أملج','حائل','بقعاء','الغزالة','سميراء','بارق','ينبع','الجوف','سكاكا','دومة الجندل','القريات','عرعر','طريف','رفحاء','العويقيلة','الباحة','بلجرشي','المخواة','القرى','العقيق','المندق','جازان','صبيا','أبو عريش','الريث','فيفا','العارضة','الحرث','صامطة','ضمد','نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار','الكامل','وادي الدواسر','السليل','الأفلاج','حوطة بني تميم','الحريق','المزاحمية','القويعية','عفيف','شقراء','الزلفي','الدوادمي','المجمعة'];
 const AVC=['#1B3A6B','#2C5282','#1e40af','#166534','#92400e','#991b1b','#1e3a8a','#365314'];
 const CAT_STYLE={
   'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},
@@ -413,11 +413,21 @@ function bidModal(projectId,projectTitle){
     `<svg viewBox="0 0 24 24">${I.send}</svg>`,'#e8eef7');
 }
 async function submitBid(projectId){
-  const price=document.getElementById('bPrice')?.value;const days=document.getElementById('bDays')?.value;const note=document.getElementById('bNote')?.value?.trim();
-  if(!price||!days||!note){toast('اكمل البيانات','error');return;}
-  const res=await api(`/api/requests/${projectId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),delivery_days:parseInt(days),note})});
+  const priceEl=document.getElementById('bPrice');
+  const daysEl=document.getElementById('bDays');
+  const noteEl=document.getElementById('bNote');
+  const price=priceEl?.value?.trim();
+  const days=daysEl?.value?.trim();
+  const note=noteEl?.value?.trim();
+  if(!price||parseFloat(price)<=0){toast('أدخل سعر العرض','error');priceEl?.focus();return;}
+  if(!days||parseInt(days)<=0){toast('أدخل مدة التنفيذ','error');daysEl?.focus();return;}
+  if(!note){toast('أدخل رسالتك للعميل','error');noteEl?.focus();return;}
+  const btn=document.querySelector('#ov .btn-dk');
+  if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  const res=await api(`/api/requests/${projectId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),days:parseInt(days),note})});
+  if(btn){btn.disabled=false;btn.innerHTML=S(I.send)+' إرسال العرض';}
   if(res.message&&!res.id&&!res.bid_id){toast(res.message||'حدث خطأ','error');return;}
-  closeM();toast('تم إرسال عرضك','success');
+  closeM();toast('تم إرسال عرضك بنجاح','success');
 }
 async function viewProjModal(id){
   const r=await api(`/api/requests/${id}`);
@@ -508,7 +518,6 @@ async function pgProfile(){
             <div class="fg"><label class="fl">البريد الإلكتروني</label><input type="email" class="fi" value="${p.email||''}" disabled style="background:var(--g1);color:var(--g3)"></div>
             <div class="fg"><label class="fl">الجوال</label><input type="text" class="fi" id="pPh" value="${p.phone||''}" placeholder="05xxxxxxxx"></div>
             <div class="fg"><label class="fl">المدينة</label><select class="fis" id="pCit">${cityOpts(p.city)}</select></div>
-            <button class="btn btn-dk btn-sm" onclick="saveProfile()">${S(I.save)} حفظ</button>
           </div>
         </div>
 
@@ -524,7 +533,13 @@ async function pgProfile(){
               <label class="fl">سنوات الخبرة</label>
               <input type="number" class="fi" id="pExp" value="${p.experience_years||''}" placeholder="مثال: 5" min="0" max="50">
             </div>
-            <button class="btn btn-dk btn-sm" onclick="saveBio()">${S(I.save)} حفظ النبذة</button>
+          </div>
+        </div>
+
+        <!-- زر الحفظ الموحد -->
+        <div class="card" style="margin-bottom:12px;background:var(--g0);border:none">
+          <div class="cb" style="padding:8px 0">
+            <button class="btn btn-dk" style="width:100%;justify-content:center;padding:13px" onclick="saveAllProfile()">${S(I.save)} حفظ جميع التغييرات</button>
           </div>
         </div>
 
@@ -603,21 +618,42 @@ async function saveBio(){
   await api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   toast('تم حفظ النبذة','success');
 }
-
-function addPortfolioImgs(input){
-  const files=[...input.files];
-  if(!files.length)return;
-  let processed=0;
-  files.forEach(file=>{
-    if(file.size>5*1024*1024){toast('حجم الصورة يجب أن يكون أقل من 5MB','error');return;}
-    const reader=new FileReader();
-    reader.onload=async e=>{
-      const r=await api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:e.target.result})});
-      processed++;
-      if(processed===files.length){toast('تم رفع الصور','success');pgProfile();}
+async function saveAllProfile(){
+  const btn=document.querySelector('[onclick="saveAllProfile()"]');
+  if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
+  try{
+    const body={
+      name:document.getElementById('pNm')?.value?.trim()||'',
+      phone:document.getElementById('pPh')?.value||'',
+      city:document.getElementById('pCit')?.value||'',
+      bio:document.getElementById('pBio')?.value||'',
+      experience_years:parseInt(document.getElementById('pExp')?.value||0)||null
     };
-    reader.readAsDataURL(file);
-  });
+    const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
+    if(r.id){
+      document.getElementById('sbNm').textContent=r.name||'المزود';
+      toast('تم حفظ جميع التغييرات','success');
+    } else toast(r.message||'حدث خطأ','error');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
+  }
+}
+
+async function addPortfolioImgs(input){
+  const files=[...input.files].slice(0,6);
+  if(!files.length)return;
+  toast('جاري الرفع...','info');
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    if(file.size>5*1024*1024){toast('صورة '+file.name+' أكبر من 5MB','error');continue;}
+    try{
+      const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+      const result=await api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:base64})});
+      if(result.message&&!result.ok){toast(result.message,'error');break;}
+    }catch(e){toast('فشل رفع الصورة','error');}
+  }
+  toast('تم رفع الصور','success');
+  pgProfile();
 }
 async function removePortfolioImg(index){
   await api('/api/provider/profile/portfolio/'+index,{method:'DELETE'});
@@ -625,7 +661,6 @@ async function removePortfolioImg(index){
   pgProfile();
 }
 
-async function saveProfile(){const body={name:document.getElementById('pNm')?.value?.trim()||'',phone:document.getElementById('pPh')?.value||'',city:document.getElementById('pCit')?.value||'',bio:document.getElementById('pBio')?.value||''};await api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});toast('تم الحفظ','success');}
 async function saveSpecs(){const specs=[...document.querySelectorAll('.on')].filter(b=>CATS.includes(b.textContent)).map(b=>b.textContent);await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs})});toast('تم حفظ التخصصات','success');}
 async function changePw(){const oldPw=document.getElementById('pwOld')?.value;const newPw=document.getElementById('pwNew')?.value;if(!oldPw||!newPw){toast('اكمل البيانات','error');return;}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:newPw})});if(res.message&&res.message.includes('success')){toast('تم تغيير كلمة المرور','success');}else{toast(res.message||'حدث خطأ','error');}}
 
