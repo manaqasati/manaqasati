@@ -923,18 +923,27 @@ var selRating=0,selProviderId=null,selRequestId=null,curRequestId=null,curChatRe
 var n=user.name||'العميل';
 document.getElementById('userName').textContent=n;
 document.getElementById('welcomeName').textContent='مرحباً، '+n.split(' ')[0];
-(function(){
-  var img=localStorage.getItem('client_avatar_'+user.id);
+function applyAvatar(img){
   var avEl=document.getElementById('userAv');
   var mobEl=document.getElementById('mobAv');
   if(img){
-    if(avEl){avEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px">';avEl.textContent='';}
-    if(mobEl){mobEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">';mobEl.textContent='';}
+    if(avEl){avEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';avEl.style.padding='0';}
+    if(mobEl){mobEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';mobEl.style.padding='0';}
   } else {
-    if(avEl)avEl.textContent=n.charAt(0);
-    if(mobEl)mobEl.textContent=n.charAt(0);
+    var av=document.getElementById('userAv');var mo=document.getElementById('mobAv');
+    if(av){av.innerHTML='';av.textContent=n.charAt(0);}
+    if(mo){mo.innerHTML='';mo.textContent=n.charAt(0);}
   }
-})();
+}
+// تطبيق من cache أولاً (سريع)
+applyAvatar(localStorage.getItem('client_avatar_'+user.id));
+// جلب من السيرفر لضمان البقاء بعد تسجيل الخروج
+fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
+  if(p&&p.profile_image){
+    localStorage.setItem('client_avatar_'+user.id,p.profile_image);
+    applyAvatar(p.profile_image);
+  }
+}).catch(function(){});
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
 var sel=document.getElementById('n-cat');
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
