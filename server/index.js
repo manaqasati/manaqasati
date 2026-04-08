@@ -279,6 +279,10 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS deadline DATE`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS image_url TEXT`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS images TEXT[]`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS attachments JSONB`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS attachments JSONB`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS images TEXT[]`,
+    `ALTER TABLE requests ADD COLUMN IF NOT EXISTS attachments JSONB`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS main_image_index INTEGER DEFAULT 0`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS accepted_bid_id INTEGER`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_provider_id INTEGER`,
@@ -851,14 +855,14 @@ app.get('/api/requests/:id', async (req, res) => {
 
 app.post('/api/requests', auth, async (req, res) => {
   try {
-    const { title, description, category, city, address, budget_max, deadline, image_url, images, main_image_index } = req.body;
+    const { title, description, category, city, address, budget_max, deadline, image_url, images, main_image_index, attachments } = req.body;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
     const mainIdx = parseInt(main_image_index) || 0;
     const mainImg = image_url || (images && images[mainIdx]) || null;
     const r = await pool.query(
-      `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,images,main_image_index,client_id,status)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open') RETURNING *`,
-      [title, description, category||null, city||null, address||null, budget_max||null, deadline||null, mainImg, images||null, mainIdx, req.user.id]
+      `INSERT INTO requests(title,description,category,city,address,budget_max,deadline,image_url,images,main_image_index,attachments,client_id,status)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open') RETURNING *`,
+      [title, description, category||null, city||null, address||null, budget_max||null, deadline||null, mainImg, images||null, mainIdx, attachments?JSON.stringify(attachments):null, req.user.id]
     );
     const req2 = r.rows[0];
     const num = genProjectNum(req2.id, req2.created_at);
