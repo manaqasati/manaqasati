@@ -875,6 +875,36 @@ app.post('/api/requests', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── تعديل طلب ──
+app.put('/api/requests/:id', auth, async (req, res) => {
+  try {
+    const { title, description, budget_max, deadline } = req.body;
+    if (!title || !description) return res.status(400).json({ message: 'العنوان والتفاصيل مطلوبة' });
+    const r = await pool.query(
+      `UPDATE requests SET title=$1, description=$2, budget_max=$3, deadline=$4
+       WHERE id=$5 AND client_id=$6 AND status IN ('open','review') RETURNING *`,
+      [title, description, budget_max||null, deadline||null, req.params.id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(403).json({ message: 'لا يمكن تعديل هذا الطلب' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── حذف طلب ──
+app.delete('/api/requests/:id', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT status FROM requests WHERE id=$1 AND client_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (!['open','review'].includes(r.rows[0].status))
+      return res.status(400).json({ message: 'لا يمكن حذف طلب قيد التنفيذ أو مكتمل' });
+    await pool.query('DELETE FROM requests WHERE id=$1 AND client_id=$2', [req.params.id, req.user.id]);
+    res.json({ ok: true, message: 'تم الحذف' });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.put('/api/requests/:id/status', auth, async (req, res) => {
   try {
     const { status } = req.body;
