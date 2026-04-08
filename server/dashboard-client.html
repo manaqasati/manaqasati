@@ -842,7 +842,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <p>هذه الرسوم التزام مالي واجب السداد، ولا تبرأ ذمتك إلا بعد السداد الكامل.</p>
       </div>
       <div class="agree-summary">
-        <div class="agree-sum-row"><span class="agree-sum-ic">📋</span><span>نسبة الرسوم: <strong>1%</strong> من قيمة العقد</span></div>
+        <div class="agree-sum-row"><span class="agree-sum-ic">📋</span><span>نسبة الرسوم: <strong>1%</strong> من قيمة الاتفاق</span></div>
         <div class="agree-sum-row"><span class="agree-sum-ic">📅</span><span>مهلة السداد: <strong>10 أيام</strong> من الإكمال</span></div>
       </div>
       <div class="agree-check">
@@ -893,8 +893,18 @@ var selRating=0,selProviderId=null,selRequestId=null,curRequestId=null,curChatRe
 var n=user.name||'العميل';
 document.getElementById('userName').textContent=n;
 document.getElementById('welcomeName').textContent='مرحباً، '+n.split(' ')[0];
-document.getElementById('userAv').textContent=n.charAt(0);
-document.getElementById('mobAv').textContent=n.charAt(0);
+(function(){
+  var img=localStorage.getItem('client_avatar_'+user.id);
+  var avEl=document.getElementById('userAv');
+  var mobEl=document.getElementById('mobAv');
+  if(img){
+    if(avEl){avEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px">';avEl.textContent='';}
+    if(mobEl){mobEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">';mobEl.textContent='';}
+  } else {
+    if(avEl)avEl.textContent=n.charAt(0);
+    if(mobEl)mobEl.textContent=n.charAt(0);
+  }
+})();
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
 var sel=document.getElementById('n-cat');
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
@@ -1067,7 +1077,25 @@ function loadProfile(){
   }).catch(function(){document.getElementById('profile-content').innerHTML='<div class="loading">تعذر التحميل</div>';});
 }
 function triggerAvatarUpload(){var el=document.getElementById('clientAvInput');if(el)el.click();}
-function uploadClientAvatar(input){var file=input.files[0];if(!file)return;if(file.size>3*1024*1024){alert('الحجم الأقصى 3MB');return;}var reader=new FileReader();reader.onload=function(e){localStorage.setItem('client_avatar_'+user.id,e.target.result);var el=document.getElementById('clientAvPreview');if(el)el.innerHTML='<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';};reader.readAsDataURL(file);}
+function uploadClientAvatar(input){
+  var file=input.files[0];if(!file)return;
+  if(file.size>3*1024*1024){alert('الحجم الأقصى 3MB');return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=e.target.result;
+    localStorage.setItem('client_avatar_'+user.id,img);
+    // تحديث صورة الـ profile page
+    var prev=document.getElementById('clientAvPreview');
+    if(prev)prev.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    // تحديث الـ sidebar avatar
+    var avEl=document.getElementById('userAv');
+    if(avEl){avEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px">';avEl.textContent='';}
+    // تحديث الموبايل avatar
+    var mobEl=document.getElementById('mobAv');
+    if(mobEl){mobEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">';mobEl.textContent='';}
+  };
+  reader.readAsDataURL(file);
+}
 async function saveClientProfile(){var name=document.getElementById('cName')?.value?.trim();var phone=document.getElementById('cPhone')?.value?.trim();var city=document.getElementById('cCity')?.value;if(!name){alert('الاسم مطلوب');return;}var btn=event?.target;if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}var r=await fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone||null,city:city||null})},hdr())).then(function(r){return r.json();});if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}if(r.id){user.name=r.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=r.name;document.getElementById('welcomeName').textContent='مرحباً، '+r.name.split(' ')[0];alert('تم الحفظ بنجاح');}else alert(r.message||'حدث خطأ');}
 async function changeClientPw(){var old=document.getElementById('cPwOld')?.value;var nw=document.getElementById('cPwNew')?.value;if(!old||!nw){alert('اكمل الحقلين');return;}if(nw.length<6){alert('كلمة المرور 6 أحرف على الأقل');return;}var r=await fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:old,new_password:nw})},hdr())).then(function(r){return r.json();});if(r.ok)alert('تم تغيير كلمة المرور');else alert(r.message||'حدث خطأ');}
 setInterval(loadNotifCount,30000);
