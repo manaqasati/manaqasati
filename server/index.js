@@ -1414,7 +1414,7 @@ app.get('/api/reviews/can-rate/:requestId', auth, async (req, res) => {
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT id,name,email,phone,city,created_at,
+      SELECT id,name,email,phone,city,profile_image,created_at,
       (SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_projects,
       (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_projects
       FROM users WHERE id=$1`, [req.user.id]);
@@ -1424,10 +1424,19 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city } = req.body;
+    const { name, phone, city, profile_image } = req.body;
+    const fields = [];
+    const vals = [];
+    let idx = 1;
+    if (name !== undefined) { fields.push(`name=$${idx++}`); vals.push(name); }
+    if (phone !== undefined) { fields.push(`phone=$${idx++}`); vals.push(phone||null); }
+    if (city !== undefined) { fields.push(`city=$${idx++}`); vals.push(city||null); }
+    if (profile_image !== undefined) { fields.push(`profile_image=$${idx++}`); vals.push(profile_image); }
+    if (!fields.length) return res.status(400).json({ message: 'لا يوجد بيانات' });
+    vals.push(req.user.id);
     const r = await pool.query(
-      'UPDATE users SET name=$1,phone=$2,city=$3 WHERE id=$4 RETURNING id,name,email,phone,city',
-      [name, phone||null, city||null, req.user.id]);
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${idx} RETURNING id,name,email,phone,city,profile_image`,
+      vals);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
