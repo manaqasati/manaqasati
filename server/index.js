@@ -875,6 +875,65 @@ app.post('/api/requests', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── صور الطلب ──
+app.post('/api/requests/:id/images', auth, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'الصورة مطلوبة' });
+    const r = await pool.query('SELECT images,client_id FROM requests WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (Number(r.rows[0].client_id) !== Number(req.user.id)) return res.status(403).json({ message: 'غير مصرح' });
+    const imgs = r.rows[0].images || [];
+    if (imgs.length >= 3) return res.status(400).json({ message: 'الحد الأقصى 3 صور' });
+    imgs.push(image);
+    await pool.query('UPDATE requests SET images=$1,image_url=$2 WHERE id=$3', [imgs, imgs[0], req.params.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/requests/:id/images/:idx', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT images,client_id FROM requests WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (Number(r.rows[0].client_id) !== Number(req.user.id)) return res.status(403).json({ message: 'غير مصرح' });
+    const imgs = r.rows[0].images || [];
+    const idx = parseInt(req.params.idx);
+    if (idx < 0 || idx >= imgs.length) return res.status(400).json({ message: 'الصورة غير موجودة' });
+    imgs.splice(idx, 1);
+    await pool.query('UPDATE requests SET images=$1,image_url=$2 WHERE id=$3', [imgs, imgs[0]||null, req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── ملفات الطلب ──
+app.post('/api/requests/:id/attachments', auth, async (req, res) => {
+  try {
+    const { name, type, data } = req.body;
+    if (!data) return res.status(400).json({ message: 'الملف مطلوب' });
+    const r = await pool.query('SELECT attachments,client_id FROM requests WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (Number(r.rows[0].client_id) !== Number(req.user.id)) return res.status(403).json({ message: 'غير مصرح' });
+    const atts = r.rows[0].attachments ? JSON.parse(r.rows[0].attachments) : [];
+    atts.push({ name: name||'ملف', type: type||'application/octet-stream', data });
+    await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(atts), req.params.id]);
+    res.json({ ok: true, count: atts.length });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/requests/:id/attachments/:idx', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT attachments,client_id FROM requests WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (Number(r.rows[0].client_id) !== Number(req.user.id)) return res.status(403).json({ message: 'غير مصرح' });
+    const atts = r.rows[0].attachments ? JSON.parse(r.rows[0].attachments) : [];
+    const idx = parseInt(req.params.idx);
+    if (idx < 0 || idx >= atts.length) return res.status(400).json({ message: 'الملف غير موجود' });
+    atts.splice(idx, 1);
+    await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(atts), req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 // ── تعديل طلب ──
 app.put('/api/requests/:id', auth, async (req, res) => {
   try {
