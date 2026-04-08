@@ -229,6 +229,26 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(user_id, token)
     );
+    CREATE TABLE IF NOT EXISTS favorites (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, provider_id)
+    );
+    CREATE TABLE IF NOT EXISTS reports (
+      id SERIAL PRIMARY KEY,
+      reporter_id INTEGER REFERENCES users(id),
+      reported_id INTEGER REFERENCES users(id),
+      request_id INTEGER REFERENCES requests(id),
+      type VARCHAR(50) NOT NULL,
+      reason VARCHAR(255) NOT NULL,
+      details TEXT,
+      status VARCHAR(20) DEFAULT 'pending',
+      admin_note TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
   `);
 
   try {
@@ -265,6 +285,7 @@ async function initDB() {
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
     `ALTER TABLE requests ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS report_count INTEGER DEFAULT 0`,
   ];
   for (const sql of alters) await pool.query(sql).catch(()=>{});
 
@@ -468,7 +489,224 @@ app.get('/api/debug/bids/:id', async (req, res) => {
 // ── AUTH ──
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
 
+// ══════════════════════════════════════
+// ── FAVORITES ──
+// ══════════════════════════════════════
+
+app.get('/api/favorites', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT f.id, f.provider_id, f.created_at,
+        u.name, u.city, u.specialties, u.badge, u.verification_status,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects
+      FROM favorites f
+      JOIN users u ON f.provider_id = u.id
+      WHERE f.user_id = $1
+      ORDER BY f.created_at DESC`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/favorites/:providerId', auth, async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const exists = await pool.query(
+      'SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2',
+      [req.user.id, providerId]);
+    if (exists.rows.length) {
+      await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2',
+        [req.user.id, providerId]);
+      return res.json({ saved: false, message: 'تم إزالة المزود من المفضلة' });
+    }
+    await pool.query('INSERT INTO favorites(user_id,provider_id) VALUES($1,$2)',
+      [req.user.id, providerId]);
+    res.json({ saved: true, message: 'تم إضافة المزود للمفضلة' });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/favorites/check/:providerId', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2',
+      [req.user.id, req.params.providerId]);
+    res.json({ saved: r.rows.length > 0 });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ══════════════════════════════════════
+// ── REPORTS ──
+// ══════════════════════════════════════
+
+const REPORT_REASONS = [
+  'سلوك غير لائق',
+  'احتيال أو نصب',
+  'عدم الاستجابة',
+  'جودة عمل سيئة',
+  'محتوى مسيء',
+  'بيانات مزيفة',
+  'أخرى',
+];
+
+app.post('/api/reports', auth, async (req, res) => {
+  try {
+    const { reported_id, request_id, type, reason, details } = req.body;
+    if (!reported_id || !reason) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (!REPORT_REASONS.includes(reason) && reason !== 'أخرى') {
+      return res.status(400).json({ message: 'سبب البلاغ غير صالح' });
+    }
+    // منع تكرار البلاغ على نفس الشخص في نفس الطلب
+    if (request_id) {
+      const dup = await pool.query(
+        'SELECT id FROM reports WHERE reporter_id=$1 AND reported_id=$2 AND request_id=$3',
+        [req.user.id, reported_id, request_id]);
+      if (dup.rows.length) return res.status(400).json({ message: 'أرسلت بلاغاً مسبقاً على هذا الشخص' });
+    }
+    const r = await pool.query(
+      'INSERT INTO reports(reporter_id,reported_id,request_id,type,reason,details) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
+      [req.user.id, reported_id, request_id||null, type||'user', reason, details||null]);
+    // إشعار الأدمن
+    const admins = await pool.query("SELECT id FROM users WHERE role='admin'");
+    const reporter = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const reported = await pool.query('SELECT name FROM users WHERE id=$1', [reported_id]);
+    for (const a of admins.rows) {
+      await notify(a.id, '🚩 بلاغ جديد',
+        `${reporter.rows[0]?.name} أبلغ عن ${reported.rows[0]?.name}: ${reason}`,
+        'report', r.rows[0].id);
+    }
+    res.json({ ok: true, message: 'تم إرسال البلاغ وسيتم مراجعته' });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// الأدمن — جلب البلاغات
+app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let q = `SELECT r.*,
+      u1.name as reporter_name, u1.email as reporter_email,
+      u2.name as reported_name, u2.email as reported_email, u2.role as reported_role,
+      rq.title as request_title
+      FROM reports r
+      JOIN users u1 ON r.reporter_id=u1.id
+      JOIN users u2 ON r.reported_id=u2.id
+      LEFT JOIN requests rq ON r.request_id=rq.id`;
+    const params = [];
+    if (status) { params.push(status); q += ` WHERE r.status=$1`; }
+    q += ' ORDER BY r.created_at DESC';
+    res.json((await pool.query(q, params)).rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// الأدمن — معالجة البلاغ
+app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { action, admin_note } = req.body;
+    // action: 'warn' | 'ignore' | 'ban'
+    const report = await pool.query('SELECT * FROM reports WHERE id=$1', [req.params.id]);
+    if (!report.rows.length) return res.status(404).json({ message: 'البلاغ غير موجود' });
+    const b = report.rows[0];
+
+    const newStatus = action === 'ignore' ? 'ignored' : action === 'warn' ? 'warned' : 'resolved';
+    await pool.query('UPDATE reports SET status=$1, admin_note=$2, reviewed_at=NOW() WHERE id=$3',
+      [newStatus, admin_note||null, req.params.id]);
+
+    if (action === 'warn') {
+      await pool.query('UPDATE users SET report_count=report_count+1 WHERE id=$1', [b.reported_id]);
+      await notify(b.reported_id, '⚠️ تحذير من الإدارة',
+        admin_note || 'تلقيت تحذيراً بسبب بلاغ مقدم ضدك', 'warning', null);
+    }
+    if (action === 'ban') {
+      await pool.query("UPDATE users SET is_active=FALSE WHERE id=$1", [b.reported_id]);
+      await notify(b.reported_id, '🚫 تم إيقاف حسابك', 'تم إيقاف حسابك بسبب مخالفة الشروط', 'ban', null);
+    }
+    res.json({ ok: true, message: `تم تنفيذ الإجراء: ${action}` });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ══════════════════════════════════════
+// ── RATING (تقييم العميل للمزود فقط) ──
+// ══════════════════════════════════════
+
+app.post('/api/ratings', auth, async (req, res) => {
+  try {
+    const { request_id, provider_id, overall, quality, communication, punctuality, comment } = req.body;
+    if (!request_id || !provider_id || !overall) {
+      return res.status(400).json({ message: 'بيانات التقييم ناقصة' });
+    }
+    if (overall < 1 || overall > 5) return res.status(400).json({ message: 'التقييم بين 1 و 5' });
+
+    // التحقق أن المستخدم هو عميل الطلب
+    const reqData = await pool.query(
+      'SELECT client_id, assigned_provider_id, status FROM requests WHERE id=$1',
+      [request_id]);
+    if (!reqData.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const req2 = reqData.rows[0];
+    if (Number(req2.client_id) !== Number(req.user.id))
+      return res.status(403).json({ message: 'غير مصرح — أنت لست عميل هذا الطلب' });
+    if (!['in_progress','completed'].includes(req2.status))
+      return res.status(400).json({ message: 'لا يمكن التقييم قبل اكتمال المشروع' });
+
+    // منع التكرار
+    const dup = await pool.query(
+      'SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2',
+      [request_id, req.user.id]);
+    if (dup.rows.length) return res.status(400).json({ message: 'قيّمت هذا المشروع مسبقاً' });
+
+    // حساب متوسط التقييمات الفرعية
+    const ratings = [quality, communication, punctuality].filter(r => r);
+    const avg = ratings.length > 0
+      ? Math.round((overall + ratings.reduce((a,b)=>a+Number(b),0)) / (ratings.length + 1) * 10) / 10
+      : overall;
+
+    const r = await pool.query(
+      `INSERT INTO reviews(request_id, reviewer_id, reviewed_id, rating, comment, type)
+       VALUES($1,$2,$3,$4,$5,'client_to_provider') RETURNING *`,
+      [request_id, req.user.id, provider_id, avg, comment||null]);
+
+    // إشعار المزود
+    const reviewer = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const starsText = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
+    await notify(provider_id, `⭐ تقييم جديد ${starsText}`,
+      `${reviewer.rows[0]?.name} قيّمك بـ ${avg} نجوم`, 'review', request_id);
+
+    const prov = await pool.query('SELECT name, email FROM users WHERE id=$1', [provider_id]);
+    if (prov.rows[0]?.email) {
+      await sendEmail(prov.rows[0].email, `⭐ تقييم جديد: ${starsText}`,
+        emailTpl(`تقييم جديد ${starsText}`,
+          `<p>قيّمك <strong>${reviewer.rows[0]?.name}</strong> بـ <strong>${avg} من 5 نجوم</strong></p>
+           ${comment?`<div class="hl">"${comment}"</div>`:''}
+           ${quality?`<div class="hl">جودة العمل: ${quality}/5 | التواصل: ${communication}/5 | الالتزام بالمواعيد: ${punctuality}/5</div>`:''}`,
+          'تقييماتي', `${SITE_URL}/dashboard-provider.html`));
+    }
+    res.json({ ok: true, review: r.rows[0], avg_given: avg });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// جلب تقييمات مزود معين (عام)
+app.get('/api/ratings/provider/:id', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.*, u.name as reviewer_name, rq.title as request_title
+      FROM reviews rv
+      JOIN users u ON rv.reviewer_id=u.id
+      JOIN requests rq ON rv.request_id=rq.id
+      WHERE rv.reviewed_id=$1 AND rv.type='client_to_provider'
+      ORDER BY rv.created_at DESC`, [req.params.id]);
+    const avg = r.rows.length
+      ? (r.rows.reduce((s,x)=>s+Number(x.rating),0)/r.rows.length).toFixed(1) : 0;
+    const dist = [5,4,3,2,1].map(star => ({
+      star,
+      count: r.rows.filter(x=>Math.round(x.rating)===star).length
+    }));
+    res.json({ reviews: r.rows, average: parseFloat(avg), count: r.rows.length, distribution: dist });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ══════════════════════════════════════
 // ── PUSH TOKEN ──
+// ══════════════════════════════════════
+
 app.post('/api/push-token', auth, async (req, res) => {
   try {
     const { token, platform } = req.body;
