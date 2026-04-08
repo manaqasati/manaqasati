@@ -1178,7 +1178,8 @@ function showNewMsg(t,c){var e=document.getElementById('new-msg');e.textContent=
 function loadProfile(){
   document.getElementById('profile-content').innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
-    var storedImg=localStorage.getItem('client_avatar_'+user.id)||null;
+    var storedImg=p.profile_image||localStorage.getItem('client_avatar_'+user.id)||null;
+    if(p.profile_image)localStorage.setItem('client_avatar_'+user.id,p.profile_image);
     var avatarHtml=storedImg?'<img src="'+storedImg+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span>'+((p.name||'ع')[0])+'</span>';
     document.getElementById('profile-content').innerHTML=
       '<div style="background:var(--p);border-radius:var(--radius-lg);padding:26px;margin-bottom:16px;position:relative;overflow:hidden">'+
@@ -1229,16 +1230,20 @@ function uploadClientAvatar(input){
   var reader=new FileReader();
   reader.onload=function(e){
     var img=e.target.result;
-    localStorage.setItem('client_avatar_'+user.id,img);
-    // تحديث صورة الـ profile page
+    // تحديث الواجهة فوراً
     var prev=document.getElementById('clientAvPreview');
     if(prev)prev.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-    // تحديث الـ sidebar avatar
     var avEl=document.getElementById('userAv');
     if(avEl){avEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';avEl.style.padding='0';}
-    // تحديث الموبايل avatar
     var mobEl=document.getElementById('mobAv');
     if(mobEl){mobEl.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';mobEl.style.padding='0';}
+    // حفظ في localStorage كـ cache
+    localStorage.setItem('client_avatar_'+user.id,img);
+    // رفع للسيرفر ليبقى بعد تسجيل الخروج
+    fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({profile_image:img})},hdr()))
+      .then(function(r){return r.json();})
+      .then(function(r){if(!r.id)console.error('فشل رفع الصورة للسيرفر');})
+      .catch(function(e){console.error('خطأ:',e);});
   };
   reader.readAsDataURL(file);
 }
