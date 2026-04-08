@@ -868,6 +868,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- ══ RATING OVERLAY ══ -->
+<div class="overlay" id="editReqOverlay">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-head">
+      <h3>تعديل الطلب</h3>
+      <button class="modal-x" onclick="closeEditReq()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="edit-msg"></div>
+      <div class="fg" style="margin-bottom:10px"><label>عنوان الطلب *</label><input id="e-title" type="text"></div>
+      <div class="fg" style="margin-bottom:10px"><label>الميزانية المتوقعة (ر.س)</label><input id="e-budget" type="number" inputmode="numeric"></div>
+      <div class="fg" style="margin-bottom:10px"><label>تاريخ الانتهاء</label><input id="e-deadline" type="date"></div>
+      <div class="fg"><label>تفاصيل الطلب *</label><textarea id="e-desc" style="min-height:100px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-p" id="edit-btn" onclick="submitEditReq()" style="flex:1">حفظ التعديلات</button>
+      <button class="btn-s" onclick="closeEditReq()">إلغاء</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="rateOverlay">
   <div class="modal">
     <div class="modal-drag"></div>
@@ -956,7 +976,12 @@ function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width
 function errH(){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div><h4>تعذر التحميل</h4></div>';}
 function riCard(r,actions){
   var bids=r.bid_count>0?'<span class="rm"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'+r.bid_count+' عروض</span>':'';
-  var act=actions?'<div class="ri-actions"><button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button></div>':'';
+  var canEdit=r.status==='open'||r.status==='review';
+  var act=actions?'<div class="ri-actions">'+
+    '<button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button>'+
+    (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d)" onclick="openEditReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>تعديل</button>':'')+
+    (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>حذف</button>':'')+ 
+  '</div>':'';
   return '<div class="ri" onclick="openDetail('+r.id+',event)"><div><div class="ri-title">'+r.title+'</div><div class="ri-meta">'+(r.city?'<span class="rm">'+r.city+'</span>':'')+(r.category?'<span class="rm">'+r.category+'</span>':'')+(r.budget_max?'<span class="rm">'+r.budget_max+' ر.س</span>':'')+bids+'<span class="rm">'+timeAgo(r.created_at)+'</span></div></div>'+stTag(r.status)+act+'</div>';
 }
 function loadHome(){
@@ -1027,6 +1052,49 @@ function loadActions(id){
 }
 function acceptBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr())).then(function(){openDetail(reqId,null);});}
 function rejectBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);});}
+var _editReqId=null;
+function openEditReq(id,e){
+  if(e)e.stopPropagation();
+  _editReqId=id;
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
+    document.getElementById('e-title').value=req.title||'';
+    document.getElementById('e-budget').value=req.budget_max||'';
+    document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
+    document.getElementById('e-desc').value=req.description||'';
+    document.getElementById('edit-msg').className='alert';
+    document.getElementById('editReqOverlay').className='overlay show';
+  });
+}
+function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
+function submitEditReq(){
+  var title=document.getElementById('e-title').value.trim();
+  var desc=document.getElementById('e-desc').value.trim();
+  if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
+  var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
+  var body={
+    title:title,
+    description:desc,
+    budget_max:parseInt(document.getElementById('e-budget').value||0)||null,
+    deadline:document.getElementById('e-deadline').value||null
+  };
+  fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(r){
+      btn.disabled=false;btn.textContent='حفظ التعديلات';
+      if(r.id){closeEditReq();loadReqs();var e=document.getElementById('edit-msg');e.textContent='';e.className='alert';}
+      else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}
+    }).catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});
+}
+function deleteReq(id,e){
+  if(e)e.stopPropagation();
+  if(!confirm('هل أنت متأكد من حذف هذا الطلب؟'))return;
+  fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(r){
+      if(r.ok||r.id||r.message==='تم الحذف'){loadReqs();loadHome();}
+      else alert(r.message||'تعذر الحذف');
+    });
+}
 function markDone(id){fetch(API+'/api/requests/'+id+'/status',Object.assign({method:'PUT',body:JSON.stringify({status:'done'})},hdr())).then(function(){openDetail(id,null);});}
 function openRate(reqId,bidId){selRequestId=reqId;selRating=0;document.querySelectorAll('.sp').forEach(function(s){s.className='sp';});document.getElementById('rate-comment').value='';document.getElementById('rate-msg').className='alert';document.getElementById('rateOverlay').className='overlay show';if(bidId){fetch(API+'/api/requests/'+reqId+'/bids').then(function(r){return r.json();}).then(function(bids){var ab=bids.find(function(b){return b.status==='accepted';});if(ab)selProviderId=ab.provider_id;});}}
 function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach(function(s,i){s.className=i<n?'sp on':'sp';});}
