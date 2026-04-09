@@ -484,6 +484,71 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* ══ SKELETON ══ */
 .skel{background:linear-gradient(90deg,#f4f7fb 25%,#e8eef7 50%,#f4f7fb 75%);background-size:200%;animation:sk 1.4s infinite}
 @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* ══ بطاقات الطلبات — تصميم رسمي ══ */
+.rq-card{
+  background:var(--white);
+  border:1px solid #d0dae8;
+  border-radius:8px;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;
+  overflow:hidden;
+}
+.rq-card:hover{border-color:#1B3A6B;box-shadow:0 2px 12px rgba(27,58,107,.08)}
+.rq-card-top{padding:18px 20px;display:flex;align-items:flex-start;gap:14px}
+.rq-card-title{font-size:15px;font-weight:800;color:#0d1f3c;line-height:1.5;margin-bottom:10px;letter-spacing:-.2px}
+.rq-card-meta{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.rq-meta-item{font-size:12px;color:#6b85a8;font-weight:600;display:flex;align-items:center;gap:5px}
+.rq-meta-item::before{content:'';width:1px;height:12px;background:#dce5f0}
+.rq-meta-item:first-child::before{display:none}
+.rq-cat{color:#1B3A6B;font-weight:800}
+.rq-price{color:#0d1f3c;font-weight:700}
+.rq-bids{color:#0d1f3c}
+.rq-time{color:#9db3cc}
+.rq-status{
+  padding:5px 14px;border-radius:4px;
+  font-size:11px;font-weight:800;
+  white-space:nowrap;flex-shrink:0;
+  letter-spacing:.4px;text-transform:uppercase;
+  border:1px solid;
+}
+.rq-st-open{background:#f0f4fa;color:#1B3A6B;border-color:#c5d6ee}
+.rq-st-prog{background:#fdf8f0;color:#92400e;border-color:#e5c98a}
+.rq-st-done{background:#f0faf4;color:#15803d;border-color:#a3d9b8}
+.rq-st-rev{background:#faf0f0;color:#991b1b;border-color:#e5a3a3}
+.rq-card-actions{
+  padding:12px 20px;
+  display:flex;gap:8px;
+  border-top:1px solid #eef1f6;
+  background:#f8fafd;
+}
+.rq-btn-main{
+  flex:1;padding:10px 0;
+  background:#1B3A6B;color:#fff;
+  border:none;border-radius:6px;
+  font-family:inherit;font-size:13px;font-weight:800;
+  cursor:pointer;letter-spacing:.2px;transition:.15s;
+}
+.rq-btn-main:hover{background:#142d54}
+.rq-btn-sec{
+  padding:10px 16px;background:transparent;color:#1B3A6B;
+  border:1px solid #c5d6ee;border-radius:6px;
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;
+}
+.rq-btn-sec:hover{background:#e8eef7}
+.rq-btn-del{
+  padding:10px 16px;background:transparent;color:#dc2626;
+  border:1px solid #fecaca;border-radius:6px;
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;
+}
+.rq-btn-del:hover{background:#fef2f2}
+/* بطاقة الرئيسية */
+.ri-home-card{
+  background:var(--white);border:1px solid #d0dae8;border-radius:8px;
+  margin-bottom:8px;cursor:pointer;transition:border-color .15s,box-shadow .15s;overflow:hidden;
+}
+.ri-home-card:hover{border-color:#1B3A6B;box-shadow:0 2px 12px rgba(27,58,107,.08)}
+
 .ri-home-card{background:#fff;border:none;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 3px 14px rgba(27,58,107,.1);transition:all .2s;cursor:pointer}
 .ri-home-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(27,58,107,.16)}
 
@@ -921,6 +986,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <script>
+
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
@@ -992,49 +1058,57 @@ function timeAgo(d){var diff=(new Date()-new Date(d))/1000;if(diff<60)return 'ا
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
 function errH(){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div><h4>تعذر التحميل</h4></div>';}
 function riCardHome(r){
-  var catColor={'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','ألمنيوم':'#94a3b8','كاميرات مراقبة وأمن':'#7c3aed','شبكات وإنترنت':'#0e7490','مظلات وسواتر':'#d97706','مكافحة حشرات':'#15803d'};
-  var cc=catColor[r.category]||'#1B3A6B';
-  var stMap={open:['#15803d','#dcfce7','● نشط'],in_progress:['#1e40af','#dbeafe','● جارٍ'],done:['#b45309','#fff8e7','● مكتمل'],review:['#92400e','#fef3c7','● مراجعة']};
-  var sm=stMap[r.status]||stMap.open;
-  var html='<div onclick="openDetail('+r.id+',event)" class="ri-home-card">';
-  html+='<div style="height:4px;background:linear-gradient(90deg,'+cc+','+cc+'50)"></div>';
-  html+='<div style="padding:14px 16px">';
-  html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">';
-  html+='<div style="font-size:15px;font-weight:900;color:var(--text);line-height:1.35;flex:1">'+r.title+'</div>';
-  html+='<span style="background:'+sm[1]+';color:'+sm[0]+';padding:4px 10px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0">'+sm[2]+'</span>';
+  var stClass={open:'rq-st-open',in_progress:'rq-st-prog',done:'rq-st-done',review:'rq-st-rev'};
+  var stLbl={open:'نشط',in_progress:'جارٍ',done:'مكتمل',review:'مراجعة'};
+  var sc=stClass[r.status]||'rq-st-open';
+  var sl=stLbl[r.status]||'نشط';
+  var html='<div class="ri-home-card" onclick="openDetail('+r.id+',event)">';
+  html+='<div style="padding:18px 20px">';
+  html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px">';
+  html+='<div style="font-size:15px;font-weight:800;color:#0d1f3c;line-height:1.5;flex:1;letter-spacing:-.2px">'+r.title+'</div>';
+  html+='<span class="rq-status '+sc+'">'+sl+'</span>';
   html+='</div>';
-  html+='<div style="display:flex;gap:5px;flex-wrap:wrap">';
-  if(r.category)html+='<span style="background:'+cc+'18;color:'+cc+';border:1px solid '+cc+'30;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800">'+r.category+'</span>';
-  if(r.city)html+='<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">📍 '+r.city+'</span>';
-  if(r.budget_max)html+='<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>';
-  if(r.bid_count>0)html+='<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">'+r.bid_count+' عروض</span>';
-  html+='<span style="background:var(--bg);color:var(--hint);border:1px solid var(--border);padding:3px 9px;border-radius:20px;font-size:10px">'+timeAgo(r.created_at)+'</span>';
-  html+='</div></div></div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">';
+  if(r.category)html+='<span style="font-size:12px;font-weight:800;color:#1B3A6B">'+r.category+'</span>';
+  if(r.city)html+='<span style="font-size:12px;color:#6b85a8;font-weight:600;border-right:1px solid #dce5f0;padding-right:16px">'+r.city+'</span>';
+  if(r.budget_max)html+='<span style="font-size:12px;font-weight:700;color:#0d1f3c;border-right:1px solid #dce5f0;padding-right:16px">'+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>';
+  if(r.bid_count>0)html+='<span style="font-size:12px;color:#6b85a8;border-right:1px solid #dce5f0;padding-right:16px">'+r.bid_count+' عرض</span>';
+  html+='<span style="font-size:11px;color:#9db3cc;margin-right:auto">'+timeAgo(r.created_at)+'</span>';
+  html+='</div>';
+  html+='</div></div>';
   return html;
 }
 function riCard(r,actions){
-  var bids=r.bid_count>0?'<span class="rm"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'+r.bid_count+' عروض</span>':'';
   var canEdit=r.status==='open'||r.status==='review';
-  var act=actions?'<div class="ri-actions">'+
-    '<button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button>'+
-    (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d)" onclick="openEditReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>تعديل</button>':'')+
-    (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>حذف</button>':'')+ 
-  '</div>':'';
-  var catChip=r.category?'<span style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">'+r.category+'</span>':'<span style="background:var(--bg);color:var(--hint);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600">غير محدد</span>';
-  return '<div class="ri" onclick="openDetail('+r.id+',event)">'+
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'+
-      '<div class="ri-title">'+r.title+'</div>'+
-      stTag(r.status)+
-    '</div>'+
-    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+
-      catChip+
-      (r.city?'<span class="rm">📍 '+r.city+'</span>':'')+
-      (r.budget_max?'<span class="rm">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'')+
-      bids+
-      '<span class="rm">'+timeAgo(r.created_at)+'</span>'+
-    '</div>'+
-    act+
-  '</div>';
+  var stClass={open:'rq-st-open',in_progress:'rq-st-prog',done:'rq-st-done',review:'rq-st-rev'};
+  var stLbl={open:'نشط',in_progress:'جارٍ',done:'مكتمل',review:'مراجعة'};
+  var sc=stClass[r.status]||'rq-st-open';
+  var sl=stLbl[r.status]||'نشط';
+  var html='<div class="rq-card" onclick="openDetail('+r.id+',event)">';
+  html+='<div class="rq-card-top">';
+  html+='<div style="flex:1;min-width:0">';
+  html+='<div class="rq-card-title">'+r.title+'</div>';
+  html+='<div class="rq-card-meta">';
+  if(r.category)html+='<span class="rq-meta-item rq-cat">'+r.category+'</span>';
+  if(r.city)html+='<span class="rq-meta-item">'+r.city+'</span>';
+  if(r.budget_max)html+='<span class="rq-meta-item rq-price">'+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>';
+  if(r.bid_count>0)html+='<span class="rq-meta-item">'+r.bid_count+' عرض</span>';
+  html+='<span class="rq-meta-item rq-time">'+timeAgo(r.created_at)+'</span>';
+  html+='</div>';
+  html+='</div>';
+  html+='<span class="rq-status '+sc+'">'+sl+'</span>';
+  html+='</div>';
+  if(actions){
+    html+='<div class="rq-card-actions">';
+    html+='<button class="rq-btn-main" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button>';
+    if(canEdit){
+      html+='<button class="rq-btn-sec" onclick="openEditReq('+r.id+',event)">تعديل</button>';
+      html+='<button class="rq-btn-del" onclick="deleteReq('+r.id+',event)">حذف</button>';
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
 }
 function loadHome(){
   fetch(API+'/api/requests/my',hdr()).then(function(r){return r.json();}).then(function(all){
