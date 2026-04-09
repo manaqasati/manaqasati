@@ -800,7 +800,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="tab-btn" onclick="showTab('actions',this)">الإجراءات</button>
       </div>
       <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
-      <div class="tab" id="tab-chat"><div id="chat-list"><div class="loading">جاري التحميل...</div></div></div>
+      <div class="tab" id="tab-chat" style="padding:0;min-height:200px"></div>
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
     </div>
 
@@ -1064,7 +1064,7 @@ function showTab(t,el){
   document.getElementById('tab-'+t).className='tab on';
   el.className='tab-btn on';
   if(t==='bids')loadBids(curRequestId);
-  if(t==='chat'){loadChat(curRequestId); if(curChatReceiver) setTimeout(function(){openClientChat(curRequestId,curChatReceiver.id,curChatReceiver.name);},100);}
+  if(t==='chat'){loadChat(curRequestId); if(curChatReceiver)setTimeout(function(){openClientChat(curRequestId,curChatReceiver.id,curChatReceiver.name);},80);}
   if(t==='actions')loadActions(curRequestId);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
@@ -1309,6 +1309,14 @@ loadHome();
 
 
 
+function getChatUser(){
+  if(typeof me!=='undefined'&&me&&me.id)return me;
+  if(typeof user!=='undefined'&&user&&user.id)return user;
+  return{};
+}
+
+
+
 // ══════════════════════════════════════════════════════
 //  CHAT ENGINE — Real-time WhatsApp Style
 //  يُضاف هذا الكود لكلا الـ dashboard (provider + client)
@@ -1466,7 +1474,7 @@ function markMsgsAsRead() {
 function appendMessage(msg, isHistorical = false) {
   const box = document.getElementById('chatMsgsBox');
   if (!box) return;
-  const myId = me?.id || user?.id;
+  const myId = (typeof me!=="undefined"&&me?.id) || (typeof user!=="undefined"&&user?.id);
   const isMe = msg.sender_id == myId;
   const time = new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -1550,8 +1558,8 @@ async function sendChatMsg(reqId, receiverId) {
   inp.style.height = 'auto';
   stopTyping();
 
-  const myId = me?.id || user?.id;
-  const myName = me?.name || user?.name || '';
+  const myId = (typeof me!=="undefined"&&me?.id) || (typeof user!=="undefined"&&user?.id);
+  const myName = (typeof me!=='undefined'&&me?.name)||(typeof user!=='undefined'&&user?.name)||'';
 
   // رسالة مؤقتة فورية
   const tempMsg = {
@@ -1735,72 +1743,80 @@ function formatConvTime(d) {
 
 
 
-var curRequestId_chat = null;
-var curChatReceiver = null;
-
 function loadChat(id){
- const wrap = document.getElementById('tab-chat');
- if(!wrap) return;
- wrap.innerHTML = '<div id="chatScreenWrap" style="display:none"></div>' +
-   '<div id="chatPickPrompt" style="text-align:center;padding:30px;color:var(--muted)">' +
-   '<div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:4px">اختر مزوداً للمحادثة</div>' +
-   '<div style="font-size:11px">اذهب لتبويب العروض واضغط محادثة</div></div>';
- if(curChatReceiver) openClientChat(id, curChatReceiver.id, curChatReceiver.name);
+  const wrap=document.getElementById('tab-chat');
+  if(!wrap)return;
+  if(curChatReceiver){
+    wrap.innerHTML='<div id="chatScreenWrap"></div>';
+    openClientChat(id,curChatReceiver.id,curChatReceiver.name);
+  } else {
+    wrap.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:10px"><div style="width:44px;height:44px;border-radius:12px;background:var(--p-light);display:flex;align-items:center;justify-content:center"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"var(--p)\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z\"/></svg></div><div style=\"font-size:13px;font-weight:700;color:var(--p)\">اختر مزوداً للمحادثة</div><div style=\"font-size:11px;color:var(--muted)\">اذهب لتبويب العروض واضغط محادثة</div></div>';
+  }
 }
-
-function startChat(reqId, providerId, providerName){
- curChatReceiver={id:providerId, name:providerName};
- document.querySelectorAll('.tab-btn')[1].click();
+function startChat(reqId,providerId,providerName){
+  curChatReceiver={id:providerId,name:providerName};
+  const btn=document.querySelectorAll('.tab-btn')[1];
+  if(btn)btn.click();
+  else openClientChat(reqId,providerId,providerName);
 }
-
-async function openClientChat(reqId, receiverId, receiverName){
- curChatReceiver = {id: receiverId, name: receiverName};
- const cw = document.getElementById('chatScreenWrap');
- const pp = document.getElementById('chatPickPrompt');
- if(pp) pp.style.display='none';
- if(cw){
-   cw.style.display='block';
-   cw.innerHTML = await openChatScreen(reqId, receiverId, receiverName, '', false);
-   await loadChatMessages(reqId, receiverId);
-   const inp = document.getElementById('chatInputField');
-   if(inp) inp.focus();
- }
+async function openClientChat(reqId,receiverId,receiverName){
+  curChatReceiver={id:receiverId,name:receiverName};
+  const wrap=document.getElementById('tab-chat');
+  if(wrap)wrap.innerHTML='<div id="chatScreenWrap"></div>';
+  const cw=document.getElementById('chatScreenWrap');
+  if(cw){
+    cw.innerHTML=await openChatScreen(reqId,receiverId,receiverName,'',false);
+    await loadChatMessages(reqId,receiverId);
+    const inp=document.getElementById('chatInputField');
+    if(inp)inp.focus();
+  }
 }
-
 function openProviderProfile(providerId){
- var overlay=document.getElementById('providerOverlay');
- if(!overlay){
-   overlay=document.createElement('div');overlay.id='providerOverlay';
-   overlay.style.cssText='display:none;position:fixed;inset:0;background:rgba(10,5,30,.65);z-index:400;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)';
-   overlay.innerHTML='<div id="providerSheet" style="background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column"><div style="text-align:center;padding:10px 0 0"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto"></div></div><div id="providerContent" style="padding:18px;flex:1"><div class="loading">جاري التحميل...</div></div><div style="padding:12px 18px;border-top:1px solid var(--border);background:var(--white)"><button onclick="closeProviderProfile()" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted)">إغلاق</button></div></div>';
-   overlay.addEventListener('click',function(e){if(e.target===overlay)closeProviderProfile();});
-   document.body.appendChild(overlay);
- }
- overlay.style.display='flex';
- var cont=document.getElementById('providerContent');
- cont.innerHTML='<div class="loading">جاري التحميل...</div>';
- Promise.all([
-   fetch(API+'/api/provider/'+providerId+'/profile').then(function(r){return r.json();}),
-   fetch(API+'/api/ratings/provider/'+providerId).then(function(r){return r.json();})
- ]).then(function(results){
-   var p=results[0]||{};var rv=results[1]||{};
-   var reviews=rv.reviews||[];var avg=rv.average||0;var cnt=rv.count||0;
-   var starsDisp=[1,2,3,4,5].map(function(i){return i<=Math.round(avg)?'<span style="color:#F0A500;font-size:18px">★</span>':'<span style="color:#e4e4e7;font-size:18px">★</span>';}).join('');
-   var avatarHtml=p.profile_image?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span style="font-size:28px;font-weight:900;color:#fff">'+((p.name||'م')[0])+'</span>';
-   var portfolioHtml=(p.portfolio_images||[]).length?'<div style="margin-top:16px"><div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+(p.portfolio_images||[]).map(function(img){return'<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="window.open(''+img+'','_blank')"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';}).join('')+'</div></div>':'';
-   var reviewsHtml=reviews.length?reviews.map(function(rv){var stars='';for(var s=1;s<=5;s++)stars+='<span style="color:'+(s<=Math.round(rv.rating||0)?'#F0A500':'#ddd')+';font-size:14px">★</span>';return'<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</div><div>'+stars+'</div></div>'+(rv.comment?'<div style="font-size:11px;color:var(--text2);line-height:1.7">'+rv.comment+'</div>':'')+'</div>';}).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">لا يوجد تقييمات بعد</div>';
-   cont.innerHTML=
-     '<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden"><div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'+
-     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gold);color:var(--p2);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.2)">'+avatarHtml+'</div>'+
-     '<div><div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:2px">'+(p.name||'—')+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+(p.city||'')+(p.experience_years?' · '+p.experience_years+' سنوات خبرة':'')+'</div><div style="margin-top:4px">'+starsDisp+'<span style="font-size:11px;color:rgba(255,255,255,.6);margin-right:3px">'+avg.toFixed(1)+' ('+cnt+')</span></div></div></div>'+
-     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">منجز</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">التقييم</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">سنوات</div></div></div></div>'+
-     (p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2)">'+p.bio+'</div>':'')+
-     ((p.specialties||[]).length?'<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+(p.specialties||[]).map(function(s){return'<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>';}).join('')+'</div></div>':'')+
-     portfolioHtml+
-     '<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+reviewsHtml+'</div>';
- }).catch(function(){cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>';});
+  var ol=document.getElementById('providerOverlay');
+  if(!ol){
+    ol=document.createElement('div');ol.id='providerOverlay';
+    ol.style.cssText='display:none;position:fixed;inset:0;background:rgba(10,5,30,.65);z-index:400;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)';
+    ol.innerHTML='<div style="background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column"><div style=\"text-align:center;padding:10px 0 0\"><div style=\"width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto\"></div></div><div id=\"providerContent\" style=\"padding:18px;flex:1\"><div class=\"loading\">جاري التحميل...</div></div><div style=\"padding:12px 18px;border-top:1px solid var(--border)\"><button onclick=\"closeProviderProfile()\" style=\"width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted)\">إغلاق</button></div></div>';
+    ol.addEventListener('click',function(e){if(e.target===ol)closeProviderProfile();});
+    document.body.appendChild(ol);
+  }
+  ol.style.display='flex';
+  var cont=document.getElementById('providerContent');
+  cont.innerHTML='<div class="loading">جاري التحميل...</div>';
+  Promise.all([
+    fetch(API+'/api/provider/'+providerId+'/profile').then(r=>r.json()),
+    fetch(API+'/api/ratings/provider/'+providerId).then(r=>r.json())
+  ]).then(([p,rv])=>{
+    p=p||{};rv=rv||{};
+    const reviews=rv.reviews||[];const avg=rv.average||0;const cnt=rv.count||0;
+    const starsDisp=[1,2,3,4,5].map(i=>i<=Math.round(avg)?'<span style="color:#F0A500;font-size:18px">★</span>':'<span style="color:#e4e4e7;font-size:18px">★</span>').join('');
+    const avH=p.profile_image?`<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:26px;font-weight:900;color:#fff">${(p.name||'م')[0]}</span>`;
+    const portH=(p.portfolio_images||[]).length?'<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+(p.portfolio_images||[]).map(img=>`<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="window.open('${img}','_blank')"><img src="${img}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')+'</div></div>':'';
+    const revH=reviews.length?reviews.map(rv=>{let s='';for(let i=1;i<=5;i++)s+=`<span style="color:${i<=Math.round(rv.rating||0)?'#F0A500':'#ddd'};font-size:13px">★</span>`;return`<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700">${rv.reviewer_name||'عميل'}</span><div>${s}</div></div>${rv.comment?`<div style="font-size:11px;color:var(--text2);line-height:1.7">${rv.comment}</div>`:''}</div>`;}).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">لا يوجد تقييمات</div>';
+    cont.innerHTML=`
+      <div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--gold);color:var(--p2);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.2)">${avH}</div>
+          <div>
+            <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:2px">${p.name||'—'}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.6)">${p.city||''}${p.experience_years?' · '+p.experience_years+' سنوات':''}</div>
+            <div style="margin-top:4px">${starsDisp}<span style="font-size:11px;color:rgba(255,255,255,.6);margin-right:3px">${avg.toFixed(1)} (${cnt})</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">${p.completed_projects||0}</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div>
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">${avg.toFixed(1)}</div><div style="font-size:9px;color:rgba(255,255,255,.5)">التقييم</div></div>
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">${p.experience_years||'—'}</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنوات</div></div>
+        </div>
+      </div>
+      ${p.bio?`<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2)">${p.bio}</div>`:''}
+      ${(p.specialties||[]).length?`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">${(p.specialties||[]).map(s=>`<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">${s}</span>`).join('')}</div></div>`:''}
+      ${portH}
+      <div style="margin-top:14px"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>${revH}</div>`;
+  }).catch(()=>{cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>';});
 }
-function closeProviderProfile(){var o=document.getElementById('providerOverlay');if(o)o.style.display='none';}
+function closeProviderProfile(){const o=document.getElementById('providerOverlay');if(o)o.style.display='none';}
 
 initWS();
 </script>
