@@ -1064,7 +1064,7 @@ function showTab(t,el){
   document.getElementById('tab-'+t).className='tab on';
   el.className='tab-btn on';
   if(t==='bids')loadBids(curRequestId);
-  if(t==='chat'){loadChat(curRequestId); if(curChatReceiver)setTimeout(function(){openClientChat(curRequestId,curChatReceiver.id,curChatReceiver.name);},80);}
+  if(t==='chat') loadChat(curRequestId);
   if(t==='actions')loadActions(curRequestId);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
@@ -1374,7 +1374,7 @@ function handleWSEvent(data) {
   if (data.type === 'message') {
     const msg = data.message;
     // إذا المحادثة مفتوحة وتخص هذا الطلب — أضف الرسالة فوراً
-    if (currentChatReqId && msg.request_id == currentChatReqId) {
+    if (currentChatReqId && parseInt(msg.request_id) == parseInt(currentChatReqId)) {
       appendMessage(msg, false);
       scrollToBottom();
       // أرسل إشعار القراءة
@@ -1390,14 +1390,14 @@ function handleWSEvent(data) {
   }
 
   if (data.type === 'typing') {
-    if (currentChatReqId && data.request_id == currentChatReqId && data.from != (me?.id || user?.id)) {
+    if (currentChatReqId && parseInt(data.request_id) == parseInt(currentChatReqId) && parseInt(data.from) != (me?.id || user?.id)) {
       if (data.is_typing) showTyping();
       else hideTyping();
     }
   }
 
   if (data.type === 'read') {
-    if (currentChatReqId && data.request_id == currentChatReqId) {
+    if (currentChatReqId && parseInt(data.request_id) == parseInt(currentChatReqId)) {
       // حدّث علامات القراءة في الرسائل المرسلة
       markMsgsAsRead();
     }
@@ -1677,16 +1677,15 @@ function autoResize(el) {
 }
 
 // ── Load Messages for Open Chat ──
-async function loadChatMessages(reqId, receiverId) {
-  try {
-    const res = await fetch(`${API}/api/messages/${reqId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const msgs = await res.json();
-    renderChatHistory(msgs, receiverId, currentChatPartnerName);
+async function loadChatMessages(reqId,receiverId){
+  try{
+    // Use the dashboard's api() for proper auth handling
+    const msgs = await api('/api/messages/'+reqId) || [];
+    const arr = Array.isArray(msgs) ? msgs : [];
+    renderChatHistory(arr, receiverId);
   } catch(e) {
-    const box = document.getElementById('chatMsgsBox');
-    if (box) box.innerHTML = '<div class="chat-empty"><div class="chat-empty-t">تعذر التحميل</div></div>';
+    const b = document.getElementById('chatMsgsBox');
+    if(b) b.innerHTML = '<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
   }
 }
 
@@ -1744,12 +1743,13 @@ function formatConvTime(d) {
 
 
 function loadChat(id){
-  const wrap=document.getElementById('tab-chat');
-  if(!wrap)return;
-  if(curChatReceiver){
-    wrap.innerHTML='<div id="chatScreenWrap"></div>';
-    openClientChat(id,curChatReceiver.id,curChatReceiver.name);
-  } else {
+  const wrap = document.getElementById('tab-chat');
+  if(!wrap) return;
+  if(curChatReceiver && id){
+    openClientChat(id, curChatReceiver.id, curChatReceiver.name);
+    return;
+  }
+  if(!curChatReceiver){
     wrap.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:10px"><div style="width:44px;height:44px;border-radius:12px;background:var(--p-light);display:flex;align-items:center;justify-content:center"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"var(--p)\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z\"/></svg></div><div style=\"font-size:13px;font-weight:700;color:var(--p)\">اختر مزوداً للمحادثة</div><div style=\"font-size:11px;color:var(--muted)\">اذهب لتبويب العروض واضغط محادثة</div></div>';
   }
 }
@@ -1759,18 +1759,23 @@ function startChat(reqId,providerId,providerName){
   if(btn)btn.click();
   else openClientChat(reqId,providerId,providerName);
 }
-async function openClientChat(reqId,receiverId,receiverName){
-  curChatReceiver={id:receiverId,name:receiverName};
-  const wrap=document.getElementById('tab-chat');
-  if(wrap)wrap.innerHTML='<div id="chatScreenWrap"></div>';
-  const cw=document.getElementById('chatScreenWrap');
+async function openClientChat(reqId, receiverId, receiverName){
+  // Set state FIRST
+  curChatReceiver = {id: receiverId, name: receiverName};
+  currentChatReqId = parseInt(reqId);
+  currentChatReceiverId = parseInt(receiverId);
+  currentChatPartnerName = receiverName;
+  const wrap = document.getElementById('tab-chat');
+  if(wrap) wrap.innerHTML = '<div id="chatScreenWrap"></div>';
+  const cw = document.getElementById('chatScreenWrap');
   if(cw){
-    cw.innerHTML=await openChatScreen(reqId,receiverId,receiverName,'',false);
-    await loadChatMessages(reqId,receiverId);
-    const inp=document.getElementById('chatInputField');
-    if(inp)inp.focus();
+    cw.innerHTML = await openChatScreen(reqId, receiverId, receiverName, '', false);
+    await loadChatMessages(reqId, receiverId);
+    const inp = document.getElementById('chatInputField');
+    if(inp){ inp.focus(); }
   }
 }
+
 function openProviderProfile(providerId){
   var ol=document.getElementById('providerOverlay');
   if(!ol){
