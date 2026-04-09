@@ -424,23 +424,18 @@ async function notifyInterestedProviders(reqId, title, category) {
     const req = reqData.rows[0] || {};
 
     const reqCity = req.city || null;
-    // إشعار المزودين بنفس التخصص: الأولوية للمدينة نفسها، ثم كل المزودين بالتخصص
-    const provsSameCity = reqCity ? await pool.query(
-      `SELECT id,name,email FROM users WHERE role='provider' AND city=$1
-       AND (specialties IS NOT NULL AND $2=ANY(specialties)
-            OR notify_categories IS NOT NULL AND $2=ANY(notify_categories))`,
-      [reqCity, category]
-    ) : {rows:[]};
-    const provsAllCities = await pool.query(
-      `SELECT id,name,email FROM users WHERE role='provider'
-       AND (city IS NULL OR city!=$1 OR $1 IS NULL)
-       AND (specialties IS NOT NULL AND $2=ANY(specialties)
-            OR notify_categories IS NOT NULL AND $2=ANY(notify_categories))`,
-      [reqCity||'__none__', category]
+    // جلب كل المزودين بنفس التخصص
+    const allProvs = await pool.query(
+      `SELECT id,name,email,city FROM users WHERE role='provider'
+       AND (specialties IS NOT NULL AND $1=ANY(specialties)
+            OR notify_categories IS NOT NULL AND $1=ANY(notify_categories))`,
+      [category]
     );
-    // المزودون بنفس المدينة أولاً، ثم الباقون
-    const provRows = [...provsSameCity.rows, ...provsAllCities.rows];
-    const provs = {rows: provRows};
+    // ترتيب: نفس المدينة أولاً ثم الباقون
+    const sorted = reqCity
+      ? [...allProvs.rows.filter(p=>p.city===reqCity), ...allProvs.rows.filter(p=>p.city!==reqCity)]
+      : allProvs.rows;
+    const provs = {rows: sorted};
 
     for (const p of provs.rows) {
       await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" — ${req.city||category}`, 'new_request', reqId);
@@ -1574,6 +1569,16 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     if (experience_years !== undefined) { fields.push(`experience_years=$${idx++}`); vals.push(experience_years||null); }
     if (portfolio_images !== undefined) { fields.push(`portfolio_images=$${idx++}`); vals.push(portfolio_images||null); }
     if (profile_image !== undefined) { fields.push(`profile_image=$${idx++}`); vals.push(profile_image); }
+    // مزامنة notify_categories مع specialties عند الحفظ
+    if (specialties !== undefined && notify_categories === undefined) {
+      const nc = specialties && specialties.length ? specialties.slice(0,3) : null;
+      fields.push(`notify_categories=$${idx++}`);
+      vals.push(nc);
+    } else if (notify_categories !== undefined) {
+      const nc = notify_categories && notify_categories.length ? notify_categories.slice(0,3) : null;
+      fields.push(`notify_categories=$${idx++}`);
+      vals.push(nc);
+    }
     if (!fields.length) return res.status(400).json({ message: 'لا يوجد بيانات للتحديث' });
     vals.push(req.user.id);
     const r = await pool.query(
