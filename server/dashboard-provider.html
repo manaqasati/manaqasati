@@ -937,15 +937,15 @@ async function loadWorks() {
 
 function _worksFilter(type) {
   if(type==='bids') return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
-    '<button class="btn-sm bs-p" onclick="_fBids(\'all\')">الكل</button>' +
-    '<button class="btn-sm" style="background:var(--green-l);color:var(--green)" onclick="_fBids(\'accepted\')">مقبولة</button>' +
-    '<button class="btn-sm" style="background:var(--gold-l);color:#92400e" onclick="_fBids(\'pending\')">معلقة</button>' +
-    '<button class="btn-sm" style="background:var(--red-l);color:var(--red)" onclick="_fBids(\'rejected\')">مرفوضة</button>' +
+    '<button onclick="_fBids(\'all\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid var(--p);background:var(--p);color:#fff;transition:all .15s" id="fb-all">الكل</button>' +
+    '<button onclick="_fBids(\'accepted\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #bbf7d0;background:var(--green-l);color:var(--green);transition:all .15s" id="fb-accepted">مقبولة</button>' +
+    '<button onclick="_fBids(\'pending\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fde68a;background:var(--gold-l);color:#92400e;transition:all .15s" id="fb-pending">معلقة</button>' +
+    '<button onclick="_fBids(\'rejected\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fecaca;background:var(--red-l);color:var(--red);transition:all .15s" id="fb-rejected">مرفوضة</button>' +
   '</div>';
   return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
-    '<button class="btn-sm bs-p" onclick="_fProjs(\'all\')">الكل</button>' +
-    '<button class="btn-sm" style="background:#fff8e7;color:#92400e" onclick="_fProjs(\'in_progress\')">جارية</button>' +
-    '<button class="btn-sm" style="background:var(--green-l);color:var(--green)" onclick="_fProjs(\'completed\')">مكتملة</button>' +
+    '<button onclick="_fProjs(\'all\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid var(--p);background:var(--p);color:#fff;transition:all .15s" id="fp-all">الكل</button>' +
+    '<button onclick="_fProjs(\'in_progress\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fde68a;background:#fff8e7;color:#92400e;transition:all .15s" id="fp-inprog">جارية</button>' +
+    '<button onclick="_fProjs(\'completed\',$event||event)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #bbf7d0;background:var(--green-l);color:var(--green);transition:all .15s" id="fp-done">مكتملة</button>' +
   '</div>';
 }
 function _wTab(tab, btn) {
@@ -954,13 +954,28 @@ function _wTab(tab, btn) {
   if(bw) bw.style.display = tab==='bids' ? '' : 'none';
   if(pw) pw.style.display = tab==='projs' ? '' : 'none';
 }
-function _fBids(status) {
+function _fBids(status, e) {
   var list = status==='all' ? _myBids : _myBids.filter(function(b){ return b.status===status; });
   var w=_el('bids-wrap'); if(w) w.innerHTML=_renderBids(list);
+  // update active chip
+  ['fb-all','fb-accepted','fb-pending','fb-rejected'].forEach(function(id){
+    var btn=_el(id); if(!btn) return;
+    var map={'fb-all':'all','fb-accepted':'accepted','fb-pending':'pending','fb-rejected':'rejected'};
+    var isActive = map[id]===status;
+    if(isActive){ btn.style.outline='2px solid var(--p)'; btn.style.outlineOffset='2px'; btn.style.fontWeight='900'; }
+    else { btn.style.outline='none'; btn.style.fontWeight='700'; }
+  });
 }
-function _fProjs(status) {
+function _fProjs(status, e) {
   var list = status==='all' ? _myProjs : _myProjs.filter(function(p){ return p.status===status; });
   var w=_el('projs-wrap'); if(w) w.innerHTML=_renderProjs(list);
+  ['fp-all','fp-inprog','fp-done'].forEach(function(id){
+    var btn=_el(id); if(!btn) return;
+    var map={'fp-all':'all','fp-inprog':'in_progress','fp-done':'completed'};
+    var isActive = map[id]===status;
+    if(isActive){ btn.style.outline='2px solid var(--p)'; btn.style.outlineOffset='2px'; btn.style.fontWeight='900'; }
+    else { btn.style.outline='none'; btn.style.fontWeight='700'; }
+  });
 }
 
 function _renderBids(list) {
