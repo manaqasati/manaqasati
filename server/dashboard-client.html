@@ -814,12 +814,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <button class="ni" onclick="show('requests',this,'requests')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي
     </button>
-    <button class="ni" onclick="show('chats',this,'chats')">
-      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-      المحادثات<span class="badge chat-nav-badge" id="chatNavBadge" style="display:none">0</span>
-    </button>
     <button class="ni" onclick="show('profile',this,'profile')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي
+    </button>
+    <button class="ni" onclick="show('chats',this,'chats')">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+      المحادثات<span class="badge" id="chatNavBadge" style="display:none">0</span>
     </button>
     <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
@@ -1027,35 +1027,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div id="profile-content"><div class="loading">جاري التحميل...</div></div>
     </div>
 
-    <!-- ══ CHATS ══ -->
+    <!-- ══ CHATS LIST ══ -->
     <div class="page" id="page-chats">
-      <div id="chatsListContainer"></div>
+      <div id="chatsListWrap"></div>
     </div>
 
-  
-<!-- ══ CHAT DETAIL PAGE (fullscreen overlay) ══ -->
-<div id="chatDetailPage">
-  <div class="chat-hdr">
-    <button class="chat-back-btn" id="chatBackBtn" aria-label="رجوع">
-      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div class="chat-hdr-av" id="chatPartnerAv"><span>م</span></div>
-    <div class="chat-hdr-info">
-      <div class="chat-hdr-name" id="chatPartnerName">محادثة</div>
-      <div id="chatStatus"></div>
-    </div>
   </div>
-  <div id="chatBox"></div>
-  <div class="chat-input-row">
-    <div class="chat-inp-wrap">
-      <textarea id="chatInput" placeholder="اكتب رسالتك..." rows="1"></textarea>
-    </div>
-    <button id="chatSendBtn" aria-label="إرسال">
-      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
-  </div>
-</div>
-</div>
 </div>
 
 <!-- ══ BOTTOM NAV - محسّن ══ -->
@@ -1079,16 +1056,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <span class="fab-label">جديد</span>
   </button>
 
-  <button class="bni" onclick="show('chats',null,'chats')">
-    <div class="bic" style="position:relative">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="bni-badge" id="chatBnBadge" style="display:none">0</span>
-    </div>
-    <span class="bt">محادثات</span>
-  </button>
   <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
     <span class="bt">حسابي</span>
+  </button>
+  <button class="bni" onclick="show('chats',null,'chats')">
+    <div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span class="bni-badge" id="chatBnBadge" style="display:none">0</span></div>
+    <span class="bt">محادثات</span>
   </button>
   <button class="bni" id="bn-notifs" onclick="show('notifs',null,'notifs')">
     <div class="bic" style="position:relative">
@@ -1234,10 +1209,11 @@ function show(pg,el,key){
   var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'ملفي الشخصي',chats:'المحادثات'};
   document.getElementById('pageTitle').textContent=t[pg]||'';
   if(pg==='requests')loadReqs();
-  if(pg==='home')restorePage(); loadHome();
+  if(pg==='home')loadHome();
+setTimeout(restorePage,0);
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
-  if(pg==='chats')Chat.loadList('chatsListContainer');
+  if(pg==='chats')Chat.loadList('chatsListWrap');
   window.scrollTo(0,0);
 }
 function showTab(t,el){
@@ -1342,11 +1318,11 @@ function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<sp
 function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
-  await Promise.all([...new Set(bids.map(b=>b.provider_id))].map(async pid=>{
+  await Promise.all([...new Set(bids.map(function(b){return b.provider_id;}))].map(async function(pid){
     try{
-      const r2=await fetch(API+'/api/provider/'+pid+'/profile',{headers:{'Authorization':'Bearer '+token}});
-      const d=await r2.json();
-      if(d){ Chat.storeName(pid,d.name||''); Chat.storeImg(pid,d.profile_image||''); if(d.phone)Chat.storePhone(pid,d.phone); }
+      var r2=await fetch(API+'/api/provider/'+pid+'/profile',{headers:{'Authorization':'Bearer '+token}});
+      var d=await r2.json();
+      if(d){Chat.storeName(pid,d.name||'');Chat.storeImg(pid,d.profile_image||'');if(d.phone)Chat.storePhone(pid,d.phone);}
     }catch(e){}
   }));
     document.getElementById('bids-count').textContent='('+bids.length+')';
@@ -1361,30 +1337,35 @@ function loadBids(id){
       var specHtml=specs.length?specs.slice(0,2).map(function(s){return'<span style="background:rgba(240,165,0,.18);color:#F0A500;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+s+'</span>';}).join(' '):(b.provider_city?'<span style="color:rgba(255,255,255,.55);font-size:11px">📍 '+b.provider_city+'</span>':'<span style="color:rgba(255,255,255,.45);font-size:10px">مزود خدمة</span>');
       var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
-      var _ph = Chat.getPhone(b.provider_id);
-      var _wa = _ph ? '966'+_ph.replace(/^0/,'') : '';
-      var _pn = b.provider_name||'مزود';
-      var acts;
-      var btnSt = 'padding:11px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.18s;border:none;display:inline-flex;align-items:center;gap:6px';
-      var callH = _ph
-        ? '<a href="tel:'+_ph+'" style="'+btnSt+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;text-decoration:none">'+
+      var _ph=Chat.getPhone(b.provider_id);
+      var _wa=_ph?'966'+_ph.replace(/^0/,''):'';
+      var _bs='padding:11px 15px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;transition:.15s';
+      var callH=_ph
+        ?'<a href="tel:'+_ph+'" style="'+_bs+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;text-decoration:none">'+
           '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'+
-          '<a href="https://wa.me/'+_wa+'" target="_blank" style="'+btnSt+';background:#dcfce7;color:#166534;border:1px solid #bbf7d0;text-decoration:none">واتساب</a>'
-        : '';
-      var chatH = '<button class="_bid-chat" data-req="'+id+'" data-pid="'+b.provider_id+'" data-name="'+_pn.replace(/"/g,'')+'" style="'+btnSt+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">'+
-        '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
-      var profH = '<button class="_bid-prof" data-pid="'+b.provider_id+'" style="'+btnSt+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'+
-        '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>';
-      if(!isAcc && !isRej){
-        acts = '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'
-          +'<button class="_bid-acc" data-id="'+b.id+'" data-req="'+id+'" style="'+btnSt+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center">'
+          '<a href="https://wa.me/'+_wa+'" target="_blank" style="'+_bs+';background:#dcfce7;color:#166534;border:1px solid #bbf7d0;text-decoration:none">واتساب</a>'
+        :'';
+      var acts;
+      if(!isAcc&&!isRej){
+        acts='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'
+          +'<button class="_ba" data-id="'+b.id+'" data-req="'+id+'" style="'+_bs+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center">'
           +'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'
-          +callH+chatH+profH
-          +'<button class="_bid-rej" data-id="'+b.id+'" data-req="'+id+'" style="'+btnSt+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">رفض</button>'
+          +callH
+          +'<button class="_bc" data-req="'+id+'" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
+          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'
+          +'<button class="_br" data-id="'+b.id+'" data-req="'+id+'" style="'+_bs+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">رفض</button>'
           +'</div>';
-      } else if(isAcc){
-        acts = '<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'+callH+chatH+profH+'</div>';
-      } else { acts=''; };
+      }else if(isAcc){
+        acts='<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'
+          +callH
+          +'<button class="_bc" data-req="'+id+'" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
+          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف المزود</button>'
+          +'</div>';
+      }else{acts='';};
       return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'+
         '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'+
           '<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'+
@@ -1410,13 +1391,13 @@ function loadBids(id){
         acts+
       '</div>';
     }).join('');
-  var bl=document.getElementById('bids-list');
-  if(bl) bl.addEventListener('click',function(e){
-    var b=e.target.closest('button,a');if(!b)return;
-    if(b.classList.contains('_bid-acc'))  acceptBid(b.dataset.id, b.dataset.req);
-    if(b.classList.contains('_bid-rej'))  rejectBid(b.dataset.id, b.dataset.req);
-    if(b.classList.contains('_bid-chat')) Chat.openChat(b.dataset.req, b.dataset.pid, b.dataset.name, Chat.getPhone? Chat.storeImg? '':'' : '');
-    if(b.classList.contains('_bid-prof')) openProviderProfile(b.dataset.pid);
+  var _bl=document.getElementById('bids-list');
+  if(_bl) _bl.addEventListener('click',function(e){
+    var btn=e.target.closest('button');if(!btn)return;
+    if(btn.classList.contains('_ba')) acceptBid(btn.dataset.id,btn.dataset.req);
+    if(btn.classList.contains('_br')) rejectBid(btn.dataset.id,btn.dataset.req);
+    if(btn.classList.contains('_bc')) Chat.openChat(btn.dataset.req,btn.dataset.pid);
+    if(btn.classList.contains('_bp')) openProviderProfile(btn.dataset.pid);
   },{once:true});
   }).catch(function(){document.getElementById('bids-list').innerHTML=errH();});
 }
@@ -1516,7 +1497,7 @@ async function changeClientPw(){var old=document.getElementById('cPwOld')?.value
 setInterval(loadNotifCount,30000);
 loadHome();
 
-// ── Chat Module ──────────────────────────────────────────────
+// ── Chat Module ─────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 //  CHAT MODULE — Professional, Clean, No Hacks
 //  Depends on: API, token, user (globals from parent page)
@@ -1939,72 +1920,118 @@ const Chat = (function(){
 })();
 
 
-// ── Wire up static DOM elements ──────────────────────────────
-(function(){
-  // Back button
-  var backBtn = document.getElementById('chatBackBtn');
-  if(backBtn) backBtn.addEventListener('click', function(){
-    document.getElementById('chatDetailPage').style.display='none';
-    if(Chat._state && Chat._state.poll){ clearInterval(Chat._state.poll); Chat._state.poll=null; }
-  });
+// ── Wiring ──────────────────────────────────────
+document.getElementById('chatBackBtn').addEventListener('click', function(){
+  document.getElementById('chatDetailPage').style.display = 'none';
+  if(Chat._pollTimer){ clearInterval(Chat._pollTimer); Chat._pollTimer = null; }
+});
 
-  // Send button
-  var sendBtn = document.getElementById('chatSendBtn');
-  if(sendBtn) sendBtn.addEventListener('click', function(){ Chat.sendMsg(); });
+document.getElementById('chatSendBtn').addEventListener('click', function(){
+  Chat.sendMsg();
+});
 
-  // Textarea
-  var inp = document.getElementById('chatInput');
-  if(inp){
-    inp.addEventListener('input', function(){
-      Chat.onInput();
-      this.style.height='auto';
-      this.style.height=Math.min(this.scrollHeight,100)+'px';
-    });
-    inp.addEventListener('keydown', function(e){
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); Chat.sendMsg(); }
-    });
-  }
-})();
+var _chatInput = document.getElementById('chatInput');
+_chatInput.addEventListener('input', function(){
+  Chat.onInput();
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+_chatInput.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); Chat.sendMsg(); }
+});
 
 function restorePage(){
-  var h=location.hash.replace('#','');
-  if(['home','requests','notifs','profile','chats'].includes(h)) show(h,null,h);
+  var h = location.hash.replace('#','');
+  if(['home','requests','notifs','profile','chats'].indexOf(h) >= 0) show(h, null, h);
 }
 
 function openProviderProfile(pid){
-  var ol=document.getElementById('pvOl');
+  var ol = document.getElementById('pvOl');
   if(!ol){
-    ol=document.createElement('div'); ol.id='pvOl';
-    ol.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
-    ol.onclick=function(e){if(e.target===ol)ol.style.display='none';};
-    var sh=document.createElement('div');
-    sh.style.cssText='background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto';
-    sh.innerHTML='<div style="text-align:center;padding:10px"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div><div id="pvBody" style="padding:18px"></div><div style="padding:12px 18px 24px"><button onclick="document.getElementById('pvOl').style.display='none'" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">إغلاق</button></div>';
+    ol = document.createElement('div'); ol.id = 'pvOl';
+    ol.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
+    ol.addEventListener('click', function(e){ if(e.target===ol) ol.style.display='none'; });
+    var sh = document.createElement('div');
+    sh.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto';
+    sh.innerHTML = '<div style="text-align:center;padding:10px"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div>'
+      + '<div id="pvBody" style="padding:18px"><div class="loading">جاري التحميل...</div></div>'
+      + '<div style="padding:12px 18px 24px"><button id="pvCloseBtn" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">إغلاق</button></div>';
+    sh.querySelector('#pvCloseBtn').addEventListener('click', function(){ ol.style.display='none'; });
     ol.appendChild(sh); document.body.appendChild(ol);
   }
-  ol.style.display='flex';
-  var body=document.getElementById('pvBody'); body.innerHTML='<div class="loading">جاري التحميل...</div>';
+  ol.style.display = 'flex';
+  var body = document.getElementById('pvBody');
+  body.innerHTML = '<div class="loading">جاري التحميل...</div>';
   Promise.all([
-    fetch(API+'/api/provider/'+pid+'/profile').then(r=>r.json()),
-    fetch(API+'/api/ratings/provider/'+pid).then(r=>r.json())
+    fetch(API+'/api/provider/'+pid+'/profile').then(function(r){return r.json();}),
+    fetch(API+'/api/ratings/provider/'+pid).then(function(r){return r.json();})
   ]).then(function(res){
-    var p=res[0]||{},rv=res[1]||{},avg=rv.average||0,cnt=rv.count||0,reviews=rv.reviews||[];
-    var S='';for(var i=1;i<=5;i++)S+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#e4e4e7')+';font-size:18px">★</span>';
-    var avH=p.profile_image?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span style="font-size:22px;font-weight:900;color:#fff">'+(p.name||'م')[0]+'</span>';
-    var portH=''; if((p.portfolio_images||[]).length){portH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';p.portfolio_images.forEach(img=>{portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});portH+='</div></div>';}
-    var specH=''; if((p.specialties||[]).length){specH='<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">';p.specialties.forEach(s=>{specH+='<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>';});specH+='</div></div>';}
-    var revH=reviews.length?reviews.map(rv=>{var rs='';for(var i=1;i<=5;i++)rs+='<span style="color:'+(i<=Math.round(rv.rating||0)?'#F0A500':'#ddd')+'">★</span>';return'<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</span><div>'+rs+'</div></div>'+(rv.comment?'<div style="font-size:11px;color:var(--text2)">'+rv.comment+'</div>':'')+'</div>';}).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">لا توجد تقييمات</div>';
-    body.innerHTML='<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+avH+'</div><div><div style="font-size:16px;font-weight:900;color:#fff">'+(p.name||'—')+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+(p.city||'')+' '+(p.experience_years?'· '+p.experience_years+' سنة':'')+'</div><div style="margin-top:4px">'+S+'<span style="font-size:11px;color:rgba(255,255,255,.6)"> '+avg.toFixed(1)+' ('+cnt+')</span></div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">تقييم</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنة</div></div></div></div>'+(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8">'+p.bio+'</div>':'')+specH+portH+'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+revH+'</div>';
-  }).catch(()=>{body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>';});
+    var p=res[0]||{}, rv=res[1]||{}, avg=rv.average||0, cnt=rv.count||0, reviews=rv.reviews||[];
+    var S=''; for(var i=1;i<=5;i++) S+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#e4e4e7')+';font-size:18px">&#9733;</span>';
+    var avH = p.profile_image ? '<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+      : '<span style="font-size:22px;font-weight:900;color:#fff">'+(p.name||'م')[0]+'</span>';
+    var portH = '';
+    if((p.portfolio_images||[]).length){
+      portH = '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
+      (p.portfolio_images||[]).forEach(function(img){ portH += '<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>'; });
+      portH += '</div></div>';
+    }
+    var specH = '';
+    if((p.specialties||[]).length){
+      specH = '<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+      (p.specialties||[]).forEach(function(s){ specH += '<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>'; });
+      specH += '</div></div>';
+    }
+    var revH = reviews.length ? reviews.map(function(rv){
+      var rs=''; for(var i=1;i<=5;i++) rs+='<span style="color:'+(i<=Math.round(rv.rating||0)?'#F0A500':'#ddd')+'">&#9733;</span>';
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</span><div>'+rs+'</div></div>'
+        +(rv.comment?'<div style="font-size:11px;color:var(--text2)">'+rv.comment+'</div>':'')+'</div>';
+    }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted)">لا توجد تقييمات</div>';
+    body.innerHTML =
+      '<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
+      +'<div style="width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+avH+'</div>'
+      +'<div><div style="font-size:16px;font-weight:900;color:#fff">'+(p.name||'—')+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.6)">'+(p.city||'')+' '+(p.experience_years?'· '+p.experience_years+' سنة':'')+'</div>'
+      +'<div style="margin-top:4px">'+S+'<span style="font-size:11px;color:rgba(255,255,255,.6)"> '+avg.toFixed(1)+' ('+cnt+')</span></div></div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'
+      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div>'
+      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">تقييم</div></div>'
+      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنة</div></div>'
+      +'</div></div>'
+      +(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8">'+p.bio+'</div>':'')
+      +specH+portH
+      +'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+revH+'</div>';
+  }).catch(function(){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>'; });
 }
 
-// Expose Chat.openChat for bid buttons
-function startChat(reqId,pid,pname){ Chat.openChat(reqId,pid,pname,''); }
-
-// Init
 Chat.init();
-setInterval(()=>Chat.updateBadge(), 30000);
+setInterval(function(){ Chat.updateBadge(); }, 30000);
 
 </script>
+
+<!-- ══ CHAT DETAIL (fullscreen) ══ -->
+<div id="chatDetailPage">
+  <div class="chat-hdr">
+    <button class="chat-back-btn" id="chatBackBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="chat-hdr-av" id="chatPartnerAv"><span>م</span></div>
+    <div class="chat-hdr-info">
+      <div class="chat-hdr-name" id="chatPartnerName">محادثة</div>
+      <div id="chatStatus"></div>
+    </div>
+  </div>
+  <div id="chatBox"></div>
+  <div class="chat-input-row">
+    <div class="chat-inp-wrap">
+      <textarea id="chatInput" placeholder="اكتب رسالتك..." rows="1"></textarea>
+    </div>
+    <button id="chatSendBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
 </body>
 </html>
