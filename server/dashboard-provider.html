@@ -350,7 +350,7 @@ let allProjects=[],myBids=[],myProjects=[];
 // تهيئة
 document.getElementById('sbAv').textContent=(me.name||'م')[0];
 document.getElementById('sbNm').textContent=me.name||'المزود';
-setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('ar-SA',{hour12:false});},1000);
+setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});},1000);
 
 // جلب صورة المزود
 async function api(path,opts={}){try{const r=await fetch(API+path,{headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},...opts});return await r.json();}catch{return{};}}
@@ -386,7 +386,7 @@ const I={proj:`<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
 const ac=(id)=>AVC[(id||0)%AVC.length];
 const al=(n)=>(n||'؟')[0];
 const sts=(n)=>[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(n)?'#F0A500':'#e4e4e7'}">★</span>`).join('');
-const fdt=(d)=>d?new Date(d).toLocaleDateString('ar-SA'):'—';
+const fdt=(d)=>{if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}};
 const fpr=(p)=>p?Number(p).toLocaleString('en-US')+' ر.س':'—';
 const cityOpts=(s='')=>`<option value="">اختر</option>`+CITIES.map(c=>`<option${c===s?' selected':''}>${c}</option>`).join('');
 
