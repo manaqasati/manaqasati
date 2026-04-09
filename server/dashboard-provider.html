@@ -737,83 +737,71 @@ function callBtns(phone,name,title){
 // ══════════════════════════════════════════════════
 async function loadHome(){
   var el=document.getElementById('home-content');
-  if(el)el.innerHTML='<div class="loading">جاري التحميل...</div>';
-
-  var profile=await api('/api/provider/profile');
-  var bids=await api('/api/provider/bids');
-  var projects=await api('/api/provider/projects');
-  myBids=bids||[];myProjects=projects||[];
-  var p=profile||{};
-
-  var accBids=myBids.filter(function(b){return b.status==='accepted';}).length;
-  var pendBids=myBids.filter(function(b){return b.status==='pending';}).length;
-  var progProj=myProjects.filter(function(p){return p.status==='in_progress';}).length;
-  var doneProj=myProjects.filter(function(p){return p.status==='completed';}).length;
-
-  var html=
-    '<div class="pghd" style="margin-bottom:20px">'+
-      '<div><div class="pg-t">مرحباً، '+esc(me.name||'المزود')+'</div>'+
+  if(!el)return;
+  el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  try{
+    var profile = await api('/api/provider/profile')||{};
+    var bids    = await api('/api/provider/bids')||[];
+    var projs   = await api('/api/provider/projects')||[];
+    myBids=bids; myProjects=projs;
+    var acc=bids.filter(function(b){return b.status==='accepted';}).length;
+    var pend=bids.filter(function(b){return b.status==='pending';}).length;
+    var prog=projs.filter(function(p){return p.status==='in_progress';}).length;
+    var done=projs.filter(function(p){return p.status==='completed';}).length;
+    var rating=profile.avg_rating?Number(profile.avg_rating).toFixed(1):'—';
+    el.innerHTML=
+      '<div class="pghd"><div><div class="pg-t">مرحباً، '+esc(me.name||'المزود')+'</div>'+
       '<div class="pg-s">لوحة تحكم المزود</div></div>'+
-      '<button class="btn-new" style="font-size:13px" onclick="show(\'browse\',null,\'browse\')">'+
+      '<button class="btn-new" id="_hb">'+
         '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
-        'تصفح المشاريع</button>'+
-    '</div>'+
-
-    '<div class="stat-grid">'+
-      '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+accBids+'</div><div class="st">عروض مقبولة</div></div></div>'+
-      '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pendBids+'</div><div class="st">معلقة</div></div></div>'+
-      '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+progProj+'</div><div class="st">مشاريع جارية</div></div></div>'+
-      '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn">'+(p.avg_rating?Number(p.avg_rating).toFixed(1):'—')+'</div><div class="st">تقييمي</div></div></div>'+
-    '</div>'+
-
-    '<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">'+
-
-      '<div class="card card-accent">'+
-        '<div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)">'+S('<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>','var(--p)')+'</div><h3>مشاريعي الجارية</h3></div>'+
-        '<button class="ch-link" onclick="show(\'myworks\',null,\'myworks\')">عرض الكل ←</button></div>'+
-        '<div>'+
-        (myProjects.filter(function(p){return p.status==='in_progress';}).slice(0,4).map(function(proj){
-          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">'+
-            '<div style="min-width:0;flex:1;margin-left:10px">'+
-              '<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(proj.title)+'</div>'+
-              '<div style="font-size:10px;color:var(--muted)">'+(proj.city||'—')+' · '+fmtDate(proj.created_at)+'</div>'+
-            '</div>'+
-            '<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;flex-shrink:0">⚡ جارٍ</span>'+
-          '</div>';
-        }).join('')||emptyH('لا يوجد مشاريع جارية',''))+
-        '</div></div>'+
-
-      '<div>'+
-        '<div class="card" style="margin-bottom:12px">'+
-          '<div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)">'+S('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>','var(--p)')+'</div><h3>آخر عروضي</h3></div>'+
-          '<button class="ch-link" onclick="show(\'myworks\',null,\'myworks\')">عرض الكل ←</button></div>'+
-          '<div>'+
-          (myBids.slice(0,4).map(function(b){
-            var col=b.status==='accepted'?'bdg-open':b.status==='rejected'?'bdg-rej':'bdg-new';
-            var lb=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
-            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'+
-              '<div style="flex:1;min-width:0;margin-left:8px">'+
-                '<div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.request_title||'—')+'</div>'+
-                '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+fpr(b.price)+'</div>'+
-              '</div>'+
-              '<span class="tag t-'+(b.status==='accepted'?'open':b.status==='rejected'?'done':'rev')+'">'+lb+'</span>'+
-            '</div>';
-          }).join('')||emptyH('لا يوجد عروض',''))+
-          '</div></div>'+
-
-        '<div class="card">'+
-          '<div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--gold-l)">'+S('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>','var(--gold-d)')+'</div><h3>ملفي</h3></div>'+
-          '<button class="ch-link" onclick="show(\'profile\',null,\'profile\')">تعديل</button></div>'+
-          '<div style="font-size:12px">'+
-            '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">التخصصات</span><span style="font-weight:700;color:var(--p);font-size:11px">'+(p.specialties||[]).slice(0,2).join('، ')||'—'+'</span></div>'+
-            '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">المدينة</span><span style="font-weight:700;color:var(--p)">'+(p.city||'—')+'</span></div>'+
-            '<div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">التقييم</span><span style="font-weight:700;color:var(--p)">'+(p.avg_rating?Number(p.avg_rating).toFixed(1)+' ★':'—')+'</span></div>'+
-          '</div></div>'+
+        'تصفح المشاريع</button></div>'+
+      '<div class="stat-grid">'+
+        '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+acc+'</div><div class="st">عروض مقبولة</div></div></div>'+
+        '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pend+'</div><div class="st">عروض معلقة</div></div></div>'+
+        '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+prog+'</div><div class="st">مشاريع جارية</div></div></div>'+
+        '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn">'+rating+'</div><div class="st">تقييمي</div></div></div>'+
       '</div>'+
-    '</div>';
-
-  if(el)el.innerHTML=html;
-  loadNotifCount();
+      '<div class="card card-accent">'+
+        '<div class="ch">'+
+          '<div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h3>آخر عروضي</h3></div>'+
+          '<button class="ch-link" id="_hmyworks">عرض الكل ←</button>'+
+        '</div>'+
+        (bids.length
+          ? bids.slice(0,5).map(function(b){
+              var col=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';
+              var lb=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">'+
+                '<div style="flex:1;min-width:0;margin-left:10px">'+
+                  '<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.request_title||'—')+'</div>'+
+                  '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+fpr(b.price)+'</div>'+
+                '</div><span class="tag '+col+'">'+lb+'</span></div>';
+            }).join('')
+          : emptyH('لا يوجد عروض','انتقل لتصفح المشاريع')
+        )+
+      '</div>'+
+      '<div class="card" style="margin-top:14px">'+
+        '<div class="ch">'+
+          '<div class="ch-l"><div class="ch-ic" style="background:var(--gold-l)"><svg width="14" height="14" fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><h3>ملفي المهني</h3></div>'+
+          '<button class="ch-link" id="_hprofile">تعديل ←</button>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:8px">'+
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">التخصصات</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+(profile.specialties||[]).slice(0,2).join('، ')||'—'+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">المدينة</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+(profile.city||'—')+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:12px;color:var(--muted)">التقييم</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+rating+' ★</span></div>'+
+        '</div>'+
+      '</div>';
+    loadNotifCount();
+    setTimeout(function(){var b=document.getElementById('_hb');if(b)b.onclick=function(){show('browse',null,'browse');};},0);
+    // wire up buttons
+    setTimeout(function(){
+      var b1=document.getElementById('_hbrowse');if(b1)b1.onclick=function(){show('browse',null,'browse');};
+      var b2=document.getElementById('_hmyworks');if(b2)b2.onclick=function(){show('myworks',null,'myworks');};
+      var b3=document.getElementById('_hprofile');if(b3)b3.onclick=function(){show('profile',null,'profile');};
+    },0);
+  } catch(e){
+    el.innerHTML=errH();
+    console.error('loadHome error:', e);
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -1330,6 +1318,45 @@ async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;aw
      catch(e){}
    }
  }));
+
+function renderMyProjects(list){
+  if(!list.length)return emptyH('لا يوجد مشاريع','');
+  return list.map(function(r){
+    var isProg=r.status==='in_progress';
+    var grad=isProg?'135deg,#78350f,#d97706':'135deg,#0f2548,#1B3A6B';
+    var stBg=isProg?'#fff8e7':'#dcfce7',stCl=isProg?'#92400e':'#15803d',stBd=isProg?'#fde68a':'#bbf7d0';
+    var stTx=isProg?'⚡ جارٍ':'✓ مكتمل';
+    var key='c_'+r.id;
+    var _cd=_pGet(key);
+    var _ph=_cd.phone||r.client_phone||'';
+    var cBtns=callBtns(_ph,r.client_name||_cd.name||'العميل',r.title||'');
+    return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 10px 28px rgba(27,58,107,.14)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 14px rgba(27,58,107,.09)\'">'
+      +'<div style="background:linear-gradient('+grad+');padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">'
+        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
+        +'<div style="min-width:0;flex:1">'
+          +'<div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:4px">'+(r.project_number||'#'+r.id)+'</div>'
+          +'<div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'
+        +'</div>'
+        +'<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+stTx+'</span>'
+      +'</div>'
+      +'<div style="padding:14px 20px">'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+          +(r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">📍 '+esc(r.city)+'</span>':'')
+          +(r.category?'<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">'+esc(r.category)+'</span>':'')
+          +(r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 '+fpr(r.price)+'</span>':'')
+          +(r.client_name?'<span style="background:var(--bg);color:var(--muted);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">👤 '+esc(r.client_name)+'</span>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">'
+          +'<button onclick="viewProjModal('+r.id+')" style="'+BTN_S+';background:var(--p);color:#fff">'
+            +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل'
+          +'</button>'
+          +cBtns
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
 // ══ Init ══
 setTimeout(function(){
   var hash=location.hash.replace('#','');
@@ -1342,49 +1369,7 @@ setTimeout(function(){
   }
 },0);
 loadNotifCount();
-
-
-function renderMyProjects(list){
-  if(!list.length)return emptyH('لا يوجد مشاريع','');
-  return list.map(function(r){
-    var isProg=r.status==='in_progress';
-    var grad=isProg?'135deg,#78350f,#d97706':'135deg,#0f2548,#1B3A6B';
-    var stBg=isProg?'#fff8e7':'#dcfce7';
-    var stCl=isProg?'#92400e':'#15803d';
-    var stBd=isProg?'#fde68a':'#bbf7d0';
-    var stTx=isProg?'⚡ جارٍ':'✓ مكتمل';
-    var key='c_'+r.id;
-    var _cd=_pGet(key);
-    var _ph=_cd.phone||r.client_phone||'';
-    var cBtns=callBtns(_ph,r.client_name||_cd.name||'العميل',r.title||'المشروع');
-    var eyeSvg='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    return '<div style="background:#fff;border:none;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 10px 28px rgba(27,58,107,.14)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 14px rgba(27,58,107,.09)\'">'
-      +'<div style="background:linear-gradient('+grad+');padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'
-        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
-        +'<div style="min-width:0;flex:1">'
-          +'<div style="font-size:10px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.5px;margin-bottom:4px">'+(r.project_number||'#'+r.id)+'</div>'
-          +'<div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'
-        +'</div>'
-        +'<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+stTx+'</span>'
-      +'</div>'
-      +'<div style="padding:14px 20px">'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-          +(r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">📍 '+esc(r.city)+'</span>':'')
-          +(r.category?'<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">'+esc(r.category)+'</span>':'')
-          +(r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 '+fpr(r.price)+'</span>':'')
-          +(r.client_name?'<span style="background:var(--bg);color:var(--muted);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">👤 '+esc(r.client_name)+'</span>':'')
-        +'</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">'
-          +'<button onclick="viewProjModal('+r.id+')" style="'+BTN_S+';background:var(--p);color:#fff;box-shadow:0 2px 8px rgba(27,58,107,.25)">'+eyeSvg+'عرض التفاصيل</button>'
-          +cBtns
-        +'</div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
 }
-
-}
-}
-</script>
+}</script>
 </body>
 </html>
