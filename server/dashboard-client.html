@@ -728,7 +728,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div class="alert" id="new-msg"></div>
         <div class="form-grid">
           <div class="fg ff"><label>عنوان الطلب *</label><input id="n-title" type="text" placeholder="مثال: تركيب مكيف سبليت 2 طن"></div>
-          <div class="fg"><label>التصنيف *</label><select id="n-cat" onchange="checkOther()"></select></div>
+          <div class="fg"><label>التصنيف <span style="color:var(--red)">*</span></label><select id="n-cat" onchange="checkOther()" style="border-color:var(--border)"></select></div>
           <div class="fg" id="other-wrap" style="display:none"><label>حدد التخصص</label><input id="n-other" type="text" placeholder="اكتب التخصص المطلوب"></div>
           <div class="fg"><label>المدينة *</label><select id="n-city"><option value="">اختر المدينة</option><option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>تبوك</option><option>الوجه</option><option>ضباء</option><option>حائل</option><option>بقعاء</option><option>عرعر</option><option>طريف</option><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option><option>الباحة</option><option>بلجرشي</option><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>نجران</option><option>شرورة</option><option>وادي الدواسر</option><option>السليل</option></select></div>
           <div class="fg ff"><label>العنوان التفصيلي</label><input id="n-address" type="text" placeholder="الحي، الشارع، رقم المبنى..."></div>
@@ -940,6 +940,7 @@ applyAvatar(localStorage.getItem('client_avatar_'+user.id));
 // avatar loaded after hdr defined
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح (تنفيذ وصيانة)','كاميرات مراقبة وأمن','شبكات وإنترنت','مظلات وسواتر','عزل حراري وأسطح','أبواب','أعمال جبس وطباشير','مكافحة حشرات','أخرى'];
 var sel=document.getElementById('n-cat');
+var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر التصنيف';sel.appendChild(defOpt);
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}};}
@@ -992,7 +993,21 @@ function riCard(r,actions){
     (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d)" onclick="openEditReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>تعديل</button>':'')+
     (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>حذف</button>':'')+ 
   '</div>':'';
-  return '<div class="ri" onclick="openDetail('+r.id+',event)"><div><div class="ri-title">'+r.title+'</div><div class="ri-meta">'+(r.city?'<span class="rm">'+r.city+'</span>':'')+(r.category?'<span class="rm">'+r.category+'</span>':'')+(r.budget_max?'<span class="rm">'+r.budget_max+' ر.س</span>':'')+bids+'<span class="rm">'+timeAgo(r.created_at)+'</span></div></div>'+stTag(r.status)+act+'</div>';
+  var catChip=r.category?'<span style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">'+r.category+'</span>':'<span style="background:var(--bg);color:var(--hint);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600">غير محدد</span>';
+  return '<div class="ri" onclick="openDetail('+r.id+',event)">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'+
+      '<div class="ri-title">'+r.title+'</div>'+
+      stTag(r.status)+
+    '</div>'+
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+
+      catChip+
+      (r.city?'<span class="rm">📍 '+r.city+'</span>':'')+
+      (r.budget_max?'<span class="rm">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'')+
+      bids+
+      '<span class="rm">'+timeAgo(r.created_at)+'</span>'+
+    '</div>'+
+    act+
+  '</div>';
 }
 function loadHome(){
   fetch(API+'/api/requests/my',hdr()).then(function(r){return r.json();}).then(function(all){
@@ -1060,9 +1075,11 @@ function loadBids(id){
         ?'<img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
         :'<span>'+((b.provider_name||'م')[0])+'</span>';
       var verBadge=b.provider_verified?'<span style="background:rgba(240,165,0,.25);border:1px solid rgba(240,165,0,.4);color:#F0A500;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-right:4px">✓ موثق</span>':'';
-      var specHtml=b.provider_specialties&&b.provider_specialties.length
-        ?b.provider_specialties.slice(0,2).join(' · ')
-        :(b.provider_city||'');
+      // التخصص يظهر دائماً — specialties أولاً ثم المدينة ثم "مزود خدمة"
+      var specs=b.provider_specialties&&b.provider_specialties.length?b.provider_specialties:[];
+      var specHtml=specs.length
+        ?specs.slice(0,2).map(function(s){return'<span style="background:rgba(240,165,0,.18);color:#F0A500;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+s+'</span>';}).join(' ')
+        :(b.provider_city?'<span style="color:rgba(255,255,255,.55);font-size:11px">📍 '+b.provider_city+'</span>':'<span style="color:rgba(255,255,255,.45);font-size:10px">مزود خدمة</span>');
       var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':
                     isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
       var acts=!isAcc&&!isRej
@@ -1428,7 +1445,8 @@ function renderFilesList(){
 }
 function removeReqFile(i){_reqFiles.splice(i,1);renderFilesList();}
 function fmtTxt(id,type){var el=document.getElementById(id);if(!el)return;var start=el.selectionStart,end=el.selectionEnd;var sel=el.value.substring(start,end);var before=el.value.substring(0,start);var after=el.value.substring(end);var insert='';if(type==='bold')insert='**'+(sel||'نص عريض')+'**';else if(type==='italic')insert='_'+(sel||'نص مائل')+'_';else if(type==='h1')insert='# '+(sel||'العنوان الرئيسي')+'\n';else if(type==='h2')insert='## '+(sel||'عنوان فرعي')+'\n';el.value=before+insert+after;el.focus();el.setSelectionRange(before.length,before.length+insert.length);}
-function submitReq(){var title=document.getElementById('n-title').value.trim();var desc=document.getElementById('n-desc').value.trim();var city=document.getElementById('n-city').value;var cat=document.getElementById('n-cat').value;if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';const body={title,description:desc,category:cat,city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};
+function submitReq(){var title=document.getElementById('n-title').value.trim();var desc=document.getElementById('n-desc').value.trim();var city=document.getElementById('n-city').value;var cat=document.getElementById('n-cat').value;if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}if(!cat||cat===''){showNewMsg('يرجى اختيار التصنيف','err');document.getElementById('n-cat').focus();return;}
+if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';const body={title,description:desc,category:cat,city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
   if(_reqImages.length)body.image_url=_reqImages[0].data;
   if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return{name:f.name,type:f.type,data:f.data};});
