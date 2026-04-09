@@ -1166,7 +1166,7 @@ function wsSend(data){
 function handleWSEvent(data){
   if(data.type==='message'){
     const msg=data.message;
-    if(currentChatReqId&&msg.request_id==currentChatReqId){
+    if(currentChatReqId&&parseInt(msg.request_id)==parseInt(currentChatReqId)){
       appendMessage(msg,false);scrollToBottom();
       hideTyping();
       wsSend({type:'read',request_id:msg.request_id,sender_id:msg.sender_id});
@@ -1176,12 +1176,12 @@ function handleWSEvent(data){
     }
   }
   if(data.type==='typing'){
-    if(currentChatReqId&&data.request_id==currentChatReqId&&data.from!=getChatUser().id){
+    if(currentChatReqId&&parseInt(data.request_id)==parseInt(currentChatReqId)&&data.from!=getChatUser().id){
       data.is_typing?showTyping():hideTyping();
     }
   }
   if(data.type==='read'){
-    if(currentChatReqId&&data.request_id==currentChatReqId)markMsgsAsRead();
+    if(currentChatReqId&&parseInt(data.request_id)==parseInt(currentChatReqId))markMsgsAsRead();
   }
 }
 
@@ -1240,7 +1240,7 @@ function renderChatHistory(msgs,receiverId){
     return;
   }
   let lastDate='';
-  msgs.forEach(msg=>{
+  (Array.isArray(msgs)?msgs:[]).forEach(msg=>{
     const d=new Date(msg.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
     if(d!==lastDate){lastDate=d;const sep=document.createElement('div');sep.className='chat-date-sep';sep.innerHTML=`<span>${d}</span>`;box.appendChild(sep);}
     appendMessage(msg,true);
@@ -1256,7 +1256,7 @@ async function sendChatMsg(reqId,receiverId){
   inp.value='';inp.style.height='auto';stopTyping();
   const myId=getChatUser().id;const myName=getChatUser().name||'';
   const tmpId='tmp_'+Date.now();
-  const tmpMsg={id:tmpId,request_id:reqId,sender_id:myId,sender_name:myName,receiver_id:receiverId,content,is_read:false,created_at:new Date().toISOString()};
+  const tmpMsg={id:tmpId,request_id:parseInt(reqId),sender_id:parseInt(myId),sender_name:myName,receiver_id:parseInt(receiverId),content,is_read:false,created_at:new Date().toISOString()};
   appendMessage(tmpMsg,false);scrollToBottom(true);
   wsSend({type:'message',request_id:reqId,receiver_id:receiverId,content});
   try{
@@ -1306,11 +1306,13 @@ function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrol
 
 async function loadChatMessages(reqId,receiverId){
   try{
-    const msgs=await api('/api/messages/'+reqId)||[];
-    renderChatHistory(msgs,receiverId);
-  }catch(e){
-    const b=document.getElementById('chatMsgsBox');
-    if(b)b.innerHTML='<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
+    // Use the dashboard's api() for proper auth handling
+    const msgs = await api('/api/messages/'+reqId) || [];
+    const arr = Array.isArray(msgs) ? msgs : [];
+    renderChatHistory(arr, receiverId);
+  } catch(e) {
+    const b = document.getElementById('chatMsgsBox');
+    if(b) b.innerHTML = '<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
   }
 }
 
@@ -1369,15 +1371,19 @@ async function pgChats(){
     </div>`);
 }
 async function openConvChat(reqId,partnerId,partnerName,reqTitle){
-  currentChatReqId=reqId;currentChatReceiverId=partnerId;currentChatPartnerName=partnerName;
-  const lw=document.getElementById('convListWrap');
-  const cw=document.getElementById('chatScreenWrap');
-  if(lw)lw.style.display='none';
+  // Set state FIRST before any async
+  currentChatReqId = parseInt(reqId);
+  currentChatReceiverId = parseInt(partnerId);
+  currentChatPartnerName = partnerName;
+  const lw = document.getElementById('convListWrap');
+  const cw = document.getElementById('chatScreenWrap');
+  if(lw) lw.style.display = 'none';
   if(cw){
-    cw.style.display='block';
-    cw.innerHTML=await openChatScreen(reqId,partnerId,partnerName,reqTitle,true);
-    await loadChatMessages(reqId,partnerId);
-    const inp=document.getElementById('chatInputField');if(inp)inp.focus();
+    cw.style.display = 'block';
+    cw.innerHTML = await openChatScreen(reqId, partnerId, partnerName, reqTitle, true);
+    await loadChatMessages(reqId, partnerId);
+    const inp = document.getElementById('chatInputField');
+    if(inp){ inp.focus(); inp.scrollIntoView({block:'nearest'}); }
   }
 }
 function closeChatScreen(){
