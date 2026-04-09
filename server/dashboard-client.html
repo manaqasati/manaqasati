@@ -1202,7 +1202,7 @@ function loadBids(id){
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
       var acts=!isAcc&&!isRej?'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
           '<button onclick="acceptBid('+b.id+','+id+')" style="'+btnStyle+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 3px 10px rgba(22,163,74,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'+
-          '<button onclick="startChat('+id+','+b.provider_id+',\''+b.provider_name+'\')" style="'+btnStyle+';background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'+
+          '<button onclick="startChat('+id+','+b.provider_id+',\''+b.provider_name+'\',\''+(b.provider_image||'')+'\''" style="'+btnStyle+';background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'+
           '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'+
           '<button onclick="rejectBid('+b.id+','+id+')" style="'+btnStyle+';background:var(--red-l);color:var(--red);border:1.5px solid #fecaca">رفض</button>'+
         '</div>':isAcc?'<div style="padding-top:12px;border-top:1px solid #dcfce7"><button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button></div>':'';
@@ -1662,46 +1662,39 @@ function escapeHtml(str) {
 let currentChatPartnerName = '';
 
 // ── Open Chat Screen ──
-async function openChatScreen(reqId, receiverId, partnerName, projectTitle, showBack = true) {
-  currentChatReqId = reqId;
-  currentChatReceiverId = receiverId;
-  currentChatPartnerName = partnerName;
-
+async function openChatScreen(reqId, receiverId, partnerName, projectTitle, showBack, partnerImage){
+  const avHtml = partnerImage
+    ? `<img src="${partnerImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : `${(partnerName||'؟')[0]}`;
   const html = `
     <div class="chat-screen">
       <div class="chat-header">
-        ${showBack ? `<button class="chat-back" onclick="closeChatScreen()" id="chatBackBtn">
+        ${showBack ? `<button class="chat-back" onclick="closeChatScreen()">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </button>` : ''}
-        <div class="chat-av" id="chatPartnerAv">${(partnerName||'؟')[0]}</div>
+        <div class="chat-av">${avHtml}</div>
         <div class="chat-info">
           <div class="chat-name">${partnerName}</div>
-          <div class="chat-sub" id="chatSubLine">${projectTitle}</div>
+          <div class="chat-sub">${projectTitle||''}</div>
         </div>
       </div>
       <div class="chat-msgs" id="chatMsgsBox">
         <div class="chat-empty">
-          <div class="chat-empty-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-          <div class="chat-empty-t">جاري التحميل...</div>
+          <div style="font-size:32px;opacity:.25;margin-bottom:8px">💬</div>
+          <div style="font-size:12px;color:var(--muted)">جاري التحميل...</div>
         </div>
       </div>
       <div class="chat-input-area">
         <div class="chat-inp-wrap">
-          <textarea
-            id="chatInputField"
-            class="chat-inp-field"
-            placeholder="اكتب رسالتك..."
-            rows="1"
+          <textarea id="chatInputField" class="chat-inp-field" placeholder="اكتب رسالتك..." rows="1"
             oninput="onInputChange();autoResize(this)"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg(${reqId},${receiverId})}"
-          ></textarea>
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg(${reqId},${receiverId})}"></textarea>
         </div>
         <button class="chat-send-btn" onclick="sendChatMsg(${reqId},${receiverId})">
           <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>
     </div>`;
-
   return html;
 }
 
@@ -1783,22 +1776,22 @@ function loadChat(id){
   const wrap = document.getElementById('tab-chat');
   if(!wrap) return;
   if(curChatReceiver && id){
-    openClientChat(id, curChatReceiver.id, curChatReceiver.name);
+    openClientChat(id, curChatReceiver.id, curChatReceiver.name, curChatReceiver.image||'');
     return;
   }
   if(!curChatReceiver){
     wrap.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:10px"><div style="width:44px;height:44px;border-radius:12px;background:var(--p-light);display:flex;align-items:center;justify-content:center"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"var(--p)\" stroke-width=\"1.5\" stroke-linecap=\"round\"><path d=\"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z\"/></svg></div><div style=\"font-size:13px;font-weight:700;color:var(--p)\">اختر مزوداً للمحادثة</div><div style=\"font-size:11px;color:var(--muted)\">اذهب لتبويب العروض واضغط محادثة</div></div>';
   }
 }
-function startChat(reqId,providerId,providerName){
-  curChatReceiver={id:providerId,name:providerName};
+function startChat(reqId,providerId,providerName,providerImage){
+  curChatReceiver={id:providerId,name:providerName,image:providerImage||''};
   const btn=document.querySelectorAll('.tab-btn')[1];
   if(btn)btn.click();
-  else openClientChat(reqId,providerId,providerName);
+  else openClientChat(reqId,providerId,providerName,providerImage);
 }
-async function openClientChat(reqId, receiverId, receiverName){
-  // Set state FIRST
-  curChatReceiver = {id: receiverId, name: receiverName};
+async function openClientChat(reqId, receiverId, receiverName, receiverImage){
+  const img = receiverImage || (curChatReceiver&&curChatReceiver.image) || '';
+  curChatReceiver = {id: receiverId, name: receiverName, image: img};
   currentChatReqId = parseInt(reqId);
   currentChatReceiverId = parseInt(receiverId);
   currentChatPartnerName = receiverName;
@@ -1806,7 +1799,7 @@ async function openClientChat(reqId, receiverId, receiverName){
   if(wrap) wrap.innerHTML = '<div id="chatScreenWrap"></div>';
   const cw = document.getElementById('chatScreenWrap');
   if(cw){
-    cw.innerHTML = await openChatScreen(reqId, receiverId, receiverName, '', false);
+    cw.innerHTML = await openChatScreen(reqId, receiverId, receiverName, '', false, img);
     await loadChatMessages(reqId, receiverId);
     const inp = document.getElementById('chatInputField');
     if(inp){ inp.focus(); }
