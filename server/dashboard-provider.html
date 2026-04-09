@@ -1372,11 +1372,13 @@ function renderConvListNew(convs){
     const reqTitle=cv.request_title||'';
     const imgHtml=cv.client_image?`<img src="${cv.client_image}" alt="${name[0]}">`:`${name[0]}`;
     const _img=cv.client_image?cv.client_image:'';
+    const title=reqTitle||'مشروع';
+    const subtitle=name;
     return`<div class="conv-item${unread?' unread':''}" onclick="openConvChat(${reqId},${partnerId},'${name.replace(/'/g,'')}','${reqTitle.replace(/'/g,'')}','${_img}')">
       <div class="conv-av">${imgHtml}</div>
       <div class="conv-body">
-        <div class="conv-top"><span class="conv-name">${name}</span><span class="conv-time">${time}</span></div>
-        <div class="conv-project">${reqTitle}</div>
+        <div class="conv-top"><span class="conv-name">${title}</span><span class="conv-time">${time}</span></div>
+        <div class="conv-project" style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${subtitle}</div>
         <div class="conv-preview"><span class="conv-last-msg">${escHtml(lastMsg.substring(0,50))}</span>${unread?`<span class="conv-unread">${unread}</span>`:''}</div>
       </div>
     </div>`;
@@ -1393,41 +1395,244 @@ function showMsgNotif(name,text){
 }
 
 // ── Page Functions ──
+
+// Group conversations by client_id
+function groupConvsByClient(convs){
+  const map = {};
+  convs.forEach(cv => {
+    const cid = cv.client_id;
+    if(!map[cid]){
+      map[cid] = {
+        client_id: cid,
+        client_name: cv.client_name,
+        client_image: cv.client_image,
+        unread: 0,
+        last_message: cv.last_message,
+        last_time: cv.last_time,
+        // latest request_id for sending messages
+        requests: []
+      };
+    }
+    map[cid].unread += parseInt(cv.unread||0);
+    map[cid].requests.push({
+      request_id: cv.request_id,
+      request_title: cv.request_title,
+      last_time: cv.last_time,
+      last_message: cv.last_message
+    });
+    // Keep latest message/time at top level
+    if(!map[cid].last_time || (cv.last_time && cv.last_time > map[cid].last_time)){
+      map[cid].last_message = cv.last_message;
+      map[cid].last_time = cv.last_time;
+    }
+  });
+  // Sort by last_time desc
+  return Object.values(map).sort((a,b)=>(b.last_time||'') > (a.last_time||'') ? 1:-1);
+}
+
 async function pgChats(){
   loading();
   const convs=await api('/api/provider/conversations')||[];
-  const totalUnread=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
+  const clients=groupConvsByClient(convs);
+  const totalUnread=clients.reduce((s,c)=>s+c.unread,0);
   const nb=document.getElementById('nbChat');if(nb){nb.style.display=totalUnread?'':'none';nb.textContent=totalUnread;}
   const bnBdg=document.getElementById('bn-chat-bdg');if(bnBdg){bnBdg.style.display=totalUnread?'flex':'none';bnBdg.textContent=totalUnread;}
   setPage(`
-    <div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">${convs.length} محادثة</div></div></div>
+    <div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">${clients.length} محادثة</div></div></div>
     <div class="card" style="overflow:hidden;padding:0">
-      <div id="convListWrap">${renderConvListNew(convs)}</div>
+      <div id="convListWrap">${renderClientConvList(clients)}</div>
       <div id="chatScreenWrap" style="display:none"></div>
     </div>`);
 }
-async function openConvChat(reqId,partnerId,partnerName,reqTitle,partnerImage){
+
+function renderClientConvList(clients){
+  if(!clients.length) return `<div class="chat-empty" style="padding:40px 20px">
+    <div class="chat-empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="1.5" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+    <div class="chat-empty-t">لا توجد محادثات</div>
+    <div class="chat-empty-s">ستظهر محادثاتك مع العملاء هنا</div></div>`;
+  return clients.map(cl => {
+    const name = cl.client_name||'عميل';
+    const unread = cl.unread;
+    const time = cl.last_time ? formatConvTime(cl.last_time) : '';
+    const lastMsg = cl.last_message||'';
+    const imgHtml = cl.client_image
+      ? `<img src="${cl.client_image}" alt="${name[0]}">`
+      : name[0];
+    // Latest request_id for sending
+    const latestReq = cl.requests.sort((a,b)=>(b.last_time||'')>(a.last_time||'')?1:-1)[0];
+    const reqId = latestReq ? latestReq.request_id : 0;
+    const reqsJson = encodeURIComponent(JSON.stringify(cl.requests));
+    // Project count hint
+    const projHint = cl.requests.length > 1
+      ? `${cl.requests.length} مشاريع`
+      : (latestReq ? latestReq.request_title : '');
+    return `<div class="conv-item${unread?' unread':''}"
+      onclick="openClientChat(${cl.client_id},'${name.replace(/'/g,'')}','${cl.client_image||''}','${reqsJson}')">
+      <div class="conv-av">${imgHtml}</div>
+      <div class="conv-body">
+        <div class="conv-top"><span class="conv-name">${name}</span><span class="conv-time">${time}</span></div>
+        <div class="conv-project">${escHtml(projHint)}</div>
+        <div class="conv-preview">
+          <span class="conv-last-msg">${escHtml(lastMsg.substring(0,50))}</span>
+          ${unread?`<span class="conv-unread">${unread}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// _clientRequests: all request_ids for current open client chat
+let _clientRequests = [];
+
+async function openClientChat(clientId, clientName, clientImage, reqsJsonEncoded){
+  const reqs = JSON.parse(decodeURIComponent(reqsJsonEncoded));
+  _clientRequests = reqs;
+  // Use latest request for sending
+  const latestReq = reqs.sort((a,b)=>(b.last_time||'')>(a.last_time||'')?1:-1)[0];
+  const reqId = latestReq ? latestReq.request_id : 0;
+
   currentChatReqId = parseInt(reqId);
-  currentChatReceiverId = parseInt(partnerId);
-  currentChatPartnerName = partnerName;
+  currentChatReceiverId = parseInt(clientId);
+  currentChatPartnerName = clientName;
+
   const lw = document.getElementById('convListWrap');
   const cw = document.getElementById('chatScreenWrap');
   if(lw) lw.style.display = 'none';
   if(cw){
     cw.style.display = 'block';
-    cw.innerHTML = await openChatScreen(reqId, partnerId, partnerName, reqTitle, true, partnerImage||'');
-    await loadChatMessages(reqId, partnerId);
+    // Build chat screen manually with back button
+    const avH = clientImage
+      ? `<img src="${clientImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+      : `<span style="font-size:15px;font-weight:900;color:#fff">${clientName[0]}</span>`;
+    cw.innerHTML = `
+      <div class="chat-screen" id="clientChatScreen">
+        <div class="chat-header">
+          <button class="chat-back" onclick="closeChatScreen()">
+            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="chat-av">${avH}</div>
+          <div class="chat-info">
+            <div class="chat-name">${escHtml(clientName)}</div>
+            <div class="chat-status" id="chatStatusLine"></div>
+          </div>
+        </div>
+        <div class="chat-msgs" id="chatMsgsBox">
+          <div class="chat-empty"><div style="font-size:12px;color:var(--muted)">جاري التحميل...</div></div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-inp-wrap">
+            <textarea id="chatInputField" class="chat-inp-field"
+              placeholder="اكتب رسالتك..." rows="1"
+              oninput="onTypingInput();this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendProviderMsg()}">
+            </textarea>
+          </div>
+          <button class="chat-send-btn" onclick="sendProviderMsg()">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>`;
+    // Load ALL messages from all shared requests, merged
+    await loadAllClientMsgs(reqs, parseInt(clientId));
+    if(_pollTimer2) clearInterval(_pollTimer2);
+    _pollTimer2 = setInterval(async ()=>{
+      if(_clientRequests.length) await loadAllClientMsgs(_clientRequests, currentChatReceiverId);
+    }, 3000);
     const inp = document.getElementById('chatInputField');
-    if(inp){ inp.focus(); inp.scrollIntoView({block:'nearest'}); }
+    if(inp){ inp.focus(); }
   }
 }
+
+async function loadAllClientMsgs(reqs, clientId){
+  try {
+    // Fetch messages from all requests in parallel
+    const results = await Promise.all(
+      reqs.map(r => api('/api/messages/'+r.request_id))
+    );
+    // Merge + sort by date
+    let allMsgs = [];
+    results.forEach((msgs, i) => {
+      if(Array.isArray(msgs)){
+        msgs.forEach(m => {
+          m._projectTitle = reqs[i].request_title||'';
+          allMsgs.push(m);
+        });
+      }
+    });
+    allMsgs.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    renderAllClientMsgs(allMsgs, clientId);
+  } catch(e){
+    const box = document.getElementById('chatMsgsBox');
+    if(box) box.innerHTML = '<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
+  }
+}
+
+function renderAllClientMsgs(msgs, clientId){
+  const box = document.getElementById('chatMsgsBox');
+  if(!box) return;
+  const myId = parseInt(me.id);
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+  if(!msgs.length){
+    box.innerHTML = '<div class="chat-empty"><div style="font-size:12px;font-weight:700;color:var(--p)">لا توجد رسائل</div><div style="font-size:11px;color:var(--muted)">ابدأ المحادثة الآن</div></div>';
+    return;
+  }
+  let html = '';
+  let lastDate = '';
+  let lastProject = '';
+  msgs.forEach(msg => {
+    const isMe = parseInt(msg.sender_id) === myId;
+    const d = new Date(msg.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+    if(d !== lastDate){
+      lastDate = d;
+      html += `<div class="chat-date-sep"><span>${d}</span></div>`;
+    }
+    // Show project separator when project changes
+    if(msg._projectTitle && msg._projectTitle !== lastProject){
+      lastProject = msg._projectTitle;
+      html += `<div style="text-align:center;margin:8px 0 4px">
+        <span style="background:var(--p-light);color:var(--p);font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;border:1px solid var(--p-mid)">
+          📋 ${escHtml(msg._projectTitle)}
+        </span></div>`;
+    }
+    const time = new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const tc = msg.is_read ? 'tick-read' : 'tick-delivered';
+    const ticks = isMe
+      ? `<span class="msg-ticks"><svg viewBox="0 0 16 10"><polyline class="${tc}" points="1,5 5,9 10,1"/><polyline class="${tc}" points="5,5 9,9 14,1"/></svg></span>`
+      : '';
+    html += `<div class="msg-row ${isMe?'me':'them'}">
+      <div class="msg-bubble">
+        <div class="msg-text">${escHtml(msg.content)}</div>
+        <div class="msg-footer"><span class="msg-time-txt">${time}</span>${ticks}</div>
+      </div></div>`;
+  });
+  box.innerHTML = html;
+  if(_cs_typing) {
+    const t = document.createElement('div');
+    t.id='typingBubble';t.className='typing-row';
+    t.innerHTML='<div class="typing-av-sm">'+(currentChatPartnerName||'م')[0]+'</div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+    box.appendChild(t);
+  }
+  if(atBottom) box.scrollTop = box.scrollHeight;
+}
+
+let _pollTimer2 = null;
+let _cs_typing = false;
+
+async function openConvChat(reqId,partnerId,partnerName,reqTitle,partnerImage){
+  // Legacy - route through new system
+  const reqs = [{request_id:parseInt(reqId), request_title:reqTitle, last_time:null}];
+  const reqsJson = encodeURIComponent(JSON.stringify(reqs));
+  await openClientChat(parseInt(partnerId), partnerName, partnerImage||'', reqsJson);
+}
+
 function closeChatScreen(){
-  currentChatReqId=null;currentChatReceiverId=null;
+  currentChatReqId=null; currentChatReceiverId=null;
   stopTyping();
+  if(_pollTimer2){ clearInterval(_pollTimer2); _pollTimer2=null; }
   const lw=document.getElementById('convListWrap');
   const cw=document.getElementById('chatScreenWrap');
-  if(lw)lw.style.display='';
-  if(cw){cw.style.display='none';cw.innerHTML='';}
+  if(lw) lw.style.display='';
+  if(cw){ cw.style.display='none'; cw.innerHTML=''; }
 }
 async function updateChatBadge(){
   const convs=await api('/api/provider/conversations')||[];
@@ -1435,6 +1640,34 @@ async function updateChatBadge(){
   const nb=document.getElementById('nbChat');if(nb){nb.style.display=total?'':'none';nb.textContent=total;}
   const bnBdg=document.getElementById('bn-chat-bdg');if(bnBdg){bnBdg.style.display=total?'flex':'none';bnBdg.textContent=total;}
 }
+
+
+// ── sendProviderMsg: used in client unified chat ─────────────
+async function sendProviderMsg(){
+  const inp = document.getElementById('chatInputField');
+  if(!inp) return;
+  const content = inp.value.trim();
+  if(!content || !currentChatReqId || !currentChatReceiverId) return;
+  inp.value = ''; inp.style.height = 'auto';
+  stopTyping();
+
+  // Optimistic add
+  const box = document.getElementById('chatMsgsBox');
+  const tmp = document.createElement('div');
+  tmp.className = 'msg-row me';
+  tmp.dataset.tmp = '1';
+  const time = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  tmp.innerHTML = `<div class="msg-bubble"><div class="msg-text">${escHtml(content)}</div><div class="msg-footer"><span class="msg-time-txt">${time}</span><span class="msg-ticks"><svg viewBox="0 0 10 10" width="12" height="10"><polyline class="tick-sent" points="1,5 4,8 9,1"/></svg></span></div></div>`;
+  if(box){ const tb=document.getElementById('typingBubble'); if(tb)box.insertBefore(tmp,tb); else box.appendChild(tmp); box.scrollTop=box.scrollHeight; }
+
+  // POST
+  const r = await api('/api/messages', {method:'POST', body:JSON.stringify({request_id:currentChatReqId, receiver_id:currentChatReceiverId, content})});
+  if(r && r.id && _clientRequests.length){
+    await loadAllClientMsgs(_clientRequests, currentChatReceiverId);
+  }
+}
+
+function onTypingInput(){ if(typeof startTyping==="function")startTyping(); }
 
 initWS();
 
