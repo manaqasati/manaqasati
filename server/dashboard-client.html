@@ -685,102 +685,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   overflow: hidden;
   margin: 0 0 16px;
 }
-.conv-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #dce5f0;
-  cursor: pointer;
-  transition: background .15s;
-}
-.conv-item:hover { background: #f4f7fb; }
-.conv-item:last-child { border-bottom: none; }
-.conv-unread .conv-name { font-weight: 900 !important; color: #0d1f3c !important; }
-.conv-unread .conv-preview { color: #0d1f3c; font-weight: 600; }
-
-.conv-av {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  background: #1B3A6B;
-  color: #fff;
-  font-size: 18px; font-weight: 900;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-.conv-av img { width: 100%; height: 100%; object-fit: cover; }
-
-.conv-body { flex: 1; min-width: 0; }
-.conv-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
-.conv-name { font-size: 14px; font-weight: 700; color: #0d1f3c; }
-.conv-time { font-size: 11px; color: #9db3cc; flex-shrink: 0; }
-.conv-project { font-size: 11px; color: #6b85a8; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.conv-row2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.conv-preview { font-size: 12px; color: #6b85a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-.conv-badge {
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  background: #1B3A6B;
-  color: #fff;
-  font-size: 10px; font-weight: 900;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-/* ── Empty states ── */
-.chat-empty-state, .chat-empty-msgs {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  gap: 10px;
-  color: #6b85a8;
-  text-align: center;
-  flex: 1;
-}
-.chat-empty-state svg, .chat-empty-msgs svg { width: 48px; height: 48px; stroke: #c5d6ee; margin-bottom: 4px; }
-.chat-empty-state p, .chat-empty-msgs p { font-size: 14px; font-weight: 700; color: #1B3A6B; margin: 0; }
-.chat-empty-state small, .chat-empty-msgs small { font-size: 12px; }
-.chat-loading { text-align: center; padding: 40px; color: #6b85a8; font-size: 13px; }
-
-/* ── Toast ── */
-.chat-toast {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  background: #1B3A6B;
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 10000;
-  opacity: 0;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all .25s cubic-bezier(.34,1.56,.64,1);
-  white-space: nowrap;
-  max-width: 90vw;
-  box-shadow: 0 4px 20px rgba(0,0,0,.25);
-}
-.chat-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ── Nav badge ── */
-.chat-nav-badge {
-  font-size: 9px; font-weight: 900;
-  min-width: 18px; height: 18px;
-  border-radius: 9px; padding: 0 4px;
-  display: none;
-  align-items: center; justify-content: center;
-  background: #F0A500;
-  color: #92400e;
-}
-
 </style>
 </head>
 <body>
@@ -821,10 +725,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </button>
     <button class="ni" onclick="show('profile',this,'profile')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي
-    </button>
-    <button class="ni" onclick="show('chats',this,'chats')">
-      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-      المحادثات<span class="badge" id="chatNavBadge" style="display:none">0</span>
     </button>
     <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
@@ -1031,10 +931,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="page" id="page-profile">
       <div id="profile-content"><div class="loading">جاري التحميل...</div></div>
     </div>
-
-    <!-- ══ CHATS ══ -->
-    <div class="page" id="page-chats">
-      <div id="chatsListWrap"></div>
     </div>
 
   </div>
@@ -1064,10 +960,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
     <span class="bt">حسابي</span>
-  </button>
-  <button class="bni" onclick="show('chats',null,'chats')">
-    <div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bni-badge" id="chatBnBadge" style="display:none">0</span></div>
-    <span class="bt">محادثات</span>
   </button>
   <button class="bni" id="bn-notifs" onclick="show('notifs',null,'notifs')">
     <div class="bic" style="position:relative">
@@ -1202,24 +1094,19 @@ function hdr(){return{headers:{'Content-Type':'application/json','Authorization'
 fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
   if(p&&p.profile_image){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
 }).catch(function(){});
-function show(pg,el_arg,key){
-  // إخفاء المحادثة عند التنقل
-  var _cdp = document.getElementById('chatDetailPage');
-  if(_cdp) _cdp.style.display = 'none';
-  Chat.stopPoll();
+function show(pg,el,key){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
   document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
   document.getElementById('page-'+pg).className='page on';
-  if(el_arg)el_arg.className='ni on';
+  if(el)el.className='ni on';
   if(key){var b=document.getElementById('bn-'+key);if(b)b.className='bni on';}
-  var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'ملفي الشخصي',chats:'المحادثات'};
+  var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'ملفي الشخصي'};
   document.getElementById('pageTitle').textContent=t[pg]||'';
   if(pg==='requests')loadReqs();
   if(pg==='home')loadHome();
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
-  if(pg==='chats')Chat.loadList('chatsListWrap');
   window.scrollTo(0,0);
 }
 function showTab(t,el){
@@ -1321,9 +1208,19 @@ function openDetail(id,e){
   show('detail',null,null);
 }
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.3)')+';font-size:'+sz+'px">★</span>';return s;}
+
+// دالة رسالة واتساب للعميل
+function waUrl(phone, providerName, projectTitle){
+  var num = '966' + phone.replace(/^0/, '').replace(/[^0-9]/g,'');
+  var msg = 'مرحباً ' + providerName + '،\n'
+    + 'أتواصل معك بخصوص مشروع: *' + projectTitle + '*\n'
+    + 'وصلني عرضك عبر منصة مناقصة، هل أنت متاح للتواصل؟';
+  return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+}
 function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(!window.state) window.state={}; window.state.projectTitle=req.title; });
+fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
   await Promise.all([...new Set(bids.map(function(b){return b.provider_id;}))].map(async function(pid){
     try{var r2=await fetch(API+'/api/provider/'+pid+'/profile',{headers:{'Authorization':'Bearer '+token}});var d=await r2.json();if(d){Chat.storeName(pid,d.name||'');Chat.storeImg(pid,d.profile_image||'');if(d.phone)Chat.storePhone(pid,d.phone);}}catch(e){}
   }));
@@ -1339,29 +1236,37 @@ function loadBids(id){
       var specHtml=specs.length?specs.slice(0,2).map(function(s){return'<span style="background:rgba(240,165,0,.18);color:#F0A500;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+s+'</span>';}).join(' '):(b.provider_city?'<span style="color:rgba(255,255,255,.55);font-size:11px">📍 '+b.provider_city+'</span>':'<span style="color:rgba(255,255,255,.45);font-size:10px">مزود خدمة</span>');
       var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
-      var _ph=Chat.getPhone(b.provider_id);
-      var _wa=_ph?'966'+_ph.replace(/^0/,''):'';
-      var _bs='padding:11px 15px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;transition:.15s';
-      var callH=_ph
-        ?'<a href="tel:'+_ph+'" style="'+_bs+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;text-decoration:none"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'
-         +'<a href="https://wa.me/'+_wa+'" target="_blank" style="'+_bs+';background:#dcfce7;color:#166534;border:1px solid #bbf7d0;text-decoration:none">واتساب</a>'
-        :'';
+      // جلب بيانات الاتصال
+      var _ph = b.provider_phone || b.phone || '';
+      var _wa = _ph ? waUrl(_ph, b.provider_name||'المزود', state.projectTitle||'') : '';
+      var _bs = 'padding:10px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;transition:.15s;text-decoration:none';
+      
+      var contactBtns = _ph
+        ? '<a href="'+_wa+'" target="_blank" style="'+_bs+';background:#25d366;color:#fff;box-shadow:0 2px 8px rgba(37,211,102,.3)">'
+          + '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>'
+          + 'واتساب</a>'
+          + '<a href="tel:'+_ph+'" style="'+_bs+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">'
+          + '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>'
+          + 'اتصال</a>'
+        : '<span style="font-size:11px;color:var(--muted)">لا يوجد رقم تواصل</span>';
+      
       var acts;
       if(!isAcc&&!isRej){
-        acts='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'
-          +'<button class="_ba" data-id="'+b.id+'" data-req="'+id+'" style="'+_bs+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'
-          +callH
-          +'<button class="_bc" data-req="'+id+'" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
-          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'
+        acts='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);align-items:center">'
+          +'<button class="_ba" data-id="'+b.id+'" data-req="'+id+'" style="'+_bs+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 2px 8px rgba(22,163,74,.3)">'
+          +'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'
+          +contactBtns
+          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف</button>'
           +'<button class="_br" data-id="'+b.id+'" data-req="'+id+'" style="'+_bs+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">رفض</button>'
           +'</div>';
       }else if(isAcc){
-        acts='<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'
-          +callH
-          +'<button class="_bc" data-req="'+id+'" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
-          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف المزود</button>'
+        acts='<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+          +contactBtns
+          +'<button class="_bp" data-pid="'+b.provider_id+'" style="'+_bs+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'
+          +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف المزود</button>'
           +'</div>';
-      }else{acts='';};
+      }else{acts='';}
       return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'+
         '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'+
           '<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'+
@@ -1392,7 +1297,6 @@ function loadBids(id){
     var btn=e.target.closest('button');if(!btn)return;
     if(btn.classList.contains('_ba'))acceptBid(btn.dataset.id,btn.dataset.req);
     if(btn.classList.contains('_br'))rejectBid(btn.dataset.id,btn.dataset.req);
-    if(btn.classList.contains('_bc'))Chat.openChat(btn.dataset.req,btn.dataset.pid);
     if(btn.classList.contains('_bp'))openProviderProfile(btn.dataset.pid);
   },{once:true});
   }).catch(function(){document.getElementById('bids-list').innerHTML=errH();});
@@ -1493,568 +1397,8 @@ async function changeClientPw(){var old=document.getElementById('cPwOld')?.value
 setInterval(loadNotifCount,30000);
 loadHome();
 
-// ════════════════════════════════════════════════
-// CHAT MODULE
-// ════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
-//  CHAT MODULE — Professional, Clean, No Hacks
-//  Depends on: API, token, user (globals from parent page)
-// ═══════════════════════════════════════════════════════════════
-
-const Chat = (function(){
-
-  // ── State ──────────────────────────────────────────────────
-  const state = {
-    reqId:      null,
-    partnerId:  null,
-    partnerName:'',
-    partnerImg: '',
-    msgs:       [],
-    poll:       null,
-    ws:         null,
-    isTyping:   false,
-    typingTimer:null,
-    partnerTyping: false,
-    ptTimer:    null,
-    imgCache:   {},   // pid → image url
-    nameCache:  {},   // pid → name
-    phoneCache: {},   // pid → phone
-  };
-
-  // ── Helpers ────────────────────────────────────────────────
-  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function hdr(){ return {headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}}; }
-  function fmt(s){ return String(s||'').replace(/\r?\n/g,'<br>'); }
-  function timeStr(d){ return new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
-  function dateStr(d){
-    const dt = new Date(d), now = new Date();
-    const diff = (now - dt)/1000;
-    if(diff < 86400) return timeStr(d);
-    return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-  }
-  function dateLabel(d){
-    const dt = new Date(d);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today - 86400000);
-    const msgDay = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-    if(+msgDay === +today) return 'اليوم';
-    if(+msgDay === +yesterday) return 'أمس';
-    return dt.toLocaleDateString('ar-SA',{day:'numeric',month:'long',year:'numeric'});
-  }
-  function el(id){ return document.getElementById(id); }
-  function make(tag, cls, html){
-    const e = document.createElement(tag);
-    if(cls) e.className = cls;
-    if(html !== undefined) e.innerHTML = html;
-    return e;
-  }
-
-  // ── WebSocket ───────────────────────────────────────────────
-  function initWS(){
-    try{
-      const url = API.replace('https://','wss://').replace('http://','ws://') + '?token=' + token;
-      state.ws = new WebSocket(url);
-      state.ws.onmessage = e => { try{ onWS(JSON.parse(e.data)); }catch(_){} };
-      state.ws.onclose   = () => setTimeout(initWS, 3000);
-      state.ws.onerror   = () => { try{ state.ws.close(); }catch(_){} };
-    } catch(_){ setTimeout(initWS, 3000); }
-  }
-  function wsSend(d){ if(state.ws?.readyState===1) state.ws.send(JSON.stringify(d)); }
-
-  function onWS(data){
-    if(data.type === 'message'){
-      const msg = data.message;
-      const mine = parseInt(msg.sender_id) === parseInt(user.id);
-      if(!mine){
-        if(state.reqId && parseInt(msg.request_id) === state.reqId){
-          fetchMsgs(); hideTyping();
-        } else {
-          showToast(msg.sender_name||'رسالة', msg.content);
-          updateBadge();
-        }
-      }
-    }
-    if(data.type === 'typing'){
-      if(state.reqId && parseInt(data.request_id) === state.reqId
-         && parseInt(data.from) !== parseInt(user.id)){
-        data.is_typing ? showTyping() : hideTyping();
-      }
-    }
-    if(data.type === 'read'){
-      if(state.reqId && parseInt(data.request_id) === state.reqId){
-        document.querySelectorAll('.msg-tick-delivered').forEach(el => {
-          el.className = 'msg-tick-read';
-        });
-      }
-    }
-  }
-
-  // ── Typing ──────────────────────────────────────────────────
-  function onInput(){
-    if(!state.reqId || !state.partnerId) return;
-    if(!state.isTyping){
-      state.isTyping = true;
-      wsSend({type:'typing', receiver_id:state.partnerId, request_id:state.reqId, is_typing:true});
-    }
-    clearTimeout(state.typingTimer);
-    state.typingTimer = setTimeout(()=>{
-      state.isTyping = false;
-      wsSend({type:'typing', receiver_id:state.partnerId, request_id:state.reqId, is_typing:false});
-    }, 1500);
-  }
-  function stopTyping(){
-    clearTimeout(state.typingTimer);
-    if(state.isTyping){
-      state.isTyping = false;
-      wsSend({type:'typing', receiver_id:state.partnerId, request_id:state.reqId, is_typing:false});
-    }
-  }
-  function showTyping(){
-    state.partnerTyping = true;
-    clearTimeout(state.ptTimer);
-    const sub = el('chatStatus');
-    if(sub){ sub.textContent='يكتب...'; sub.style.color='#4ade80'; }
-    if(!el('typingBubble')){
-      const box = el('chatBox'); if(!box) return;
-      const row = make('div','chat-typing-row');
-      row.id = 'typingBubble';
-      row.innerHTML = `
-        <div class="chat-typing-av">${esc(state.partnerName[0]||'م')}</div>
-        <div class="chat-typing-dots">
-          <span></span><span></span><span></span>
-        </div>`;
-      box.appendChild(row);
-      box.scrollTop = box.scrollHeight;
-    }
-    state.ptTimer = setTimeout(hideTyping, 5000);
-  }
-  function hideTyping(){
-    state.partnerTyping = false;
-    clearTimeout(state.ptTimer);
-    const sub = el('chatStatus'); if(sub){ sub.textContent=''; sub.style.color=''; }
-    el('typingBubble')?.remove();
-  }
-
-  // ── Conversations List ───────────────────────────────────────
-  function loadList(containerId){
-    const wrap = el(containerId); if(!wrap) return;
-    wrap.innerHTML = '<div class="chat-loading">جاري التحميل...</div>';
-
-    fetch(API+'/api/conversations', hdr())
-    .then(r=>r.json())
-    .then(convs=>{
-      if(!Array.isArray(convs) || !convs.length){
-        wrap.innerHTML = `
-          <div class="chat-empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-            </svg>
-            <p>لا توجد محادثات بعد</p>
-            <small>ستظهر محادثاتك مع المزودين هنا</small>
-          </div>`;
-        return;
-      }
-
-      // Update badges
-      const total = convs.reduce((s,c)=>s+parseInt(c.unread_count||0),0);
-      setBadge(total);
-
-      // Prefetch provider images async
-      convs.forEach(cv=>{
-        if(cv.provider_id && !state.imgCache[cv.provider_id]){
-          fetch(API+'/api/provider/'+cv.provider_id+'/profile', hdr())
-          .then(r=>r.json()).then(p=>{
-            if(p?.profile_image){ state.imgCache[cv.provider_id]=p.profile_image; state.phoneCache[cv.provider_id]=p.phone||''; }
-            if(p?.name) state.nameCache[cv.provider_id]=p.name;
-            // Update avatar if element exists
-            const av = document.querySelector('.conv-av[data-pid="'+cv.provider_id+'"]');
-            if(av && p?.profile_image) av.innerHTML = `<img src="${p.profile_image}" alt="">`;
-          }).catch(()=>{});
-        }
-        if(cv.other_name) state.nameCache[cv.provider_id] = cv.other_name;
-      });
-
-      const list = make('div','chat-list-wrap');
-      convs.forEach(cv=>{
-        const name   = cv.other_name || 'مزود';
-        const unread = parseInt(cv.unread_count||0);
-        const time   = cv.last_msg_at ? dateStr(cv.last_msg_at) : '';
-        const last   = cv.last_msg || '';
-        const title  = cv.request_title || '';
-
-        const item = make('div', 'conv-item' + (unread?' conv-unread':''));
-        item.dataset.req = cv.request_id;
-        item.dataset.pid = cv.provider_id;
-        item.dataset.name = name;
-
-        item.innerHTML = `
-          <div class="conv-av" data-pid="${cv.provider_id}">
-            <span>${esc(name[0])}</span>
-          </div>
-          <div class="conv-body">
-            <div class="conv-row1">
-              <span class="conv-name">${esc(name)}</span>
-              <span class="conv-time">${esc(time)}</span>
-            </div>
-            ${title?`<div class="conv-project">📋 ${esc(title)}</div>`:''}
-            <div class="conv-row2">
-              <span class="conv-preview">${esc(last.substring(0,60))}</span>
-              ${unread?`<span class="conv-badge">${unread}</span>`:''}
-            </div>
-          </div>`;
-
-        item.addEventListener('click', ()=>{
-          openChat(cv.request_id, cv.provider_id, name, state.imgCache[cv.provider_id]||'');
-        });
-        list.appendChild(item);
-      });
-
-      wrap.innerHTML = '';
-      const header = make('div','chat-list-header');
-      header.innerHTML = `<h2>المحادثات</h2><span>${convs.length} محادثة</span>`;
-      wrap.appendChild(header);
-      wrap.appendChild(list);
-    })
-    .catch(()=>{ wrap.innerHTML='<div class="chat-loading">تعذر التحميل</div>'; });
-  }
-
-  // ── Open Chat ────────────────────────────────────────────────
-  function openChat(reqId, partnerId, partnerName, partnerImg){
-    // Clear input
-    var inp = el('chatInput'); if(inp){ inp.value=''; inp.style.height='auto'; }
-    // Clear typing
-    hideTyping();
-    // Stop previous poll
-    if(state.poll) clearInterval(state.poll);
-    hideTyping();
-
-    state.reqId       = parseInt(reqId);
-    state.partnerId   = parseInt(partnerId);
-    state.partnerName = partnerName || state.nameCache[partnerId] || 'مزود';
-    state.partnerImg  = partnerImg  || state.imgCache[partnerId]  || '';
-    state.msgs        = [];
-
-    const chatPage = el('chatDetailPage'); if(!chatPage) return;
-    chatPage.style.display = 'flex';
-
-    // Build header
-    const avHtml = state.partnerImg
-      ? `<img src="${esc(state.partnerImg)}" alt="">`
-      : `<span>${esc(state.partnerName[0])}</span>`;
-
-    el('chatPartnerAv').innerHTML   = avHtml;
-    el('chatPartnerName').textContent = state.partnerName;
-    el('chatStatus').textContent    = '';
-
-    // Clear messages
-    const box = el('chatBox');
-    box.innerHTML = '<div class="chat-loading">جاري التحميل...</div>';
-
-    // Mark read
-    wsSend({type:'read', request_id:state.reqId, sender_id:state.partnerId});
-
-    // Fetch
-    fetchMsgs();
-    state.poll = setInterval(fetchMsgs, 3000);
-
-    // Focus input
-    setTimeout(()=> el('chatInput')?.focus(), 200);
-  }
-
-  // ── Fetch messages ───────────────────────────────────────────
-  function fetchMsgs(){
-    if(!state.reqId) return;
-    fetch(API+'/api/messages/'+state.reqId, hdr())
-    .then(r=>r.json())
-    .then(msgs=>{
-      if(!Array.isArray(msgs)) return;
-      const newIds = msgs.map(m=>m.id).join(',');
-      const oldIds = state.msgs.map(m=>m.id).join(',');
-      if(newIds !== oldIds){ state.msgs = msgs; renderMsgs(); }
-    }).catch(()=>{});
-  }
-
-  // ── Render messages ──────────────────────────────────────────
-  function renderMsgs(){
-    const box = el('chatBox'); if(!box) return;
-    const myId = parseInt(user && user.id ? user.id : localStorage.getItem('user_id') || 0);
-    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
-    const hadTyping = !!el('typingBubble');
-
-    box.innerHTML = '';
-
-    if(!state.msgs.length){
-      box.innerHTML = `
-        <div class="chat-empty-msgs">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-          </svg>
-          <p>لا توجد رسائل</p>
-          <small>ابدأ المحادثة الآن</small>
-        </div>`;
-    } else {
-      let lastDate = '';
-      state.msgs.forEach(msg=>{
-        const isMe = parseInt(msg.sender_id) === myId;
-        const dLabel = dateLabel(msg.created_at);
-
-        if(dLabel !== lastDate){
-          lastDate = dLabel;
-          const sep = make('div','chat-date-sep');
-          sep.innerHTML = `<span>${dLabel}</span>`;
-          box.appendChild(sep);
-        }
-
-        const time = timeStr(msg.created_at);
-        const row  = make('div', 'msg-row ' + (isMe?'msg-me':'msg-them'));
-        row.dataset.id = msg.id;
-
-        let ticks = '';
-        if(isMe){
-          const tc = msg.is_read ? 'msg-tick-read' : 'msg-tick-delivered';
-          ticks = `<span class="${tc}">
-            <svg viewBox="0 0 18 11" width="16" height="10" fill="none">
-              <polyline points="1,6 5,10 10,1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <polyline points="7,6 11,10 16,1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg></span>`;
-        }
-
-        row.innerHTML = `
-          <div class="msg-bubble">
-            ${!isMe && msg.sender_name ? `<div class="msg-sender">${esc(msg.sender_name)}</div>` : ''}
-            <div class="msg-text">${fmt(esc(msg.content))}</div>
-            <div class="msg-meta">
-              <span class="msg-time">${time}</span>
-              ${ticks}
-            </div>
-          </div>`;
-        box.appendChild(row);
-      });
-    }
-
-    // Re-add typing bubble
-    if(hadTyping && state.partnerTyping){
-      const row = make('div','chat-typing-row');
-      row.id = 'typingBubble';
-      row.innerHTML = `<div class="chat-typing-av">${esc(state.partnerName[0]||'م')}</div><div class="chat-typing-dots"><span></span><span></span><span></span></div>`;
-      box.appendChild(row);
-    }
-
-    if(atBottom) box.scrollTop = box.scrollHeight;
-  }
-
-  // ── Send ─────────────────────────────────────────────────────
-  function sendMsg(){
-    const inp = el('chatInput'); if(!inp) return;
-    const content = inp.value.trim(); if(!content) return;
-    inp.value = ''; inp.style.height = 'auto'; inp.focus();
-    stopTyping();
-
-    // Optimistic
-    state.msgs.push({
-      id: 'tmp_'+Date.now(),
-      request_id: state.reqId,
-      sender_id:  parseInt(user.id),
-      sender_name: user.name||'',
-      content, is_read: false,
-      created_at: new Date().toISOString()
-    });
-    renderMsgs();
-    const box = el('chatBox'); if(box) box.scrollTop = box.scrollHeight;
-
-    fetch(API+'/api/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body: JSON.stringify({request_id:state.reqId, receiver_id:state.partnerId, content})
-    })
-    .then(r=>r.json())
-    .then(d=>{
-      if(d.id){
-        const i = state.msgs.findIndex(m=>String(m.id).startsWith('tmp_'));
-        if(i>=0) state.msgs[i].id = d.id;
-      }
-    }).catch(()=>{});
-  }
-
-  // ── Badge ────────────────────────────────────────────────────
-  function setBadge(n){
-    ['chatNavBadge','chatBnBadge'].forEach(id=>{
-      const el2 = el(id);
-      if(el2){ el2.textContent=n; el2.style.display=n>0?'flex':'none'; }
-    });
-  }
-  function updateBadge(){
-    fetch(API+'/api/conversations', hdr())
-    .then(r=>r.json())
-    .then(convs=>{ if(Array.isArray(convs)) setBadge(convs.reduce((s,c)=>s+parseInt(c.unread_count||0),0)); })
-    .catch(()=>{});
-  }
-
-  // ── Toast ────────────────────────────────────────────────────
-  let toastTimer;
-  function showToast(name, text){
-    let el2 = el('chatToast');
-    if(!el2){
-      el2 = make('div','chat-toast'); el2.id='chatToast';
-      document.body.appendChild(el2);
-    }
-    el2.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span><b>${esc(name)}:</b> ${esc((text||'').substring(0,50))}</span>`;
-    el2.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=>el2.classList.remove('show'), 3500);
-  }
-
-  // ── Public API ───────────────────────────────────────────────
-  return {
-    init:       initWS,
-    loadList,
-    openChat,
-    sendMsg,
-    onInput,
-    updateBadge,
-    setBadge,
-    storePhone: (pid, phone)=>{ state.phoneCache[pid]=phone; },
-    getPhone:   (pid)=> state.phoneCache[pid]||'',
-    storeImg:   (pid, img)=>{ state.imgCache[pid]=img; },
-    storeName:  (pid, name)=>{ state.nameCache[pid]=name; },
-    stopPoll:   ()=>{ if(state.poll){clearInterval(state.poll);state.poll=null;} },
-  };
-})();
-
-
-// ════════════════════════════════════════════════
-// WIRING
-// ════════════════════════════════════════════════
-(function(){
-  // Back button
-  document.getElementById('chatBackBtn').addEventListener('click', function(){
-    var cdp = document.getElementById('chatDetailPage');
-    cdp.style.display = 'none';
-    Chat.stopPoll();
-  });
-  // Send button
-  document.getElementById('chatSendBtn').addEventListener('click', function(){ Chat.sendMsg(); });
-  // Textarea
-  var ta = document.getElementById('chatInput');
-  ta.addEventListener('input', function(){
-    Chat.onInput();
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-  });
-  ta.addEventListener('keydown', function(e){
-    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); Chat.sendMsg(); }
-  });
-  // Init WebSocket
-  Chat.init();
-  // Badge refresh
-  setInterval(function(){ Chat.updateBadge(); }, 30000);
-})();
-
-// ════════════════════════════════════════════════
-// UTILITIES
-// ════════════════════════════════════════════════
-function restorePage(){
-  var h = location.hash.replace('#','');
-  var pages = ['home','requests','notifs','profile','chats'];
-  if(pages.indexOf(h) >= 0) show(h, null, h);
-}
-
-function openProviderProfile(pid){
-  var ol = document.getElementById('pvOl');
-  if(!ol){
-    ol = document.createElement('div');
-    ol.id = 'pvOl';
-    ol.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
-    ol.addEventListener('click', function(e){ if(e.target===ol) ol.style.display='none'; });
-    var sh = document.createElement('div');
-    sh.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto';
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = 'إغلاق';
-    closeBtn.style.cssText = 'width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer';
-    closeBtn.addEventListener('click', function(){ ol.style.display='none'; });
-    sh.innerHTML = '<div style="text-align:center;padding:10px"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div><div id="pvBody" style="padding:18px"></div>';
-    var foot = document.createElement('div');
-    foot.style.padding = '12px 18px 24px';
-    foot.appendChild(closeBtn);
-    sh.appendChild(foot);
-    ol.appendChild(sh);
-    document.body.appendChild(ol);
-  }
-  ol.style.display = 'flex';
-  var body = document.getElementById('pvBody');
-  body.innerHTML = '<div class="loading">جاري التحميل...</div>';
-  Promise.all([
-    fetch(API+'/api/provider/'+pid+'/profile').then(function(r){return r.json();}),
-    fetch(API+'/api/ratings/provider/'+pid).then(function(r){return r.json();})
-  ]).then(function(res){
-    var p=res[0]||{}, rv=res[1]||{};
-    var avg=rv.average||0, cnt=rv.count||0, reviews=rv.reviews||[];
-    function stars(n,big){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:'+(big?18:14)+'px">&#9733;</span>';return s;}
-    var avH = p.profile_image
-      ? '<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
-      : '<span style="font-size:22px;font-weight:900;color:#fff">'+(p.name||'م')[0]+'</span>';
-    var portH = '';
-    if((p.portfolio_images||[]).length){
-      portH = '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
-      (p.portfolio_images||[]).forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});
-      portH+='</div></div>';
-    }
-    var specH = '';
-    if((p.specialties||[]).length){
-      specH = '<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
-      (p.specialties||[]).forEach(function(s){specH+='<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>';});
-      specH+='</div></div>';
-    }
-    var revH = reviews.length ? reviews.map(function(rv){
-      return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:5px">'
-        +'<span style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</span>'
-        +'<div>'+stars(rv.rating||0,false)+'</div></div>'
-        +(rv.comment?'<div style="font-size:11px;color:var(--text2)">'+rv.comment+'</div>':'')
-        +'</div>';
-    }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted)">لا توجد تقييمات</div>';
-    body.innerHTML =
-      '<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px">'
-        +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
-          +'<div style="width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+avH+'</div>'
-          +'<div>'
-            +'<div style="font-size:16px;font-weight:900;color:#fff">'+(p.name||'—')+'</div>'
-            +'<div style="font-size:11px;color:rgba(255,255,255,.6)">'+(p.city||'')+' '+(p.experience_years?'· '+p.experience_years+' سنة':'')+'</div>'
-            +'<div style="margin-top:4px">'+stars(avg,true)+'<span style="font-size:11px;color:rgba(255,255,255,.6)"> '+avg.toFixed(1)+' ('+cnt+')</span></div>'
-          +'</div>'
-        +'</div>'
-        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'
-          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div>'
-          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">تقييم</div></div>'
-          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنة</div></div>'
-        +'</div>'
-      +'</div>'
-      +(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8">'+p.bio+'</div>':'')
-      +specH+portH
-      +'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+revH+'</div>';
-  }).catch(function(){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>'; });
-}
-
-// restorePage — called after loadHome()
-function restorePage(){
-  try{
-    var h = location.hash.replace('#','');
-    var ok = ['home','requests','notifs','profile','chats'];
-    if(ok.indexOf(h) >= 0) show(h, null, h);
-  }catch(e){}
-}
-setTimeout(restorePage, 0);
-
 </script>
-
-<div id="chatDetailPage">
-  <div class="chat-hdr">
-    <button class="chat-back-btn" id="chatBackBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div class="chat-hdr-av" id="chatPartnerAv"><span>م</span></div>
-    <div class="chat-hdr-info">
+<div class="chat-hdr-info">
       <div class="chat-hdr-name" id="chatPartnerName">محادثة</div>
       <div id="chatStatus"></div>
     </div>
