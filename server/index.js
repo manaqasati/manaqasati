@@ -423,15 +423,27 @@ async function notifyInterestedProviders(reqId, title, category) {
     );
     const req = reqData.rows[0] || {};
 
-    const provs = await pool.query(
-      `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
-       AND (specialties IS NOT NULL AND $1=ANY(specialties)
-            OR notify_categories IS NOT NULL AND $1=ANY(notify_categories))`,
-      [category]
+    const reqCity = req.city || null;
+    // إشعار المزودين بنفس التخصص: الأولوية للمدينة نفسها، ثم كل المزودين بالتخصص
+    const provsSameCity = reqCity ? await pool.query(
+      `SELECT id,name,email FROM users WHERE role='provider' AND city=$1
+       AND (specialties IS NOT NULL AND $2=ANY(specialties)
+            OR notify_categories IS NOT NULL AND $2=ANY(notify_categories))`,
+      [reqCity, category]
+    ) : {rows:[]};
+    const provsAllCities = await pool.query(
+      `SELECT id,name,email FROM users WHERE role='provider'
+       AND (city IS NULL OR city!=$1 OR $1 IS NULL)
+       AND (specialties IS NOT NULL AND $2=ANY(specialties)
+            OR notify_categories IS NOT NULL AND $2=ANY(notify_categories))`,
+      [reqCity||'__none__', category]
     );
+    // المزودون بنفس المدينة أولاً، ثم الباقون
+    const provRows = [...provsSameCity.rows, ...provsAllCities.rows];
+    const provs = {rows: provRows};
 
     for (const p of provs.rows) {
-      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'new_request', reqId);
+      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" — ${req.city||category}`, 'new_request', reqId);
       await sendPush([p.id], '🔔 مناقصة جديدة في تخصصك', `"${title}"`, { type: 'new_request', reqId });
 
       if (p.email) {
@@ -441,7 +453,7 @@ async function notifyInterestedProviders(reqId, title, category) {
 
         await sendEmail(
           p.email,
-          `🔔 مناقصة جديدة في تخصصك: ${title}`,
+          `🔔 مناقصة جديدة ${req.city?"في "+req.city:""}: ${title}`,
           emailTpl(
             `مرحباً ${p.name}،`,
             `<p>وصلك مشروع جديد يناسب تخصصك في <strong>${category}</strong>. سارع بتقديم عرضك قبل أن يمتلئ!</p>
@@ -771,10 +783,16 @@ app.post('/api/ratings', auth, async (req, res) => {
     if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `⭐ تقييم جديد: ${starsText}`,
         emailTpl(`تقييم جديد ${starsText}`,
-          `<p>قيّمك <strong>${reviewer.rows[0]?.name}</strong> بـ <strong>${avg} من 5 نجوم</strong></p>
-           ${comment?`<div class="hl">"${comment}"</div>`:''}
-           ${quality?`<div class="hl">جودة العمل: ${quality}/5 | التواصل: ${communication}/5 | الالتزام بالمواعيد: ${punctuality}/5</div>`:''}`,
-          'تقييماتي', `${SITE_URL}/dashboard-provider.html`));
+          `<p>قام <strong>${reviewer.rows[0]?.name}</strong> بتقييمك بـ <strong>${avg} من 5 نجوم</strong></p>
+           <div style="text-align:center;font-size:28px;margin:14px 0;letter-spacing:4px">${starsText}</div>
+           ${comment?`<div class="hl" style="font-style:italic">"${comment}"</div>`:''}
+           ${quality?`<div style="background:#f4f7fb;border-radius:9px;padding:13px 16px;margin:12px 0">
+             <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #dce5f0"><span style="font-size:12px;color:#6b85a8">جودة العمل</span><strong style="font-size:12px">${quality}/5</strong></div>
+             <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #dce5f0"><span style="font-size:12px;color:#6b85a8">التواصل</span><strong style="font-size:12px">${communication}/5</strong></div>
+             <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:#6b85a8">الالتزام بالمواعيد</span><strong style="font-size:12px">${punctuality}/5</strong></div>
+           </div>`:''}
+           <p style="font-size:12px;color:#6b85a8;margin-top:8px">التقييمات الجيدة تزيد من فرص قبول عروضك!</p>`,
+          'عرض تقييماتي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json({ ok: true, review: r.rows[0], avg_given: avg });
   } catch(e) { res.status(500).json({ message: e.message }); }
@@ -830,6 +848,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone, role, specialties, bio, city } = req.body;
     if (!name || !email || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (!city) return res.status(400).json({ message: 'المدينة مطلوبة' });
     const exists = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (exists.rows.length) return res.status(400).json({ message: 'البريد مسجل مسبقاً' });
     const hash = await bcrypt.hash(password, 10);
@@ -873,9 +892,12 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const resetUrl = `${SITE_URL}/auth.html?reset=${resetToken}`;
     await sendEmail(email, 'استعادة كلمة المرور — مناقصة',
       emailTpl(`مرحباً ${user.name}،`,
-        `<p>طلبت إعادة تعيين كلمة المرور. اضغط الزر أدناه خلال ساعة واحدة.</p>
-         <div class="gold-box">الرابط صالح لمدة ساعة واحدة فقط</div>`,
-        'إعادة تعيين كلمة المرور', resetUrl));
+        `<p>وصلنا طلب إعادة تعيين كلمة المرور لحسابك.</p>
+         <div style="background:#fff8e7;border-right:3px solid #F0A500;border-radius:8px;padding:13px 16px;margin:12px 0">
+           <strong style="font-size:13px;color:#92400e">⏰ الرابط صالح لمدة ساعة واحدة فقط</strong><br>
+           <span style="font-size:12px;color:#92400e">إذا لم تطلب إعادة التعيين، تجاهل هذا البريد.</span>
+         </div>`,
+        'إعادة تعيين كلمة المرور ←', resetUrl));
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1081,9 +1103,14 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
       await sendPush([req2.assigned_provider_id], '🎉 اكتمل المشروع', `مشروع "${req2.title}" اكتمل بنجاح!`, { type: 'completed', requestId: req2.id });
       if (prov.rows[0]?.email) {
         await sendEmail(prov.rows[0].email, `🎉 اكتمل المشروع: ${req2.title}`,
-          emailTpl(`مبروك ${prov.rows[0].name}!`,
-            `<div class="ok">أكد العميل اكتمال مشروع <strong>"${req2.title}"</strong> بنجاح.</div>`,
-            'ملفي الشخصي', `${SITE_URL}/dashboard-provider.html`));
+          emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
+            `<div style="background:#f0fdf4;border-right:3px solid #16a34a;border-radius:8px;padding:14px 16px;margin:12px 0">
+               <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:6px">✅ تم إتمام المشروع بنجاح</div>
+               <div style="font-size:13px;color:#166534"><strong>${req2.title}</strong></div>
+             </div>
+             <p>أكد العميل اكتمال المشروع. يمكنك الآن مطالعة تقييمه في ملفك الشخصي.</p>
+             <p style="font-size:12px;color:#6b85a8;margin-top:8px">شكراً لاحترافيتك وجودة عملك! استمر في تقديم أفضل خدماتك.</p>`,
+            'عرض ملفي الشخصي', `${SITE_URL}/dashboard-provider.html`));
       }
     }
     res.json(req2);
@@ -1148,18 +1175,46 @@ async function handleSubmitBid(req, res, requestId) {
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [reqData.rows[0].client_id]);
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `💼 عرض جديد على طلبك: ${reqData.rows[0].title}`,
-        emailTpl('وصلك عرض جديد!',
+        emailTpl('وصلك عرض جديد على مشروعك!',
           `<p>قدّم <strong>${provider.rows[0].name}</strong> عرضاً على طلبك:</p>
-           <div class="hl"><strong>${reqData.rows[0].title}</strong><br>
-           السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>`,
-          'مراجعة العروض', `${SITE_URL}/dashboard-client.html`));
+           <div style="background:#f4f7fb;border:1px solid #dce5f0;border-right:4px solid #1B3A6B;border-radius:10px;padding:16px 18px;margin:14px 0">
+             <div style="font-size:15px;font-weight:700;color:#0d1f3c;margin-bottom:10px">${reqData.rows[0].title}</div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8eef7">
+               <span style="font-size:12px;color:#6b85a8">👤 المزود</span>
+               <strong style="font-size:12px;color:#0d1f3c">${provider.rows[0].name}</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8eef7">
+               <span style="font-size:12px;color:#6b85a8">💰 سعر العرض</span>
+               <strong style="font-size:12px;color:#1B3A6B">${Number(price).toLocaleString('en-US')} ر.س</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0">
+               <span style="font-size:12px;color:#6b85a8">⏱️ مدة التنفيذ</span>
+               <strong style="font-size:12px;color:#0d1f3c">${days} يوم</strong>
+             </div>
+           </div>
+           <p style="font-size:12px;color:#6b85a8">راجع العرض واقبله أو تواصل مع المزود من لوحة التحكم.</p>`,
+          'مراجعة العروض ←', `${SITE_URL}/dashboard-client.html`));
     }
     if (provider.rows[0]?.email) {
       await sendEmail(provider.rows[0].email, `✅ تم تقديم عرضك: ${reqData.rows[0].title}`,
-        emailTpl('تم تقديم عرضك بنجاح',
-          `<div class="ok">السعر: <strong>${Number(price).toLocaleString('ar-SA')} ر.س</strong> | المدة: <strong>${days} يوم</strong></div>
-           <p>سنُخطرك فور رد العميل.</p>`,
-          'عروضي', `${SITE_URL}/dashboard-provider.html`));
+        emailTpl('تم إرسال عرضك بنجاح ✅',
+          `<div style="background:#f0fdf4;border-right:3px solid #16a34a;border-radius:8px;padding:14px 16px;margin:12px 0">
+             <div style="font-size:14px;font-weight:700;color:#15803d;margin-bottom:8px">✅ وصل عرضك للعميل</div>
+             <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #dcfce7">
+               <span style="font-size:12px;color:#166534">المشروع</span>
+               <strong style="font-size:12px;color:#15803d">${reqData.rows[0].title}</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #dcfce7">
+               <span style="font-size:12px;color:#166534">سعر عرضك</span>
+               <strong style="font-size:12px;color:#15803d">${Number(price).toLocaleString('en-US')} ر.س</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:5px 0">
+               <span style="font-size:12px;color:#166534">مدة التنفيذ</span>
+               <strong style="font-size:12px;color:#15803d">${days} يوم</strong>
+             </div>
+           </div>
+           <p style="font-size:12px;color:#6b85a8">سنُخطرك فور رد العميل على عرضك.</p>`,
+          'متابعة عروضي', `${SITE_URL}/dashboard-provider.html`));
     }
     res.json(r.rows[0]);
   } catch(e) { console.error('submitBid:', e.message); res.status(500).json({ message: e.message }); }
@@ -1190,17 +1245,41 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
     const client = await pool.query('SELECT name,email FROM users WHERE id=$1', [b.client_id]);
     if (prov.rows[0]?.email) {
       await sendEmail(prov.rows[0].email, `✅ تم قبول عرضك: ${b.title}`,
-        emailTpl(`مبروك ${prov.rows[0].name}!`,
-          `<div class="ok">تم قبول عرضك على مشروع <strong>"${b.title}"</strong><br>
-           القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
-          'تواصل مع العميل', `${SITE_URL}/dashboard-provider.html`));
+        emailTpl(`مبروك ${prov.rows[0].name}! 🎉`,
+          `<p>تهانينا! تم اختيارك لتنفيذ هذا المشروع.</p>
+           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-right:4px solid #16a34a;border-radius:10px;padding:16px 18px;margin:14px 0">
+             <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:10px">✅ تم قبول عرضك</div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #dcfce7">
+               <span style="font-size:12px;color:#166534">المشروع</span>
+               <strong style="font-size:12px;color:#15803d">${b.title}</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0">
+               <span style="font-size:12px;color:#166534">القيمة المتفق عليها</span>
+               <strong style="font-size:12px;color:#15803d">${Number(b.price).toLocaleString('en-US')} ر.س</strong>
+             </div>
+           </div>
+           <div style="background:#fff8e7;border-right:3px solid #F0A500;border-radius:8px;padding:12px 16px;margin:12px 0">
+             <p style="font-size:13px;color:#92400e;margin:0;font-weight:600">📌 تذكير: رسوم المنصة 1% من قيمة العقد تُسدّد خلال 10 أيام من الإتمام.</p>
+           </div>`,
+          'بدء التواصل مع العميل ←', `${SITE_URL}/dashboard-provider.html`));
     }
     if (client.rows[0]?.email) {
       await sendEmail(client.rows[0].email, `🎉 تم إسناد مشروعك: ${b.title}`,
-        emailTpl('تم إسناد مشروعك بنجاح',
-          `<div class="hl">المزود: <strong>${prov.rows[0].name}</strong><br>
-           القيمة: <strong>${Number(b.price).toLocaleString('ar-SA')} ر.س</strong></div>`,
-          'تواصل مع المزود', `${SITE_URL}/dashboard-client.html`));
+        emailTpl('تم إسناد مشروعك بنجاح 🎉',
+          `<p>قبلت عرض المزود وأصبح مشروعك قيد التنفيذ!</p>
+           <div style="background:#f4f7fb;border:1px solid #dce5f0;border-right:4px solid #1B3A6B;border-radius:10px;padding:16px 18px;margin:14px 0">
+             <div style="font-size:15px;font-weight:700;color:#0d1f3c;margin-bottom:10px">${b.title}</div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8eef7">
+               <span style="font-size:12px;color:#6b85a8">👷 المزود المختار</span>
+               <strong style="font-size:12px;color:#0d1f3c">${prov.rows[0].name}</strong>
+             </div>
+             <div style="display:flex;justify-content:space-between;padding:6px 0">
+               <span style="font-size:12px;color:#6b85a8">💰 القيمة المتفق عليها</span>
+               <strong style="font-size:12px;color:#1B3A6B">${Number(b.price).toLocaleString('en-US')} ر.س</strong>
+             </div>
+           </div>
+           <p style="font-size:12px;color:#6b85a8">تواصل مع المزود عبر المنصة لمتابعة التنفيذ.</p>`,
+          'تواصل مع المزود ←', `${SITE_URL}/dashboard-client.html`));
     }
     const rejected = await pool.query(
       'SELECT b.provider_id,u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2',
@@ -1209,10 +1288,16 @@ app.put('/api/bids/:id/accept', auth, async (req, res) => {
       await notify(rb.provider_id, '❌ تم رفض عرضك', `للأسف تم اختيار مزود آخر لـ: ${b.title}`, 'rejected', b.request_id);
       if (rb.email) {
         await sendEmail(rb.email, `❌ تم رفض عرضك: ${b.title}`,
-          emailTpl('نأسف لإخبارك',
-            `<div class="ng">تم اختيار مزود آخر لمشروع <strong>"${b.title}"</strong></div>
-             <p>لا تيأس، هناك مناقصات أخرى تنتظرك!</p>`,
-            'تصفح المناقصات', `${SITE_URL}/dashboard-provider.html`));
+          emailTpl('شكراً لمشاركتك',
+            `<div style="background:#fef2f2;border-right:3px solid #dc2626;border-radius:8px;padding:13px 16px;margin:12px 0">
+               <div style="font-size:14px;font-weight:700;color:#991b1b;margin-bottom:4px">لم يُختر عرضك هذه المرة</div>
+               <div style="font-size:12px;color:#7f1d1d">المشروع: <strong>${b.title}</strong></div>
+             </div>
+             <p>لا تحبط! هناك مناقصات كثيرة تنتظرك. تحقق من ملفك الشخصي وأكمل بياناتك لزيادة فرصك.</p>
+             <div style="background:#fff8e7;border-right:3px solid #F0A500;border-radius:8px;padding:12px 16px;margin:12px 0">
+               <p style="font-size:12px;color:#92400e;margin:0">💡 نصيحة: المزودون الذين يُكملون ملفهم الشخصي ويضيفون صور أعمالهم يحصلون على قبول أعلى.</p>
+             </div>`,
+            'تصفح المناقصات الجديدة ←', `${SITE_URL}/dashboard-provider.html`));
       }
     }
     res.json({ message: 'تم قبول العرض' });
@@ -1435,12 +1520,27 @@ app.get('/api/profile', auth, async (req, res) => {
 
 app.put('/api/profile', auth, async (req, res) => {
   try {
-    const { name, phone, specialties, bio, city } = req.body;
-    // مزامنة notify_categories مع specialties لضمان وصول الإشعارات
-    const notifyCats = specialties && specialties.length ? specialties : null;
+    const { name, phone, specialties, bio, city, notify_categories } = req.body;
+    // المزامنة: إذا أُرسل notify_categories صراحةً استخدمه، وإلا انسخ من specialties
+    const notifyCats = notify_categories !== undefined
+      ? (notify_categories && notify_categories.length ? notify_categories.slice(0,3) : null)
+      : (specialties && specialties.length ? specialties.slice(0,3) : null);
+    const specs = specialties !== undefined ? (specialties||null) : undefined;
+    const fields = [];const vals = [];let idx = 1;
+    if(name!==undefined){fields.push(`name=$${idx++}`);vals.push(name);}
+    if(phone!==undefined){fields.push(`phone=$${idx++}`);vals.push(phone||null);}
+    if(specs!==undefined){fields.push(`specialties=$${idx++}`);vals.push(specs);}
+    if(bio!==undefined){fields.push(`bio=$${idx++}`);vals.push(bio||null);}
+    if(city!==undefined){fields.push(`city=$${idx++}`);vals.push(city||null);}
+    if(notifyCats!==undefined){fields.push(`notify_categories=$${idx++}`);vals.push(notifyCats);}
+    if(experience_years!==undefined){fields.push(`experience_years=$${idx++}`);vals.push(experience_years||null);}
+    if(portfolio_images!==undefined){fields.push(`portfolio_images=$${idx++}`);vals.push(portfolio_images||null);}
+    if(profile_image!==undefined){fields.push(`profile_image=$${idx++}`);vals.push(profile_image);}
+    if(!fields.length)return res.json({message:'لا يوجد بيانات'});
+    vals.push(req.user.id);
     const r = await pool.query(
-      'UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5,notify_categories=$6 WHERE id=$7 RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge',
-      [name, phone||null, specialties||null, bio||null, city||null, notifyCats, req.user.id]);
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${idx} RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,portfolio_images,profile_image`,
+      vals);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
@@ -1461,7 +1561,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, portfolio_images, profile_image } = req.body;
+    const { name, phone, city, bio, specialties, experience_years, portfolio_images, profile_image, notify_categories } = req.body;
     // بناء الاستعلام ديناميكياً
     const fields = [];
     const vals = [];
