@@ -1194,7 +1194,7 @@ async function _deleteReview(id){
 // ══════════════════════════════════════════════════════
 // NOTIFY
 // ══════════════════════════════════════════════════════
-var _notifRole='all', _notifChannel='both';
+var _notifRole='all', _notifChannel='both', _notifSpec='الكل';
 
 function loadNotify(){
   var pg=_el('page-notify'); if(!pg) return;
@@ -1217,6 +1217,17 @@ function loadNotify(){
             '<svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'+
             '<input id="notif-uid" type="number" placeholder="أو أدخل ID مستخدم محدد (اختياري)" style="border:none;background:transparent;font-size:12px;padding:9px 0;flex:1;font-family:Tajawal,sans-serif;outline:none;color:var(--text)">'+
           '</div>'+
+        '</div>'+
+        // ─ فلتر التخصص ─
+        '<div id="spec-filter-wrap">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">فلتر التخصص <span style="font-size:10px;color:var(--muted);font-weight:400">(اختياري — للمزودين فقط)</span></div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+            ['الكل'].concat(['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى']).map(function(s,i){
+              var isAll=s==='الكل';
+              return '<button onclick="_setNSpec(this,\''+s+'\')" id="ns-'+i+'" style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid '+(isAll?'var(--p)':'var(--border)')+';background:'+(isAll?'var(--p)':'var(--bg)')+';color:'+(isAll?'#fff':'var(--muted)')+';transition:all .15s;margin-bottom:4px">'+s+'</button>';
+            }).join('')+
+          '</div>'+
+          '<div id="spec-count" style="font-size:11px;color:var(--muted);margin-top:6px"></div>'+
         '</div>'+
 
         // ─ قناة الإرسال ─
@@ -1284,6 +1295,31 @@ function _setNRole(btn, role){
     b.style.color=act?'#fff':'var(--muted)';
     b.style.borderColor=act?'var(--p)':'var(--border)';
   });
+  // إظهار/إخفاء فلتر التخصصات
+  var specWrap=_el('spec-filter-wrap');
+  if(specWrap) specWrap.style.display=(role==='provider'||role==='all')?'':'none';
+}
+function _setNSpec(btn, spec){
+  _notifSpec=spec;
+  // update active button
+  document.querySelectorAll('[id^="ns-"]').forEach(function(b){
+    var isActive=b.textContent.trim()===spec;
+    b.style.background=isActive?'var(--p)':'var(--bg)';
+    b.style.color=isActive?'#fff':'var(--muted)';
+    b.style.borderColor=isActive?'var(--p)':'var(--border)';
+  });
+  // حساب عدد المزودين المتأثرين
+  if(spec!=='الكل'){
+    _api('/api/admin/providers').then(function(provs){
+      var cnt=(provs||[]).filter(function(p){
+        return (p.specialties||[]).includes(spec)||(p.notify_categories||[]).includes(spec);
+      }).length;
+      var el=_el('spec-count');
+      if(el) el.textContent='سيُرسَل لـ '+cnt+' مزود لديهم هذا التخصص';
+    });
+  } else {
+    var el=_el('spec-count'); if(el) el.textContent='';
+  }
 }
 function _setNChannel(btn, ch){
   _notifChannel=ch;
@@ -1309,7 +1345,10 @@ async function _sendNotif(){
 
   var payload={title:title.trim(), body:body.trim(), type:'admin', channel:_notifChannel};
   if(uid) payload.user_id=uid;
-  else if(_notifRole!=='all') payload.role=_notifRole;
+  else {
+    if(_notifRole!=='all') payload.role=_notifRole;
+    if(_notifSpec!=='الكل') payload.specialty=_notifSpec;
+  }
 
   var r=await _api('/api/admin/notify',{method:'POST',body:JSON.stringify(payload)});
 
