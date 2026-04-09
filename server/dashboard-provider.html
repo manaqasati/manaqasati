@@ -134,14 +134,10 @@ input,select,textarea{font-family:inherit;color:inherit}
 .fsel{padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:inherit;transition:border-color .15s;outline:none}
 .fsel:focus{border-color:var(--p)}
 
-/* ══ PROJECT CARDS (browse) ══ */
+/* ══ PROJECT CARDS ══ */
 .pc{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all .2s;border-right:3px solid transparent}
 .pc:hover{box-shadow:0 4px 16px rgba(27,58,107,.1);transform:translateX(-2px)}
 .pc-open{border-right-color:var(--green)}.pc-prog{border-right-color:var(--yellow)}.pc-done{border-right-color:var(--hint)}.pc-navy{border-right-color:var(--p)}
-.pc-num{font-size:9px;font-weight:700;color:var(--hint);letter-spacing:.4px;text-transform:uppercase;margin-bottom:3px}
-.pc-tit{font-size:14px;font-weight:800;color:var(--text);line-height:1.3;margin-bottom:8px;letter-spacing:-.2px}
-.pc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.pc-acts{display:flex;gap:6px;flex-wrap:wrap}
 
 /* ══ BID CARD ══ */
 .bdc{border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:8px;background:var(--bg);transition:border-color .15s}
@@ -216,11 +212,90 @@ input,select,textarea{font-family:inherit;color:inherit}
 .es-t{font-size:13px;font-weight:800;color:var(--p);margin-bottom:4px}
 .es-s{font-size:11px;color:var(--muted)}
 
-/* ══ MOB ══ */
+/* ══ MOB HEAD ══ */
+.mob-head{display:none;background:var(--p);height:54px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:400}
+.mob-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
+.mob-logo{font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px}
+.mob-logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.mob-right{display:flex;align-items:center;gap:8px}
+.mob-notif-btn{position:relative;background:rgba(255,255,255,.12);border:none;cursor:pointer;padding:7px;color:#fff;display:flex;border-radius:9px}
+.mob-av-sm{width:30px;height:30px;border-radius:9px;background:var(--gold);color:var(--p2);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mob-out{background:rgba(255,255,255,.1);border:none;cursor:pointer;padding:6px;color:#fff;display:flex;border-radius:8px}
+.mob-badge{position:absolute;top:2px;left:2px;background:var(--red);color:#fff;font-size:9px;font-weight:900;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none}
+
+/* ══ BOTTOM NAV - محسّن ══ */
+.bnav{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--white);border-top:1px solid var(--border);
+  z-index:100;
+  padding:4px 0 calc(env(safe-area-inset-bottom,0px) + 6px);
+  box-shadow:0 -4px 20px rgba(27,58,107,.08)
+}
+.bnav::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--gold) 50%,transparent 100%)
+}
+.bnav-inner{display:flex;align-items:flex-end}
+.bni{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 2px 2px;border:none;background:none;cursor:pointer;
+  font-family:'Tajawal',sans-serif;color:var(--hint);transition:.2s;position:relative
+}
+.bni .bic{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.bni .bic svg{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.bni .bt{font-size:10px;font-weight:700;letter-spacing:.2px}
+.bni.on{color:var(--p)}
+.bni-bdg{
+  position:absolute;top:4px;right:calc(50% - 22px);
+  background:var(--red);color:#fff;font-size:9px;font-weight:900;
+  width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  border:1.5px solid var(--white)
+}
+
+/* ★ زر "تصفح" FAB المحسّن ★ */
+.bni-fab{
+  flex:0 0 80px;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-end;gap:5px;
+  padding-bottom:4px;
+  border:none;background:none;cursor:pointer;
+  font-family:'Tajawal',sans-serif;
+  position:relative;
+  margin-top:-22px
+}
+.bni-fab .fab-circle{
+  width:58px;height:58px;
+  background:linear-gradient(145deg,#F0A500,#c78500);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:
+    0 8px 24px rgba(240,165,0,.55),
+    0 3px 8px rgba(240,165,0,.35),
+    0 0 0 3px var(--white),
+    0 0 0 4px rgba(240,165,0,.2);
+  transition:all .28s cubic-bezier(.34,1.56,.64,1);
+  position:relative;z-index:1
+}
+.bni-fab .fab-circle::before{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  background:rgba(240,165,0,.12);
+  animation:fab-ring 2.5s ease-in-out infinite
+}
+@keyframes fab-ring{
+  0%,100%{transform:scale(1);opacity:.7}
+  50%{transform:scale(1.15);opacity:.2}
+}
+.bni-fab .fab-circle svg{stroke:#fff;fill:none;width:22px;height:22px;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1}
+.bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold-d);letter-spacing:.3px}
+.bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 4px 12px rgba(240,165,0,.4),0 0 0 3px var(--white)}
+.bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,165,0,.6),0 4px 10px rgba(240,165,0,.4),0 0 0 3px var(--white),0 0 0 5px rgba(240,165,0,.15)}
+
+.mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:250}
 .mob-btn{display:none;position:fixed;top:10px;left:10px;z-index:500;width:36px;height:36px;border-radius:9px;background:var(--p);border:none;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(27,58,107,.3)}
 .mob-btn svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:250}
 
+/* ══ RESPONSIVE ══ */
 @media(max-width:1024px){
   .sb{transform:translateX(110%)}
   .sb.open{transform:translateX(0)}
@@ -230,9 +305,11 @@ input,select,textarea{font-family:inherit;color:inherit}
   .mob-ov.show{display:block}
   .sg{grid-template-columns:repeat(2,1fr)}
   .c2{grid-template-columns:1fr}
-  .pg{padding:12px 14px}
+  .pg{padding:12px 14px;padding-bottom:90px}
   .g2{grid-template-columns:1fr}
-  .topbar{padding:0 48px 0 14px}
+  .topbar{padding:0 48px 0 14px;display:none}
+  .mob-head{display:flex}
+  .bnav{display:block}
 }
 </style>
 </head>
@@ -243,6 +320,7 @@ input,select,textarea{font-family:inherit;color:inherit}
 </button>
 <div class="mob-ov" id="mobOv" onclick="closeSb()"></div>
 
+<!-- ══ SIDEBAR ══ -->
 <aside class="sb" id="sb">
   <div class="sb-brand">
     <svg class="sb-net" viewBox="0 0 260 58" preserveAspectRatio="none">
@@ -315,6 +393,19 @@ input,select,textarea{font-family:inherit;color:inherit}
   </div>
 </aside>
 
+<!-- ══ MOB HEAD ══ -->
+<div class="mob-head">
+  <div class="mob-logo"><span class="mob-logo-dot"></span>مناقصة</div>
+  <div class="mob-right">
+    <button class="mob-notif-btn" onclick="go('notifications',null)">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="mob-badge" id="mobNBdg">0</span>
+    </button>
+    <div class="mob-av-sm" id="mobAvSm">م</div>
+    <button class="mob-out" onclick="logout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+  </div>
+</div>
+
 <div class="main">
   <header class="topbar">
     <div class="bc">
@@ -330,6 +421,38 @@ input,select,textarea{font-family:inherit;color:inherit}
   </header>
   <main class="pg" id="pg"><div class="ls"><div class="spin"></div><div class="ls-t">جاري التحميل…</div></div></main>
 </div>
+
+<!-- ══ BOTTOM NAV محسّن ══ -->
+<div class="bnav"><div class="bnav-inner">
+  <button class="bni" id="bn-home" onclick="go('home',null);setActive('bn-home')">
+    <div class="bic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+    <span class="bt">الرئيسية</span>
+  </button>
+  <button class="bni" id="bn-mybids" onclick="go('mybids',null);setActive('bn-mybids')">
+    <div class="bic"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+    <span class="bt">عروضي</span>
+  </button>
+
+  <!-- ★ زر تصفح FAB ★ -->
+  <button class="bni-fab" onclick="go('browse',null);setActive('bn-browse')">
+    <div class="fab-circle">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <span class="fab-label">تصفح</span>
+  </button>
+
+  <button class="bni" id="bn-myprojects" onclick="go('myprojects',null);setActive('bn-myprojects')">
+    <div class="bic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+    <span class="bt">مشاريعي</span>
+  </button>
+  <button class="bni" id="bn-chats" onclick="go('chats',null);setActive('bn-chats')">
+    <div class="bic" style="position:relative">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="bni-bdg" id="bn-chat-bdg">0</span>
+    </div>
+    <span class="bt">محادثات</span>
+  </button>
+</div></div>
 
 <div class="ov" id="ov">
   <div class="modal">
@@ -352,27 +475,28 @@ const AVC=['#1B3A6B','#2C5282','#1e40af','#166534','#92400e','#991b1b'];
 const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#3b82f6,#2563eb',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🔨'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'✨'},'نقل عفش':{g:'135deg,#6366f1,#4f46e5',ic:'🚛'},'حدادة':{g:'135deg,#64748b,#475569',ic:'⚙️'},'كاميرات مراقبة':{g:'135deg,#7c3aed,#6d28d9',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#0891b2,#0e7490',ic:'🌐'},'مظلات وسواتر':{g:'135deg,#d97706,#b45309',ic:'⛱️'},'مكافحة حشرات':{g:'135deg,#15803d,#166534',ic:'🐛'}};
 let allProjects=[],myBids=[],myProjects=[];
 
-// تهيئة
 document.getElementById('sbAv').textContent=(me.name||'م')[0];
 document.getElementById('sbNm').textContent=me.name||'المزود';
 setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});},1000);
 
-// جلب صورة المزود
+function setActive(id){
+  document.querySelectorAll('.bni').forEach(b=>b.classList.remove('on'));
+  const el=document.getElementById(id);if(el)el.classList.add('on');
+}
+
 async function api(path,opts={}){try{const r=await fetch(API+path,{headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},...opts});return await r.json();}catch{return{};}}
 
-// تطبيق صورة المزود
 function applyProviderAvatar(img){
-  const el=document.getElementById('sbAv');
-  if(!el)return;
-  if(img){el.innerHTML=`<img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block">`;el.style.padding='0';}
-  else{el.innerHTML='';el.textContent=(me.name||'م')[0];}
+  const els=[document.getElementById('sbAv'),document.getElementById('mobAvSm')];
+  els.forEach(el=>{
+    if(!el)return;
+    if(img){el.innerHTML=`<img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block">`;el.style.padding='0';}
+    else{el.innerHTML='';el.textContent=(me.name||'م')[0];}
+  });
 }
 applyProviderAvatar(localStorage.getItem('provider_avatar_'+me.id));
 api('/api/provider/profile').then(p=>{
-  if(p&&p.profile_image){
-    localStorage.setItem('provider_avatar_'+me.id,p.profile_image);
-    applyProviderAvatar(p.profile_image);
-  }
+  if(p&&p.profile_image){localStorage.setItem('provider_avatar_'+me.id,p.profile_image);applyProviderAvatar(p.profile_image);}
 }).catch(()=>{});
 
 let tT;
@@ -385,7 +509,13 @@ function openSb(){document.getElementById('sb').classList.add('open');document.g
 function closeSb(){document.getElementById('sb').classList.remove('open');document.getElementById('mobOv').classList.remove('show');}
 function logout(){localStorage.clear();location.href='auth.html';}
 const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',chats:'المحادثات',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
-function go(page,btn){document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));if(btn)btn.classList.add('on');document.getElementById('pgT').textContent=TITLES[page]||page;({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,chats:pgChats,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();closeSb();}
+function go(page,btn){
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  document.getElementById('pgT').textContent=TITLES[page]||page;
+  ({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,chats:pgChats,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();
+  closeSb();
+}
 function S(p,c='currentColor'){return`<svg viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
 const I={proj:`<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>`,send:`<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>`,star:`<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,chk:`<polyline points="20 6 9 17 4 12"/>`,eye:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`,usr:`<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>`,bell:`<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`,tool:`<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>`,save:`<path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>`,fold:`<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>`};
 const ac=(id)=>AVC[(id||0)%AVC.length];
@@ -407,13 +537,8 @@ async function pgHome(){
   document.getElementById('sRat').textContent=p.avg_rating?Number(p.avg_rating).toFixed(1):'—';
   setPage(`
     <div class="pghd">
-      <div>
-        <div class="pg-t">مرحباً، ${me.name||'المزود'}</div>
-        <div class="pg-s">لوحة تحكم المزود</div>
-      </div>
-      <div class="pghd-r">
-        <button class="btn btn-dk btn-sm" onclick="go('browse',null)">${S('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')} تصفح مشاريع</button>
-      </div>
+      <div><div class="pg-t">مرحباً، ${me.name||'المزود'}</div><div class="pg-s">لوحة تحكم المزود</div></div>
+      <div class="pghd-r"><button class="btn btn-dk btn-sm" onclick="go('browse',null)">${S('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')} تصفح مشاريع</button></div>
     </div>
     <div class="sg">
       <div class="sc s-navy"><div class="sc-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.proj,'#1B3A6B')}</div><div class="sc-v">${myProjects.length}</div><div class="sc-l">مشاريعي</div></div>
@@ -482,9 +607,7 @@ function renderBrowse(list){
       ?`<div style="position:relative;height:150px;overflow:hidden">
           <img src="${r.image_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='linear-gradient(${cs.g})';this.remove()">
           <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent)"></div>
-          <div style="position:absolute;bottom:12px;right:14px">
-            <div style="font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)">${r.category||''}</div>
-          </div>
+          <div style="position:absolute;bottom:12px;right:14px"><div style="font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)">${r.category||''}</div></div>
           <div style="position:absolute;top:12px;left:12px"><span style="background:rgba(22,163,74,.85);backdrop-filter:blur(8px);color:#fff;padding:4px 12px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.3px">● مفتوح</span></div>
         </div>`
       :`<div style="background:linear-gradient(135deg,${cs.g.replace('135deg,','')});padding:24px 20px 20px;position:relative;min-height:110px;overflow:hidden">
@@ -542,10 +665,7 @@ async function viewProjModal(id){
     <div class="ib-bl"><div class="ib-t">معلومات</div><div class="ir"><span class="ik">الميزانية</span><span class="iv">${fpr(r.budget_max)}</span></div><div class="ir"><span class="ik">الموعد النهائي</span><span class="iv">${fdt(r.deadline)}</span></div><div class="ir"><span class="ik">عدد العروض</span><span class="iv">${r.bid_count||0}</span></div><div class="ir"><span class="ik">تاريخ النشر</span><span class="iv">${fdt(r.created_at)}</span></div></div>
     ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--text2)">${r.description}</div></div>`:''}
     ${imgsHtml}${attsHtml}
-    <div class="ib-bl" style="border:1.5px solid var(--green);background:#f0fdf4">
-      <div class="ib-t" style="color:#065f46">التواصل مع صاحب الطلب</div>
-      <div class="ir"><span class="ik">الاسم</span><span class="iv">${r.client_name||'—'}</span></div>
-      ${r.client_phone?`<div class="ir"><span class="ik">الجوال</span><span class="iv"><a href="tel:${r.client_phone}" style="color:var(--green);font-weight:700;text-decoration:none">${r.client_phone}</a></span></div>`:''}`+
+    <div class="ib-bl" style="border:1.5px solid var(--green);background:#f0fdf4"><div class="ib-t" style="color:#065f46">التواصل مع صاحب الطلب</div><div class="ir"><span class="ik">الاسم</span><span class="iv">${r.client_name||'—'}</span></div>${r.client_phone?`<div class="ir"><span class="ik">الجوال</span><span class="iv"><a href="tel:${r.client_phone}" style="color:var(--green);font-weight:700;text-decoration:none">${r.client_phone}</a></span></div>`:''}`+
     `${r.client_phone?`<div style="display:flex;gap:8px;margin-top:10px"><a href="tel:${r.client_phone}" style="flex:1;text-align:center;background:var(--green);color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">اتصال</a><a href="https://wa.me/966${r.client_phone.replace(/^0/,'')}" target="_blank" style="flex:1;text-align:center;background:#25d366;color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">واتساب</a></div>`:''}</div>`,
     `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-dk" onclick="closeM();bidModal(${r.id},'${(r.title||'').replace(/'/g,'')}')">${S(I.send)} تقديم عرض</button>`,
     `<svg viewBox="0 0 24 24">${I.eye}</svg>`,'#e8eef7');
@@ -563,24 +683,26 @@ function renderMyBids(list){
     const colors={accepted:['#15803d','#dcfce7','#bbf7d0'],rejected:['#991b1b','#fee2e2','#fecaca'],pending:['#92400e','#fff8e7','#fde68a']};
     const [tc,bg,bc]=colors[b.status]||colors.pending;
     const sl=b.status==='accepted'?'✓ مقبول':b.status==='rejected'?'✕ مرفوض':'⏳ معلق';
-    return`<div style="background:#fff;border:none;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(27,58,107,.14)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 14px rgba(27,58,107,.09)'">
-      <div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>
+    // لون الحد الجانبي حسب الحالة
+    const borderColor=b.status==='accepted'?'var(--green)':b.status==='rejected'?'var(--red)':'var(--gold)';
+    return`<div style="background:#fff;border:1.5px solid var(--border);border-right:4px solid ${borderColor};border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(27,58,107,.07);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(27,58,107,.12)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 10px rgba(27,58,107,.07)'">
+      <div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>
         <div style="min-width:0;flex:1">
-          <div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.request_title||'مشروع #'+b.request_id}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5)">تقديم: ${fdt(b.created_at)}</div>
+          <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.request_title||'مشروع #'+b.request_id}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45)">تقديم: ${fdt(b.created_at)}</div>
         </div>
         <span style="background:${bg};color:${tc};border:1.5px solid ${bc};padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">${sl}</span>
       </div>
-      <div style="padding:16px 20px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:800">💰 ${fpr(b.price)}</span>
-          ${b.days||b.delivery_days?`<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700">⏱️ ${b.days||b.delivery_days} يوم</span>`:''}
+      <div style="padding:14px 18px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:800">💰 ${fpr(b.price)}</span>
+          ${b.days||b.delivery_days?`<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700">⏱️ ${b.days||b.delivery_days} يوم</span>`:''}
         </div>
-        ${b.note?`<div style="font-size:13px;color:var(--text2);line-height:1.8;padding:12px 14px;background:linear-gradient(135deg,#fafbff,#f4f7fb);border-radius:12px;border-right:4px solid #F0A500;margin-bottom:12px;font-style:italic">"${b.note}"</div>`:''}
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${b.status==='pending'?`<button onclick="deleteBid(${b.id})" style="padding:9px 16px;background:var(--red-l);color:var(--red);border:1.5px solid #fecaca;border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s">سحب العرض</button>`:''}
-          <button onclick="openBidChat(${b.request_id},${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}','${(b.request_title||'').replace(/'/g,'')}')" style="padding:9px 16px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.2s">
+        ${b.note?`<div style="font-size:12.5px;color:var(--text2);line-height:1.8;padding:10px 14px;background:var(--bg);border-radius:10px;border-right:3px solid var(--gold-d);margin-bottom:12px;font-style:italic">"${b.note}"</div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">
+          ${b.status==='pending'?`<button onclick="deleteBid(${b.id})" style="padding:8px 14px;background:var(--red-l);color:var(--red);border:1.5px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s">سحب العرض</button>`:''}
+          <button onclick="openBidChat(${b.request_id},${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}','${(b.request_title||'').replace(/'/g,'')}') " style="padding:8px 14px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.2s">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة
           </button>
         </div>
@@ -588,13 +710,7 @@ function renderMyBids(list){
     </div>`;
   }).join('');
 }
-function openBidChat(reqId,clientId,clientName,reqTitle){
-  // نفتح صفحة المحادثات مباشرة على هذه المحادثة
-  go('chats',document.getElementById('ni-chat'));
-  setTimeout(function(){
-    openChat(reqId,clientId,clientName,reqTitle);
-  },300);
-}
+function openBidChat(reqId,clientId,clientName,reqTitle){go('chats',document.getElementById('ni-chat'));setTimeout(function(){openChat(reqId,clientId,clientName,reqTitle);},300);}
 async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;await api(`/api/bids/${id}`,{method:'DELETE'});toast('تم سحب العرض','error');pgMyBids();}
 
 async function pgMyProjects(){
@@ -607,40 +723,40 @@ function renderMyProjects(list){
   if(!list.length)return`<div class="es"><div class="es-ic">${S(I.proj)}</div><div class="es-t">لا يوجد مشاريع</div></div>`;
   return list.map(r=>{
     const isProg=r.status==='in_progress';
-    const grad=isProg?'135deg,#92400e,#d97706':'135deg,#1B3A6B,#2C5282';
+    const borderColor=isProg?'var(--yellow)':'var(--green)';
     const statusBg=isProg?'#fff8e7':'#dcfce7';
     const statusClr=isProg?'#92400e':'#15803d';
     const statusBdr=isProg?'#fde68a':'#bbf7d0';
     const statusTxt=isProg?'⚡ جارٍ':'✓ مكتمل';
-    return`<div style="background:#fff;border:none;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(27,58,107,.14)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 14px rgba(27,58,107,.09)'">
-      <div style="background:linear-gradient(${grad});padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>
+    return`<div style="background:#fff;border:1.5px solid var(--border);border-right:4px solid ${borderColor};border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(27,58,107,.07);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(27,58,107,.12)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 10px rgba(27,58,107,.07)'">
+      <div style="background:linear-gradient(135deg,${isProg?'#78350f,#d97706':'#0f2548,#1B3A6B'});padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:relative">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>
         <div>
-          <div style="font-size:10px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.5px;margin-bottom:4px">${r.project_number||'#'+r.id}</div>
-          <div style="font-size:15px;font-weight:900;color:#fff">${r.title}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.5px;margin-bottom:3px">${r.project_number||'#'+r.id}</div>
+          <div style="font-size:14px;font-weight:900;color:#fff">${r.title}</div>
         </div>
         <span style="background:${statusBg};color:${statusClr};border:1.5px solid ${statusBdr};padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800">${statusTxt}</span>
       </div>
-      <div style="padding:14px 20px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${isProg?'12':'0'}px">
-          ${r.city?`<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">📍 ${r.city}</span>`:''}
-          ${r.category?`<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">${r.category}</span>`:''}
-          ${r.price?`<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 ${fpr(r.price)}</span>`:''}
+      <div style="padding:12px 18px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${isProg?'10':'0'}px">
+          ${r.city?`<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700">📍 ${r.city}</span>`:''}
+          ${r.category?`<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700">${r.category}</span>`:''}
+          ${r.price?`<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800">💰 ${fpr(r.price)}</span>`:''}
         </div>
-        ${isProg?`<div style="padding-top:12px;border-top:1px solid var(--border)"><button onclick="viewProjModal(${r.id})" style="padding:9px 18px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.2s">${S(I.eye,'var(--p)')} عرض التفاصيل</button></div>`:''}
+        ${isProg?`<div style="padding-top:10px;border-top:1px solid var(--border)"><button onclick="viewProjModal(${r.id})" style="padding:8px 16px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.2s">${S(I.eye,'var(--p)')} عرض التفاصيل</button></div>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
 // ══ المحادثات ══
-let curChat=null; // {request_id, client_id, title}
-
+let curChat=null;
 async function pgChats(){
   loading();
   const convs=await api('/api/provider/conversations')||[];
   const totalUnread=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
   const nb=document.getElementById('nbChat');if(nb){nb.style.display=totalUnread?'':'none';nb.textContent=totalUnread;}
+  const bnChatBdg=document.getElementById('bn-chat-bdg');if(bnChatBdg){bnChatBdg.style.display=totalUnread?'flex':'none';bnChatBdg.textContent=totalUnread;}
   if(!convs.length){
     setPage(`<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">لا توجد محادثات بعد</div></div></div>
       <div class="card card-accent"><div class="cb"><div class="es"><div class="es-ic">${S('<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>')}</div><div class="es-t">لا توجد محادثات</div><div class="es-s">ستظهر محادثاتك مع العملاء هنا</div></div></div></div>`);
@@ -652,7 +768,6 @@ async function pgChats(){
     </div>
     <div id="chatBox" style="display:none"></div>`);
 }
-
 function renderConvList(convs){
   return convs.map(cv=>{
     const unread=parseInt(cv.unread||0);
@@ -673,7 +788,6 @@ function renderConvList(convs){
     </div>`;
   }).join('');
 }
-
 function openChat(reqId,clientId,clientName,reqTitle){
   curChat={request_id:reqId,client_id:clientId,name:clientName,title:reqTitle};
   const box=document.getElementById('chatBox');
@@ -686,10 +800,7 @@ function openChat(reqId,clientId,clientName,reqTitle){
         <div class="ch">
           <div class="ch-l">
             <button onclick="backToConvList()" style="background:none;border:none;cursor:pointer;padding:4px 8px 4px 0;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
-            <div>
-              <div class="ch-t">${clientName}</div>
-              <div class="ch-s">${reqTitle}</div>
-            </div>
+            <div><div class="ch-t">${clientName}</div><div class="ch-s">${reqTitle}</div></div>
           </div>
         </div>
         <div class="cb" style="padding-bottom:8px">
@@ -705,13 +816,7 @@ function openChat(reqId,clientId,clientName,reqTitle){
     loadProviderMsgs();
   }
 }
-
-function backToConvList(){
-  curChat=null;
-  const box=document.getElementById('chatBox');if(box)box.style.display='none';
-  const card=document.getElementById('convList')?.parentElement;if(card)card.style.display='';
-}
-
+function backToConvList(){curChat=null;const box=document.getElementById('chatBox');if(box)box.style.display='none';const card=document.getElementById('convList')?.parentElement;if(card)card.style.display='';}
 async function loadProviderMsgs(){
   if(!curChat)return;
   const msgs=await api('/api/messages/'+curChat.request_id)||[];
@@ -727,7 +832,6 @@ async function loadProviderMsgs(){
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
-
 async function sendProviderMsg(){
   const inp=document.getElementById('msgInp');
   if(!inp||!inp.value.trim()||!curChat)return;
@@ -735,12 +839,11 @@ async function sendProviderMsg(){
   await api('/api/messages',{method:'POST',body:JSON.stringify({request_id:curChat.request_id,receiver_id:curChat.client_id,content})});
   loadProviderMsgs();
 }
-
-// تحديث عداد المحادثات كل 30 ثانية
 async function updateChatBadge(){
   const convs=await api('/api/provider/conversations')||[];
   const total=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
   const nb=document.getElementById('nbChat');if(nb){nb.style.display=total?'':'none';nb.textContent=total;}
+  const bnBdg=document.getElementById('bn-chat-bdg');if(bnBdg){bnBdg.style.display=total?'flex':'none';bnBdg.textContent=total;}
 }
 setInterval(updateChatBadge,30000);
 
@@ -791,15 +894,12 @@ async function pgProfile(){
       </div>
     </div>
     <div class="card" style="margin-bottom:14px">
-      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div><div class="ch-t">اهتمامات الإشعارات</div><div class="ch-s">حد أقصى 3 تخصصات — ستصلك إشعارات عند نشر مشروع في هذه التخصصات</div></div></div><span id="specsCounter" style="font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:4px 10px;border-radius:20px">${(p.specialties||[]).length}/3</span></div>
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div><div class="ch-t">اهتمامات الإشعارات</div><div class="ch-s">حد أقصى 3 تخصصات</div></div></div><span id="specsCounter" style="font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:4px 10px;border-radius:20px">${(p.specialties||[]).length}/3</span></div>
       <div class="cb">
-        <div style="background:var(--gold-l);border:1px solid #fde68a;border-right:3px solid var(--gold);border-radius:9px;padding:10px 14px;margin-bottom:14px">
-          <p style="font-size:12px;color:#92400e;font-weight:600;margin:0">🔔 اختر حتى 3 تخصصات لتصلك إشعارات فور نشر مشروع جديد مطابق</p>
-        </div>
+        <div style="background:var(--gold-l);border:1px solid #fde68a;border-right:3px solid var(--gold);border-radius:9px;padding:10px 14px;margin-bottom:14px"><p style="font-size:12px;color:#92400e;font-weight:600;margin:0">🔔 اختر حتى 3 تخصصات لتصلك إشعارات فور نشر مشروع جديد مطابق</p></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="toggleSpec(this)" style="padding:7px 14px;border-radius:20px;border:1.5px solid ${on?'#1B3A6B':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--bg)'};color:${on?'#fff':'var(--p)'};transition:all .15s;margin-bottom:4px" class="spec-btn${on?' on':''}">${c}</button>`;}).join('')}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn btn-dk btn-sm" onclick="saveSpecs()"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> حفظ الاهتمامات</button>
-          <span style="font-size:11px;color:var(--muted)">تُنقل تلقائياً لقائمة الإشعارات</span>
         </div>
       </div>
     </div>
@@ -836,28 +936,20 @@ function previewAvatar(input){
   reader.onload=async e=>{
     const img=e.target.result;
     document.getElementById('avatarPreview').innerHTML=`<img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-    applyProviderAvatar(img);
-    localStorage.setItem('provider_avatar_'+me.id,img);
+    applyProviderAvatar(img);localStorage.setItem('provider_avatar_'+me.id,img);
     await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:img})});
     toast('تم حفظ الصورة','success');
   };
   reader.readAsDataURL(file);
 }
-async function removeAvatar(){
-  await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:null})});
-  localStorage.removeItem('provider_avatar_'+me.id);
-  applyProviderAvatar(null);
-  toast('تم حذف الصورة','success');
-  pgProfile();
-}
+async function removeAvatar(){await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:null})});localStorage.removeItem('provider_avatar_'+me.id);applyProviderAvatar(null);toast('تم حذف الصورة','success');pgProfile();}
 async function addPortfolioImgs(input){
   const files=[...input.files].slice(0,6);if(!files.length)return;
   toast('جاري الرفع...','info');
   for(let i=0;i<files.length;i++){
     const file=files[i];
     if(file.size>5*1024*1024){toast('صورة '+file.name+' أكبر من 5MB','error');continue;}
-    try{
-      const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+    try{const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
       const result=await api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:base64})});
       if(result.message&&!result.ok){toast(result.message,'error');break;}
     }catch{toast('فشل رفع الصورة','error');}
@@ -867,28 +959,20 @@ async function addPortfolioImgs(input){
 async function removePortfolioImg(index){await api('/api/provider/profile/portfolio/'+index,{method:'DELETE'});toast('تم حذف الصورة','success');pgProfile();}
 function toggleSpec(btn){
   const selected=[...document.querySelectorAll('.spec-btn.on')];
-  if(!btn.classList.contains('on')&&selected.length>=3){
-    toast('الحد الأقصى 3 تخصصات فقط','error');
-    btn.style.animation='shake .3s';setTimeout(()=>btn.style.animation='',300);
-    return;
-  }
+  if(!btn.classList.contains('on')&&selected.length>=3){toast('الحد الأقصى 3 تخصصات فقط','error');btn.style.animation='shake .3s';setTimeout(()=>btn.style.animation='',300);return;}
   btn.classList.toggle('on');
   btn.style.background=btn.classList.contains('on')?'#1B3A6B':'var(--bg)';
   btn.style.color=btn.classList.contains('on')?'#fff':'var(--p)';
   btn.style.borderColor=btn.classList.contains('on')?'#1B3A6B':'var(--border)';
   const count=[...document.querySelectorAll('.spec-btn.on')].length;
   const counter=document.getElementById('specsCounter');
-  if(counter)counter.textContent=count+'/3';
-  if(counter){counter.style.color=count>=3?'var(--gold-d)':'var(--p)';counter.style.background=count>=3?'var(--gold-l)':'var(--p-light)';}
+  if(counter){counter.textContent=count+'/3';counter.style.color=count>=3?'var(--gold-d)':'var(--p)';counter.style.background=count>=3?'var(--gold-l)':'var(--p-light)';}
 }
 async function saveSpecs(){
   const specs=[...document.querySelectorAll('.spec-btn.on')].map(b=>b.textContent.trim());
   if(!specs.length){toast('اختر تخصصاً واحداً على الأقل','error');return;}
   const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs,notify_categories:specs})});
-  if(r.id){
-    document.getElementById('sbNm').textContent=r.name||'المزود';
-    toast('✅ تم حفظ الاهتمامات — ستصلك إشعارات لهذه التخصصات','success');
-  } else toast(r.message||'حدث خطأ','error');
+  if(r.id){document.getElementById('sbNm').textContent=r.name||'المزود';toast('✅ تم حفظ الاهتمامات','success');}else toast(r.message||'حدث خطأ','error');
 }
 async function changePw(){const oldPw=document.getElementById('pwOld')?.value;const newPw=document.getElementById('pwNew')?.value;if(!oldPw||!newPw){toast('اكمل البيانات','error');return;}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:newPw})});if(res.message&&res.message.includes('success')){toast('تم تغيير كلمة المرور','success');}else{toast(res.message||'حدث خطأ','error');}}
 async function saveAllProfile(){
@@ -915,6 +999,7 @@ async function markAllRead(){await api('/api/provider/notifications/read',{metho
 
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
 go('home',document.querySelector('.ni.on'));
+setActive('bn-home');
 updateChatBadge();
 </script>
 </body>
