@@ -1396,6 +1396,27 @@ app.get('/api/conversations', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── محادثات المزود (قائمة كل المشاريع التي فيها رسائل) ──
+app.get('/api/provider/conversations', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT DISTINCT ON (r.id)
+        r.id as request_id, r.title as request_title, r.client_id,
+        u.name as client_name, u.profile_image as client_image,
+        m.content as last_message, m.created_at as last_time,
+        m.sender_id as last_sender,
+        (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
+      FROM messages m
+      JOIN requests r ON m.request_id=r.id
+      JOIN users u ON r.client_id=u.id
+      WHERE (m.sender_id=$1 OR m.receiver_id=$1)
+      ORDER BY r.id, m.created_at DESC`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const r = await pool.query(`
