@@ -725,12 +725,22 @@ function closeSb(){document.getElementById('sb').classList.remove('open');docume
 function logout(){localStorage.clear();location.href='auth.html';}
 const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',chats:'المحادثات',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
 function go(page,btn){
+ history.replaceState(null,'','#'+page);
  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
  if(btn)btn.classList.add('on');
  document.getElementById('pgT').textContent=TITLES[page]||page;
  ({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,chats:pgChats,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();
  closeSb();
 }
+function restorePage(){
+ const hash=location.hash.replace('#','');
+ const pages=['home','browse','mybids','myprojects','chats','reviews','profile','notifications'];
+ if(hash&&pages.includes(hash)){
+   const btn=[...document.querySelectorAll('.ni')].find(n=>n.onclick&&n.onclick.toString().includes("'"+hash+"'"));
+   go(hash,btn||null);
+ }
+}
+
 function S(p,c='currentColor'){return`<svg viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
 const I={proj:`<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>`,send:`<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>`,star:`<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,chk:`<polyline points="20 6 9 17 4 12"/>`,eye:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`,usr:`<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>`,bell:`<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`,tool:`<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>`,save:`<path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>`,fold:`<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>`};
 const ac=(id)=>AVC[(id||0)%AVC.length];
@@ -1126,9 +1136,10 @@ async function pgNotifications(){
 async function markAllRead(){await api('/api/provider/notifications/read',{method:'PUT'});toast('تم التحديث','success');pgNotifications();}
 
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
-go('home',document.querySelector('.ni.on'));
 setActive('bn-home');
 updateChatBadge();
+const _hash=location.hash.replace('#','');
+if(_hash&&['home','browse','mybids','myprojects','chats','reviews','profile','notifications'].includes(_hash)){setTimeout(function(){restorePage();},50);}else{go('home',document.querySelector('.ni.on'));}
 
 
 
@@ -1304,15 +1315,18 @@ async function openChatScreen(reqId,receiverId,partnerName,projTitle,showBack){
 
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
 
-async function loadChatMessages(reqId,receiverId){
+async function loadChatMessages(reqId, receiverId){
+  const box = document.getElementById('chatMsgsBox');
   try{
-    // Use the dashboard's api() for proper auth handling
-    const msgs = await api('/api/messages/'+reqId) || [];
-    const arr = Array.isArray(msgs) ? msgs : [];
-    renderChatHistory(arr, receiverId);
+    // استخدام fetch مباشرة يعمل في كلا الداشبورد
+    const r = await fetch(API + '/api/messages/' + reqId, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const msgs = await r.json();
+    renderChatHistory(Array.isArray(msgs) ? msgs : [], receiverId);
   } catch(e) {
-    const b = document.getElementById('chatMsgsBox');
-    if(b) b.innerHTML = '<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
+    if(box) box.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--muted)"><div style="font-size:30px;opacity:.3">⚠️</div><div style="font-size:12px">تعذر تحميل الرسائل</div></div>';
   }
 }
 
