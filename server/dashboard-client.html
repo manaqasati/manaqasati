@@ -6,6 +6,22 @@
 <title>مناقصة — لوحة العميل</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ══ CHAT DETAIL PAGE ══ */
+#chatDetailPage {
+  display: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  flex-direction: column;
+  background: #f0f4f8;
+  z-index: 9999 !important;
+  overflow: hidden;
+}
+
 :root{
   --p:#1B3A6B;--p2:#142d54;--p3:#2C5282;
   --p-light:#e8eef7;--p-mid:#c5d6ee;
@@ -197,8 +213,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .chat-msgs::-webkit-scrollbar{width:3px}
 .chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .msg-bubble{max-width:72%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6}
-.msg-me{background:var(--p);color:#fff;align-self:flex-end;border-radius:16px 16px 4px 16px}
-.msg-other{background:var(--white);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
+
+
 .msg-name{font-size:10px;font-weight:700;margin-bottom:2px;opacity:.65}
 .msg-time{font-size:10px;opacity:.5;margin-top:3px;text-align:left}
 .chat-input{display:flex;gap:8px}
@@ -425,20 +441,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 ═══════════════════════════════════════════════════ */
 
 /* ── Chat Detail Page (fullscreen) ── */
-#chatDetailPage {
-  display: none;
-  position: fixed;
-  inset: 0;
-  flex-direction: column;
-  background: #f0f4f8;
-  z-index: 200;
-}
-@media(min-width:769px){
-  #chatDetailPage {
-    position: absolute;
-    right: 260px; /* sidebar width */
-  }
-}
+#
 
 /* ── Chat Header ── */
 .chat-hdr {
@@ -745,23 +748,25 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* ── Toast ── */
 .chat-toast {
   position: fixed;
-  top: 68px;
+  top: 12px;
   left: 50%;
-  transform: translateX(-50%) translateY(-16px);
+  transform: translateX(-50%) translateY(-20px);
   background: #1B3A6B;
   color: #fff;
   padding: 10px 18px;
   border-radius: 12px;
-  font-size: 12px; font-weight: 700;
-  z-index: 9999;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 10000;
   opacity: 0;
   pointer-events: none;
-  display: flex; align-items: center; gap: 8px;
-  box-shadow: 0 6px 20px rgba(27,58,107,.3);
-  max-width: 320px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: all .28s cubic-bezier(.34,1.56,.64,1);
-  font-family: 'Tajawal', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1);
+  white-space: nowrap;
+  max-width: 90vw;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
 }
 .chat-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -1197,12 +1202,16 @@ function hdr(){return{headers:{'Content-Type':'application/json','Authorization'
 fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
   if(p&&p.profile_image){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
 }).catch(function(){});
-function show(pg,el,key){
+function show(pg,el_arg,key){
+  // إخفاء المحادثة عند التنقل
+  var _cdp = document.getElementById('chatDetailPage');
+  if(_cdp) _cdp.style.display = 'none';
+  Chat.stopPoll();
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
   document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
   document.getElementById('page-'+pg).className='page on';
-  if(el)el.className='ni on';
+  if(el_arg)el_arg.className='ni on';
   if(key){var b=document.getElementById('bn-'+key);if(b)b.className='bni on';}
   var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'ملفي الشخصي',chats:'المحادثات'};
   document.getElementById('pageTitle').textContent=t[pg]||'';
@@ -1712,6 +1721,10 @@ const Chat = (function(){
 
   // ── Open Chat ────────────────────────────────────────────────
   function openChat(reqId, partnerId, partnerName, partnerImg){
+    // Clear input
+    var inp = el('chatInput'); if(inp){ inp.value=''; inp.style.height='auto'; }
+    // Clear typing
+    hideTyping();
     // Stop previous poll
     if(state.poll) clearInterval(state.poll);
     hideTyping();
@@ -1765,7 +1778,7 @@ const Chat = (function(){
   // ── Render messages ──────────────────────────────────────────
   function renderMsgs(){
     const box = el('chatBox'); if(!box) return;
-    const myId = parseInt(user.id);
+    const myId = parseInt(user && user.id ? user.id : localStorage.getItem('user_id') || 0);
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
     const hadTyping = !!el('typingBubble');
 
@@ -1916,7 +1929,8 @@ const Chat = (function(){
 (function(){
   // Back button
   document.getElementById('chatBackBtn').addEventListener('click', function(){
-    document.getElementById('chatDetailPage').style.display = 'none';
+    var cdp = document.getElementById('chatDetailPage');
+    cdp.style.display = 'none';
     Chat.stopPoll();
   });
   // Send button
