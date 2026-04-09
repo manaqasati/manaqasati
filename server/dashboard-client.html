@@ -1218,7 +1218,7 @@ function loadBids(id){
           +'<button class="bid-act-btn bid-accept" data-id="'+b.id+'" data-req="'+id+'" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 3px 10px rgba(22,163,74,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'
           +(_ph?'<a href="tel:'+_ph+'" style="padding:11px 14px;border-radius:12px;font-size:13px;font-weight:800;background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'
              +'<a href="https://wa.me/'+_wa+'" target="_blank" style="padding:11px 14px;border-radius:12px;font-size:13px;font-weight:800;background:#dcfce7;color:#166534;border:1.5px solid #bbf7d0;text-decoration:none;display:inline-flex;align-items:center;gap:6px">واتساب</a>':'')
-          +'<button class="bid-act-btn bid-chat" data-req="'+id+'" data-pid="'+b.provider_id+'" style="background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
+          +'<button class="bid-act-btn bid-chat" data-req="'+id+'" data-pid="'+b.provider_id+'" data-name="'+b.provider_name+'" data-img="'+_pi+'" style="background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
           +'<button class="bid-act-btn bid-profile" data-pid="'+b.provider_id+'" style="background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'
           +'<button class="bid-act-btn bid-reject" data-id="'+b.id+'" data-req="'+id+'" style="background:var(--red-l);color:var(--red);border:1.5px solid #fecaca">رفض</button>'
           +'</div>';
@@ -1226,7 +1226,7 @@ function loadBids(id){
         acts='<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'
           +(_ph?'<a href="tel:'+_ph+'" style="padding:11px 14px;border-radius:12px;font-size:13px;font-weight:800;background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'
              +'<a href="https://wa.me/'+_wa+'" target="_blank" style="padding:11px 14px;border-radius:12px;font-size:13px;font-weight:800;background:#dcfce7;color:#166534;border:1.5px solid #bbf7d0;text-decoration:none;display:inline-flex;align-items:center;gap:6px">واتساب</a>':'')
-          +'<button class="bid-act-btn bid-chat" data-req="'+id+'" data-pid="'+b.provider_id+'" style="background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
+          +'<button class="bid-act-btn bid-chat" data-req="'+id+'" data-pid="'+b.provider_id+'" data-name="'+b.provider_name+'" data-img="'+_pi+'" style="background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
           +'<button class="bid-act-btn bid-profile" data-pid="'+b.provider_id+'" style="background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف المزود</button>'
           +'</div>';
       } else { acts=''; };
@@ -1262,7 +1262,7 @@ function loadBids(id){
       var btn=e.target.closest('.bid-act-btn');if(!btn)return;
       if(btn.classList.contains('bid-accept'))  acceptBid(btn.dataset.id, btn.dataset.req);
       if(btn.classList.contains('bid-reject'))  rejectBid(btn.dataset.id, btn.dataset.req);
-      if(btn.classList.contains('bid-chat'))    openChatDetail(btn.dataset.req, btn.dataset.pid);
+      if(btn.classList.contains('bid-chat'))    openChatDetail(btn.dataset.req, btn.dataset.pid, btn.dataset.name||'مزود', btn.dataset.img||'');
       if(btn.classList.contains('bid-profile')) openProviderProfile(btn.dataset.pid);
     };
   }
@@ -1501,13 +1501,25 @@ function loadChatsList(){
     var html = '<div class="card card-accent" style="margin:16px;border-radius:14px;overflow:hidden;padding:0">';
     convs.forEach(function(cv){
       var name    = cv.other_name || 'مزود';
-      var img     = ''; // no image from this endpoint
+      var img = _imgCache[cv.provider_id] || '';
+      // Fetch provider profile if not cached
+      if(!_pCache[cv.provider_id] && cv.provider_id){
+        (function(pid,nm){
+          fetch(API+'/api/provider/'+pid+'/profile',{headers:{'Authorization':'Bearer '+token}})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            if(d){ _pCache[pid]=d; if(d.profile_image){ _imgCache[pid]=d.profile_image; } }
+          }).catch(function(){});
+        })(cv.provider_id, name);
+      }
+      // Store name in cache
+      if(cv.provider_id){ _pCache[cv.provider_id]=_pCache[cv.provider_id]||{}; _pCache[cv.provider_id].name=name; }
       var avHtml  = img ? '<img src="'+img+'">' : name[0];
       var unread  = parseInt(cv.unread_count||0);
       var time    = cv.last_msg_at ? _formatTime(cv.last_msg_at) : '';
       var lastMsg = cv.last_msg || '';
       var title   = cv.request_title || '';
-      html += '<div class="conv-list-item" onclick="openChatDetail('+cv.request_id+','+cv.provider_id+')" data-req="'+cv.request_id+'" data-pid="'+cv.provider_id+'">'
+      html += '<div class="conv-list-item" data-req="'+cv.request_id+'" data-pid="'+cv.provider_id+'" data-name="'+_esc(name)+'" data-img="'+_esc(img)+'">'
         + '<div class="conv-av-lg">'+avHtml+'</div>'
         + '<div class="conv-meta">'
         +   '<div class="conv-top-row">'
@@ -1522,6 +1534,18 @@ function loadChatsList(){
     });
     html += '</div>';
     wrap.innerHTML = '<div class="pghd" style="padding:16px 16px 0"><div><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div></div>' + html;
+    // Event delegation for conv items
+    wrap.onclick = function(e){
+      var item = e.target.closest('.conv-list-item');
+      if(!item) return;
+      var pid  = item.dataset.pid;
+      var req  = item.dataset.req;
+      var name = item.dataset.name || 'مزود';
+      var img  = item.dataset.img  || '';
+      // Store in cache so openChatDetail uses correct name
+      if(pid){ _pCache[pid] = _pCache[pid]||{}; _pCache[pid].name = name; if(img) _imgCache[pid] = img; }
+      openChatDetail(req, pid);
+    };
   })
   .catch(function(){
     wrap.innerHTML = '<div class="loading">تعذر التحميل</div>';
@@ -1529,10 +1553,11 @@ function loadChatsList(){
 }
 
 // ── Open Chat Detail (standalone page) ──────────────────────
-function openChatDetail(reqId, providerId){
-  // Get provider name from cache or conv list
-  var pName  = (_pCache[providerId]||{}).name || 'مزود';
-  var pImg   = _imgCache[providerId] || (_pCache[providerId]||{}).profile_image || '';
+function openChatDetail(reqId, providerId, passedName, passedImg){
+  var pName = passedName || (_pCache[providerId]||{}).name || 'مزود';
+  var pImg  = passedImg  || _imgCache[providerId] || (_pCache[providerId]||{}).profile_image || '';
+  if(passedName && providerId){ _pCache[providerId]=_pCache[providerId]||{}; _pCache[providerId].name=passedName; }
+  if(passedImg  && providerId){ _imgCache[providerId]=passedImg; }
 
   _chatState.reqId        = parseInt(reqId);
   _chatState.receiverId   = parseInt(providerId);
@@ -1748,7 +1773,7 @@ function _sendChatMsg(){
 
 // openChatDetail alias for bid buttons
 function startChat(reqId, pid, pname){
-  openChatDetail(reqId, pid);
+  openChatDetail(reqId, pid, pname);
 }
 
 // ── Chat badge ───────────────────────────────────────────────
