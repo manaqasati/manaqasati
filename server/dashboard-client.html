@@ -1106,20 +1106,45 @@ function loadBids(id){
 function loadChat(id){var wrap=document.getElementById('chat-list');wrap.innerHTML='<div class="loading">جاري التحميل...</div>';if(!curChatReceiver){wrap.innerHTML=emptyH('اختر مزوداً','اذهب لتبويب العروض واضغط محادثة');return;}renderChat(id);}
 function startChat(reqId,providerId,providerName){curChatReceiver={id:providerId,name:providerName};document.querySelectorAll('.tab-btn')[1].click();}
 function renderChat(id){
+  if(!curChatReceiver){
+    document.getElementById('chat-list').innerHTML=emptyH('اختر مزوداً','اذهب لتبويب العروض واضغط محادثة');
+    return;
+  }
   fetch(API+'/api/messages/'+id,hdr()).then(function(r){return r.json();}).then(function(msgs){
-    var wrap=document.getElementById('chat-list');
+    var wrap=document.getElementById('chat-list');if(!wrap)return;
     var msgsHtml='';
-    if(!msgs.length){msgsHtml='<div style="text-align:center;color:var(--muted);font-size:12px;margin:auto">ابدأ المحادثة</div>';}
-    msgs.forEach(function(m){var isMe=m.sender_id==user.id;msgsHtml+='<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'">'+(!isMe?'<div class="msg-name">'+m.sender_name+'</div>':'')+m.content+'<div class="msg-time">'+timeAgo(m.created_at)+'</div></div>';});
-    wrap.innerHTML='<div class="chat-wrap"><div class="chat-msgs" id="msgs-box">'+msgsHtml+'</div><div class="chat-input"><input class="chat-inp" id="chat-inp" placeholder="اكتب رسالة..."><button class="chat-send" id="chat-send-btn">إرسال</button></div></div>';
+    if(!msgs.length){msgsHtml='<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">ابدأ المحادثة مع '+curChatReceiver.name+'</div>';}
+    msgs.forEach(function(m){
+      var isMe=m.sender_id==user.id;
+      msgsHtml+='<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'">'+
+        (!isMe?'<div class="msg-name">'+m.sender_name+'</div>':'')+
+        m.content+
+        '<div class="msg-time">'+timeAgo(m.created_at)+'</div></div>';
+    });
+    wrap.innerHTML=
+      '<div style="background:var(--p-light);border-radius:9px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--p);font-weight:700">'+
+      '💬 محادثة مع '+curChatReceiver.name+'</div>'+
+      '<div class="chat-wrap">'+
+        '<div class="chat-msgs" id="msgs-box">'+msgsHtml+'</div>'+
+        '<div class="chat-input">'+
+          '<input class="chat-inp" id="chat-inp" placeholder="اكتب رسالتك...">'+
+          '<button class="chat-send" id="chat-send-btn">إرسال</button>'+
+        '</div>'+
+      '</div>';
     var box=document.getElementById('msgs-box');if(box)box.scrollTop=box.scrollHeight;
     var inp=document.getElementById('chat-inp');
     var btn=document.getElementById('chat-send-btn');
-    if(inp)inp.addEventListener('keydown',function(e){if(e.key=='Enter')sendMsg(id);});
+    if(inp){inp.focus();inp.addEventListener('keydown',function(e){if(e.key=='Enter')sendMsg(id);});}
     if(btn)btn.addEventListener('click',function(){sendMsg(id);});
-  });
+  }).catch(function(){document.getElementById('chat-list').innerHTML=errH();});
 }
-function sendMsg(reqId){var inp=document.getElementById('chat-inp');if(!inp||!inp.value.trim()||!curChatReceiver)return;var content=inp.value.trim();inp.value='';fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:reqId,receiver_id:curChatReceiver.id,content:content})},hdr())).then(function(){renderChat(reqId);});}
+function sendMsg(reqId){
+  var inp=document.getElementById('chat-inp');
+  if(!inp||!inp.value.trim()||!curChatReceiver)return;
+  var content=inp.value.trim();inp.value='';inp.focus();
+  fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:reqId,receiver_id:curChatReceiver.id,content:content})},hdr()))
+    .then(function(){renderChat(reqId);});
+}
 function openProviderProfile(providerId){
   // نفتح overlay مخصص لملف المزود
   var overlay=document.getElementById('providerOverlay');
