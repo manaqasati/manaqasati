@@ -1399,40 +1399,45 @@ function wsSend(data) {
   return false;
 }
 
-function handleWSEvent(data) {
-  if (data.type === 'message') {
-    const msg = data.message;
-    // إذا المحادثة مفتوحة وتخص هذا الطلب — أضف الرسالة فوراً
-    if (currentChatReqId && parseInt(msg.request_id) == parseInt(currentChatReqId)) {
-      appendMessage(msg, false);
-      scrollToBottom();
-      // أرسل إشعار القراءة
-      wsSend({ type: 'read', request_id: msg.request_id, sender_id: msg.sender_id });
-      // أخفِ مؤشر الكتابة
-      hideTyping();
+function handleWSEvent(data){
+  if(data.type==='message'){
+    const msg=data.message;
+    const myId=parseInt(getChatUser().id);
+    const isMyMsg=parseInt(msg.sender_id)===myId;
+
+    if(currentChatReqId&&parseInt(msg.request_id)===parseInt(currentChatReqId)){
+      if(isMyMsg){
+        // رسالتي — لا نضيفها مرة ثانية، فقط نحدّث التيك من temp → delivered
+        const tmpEls=document.querySelectorAll('[data-msg-id^="tmp_"]');
+        if(tmpEls.length){
+          const last=tmpEls[tmpEls.length-1];
+          last.dataset.msgId=msg.id;
+          const sw=last.querySelector('.msg-ticks');
+          if(sw)sw.innerHTML='<svg viewBox="0 0 16 10"><polyline class="tick-delivered" points="1,5 5,9 10,1"/><polyline class="tick-delivered" points="5,5 9,9 14,1"/></svg>';
+        }
+      } else {
+        // رسالة الطرف الآخر — نعرضها
+        appendMessage(msg,false);
+        scrollToBottom();
+        hideTyping();
+        wsSend({type:'read',request_id:msg.request_id,sender_id:msg.sender_id});
+      }
     } else {
-      // أشعار بالرسالة الجديدة
-      showMsgNotif(msg.sender_name, msg.content);
-      // حدّث عداد الشارة
-      updateChatBadge();
+      if(!isMyMsg){
+        showMsgNotif(msg.sender_name||'رسالة',msg.content);
+        updateChatBadge();
+      }
     }
   }
-
-  if (data.type === 'typing') {
-    if (currentChatReqId && parseInt(data.request_id) == parseInt(currentChatReqId) && parseInt(data.from) != (me?.id || user?.id)) {
-      if (data.is_typing) showTyping();
-      else hideTyping();
+  if(data.type==='typing'){
+    if(currentChatReqId&&parseInt(data.request_id)===parseInt(currentChatReqId)&&parseInt(data.from)!==parseInt(getChatUser().id)){
+      data.is_typing?showTyping():hideTyping();
     }
   }
-
-  if (data.type === 'read') {
-    if (currentChatReqId && parseInt(data.request_id) == parseInt(currentChatReqId)) {
-      // حدّث علامات القراءة في الرسائل المرسلة
-      markMsgsAsRead();
-    }
+  if(data.type==='read'){
+    if(currentChatReqId&&parseInt(data.request_id)===parseInt(currentChatReqId))markMsgsAsRead();
   }
 }
-
 // ── Typing Events ──
 function onInputChange() {
   if (!currentChatReqId || !currentChatReceiverId) return;
@@ -1858,4 +1863,42 @@ function closeProviderProfile(){const o=document.getElementById('providerOverlay
 initWS();
 </script>
 </body>
-</html>
+</html>function handleWSEvent(data){
+  if(data.type==='message'){
+    const msg=data.message;
+    const myId=parseInt(getChatUser().id);
+    const isMyMsg=parseInt(msg.sender_id)===myId;
+
+    if(currentChatReqId&&parseInt(msg.request_id)===parseInt(currentChatReqId)){
+      if(isMyMsg){
+        // رسالتي — لا نضيفها مرة ثانية، فقط نحدّث التيك من temp → delivered
+        const tmpEls=document.querySelectorAll('[data-msg-id^="tmp_"]');
+        if(tmpEls.length){
+          const last=tmpEls[tmpEls.length-1];
+          last.dataset.msgId=msg.id;
+          const sw=last.querySelector('.msg-ticks');
+          if(sw)sw.innerHTML='<svg viewBox="0 0 16 10"><polyline class="tick-delivered" points="1,5 5,9 10,1"/><polyline class="tick-delivered" points="5,5 9,9 14,1"/></svg>';
+        }
+      } else {
+        // رسالة الطرف الآخر — نعرضها
+        appendMessage(msg,false);
+        scrollToBottom();
+        hideTyping();
+        wsSend({type:'read',request_id:msg.request_id,sender_id:msg.sender_id});
+      }
+    } else {
+      if(!isMyMsg){
+        showMsgNotif(msg.sender_name||'رسالة',msg.content);
+        updateChatBadge();
+      }
+    }
+  }
+  if(data.type==='typing'){
+    if(currentChatReqId&&parseInt(data.request_id)===parseInt(currentChatReqId)&&parseInt(data.from)!==parseInt(getChatUser().id)){
+      data.is_typing?showTyping():hideTyping();
+    }
+  }
+  if(data.type==='read'){
+    if(currentChatReqId&&parseInt(data.request_id)===parseInt(currentChatReqId))markMsgsAsRead();
+  }
+}
