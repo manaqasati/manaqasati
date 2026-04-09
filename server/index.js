@@ -1171,18 +1171,44 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, role, title, body, type } = req.body;
+    const { user_id, role, title, body, type, channel } = req.body;
+    // channel: 'both' | 'push' | 'email'  (default: 'both')
+    const ch = channel || 'both';
     const VALID_ROLES = ['client','provider','admin'];
+
+    let targetUsers = [];
     if (user_id) {
-      await notify(user_id, title, body, type||'admin', null);
+      const r = await pool.query('SELECT id,email,name FROM users WHERE id=$1', [user_id]);
+      targetUsers = r.rows;
     } else {
-      let q = 'SELECT id FROM users WHERE is_active=TRUE';
+      let q = 'SELECT id,email,name FROM users WHERE is_active=TRUE';
       const params = [];
       if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$1`; }
-      const users = await pool.query(q, params);
-      for (const u of users.rows) await notify(u.id, title, body, type||'admin', null);
+      const r = await pool.query(q, params);
+      targetUsers = r.rows;
     }
-    res.json({ ok: true });
+
+    for (const u of targetUsers) {
+      // إشعار داخل التطبيق دائماً
+      await notify(u.id, title, body, type||'admin', null);
+      // Push notification
+      if (ch === 'both' || ch === 'push') {
+        await sendPush([u.id], title, body, { type: type||'admin' });
+      }
+      // Email
+      if ((ch === 'both' || ch === 'email') && u.email) {
+        await sendEmail(u.email, title,
+          emailTpl(title,
+            `<p>${body.replace(/\n/g,'<br>')}</p>
+             <div style="background:#f4f7fb;border-right:3px solid #1B3A6B;border-radius:8px;padding:12px 16px;margin-top:14px">
+               <p style="font-size:12px;color:#6b85a8;margin:0">هذه رسالة رسمية من إدارة منصة مناقصة.</p>
+             </div>`,
+            null, null
+          )
+        );
+      }
+    }
+    res.json({ ok: true, sent: targetUsers.length });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
