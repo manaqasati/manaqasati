@@ -6,6 +6,7 @@
 <title>مناقصة — لوحة المزود</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
+
 :root{
   --p:#1B3A6B;--p2:#142d54;--p3:#2C5282;
   --p-light:#e8eef7;--p-mid:#c5d6ee;
@@ -425,6 +426,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #pvOl, #cpOl { animation: fadeIn .2s; }
 @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
 @keyframes sp { to { transform:rotate(360deg) } }
+
 </style>
 </head>
 <body>
@@ -457,31 +459,31 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <div class="nav">
     <div class="nav-sec">عام</div>
-    <button class="ni on" onclick="show('home',this,'home')">
+    <button class="ni on" id="ni-home" onclick="gotoPage('home')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية
     </button>
     <div class="nav-sec">المشاريع</div>
-    <button class="ni" onclick="show('browse',this,'browse')">
+    <button class="ni" id="ni-browse" onclick="gotoPage('browse')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-      تصفح المشاريع<span class="badge" id="nb-browse" style="display:none">0</span>
+      تصفح المشاريع<span class="badge" id="nb-open" style="display:none">0</span>
     </button>
-    <button class="ni" onclick="show('myworks',this,'myworks')">
+    <button class="ni" id="ni-works" onclick="gotoPage('works')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>مشاريعي وعروضي
     </button>
     <div class="nav-sec">الحساب</div>
-    <button class="ni" onclick="show('reviews',this,'reviews')">
+    <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي
     </button>
-    <button class="ni" onclick="show('profile',this,'profile')">
+    <button class="ni" id="ni-profile" onclick="gotoPage('profile')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي
     </button>
-    <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')">
+    <button class="ni" id="ni-notifs" onclick="gotoPage('notifs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
-      الإشعارات<span class="badge" id="notif-badge" style="display:none">0</span>
+      الإشعارات<span class="badge" id="nb-notif" style="display:none">0</span>
     </button>
   </div>
   <div class="side-foot">
-    <button class="logoutbtn" onclick="logout()">
+    <button class="logoutbtn" onclick="doLogout()">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       تسجيل الخروج
     </button>
@@ -492,12 +494,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div class="mob-head">
   <div class="mob-logo"><span class="mob-logo-dot"></span>مناقصة</div>
   <div class="mob-right">
-    <button class="mob-notif" onclick="show('notifs',null,'notifs')">
+    <button class="mob-notif" onclick="gotoPage('notifs')">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span class="mob-notif-badge" id="mob-notif-badge">0</span>
+      <span class="mob-notif-badge" id="mob-nb" style="display:none">0</span>
     </button>
-    <div class="mob-av" id="mobAv">ع</div>
-    <button class="mob-out" onclick="logout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    <div class="mob-av" id="mobAv">م</div>
+    <button class="mob-out" onclick="doLogout()">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
   </div>
 </div>
 
@@ -507,75 +511,55 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="topbar-left">
       <div class="topbar-title" id="pageTitle">الرئيسية</div>
     </div>
-    <button class="btn-new" onclick="show('browse',null,'browse')">
+    <button class="btn-new" onclick="gotoPage('browse')">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       تصفح المشاريع
     </button>
   </div>
 
   <div class="content">
+    <div class="page on" id="page-home"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-browse"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-works"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-reviews"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-notifs"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-profile"><div class="loading">جاري التحميل...</div></div>
+  </div>
+</div>
 
-    <!-- HOME -->
-    <div class="page on" id="page-home">
-      <div id="home-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- BROWSE -->
-    <div class="page" id="page-browse">
-      <div id="browse-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- MYWORKS -->
-    <div class="page" id="page-myworks">
-      <div id="myworks-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- REVIEWS -->
-    <div class="page" id="page-reviews">
-      <div id="reviews-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- NOTIFS -->
-    <div class="page" id="page-notifs">
-      <div id="notifs-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
-
-    <!-- PROFILE -->
-    <div class="page" id="page-profile">
-      <div id="profile-content"><div class="loading">جاري التحميل...</div></div>
-    </div>
 <!-- ══ BOTTOM NAV ══ -->
 <div class="bnav"><div class="bnav-inner">
-  <button class="bni on" id="bn-home" onclick="show('home',this,'home')">
+  <button class="bni on" id="bn-home" onclick="gotoPage('home')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>
     <span class="bt">الرئيسية</span>
   </button>
-  <button class="bni" id="bn-browse" onclick="show('browse',this,'browse')">
-    <div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <span class="bni-badge" id="bn-browse-badge">0</span></div>
+  <button class="bni" id="bn-browse" onclick="gotoPage('browse')">
+    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
     <span class="bt">تصفح</span>
   </button>
-  <button class="bni" onclick="show('browse',null,'browse')">
-    <div class="bic" style="width:46px;height:46px;background:linear-gradient(145deg,#F0A500,#c78500);border-radius:50%;margin-top:-16px;box-shadow:0 6px 20px rgba(240,165,0,.5),0 0 0 3px #fff;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+  <button class="bni" onclick="gotoPage('browse')">
+    <div class="bic" style="width:46px;height:46px;background:linear-gradient(145deg,#F0A500,#c78500);border-radius:50%;margin-top:-16px;box-shadow:0 6px 20px rgba(240,165,0,.5),0 0 0 3px #fff;display:flex;align-items:center;justify-content:center">
+      <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
     <span class="bt" style="color:var(--gold-d);font-weight:900">مشاريع</span>
   </button>
-  <button class="bni" id="bn-myworks" onclick="show('myworks',this,'myworks')">
+  <button class="bni" id="bn-works" onclick="gotoPage('works')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
     <span class="bt">مشاريعي</span>
   </button>
-  <button class="bni" id="bn-profile" onclick="show('profile',this,'profile')">
+  <button class="bni" id="bn-profile" onclick="gotoPage('profile')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
     <span class="bt">حسابي</span>
   </button>
 </div></div>
 
-
-<!-- ══ Toast ══ -->
-<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:#0d1f3c;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:all .22s cubic-bezier(.34,1.56,.64,1);pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-family:Tajawal,sans-serif">
-  <div id="tIc" style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;background:#16a34a"></div>
+<!-- ══ TOAST ══ -->
+<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:#0d1f3c;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:all .22s cubic-bezier(.34,1.56,.64,1);pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+  <div id="tIc" style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0"></div>
   <span id="tMsg"></span>
 </div>
-<!-- ══ Modal ══ -->
+
+<!-- ══ MODAL ══ -->
 <div class="overlay" id="ov">
   <div class="modal">
     <div class="modal-drag"></div>
@@ -584,792 +568,718 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div id="mIc" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--p-light)"></div>
         <span id="mTit" style="font-size:14px;font-weight:800;color:var(--text)">—</span>
       </div>
-      <button class="modal-x" onclick="closeM()">×</button>
+      <button class="modal-x" onclick="closeModal()">×</button>
     </div>
     <div class="modal-body" id="mBd"></div>
     <div id="mFt" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;background:var(--bg);border-radius:0 0 22px 22px"></div>
   </div>
 </div>
-<!-- ══ Mob overlay ══ -->
-<div id="mobOv" onclick="closeSb()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:90"></div>
+
+<!-- ══ MOB OVERLAY ══ -->
+<div id="mobOv" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:90"></div>
 
 <script>
-const API='https://manaqasati-production.up.railway.app';
-const token=localStorage.getItem('token');
-const me=JSON.parse(localStorage.getItem('user')||'{}');
-if(!token||me.role!=='provider')location.href='auth.html';
 
-var _pCache={};
-function _pSet(id,d){_pCache[String(id)]=Object.assign(_pCache[String(id)]||{},d);}
-function _pGet(id){return _pCache[String(id)]||{};}
+'use strict';
+var API = 'https://manaqasati-production.up.railway.app';
 
-const CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
-const CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','المزاحمية','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','المدينة المنورة','ينبع','العلا','بريدة','عنيزة','الرس','أبها','خميس مشيط','بيشة','النماص','تبوك','الوجه','ضباء','حائل','بقعاء','عرعر','طريف','سكاكا','دومة الجندل','القريات','الباحة','بلجرشي','جازان','صبيا','أبو عريش','نجران','شرورة','وادي الدواسر','السليل'];
-const AVC=['#1B3A6B','#2C5282','#1e40af','#166534','#92400e','#991b1b'];
-const CAT_STYLE={'تبريد وتكييف':{g:'135deg,#0ea5e9,#0284c7',ic:'❄️'},'كهرباء':{g:'135deg,#f59e0b,#d97706',ic:'⚡'},'سباكة':{g:'135deg,#3b82f6,#2563eb',ic:'🔧'},'نجارة':{g:'135deg,#92400e,#78350f',ic:'🔨'},'تنظيف':{g:'135deg,#10b981,#059669',ic:'✨'},'نقل عفش':{g:'135deg,#6366f1,#4f46e5',ic:'🚛'},'حدادة':{g:'135deg,#64748b,#475569',ic:'⚙️'},'كاميرات مراقبة':{g:'135deg,#7c3aed,#6d28d9',ic:'📷'},'شبكات وإنترنت':{g:'135deg,#0891b2,#0e7490',ic:'🌐'},'مظلات وسواتر':{g:'135deg,#d97706,#b45309',ic:'⛱️'},'مكافحة حشرات':{g:'135deg,#15803d,#166534',ic:'🐛'}};
-let allProjects=[],myBids=[],myProjects=[];
+// ── Auth check ──
+var _token = localStorage.getItem('token') || '';
+var _me    = JSON.parse(localStorage.getItem('user') || '{}');
+if (!_token || _me.role !== 'provider') { location.href = 'auth.html'; }
 
-function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}};}
-function logout(){localStorage.clear();location.href='auth.html';}
-function timeAgo(d){var diff=(new Date()-new Date(d))/1000;if(diff<60)return'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
-function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
-function fpr(p){return p?Number(p).toLocaleString('en-US')+' ر.س':'—';}
-function fdt(d){return fmtDate(d);}
-function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function errH(){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div><h4>تعذر التحميل</h4></div>';}
-function starsHtml(n,big){var s='';var sz=big?18:13;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:'+sz+'px">★</span>';return s;}
-function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
-function S(p,c){return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="'+(c||'currentColor')+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
+// ── Data cache ──
+var _pCache = {};
+var _allProjs = [], _myBids = [], _myProjs = [];
 
-// Toast
-var _tT;
-function toast(msg,type){
-  var el=document.getElementById('toast');
-  var ic=document.getElementById('tIc');
-  var tm=document.getElementById('tMsg');
-  if(!el)return;
-  ic.textContent=type==='success'?'✓':type==='error'?'✕':'i';
-  ic.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';
-  tm.textContent=msg;
-  el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';
-  clearTimeout(_tT);_tT=setTimeout(function(){el.style.opacity='0';el.style.transform='translateX(-50%) translateY(14px)';},3200);
+// ── Constants ──
+var CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
+var CITIES = ['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','جدة','مكة المكرمة','الطائف','رابغ','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','المدينة المنورة','ينبع','العلا','بريدة','عنيزة','أبها','خميس مشيط','تبوك','حائل','عرعر','سكاكا','الباحة','جازان','نجران'];
+
+// ── Helpers ──
+function _el(id) { return document.getElementById(id); }
+function _h(id, html) { var e=_el(id); if(e) e.innerHTML=html; }
+function _esc(s) { var d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
+function _fpr(p) { return p ? Number(p).toLocaleString('en-US') + ' ر.س' : '—'; }
+function _fdt(d) { if(!d) return '—'; try { return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return d; } }
+function _ago(d) { var s=(Date.now()-new Date(d))/1000; if(s<60)return'الآن'; if(s<3600)return Math.floor(s/60)+' د'; if(s<86400)return Math.floor(s/3600)+' س'; return Math.floor(s/86400)+' يوم'; }
+function _stars(n) { var s=''; for(var i=1;i<=5;i++) s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:13px">★</span>'; return s; }
+function _empty(t,s) { return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>'; }
+
+// ── WA / Call ──
+var _WA  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>';
+var _TEL = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
+var _BS  = 'padding:10px 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:none;display:inline-flex;align-items:center;gap:6px;transition:.15s;text-decoration:none';
+
+function _waUrl(phone, name, title) {
+  var num = '966' + String(phone||'').replace(/^0/,'').replace(/[^0-9]/g,'');
+  var txt = 'مرحباً ' + name + ',\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: *' + title + '*\nأنا ' + (_me.name||'المزود') + ', قدّمت عرضاً وأودّ التواصل معكم.';
+  return 'https://wa.me/' + num + '?text=' + encodeURIComponent(txt);
+}
+function _callBtns(phone, name, title) {
+  if (!phone) return '';
+  return '<a href="' + _waUrl(phone,name,title) + '" target="_blank" style="' + _BS + ';background:#25d366;color:#fff">' + _WA + 'واتساب</a>' +
+         '<a href="tel:' + phone + '" style="' + _BS + ';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">' + _TEL + 'اتصال</a>';
 }
 
-// Modal
-function openM(title,body,foot,iSvg,iBg){
-  document.getElementById('mTit').textContent=title;
-  document.getElementById('mBd').innerHTML=body;
-  document.getElementById('mFt').innerHTML=foot||'';
-  var ic=document.getElementById('mIc');
-  ic.innerHTML=iSvg||'';ic.style.background=iBg||'var(--p-light)';
-  document.getElementById('ov').classList.add('show');
-}
-function closeM(){document.getElementById('ov').classList.remove('show');}
-document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
-
-// Sidebar mob
-function openSb(){document.querySelector('.side').classList.add('open');var o=document.getElementById('mobOv');if(o)o.classList.add('show');}
-function closeSb(){document.querySelector('.side').classList.remove('open');var o=document.getElementById('mobOv');if(o)o.classList.remove('show');}
-
-// show() navigation - exact same as client
-var _curPage='home';
-function show(pg,el,key){
-  document.querySelectorAll('.page').forEach(function(p){p.className='page';});
-  document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
-  document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
-  var pDiv=document.getElementById('page-'+pg);
-  if(pDiv)pDiv.className='page on';
-  if(el)el.className='ni on';
-  var bnKey={'home':'bn-home','browse':'bn-browse','myworks':'bn-myworks','profile':'bn-profile'};
-  if(bnKey[pg]){var b=document.getElementById(bnKey[pg]);if(b)b.className='bni on';}
-  var titles={home:'الرئيسية',browse:'تصفح المشاريع',myworks:'مشاريعي وعروضي',
-    reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي'};
-  var pt=document.getElementById('pageTitle');if(pt)pt.textContent=titles[pg]||pg;
-  _curPage=pg;
-  window.scrollTo(0,0);
-  if(pg==='home')         loadHome();
-  else if(pg==='browse')  loadBrowse();
-  else if(pg==='myworks') loadMyWorks();
-  else if(pg==='reviews') loadReviews();
-  else if(pg==='notifs')  loadNotifs();
-  else if(pg==='profile') loadProfile();
+// ── API ──
+function _api(path, opts) {
+  return fetch(API + path, Object.assign({
+    headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' }
+  }, opts || {})).then(function(r){ return r.json(); }).catch(function(){ return {}; });
 }
 
-// User avatar
-function applyAvatar(img){
-  var els=[document.getElementById('userAv'),document.getElementById('mobAv')];
-  els.forEach(function(el){
-    if(!el)return;
-    if(img){el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';el.style.padding='0';}
-    else{el.innerHTML='';el.textContent=(me.name||'م')[0];}
+// ── Toast ──
+var _tTimer;
+function showToast(msg, type) {
+  var el=_el('toast'), ic=_el('tIc'), tm=_el('tMsg');
+  if(!el) return;
+  ic.textContent = type==='success'?'✓':type==='error'?'✕':'i';
+  ic.style.background = type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';
+  tm.textContent = msg;
+  el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(_tTimer);
+  _tTimer = setTimeout(function(){
+    el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(14px)';
+  }, 3200);
+}
+
+// ── Modal ──
+function openModal(title, body, foot, iconSvg, iconBg) {
+  _el('mTit').textContent = title;
+  _el('mBd').innerHTML = body;
+  _el('mFt').innerHTML = foot || '';
+  var ic = _el('mIc');
+  ic.innerHTML = iconSvg || ''; ic.style.background = iconBg || 'var(--p-light)';
+  _el('ov').classList.add('show');
+}
+function closeModal() { _el('ov').classList.remove('show'); }
+document.addEventListener('DOMContentLoaded', function(){
+  _el('ov').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+});
+
+// ── Sidebar ──
+function openSidebar()  { document.querySelector('.side').classList.add('open'); _el('mobOv').style.display='block'; }
+function closeSidebar() { document.querySelector('.side').classList.remove('open'); _el('mobOv').style.display='none'; }
+
+// ── Logout ──
+function doLogout() { localStorage.clear(); location.href = 'auth.html'; }
+
+// ── Avatar ──
+function _setAvatar(img) {
+  ['userAv','mobAv'].forEach(function(id){
+    var el=_el(id); if(!el) return;
+    if(img){ el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">'; el.style.padding='0'; }
+    else { el.innerHTML=''; el.textContent=(_me.name||'م')[0]; }
   });
 }
+(function(){
+  var av=_el('userAv'); if(av) av.textContent=(_me.name||'م')[0];
+  var un=_el('userName'); if(un) un.textContent=_me.name||'المزود';
+  var ma=_el('mobAv'); if(ma) ma.textContent=(_me.name||'م')[0];
+  var cached=localStorage.getItem('pav_'+_me.id);
+  if(cached) _setAvatar(cached);
+  _api('/api/provider/profile').then(function(p){
+    if(p && p.profile_image){ localStorage.setItem('pav_'+_me.id, p.profile_image); _setAvatar(p.profile_image); }
+  });
+})();
 
-// Init user info
-var _av=document.getElementById('userAv');if(_av)_av.textContent=(me.name||'م')[0];
-var _un=document.getElementById('userName');if(_un)_un.textContent=me.name||'المزود';
-applyAvatar(localStorage.getItem('provider_avatar_'+me.id));
+// ── Navigation ──
+var _pages = { home:'الرئيسية', browse:'تصفح المشاريع', works:'مشاريعي وعروضي', reviews:'تقييماتي', notifs:'الإشعارات', profile:'الملف الشخصي' };
+var _curPage = 'home';
 
-// API
-async function api(path,opts){
-  try{
-    var r=await fetch(API+path,Object.assign({headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}},opts||{}));
-    return await r.json();
-  }catch(e){return {};}
-}
-// Load avatar from server
-api('/api/provider/profile').then(function(p){
-  if(p&&p.profile_image){localStorage.setItem('provider_avatar_'+me.id,p.profile_image);applyAvatar(p.profile_image);}
-}).catch(function(){});
+function gotoPage(page) {
+  // hide all pages
+  document.querySelectorAll('.page').forEach(function(p){ p.className='page'; });
+  // show target
+  var pg = _el('page-'+page);
+  if(pg) pg.className = 'page on';
 
-// Notification count
-function loadNotifCount(){
-  api('/api/provider/notifications').then(function(ns){
-    var u=(ns||[]).filter(function(n){return!n.is_read;}).length;
-    var b=document.getElementById('notif-badge');if(b){b.textContent=u;b.style.display=u?'':'none';}
-    var nb=document.getElementById('nb-notif-dot');if(nb)nb.style.display=u?'':'none';
-  }).catch(function(){});
-}
-setInterval(loadNotifCount,30000);
+  // nav active
+  document.querySelectorAll('.ni,.bni').forEach(function(b){ b.classList.remove('on'); });
+  var ni = _el('ni-'+page);  if(ni) ni.classList.add('on');
+  var bn = _el('bn-'+page);  if(bn) bn.classList.add('on');
 
-// WA
-function waMsg(phone,clientName,projTitle){
-  var num='966'+String(phone||'').replace(/^0/,'').replace(/[^0-9]/g,'');
-  var txt='مرحباً '+clientName+',\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: *'+projTitle+'*\nأنا '+(me.name||'المزود')+', قدّمت عرضاً وأودّ التواصل معكم.';
-  return'https://wa.me/'+num+'?text='+encodeURIComponent(txt);
-}
-function waUrl(phone,name,title){return waMsg(phone,name,title);}
+  // title
+  var pt = _el('pageTitle'); if(pt) pt.textContent = _pages[page] || page;
+  _curPage = page;
+  window.scrollTo(0,0);
+  closeSidebar();
 
-// Shared SVG icons
-var WA_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>';
-var TEL_SVG='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
-var BTN_S='padding:10px 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;transition:.15s;text-decoration:none';
-
-function callBtns(phone,name,title){
-  if(!phone)return'';
-  var wa=waMsg(phone,name,title);
-  return'<a href="'+wa+'" target="_blank" style="'+BTN_S+';background:#25d366;color:#fff">'+WA_SVG+'واتساب</a>'+
-        '<a href="tel:'+phone+'" style="'+BTN_S+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">'+TEL_SVG+'اتصال</a>';
+  // load content
+  if(page==='home')    loadHome();
+  if(page==='browse')  loadBrowse();
+  if(page==='works')   loadWorks();
+  if(page==='reviews') loadReviews();
+  if(page==='notifs')  loadNotifs();
+  if(page==='profile') loadProfile();
 }
 
-// ══════════════════════════════════════════════════
-// صفحة الرئيسية
-// ══════════════════════════════════════════════════
-async function loadHome(){
-  var el=document.getElementById('home-content');
-  if(!el)return;
-  el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  try{
-    var profile = await api('/api/provider/profile')||{};
-    var bids    = await api('/api/provider/bids')||[];
-    var projs   = await api('/api/provider/projects')||[];
-    myBids=bids; myProjects=projs;
-    var acc=bids.filter(function(b){return b.status==='accepted';}).length;
-    var pend=bids.filter(function(b){return b.status==='pending';}).length;
-    var prog=projs.filter(function(p){return p.status==='in_progress';}).length;
-    var done=projs.filter(function(p){return p.status==='completed';}).length;
-    var rating=profile.avg_rating?Number(profile.avg_rating).toFixed(1):'—';
-    el.innerHTML=
-      '<div class="pghd"><div><div class="pg-t">مرحباً، '+esc(me.name||'المزود')+'</div>'+
-      '<div class="pg-s">لوحة تحكم المزود</div></div>'+
-      '<button class="btn-new" id="_hb">'+
-        '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
-        'تصفح المشاريع</button></div>'+
-      '<div class="stat-grid">'+
-        '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+acc+'</div><div class="st">عروض مقبولة</div></div></div>'+
-        '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pend+'</div><div class="st">عروض معلقة</div></div></div>'+
-        '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+prog+'</div><div class="st">مشاريع جارية</div></div></div>'+
-        '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn">'+rating+'</div><div class="st">تقييمي</div></div></div>'+
-      '</div>'+
-      '<div class="card card-accent">'+
-        '<div class="ch">'+
-          '<div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h3>آخر عروضي</h3></div>'+
-          '<button class="ch-link" id="_hmyworks">عرض الكل ←</button>'+
-        '</div>'+
-        (bids.length
-          ? bids.slice(0,5).map(function(b){
-              var col=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';
-              var lb=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
-              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">'+
-                '<div style="flex:1;min-width:0;margin-left:10px">'+
-                  '<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b.request_title||'—')+'</div>'+
-                  '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+fpr(b.price)+'</div>'+
-                '</div><span class="tag '+col+'">'+lb+'</span></div>';
-            }).join('')
-          : emptyH('لا يوجد عروض','انتقل لتصفح المشاريع')
-        )+
-      '</div>'+
-      '<div class="card" style="margin-top:14px">'+
-        '<div class="ch">'+
-          '<div class="ch-l"><div class="ch-ic" style="background:var(--gold-l)"><svg width="14" height="14" fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><h3>ملفي المهني</h3></div>'+
-          '<button class="ch-link" id="_hprofile">تعديل ←</button>'+
-        '</div>'+
-        '<div style="display:flex;flex-direction:column;gap:8px">'+
-          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">التخصصات</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+(profile.specialties||[]).slice(0,2).join('، ')||'—'+'</span></div>'+
-          '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">المدينة</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+(profile.city||'—')+'</span></div>'+
-          '<div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:12px;color:var(--muted)">التقييم</span><span style="font-size:12px;font-weight:700;color:var(--p)">'+rating+' ★</span></div>'+
-        '</div>'+
-      '</div>';
-    loadNotifCount();
-    setTimeout(function(){var b=document.getElementById('_hb');if(b)b.onclick=function(){show('browse',null,'browse');};},0);
-    // wire up buttons
-    setTimeout(function(){
-      var b1=document.getElementById('_hbrowse');if(b1)b1.onclick=function(){show('browse',null,'browse');};
-      var b2=document.getElementById('_hmyworks');if(b2)b2.onclick=function(){show('myworks',null,'myworks');};
-      var b3=document.getElementById('_hprofile');if(b3)b3.onclick=function(){show('profile',null,'profile');};
-    },0);
-  } catch(e){
-    el.innerHTML=errH();
-    console.error('loadHome error:', e);
-  }
+// ══════════════════════════════════════════════════════════
+// HOME
+// ══════════════════════════════════════════════════════════
+async function loadHome() {
+  var pg = _el('page-home');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+
+  var profile = await _api('/api/provider/profile');
+  var bids    = await _api('/api/provider/bids');
+  var projs   = await _api('/api/provider/projects');
+  _myBids = bids  || [];
+  _myProjs = projs || [];
+
+  var acc  = _myBids.filter(function(b){ return b.status==='accepted'; }).length;
+  var pend = _myBids.filter(function(b){ return b.status==='pending';  }).length;
+  var prog = _myProjs.filter(function(p){ return p.status==='in_progress'; }).length;
+  var done = _myProjs.filter(function(p){ return p.status==='completed'; }).length;
+  var rat  = profile.avg_rating ? Number(profile.avg_rating).toFixed(1) : '—';
+
+  pg.innerHTML =
+    '<div class="pghd"><div>' +
+      '<div class="pg-t">مرحباً، ' + _esc(_me.name||'المزود') + '</div>' +
+      '<div class="pg-s">لوحة تحكم المزود</div>' +
+    '</div></div>' +
+    '<div class="stat-grid">' +
+      '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+acc+'</div><div class="st">عروض مقبولة</div></div></div>' +
+      '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pend+'</div><div class="st">عروض معلقة</div></div></div>' +
+      '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+prog+'</div><div class="st">مشاريع جارية</div></div></div>' +
+      '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn">'+rat+'</div><div class="st">متوسط تقييمي</div></div></div>' +
+    '</div>' +
+    '<div class="card card-accent">' +
+      '<div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><h3>آخر عروضي</h3></div>' +
+      '<button class="ch-link" onclick="gotoPage(\'works\')">عرض الكل ←</button></div>' +
+      (_myBids.length ?
+        _myBids.slice(0,5).map(function(b){
+          var c=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';
+          var l=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">' +
+            '<div style="flex:1;min-width:0;margin-left:10px"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+_fpr(b.price)+'</div></div>' +
+            '<span class="tag '+c+'">'+l+'</span></div>';
+        }).join('')
+        : _empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع')) +
+    '</div>';
+
+  _loadNotifCount();
 }
 
-// ══════════════════════════════════════════════════
-// صفحة تصفح المشاريع
-// ══════════════════════════════════════════════════
-async function loadBrowse(){
-  var el=document.getElementById('browse-content');
-  if(el)el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  allProjects=await api('/api/requests')||[];
-  var open=allProjects.filter(function(p){return p.status==='open';});
-  var nb=document.getElementById('nb-browse');if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
-  var nb2=document.getElementById('bn-browse-badge');if(nb2){nb2.style.display=open.length?'flex':'none';nb2.textContent=open.length;}
-  renderBrowsePage(allProjects);
-}
-function renderBrowsePage(list){
-  var el=document.getElementById('browse-content');if(!el)return;
-  var open=list.filter(function(p){return p.status==='open';});
-  el.innerHTML=
-    '<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div>'+
-    '<div class="pg-s">'+open.length+' مشروع متاح</div></div></div>'+
-    '<div class="card card-accent"><div class="cb">'+
-      '<div class="fbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
-        '<div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px" id="sbox-wrap">'+
-          '<svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
-          '<input type="text" id="bQ" placeholder="ابحث في المشاريع…" oninput="filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif">'+
-        '</div>'+
-        '<select id="bCat" onchange="filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none">'+
-          '<option value="">كل التصنيفات</option>'+CATS.map(function(c){return'<option>'+c+'</option>';}).join('')+
-        '</select>'+
-        '<select id="bCit" onchange="filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none">'+
-          '<option value="">كل المدن</option>'+CITIES.map(function(c){return'<option>'+c+'</option>';}).join('')+
-        '</select>'+
-      '</div>'+
-      '<div id="bList">'+renderBrowse(open)+'</div>'+
+// ══════════════════════════════════════════════════════════
+// BROWSE
+// ══════════════════════════════════════════════════════════
+async function loadBrowse() {
+  var pg = _el('page-browse');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+
+  _allProjs = await _api('/api/requests') || [];
+  var open = _allProjs.filter(function(p){ return p.status==='open'; });
+
+  var nb=_el('nb-open'); if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
+
+  pg.innerHTML =
+    '<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div><div class="pg-s">'+open.length+' مشروع متاح</div></div></div>' +
+    '<div class="card card-accent"><div class="cb">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px">' +
+          '<svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+          '<input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div>' +
+        '<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none">' +
+          '<option value="">كل التصنيفات</option>'+CATS.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select>' +
+        '<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none">' +
+          '<option value="">كل المدن</option>'+CITIES.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select>' +
+      '</div>' +
+      '<div id="bList">'+_renderBrowse(open)+'</div>' +
     '</div></div>';
 }
-function filterBrowse(){
-  var q=(document.getElementById('bQ')||{}).value||'';q=q.toLowerCase();
-  var cat=(document.getElementById('bCat')||{}).value||'';
-  var cit=(document.getElementById('bCit')||{}).value||'';
-  var f=allProjects.filter(function(p){
-    return p.status==='open'&&
-      (!q||p.title.toLowerCase().includes(q))&&
-      (!cat||p.category===cat)&&
-      (!cit||p.city===cit);
+function _filterBrowse() {
+  var q  = (_el('bQ')||{value:''}).value.toLowerCase();
+  var cat= (_el('bCat')||{value:''}).value;
+  var cit= (_el('bCit')||{value:''}).value;
+  var f  = _allProjs.filter(function(p){
+    return p.status==='open' && (!q||p.title.toLowerCase().includes(q)) && (!cat||p.category===cat) && (!cit||p.city===cit);
   });
-  var el=document.getElementById('bList');if(el)el.innerHTML=renderBrowse(f);
+  var el=_el('bList'); if(el) el.innerHTML=_renderBrowse(f);
+}
+function _renderBrowse(list) {
+  if(!list.length) return _empty('لا يوجد مشاريع متاحة','');
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">' +
+    list.map(function(r){
+      var img = r.image_url || (r.images && r.images[0]);
+      var hdr = img
+        ? '<div style="height:140px;overflow:hidden;position:relative"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div><div style="position:absolute;top:10px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">● مفتوح</span></div></div>'
+        : '<div style="background:linear-gradient(135deg,#1B3A6B,#2C5282);padding:20px;height:80px;display:flex;align-items:flex-end;position:relative"><div style="position:absolute;top:8px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">● مفتوح</span></div><div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8)">'+(r.category||'مشروع')+'</div></div>';
+      return '<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(27,58,107,.1);transition:all .2s" onmouseover="this.style.transform=\'translateY(-4px)\';this.style.boxShadow=\'0 12px 32px rgba(27,58,107,.18)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 16px rgba(27,58,107,.1)\'">' +
+        hdr +
+        '<div style="padding:14px">' +
+          '<div style="font-size:15px;font-weight:800;margin-bottom:8px;line-height:1.3">'+_esc(r.title)+'</div>' +
+          '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+            (r.client_name?'<span style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">👤 '+_esc(r.client_name)+'</span>':'') +
+            (r.city?'<span style="background:#f0fdf4;color:#15803d;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #bbf7d0">📍 '+_esc(r.city)+'</span>':'') +
+            (r.budget_max?'<span style="background:#fff8e7;color:#92400e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;border:1px solid #fde68a">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'') +
+            '<span style="background:var(--bg);color:var(--muted);padding:3px 9px;border-radius:20px;font-size:10px;border:1px solid var(--border)">'+(r.bid_count||0)+' عرض</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">' +
+            '<button onclick="_openBidModal('+r.id+',\''+_esc(r.title).replace(/'/g,'')+'\')" style="flex:1;padding:10px;background:linear-gradient(135deg,#1B3A6B,#2C5282);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>' +
+            '<button onclick="_viewProj('+r.id+')" style="padding:10px 14px;background:var(--bg);color:var(--p);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
 }
 
-// ══════════════════════════════════════════════════
-// صفحة مشاريعي وعروضي
-// ══════════════════════════════════════════════════
-async function loadMyWorks(){
-  var el=document.getElementById('myworks-content');
-  if(el)el.innerHTML='<div class="loading">جاري التحميل...</div>';
+// ── Bid Modal ──
+function _openBidModal(projId, projTitle) {
+  openModal(
+    'تقديم عرض — ' + projTitle,
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">السعر (ر.س) *</label>' +
+        '<input type="number" id="bid-price" placeholder="5000" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none">' +
+      '</div>' +
+      '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">المدة (أيام) *</label>' +
+        '<input type="number" id="bid-days" placeholder="7" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none">' +
+      '</div>' +
+    '</div>' +
+    '<label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">رسالتك للعميل *</label>' +
+    '<textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;min-height:80px;resize:vertical;outline:none"></textarea>',
+    '<button onclick="closeModal()" style="'+_BS+';background:var(--bg);color:var(--muted);border:1px solid var(--border)">إلغاء</button>' +
+    '<button onclick="_submitBid('+projId+')" style="'+_BS+';background:var(--p);color:#fff">إرسال العرض</button>',
+    '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
+  );
+}
+async function _submitBid(projId) {
+  var price = (_el('bid-price')||{}).value;
+  var days  = (_el('bid-days')||{}).value;
+  var note  = (_el('bid-note')||{}).value;
+  if(!price||parseFloat(price)<=0){ showToast('أدخل سعر العرض','error'); return; }
+  if(!days||parseInt(days)<=0){ showToast('أدخل مدة التنفيذ','error'); return; }
+  if(!note.trim()){ showToast('أدخل رسالتك للعميل','error'); return; }
+  var r = await _api('/api/requests/'+projId+'/bids', { method:'POST', body: JSON.stringify({price:parseFloat(price),days:parseInt(days),note:note.trim()}) });
+  if(r && (r.id || r.request_id)){ closeModal(); showToast('تم إرسال عرضك بنجاح','success'); }
+  else showToast(r.message||'حدث خطأ','error');
+}
 
-  var bids=await api('/api/provider/bids');
-  var projects=await api('/api/provider/projects');
-  myBids=bids||[];myProjects=projects||[];
+// ── View project modal ──
+async function _viewProj(id) {
+  openModal('تفاصيل المشروع', '<div class="loading">جاري التحميل...</div>', '', '', '');
+  var r = await _api('/api/requests/'+id);
+  var imgs = r.images || [];
+  var imgsHtml = imgs.length ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">' + imgs.map(function(img){ return '<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="window.open(\''+img+'\',\'_blank\')"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>'; }).join('') + '</div>' : '';
+  var body =
+    '<div style="background:var(--p);border-radius:12px;padding:16px;margin-bottom:14px;position:relative"><div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>' +
+      '<div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:8px">'+_esc(r.title)+'</div>' +
+      '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
+        (r.city?'<span style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.city)+'</span>':'') +
+        (r.category?'<span style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.category)+'</span>':'') +
+      '</div>' +
+    '</div>' +
+    imgsHtml +
+    (r.description?'<div style="background:var(--bg);border-right:3px solid var(--border);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2)">'+_esc(r.description)+'</div>':'') +
+    '<div style="background:var(--bg);border-radius:9px;padding:12px 14px;margin-bottom:12px">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div>' +
+    '</div>' +
+    (r.client_phone?
+      '<div style="display:flex;gap:8px">' +
+        '<a href="'+_waUrl(r.client_phone,r.client_name,r.title)+'" target="_blank" style="flex:1;text-align:center;background:#25d366;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">'+_WA+' واتساب</a>' +
+        '<a href="tel:'+r.client_phone+'" style="text-align:center;background:var(--green-l);color:var(--green);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;border:1px solid #bbf7d0">'+_TEL+' اتصال</a>' +
+      '</div>'
+    :'');
+  _el('mBd').innerHTML = body;
+  _el('mFt').innerHTML =
+    '<button onclick="closeModal()" style="'+_BS+';background:var(--bg);color:var(--muted);border:1px solid var(--border)">إغلاق</button>' +
+    '<button onclick="closeModal();_openBidModal('+r.id+',\''+_esc(r.title).replace(/'/g,'')+'\')" style="'+_BS+';background:var(--p);color:#fff">تقديم عرض</button>';
+}
 
-  // جلب هاتف العميل للعروض المقبولة والمشاريع الجارية
-  var items=myBids.filter(function(b){return b.status==='accepted';})
-    .concat(myProjects.filter(function(p){return p.status==='in_progress';}));
-  await Promise.all(items.map(async function(item){
-    var key='c_'+(item.request_id||item.id);
-    if(!_pGet(key).phone){
-      try{var rd=await api('/api/requests/'+(item.request_id||item.id));
-        if(rd&&rd.client_phone)_pSet(key,{phone:rd.client_phone,name:rd.client_name||''});}
-      catch(e){}
+// ══════════════════════════════════════════════════════════
+// WORKS (مشاريعي وعروضي)
+// ══════════════════════════════════════════════════════════
+async function loadWorks() {
+  var pg = _el('page-works');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+
+  _myBids = await _api('/api/provider/bids') || [];
+  _myProjs = await _api('/api/provider/projects') || [];
+
+  // جلب هاتف العميل للمقبولة
+  var accepted = _myBids.filter(function(b){ return b.status==='accepted'; });
+  var inprog   = _myProjs.filter(function(p){ return p.status==='in_progress'; });
+  await Promise.all([].concat(accepted, inprog).map(async function(item){
+    var key = 'c_'+(item.request_id||item.id);
+    if(!_pCache[key]) {
+      var rd = await _api('/api/requests/'+(item.request_id||item.id));
+      if(rd && rd.client_phone) _pCache[key] = {phone:rd.client_phone, name:rd.client_name||''};
     }
   }));
 
-  var accCount=myBids.filter(function(b){return b.status==='accepted';}).length;
-  var pendCount=myBids.filter(function(b){return b.status==='pending';}).length;
-  var progCount=myProjects.filter(function(p){return p.status==='in_progress';}).length;
-  var doneCount=myProjects.filter(function(p){return p.status==='completed';}).length;
+  var acc  = _myBids.filter(function(b){ return b.status==='accepted'; }).length;
+  var pend = _myBids.filter(function(b){ return b.status==='pending'; }).length;
+  var prog = _myProjs.filter(function(p){ return p.status==='in_progress'; }).length;
+  var done = _myProjs.filter(function(p){ return p.status==='completed'; }).length;
 
-  var html=
-    '<div class="pghd"><div><div class="pg-t">مشاريعي وعروضي</div>'+
-    '<div class="pg-s">'+myBids.length+' عرض · '+myProjects.length+' مشروع</div></div></div>'+
-
-    '<div class="stat-grid" style="margin-bottom:20px">'+
-      '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+accCount+'</div><div class="st">مقبولة</div></div></div>'+
-      '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pendCount+'</div><div class="st">معلقة</div></div></div>'+
-      '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+progCount+'</div><div class="st">جارية</div></div></div>'+
-      '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+doneCount+'</div><div class="st">مكتملة</div></div></div>'+
-    '</div>'+
-
-    '<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px">'+
-      '<button class="tab-btn on" onclick="switchTab(\'bids\',this)">العروض ('+myBids.length+')</button>'+
-      '<button class="tab-btn" onclick="switchTab(\'projects\',this)">المشاريع ('+myProjects.length+')</button>'+
-    '</div>'+
-
-    '<div id="tab-bids">'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
-        '<button onclick="filterBids(\'all\')" class="btn-sm bs-p _bf" data-f="all">الكل</button>'+
-        '<button onclick="filterBids(\'accepted\')" class="btn-sm _bf" data-f="accepted" style="background:var(--green-l);color:var(--green)">مقبولة</button>'+
-        '<button onclick="filterBids(\'pending\')" class="btn-sm _bf" data-f="pending" style="background:var(--gold-l);color:#92400e">معلقة</button>'+
-        '<button onclick="filterBids(\'rejected\')" class="btn-sm _bf" data-f="rejected" style="background:var(--red-l);color:var(--red)">مرفوضة</button>'+
-      '</div>'+
-      '<div id="bids-list">'+renderMyBids(myBids)+'</div>'+
-    '</div>'+
-
-    '<div id="tab-projects" style="display:none">'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
-        '<button onclick="filterProjs(\'all\')" class="btn-sm bs-p _pf" data-f="all">الكل</button>'+
-        '<button onclick="filterProjs(\'in_progress\')" class="btn-sm _pf" data-f="in_progress" style="background:#fff8e7;color:#92400e">جارية</button>'+
-        '<button onclick="filterProjs(\'completed\')" class="btn-sm _pf" data-f="completed" style="background:var(--green-l);color:var(--green)">مكتملة</button>'+
-      '</div>'+
-      '<div id="projects-list">'+renderMyProjects(myProjects)+'</div>'+
-    '</div>';
-
-  if(el)el.innerHTML=html;
+  pg.innerHTML =
+    '<div class="pghd"><div><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div></div>' +
+    '<div class="stat-grid">' +
+      '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+acc+'</div><div class="st">مقبولة</div></div></div>' +
+      '<div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pend+'</div><div class="st">معلقة</div></div></div>' +
+      '<div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+prog+'</div><div class="st">جارية</div></div></div>' +
+      '<div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+done+'</div><div class="st">مكتملة</div></div></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px">' +
+      '<button class="tab-btn on" id="wtab-bids" onclick="_wTab(\'bids\',this)">العروض ('+_myBids.length+')</button>' +
+      '<button class="tab-btn" id="wtab-projs" onclick="_wTab(\'projs\',this)">المشاريع ('+_myProjs.length+')</button>' +
+    '</div>' +
+    '<div id="wtab-bids-wrap">' + _worksFilter('bids') + '<div id="bids-wrap">' + _renderBids(_myBids) + '</div></div>' +
+    '<div id="wtab-projs-wrap" style="display:none">' + _worksFilter('projs') + '<div id="projs-wrap">' + _renderProjs(_myProjs) + '</div></div>';
 }
 
-function switchTab(tab,btn){
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});
-  if(btn)btn.classList.add('on');
-  var bd=document.getElementById('tab-bids');
-  var pd=document.getElementById('tab-projects');
-  if(bd)bd.style.display=tab==='bids'?'':'none';
-  if(pd)pd.style.display=tab==='projects'?'':'none';
+function _worksFilter(type) {
+  if(type==='bids') return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
+    '<button class="btn-sm bs-p" onclick="_fBids(\'all\')">الكل</button>' +
+    '<button class="btn-sm" style="background:var(--green-l);color:var(--green)" onclick="_fBids(\'accepted\')">مقبولة</button>' +
+    '<button class="btn-sm" style="background:var(--gold-l);color:#92400e" onclick="_fBids(\'pending\')">معلقة</button>' +
+    '<button class="btn-sm" style="background:var(--red-l);color:var(--red)" onclick="_fBids(\'rejected\')">مرفوضة</button>' +
+  '</div>';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
+    '<button class="btn-sm bs-p" onclick="_fProjs(\'all\')">الكل</button>' +
+    '<button class="btn-sm" style="background:#fff8e7;color:#92400e" onclick="_fProjs(\'in_progress\')">جارية</button>' +
+    '<button class="btn-sm" style="background:var(--green-l);color:var(--green)" onclick="_fProjs(\'completed\')">مكتملة</button>' +
+  '</div>';
 }
-function filterBids(status){
-  document.querySelectorAll('._bf').forEach(function(b){
-    b.classList.toggle('on',b.dataset.f===status);
-  });
-  var list=status==='all'?myBids:myBids.filter(function(b){return b.status===status;});
-  var el=document.getElementById('bids-list');if(el)el.innerHTML=renderMyBids(list);
+function _wTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); }); if(btn) btn.classList.add('on');
+  var bw=_el('wtab-bids-wrap'), pw=_el('wtab-projs-wrap');
+  if(bw) bw.style.display = tab==='bids' ? '' : 'none';
+  if(pw) pw.style.display = tab==='projs' ? '' : 'none';
 }
-function filterProjs(status){
-  document.querySelectorAll('._pf').forEach(function(b){
-    b.classList.toggle('on',b.dataset.f===status);
-  });
-  var list=status==='all'?myProjects:myProjects.filter(function(p){return p.status===status;});
-  var el=document.getElementById('projects-list');if(el)el.innerHTML=renderMyProjects(list);
+function _fBids(status) {
+  var list = status==='all' ? _myBids : _myBids.filter(function(b){ return b.status===status; });
+  var w=_el('bids-wrap'); if(w) w.innerHTML=_renderBids(list);
+}
+function _fProjs(status) {
+  var list = status==='all' ? _myProjs : _myProjs.filter(function(p){ return p.status===status; });
+  var w=_el('projs-wrap'); if(w) w.innerHTML=_renderProjs(list);
 }
 
-// التقييمات
-async function loadReviews(){
-  var el=document.getElementById('reviews-content');
-  if(el)el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  var list=await api('/api/provider/reviews')||[];
-  var avg=list.length?list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length:0;
-  var html='<div class="pghd"><div><div class="pg-t">تقييماتي</div>'+
-    '<div class="pg-s">'+list.length+' تقييم · معدل '+(avg?avg.toFixed(1):'—')+'★</div></div></div>'+
-    '<div class="card card-accent"><div class="cb">'+
-    (list.length?list.map(function(r){
-      var bg=AVC[(r.reviewer_id||0)%AVC.length];
-      return '<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-          '<div style="display:flex;align-items:center;gap:9px">'+
-            '<div style="width:36px;height:36px;border-radius:10px;background:'+bg+';color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center">'+(r.reviewer_name||'؟')[0]+'</div>'+
-            '<div><div style="font-size:13px;font-weight:800;color:var(--text)">'+(r.reviewer_name||'عميل')+'</div>'+
-            '<div style="font-size:10px;color:var(--muted)">'+fmtDate(r.created_at)+'</div></div>'+
-          '</div>'+
-          '<div>'+starsHtml(r.rating,false)+'</div>'+
-        '</div>'+
-        (r.comment?'<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:10px 12px;border-radius:8px;border-right:3px solid var(--gold);line-height:1.8">'+esc(r.comment)+'</div>':'')+
+function _renderBids(list) {
+  if(!list.length) return _empty('لا يوجد عروض','');
+  return list.map(function(b){
+    var isAcc=b.status==='accepted', isRej=b.status==='rejected';
+    var bg=isAcc?'#dcfce7':isRej?'#fee2e2':'#fff8e7';
+    var tc=isAcc?'#15803d':isRej?'#991b1b':'#92400e';
+    var bd=isAcc?'#bbf7d0':isRej?'#fecaca':'#fde68a';
+    var sl=isAcc?'✓ مقبول':isRej?'✕ مرفوض':'⏳ معلق';
+    var key = 'c_'+b.request_id;
+    var cd  = _pCache[key] || {};
+    var ph  = cd.phone || '';
+    var cBtns = _callBtns(ph, b.client_name||cd.name||'العميل', b.request_title||'المشروع');
+    return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09)">' +
+      '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">' +
+        '<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>' +
+        '<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px">'+_fdt(b.created_at)+'</div></div>' +
+        '<span style="background:'+bg+';color:'+tc+';border:1.5px solid '+bd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+sl+'</span>' +
+      '</div>' +
+      '<div style="padding:14px 20px">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+          '<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:800">💰 '+_fpr(b.price)+'</span>' +
+          (b.days?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700">⏱️ '+b.days+' يوم</span>':'') +
+        '</div>' +
+        (b.note?'<div style="font-size:12px;color:var(--text2);line-height:1.8;padding:10px 13px;background:var(--bg);border-radius:10px;border-right:4px solid #F0A500;margin-bottom:12px">&ldquo;'+_esc(b.note)+'&rdquo;</div>':'') +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">' +
+          (isAcc ? cBtns : '') +
+          '<button onclick="_viewProj('+b.request_id+')" style="'+_BS+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button>' +
+          (!isAcc&&!isRej?'<button onclick="_delBid('+b.id+')" style="'+_BS+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">سحب العرض</button>':'') +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+}
+async function _delBid(id) {
+  if(!confirm('سحب هذا العرض؟')) return;
+  await _api('/api/bids/'+id, {method:'DELETE'});
+  showToast('تم سحب العرض','error');
+  loadWorks();
+}
+
+function _renderProjs(list) {
+  if(!list.length) return _empty('لا يوجد مشاريع','');
+  return list.map(function(r){
+    var isProg = r.status==='in_progress';
+    var grad   = isProg?'135deg,#78350f,#d97706':'135deg,#0f2548,#1B3A6B';
+    var stBg   = isProg?'#fff8e7':'#dcfce7', stCl=isProg?'#92400e':'#15803d', stBd=isProg?'#fde68a':'#bbf7d0';
+    var key    = 'c_'+r.id;
+    var cd     = _pCache[key] || {};
+    var ph     = cd.phone || r.client_phone || '';
+    var cBtns  = isProg ? _callBtns(ph, r.client_name||cd.name||'العميل', r.title) : '';
+    return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09)">' +
+      '<div style="background:linear-gradient('+grad+');padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">' +
+        '<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>' +
+        '<div style="min-width:0;flex:1">' +
+          '<div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:4px">'+(r.project_number||'#'+r.id)+'</div>' +
+          '<div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div>' +
+        '</div>' +
+        '<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+(isProg?'⚡ جارٍ':'✓ مكتمل')+'</span>' +
+      '</div>' +
+      '<div style="padding:14px 20px">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+          (r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px">📍 '+_esc(r.city)+'</span>':'') +
+          (r.category?'<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">'+_esc(r.category)+'</span>':'') +
+          (r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 '+_fpr(r.price)+'</span>':'') +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">' +
+          '<button onclick="_viewProj('+r.id+')" style="'+_BS+';background:var(--p);color:#fff"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل</button>' +
+          cBtns +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// REVIEWS
+// ══════════════════════════════════════════════════════════
+async function loadReviews() {
+  var pg = _el('page-reviews');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  var list = await _api('/api/provider/reviews') || [];
+  var avg  = list.length ? (list.reduce(function(s,r){ return s+(r.rating||0); },0)/list.length).toFixed(1) : '—';
+  var html =
+    '<div class="pghd"><div><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم · معدل '+avg+'★</div></div></div>' +
+    '<div class="card card-accent"><div class="cb">' +
+    (list.length ? list.map(function(r){
+      var bg=['#1B3A6B','#2C5282','#166534','#92400e','#991b1b'][(r.reviewer_id||0)%5];
+      return '<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+          '<div style="display:flex;align-items:center;gap:9px">' +
+            '<div style="width:36px;height:36px;border-radius:10px;background:'+bg+';color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center">'+(r.reviewer_name||'؟')[0]+'</div>' +
+            '<div><div style="font-size:13px;font-weight:800">'+_esc(r.reviewer_name||'عميل')+'</div><div style="font-size:10px;color:var(--muted)">'+_fdt(r.created_at)+'</div></div>' +
+          '</div>' +
+          '<div>'+_stars(r.rating)+'</div>' +
+        '</div>' +
+        (r.comment?'<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:9px 12px;border-radius:8px;border-right:3px solid var(--gold);line-height:1.8">'+_esc(r.comment)+'</div>':'') +
       '</div>';
-    }).join(''):emptyH('لا يوجد تقييمات بعد','أنجز مشاريع لتحصل على تقييمات'))+
+    }).join('') : _empty('لا يوجد تقييمات بعد','أنجز مشاريع لتحصل على تقييمات')) +
     '</div></div>';
-  if(el)el.innerHTML=html;
+  pg.innerHTML = html;
 }
 
-// الإشعارات
-async function loadNotifs(){
-  var el=document.getElementById('notifs-content');
-  if(el)el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  var list=await api('/api/provider/notifications')||[];
-  var unseen=list.filter(function(n){return!n.is_read;}).length;
-  var html='<div class="pghd"><div><div class="pg-t">الإشعارات</div>'+
-    '<div class="pg-s">'+unseen+' غير مقروء</div></div>'+
-    (unseen?'<button class="btn-sm bs-p" onclick="markAllRead()">تحديد الكل مقروء</button>':'')+
-    '</div>'+
-    '<div class="card card-accent"><div class="cb">'+
-    (list.length?list.map(function(n){
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
-        '<div style="width:8px;height:8px;border-radius:50%;background:'+(n.is_read?'var(--border)':'var(--p)')+';flex-shrink:0"></div>'+
-        '<div style="flex:1">'+
-          '<div style="font-size:13px;font-weight:'+(n.is_read?'600':'800')+';color:'+(n.is_read?'var(--muted)':'var(--text)')+'">'+esc(n.title)+'</div>'+
-          (n.body?'<div style="font-size:11px;color:var(--muted);line-height:1.5">'+esc(n.body)+'</div>':'')+
-        '</div>'+
-        '<div style="font-size:9px;color:var(--hint)">'+fmtDate(n.created_at)+'</div>'+
+// ══════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════════
+async function loadNotifs() {
+  var pg = _el('page-notifs');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  var list = await _api('/api/provider/notifications') || [];
+  var unseen = list.filter(function(n){ return !n.is_read; }).length;
+  var html =
+    '<div class="pghd"><div><div class="pg-t">الإشعارات</div><div class="pg-s">'+unseen+' غير مقروء</div></div>' +
+    (unseen?'<button class="btn-sm bs-p" onclick="_markRead()">تحديد الكل مقروء</button>':'') +
+    '</div>' +
+    '<div class="card card-accent"><div class="cb">' +
+    (list.length ? list.map(function(n){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)'+(n.is_read?'':';background:var(--p-light);margin:0 -18px;padding:10px 18px')+'">' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:'+(n.is_read?'var(--border)':'var(--p)')+';flex-shrink:0"></div>' +
+        '<div style="flex:1"><div style="font-size:13px;font-weight:'+(n.is_read?'600':'800')+';color:'+(n.is_read?'var(--muted)':'var(--text)')+'">'+_esc(n.title)+'</div>' +
+        (n.body?'<div style="font-size:11px;color:var(--muted);line-height:1.5">'+_esc(n.body)+'</div>':'') + '</div>' +
+        '<div style="font-size:9px;color:var(--hint);flex-shrink:0">'+_fdt(n.created_at)+'</div>' +
       '</div>';
-    }).join(''):emptyH('لا يوجد إشعارات',''))+
+    }).join('') : _empty('لا يوجد إشعارات','')) +
     '</div></div>';
-  if(el)el.innerHTML=html;
-  await api('/api/provider/notifications/read',{method:'PUT'});
-  var b=document.getElementById('notif-badge');if(b){b.style.display='none';}
+  pg.innerHTML = html;
+  _api('/api/provider/notifications/read',{method:'PUT'});
+  _el('nb-notif').style.display='none';
+  _el('mob-nb').style.display='none';
 }
-async function markAllRead(){
-  await api('/api/provider/notifications/read',{method:'PUT'});
+async function _markRead() {
+  await _api('/api/provider/notifications/read',{method:'PUT'});
   loadNotifs();
 }
-function _setProfilePage(h){var el=document.getElementById('profile-content');if(el)el.innerHTML=h;}
-async function loadProfile(){
- loading();const p=await api('/api/provider/profile');
- const avatarHtml=p.profile_image?`<img src="${p.profile_image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span style="font-size:28px;font-weight:900;color:#fff">${(p.name||'م')[0]}</span>`;
- const portfolioHtml=(p.portfolio_images||[]).map((img,i)=>`<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="${img}" style="width:100%;height:100%;object-fit:cover"><button onclick="removePortfolioImg(${i})" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,0.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit">×</button></div>`).join('');
- const citySelect=`<select class="fis" id="pCit"><option value="">اختر المدينة</option>${CITIES.map(c=>`<option${c===p.city?' selected':''}>${c}</option>`).join('')}</select>`;
- _setProfilePage(`
- <div class="pghd"><div><div class="pg-t">الملف الشخصي</div><div class="pg-s">معلوماتك كمزود خدمة</div></div></div>
- <div class="card card-accent" style="margin-bottom:14px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.usr,'#1B3A6B')}</div><div class="ch-t">صورة الحساب</div></div></div>
- <div class="cb" style="display:flex;align-items:center;gap:16px">
- <div id="avatarPreview" style="width:72px;height:72px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid var(--p-light)">${avatarHtml}</div>
- <div>
- <div style="font-size:12px;color:var(--muted);margin-bottom:8px">صورة واضحة للوجه أو شعار المنشأة</div>
- <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(this)">
- <div style="display:flex;gap:8px">
- <button class="btn btn-gh btn-sm" onclick="document.getElementById('avatarInput').click()">تغيير الصورة</button>
- ${p.profile_image?`<button class="btn btn-rd btn-sm" onclick="removeAvatar()">حذف</button>`:''}
- </div>
- </div>
- </div>
- </div>
- <div class="card" style="margin-bottom:14px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.usr,'#1B3A6B')}</div><div class="ch-t">المعلومات الشخصية</div></div></div>
- <div class="cb">
- <div class="g2">
- <div class="fg"><label class="fl">الاسم الكامل</label><input type="text" class="fi" id="pNm" value="${p.name||''}" placeholder="اسمك الكامل"></div>
- <div class="fg"><label class="fl">رقم الجوال</label><input type="text" class="fi" id="pPh" value="${p.phone||''}" placeholder="05xxxxxxxx"></div>
- </div>
- <div class="fg"><label class="fl">البريد الإلكتروني</label><input type="email" class="fi" value="${p.email||''}" disabled style="background:var(--bg);color:var(--muted)"></div>
- <div class="fg"><label class="fl">المدينة</label>${citySelect}</div>
- </div>
- </div>
- <div class="card" style="margin-bottom:14px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.fold,'#1B3A6B')}</div><div class="ch-t">نبذة عن المنشأة</div></div></div>
- <div class="cb">
- <div class="fg"><label class="fl">نبذة مختصرة عن خدماتك وخبرتك</label><textarea class="fta" id="pBio" style="min-height:110px" placeholder="مثال: متخصصون في تركيب وصيانة أجهزة التكييف بخبرة 10 سنوات...">${p.bio||''}</textarea></div>
- <div class="fg" style="max-width:180px"><label class="fl">سنوات الخبرة</label><input type="number" class="fi" id="pExp" value="${p.experience_years||''}" placeholder="5" min="0" max="50"></div>
- </div>
- </div>
- <div class="card" style="margin-bottom:14px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div><div class="ch-t">اهتمامات الإشعارات</div><div class="ch-s">حد أقصى 3 تخصصات</div></div></div><span id="specsCounter" style="font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:4px 10px;border-radius:20px">${(p.specialties||[]).length}/3</span></div>
- <div class="cb">
- <div style="background:var(--gold-l);border:1px solid #fde68a;border-right:3px solid var(--gold);border-radius:9px;padding:10px 14px;margin-bottom:14px"><p style="font-size:12px;color:#92400e;font-weight:600;margin:0">اختر حتى 3 تخصصات لتصلك إشعارات فور نشر مشروع جديد مطابق</p></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="toggleSpec(this)" style="padding:7px 14px;border-radius:20px;border:1.5px solid ${on?'#1B3A6B':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--bg)'};color:${on?'#fff':'var(--p)'};transition:all .15s;margin-bottom:4px" class="spec-btn${on?' on':''}">${c}</button>`;}).join('')}</div>
- <div style="display:flex;align-items:center;gap:8px">
- <button class="btn btn-dk btn-sm" onclick="saveSpecs()"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> حفظ الاهتمامات</button>
- </div>
- </div>
- </div>
- <div class="card" style="margin-bottom:14px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B">${S(I.eye,'#1B3A6B')}</div><div class="ch-t">معرض الأعمال</div></div><div class="ch-s">${(p.portfolio_images||[]).length}/6 صور</div></div>
- <div class="cb">
- <div id="portfolioGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
- ${portfolioHtml}
- ${(p.portfolio_images||[]).length<6?`<div onclick="document.getElementById('portfolioInput').click()" style="border:2px dashed var(--border);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:5px;background:var(--bg)" onmouseover="this.style.borderColor='#1B3A6B'" onmouseout="this.style.borderColor='var(--border)'"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#6b85a8" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--muted)">إضافة</span></div>`:''}
- </div>
- <input type="file" id="portfolioInput" accept="image/*" multiple style="display:none" onchange="addPortfolioImgs(this)">
- <div style="font-size:10px;color:var(--muted)">أضف صور أعمالك السابقة — حد أقصى 6 صور، 5MB للصورة</div>
- </div>
- </div>
- <div class="card" style="margin-bottom:20px">
- <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#e8eef7;color:#1B3A6B"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#1B3A6B" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><div class="ch-t">تغيير كلمة المرور</div></div></div>
- <div class="cb">
- <div class="g2">
- <div class="fg"><label class="fl">كلمة المرور الحالية</label><input type="password" class="fi" id="pwOld"></div>
- <div class="fg"><label class="fl">كلمة المرور الجديدة</label><input type="password" class="fi" id="pwNew"></div>
- </div>
- <button class="btn btn-gh btn-sm" onclick="changePw()">تغيير كلمة المرور</button>
- </div>
- </div>
- <div style="position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--border)">
- <button class="btn btn-dk" id="saveAllBtn" style="width:100%;justify-content:center;padding:14px;font-size:14px" onclick="saveAllProfile()">${S(I.save)} حفظ جميع التغييرات</button>
- </div>`);
-}
 
-function previewAvatar(input){
- const file=input.files[0];if(!file)return;
- if(file.size>3*1024*1024){toast('الحجم الأقصى 3MB','error');return;}
- const reader=new FileReader();
- reader.onload=async e=>{
- const img=e.target.result;
- document.getElementById('avatarPreview').innerHTML=`<img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
- applyProviderAvatar(img);localStorage.setItem('provider_avatar_'+me.id,img);
- await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:img})});
- toast('تم حفظ الصورة','success');
- };
- reader.readAsDataURL(file);
-}
-async function removeAvatar(){await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:null})});localStorage.removeItem('provider_avatar_'+me.id);applyProviderAvatar(null);toast('تم حذف الصورة','success');pgProfile();}
-async function addPortfolioImgs(input){
- const files=[...input.files].slice(0,6);if(!files.length)return;
- toast('جاري الرفع...','info');
- for(let i=0;i<files.length;i++){
- const file=files[i];
- if(file.size>5*1024*1024){toast('صورة '+file.name+' أكبر من 5MB','error');continue;}
- try{const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
- const result=await api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:base64})});
- if(result.message&&!result.ok){toast(result.message,'error');break;}
- }catch{toast('فشل رفع الصورة','error');}
- }
- toast('تم رفع الصور','success');pgProfile();
-}
-async function removePortfolioImg(index){await api('/api/provider/profile/portfolio/'+index,{method:'DELETE'});toast('تم حذف الصورة','success');pgProfile();}
-function toggleSpec(btn){
- const selected=[...document.querySelectorAll('.spec-btn.on')];
- if(!btn.classList.contains('on')&&selected.length>=3){toast('الحد الأقصى 3 تخصصات فقط','error');btn.style.animation='shake .3s';setTimeout(()=>btn.style.animation='',300);return;}
- btn.classList.toggle('on');
- btn.style.background=btn.classList.contains('on')?'#1B3A6B':'var(--bg)';
- btn.style.color=btn.classList.contains('on')?'#fff':'var(--p)';
- btn.style.borderColor=btn.classList.contains('on')?'#1B3A6B':'var(--border)';
- const count=[...document.querySelectorAll('.spec-btn.on')].length;
- const counter=document.getElementById('specsCounter');
- if(counter){counter.textContent=count+'/3';counter.style.color=count>=3?'var(--gold-d)':'var(--p)';counter.style.background=count>=3?'var(--gold-l)':'var(--p-light)';}
-}
-async function saveSpecs(){
- const specs=[...document.querySelectorAll('.spec-btn.on')].map(b=>b.textContent.trim());
- if(!specs.length){toast('اختر تخصصاً واحداً على الأقل','error');return;}
- const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs,notify_categories:specs})});
- if(r.id){}
-async function changePw(){const oldPw=document.getElementById('pwOld')?.value;const newPw=document.getElementById('pwNew')?.value;if(!oldPw||!newPw){toast('اكمل البيانات','error');return;}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:newPw})});if(res.message&&res.message.includes('success')){toast('تم تغيير كلمة المرور','success');}else{toast(res.message||'حدث خطأ','error');}}
-async function saveAllProfile(){
- const btn=document.getElementById('saveAllBtn');if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
- try{
- const name=document.getElementById('pNm')?.value?.trim()||'';const phone=document.getElementById('pPh')?.value?.trim()||'';const city=document.getElementById('pCit')?.value||'';const bio=document.getElementById('pBio')?.value||'';const exp=parseInt(document.getElementById('pExp')?.value||0)||null;
- if(!name){toast('الاسم مطلوب','error');return;}
- const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({name,phone,city,bio,experience_years:exp})});
- if(r.id){document.getElementById('userName').textContent=r.name||'المزود';toast('تم حفظ جميع التغييرات','success');}
- else toast(r.message||'حدث خطأ','error');
- }catch{toast('تعذر الحفظ','error');}
- finally{if(btn){btn.disabled=false;btn.innerHTML=S(I.save)+' حفظ جميع التغييرات';}}
-}
-function renderBrowse(list){
- if(!list.length)return`<div class="es"><div class="es-ic">${S(I.proj)}</div><div class="es-t">لا يوجد مشاريع متاحة</div></div>`;
- return`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">${list.map(r=>{
- const cs=CAT_STYLE[r.category]||{g:'135deg,#1B3A6B,#142d54',ic:''};
- const headerHtml=r.image_url
- ?`<div style="position:relative;height:150px;overflow:hidden">
- <img src="${r.image_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background='linear-gradient(${cs.g})';this.remove()">
- <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent)"></div>
- <div style="position:absolute;bottom:12px;right:14px"><div style="font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)">${r.category||''}</div></div>
- <div style="position:absolute;top:12px;left:12px"><span style="background:rgba(22,163,74,.85);backdrop-filter:blur(8px);color:#fff;padding:4px 12px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.3px">مفتوح</span></div>
- </div>`
- :`<div style="background:linear-gradient(135deg,${cs.g.replace('135deg,','')});padding:24px 20px 20px;position:relative;min-height:110px;overflow:hidden">
- <div style="position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07);top:-30px;left:-30px"></div>
- <div style="font-size:12px;font-weight:900;letter-spacing:1px;margin-bottom:8px;color:rgba(255,255,255,.9);background:rgba(255,255,255,.18);display:inline-block;padding:3px 9px;border-radius:7px">${cs.ic}</div>
- <div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.9);position:relative">${r.category||'عام'}</div>
- <div style="position:absolute;top:12px;left:12px"><span style="background:rgba(22,163,74,.85);backdrop-filter:blur(8px);color:#fff;padding:4px 12px;border-radius:99px;font-size:10px;font-weight:800">مفتوح</span></div>
- </div>`;
- return`<div style="background:#fff;border:none;border-radius:20px;overflow:hidden;box-shadow:0 4px 16px rgba(27,58,107,.1),0 1px 4px rgba(27,58,107,.06);transition:all .25s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column" onmouseover="this.style.transform='translateY(-5px)';this.style.boxShadow='0 16px 40px rgba(27,58,107,.18)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(27,58,107,.1)'">
- ${headerHtml}
- <div style="padding:16px 18px;flex:1;display:flex;flex-direction:column">
- <div style="font-size:16px;font-weight:900;color:var(--text);line-height:1.4;margin-bottom:10px;letter-spacing:-.3px">${r.title}</div>
- ${r.description?`<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.description}</div>`:''}
- <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
- ${r.client_name?`<span style="background:var(--p-light);color:var(--p);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--p-mid)">${r.client_name}</span>`:''}
- ${r.city?`<span style="background:#f0fdf4;color:#15803d;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #bbf7d0">${r.city}</span>`:''}
- ${r.budget_max?`<span style="background:#fff8e7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;border:1px solid #fde68a">${Number(r.budget_max).toLocaleString('en-US')} ر.س</span>`:''}
- ${r.deadline?`<span style="background:var(--bg);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border)">${fdt(r.deadline)}</span>`:''}
- <span style="background:var(--bg);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border)">${r.bid_count||0} عرض</span>
- </div>
- <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1.6fr;gap:8px">
- <button onclick="viewProjModal(${r.id})" style="padding:11px 8px;background:var(--bg);color:var(--p);border:1.5px solid var(--p-mid);border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.background='var(--p-light)';this.style.borderColor='var(--p)';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='var(--bg)';this.style.borderColor='var(--p-mid)';this.style.transform='none'">${S(I.eye,'var(--p)')} التفاصيل</button>
- <button onclick="bidModal(${r.id},'${(r.title||'').replace(/'/g,'').replace(/"/g,'')}')" style="padding:11px 8px;background:linear-gradient(135deg,#1B3A6B,#2C5282);color:#fff;border:none;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(27,58,107,.3);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(27,58,107,.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 10px rgba(27,58,107,.3)'">${S(I.send,'#fff')} تقديم عرض</button>
- </div>
- </div>
- </div>`;
- }).join('')}</div>`;
-}
-function bidModal(projectId,projectTitle){
- openM(`تقديم عرض — ${projectTitle}`,
- `<div class="g2"><div class="fg"><label class="fl">سعر العرض (ر.س) <span class="fh">*</span></label><input type="number" class="fi" id="bPrice" placeholder="5000"></div><div class="fg"><label class="fl">مدة التنفيذ (أيام) <span class="fh">*</span></label><input type="number" class="fi" id="bDays" placeholder="7"></div></div><div class="fg"><label class="fl">رسالتك للعميل <span class="fh">*</span></label><textarea class="fta" style="min-height:90px" id="bNote" placeholder="اشرح خبرتك وكيف ستنفذ المشروع…"></textarea></div>`,
- `<button class="btn btn-gh" onclick="closeM()">إلغاء</button><button class="btn btn-dk" onclick="submitBid(${projectId})">${S(I.send)} إرسال العرض</button>`,
- `<svg viewBox="0 0 24 24">${I.send}</svg>`,'#e8eef7');
-}
-async function submitBid(projectId){
- const priceEl=document.getElementById('bPrice');const daysEl=document.getElementById('bDays');const noteEl=document.getElementById('bNote');
- const price=priceEl?.value?.trim();const days=daysEl?.value?.trim();const note=noteEl?.value?.trim();
- if(!price||parseFloat(price)<=0){toast('أدخل سعر العرض','error');priceEl?.focus();return;}
- if(!days||parseInt(days)<=0){toast('أدخل مدة التنفيذ','error');daysEl?.focus();return;}
- if(!note){toast('أدخل رسالتك للعميل','error');noteEl?.focus();return;}
- const btn=document.querySelector('#ov .btn-dk');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
- const res=await api(`/api/requests/${projectId}/bids`,{method:'POST',body:JSON.stringify({price:parseFloat(price),days:parseInt(days),note})});
- if(btn){btn.disabled=false;btn.innerHTML=S(I.send)+' إرسال العرض';}
- if(res.message&&!res.id&&!res.bid_id){toast(res.message||'حدث خطأ','error');return;}
- closeM();toast('تم إرسال عرضك بنجاح','success');
-}
-async function viewProjModal(id){
-  window._curProjTitle = '';
- const r=await api(`/api/requests/${id}`); window._curProjTitle = r.title||'';
- const imgs=r.images||[];
- const atts=r.attachments||[];
- const imgsHtml=imgs.length?`<div class="ib-bl"><div class="ib-t">صور المشروع (${imgs.length})</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px">${imgs.map(img=>`<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="window.open('${img}','_blank')"><img src="${img}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}</div></div>`:'';
- const attsHtml=atts.length?`<div class="ib-bl"><div class="ib-t">الملفات المرفقة (${atts.length})</div>${atts.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="width:28px;height:28px;border-radius:7px;background:${f.type==='application/pdf'?'var(--red-l)':'var(--p-light)'};display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="${f.type==='application/pdf'?'var(--red)':'var(--p)'}" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name||'ملف'}</span><a href="${f.data}" download="${f.name||'ملف'}" style="font-size:10px;font-weight:700;color:var(--p);text-decoration:none;padding:3px 8px;background:var(--p-light);border-radius:6px">تحميل</a></div>`).join('')}</div>`:'';
- openM('تفاصيل المشروع',
- `<div style="background:var(--p);border-radius:12px;padding:16px;margin-bottom:14px;position:relative;overflow:hidden"><div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div><div style="font-size:14px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:8px">${r.title}</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600">${r.city||'—'}</span>${r.category?`<span style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600">${r.category}</span>`:''}</div></div>
- <div class="ib-bl"><div class="ib-t">معلومات</div><div class="ir"><span class="ik">الميزانية</span><span class="iv">${fpr(r.budget_max)}</span></div><div class="ir"><span class="ik">الموعد النهائي</span><span class="iv">${fdt(r.deadline)}</span></div><div class="ir"><span class="ik">عدد العروض</span><span class="iv">${r.bid_count||0}</span></div><div class="ir"><span class="ik">تاريخ النشر</span><span class="iv">${fdt(r.created_at)}</span></div></div>
- ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--text2)">${r.description}</div></div>`:''}
- ${imgsHtml}${attsHtml}
- <div class="ib-bl" style="border:1.5px solid var(--green);background:#f0fdf4"><div class="ib-t" style="color:#065f46">التواصل مع صاحب الطلب</div><div class="ir"><span class="ik">الاسم</span><span class="iv">${r.client_name||'—'}</span></div>${r.client_phone?`<div class="ir"><span class="ik">الجوال</span><span class="iv"><a href="tel:${r.client_phone}" style="color:var(--green);font-weight:700;text-decoration:none">${r.client_phone}</a></span></div>`:''}`+
- `${r.client_phone?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-  <a href="tel:${r.client_phone}" style="flex:1;min-width:80px;padding:10px 8px;background:var(--green);color:#fff;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px">
-    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال
-  </a>
-  <a href="${waMsg(r.client_phone, r.client_name, r.title)}" target="_blank" style="flex:1;min-width:80px;padding:10px 8px;background:#25d366;color:#fff;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>واتساب
-  </a>
-  <button onclick="openClientProfile(${r.client_id||0},'${r.client_name||''}','${r.client_phone||''}','')" style="flex:1;min-width:80px;padding:10px 8px;background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
-    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف العميل
-  </button>
-</div>`:''}</div>`,
- `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-dk" onclick="closeM();bidModal(${r.id},'${(r.title||'').replace(/'/g,'')}')">${S(I.send)} تقديم عرض</button>`,
- `<svg viewBox="0 0 24 24">${I.eye}</svg>`,'#e8eef7');
-}
+// ══════════════════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════════════════
+async function loadProfile() {
+  var pg = _el('page-profile');
+  if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  var p = await _api('/api/provider/profile') || {};
 
+  var avH = p.profile_image
+    ? '<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+    : '<span style="font-size:28px;font-weight:900;color:var(--p2)">'+(p.name||'م')[0]+'</span>';
 
-function renderMyBids(list){
-  if(!list.length)return`<div class="es"><div class="es-ic">${S(I.send)}</div><div class="es-t">لا يوجد عروض</div><div class="es-s">تصفح المشاريع وقدم عروضك</div></div>`;
-  return list.map(b=>{
-    const isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    const colors={accepted:['#15803d','#dcfce7','#bbf7d0'],rejected:['#991b1b','#fee2e2','#fecaca'],pending:['#92400e','#fff8e7','#fde68a']};
-    const [tc,bg,bc]=colors[b.status]||colors.pending;
-    const sl=isAcc?'✓ مقبول':isRej?'✕ مرفوض':'⏳ معلق';
-    const _cd=_pGet('c_'+b.request_id);
-    const _ph=_cd.phone||b.client_phone||'';
-    const _wa=_ph?waMsg(_ph,b.client_name||_cd.name||'العميل',b.request_title||'المشروع'):'';
-    const _bs='padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:5px;transition:.15s;text-decoration:none';
-    const waSvg='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>';
-    const telSvg='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
-    const callBtns=_ph
-      ?`<a href="${_wa}" target="_blank" style="${_bs};background:#25d366;color:#fff">${waSvg}واتساب</a><a href="tel:${_ph}" style="${_bs};background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">${telSvg}اتصال</a>`
-      :'';
-    const viewBtn=`<button onclick="viewProjModal(${b.request_id})" style="${_bs};background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">${S(I.eye,'var(--p)')}عرض</button>`;
-    const acts=isAcc
-      ?`<div style="padding-top:10px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">${callBtns}${viewBtn}</div>`
-      :isRej?''
-      :`<div style="padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap"><button onclick="deleteBid(${b.id})" style="${_bs};background:var(--red-l);color:var(--red);border:1px solid #fecaca">سحب</button>${viewBtn}</div>`;
-    return`<div style="background:#fff;border:none;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(27,58,107,.14)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 14px rgba(27,58,107,.09)'">
-      <div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>
-        <div style="min-width:0;flex:1">
-          <div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.request_title||'مشروع #'+b.request_id}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45)">تقديم: ${fdt(b.created_at)}</div>
-        </div>
-        <span style="background:${bg};color:${tc};border:1.5px solid ${bc};padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">${sl}</span>
-      </div>
-      <div style="padding:14px 20px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${acts?'12':'0'}px">
-          <span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:800">💰 ${fpr(b.price)}</span>
-          ${b.days||b.delivery_days?`<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700">⏱️ ${b.days||b.delivery_days} يوم</span>`:''}
-          ${b.city?`<span style="background:var(--bg);color:var(--muted);border:1px solid var(--border);padding:5px 13px;border-radius:20px;font-size:11px">📍 ${b.city}</span>`:''}
-        </div>
-        ${b.note?`<div style="font-size:13px;color:var(--text2);line-height:1.8;padding:10px 14px;background:linear-gradient(135deg,#fafbff,#f4f7fb);border-radius:10px;border-right:4px solid #F0A500;margin-bottom:12px;font-style:italic">&ldquo;${b.note}&rdquo;</div>`:''}
-        ${acts}
-      </div>
-    </div>`;
+  var portHtml = (p.portfolio_images||[]).map(function(img,i){
+    return '<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover">' +
+      '<button onclick="_delPortImg('+i+')" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1">×</button>' +
+    '</div>';
   }).join('');
+
+  var specsHtml = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'].map(function(c){
+    var on=(p.specialties||[]).includes(c);
+    return '<button onclick="_togSpec(this)" class="spec-btn'+(on?' on':'')+'" style="padding:7px 14px;border-radius:20px;border:1.5px solid '+(on?'#1B3A6B':'var(--border)')+';font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:'+(on?'#1B3A6B':'var(--bg)')+';color:'+(on?'#fff':'var(--p)')+';transition:all .15s;margin-bottom:4px">'+c+'</button>';
+  }).join(' ');
+
+  var cityOpts = ['الرياض','جدة','الدمام','الخبر','المدينة المنورة','مكة المكرمة','الطائف','بريدة','أبها','تبوك','حائل','الباحة','جازان','نجران','ينبع','الخرج','الدوادمي','الأحساء','القطيف','الجبيل']
+    .map(function(c){ return '<option'+(c===p.city?' selected':'')+'>'+c+'</option>'; }).join('');
+
+  pg.innerHTML =
+    '<div class="pghd"><div><div class="pg-t">الملف الشخصي</div><div class="pg-s">بياناتك كمزود خدمة</div></div></div>' +
+
+    // صورة الحساب
+    '<div class="card card-accent" style="margin-bottom:14px">' +
+      '<div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><h3>صورة الحساب</h3></div></div>' +
+      '<div style="display:flex;align-items:center;gap:16px">' +
+        '<div id="av-preview" style="width:70px;height:70px;border-radius:50%;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid var(--p-light)">'+avH+'</div>' +
+        '<div>' +
+          '<input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)">' +
+          '<button class="btn-sm bs-p" onclick="document.getElementById(\'av-inp\').click()">تغيير الصورة</button>' +
+          (p.profile_image?'<button class="btn-sm bs-r" onclick="_removeAvatar()" style="margin-right:8px">حذف</button>':'') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // المعلومات
+    '<div class="card" style="margin-bottom:14px">' +
+      '<div class="ch"><div class="ch-l"><h3>المعلومات الشخصية</h3></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">الاسم الكامل</label><input id="p-name" type="text" value="'+_esc(p.name||'')+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div>' +
+        '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">رقم الجوال</label><input id="p-phone" type="text" value="'+_esc(p.phone||'')+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div>' +
+        '<div style="grid-column:1/-1"><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">المدينة</label><select id="p-city" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;color:var(--p)"><option value="">اختر المدينة</option>'+cityOpts+'</select></div>' +
+        '<div style="grid-column:1/-1"><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">نبذة مختصرة</label><textarea id="p-bio" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;min-height:80px;resize:vertical">'+_esc(p.bio||'')+'</textarea></div>' +
+        '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">سنوات الخبرة</label><input id="p-exp" type="number" value="'+(p.experience_years||'')+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div>' +
+      '</div>' +
+    '</div>' +
+
+    // التخصصات
+    '<div class="card" style="margin-bottom:14px">' +
+      '<div class="ch"><div class="ch-l"><h3>التخصصات</h3></div><span id="specs-count" style="font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:4px 10px;border-radius:20px">'+(p.specialties||[]).length+'/3</span></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+specsHtml+'</div>' +
+      '<button class="btn-sm bs-p" onclick="_saveSpecs()">حفظ التخصصات</button>' +
+    '</div>' +
+
+    // معرض الأعمال
+    '<div class="card" style="margin-bottom:14px">' +
+      '<div class="ch"><div class="ch-l"><h3>معرض الأعمال</h3></div><span style="font-size:11px;color:var(--muted)">'+(p.portfolio_images||[]).length+'/6</span></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">'+portHtml +
+        ((p.portfolio_images||[]).length<6?
+          '<div onclick="document.getElementById(\'port-inp\').click()" style="border:2px dashed var(--border);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:5px;background:var(--bg)">' +
+            '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#6b85a8" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+            '<span style="font-size:11px;color:var(--muted)">إضافة</span></div>'
+          : '') +
+      '</div>' +
+      '<input type="file" id="port-inp" accept="image/*" multiple style="display:none" onchange="_uploadPort(this)">' +
+    '</div>' +
+
+    // كلمة المرور
+    '<div class="card" style="margin-bottom:14px">' +
+      '<div class="ch"><div class="ch-l"><h3>تغيير كلمة المرور</h3></div></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">الحالية</label><input type="password" id="pw-old" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div>' +
+        '<div><label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px">الجديدة</label><input type="password" id="pw-new" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div>' +
+      '</div>' +
+      '<button class="btn-sm bs-p" onclick="_changePw()" style="margin-top:12px">تغيير كلمة المرور</button>' +
+    '</div>' +
+
+    // حفظ
+    '<div style="position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--border)">' +
+      '<button id="save-btn" onclick="_saveProfile()" style="width:100%;padding:14px;background:var(--p);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 4px 16px rgba(27,58,107,.25)">حفظ جميع التغييرات</button>' +
+    '</div>';
 }
 
-
-function openClientProfile(clientId, clientName, clientPhone, clientImage){
-  clientId = String(clientId||'');
-  var _ph = clientPhone || '';
-  var ol = document.getElementById('cpOl');
-  if(!ol){
-    ol = document.createElement('div');
-    ol.id = 'cpOl';
-    ol.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
-    ol.addEventListener('click', function(e){ if(e.target===ol) ol.style.display='none'; });
-    var sh = document.createElement('div');
-    sh.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column';
-    sh.innerHTML = '<div style="text-align:center;padding:10px 0 0"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div>'
-                 + '<div id="cpBody" style="padding:20px;flex:1"></div>'
-                 + '<div style="padding:12px 18px 24px;border-top:1px solid #dce5f0;background:#f4f7fb">'
-                 +   '<button onclick="document.getElementById(\'cpOl\').style.display=\'none\'" style="width:100%;padding:12px;background:#fff;border:1.5px solid #dce5f0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#6b85a8">إغلاق</button>'
-                 + '</div>';
-    ol.appendChild(sh);
-    document.body.appendChild(ol);
-  }
-  ol.style.display = 'flex';
-  var body = document.getElementById('cpBody');
-  var avH = clientImage
-    ? '<img src="'+clientImage+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
-    : '<span style="font-size:24px;font-weight:900;color:#fff">'+(clientName||'ع')[0]+'</span>';
-  var wa = _ph ? waMsg(_ph, clientName, window._curProjTitle||'') : '';
-  var contactBtns = _ph
-    ? '<div style="display:flex;gap:8px;margin-top:14px">'
-      + '<a href="'+wa+'" target="_blank" style="flex:1;padding:11px;background:#25d366;color:#fff;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px">'
-      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>واتساب</a>'
-      + '<a href="tel:'+_ph+'" style="padding:11px 16px;background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:6px">'
-      + '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'
-      + '</div>'
-    : '<div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:9px;font-size:12px;color:var(--muted);text-align:center">لا يوجد رقم تواصل</div>';
-  body.innerHTML =
-    '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);border-radius:16px;padding:20px;position:relative;overflow:hidden">'
-    +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
-    +'<div style="display:flex;align-items:center;gap:14px">'
-      +'<div style="width:60px;height:60px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:3px solid rgba(255,255,255,.25)">'+avH+'</div>'
-      +'<div>'
-        +'<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:3px">'+(clientName||'العميل')+'</div>'
-        +'<div style="font-size:11px;color:rgba(255,255,255,.5)">عميل في منصة مناقصة</div>'
-      +'</div>'
-    +'</div>'
-    +contactBtns
-    +'</div>';
+// Profile actions
+function _togSpec(btn){
+  var sel=document.querySelectorAll('.spec-btn.on');
+  if(!btn.classList.contains('on')&&sel.length>=3){ showToast('الحد الأقصى 3 تخصصات','error'); return; }
+  btn.classList.toggle('on');
+  var on=btn.classList.contains('on');
+  btn.style.background=on?'#1B3A6B':'var(--bg)'; btn.style.color=on?'#fff':'var(--p)'; btn.style.borderColor=on?'#1B3A6B':'var(--border)';
+  var cnt=document.querySelectorAll('.spec-btn.on').length;
+  var sc=_el('specs-count'); if(sc) sc.textContent=cnt+'/3';
+}
+async function _saveSpecs(){
+  var specs=[...document.querySelectorAll('.spec-btn.on')].map(function(b){return b.textContent.trim();});
+  var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs,notify_categories:specs})});
+  showToast(r.id?'تم حفظ التخصصات':'حدث خطأ',r.id?'success':'error');
+}
+async function _saveProfile(){
+  var btn=_el('save-btn'); if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
+  var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({
+    name:(_el('p-name')||{}).value,phone:(_el('p-phone')||{}).value,
+    city:(_el('p-city')||{}).value,bio:(_el('p-bio')||{}).value,
+    experience_years:parseInt((_el('p-exp')||{}).value)||null
+  })});
+  if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
+  if(r.id){
+    _me.name=r.name; localStorage.setItem('user',JSON.stringify(_me));
+    var un=_el('userName'); if(un) un.textContent=r.name;
+    showToast('تم الحفظ بنجاح','success');
+  } else showToast(r.message||'حدث خطأ','error');
+}
+async function _changePw(){
+  var o=(_el('pw-old')||{}).value, n=(_el('pw-new')||{}).value;
+  if(!o||!n){showToast('اكمل الحقلين','error');return;}
+  var r=await _api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:o,new_password:n})});
+  showToast(r.ok?'تم تغيير كلمة المرور':'كلمة المرور الحالية غير صحيحة',r.ok?'success':'error');
+}
+function _uploadAvatar(inp){
+  var f=inp.files[0]; if(!f) return;
+  if(f.size>3*1024*1024){showToast('الحجم الأقصى 3MB','error');return;}
+  var rd=new FileReader();
+  rd.onload=async function(e){
+    var img=e.target.result;
+    var pr=_el('av-preview'); if(pr) pr.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    _setAvatar(img); localStorage.setItem('pav_'+_me.id,img);
+    await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:img})});
+    showToast('تم حفظ الصورة','success');
+  };
+  rd.readAsDataURL(f);
+}
+async function _removeAvatar(){
+  await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:null})});
+  localStorage.removeItem('pav_'+_me.id); _setAvatar(null);
+  showToast('تم حذف الصورة','success'); loadProfile();
+}
+function _uploadPort(inp){
+  var files=[...inp.files]; inp.value='';
+  files.forEach(function(f){
+    if(f.size>5*1024*1024){showToast(f.name+': أكبر من 5MB','error');return;}
+    var rd=new FileReader();
+    rd.onload=async function(e){
+      var r=await _api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:e.target.result})});
+      if(r.ok||r.count) showToast('تم رفع الصورة','success');
+      else showToast(r.message||'فشل الرفع','error');
+    };
+    rd.readAsDataURL(f);
+  });
+  setTimeout(loadProfile,1500);
+}
+async function _delPortImg(i){
+  await _api('/api/provider/profile/portfolio/'+i,{method:'DELETE'});
+  showToast('تم حذف الصورة','success'); loadProfile();
 }
 
-
-async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;await api(`/api/bids/${id}`,{method:'DELETE'});toast('تم سحب العرض','error');pgMyBids();}
-
-{
- loading();myProjects=await api('/api/provider/projects')||[];
- // جلب هاتف العميل للمشاريع الجارية
- const _inprog=myProjects.filter(p=>p.status==='in_progress');
- await Promise.all(_inprog.map(async p=>{
-   if(!_pGet('c_'+p.id).phone){
-     try{const rd=await api('/api/requests/'+p.id);
-       if(rd&&rd.client_phone)_pSet('c_'+p.id,{phone:rd.client_phone,name:rd.client_name||''});}
-     catch(e){}
-   }
- }));
-
-function renderMyProjects(list){
-  if(!list.length)return emptyH('لا يوجد مشاريع','');
-  return list.map(function(r){
-    var isProg=r.status==='in_progress';
-    var grad=isProg?'135deg,#78350f,#d97706':'135deg,#0f2548,#1B3A6B';
-    var stBg=isProg?'#fff8e7':'#dcfce7',stCl=isProg?'#92400e':'#15803d',stBd=isProg?'#fde68a':'#bbf7d0';
-    var stTx=isProg?'⚡ جارٍ':'✓ مكتمل';
-    var key='c_'+r.id;
-    var _cd=_pGet(key);
-    var _ph=_cd.phone||r.client_phone||'';
-    var cBtns=callBtns(_ph,r.client_name||_cd.name||'العميل',r.title||'');
-    return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09);transition:all .2s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 10px 28px rgba(27,58,107,.14)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 14px rgba(27,58,107,.09)\'">'
-      +'<div style="background:linear-gradient('+grad+');padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">'
-        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
-        +'<div style="min-width:0;flex:1">'
-          +'<div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:4px">'+(r.project_number||'#'+r.id)+'</div>'
-          +'<div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'
-        +'</div>'
-        +'<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+stTx+'</span>'
-      +'</div>'
-      +'<div style="padding:14px 20px">'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-          +(r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">📍 '+esc(r.city)+'</span>':'')
-          +(r.category?'<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">'+esc(r.category)+'</span>':'')
-          +(r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 '+fpr(r.price)+'</span>':'')
-          +(r.client_name?'<span style="background:var(--bg);color:var(--muted);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">👤 '+esc(r.client_name)+'</span>':'')
-        +'</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">'
-          +'<button onclick="viewProjModal('+r.id+')" style="'+BTN_S+';background:var(--p);color:#fff">'
-            +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل'
-          +'</button>'
-          +cBtns
-        +'</div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+// ══════════════════════════════════════════════════════════
+// NOTIFICATION COUNT
+// ══════════════════════════════════════════════════════════
+function _loadNotifCount(){
+  _api('/api/provider/notifications').then(function(ns){
+    var u=(ns||[]).filter(function(n){return!n.is_read;}).length;
+    var b1=_el('nb-notif'); if(b1){b1.style.display=u?'':'none';b1.textContent=u;}
+    var b2=_el('mob-nb');   if(b2){b2.style.display=u?'flex':'none';b2.textContent=u;}
+  });
 }
+setInterval(_loadNotifCount, 30000);
 
-// ══ Init ══
-setTimeout(function(){
-  var hash=location.hash.replace('#','');
-  var valid=['home','browse','myworks','reviews','notifs','profile'];
-  if(hash&&valid.includes(hash)){
-    var btn=document.querySelector('[data-page="'+hash+'"]')||document.querySelector('.ni.on');
-    show(hash,btn,hash);
-  } else {
-    show('home',document.querySelector('.ni.on'),'home');
-  }
-},0);
-loadNotifCount();
-}
-}</script>
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  gotoPage('home');
+});
+
+</script>
 </body>
 </html>
