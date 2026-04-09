@@ -208,6 +208,7 @@ input,select,textarea{font-family:inherit;color:inherit}
 .ls{display:flex;flex-direction:column;align-items:center;padding:52px 24px}
 .spin{width:26px;height:26px;border:2.5px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:sp .7s linear infinite;margin-bottom:12px}
 @keyframes sp{to{transform:rotate(360deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .ls-t{font-size:12px;color:var(--muted)}
 .es{display:flex;flex-direction:column;align-items:center;padding:40px 24px;text-align:center}
 .es-ic{width:44px;height:44px;border-radius:12px;background:var(--p-light);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
@@ -289,6 +290,10 @@ input,select,textarea{font-family:inherit;color:inherit}
       <span>مشاريعي</span>
     </button>
     <span class="sg-lbl">الحساب</span>
+    <button class="ni" id="ni-chat" onclick="go('chats',this)">
+      <div class="ni-ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+      <span>المحادثات</span><span class="nbdg" id="nbChat" style="display:none">0</span>
+    </button>
     <button class="ni" onclick="go('reviews',this)">
       <div class="ni-ic"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
       <span>تقييماتي</span>
@@ -379,8 +384,8 @@ function loading(){setPage(`<div class="ls"><div class="spin"></div><div class="
 function openSb(){document.getElementById('sb').classList.add('open');document.getElementById('mobOv').classList.add('show');}
 function closeSb(){document.getElementById('sb').classList.remove('open');document.getElementById('mobOv').classList.remove('show');}
 function logout(){localStorage.clear();location.href='auth.html';}
-const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
-function go(page,btn){document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));if(btn)btn.classList.add('on');document.getElementById('pgT').textContent=TITLES[page]||page;({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();closeSb();}
+const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',chats:'المحادثات',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
+function go(page,btn){document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));if(btn)btn.classList.add('on');document.getElementById('pgT').textContent=TITLES[page]||page;({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,chats:pgChats,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();closeSb();}
 function S(p,c='currentColor'){return`<svg viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
 const I={proj:`<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>`,send:`<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>`,star:`<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,chk:`<polyline points="20 6 9 17 4 12"/>`,eye:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`,usr:`<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>`,bell:`<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`,tool:`<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>`,save:`<path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>`,fold:`<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>`};
 const ac=(id)=>AVC[(id||0)%AVC.length];
@@ -565,6 +570,117 @@ function renderMyProjects(list){
     ${r.status==='in_progress'?`<div class="pc-acts"><button class="btn btn-gh btn-sm" onclick="viewProjModal(${r.id})">${S(I.eye)} تفاصيل</button></div>`:''}</div>`).join('');
 }
 
+// ══ المحادثات ══
+let curChat=null; // {request_id, client_id, title}
+
+async function pgChats(){
+  loading();
+  const convs=await api('/api/provider/conversations')||[];
+  const totalUnread=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
+  const nb=document.getElementById('nbChat');if(nb){nb.style.display=totalUnread?'':'none';nb.textContent=totalUnread;}
+  if(!convs.length){
+    setPage(`<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">لا توجد محادثات بعد</div></div></div>
+      <div class="card card-accent"><div class="cb"><div class="es"><div class="es-ic">${S('<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>')}</div><div class="es-t">لا توجد محادثات</div><div class="es-s">ستظهر محادثاتك مع العملاء هنا</div></div></div></div>`);
+    return;
+  }
+  setPage(`<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">${convs.length} محادثة</div></div></div>
+    <div class="card card-accent">
+      <div id="convList">${renderConvList(convs)}</div>
+    </div>
+    <div id="chatBox" style="display:none"></div>`);
+}
+
+function renderConvList(convs){
+  return convs.map(cv=>{
+    const unread=parseInt(cv.unread||0);
+    const initials=(cv.client_name||'؟')[0];
+    const img=cv.client_image?`<img src="${cv.client_image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span>${initials}</span>`;
+    const time=cv.last_time?new Date(cv.last_time).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';
+    return `<div onclick="openChat(${cv.request_id},${cv.client_id},'${(cv.client_name||'').replace(/'/g,'')}','${(cv.request_title||'').replace(/'/g,'')}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">${img}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+          <div style="font-size:13px;font-weight:${unread?'800':'700'};color:var(--text)">${cv.client_name||'عميل'}</div>
+          <div style="font-size:10px;color:var(--hint)">${time}</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${cv.request_title||''}</div>
+        <div style="font-size:11px;color:var(--hint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.last_message||''}</div>
+      </div>
+      ${unread?`<div style="width:20px;height:20px;border-radius:50%;background:var(--p);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${unread}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openChat(reqId,clientId,clientName,reqTitle){
+  curChat={request_id:reqId,client_id:clientId,name:clientName,title:reqTitle};
+  const box=document.getElementById('chatBox');
+  const convList=document.getElementById('convList')?.parentElement;
+  if(convList)convList.style.display='none';
+  if(box){
+    box.style.display='block';
+    box.innerHTML=`
+      <div class="card card-accent">
+        <div class="ch">
+          <div class="ch-l">
+            <button onclick="backToConvList()" style="background:none;border:none;cursor:pointer;padding:4px 8px 4px 0;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            <div>
+              <div class="ch-t">${clientName}</div>
+              <div class="ch-s">${reqTitle}</div>
+            </div>
+          </div>
+        </div>
+        <div class="cb" style="padding-bottom:8px">
+          <div id="msgBox" style="height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--bg);border-radius:10px;margin-bottom:10px">
+            <div class="ls" style="padding:20px"><div class="spin"></div></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="msgInp" placeholder="اكتب رسالتك..." style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:inherit;font-size:13px;outline:none;transition:.18s" onfocus="this.style.borderColor='var(--p)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key=='Enter')sendProviderMsg()">
+            <button onclick="sendProviderMsg()" style="padding:11px 18px;background:var(--p);color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.18s" onmouseover="this.style.background='var(--p2)'" onmouseout="this.style.background='var(--p)'">إرسال</button>
+          </div>
+        </div>
+      </div>`;
+    loadProviderMsgs();
+  }
+}
+
+function backToConvList(){
+  curChat=null;
+  const box=document.getElementById('chatBox');if(box)box.style.display='none';
+  const card=document.getElementById('convList')?.parentElement;if(card)card.style.display='';
+}
+
+async function loadProviderMsgs(){
+  if(!curChat)return;
+  const msgs=await api('/api/messages/'+curChat.request_id)||[];
+  const box=document.getElementById('msgBox');if(!box)return;
+  if(!msgs.length){box.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;margin:auto">ابدأ المحادثة</div>';return;}
+  box.innerHTML=msgs.map(m=>{
+    const isMe=m.sender_id==me.id;
+    return `<div style="max-width:75%;padding:9px 13px;border-radius:${isMe?'14px 14px 4px 14px':'14px 14px 14px 4px'};font-size:13px;line-height:1.6;background:${isMe?'var(--p)':'#fff'};color:${isMe?'#fff':'var(--text)'};border:${isMe?'none':'1px solid var(--border)'};align-self:${isMe?'flex-end':'flex-start'}">
+      ${!isMe?`<div style="font-size:10px;font-weight:700;opacity:.6;margin-bottom:2px">${m.sender_name}</div>`:''}
+      ${m.content}
+      <div style="font-size:10px;opacity:.5;margin-top:3px;text-align:${isMe?'left':'right'}">${new Date(m.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`;
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+async function sendProviderMsg(){
+  const inp=document.getElementById('msgInp');
+  if(!inp||!inp.value.trim()||!curChat)return;
+  const content=inp.value.trim();inp.value='';
+  await api('/api/messages',{method:'POST',body:JSON.stringify({request_id:curChat.request_id,receiver_id:curChat.client_id,content})});
+  loadProviderMsgs();
+}
+
+// تحديث عداد المحادثات كل 30 ثانية
+async function updateChatBadge(){
+  const convs=await api('/api/provider/conversations')||[];
+  const total=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
+  const nb=document.getElementById('nbChat');if(nb){nb.style.display=total?'':'none';nb.textContent=total;}
+}
+setInterval(updateChatBadge,30000);
+
 async function pgReviews(){
   loading();const data=await api('/api/provider/reviews');const list=data||[];
   const avg=list.length?list.reduce((s,r)=>s+(r.rating||0),0)/list.length:0;
@@ -612,10 +728,16 @@ async function pgProfile(){
       </div>
     </div>
     <div class="card" style="margin-bottom:14px">
-      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div class="ch-t">التخصصات</div></div></div>
+      <div class="ch"><div class="ch-l"><div class="ch-ic" style="background:#fff8e7;color:#F0A500">${S(I.tool,'#F0A500')}</div><div><div class="ch-t">اهتمامات الإشعارات</div><div class="ch-s">حد أقصى 3 تخصصات — ستصلك إشعارات عند نشر مشروع في هذه التخصصات</div></div></div><span id="specsCounter" style="font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:4px 10px;border-radius:20px">${(p.specialties||[]).length}/3</span></div>
       <div class="cb">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="this.classList.toggle('on');this.style.background=this.classList.contains('on')?'#1B3A6B':'var(--bg)';this.style.color=this.classList.contains('on')?'#fff':'var(--p)'" style="padding:6px 13px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--bg)'};color:${on?'#fff':'var(--p)'};transition:all .15s;margin-bottom:4px" class="${on?'on':''}">${c}</button>`;}).join('')}</div>
-        <button class="btn btn-gh btn-sm" onclick="saveSpecs()">حفظ التخصصات</button>
+        <div style="background:var(--gold-l);border:1px solid #fde68a;border-right:3px solid var(--gold);border-radius:9px;padding:10px 14px;margin-bottom:14px">
+          <p style="font-size:12px;color:#92400e;font-weight:600;margin:0">🔔 اختر حتى 3 تخصصات لتصلك إشعارات فور نشر مشروع جديد مطابق</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${CATS.map(c=>{const on=(p.specialties||[]).includes(c);return`<button onclick="toggleSpec(this)" style="padding:7px 14px;border-radius:20px;border:1.5px solid ${on?'#1B3A6B':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${on?'#1B3A6B':'var(--bg)'};color:${on?'#fff':'var(--p)'};transition:all .15s;margin-bottom:4px" class="spec-btn${on?' on':''}">${c}</button>`;}).join('')}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-dk btn-sm" onclick="saveSpecs()"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> حفظ الاهتمامات</button>
+          <span style="font-size:11px;color:var(--muted)">تُنقل تلقائياً لقائمة الإشعارات</span>
+        </div>
       </div>
     </div>
     <div class="card" style="margin-bottom:14px">
@@ -680,7 +802,31 @@ async function addPortfolioImgs(input){
   toast('تم رفع الصور','success');pgProfile();
 }
 async function removePortfolioImg(index){await api('/api/provider/profile/portfolio/'+index,{method:'DELETE'});toast('تم حذف الصورة','success');pgProfile();}
-async function saveSpecs(){const specs=[...document.querySelectorAll('.on')].filter(b=>CATS.includes(b.textContent)).map(b=>b.textContent);await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs})});toast('تم حفظ التخصصات','success');}
+function toggleSpec(btn){
+  const selected=[...document.querySelectorAll('.spec-btn.on')];
+  if(!btn.classList.contains('on')&&selected.length>=3){
+    toast('الحد الأقصى 3 تخصصات فقط','error');
+    btn.style.animation='shake .3s';setTimeout(()=>btn.style.animation='',300);
+    return;
+  }
+  btn.classList.toggle('on');
+  btn.style.background=btn.classList.contains('on')?'#1B3A6B':'var(--bg)';
+  btn.style.color=btn.classList.contains('on')?'#fff':'var(--p)';
+  btn.style.borderColor=btn.classList.contains('on')?'#1B3A6B':'var(--border)';
+  const count=[...document.querySelectorAll('.spec-btn.on')].length;
+  const counter=document.getElementById('specsCounter');
+  if(counter)counter.textContent=count+'/3';
+  if(counter){counter.style.color=count>=3?'var(--gold-d)':'var(--p)';counter.style.background=count>=3?'var(--gold-l)':'var(--p-light)';}
+}
+async function saveSpecs(){
+  const specs=[...document.querySelectorAll('.spec-btn.on')].map(b=>b.textContent.trim());
+  if(!specs.length){toast('اختر تخصصاً واحداً على الأقل','error');return;}
+  const r=await api('/api/provider/profile',{method:'PUT',body:JSON.stringify({specialties:specs,notify_categories:specs})});
+  if(r.id){
+    document.getElementById('sbNm').textContent=r.name||'المزود';
+    toast('✅ تم حفظ الاهتمامات — ستصلك إشعارات لهذه التخصصات','success');
+  } else toast(r.message||'حدث خطأ','error');
+}
 async function changePw(){const oldPw=document.getElementById('pwOld')?.value;const newPw=document.getElementById('pwNew')?.value;if(!oldPw||!newPw){toast('اكمل البيانات','error');return;}const res=await api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:newPw})});if(res.message&&res.message.includes('success')){toast('تم تغيير كلمة المرور','success');}else{toast(res.message||'حدث خطأ','error');}}
 async function saveAllProfile(){
   const btn=document.getElementById('saveAllBtn');if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
@@ -706,6 +852,7 @@ async function markAllRead(){await api('/api/provider/notifications/read',{metho
 
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
 go('home',document.querySelector('.ni.on'));
+updateChatBadge();
 </script>
 </body>
 </html>
