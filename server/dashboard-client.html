@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -485,8 +484,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* ══ SKELETON ══ */
 .skel{background:linear-gradient(90deg,#f4f7fb 25%,#e8eef7 50%,#f4f7fb 75%);background-size:200%;animation:sk 1.4s infinite}
 @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.ri-home-card{background:#fff;border:none;border-radius:18px;margin-bottom:10px;overflow:hidden;box-shadow:0 3px 14px rgba(27,58,107,.1);transition:all .2s;cursor:pointer}
-.ri-home-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(27,58,107,.16)}
 
 /* ══ MOB HEAD ══ */
 .mob-head{
@@ -812,11 +809,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
     <span class="bt">طلباتي</span>
   </button>
-  <button class="bni" onclick="showAgreement()" style="position:relative">
-    <div style="width:58px;height:58px;background:linear-gradient(135deg,#F0A500,#c78500);border-radius:50%;margin-top:-28px;box-shadow:0 6px 20px rgba(240,165,0,.5),0 2px 8px rgba(0,0,0,.15);border:4px solid #fff;display:flex;align-items:center;justify-content:center;transition:all .2s">
-      <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2.8" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </div>
-    <span class="bt" style="font-size:10px;font-weight:800;color:var(--gold-d);margin-top:2px">جديد</span>
+  <button class="bni" onclick="showAgreement()">
+    <div class="bic" style="width:36px;height:36px;background:var(--gold);border-radius:50%;margin-top:-10px;box-shadow:0 3px 12px rgba(240,165,0,.4)"><svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <span class="bt">جديد</span>
   </button>
   <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
@@ -992,27 +987,6 @@ function fmtDate(d){if(!d)return'';try{var dt=new Date(d);return dt.toLocaleDate
 function timeAgo(d){var diff=(new Date()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
 function errH(){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div><h4>تعذر التحميل</h4></div>';}
-function riCardHome(r){
-  var catColor={'تبريد وتكييف':'#0ea5e9','كهرباء':'#f59e0b','سباكة':'#3b82f6','نجارة':'#92400e','تنظيف':'#10b981','نقل عفش':'#6366f1','حدادة':'#64748b','ألمنيوم':'#94a3b8','كاميرات مراقبة وأمن':'#7c3aed','شبكات وإنترنت':'#0e7490','مظلات وسواتر':'#d97706','مكافحة حشرات':'#15803d'};
-  var cc=catColor[r.category]||'#1B3A6B';
-  var stMap={open:['#15803d','#dcfce7','● نشط'],in_progress:['#1e40af','#dbeafe','● جارٍ'],done:['#b45309','#fff8e7','● مكتمل'],review:['#92400e','#fef3c7','● مراجعة']};
-  var sm=stMap[r.status]||stMap.open;
-  var html='<div onclick="openDetail('+r.id+',event)" class="ri-home-card">';
-  html+='<div style="height:4px;background:linear-gradient(90deg,'+cc+','+cc+'50)"></div>';
-  html+='<div style="padding:14px 16px">';
-  html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">';
-  html+='<div style="font-size:15px;font-weight:900;color:var(--text);line-height:1.35;flex:1">'+r.title+'</div>';
-  html+='<span style="background:'+sm[1]+';color:'+sm[0]+';padding:4px 10px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0">'+sm[2]+'</span>';
-  html+='</div>';
-  html+='<div style="display:flex;gap:5px;flex-wrap:wrap">';
-  if(r.category)html+='<span style="background:'+cc+'18;color:'+cc+';border:1px solid '+cc+'30;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800">'+r.category+'</span>';
-  if(r.city)html+='<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">📍 '+r.city+'</span>';
-  if(r.budget_max)html+='<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>';
-  if(r.bid_count>0)html+='<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">'+r.bid_count+' عروض</span>';
-  html+='<span style="background:var(--bg);color:var(--hint);border:1px solid var(--border);padding:3px 9px;border-radius:20px;font-size:10px">'+timeAgo(r.created_at)+'</span>';
-  html+='</div></div></div>';
-  return html;
-}
 function riCard(r,actions){
   var bids=r.bid_count>0?'<span class="rm"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'+r.bid_count+' عروض</span>':'';
   var canEdit=r.status==='open'||r.status==='review';
@@ -1043,7 +1017,7 @@ function loadHome(){
     document.getElementById('s-open').textContent=all.filter(function(r){return r.status==='open';}).length;
     document.getElementById('s-prog').textContent=all.filter(function(r){return r.status==='in_progress';}).length;
     document.getElementById('s-done').textContent=all.filter(function(r){return r.status==='done';}).length;
-    document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(function(r){return riCardHome(r);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
+    document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
   }).catch(function(){document.getElementById('home-reqs').innerHTML=errH();});
   loadNotifCount();
 }
