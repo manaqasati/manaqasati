@@ -387,7 +387,7 @@ const ac=(id)=>AVC[(id||0)%AVC.length];
 const al=(n)=>(n||'؟')[0];
 const sts=(n)=>[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(n)?'#F0A500':'#e4e4e7'}">★</span>`).join('');
 const fdt=(d)=>d?new Date(d).toLocaleDateString('ar-SA'):'—';
-const fpr=(p)=>p?Number(p).toLocaleString('ar-SA')+' ر.س':'—';
+const fpr=(p)=>p?Number(p).toLocaleString('en-US')+' ر.س':'—';
 const cityOpts=(s='')=>`<option value="">اختر</option>`+CITIES.map(c=>`<option${c===s?' selected':''}>${c}</option>`).join('');
 
 async function pgHome(){
@@ -484,7 +484,7 @@ function renderBrowse(list){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:12px">
           <div style="font-size:11px;color:var(--muted)">${r.city||'—'}</div>
           <div style="font-size:11px;color:var(--muted)">${r.bid_count||0} عرض</div>
-          ${r.budget_max?`<div style="font-size:12px;color:var(--p);font-weight:700">${Number(r.budget_max).toLocaleString('ar-SA')} ر.س</div>`:'<div></div>'}
+          ${r.budget_max?`<div style="font-size:12px;color:var(--p);font-weight:700">${Number(r.budget_max).toLocaleString('en-US')} ر.س</div>`:'<div></div>'}
           ${r.deadline?`<div style="font-size:11px;color:var(--muted)">${fdt(r.deadline)}</div>`:'<div></div>'}
         </div>
         <div style="display:flex;gap:6px;margin-top:auto">
