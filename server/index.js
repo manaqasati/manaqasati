@@ -402,7 +402,8 @@ async function notifyInterestedProviders(reqId, title, category) {
   try {
     const provs = await pool.query(
       `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
-       AND notify_categories IS NOT NULL AND $1=ANY(notify_categories)`,
+       AND (specialties IS NOT NULL AND $1=ANY(specialties)
+            OR notify_categories IS NOT NULL AND $1=ANY(notify_categories))`,
       [category]
     );
     for (const p of provs.rows) {
@@ -1343,9 +1344,11 @@ app.get('/api/profile', auth, async (req, res) => {
 app.put('/api/profile', auth, async (req, res) => {
   try {
     const { name, phone, specialties, bio, city } = req.body;
+    // مزامنة notify_categories مع specialties لضمان وصول الإشعارات
+    const notifyCats = specialties && specialties.length ? specialties : null;
     const r = await pool.query(
-      'UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5 WHERE id=$6 RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge',
-      [name, phone||null, specialties||null, bio||null, city||null, req.user.id]);
+      'UPDATE users SET name=$1,phone=$2,specialties=$3,bio=$4,city=$5,notify_categories=$6 WHERE id=$7 RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge',
+      [name, phone||null, specialties||null, bio||null, city||null, notifyCats, req.user.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
