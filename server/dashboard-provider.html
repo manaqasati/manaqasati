@@ -487,6 +487,7 @@ function renderBrowse(list){
           ${r.budget_max?`<div style="font-size:12px;color:var(--p);font-weight:700">${Number(r.budget_max).toLocaleString('en-US')} ر.س</div>`:'<div></div>'}
           ${r.deadline?`<div style="font-size:11px;color:var(--muted)">${fdt(r.deadline)}</div>`:'<div></div>'}
         </div>
+        ${r.client_name?`<div style="display:flex;align-items:center;gap:5px;padding:5px 8px;background:var(--p-light);border-radius:7px;margin-bottom:8px"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="var(--p)" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span style="font-size:11px;font-weight:600;color:var(--p)">${r.client_name}</span></div>`:''}
         <div style="display:flex;gap:6px;margin-top:auto">
           <button class="btn btn-dk" style="flex:1;justify-content:center" onclick="bidModal(${r.id},'${(r.title||'').replace(/'/g,'').replace(/"/g,'')}')">تقديم عرض</button>
           <button class="btn btn-gh btn-sm" onclick="viewProjModal(${r.id})">${S(I.eye)}</button>
