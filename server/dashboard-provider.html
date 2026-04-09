@@ -765,13 +765,13 @@ function loading(){setPage(`<div class="ls"><div class="spin"></div><div class="
 function openSb(){document.getElementById('sb').classList.add('open');document.getElementById('mobOv').classList.add('show');}
 function closeSb(){document.getElementById('sb').classList.remove('open');document.getElementById('mobOv').classList.remove('show');}
 function logout(){localStorage.clear();location.href='auth.html';}
-const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',chats:'المحادثات',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
+const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
 function go(page,btn){
  try{history.replaceState(null,'','#'+page);}catch(e){}
  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
  if(btn)btn.classList.add('on');
  document.getElementById('pgT').textContent=TITLES[page]||page;
- ({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,chats:pgChats,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();
+ ({home:pgHome,browse:pgBrowse,mybids:pgMyBids,myprojects:pgMyProjects,reviews:pgReviews,profile:pgProfile,notifications:pgNotifications}[page]||pgHome)();
  closeSb();
 }
 function restorePage(){
@@ -933,7 +933,7 @@ async function viewProjModal(id){
  ${r.description?`<div class="ib-bl"><div class="ib-t">الوصف</div><div style="font-size:12px;line-height:1.8;color:var(--text2)">${r.description}</div></div>`:''}
  ${imgsHtml}${attsHtml}
  <div class="ib-bl" style="border:1.5px solid var(--green);background:#f0fdf4"><div class="ib-t" style="color:#065f46">التواصل مع صاحب الطلب</div><div class="ir"><span class="ik">الاسم</span><span class="iv">${r.client_name||'—'}</span></div>${r.client_phone?`<div class="ir"><span class="ik">الجوال</span><span class="iv"><a href="tel:${r.client_phone}" style="color:var(--green);font-weight:700;text-decoration:none">${r.client_phone}</a></span></div>`:''}`+
- `${r.client_phone?`<div style="display:flex;gap:8px;margin-top:10px"><a href="tel:${r.client_phone}" style="flex:1;text-align:center;background:var(--green);color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">اتصال</a><a href="https://wa.me/966${r.client_phone.replace(/^0/,'')}" target="_blank" style="flex:1;text-align:center;background:#25d366;color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">واتساب</a></div>`:''}</div>`,
+ `${r.client_phone?`<div style="display:flex;gap:8px;margin-top:10px"><a href="tel:${r.client_phone}" style="flex:1;text-align:center;background:var(--green);color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">اتصال</a><a href="https://wa.me/966"+r.client_phone.replace(/^0/,"")+"?text="+encodeURIComponent("مرحباً "+r.client_name+"،\n"+"أتواصل معك بشأن مشروعكم: *"+r.title+"*\n"+"أنا "+me.name+" - مزود خدمة في منصة مناقصة، يسعدني خدمتكم.")" target="_blank" style="flex:1;text-align:center;background:#25d366;color:#fff;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">واتساب</a></div>`:''}</div>`,
  `<button class="btn btn-gh" onclick="closeM()">إغلاق</button><button class="btn btn-dk" onclick="closeM();bidModal(${r.id},'${(r.title||'').replace(/'/g,'')}')">${S(I.send)} تقديم عرض</button>`,
  `<svg viewBox="0 0 24 24">${I.eye}</svg>`,'#e8eef7');
 }
@@ -969,7 +969,6 @@ function renderMyBids(list){
  ${b.note?`<div style="font-size:12.5px;color:var(--text2);line-height:1.8;padding:10px 14px;background:var(--bg);border-radius:10px;border-right:3px solid var(--gold-d);margin-bottom:12px;font-style:italic">"${b.note}"</div>`:''}
  <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">
  ${b.status==='pending'?`<button onclick="deleteBid(${b.id})" style="padding:8px 14px;background:var(--red-l);color:var(--red);border:1.5px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s">سحب العرض</button>`:''}
- <button onclick="openBidChat(${b.request_id},${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}','${(b.request_title||'').replace(/'/g,'')}') " style="padding:8px 14px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.2s">
  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة
  </button>
  </div>
@@ -977,7 +976,6 @@ function renderMyBids(list){
  </div>`;
  }).join('');
 }
-function openBidChat(reqId,clientId,clientName,reqTitle){go('chats',document.getElementById('ni-chat'));setTimeout(function(){openConvChat(reqId,clientId,clientName,reqTitle);},350);}
 async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;await api(`/api/bids/${id}`,{method:'DELETE'});toast('تم سحب العرض','error');pgMyBids();}
 
 async function pgMyProjects(){
@@ -1025,7 +1023,6 @@ let curChat=null;
 
 
 
-setInterval(updateChatBadge,30000);
 
 async function pgReviews(){
  loading();const data=await api('/api/provider/reviews');const list=data||[];
@@ -1179,7 +1176,7 @@ async function markAllRead(){await api('/api/provider/notifications/read',{metho
 
 document.getElementById('ov').addEventListener('click',function(e){if(e.target===this)closeM();});
 setActive('bn-home');
-updateChatBadge();
+
 const _hash=location.hash.replace('#','');
 if(_hash&&['home','browse','mybids','myprojects','chats','reviews','profile','notifications'].includes(_hash)){setTimeout(function(){restorePage();},50);}else{go('home',document.querySelector('.ni.on'));}
 
@@ -1242,7 +1239,7 @@ function handleWSEvent(data){
     } else {
       if(!isMyMsg){
         showMsgNotif(msg.sender_name||'رسالة',msg.content);
-        updateChatBadge();
+        
       }
     }
   }
@@ -1347,35 +1344,7 @@ async function sendChatMsg(reqId,receiverId){
 }
 
 // ── Chat Screen HTML ──
-async function openChatScreen(reqId,receiverId,partnerName,projTitle,showBack,partnerImage){
-  const avHtml=partnerImage
-    ?`<img src="${partnerImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-    :`${(partnerName||'؟')[0]}`;
-  return `<div class="chat-screen">
-    <div class="chat-header">
-      ${showBack?`<button class="chat-back" onclick="closeChatScreen()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}
-      <div class="chat-av">${avHtml}</div>
-      <div class="chat-info">
-        <div class="chat-name">${partnerName}</div>
-        <div class="chat-sub">${projTitle||''}</div>
-      </div>
-    </div>
-    <div class="chat-msgs" id="chatMsgsBox">
-      <div class="chat-empty"><div style="font-size:32px;opacity:.25;margin-bottom:8px">💬</div><div style="font-size:12px;color:var(--muted)">جاري التحميل...</div></div>
-    </div>
-    <div class="chat-input-area">
-      <div class="chat-inp-wrap">
-        <textarea id="chatInputField" class="chat-inp-field" placeholder="اكتب رسالتك..." rows="1"
-          oninput="onInputChange();autoResize(this)"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg(${reqId},${receiverId})}"></textarea>
-      </div>
-      <button class="chat-send-btn" onclick="sendChatMsg(${reqId},${receiverId})">
-        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
-    </div>
-  </div>`;
-}
-
+async 
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
 
 async function loadChatMessages(reqId, receiverId){
@@ -1402,33 +1371,7 @@ function formatConvTime(d){
   return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
 
-function renderConvListNew(convs){
-  if(!convs.length)return`<div class="chat-empty" style="padding:40px 20px"><div class="chat-empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="1.5" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="chat-empty-t">لا توجد محادثات</div><div class="chat-empty-s">ستظهر محادثاتك مع العملاء هنا</div></div>`;
-  return convs.map(cv=>{
-    const unread=parseInt(cv.unread||0);
-    const name=cv.client_name||'عميل';
-    const reqId=cv.request_id;
-    const partnerId=cv.client_id||0;
-    const lastMsg=cv.last_message||'';
-    const time=cv.last_time?formatConvTime(cv.last_time):'';
-    const reqTitle=cv.request_title||'';
-    const imgHtml=cv.client_image?`<img src="${cv.client_image}" alt="${name[0]}">`:`${name[0]}`;
-    const _img=cv.client_image?cv.client_image:'';
-    const title=reqTitle||'مشروع';
-    const subtitle=name;
-    return`<div class="conv-item${unread?' unread':''}" onclick="openConvChat(${reqId},${partnerId},'${name.replace(/'/g,'')}','${reqTitle.replace(/'/g,'')}','${_img}')">
-      <div class="conv-av">${imgHtml}</div>
-      <div class="conv-body">
-        <div class="conv-top"><span class="conv-name">${title}</span><span class="conv-time">${time}</span></div>
-        <div class="conv-project" style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${subtitle}</div>
-        <div class="conv-preview"><span class="conv-last-msg">${escHtml(lastMsg.substring(0,50))}</span>${unread?`<span class="conv-unread">${unread}</span>`:''}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
 
-// ── Notification ──
-let _notifTimer;
 function showMsgNotif(name,text){
   let el=document.getElementById('msgNotif');
   if(!el){el=document.createElement('div');el.id='msgNotif';el.className='msg-notif';document.body.appendChild(el);}
@@ -1470,21 +1413,6 @@ function groupConvsByClient(convs){
   });
   // Sort by last_time desc
   return Object.values(map).sort((a,b)=>(b.last_time||'') > (a.last_time||'') ? 1:-1);
-}
-
-async function pgChats(){
-  loading();
-  const convs=await api('/api/provider/conversations')||[];
-  const clients=groupConvsByClient(convs);
-  const totalUnread=clients.reduce((s,c)=>s+c.unread,0);
-  const nb=document.getElementById('nbChat');if(nb){nb.style.display=totalUnread?'':'none';nb.textContent=totalUnread;}
-  const bnBdg=document.getElementById('bn-chat-bdg');if(bnBdg){bnBdg.style.display=totalUnread?'flex':'none';bnBdg.textContent=totalUnread;}
-  setPage(`
-    <div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">${clients.length} محادثة</div></div></div>
-    <div class="card" style="overflow:hidden;padding:0">
-      <div id="convListWrap">${renderClientConvList(clients)}</div>
-      <div id="chatScreenWrap" style="display:none"></div>
-    </div>`);
 }
 
 function renderClientConvList(clients){
@@ -1676,39 +1604,6 @@ function closeChatScreen(){
   if(lw) lw.style.display='';
   if(cw){ cw.style.display='none'; cw.innerHTML=''; }
 }
-async function updateChatBadge(){
-  const convs=await api('/api/provider/conversations')||[];
-  const total=convs.reduce((s,c)=>s+parseInt(c.unread||0),0);
-  const nb=document.getElementById('nbChat');if(nb){nb.style.display=total?'':'none';nb.textContent=total;}
-  const bnBdg=document.getElementById('bn-chat-bdg');if(bnBdg){bnBdg.style.display=total?'flex':'none';bnBdg.textContent=total;}
-}
-
-
-// ── sendProviderMsg: used in client unified chat ─────────────
-async function sendProviderMsg(){
-  const inp = document.getElementById('chatInputField');
-  if(!inp) return;
-  const content = inp.value.trim();
-  if(!content || !currentChatReqId || !currentChatReceiverId) return;
-  inp.value = ''; inp.style.height = 'auto';
-  stopTyping();
-
-  // Optimistic add
-  const box = document.getElementById('chatMsgsBox');
-  const tmp = document.createElement('div');
-  tmp.className = 'msg-row me';
-  tmp.dataset.tmp = '1';
-  const time = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  tmp.innerHTML = `<div class="msg-bubble"><div class="msg-text">${escHtml(content)}</div><div class="msg-footer"><span class="msg-time-txt">${time}</span><span class="msg-ticks"><svg viewBox="0 0 10 10" width="12" height="10"><polyline class="tick-sent" points="1,5 4,8 9,1"/></svg></span></div></div>`;
-  if(box){ const tb=document.getElementById('typingBubble'); if(tb)box.insertBefore(tmp,tb); else box.appendChild(tmp); box.scrollTop=box.scrollHeight; }
-
-  // POST
-  const r = await api('/api/messages', {method:'POST', body:JSON.stringify({request_id:currentChatReqId, receiver_id:currentChatReceiverId, content})});
-  if(r && r.id && _clientRequests.length){
-    await loadAllClientMsgs(_clientRequests, currentChatReceiverId);
-  }
-}
-
 function onTypingInput(){ if(typeof startTyping==="function")startTyping(); }
 
 initWS();
