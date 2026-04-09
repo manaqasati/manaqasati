@@ -526,6 +526,48 @@ input,select,textarea{font-family:inherit;color:inherit}
   .chat-msgs{padding:10px 10px 6px}
 }
 
+
+/* ── RTL Chat Fix ── */
+.chat-msgs{
+  direction: rtl;
+}
+.chat-inp-field{
+  direction: rtl;
+  text-align: right;
+}
+/* في العربية RTL: flex-start = يمين، flex-end = يسار */
+.msg-row{
+  display:flex;
+  flex-direction:column;
+  max-width:78%;
+  margin-bottom:2px;
+}
+/* رسائلي = يمين */
+.msg-row.me{
+  align-self: flex-start;   /* في RTL هذا يمين */
+  align-items: flex-start;
+}
+.msg-row.me .msg-bubble{
+  background:var(--p);
+  color:#fff;
+  border-radius:16px 16px 16px 4px;   /* ← الذيل على اليسار */
+  box-shadow:0 2px 6px rgba(27,58,107,.2);
+}
+/* رسائل الطرف الآخر = يسار */
+.msg-row.them{
+  align-self: flex-end;     /* في RTL هذا يسار */
+  align-items: flex-end;
+}
+.msg-row.them .msg-bubble{
+  background:#fff;
+  color:var(--text);
+  border-radius:16px 16px 4px 16px;  /* ← الذيل على اليمين */
+  border:1px solid var(--border);
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.msg-row.me .msg-time-txt{ color:rgba(255,255,255,.6); }
+.msg-row.them .msg-time-txt{ color:var(--muted); }
+
 </style>
 </head>
 <body>
@@ -725,7 +767,7 @@ function closeSb(){document.getElementById('sb').classList.remove('open');docume
 function logout(){localStorage.clear();location.href='auth.html';}
 const TITLES={home:'الرئيسية',browse:'تصفح المشاريع',mybids:'عروضي',myprojects:'مشاريعي',chats:'المحادثات',reviews:'تقييماتي',profile:'الملف الشخصي',notifications:'الإشعارات'};
 function go(page,btn){
- history.replaceState(null,'','#'+page);
+ try{history.replaceState(null,'','#'+page);}catch(e){}
  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
  if(btn)btn.classList.add('on');
  document.getElementById('pgT').textContent=TITLES[page]||page;
