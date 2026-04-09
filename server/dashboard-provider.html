@@ -1305,11 +1305,14 @@ async function sendChatMsg(reqId,receiverId){
 }
 
 // ── Chat Screen HTML ──
-async function openChatScreen(reqId,receiverId,partnerName,projTitle,showBack){
+async function openChatScreen(reqId,receiverId,partnerName,projTitle,showBack,partnerImage){
+  const avHtml=partnerImage
+    ?`<img src="${partnerImage}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    :`${(partnerName||'؟')[0]}`;
   return `<div class="chat-screen">
     <div class="chat-header">
       ${showBack?`<button class="chat-back" onclick="closeChatScreen()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}
-      <div class="chat-av">${(partnerName||'؟')[0]}</div>
+      <div class="chat-av">${avHtml}</div>
       <div class="chat-info">
         <div class="chat-name">${partnerName}</div>
         <div class="chat-sub">${projTitle||''}</div>
@@ -1368,7 +1371,8 @@ function renderConvListNew(convs){
     const time=cv.last_time?formatConvTime(cv.last_time):'';
     const reqTitle=cv.request_title||'';
     const imgHtml=cv.client_image?`<img src="${cv.client_image}" alt="${name[0]}">`:`${name[0]}`;
-    return`<div class="conv-item${unread?' unread':''}" onclick="openConvChat(${reqId},${partnerId},'${name.replace(/'/g,'')}','${reqTitle.replace(/'/g,'')}')">
+    const _img=cv.client_image?cv.client_image:'';
+    return`<div class="conv-item${unread?' unread':''}" onclick="openConvChat(${reqId},${partnerId},'${name.replace(/'/g,'')}','${reqTitle.replace(/'/g,'')}','${_img}')">
       <div class="conv-av">${imgHtml}</div>
       <div class="conv-body">
         <div class="conv-top"><span class="conv-name">${name}</span><span class="conv-time">${time}</span></div>
@@ -1402,8 +1406,7 @@ async function pgChats(){
       <div id="chatScreenWrap" style="display:none"></div>
     </div>`);
 }
-async function openConvChat(reqId,partnerId,partnerName,reqTitle){
-  // Set state FIRST before any async
+async function openConvChat(reqId,partnerId,partnerName,reqTitle,partnerImage){
   currentChatReqId = parseInt(reqId);
   currentChatReceiverId = parseInt(partnerId);
   currentChatPartnerName = partnerName;
@@ -1412,7 +1415,7 @@ async function openConvChat(reqId,partnerId,partnerName,reqTitle){
   if(lw) lw.style.display = 'none';
   if(cw){
     cw.style.display = 'block';
-    cw.innerHTML = await openChatScreen(reqId, partnerId, partnerName, reqTitle, true);
+    cw.innerHTML = await openChatScreen(reqId, partnerId, partnerName, reqTitle, true, partnerImage||'');
     await loadChatMessages(reqId, partnerId);
     const inp = document.getElementById('chatInputField');
     if(inp){ inp.focus(); inp.scrollIntoView({block:'nearest'}); }
