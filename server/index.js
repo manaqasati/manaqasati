@@ -1171,7 +1171,7 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, role, title, body, type, channel } = req.body;
+    const { user_id, role, title, body, type, channel, specialty } = req.body;
     // channel: 'both' | 'push' | 'email'  (default: 'both')
     const ch = channel || 'both';
     const VALID_ROLES = ['client','provider','admin'];
@@ -1183,7 +1183,15 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     } else {
       let q = 'SELECT id,email,name FROM users WHERE is_active=TRUE';
       const params = [];
-      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$1`; }
+      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$${params.length+1}`; }
+      // فلتر التخصص — يُطبَّق على المزودين فقط
+      if (specialty && typeof specialty === 'string') {
+        if (!role || role === 'provider') {
+          if (!role) { q += ` AND role='provider'`; } // إذا لم يحدد دور نقتصر على المزودين
+          params.push(specialty);
+          q += ` AND (specialties IS NOT NULL AND $${params.length}=ANY(specialties) OR notify_categories IS NOT NULL AND $${params.length}=ANY(notify_categories))`;
+        }
+      }
       const r = await pool.query(q, params);
       targetUsers = r.rows;
     }
