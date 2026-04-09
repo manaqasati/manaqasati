@@ -255,41 +255,41 @@ input,select,textarea{font-family:inherit;color:inherit}
 
 /* زر "تصفح" FAB المحسّن */
 .bni-fab{
- flex:0 0 80px;
+ flex:0 0 68px;
  display:flex;flex-direction:column;align-items:center;
- justify-content:flex-end;gap:5px;
+ justify-content:flex-end;gap:4px;
  padding-bottom:4px;
  border:none;background:none;cursor:pointer;
  font-family:'Tajawal',sans-serif;
  position:relative;
- margin-top:-22px
+ margin-top:-14px
 }
 .bni-fab .fab-circle{
- width:58px;height:58px;
+ width:46px;height:46px;
  background:linear-gradient(145deg,#F0A500,#c78500);
  border-radius:50%;
  display:flex;align-items:center;justify-content:center;
  box-shadow:
- 0 8px 24px rgba(240,165,0,.55),
- 0 3px 8px rgba(240,165,0,.35),
- 0 0 0 3px var(--white),
- 0 0 0 4px rgba(240,165,0,.2);
+ 0 5px 16px rgba(240,165,0,.5),
+ 0 2px 6px rgba(240,165,0,.3),
+ 0 0 0 2.5px var(--white),
+ 0 0 0 4px rgba(240,165,0,.18);
  transition:all .28s cubic-bezier(.34,1.56,.64,1);
  position:relative;z-index:1
 }
 .bni-fab .fab-circle::before{
- content:'';position:absolute;inset:-6px;border-radius:50%;
- background:rgba(240,165,0,.12);
+ content:'';position:absolute;inset:-5px;border-radius:50%;
+ background:rgba(240,165,0,.1);
  animation:fab-ring 2.5s ease-in-out infinite
 }
 @keyframes fab-ring{
- 0%,100%{transform:scale(1);opacity:.7}
- 50%{transform:scale(1.15);opacity:.2}
+ 0%,100%{transform:scale(1);opacity:.6}
+ 50%{transform:scale(1.12);opacity:.15}
 }
-.bni-fab .fab-circle svg{stroke:#fff;fill:none;width:22px;height:22px;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1}
+.bni-fab .fab-circle svg{stroke:#fff;fill:none;width:18px;height:18px;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1}
 .bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold-d);letter-spacing:.3px}
-.bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 4px 12px rgba(240,165,0,.4),0 0 0 3px var(--white)}
-.bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,165,0,.6),0 4px 10px rgba(240,165,0,.4),0 0 0 3px var(--white),0 0 0 5px rgba(240,165,0,.15)}
+.bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 3px 8px rgba(240,165,0,.35),0 0 0 2.5px var(--white)}
+.bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 8px 20px rgba(240,165,0,.55),0 3px 8px rgba(240,165,0,.35),0 0 0 2.5px var(--white),0 0 0 4px rgba(240,165,0,.15)}
 
 .mob-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:250}
 .mob-btn{display:none;position:fixed;top:10px;left:10px;z-index:500;width:36px;height:36px;border-radius:9px;background:var(--p);border:none;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(27,58,107,.3)}
