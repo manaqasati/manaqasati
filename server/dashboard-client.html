@@ -1044,10 +1044,13 @@ fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(
   if(p&&p.profile_image){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
 }).catch(function(){});
 function show(pg,el,key){
+  if(pg!=='detail' && pg!=='new') history.replaceState(null,'','#'+pg);
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
   document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
-  document.getElementById('page-'+pg).className='page on';
+  var pageEl=document.getElementById('page-'+pg);
+  if(!pageEl)return;
+  pageEl.className='page on';
   if(el)el.className='ni on';
   if(key){var b=document.getElementById('bn-'+key);if(b)b.className='bni on';}
   var t={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'ملفي الشخصي'};
@@ -1057,6 +1060,20 @@ function show(pg,el,key){
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
   window.scrollTo(0,0);
+}
+// استعادة الصفحة عند التحديث
+function restorePage(){
+  var hash=location.hash.replace('#','');
+  var pages=['home','requests','notifs','profile'];
+  if(hash && pages.includes(hash)){
+    var niMap={home:'.ni.on',requests:null,notifs:'#notif-ni',profile:null};
+    show(hash,null,hash);
+    // تفعيل الزر الصحيح في السايدبار
+    document.querySelectorAll('.ni').forEach(function(n){
+      if(n.textContent.trim().includes(hash==='home'?'الرئيسية':hash==='requests'?'طلباتي':hash==='notifs'?'الإشعارات':'ملفي'))
+        n.className='ni on';
+    });
+  }
 }
 function showTab(t,el){
   document.querySelectorAll('.tab').forEach(function(x){x.className='tab';});
@@ -1159,9 +1176,20 @@ function openDetail(id,e){
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.3)')+';font-size:'+sz+'px">★</span>';return s;}
 function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(function(bids){
+  fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
     document.getElementById('bids-count').textContent='('+bids.length+')';
     if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
+    // جلب صور المزودين
+    var providerIds=[...new Set(bids.map(function(b){return b.provider_id;}))];
+    var provImages={};
+    await Promise.all(providerIds.map(async function(pid){
+      try{
+        var r=await fetch(API+'/api/provider/'+pid+'/profile');
+        var p=await r.json();
+        if(p&&p.profile_image) provImages[pid]=p.profile_image;
+      }catch(e){}
+    }));
+    bids=bids.map(function(b){return Object.assign({},b,{provider_image:provImages[b.provider_id]||null});});
     document.getElementById('bids-list').innerHTML=bids.map(function(b){
       var isAcc=b.status==='accepted',isRej=b.status==='rejected';
       var avgR=parseFloat(b.avg_rating)||0;
@@ -1305,6 +1333,7 @@ function uploadClientAvatar(input){
 async function saveClientProfile(){var name=document.getElementById('cName')?.value?.trim();var phone=document.getElementById('cPhone')?.value?.trim();var city=document.getElementById('cCity')?.value;if(!name){alert('الاسم مطلوب');return;}var btn=event?.target;if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}var r=await fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone||null,city:city||null})},hdr())).then(function(r){return r.json();});if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}if(r.id){user.name=r.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=r.name;document.getElementById('welcomeName').textContent='مرحباً، '+r.name.split(' ')[0];alert('تم الحفظ بنجاح');}else alert(r.message||'حدث خطأ');}
 async function changeClientPw(){var old=document.getElementById('cPwOld')?.value;var nw=document.getElementById('cPwNew')?.value;if(!old||!nw){alert('اكمل الحقلين');return;}if(nw.length<6){alert('كلمة المرور 6 أحرف على الأقل');return;}var r=await fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:old,new_password:nw})},hdr())).then(function(r){return r.json();});if(r.ok)alert('تم تغيير كلمة المرور');else alert(r.message||'حدث خطأ');}
 setInterval(loadNotifCount,30000);
+restorePage();
 loadHome();
 
 
@@ -1677,15 +1706,18 @@ function autoResize(el) {
 }
 
 // ── Load Messages for Open Chat ──
-async function loadChatMessages(reqId,receiverId){
+async function loadChatMessages(reqId, receiverId){
+  const box = document.getElementById('chatMsgsBox');
   try{
-    // Use the dashboard's api() for proper auth handling
-    const msgs = await api('/api/messages/'+reqId) || [];
-    const arr = Array.isArray(msgs) ? msgs : [];
-    renderChatHistory(arr, receiverId);
+    // استخدام fetch مباشرة يعمل في كلا الداشبورد
+    const r = await fetch(API + '/api/messages/' + reqId, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const msgs = await r.json();
+    renderChatHistory(Array.isArray(msgs) ? msgs : [], receiverId);
   } catch(e) {
-    const b = document.getElementById('chatMsgsBox');
-    if(b) b.innerHTML = '<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">تعذر التحميل</div></div>';
+    if(box) box.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--muted)"><div style="font-size:30px;opacity:.3">⚠️</div><div style="font-size:12px">تعذر تحميل الرسائل</div></div>';
   }
 }
 
