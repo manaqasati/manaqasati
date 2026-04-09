@@ -1058,7 +1058,7 @@ fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(
   if(p&&p.profile_image){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
 }).catch(function(){});
 function show(pg,el,key){
-  if(pg!=="detail"&&pg!=="new")history.replaceState(null,"","#"+pg);
+  try{if(pg!=="detail"&&pg!=="new")history.replaceState(null,"","#"+pg);}catch(e){}
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
   document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
