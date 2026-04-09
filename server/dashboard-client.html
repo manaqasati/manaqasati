@@ -469,10 +469,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px
 }
 
-/* ── Rows ── */
-.msg-row{display:flex;flex-direction:column;max-width:78%}
-.msg-row.me{align-self:flex-end;align-items:flex-end}
-.msg-row.them{align-self:flex-start;align-items:flex-start}
+/* ── Messages area RTL ── */
+.chat-msgs{ direction:rtl; }
+.chat-inp-field{ direction:rtl; text-align:right; }
+
+/* ── Rows (RTL: flex-start=يمين، flex-end=يسار) ── */
+.msg-row{display:flex;flex-direction:column;max-width:78%;margin-bottom:2px}
+/* رسائلي → يمين */
+.msg-row.me{align-self:flex-start;align-items:flex-start}
+/* رسائل الطرف الثاني → يسار */
+.msg-row.them{align-self:flex-end;align-items:flex-end}
 
 /* ── Bubbles ── */
 .msg-bubble{
@@ -480,14 +486,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   font-size:13px;line-height:1.6;
   word-break:break-word;position:relative
 }
+/* رسائلي: ذيل أسفل يسار */
 .msg-row.me .msg-bubble{
   background:var(--p);color:#fff;
-  border-radius:16px 16px 4px 16px;
+  border-radius:16px 16px 16px 4px;
   box-shadow:0 2px 6px rgba(27,58,107,.2)
 }
+/* رسائل الطرف: ذيل أسفل يمين */
 .msg-row.them .msg-bubble{
   background:#fff;color:var(--text);
-  border-radius:16px 16px 16px 4px;
+  border-radius:16px 16px 4px 16px;
   border:1px solid var(--border);
   box-shadow:0 1px 4px rgba(0,0,0,.06)
 }
@@ -607,47 +615,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .msg-row{max-width:85%}
 }
 
-
-/* ── RTL Chat Fix ── */
-.chat-msgs{
-  direction: rtl;
-}
-.chat-inp-field{
-  direction: rtl;
-  text-align: right;
-}
-/* في العربية RTL: flex-start = يمين، flex-end = يسار */
-.msg-row{
-  display:flex;
-  flex-direction:column;
-  max-width:78%;
-  margin-bottom:2px;
-}
-/* رسائلي = يمين */
-.msg-row.me{
-  align-self: flex-start;   /* في RTL هذا يمين */
-  align-items: flex-start;
-}
-.msg-row.me .msg-bubble{
-  background:var(--p);
-  color:#fff;
-  border-radius:16px 16px 16px 4px;   /* ← الذيل على اليسار */
-  box-shadow:0 2px 6px rgba(27,58,107,.2);
-}
-/* رسائل الطرف الآخر = يسار */
-.msg-row.them{
-  align-self: flex-end;     /* في RTL هذا يسار */
-  align-items: flex-end;
-}
-.msg-row.them .msg-bubble{
-  background:#fff;
-  color:var(--text);
-  border-radius:16px 16px 4px 16px;  /* ← الذيل على اليمين */
-  border:1px solid var(--border);
-  box-shadow:0 1px 4px rgba(0,0,0,.06);
-}
-.msg-row.me .msg-time-txt{ color:rgba(255,255,255,.6); }
-.msg-row.them .msg-time-txt{ color:var(--muted); }
+.chat-msgs{direction:rtl}
+.chat-inp-field{direction:rtl;text-align:right}
+.msg-row{display:flex;flex-direction:column;max-width:78%;margin-bottom:2px}
+.msg-row.me{align-self:flex-start;align-items:flex-start}
+.msg-row.them{align-self:flex-end;align-items:flex-end}
+.msg-row.me .msg-bubble{background:var(--p);color:#fff;border-radius:16px 16px 16px 4px;box-shadow:0 2px 6px rgba(27,58,107,.2)}
+.msg-row.them .msg-bubble{background:#fff;color:var(--text);border-radius:16px 16px 4px 16px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.msg-row.me .msg-time-txt{color:rgba(255,255,255,.6)}
+.msg-row.them .msg-time-txt{color:var(--muted)}
 
 </style>
 </head>
@@ -810,9 +786,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div id="detail-head"></div>
       <div class="tab-btns">
         <button class="tab-btn on" onclick="showTab('bids',this)">العروض <span id="bids-count" style="font-size:11px;opacity:.6"></span></button>
+        
         <button class="tab-btn" onclick="showTab('actions',this)">الإجراءات</button>
       </div>
       <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
+      
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
     </div>
 
@@ -1077,6 +1055,7 @@ function showTab(t,el){
   document.getElementById('tab-'+t).className='tab on';
   el.className='tab-btn on';
   if(t==='bids')loadBids(curRequestId);
+  if(t==='chat')loadChat(curRequestId);
   if(t==='actions')loadActions(curRequestId);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
@@ -1144,7 +1123,7 @@ function openDetail(id,e){
   curRequestId=id;
   document.querySelectorAll('.tab-btn').forEach(function(x,i){x.className=i===0?'tab-btn on':'tab-btn';});
   document.querySelectorAll('.tab').forEach(function(x,i){x.className=i===0?'tab on':'tab';});
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
     var imgs=req.images||[];
     var atts=req.attachments||[];
     var imgsHtml=imgs.length?'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">'+
@@ -1172,15 +1151,9 @@ function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<sp
 function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
-  var pids=[...new Set(bids.map(function(b){return b.provider_id;}))];
-  var _providerData={};
-  await Promise.all(pids.map(async function(pid){
-    try{
-      var r2=await fetch(API+'/api/provider/'+pid+'/profile');
-      var pd=await r2.json();
-      _providerData[pid]=pd||{};
-      if(pd&&pd.profile_image) _chatImages[pid]=pd.profile_image;
-    }catch(e){}
+  var _pd={};
+  await Promise.all([...new Set(bids.map(function(b){return b.provider_id;}))].map(async function(pid){
+    try{var r2=await fetch(API+'/api/provider/'+pid+'/profile');var d=await r2.json();if(d){_pd[pid]=d;_chatImages[pid]=d.profile_image||'';}}catch(e){}
   }));
     document.getElementById('bids-count').textContent='('+bids.length+')';
     if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
@@ -1189,28 +1162,18 @@ function loadBids(id){
       var avgR=parseFloat(b.avg_rating)||0;
       var reviewCount=parseInt(b.review_count)||0;
       var ratingHtml=avgR>0?starsHtml(avgR,false)+'<span style="font-size:10px;color:rgba(255,255,255,.6);margin-right:3px">('+reviewCount+')</span>':'<span style="font-size:10px;color:rgba(255,255,255,.5)">لا يوجد تقييمات</span>';
-      var _pImg=_chatImages[b.provider_id]||b.provider_image||''; var _pPhone=_providerPhones[b.provider_id]||(_providerData[b.provider_id]||{}).phone||''; var avatarHtml=_pImg?'<img src="'+_pImg+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span>'+((b.provider_name||'م')[0])+'</span>';
+      var _pi=_pd[b.provider_id]||{};var pImg=_pi.profile_image||b.provider_image||'';var pPhone=_pi.phone||'';var waNum=pPhone?'966'+pPhone.replace(/^0/,''):'';var callBtns=pPhone?'<a href="tel:'+pPhone+'" style="'+btnStyle+';background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;text-decoration:none">📞 اتصال</a>'+'<a href="https://wa.me/'+waNum+'" target="_blank" style="'+btnStyle+';background:#dcfce7;color:#166534;border:1.5px solid #bbf7d0;text-decoration:none">واتساب</a>':'';var avatarHtml=pImg?'<img src="'+pImg+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span>'+((b.provider_name||'م')[0])+'</span>';
       var specs=b.provider_specialties&&b.provider_specialties.length?b.provider_specialties:[];
       var specHtml=specs.length?specs.slice(0,2).map(function(s){return'<span style="background:rgba(240,165,0,.18);color:#F0A500;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+s+'</span>';}).join(' '):(b.provider_city?'<span style="color:rgba(255,255,255,.55);font-size:11px">📍 '+b.provider_city+'</span>':'<span style="color:rgba(255,255,255,.45);font-size:10px">مزود خدمة</span>');
       var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
-      var _callBtns=_pPhone?
-        '<a href="tel:'+_pPhone+'" style="'+btnStyle+';background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;text-decoration:none"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'+
-        '<a href="https://wa.me/966'+_pPhone.replace(/^0/,\'\')+'" target="_blank" style="'+btnStyle+';background:#dcfce7;color:#15803d;border:1.5px solid #bbf7d0;text-decoration:none">واتساب</a>'
-        :'';
-      var acts=!isAcc&&!isRej?
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
+      var acts=!isAcc&&!isRej?'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
           '<button onclick="acceptBid('+b.id+','+id+')" style="'+btnStyle+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 3px 10px rgba(22,163,74,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'+
-          _callBtns+
+          callBtns+
+          '<button onclick="startChat('+id+','+b.provider_id+',\''+b.provider_name+'\')" style="'+btnStyle+';background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'+
           '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'+
           '<button onclick="rejectBid('+b.id+','+id+')" style="'+btnStyle+';background:var(--red-l);color:var(--red);border:1.5px solid #fecaca">رفض</button>'+
-        '</div>'
-        :isAcc?
-        '<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'+
-          _callBtns+
-          '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button>'+
-        '</div>'
-        :'';
+        '</div>':isAcc?'<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'+callBtns+'<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button></div>':'';
       return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'+
         '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'+
           '<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'+
@@ -1239,7 +1202,7 @@ function loadBids(id){
   }).catch(function(){document.getElementById('bids-list').innerHTML=errH();});
 }
 function loadActions(id){
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
     var h='';
     if(req.status==='in_progress'){h+='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div><button class="btn-sm bs-g" onclick="markDone('+id+')" style="margin-bottom:10px;width:100%;padding:12px">تم الإنجاز — أكمل الطلب</button><button class="btn-sm bs-p" onclick="openRate('+id+','+req.accepted_bid_id+')" style="width:100%;padding:12px">تقييم المزود</button></div>';}
     if(req.status==='done'||req.status==='completed'){h+='<div class="card"><p style="text-align:center;font-size:13px;color:var(--green);font-weight:700;padding:10px">الطلب مكتمل ✓</p></div>';}
@@ -1258,7 +1221,7 @@ function uploadReqAtts(input){var files=[...input.files];input.value='';files.fo
 function deleteReqImg(reqId,idx){if(!confirm('حذف هذه الصورة؟'))return;fetch(API+'/api/requests/'+reqId+'/images/'+idx,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(){openDetail(reqId,null);});}
 function deleteReqAtt(reqId,idx){if(!confirm('حذف هذا الملف؟'))return;fetch(API+'/api/requests/'+reqId+'/attachments/'+idx,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(){openDetail(reqId,null);});}
 var _editReqId=null;
-function openEditReq(id,e){if(e)e.stopPropagation();_editReqId=id;fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;document.getElementById('e-title').value=req.title||'';document.getElementById('e-budget').value=req.budget_max||'';document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';document.getElementById('e-desc').value=req.description||'';document.getElementById('edit-msg').className='alert';document.getElementById('editReqOverlay').className='overlay show';});}
+function openEditReq(id,e){if(e)e.stopPropagation();_editReqId=id;fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){document.getElementById('e-title').value=req.title||'';document.getElementById('e-budget').value=req.budget_max||'';document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';document.getElementById('e-desc').value=req.description||'';document.getElementById('edit-msg').className='alert';document.getElementById('editReqOverlay').className='overlay show';});}
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
 function submitEditReq(){var title=document.getElementById('e-title').value.trim();var desc=document.getElementById('e-desc').value.trim();if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';var body={title:title,description:desc,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null};fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr())).then(function(r){return r.json();}).then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();loadReqs();var e=document.getElementById('edit-msg');e.textContent='';e.className='alert';}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}}).catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});}
 function deleteReq(id,e){if(e)e.stopPropagation();if(!confirm('هل أنت متأكد من حذف هذا الطلب؟'))return;fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(r){if(r.ok||r.id||r.message==='تم الحذف'){loadReqs();loadHome();}else alert(r.message||'تعذر الحذف');});}
@@ -1334,382 +1297,181 @@ async function changeClientPw(){var old=document.getElementById('cPwOld')?.value
 setInterval(loadNotifCount,30000);
 loadHome();
 
-// ═══════════════════════════════════════════════════════════════
-// CHAT ENGINE v3 — typing indicators + polling + WebSocket
-// ═══════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════
+// CHAT ENGINE v4
+// ═══════════════════════════════════════════════════════
 var _chatImages = {};
-var _providerPhones = {};
-var _cs = {           // chat state
-  reqId: null,
-  receiverId: null,
-  receiverName: '',
-  msgs: [],
-  pollTimer: null,
-  typingTimer: null,
-  isTyping: false,
-  partnerTyping: false,
-  partnerTypingTimer: null
-};
+var _cs = {reqId:null,receiverId:null,receiverName:'',msgs:[],pollTimer:null,typingTimer:null,isTyping:false,partnerTyping:false,partnerTypingTimer:null};
 var _ws = null;
 
-// ── restorePage ──────────────────────────────────────────────
 function restorePage(){
-  var h = location.hash.replace('#','');
-  if(['home','requests','notifs','profile'].includes(h)) show(h,null,h);
+  var h=location.hash.replace('#','');
+  if(['home','requests','notifs','profile'].includes(h))show(h,null,h);
 }
 
-// ── WebSocket ────────────────────────────────────────────────
 function initWS(){
   try{
-    var url = API.replace('https://','wss://').replace('http://','ws://')+'?token='+token;
-    _ws = new WebSocket(url);
-    _ws.onopen = function(){ };
-    _ws.onmessage = function(e){
-      try{ handleChatEvent(JSON.parse(e.data)); }catch(err){}
-    };
-    _ws.onclose = function(){ setTimeout(initWS, 3000); };
-    _ws.onerror = function(){ try{_ws.close();}catch(e){} };
-  }catch(e){ setTimeout(initWS, 3000); }
+    var url=API.replace('https://','wss://').replace('http://','ws://')+'?token='+token;
+    _ws=new WebSocket(url);
+    _ws.onmessage=function(e){try{_handleWS(JSON.parse(e.data));}catch(err){}};
+    _ws.onclose=function(){setTimeout(initWS,3000);};
+    _ws.onerror=function(){try{_ws.close();}catch(e){}};
+  }catch(e){setTimeout(initWS,3000);}
 }
-function wsSend(data){
-  if(_ws && _ws.readyState === 1) _ws.send(JSON.stringify(data));
-}
-function handleChatEvent(data){
-  if(data.type === 'message'){
-    var msg = data.message;
-    var myId = parseInt(user.id);
-    var isMine = parseInt(msg.sender_id) === myId;
-    if(!isMine){
-      if(_cs.reqId && parseInt(msg.request_id) === parseInt(_cs.reqId)){
-        // New msg in current chat — fetch to refresh
-        _fetchMsgs();
-        _hideTyping();
-      } else {
-        _showNotif(msg.sender_name||'رسالة', msg.content);
-        loadNotifCount();
-      }
+function _wsSend(d){if(_ws&&_ws.readyState===1)_ws.send(JSON.stringify(d));}
+function _handleWS(data){
+  if(data.type==='message'){
+    var msg=data.message; var myId=parseInt(user.id);
+    if(!parseInt(msg.sender_id)===myId&&_cs.reqId&&parseInt(msg.request_id)===parseInt(_cs.reqId)){
+      _fetchMsgs(); _hideTyping();
+    } else if(parseInt(msg.sender_id)!==myId){
+      _showNotif(msg.sender_name||'رسالة',msg.content); loadNotifCount();
     }
   }
-  if(data.type === 'typing'){
-    var from = parseInt(data.from);
-    var myId2 = parseInt(user.id);
-    if(from !== myId2 && _cs.reqId && parseInt(data.request_id) === parseInt(_cs.reqId)){
-      if(data.is_typing) _showTyping();
-      else _hideTyping();
-    }
-  }
-  if(data.type === 'read'){
-    if(_cs.reqId && parseInt(data.request_id) === parseInt(_cs.reqId)){
-      // Mark our messages as read visually
-      document.querySelectorAll('.tick-delivered').forEach(function(el){
-        el.classList.remove('tick-delivered');
-        el.classList.add('tick-read');
-      });
+  if(data.type==='typing'){
+    if(_cs.reqId&&parseInt(data.request_id)===parseInt(_cs.reqId)&&parseInt(data.from)!==parseInt(user.id)){
+      data.is_typing?_showTyping():_hideTyping();
     }
   }
 }
 
-// ── Typing events ────────────────────────────────────────────
 function _onInput(){
-  if(!_cs.reqId || !_cs.receiverId) return;
-  if(!_cs.isTyping){
-    _cs.isTyping = true;
-    wsSend({type:'typing', receiver_id:parseInt(_cs.receiverId), request_id:parseInt(_cs.reqId), is_typing:true});
-  }
+  if(!_cs.reqId||!_cs.receiverId)return;
+  if(!_cs.isTyping){_cs.isTyping=true;_wsSend({type:'typing',receiver_id:parseInt(_cs.receiverId),request_id:parseInt(_cs.reqId),is_typing:true});}
   clearTimeout(_cs.typingTimer);
-  _cs.typingTimer = setTimeout(function(){
-    _cs.isTyping = false;
-    wsSend({type:'typing', receiver_id:parseInt(_cs.receiverId), request_id:parseInt(_cs.reqId), is_typing:false});
-  }, 1500);
-}
-function _stopTyping(){
-  clearTimeout(_cs.typingTimer);
-  if(_cs.isTyping && _cs.reqId && _cs.receiverId){
-    _cs.isTyping = false;
-    wsSend({type:'typing', receiver_id:parseInt(_cs.receiverId), request_id:parseInt(_cs.reqId), is_typing:false});
-  }
+  _cs.typingTimer=setTimeout(function(){_cs.isTyping=false;_wsSend({type:'typing',receiver_id:parseInt(_cs.receiverId),request_id:parseInt(_cs.reqId),is_typing:false});},1500);
 }
 
-// ── Show/hide partner typing dots ────────────────────────────
 function _showTyping(){
-  _cs.partnerTyping = true;
+  _cs.partnerTyping=true;
   clearTimeout(_cs.partnerTypingTimer);
-  // Update header status
-  var sub = document.getElementById('chatStatusLine');
-  if(sub){ sub.textContent = 'يكتب...'; sub.classList.add('typing-active'); }
-  // Show dots in messages
+  var sub=document.getElementById('chatStatusLine');
+  if(sub){sub.textContent='يكتب...';sub.style.color='#4ade80';}
   if(!document.getElementById('typingBubble')){
-    var box = document.getElementById('chatMsgsBox');
-    if(!box) return;
-    var t = document.createElement('div');
-    t.id = 'typingBubble';
-    t.className = 'typing-row';
-    t.innerHTML = '<div class="typing-av-sm">'+(_cs.receiverName||'م')[0]+'</div>'
-      +'<div class="typing-bubble">'
-      +'<div class="typing-dot"></div>'
-      +'<div class="typing-dot"></div>'
-      +'<div class="typing-dot"></div>'
-      +'</div>';
-    box.appendChild(t);
-    box.scrollTop = box.scrollHeight;
+    var box=document.getElementById('chatMsgsBox');if(!box)return;
+    var t=document.createElement('div');t.id='typingBubble';t.className='typing-row';
+    t.innerHTML='<div class="typing-av-sm">'+(_cs.receiverName||'م')[0]+'</div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+    box.appendChild(t);box.scrollTop=box.scrollHeight;
   }
-  // Auto hide after 5s safety
-  _cs.partnerTypingTimer = setTimeout(_hideTyping, 5000);
+  _cs.partnerTypingTimer=setTimeout(_hideTyping,5000);
 }
 function _hideTyping(){
-  _cs.partnerTyping = false;
-  clearTimeout(_cs.partnerTypingTimer);
-  var sub = document.getElementById('chatStatusLine');
-  if(sub){ sub.textContent = ''; sub.classList.remove('typing-active'); }
-  var t = document.getElementById('typingBubble');
-  if(t) t.remove();
+  _cs.partnerTyping=false;clearTimeout(_cs.partnerTypingTimer);
+  var sub=document.getElementById('chatStatusLine');if(sub){sub.textContent='';sub.style.color='';}
+  var t=document.getElementById('typingBubble');if(t)t.remove();
 }
 
-// ── startChat (called from bid card button) ──────────────────
-function startChat(reqId, providerId, providerName){
-  _cs.reqId       = parseInt(reqId);
-  _cs.receiverId  = parseInt(providerId);
-  _cs.receiverName= providerName;
-  // Click the chat tab button
-  var btn = document.querySelector('[onclick="showTab(\'chat\',this)"]');
-  if(btn) showTab('chat', btn);
-}
-
-// ── loadChat (called by showTab) ─────────────────────────────
 function loadChat(reqId){
-  var wrap = document.getElementById('tab-chat');
-  if(!wrap) return;
-
-  if(!_cs.receiverId || !reqId){
-    wrap.innerHTML =
-      '<div class="chat-empty">'
-      +'<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--p-mid)" stroke-width="1.4" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
-      +'<div style="font-size:13px;font-weight:700;color:var(--p)">اختر مزوداً للمحادثة</div>'
-      +'<div style="font-size:11px;color:var(--muted);text-align:center">اضغط زر "محادثة" في تبويب العروض</div>'
-      +'</div>';
+  var wrap=document.getElementById('tab-chat');if(!wrap)return;
+  if(!_cs.receiverId||!reqId){
+    wrap.innerHTML='<div class="chat-empty"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--p-mid)" stroke-width="1.4" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><div style="font-size:13px;font-weight:700;color:var(--p)">اختر مزوداً للمحادثة</div></div>';
     return;
   }
-
-  _cs.reqId = parseInt(reqId);
-  _cs.msgs = [];
-  _hideTyping();
-
-  var img = _chatImages[_cs.receiverId] || '';
-  var avH = img
-    ? '<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
-    : '<span style="font-size:15px;font-weight:900;color:#fff">'+(_cs.receiverName||'م')[0]+'</span>';
-
-  wrap.innerHTML =
-    '<div class="chat-screen" id="chatScreenEl">'
-    +'<div class="chat-header">'
-    +'<div class="chat-av">'+avH+'</div>'
-    +'<div class="chat-info">'
-    +'<div class="chat-name">'+_esc(_cs.receiverName)+'</div>'
-    +'<div class="chat-status" id="chatStatusLine"></div>'
-    +'</div>'
-    +'</div>'
-    +'<div class="chat-msgs" id="chatMsgsBox">'
-    +'<div class="chat-empty"><div style="font-size:12px;color:var(--muted)">جاري التحميل...</div></div>'
-    +'</div>'
-    +'<div class="chat-input-area">'
-    +'<div class="chat-inp-wrap">'
-    +'<textarea id="chatInp" class="chat-inp-field" placeholder="اكتب رسالتك..." rows="1"'
-    +' oninput="_onInput();this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,100)+\'px\'"'
-    +' onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendMsg()}">'
-    +'</textarea>'
-    +'</div>'
-    +'<button class="chat-send-btn" onclick="_sendMsg()">'
-    +'<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
-    +'</button>'
-    +'</div>'
+  _cs.reqId=parseInt(reqId);_cs.msgs=[];_hideTyping();
+  var img=_chatImages[_cs.receiverId]||'';
+  var avH=img?'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span style="font-size:15px;font-weight:900;color:#fff">'+(_cs.receiverName||'م')[0]+'</span>';
+  wrap.innerHTML='<div class="chat-screen">'
+    +'<div class="chat-header"><div class="chat-av">'+avH+'</div><div class="chat-info"><div class="chat-name">'+_esc(_cs.receiverName)+'</div><div class="chat-status" id="chatStatusLine"></div></div></div>'
+    +'<div class="chat-msgs" id="chatMsgsBox"></div>'
+    +'<div class="chat-input-area"><div class="chat-inp-wrap"><textarea id="chatInp" class="chat-inp-field" placeholder="اكتب رسالتك..." rows="1" oninput="_onInput();this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,100)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendMsg()}"></textarea></div><button class="chat-send-btn" onclick="_sendMsg()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>'
     +'</div>';
-
   _fetchMsgs();
-  if(_cs.pollTimer) clearInterval(_cs.pollTimer);
-  _cs.pollTimer = setInterval(_fetchMsgs, 3000);
-
-  // Tell server we're reading
-  wsSend({type:'read', request_id:_cs.reqId, sender_id:parseInt(_cs.receiverId)});
+  if(_cs.pollTimer)clearInterval(_cs.pollTimer);
+  _cs.pollTimer=setInterval(_fetchMsgs,3000);
 }
 
-// ── Fetch & render ───────────────────────────────────────────
+function startChat(reqId,providerId,providerName){
+  _cs.reqId=parseInt(reqId);_cs.receiverId=parseInt(providerId);_cs.receiverName=providerName;
+  var btn=document.querySelector('[onclick="showTab(\'chat\',this)"]');
+  if(btn)showTab('chat',btn);
+}
+
 function _fetchMsgs(){
-  if(!_cs.reqId) return;
+  if(!_cs.reqId)return;
   fetch(API+'/api/messages/'+_cs.reqId,{headers:{'Authorization':'Bearer '+token}})
-  .then(function(r){ return r.json(); })
+  .then(function(r){return r.json();})
   .then(function(msgs){
-    if(!Array.isArray(msgs)) return;
-    if(msgs.length !== _cs.msgs.length || JSON.stringify(msgs.map(function(m){return m.id;})) !== JSON.stringify(_cs.msgs.map(function(m){return m.id;}))){
-      _cs.msgs = msgs;
-      _renderMsgs();
-    }
-  })
-  .catch(function(){});
+    if(!Array.isArray(msgs))return;
+    var ids=msgs.map(function(m){return m.id;}).join(',');
+    var oldIds=_cs.msgs.map(function(m){return m.id;}).join(',');
+    if(ids!==oldIds){_cs.msgs=msgs;_renderMsgs();}
+  }).catch(function(){});
 }
 
 function _renderMsgs(){
-  var box = document.getElementById('chatMsgsBox');
-  if(!box) return;
-  var myId = parseInt(user.id);
-  var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
-  var typingEl = document.getElementById('typingBubble');
-
-  var html = '';
+  var box=document.getElementById('chatMsgsBox');if(!box)return;
+  var myId=parseInt(user.id);
+  var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<100;
+  var html='';
   if(!_cs.msgs.length){
-    html = '<div class="chat-empty">'
-      +'<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--p-mid)" stroke-width="1.5" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
-      +'<div style="font-size:12px;font-weight:700;color:var(--p)">لا توجد رسائل</div>'
-      +'<div style="font-size:11px;color:var(--muted)">ابدأ المحادثة الآن</div>'
-      +'</div>';
-  } else {
-    var lastDate = '';
+    html='<div class="chat-empty"><div style="font-size:12px;font-weight:700;color:var(--p)">لا توجد رسائل</div><div style="font-size:11px;color:var(--muted)">ابدأ المحادثة</div></div>';
+  }else{
+    var lastDate='';
     _cs.msgs.forEach(function(msg){
-      var isMe = parseInt(msg.sender_id) === myId;
-      var d = new Date(msg.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
-      if(d !== lastDate){
-        lastDate = d;
-        html += '<div class="chat-date-sep"><span>'+d+'</span></div>';
-      }
-      var time = new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      var tickCls = msg.is_read ? 'tick-read' : 'tick-delivered';
-      var ticks = isMe
-        ? '<span class="msg-ticks"><svg viewBox="0 0 16 10"><polyline class="'+tickCls+'" points="1,5 5,9 10,1"/><polyline class="'+tickCls+'" points="5,5 9,9 14,1"/></svg></span>'
-        : '';
-      html += '<div class="msg-row '+(isMe?'me':'them')+'">'
-        +'<div class="msg-bubble">'
-        +(!isMe && msg.sender_name ? '<div class="msg-sender-name">'+_esc(msg.sender_name)+'</div>' : '')
-        +'<div class="msg-text">'+_esc(msg.content)+'</div>'
-        +'<div class="msg-footer"><span class="msg-time-txt">'+time+'</span>'+ticks+'</div>'
-        +'</div></div>';
+      var isMe=parseInt(msg.sender_id)===myId;
+      var d=new Date(msg.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+      if(d!==lastDate){lastDate=d;html+='<div class="chat-date-sep"><span>'+d+'</span></div>';}
+      var time=new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      var tc=msg.is_read?'tick-read':'tick-delivered';
+      var ticks=isMe?'<span class="msg-ticks"><svg viewBox="0 0 16 10"><polyline class="'+tc+'" points="1,5 5,9 10,1"/><polyline class="'+tc+'" points="5,5 9,9 14,1"/></svg></span>':'';
+      html+='<div class="msg-row '+(isMe?'me':'them')+'"><div class="msg-bubble"><div class="msg-text">'+_esc(msg.content)+'</div><div class="msg-footer"><span class="msg-time-txt">'+time+'</span>'+ticks+'</div></div></div>';
     });
   }
-
-  box.innerHTML = html;
-  // Re-add typing bubble if needed
-  if(_cs.partnerTyping){
-    var t = document.createElement('div');
-    t.id = 'typingBubble'; t.className = 'typing-row';
-    t.innerHTML = '<div class="typing-av-sm">'+(_cs.receiverName||'م')[0]+'</div>'
-      +'<div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-    box.appendChild(t);
-  }
-  if(atBottom) box.scrollTop = box.scrollHeight;
+  box.innerHTML=html;
+  if(_cs.partnerTyping){var t=document.createElement('div');t.id='typingBubble';t.className='typing-row';t.innerHTML='<div class="typing-av-sm">'+(_cs.receiverName||'م')[0]+'</div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';box.appendChild(t);}
+  if(atBottom)box.scrollTop=box.scrollHeight;
 }
 
-// ── Send ──────────────────────────────────────────────────────
 function _sendMsg(){
-  var inp = document.getElementById('chatInp'); if(!inp) return;
-  var content = inp.value.trim(); if(!content) return;
-  inp.value = ''; inp.style.height = 'auto';
-  _stopTyping();
-
-  // Optimistic render
-  var tmp = {
-    id: 'tmp_'+Date.now(),
-    request_id: _cs.reqId,
-    sender_id: parseInt(user.id),
-    sender_name: user.name||'',
-    receiver_id: parseInt(_cs.receiverId),
-    content: content,
-    is_read: false,
-    created_at: new Date().toISOString()
-  };
-  _cs.msgs.push(tmp);
-  _renderMsgs();
-  var box = document.getElementById('chatMsgsBox');
-  if(box) box.scrollTop = box.scrollHeight;
-
-  fetch(API+'/api/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify({request_id:_cs.reqId, receiver_id:parseInt(_cs.receiverId), content:content})
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.id){
-      var i = _cs.msgs.findIndex(function(m){return String(m.id).startsWith('tmp_');});
-      if(i >= 0) _cs.msgs[i].id = d.id;
-    }
-  })
-  .catch(function(){});
+  var inp=document.getElementById('chatInp');if(!inp)return;
+  var content=inp.value.trim();if(!content)return;
+  inp.value='';inp.style.height='auto';
+  clearTimeout(_cs.typingTimer);_cs.isTyping=false;
+  _cs.msgs.push({id:'tmp_'+Date.now(),request_id:_cs.reqId,sender_id:parseInt(user.id),sender_name:user.name||'',content:content,is_read:false,created_at:new Date().toISOString()});
+  _renderMsgs();var box=document.getElementById('chatMsgsBox');if(box)box.scrollTop=box.scrollHeight;
+  fetch(API+'/api/messages',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({request_id:_cs.reqId,receiver_id:parseInt(_cs.receiverId),content:content})})
+  .then(function(r){return r.json();}).then(function(d){if(d.id){var i=_cs.msgs.findIndex(function(m){return String(m.id).startsWith('tmp_');});if(i>=0)_cs.msgs[i].id=d.id;}}).catch(function(){});
 }
 
-// ── Helpers ──────────────────────────────────────────────────
-function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 var _ntT;
-function _showNotif(name, text){
-  var el = document.getElementById('msgNotif');
-  if(!el){ el = document.createElement('div'); el.id='msgNotif'; el.className='msg-notif'; document.body.appendChild(el); }
-  el.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> <strong>'+_esc(name)+':</strong> '+_esc((text||'').substring(0,40));
-  el.classList.add('show');
-  clearTimeout(_ntT); _ntT = setTimeout(function(){ el.classList.remove('show'); }, 3500);
+function _showNotif(name,text){
+  var el=document.getElementById('msgNotif');
+  if(!el){el=document.createElement('div');el.id='msgNotif';el.className='msg-notif';document.body.appendChild(el);}
+  el.innerHTML='💬 <strong>'+_esc(name)+':</strong> '+_esc((text||'').substring(0,40));
+  el.classList.add('show');clearTimeout(_ntT);_ntT=setTimeout(function(){el.classList.remove('show');},3500);
 }
 
-// ── openProviderProfile ───────────────────────────────────────
 function openProviderProfile(pid){
-  var ol = document.getElementById('pvOverlay');
+  var ol=document.getElementById('pvOverlay');
   if(!ol){
-    ol = document.createElement('div'); ol.id='pvOverlay';
-    ol.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
-    ol.innerHTML = '<div style="background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto">'
-      +'<div style="text-align:center;padding:10px"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div>'
-      +'<div id="pvContent" style="padding:18px"><div class="loading">جاري التحميل...</div></div>'
-      +'<div style="padding:12px 18px 24px"><button onclick="closeProviderProfile()" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">إغلاق</button></div>'
-      +'</div>';
-    ol.addEventListener('click', function(e){ if(e.target===ol) closeProviderProfile(); });
+    ol=document.createElement('div');ol.id='pvOverlay';
+    ol.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
+    ol.innerHTML='<div style="background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto"><div style="text-align:center;padding:10px"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div><div id="pvContent" style="padding:18px"></div><div style="padding:12px 18px 24px"><button onclick="closeProviderProfile()" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">إغلاق</button></div></div>';
+    ol.addEventListener('click',function(e){if(e.target===ol)closeProviderProfile();});
     document.body.appendChild(ol);
   }
-  ol.style.display = 'flex';
-  var cont = document.getElementById('pvContent');
-  cont.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  ol.style.display='flex';
+  var cont=document.getElementById('pvContent');
+  cont.innerHTML='<div class="loading">جاري التحميل...</div>';
   Promise.all([
     fetch(API+'/api/provider/'+pid+'/profile').then(function(r){return r.json();}),
     fetch(API+'/api/ratings/provider/'+pid).then(function(r){return r.json();})
   ]).then(function(res){
-    var p=res[0]||{}; var rv=res[1]||{};
-    var avg=rv.average||0; var cnt=rv.count||0; var reviews=rv.reviews||[];
-    var bigS=''; for(var i=1;i<=5;i++) bigS+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#e4e4e7')+';font-size:17px">★</span>';
+    var p=res[0]||{};var rv=res[1]||{};
+    var avg=rv.average||0;var cnt=rv.count||0;var reviews=rv.reviews||[];
+    var bigS='';for(var i=1;i<=5;i++)bigS+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#e4e4e7')+';font-size:18px">★</span>';
     var avH=p.profile_image?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span style="font-size:22px;font-weight:900;color:#fff">'+(p.name||'م')[0]+'</span>';
     var portH='';
-    if((p.portfolio_images||[]).length){
-      portH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
-      p.portfolio_images.forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover" onclick="window.open(\''+img+'\',\'_blank\')"></div>';});
-      portH+='</div></div>';
-    }
+    if((p.portfolio_images||[]).length){portH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';p.portfolio_images.forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});portH+='</div></div>';}
     var specsH='';
-    if((p.specialties||[]).length){
-      specsH='<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
-      p.specialties.forEach(function(s){specsH+='<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>';});
-      specsH+='</div></div>';
-    }
-    var revH=reviews.length ? reviews.map(function(rv){
-      var rs='';for(var i=1;i<=5;i++)rs+='<span style="color:'+(i<=Math.round(rv.rating||0)?'#F0A500':'#ddd')+';font-size:13px">★</span>';
-      return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</span><div>'+rs+'</div></div>'
-        +(rv.comment?'<div style="font-size:11px;color:var(--text2);line-height:1.7">'+_esc(rv.comment)+'</div>':'')
-        +'</div>';
-    }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted)">لا توجد تقييمات</div>';
-    cont.innerHTML =
-      '<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px">'
-      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
-      +'<div style="width:60px;height:60px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.2)">'+avH+'</div>'
-      +'<div><div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:2px">'+(p.name||'—')+'</div>'
-      +'<div style="font-size:11px;color:rgba(255,255,255,.55)">'+(p.city||'')+' '+(p.experience_years?'· '+p.experience_years+' سنة':'')+'</div>'
-      +'<div style="margin-top:4px">'+bigS+'<span style="font-size:11px;color:rgba(255,255,255,.55)"> '+avg.toFixed(1)+' ('+cnt+')</span></div>'
-      +'</div></div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'
-      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div>'
-      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">تقييم</div></div>'
-      +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنة</div></div>'
-      +'</div></div>'
-      +(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8">'+p.bio+'</div>':'')
-      +specsH+portH
-      +'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+revH+'</div>';
-  }).catch(function(){ cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>'; });
+    if((p.specialties||[]).length){specsH='<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:4px">';p.specialties.forEach(function(s){specsH+='<span style="padding:3px 10px;background:var(--p-light);color:var(--p);border-radius:20px;font-size:11px;font-weight:700">'+s+'</span>';});specsH+='</div></div>';}
+    var revH=reviews.length?reviews.map(function(rv){var rs='';for(var i=1;i<=5;i++)rs+='<span style="color:'+(i<=Math.round(rv.rating||0)?'#F0A500':'#ddd')+'">★</span>';return'<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700">'+(rv.reviewer_name||'عميل')+'</span><div>'+rs+'</div></div>'+(rv.comment?'<div style="font-size:11px;color:var(--text2)">'+_esc(rv.comment)+'</div>':'')+'</div>';}).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">لا توجد تقييمات</div>';
+    cont.innerHTML='<div style="background:var(--p);border-radius:14px;padding:18px;margin-bottom:14px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+avH+'</div><div><div style="font-size:16px;font-weight:900;color:#fff">'+(p.name||'—')+'</div><div style="font-size:11px;color:rgba(255,255,255,.6)">'+(p.city||'')+' '+(p.experience_years?'· '+p.experience_years+' سنة':'')+'</div><div style="margin-top:4px">'+bigS+'<span style="font-size:11px;color:rgba(255,255,255,.6)"> '+avg.toFixed(1)+' ('+cnt+')</span></div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">منجز</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">تقييم</div></div><div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px;text-align:center"><div style="font-size:17px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5)">سنة</div></div></div></div>'+(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8">'+p.bio+'</div>':'')+specsH+portH+'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">التقييمات</div>'+revH+'</div>';
+  }).catch(function(){cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>';});
 }
-function closeProviderProfile(){ var o=document.getElementById('pvOverlay'); if(o) o.style.display='none'; }
+function closeProviderProfile(){var o=document.getElementById('pvOverlay');if(o)o.style.display='none';}
 
 initWS();
 
