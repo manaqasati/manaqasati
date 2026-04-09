@@ -607,6 +607,48 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .msg-row{max-width:85%}
 }
 
+
+/* ── RTL Chat Fix ── */
+.chat-msgs{
+  direction: rtl;
+}
+.chat-inp-field{
+  direction: rtl;
+  text-align: right;
+}
+/* في العربية RTL: flex-start = يمين، flex-end = يسار */
+.msg-row{
+  display:flex;
+  flex-direction:column;
+  max-width:78%;
+  margin-bottom:2px;
+}
+/* رسائلي = يمين */
+.msg-row.me{
+  align-self: flex-start;   /* في RTL هذا يمين */
+  align-items: flex-start;
+}
+.msg-row.me .msg-bubble{
+  background:var(--p);
+  color:#fff;
+  border-radius:16px 16px 16px 4px;   /* ← الذيل على اليسار */
+  box-shadow:0 2px 6px rgba(27,58,107,.2);
+}
+/* رسائل الطرف الآخر = يسار */
+.msg-row.them{
+  align-self: flex-end;     /* في RTL هذا يسار */
+  align-items: flex-end;
+}
+.msg-row.them .msg-bubble{
+  background:#fff;
+  color:var(--text);
+  border-radius:16px 16px 4px 16px;  /* ← الذيل على اليمين */
+  border:1px solid var(--border);
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.msg-row.me .msg-time-txt{ color:rgba(255,255,255,.6); }
+.msg-row.them .msg-time-txt{ color:var(--muted); }
+
 </style>
 </head>
 <body>
@@ -768,11 +810,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div id="detail-head"></div>
       <div class="tab-btns">
         <button class="tab-btn on" onclick="showTab('bids',this)">العروض <span id="bids-count" style="font-size:11px;opacity:.6"></span></button>
-        <button class="tab-btn" onclick="showTab('chat',this)">المحادثات</button>
+        
         <button class="tab-btn" onclick="showTab('actions',this)">الإجراءات</button>
       </div>
       <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
-      <div class="tab" id="tab-chat" style="padding:0;min-height:200px"></div>
+      
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
     </div>
 
@@ -1037,7 +1079,6 @@ function showTab(t,el){
   document.getElementById('tab-'+t).className='tab on';
   el.className='tab-btn on';
   if(t==='bids')loadBids(curRequestId);
-  if(t==='chat')loadChat(curRequestId);
   if(t==='actions')loadActions(curRequestId);
 }
 function logout(){localStorage.clear();location.href='auth.html';}
@@ -1151,7 +1192,7 @@ function loadBids(id){
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
       var acts=!isAcc&&!isRej?'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
           '<button onclick="acceptBid('+b.id+','+id+')" style="'+btnStyle+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 3px 10px rgba(22,163,74,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'+
-          '<button onclick="startChat('+id+','+b.provider_id+',\''+b.provider_name+'\')" style="'+btnStyle+';background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'+
+          
           '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'+
           '<button onclick="rejectBid('+b.id+','+id+')" style="'+btnStyle+';background:var(--red-l);color:var(--red);border:1.5px solid #fecaca">رفض</button>'+
         '</div>':isAcc?'<div style="padding-top:12px;border-top:1px solid #dcfce7"><button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button></div>':'';
