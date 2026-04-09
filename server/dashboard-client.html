@@ -1224,7 +1224,19 @@ function openProviderProfile(pid){
     var dist=rv.distribution||[];
 
     _pSet(pid,{name:p.name||'',img:p.profile_image||'',phone:p.phone||''});
-    var ph=p.phone||'';
+    // حاول الحصول على الهاتف من مصادر متعددة
+    var ph = p.phone || _pGet(pid).phone || '';
+    // إذا كان هذا هو المزود المقبول، جلب هاتفه من الطلب
+    // إذا لم يكن هناك هاتف، جلبه من الطلب الحالي بعد تحميل المودال
+    if(!ph && window.curRequestId){
+      fetch(API+'/api/requests/'+window.curRequestId)
+        .then(function(r){return r.json();})
+        .then(function(reqInfo){
+          if(String(reqInfo.assigned_provider_id)===pid && reqInfo.provider_phone){
+            _pSet(pid,{phone:reqInfo.provider_phone});
+          }
+        }).catch(function(){});
+    }
     var wa=ph?waUrl(ph,p.name||'المزود',window._projTitle||''):'';
 
     function stars(n,sz){
