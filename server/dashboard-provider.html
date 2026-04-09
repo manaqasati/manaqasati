@@ -548,8 +548,21 @@ function filterMyBids(){const st=document.getElementById('bfSt')?.value||'';cons
 function renderMyBids(list){
   if(!list.length)return`<div class="es"><div class="es-ic">${S(I.send)}</div><div class="es-t">لا يوجد عروض</div><div class="es-s">تصفح المشاريع وقدم عروضك</div></div>`;
   return list.map(b=>{const sc=b.status==='accepted'?'bdc-acc':b.status==='rejected'?'bdc-rej':'bdc-pend';const sl=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
-    return`<div class="bdc"><div class="bdc-top"><div><div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px">${b.request_title||'مشروع #'+b.request_id}</div><div class="bdc-due">تقديم: ${fdt(b.created_at)}</div></div><span class="bdc-st ${sc}">${sl}</span></div><div style="display:flex;gap:8px;margin-bottom:7px"><span class="chip">${fpr(b.price)}</span>${b.days||b.delivery_days?`<span class="chip">${b.days||b.delivery_days} يوم</span>`:''}</div>${b.note?`<div class="bdc-note">${b.note}</div>`:''}${b.status==='pending'?`<div style="margin-top:8px"><button class="btn btn-rd btn-xs" onclick="deleteBid(${b.id})">سحب العرض</button></div>`:''}</div>`;
+    return`<div class="bdc"><div class="bdc-top"><div><div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px">${b.request_title||'مشروع #'+b.request_id}</div><div class="bdc-due">تقديم: ${fdt(b.created_at)}</div></div><span class="bdc-st ${sc}">${sl}</span></div><div style="display:flex;gap:8px;margin-bottom:7px"><span class="chip">${fpr(b.price)}</span>${b.days||b.delivery_days?`<span class="chip">${b.days||b.delivery_days} يوم</span>`:''}</div>${b.note?`<div class="bdc-note">${b.note}</div>`:''}<div style="margin-top:8px;display:flex;gap:6px">
+      ${b.status==='pending'?`<button class="btn btn-rd btn-xs" onclick="deleteBid(${b.id})">سحب العرض</button>`:''}
+      <button class="btn btn-bl btn-xs" onclick="openBidChat(${b.request_id},${b.client_id||0},'${(b.client_name||'العميل').replace(/'/g,'')}','${(b.request_title||'').replace(/'/g,'')}')">
+        <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        محادثة
+      </button>
+    </div></div>`;
   }).join('');
+}
+function openBidChat(reqId,clientId,clientName,reqTitle){
+  // نفتح صفحة المحادثات مباشرة على هذه المحادثة
+  go('chats',document.getElementById('ni-chat'));
+  setTimeout(function(){
+    openChat(reqId,clientId,clientName,reqTitle);
+  },300);
 }
 async function deleteBid(id){if(!confirm('سحب هذا العرض؟'))return;await api(`/api/bids/${id}`,{method:'DELETE'});toast('تم سحب العرض','error');pgMyBids();}
 
