@@ -85,53 +85,69 @@ function emailTpl(title, body, btnText, btnUrl) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Tahoma,Arial,sans-serif;background:#f0f4f8;padding:24px 16px;direction:rtl}
-.wrap{max-width:560px;margin:0 auto}
-.head{background:linear-gradient(135deg,#0d1f3c 0%,#1B3A6B 100%);border-radius:16px 16px 0 0;padding:32px 28px 28px;text-align:center;position:relative;overflow:hidden}
-.head::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(240,165,0,0.08);top:-60px;right:-40px}
-.head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#F0A500,transparent)}
-.logo-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
-.logo-dot{width:10px;height:10px;border-radius:50%;background:#F0A500;display:inline-block}
-.logo-txt{font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px}
-.head-sub{font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px}
-.body{background:#ffffff;padding:32px 32px 24px;border-right:4px solid #1B3A6B}
-.body-title{font-size:16px;font-weight:700;color:#0d1f3c;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e8eef7}
-.body p{color:#374151;font-size:14px;line-height:2;margin:0 0 12px}
-.hl{background:#e8eef7;border-right:4px solid #1B3A6B;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#0d1f3c;line-height:1.9}
-.ok{background:#f0fdf4;border-right:4px solid #16a34a;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#15803d;line-height:1.9}
-.ng{background:#fef2f2;border-right:4px solid #dc2626;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#991b1b;line-height:1.9}
-.gold-box{background:#fff8e7;border-right:4px solid #F0A500;border-radius:8px;padding:13px 16px;margin:12px 0;font-size:13px;color:#92400e;line-height:1.9}
-.btn-wrap{text-align:center;margin:24px 0 8px}
-.btn{display:inline-block;background:linear-gradient(135deg,#1B3A6B,#2C5282);color:#ffffff !important;padding:13px 32px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.3px;box-shadow:0 4px 14px rgba(27,58,107,0.3)}
-.foot{background:#f4f7fb;border-radius:0 0 16px 16px;padding:16px 28px;text-align:center;border-top:1px solid #e8eef7}
-.foot-logo{font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:6px}
-.foot-links a{color:#1B3A6B;text-decoration:none;margin:0 6px;font-size:11px}
-.foot-copy{font-size:10px;color:#94a3b8;margin-top:6px}
-</style>
+<title>مناقصة</title>
 </head>
-<body>
-<div class="wrap">
-  <div class="head">
-    <div class="logo-row"><span class="logo-dot"></span><span class="logo-txt">مناقصة</span></div>
-    <div class="head-sub">منصة مناقصة للخدمات المنزلية والتجارية</div>
-  </div>
-  <div class="body">
-    <div class="body-title">${title}</div>
-    ${body}
-    ${btnText&&btnUrl?`<div class="btn-wrap"><a href="${btnUrl}" class="btn">${btnText}</a></div>`:''}
-  </div>
-  <div class="foot">
-    <div class="foot-logo">● مناقصة</div>
-    <div>
-      <a href="https://manaqasa.com">الرئيسية</a>
-      <a href="https://manaqasa.com/terms.html">الشروط</a>
-      <a href="https://manaqasa.com/privacy.html">الخصوصية</a>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:Tahoma,Arial,sans-serif;direction:rtl">
+  <div style="max-width:580px;margin:0 auto;padding:24px 16px">
+
+    <!-- HEADER -->
+    <div style="background:#1B3A6B;border-radius:16px 16px 0 0;padding:0;overflow:hidden;position:relative">
+      <!-- شبكة النقاط SVG -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="position:relative">
+        <tr>
+          <td style="padding:32px 28px 24px;text-align:center;position:relative">
+            <!-- لوجو -->
+            <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="width:11px;height:11px;border-radius:50%;background:#F0A500;display:inline-block;vertical-align:middle"></span>
+              <span style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;vertical-align:middle">مناقصة</span>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px">منصة المشاريع والخدمات السعودية</div>
+          </td>
+        </tr>
+      </table>
+      <!-- خط ذهبي -->
+      <div style="height:3px;background:linear-gradient(90deg,transparent 0%,#F0A500 40%,#F0A500 60%,transparent 100%)"></div>
     </div>
-    <div class="foot-copy">© 2025 منصة مناقصة — manaqasa.com · هذا البريد أُرسل تلقائياً</div>
+
+    <!-- BODY -->
+    <div style="background:#ffffff;padding:32px 28px 24px;border-right:3px solid #1B3A6B;border-left:1px solid #dce5f0;border-bottom:1px solid #dce5f0">
+
+      <!-- العنوان -->
+      <div style="font-size:17px;font-weight:700;color:#0d1f3c;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #e8eef7">${title}</div>
+
+      <!-- المحتوى -->
+      <div style="font-size:14px;color:#374151;line-height:2">
+        ${body}
+      </div>
+
+      <!-- زر CTA -->
+      ${btnText && btnUrl ? `
+      <div style="text-align:center;margin:28px 0 8px">
+        <a href="${btnUrl}" style="display:inline-block;background:#F0A500;color:#ffffff;padding:14px 40px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.3px;box-shadow:0 4px 16px rgba(240,165,0,0.35)">${btnText} ←</a>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <a href="${btnUrl}" style="font-size:11px;color:#6b85a8;text-decoration:none">${btnUrl}</a>
+      </div>` : ''}
+    </div>
+
+    <!-- FOOTER -->
+    <div style="background:#f4f7fb;border-radius:0 0 16px 16px;padding:18px 28px;text-align:center;border:1px solid #dce5f0;border-top:none">
+      <div style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">
+        <span style="width:7px;height:7px;border-radius:50%;background:#F0A500;display:inline-block;vertical-align:middle;margin-left:4px"></span>
+        مناقصة
+      </div>
+      <div style="margin-bottom:8px">
+        <a href="https://manaqasa.com" style="color:#1B3A6B;text-decoration:none;margin:0 8px;font-size:11px;font-weight:600">الرئيسية</a>
+        <span style="color:#dce5f0">|</span>
+        <a href="https://manaqasa.com/dashboard-provider.html" style="color:#1B3A6B;text-decoration:none;margin:0 8px;font-size:11px;font-weight:600">لوحة المزود</a>
+        <span style="color:#dce5f0">|</span>
+        <a href="https://manaqasa.com/terms.html" style="color:#1B3A6B;text-decoration:none;margin:0 8px;font-size:11px;font-weight:600">الشروط والأحكام</a>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">© ${new Date().getFullYear()} منصة مناقصة — manaqasa.com</div>
+      <div style="font-size:10px;color:#b0bec5;margin-top:3px">وصلك هذا البريد لأنك مسجّل كمزود خدمة في منصة مناقصة</div>
+    </div>
+
   </div>
-</div>
 </body></html>`;
 }
 
@@ -400,22 +416,98 @@ setInterval(() => {
 async function notifyInterestedProviders(reqId, title, category) {
   if (!category) return;
   try {
+    // جلب تفاصيل الطلب الكاملة للإيميل
+    const reqData = await pool.query(
+      `SELECT r.*,u.name as client_name FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1`,
+      [reqId]
+    );
+    const req = reqData.rows[0] || {};
+
     const provs = await pool.query(
       `SELECT id,name,email FROM users WHERE role='provider' AND is_active=TRUE
        AND (specialties IS NOT NULL AND $1=ANY(specialties)
             OR notify_categories IS NOT NULL AND $1=ANY(notify_categories))`,
       [category]
     );
+
     for (const p of provs.rows) {
-      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'bid', reqId);
-      await sendPush([p.id], '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}"`, { type: 'new_request', reqId });
+      await notify(p.id, '🔔 مناقصة جديدة في تخصصك', `نُشرت: "${title}" في ${category}`, 'new_request', reqId);
+      await sendPush([p.id], '🔔 مناقصة جديدة في تخصصك', `"${title}"`, { type: 'new_request', reqId });
+
       if (p.email) {
-        await sendEmail(p.email, `🔔 مناقصة جديدة: ${title}`,
-          emailTpl('مناقصة جديدة تهمك!',
-            `<p>مرحباً <strong>${p.name}</strong>،</p>
-             <p>نُشرت مناقصة جديدة في مجال <strong>${category}</strong>:</p>
-             <div class="hl"><strong>${title}</strong></div>`,
-            'تقديم عرض', `${SITE_URL}/dashboard-provider.html`
+        const budgetText = req.budget_max ? `${Number(req.budget_max).toLocaleString()} ر.س` : 'غير محدد';
+        const deadlineText = req.deadline ? new Date(req.deadline).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const cityText = req.city || '—';
+
+        await sendEmail(
+          p.email,
+          `🔔 مناقصة جديدة في تخصصك: ${title}`,
+          emailTpl(
+            `مرحباً ${p.name}،`,
+            `<p>وصلك مشروع جديد يناسب تخصصك في <strong>${category}</strong>. سارع بتقديم عرضك قبل أن يمتلئ!</p>
+
+             <!-- بطاقة المشروع -->
+             <div style="background:#f4f7fb;border:1px solid #dce5f0;border-right:4px solid #1B3A6B;border-radius:10px;padding:18px 20px;margin:16px 0">
+               <div style="font-size:16px;font-weight:700;color:#0d1f3c;margin-bottom:12px">${title}</div>
+               <table width="100%" cellpadding="0" cellspacing="0">
+                 <tr>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7">
+                     <span style="font-size:12px;color:#6b85a8">👤 مقدم المشروع</span>
+                   </td>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7;text-align:left">
+                     <strong style="font-size:12px;color:#0d1f3c">${req.client_name||'—'}</strong>
+                   </td>
+                 </tr>
+                 <tr>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7">
+                     <span style="font-size:12px;color:#6b85a8">📍 المدينة</span>
+                   </td>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7;text-align:left">
+                     <strong style="font-size:12px;color:#0d1f3c">${cityText}</strong>
+                   </td>
+                 </tr>
+                 <tr>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7">
+                     <span style="font-size:12px;color:#6b85a8">💰 الميزانية المتوقعة</span>
+                   </td>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7;text-align:left">
+                     <strong style="font-size:12px;color:#1B3A6B">${budgetText}</strong>
+                   </td>
+                 </tr>
+                 <tr>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7">
+                     <span style="font-size:12px;color:#6b85a8">📅 تاريخ الانتهاء</span>
+                   </td>
+                   <td style="padding:5px 0;border-bottom:1px solid #e8eef7;text-align:left">
+                     <strong style="font-size:12px;color:#0d1f3c">${deadlineText}</strong>
+                   </td>
+                 </tr>
+                 <tr>
+                   <td style="padding:5px 0">
+                     <span style="font-size:12px;color:#6b85a8">📁 التصنيف</span>
+                   </td>
+                   <td style="padding:5px 0;text-align:left">
+                     <strong style="font-size:12px;color:#0d1f3c">${category}</strong>
+                   </td>
+                 </tr>
+               </table>
+               ${req.description ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #dce5f0"><p style="font-size:12px;color:#475569;line-height:1.9;margin:0">${req.description.substring(0,200)}${req.description.length>200?'...':''}</p></div>` : ''}
+             </div>
+
+             <!-- رسالة تحفيزية -->
+             <div style="background:#fff8e7;border-right:3px solid #F0A500;border-radius:8px;padding:12px 16px;margin:14px 0">
+               <p style="font-size:13px;color:#92400e;margin:0;font-weight:600">⚡ كن أول من يقدم عرضاً — المزودون الأوائل يحصلون على فرص أعلى للقبول!</p>
+             </div>
+
+             <!-- ملاحظة الرد -->
+             <div style="background:#f4f7fb;border-radius:8px;padding:10px 14px;margin-top:14px;border:1px dashed #dce5f0">
+               <p style="font-size:11px;color:#94a3b8;margin:0;line-height:1.8">
+                 عند الرد على هذا الإيميل سيظهر للمزود اسم المشروع وتفاصيله كاملة في خيط المحادثة.<br>
+                 للتواصل المباشر مع العميل يرجى تقديم عرضك عبر المنصة.
+               </p>
+             </div>`,
+            'تقديم عرضي الآن ←',
+            `${SITE_URL}/dashboard-provider.html`
           )
         );
       }
