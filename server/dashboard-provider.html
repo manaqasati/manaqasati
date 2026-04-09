@@ -807,16 +807,16 @@ function _renderBrowse(list) {
     list.map(function(r){
       var img = r.image_url || (r.images && r.images[0]);
       var hdr = img
-        ? '<div style="height:140px;overflow:hidden;position:relative"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div><div style="position:absolute;top:10px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">● مفتوح</span></div></div>'
-        : '<div style="background:linear-gradient(135deg,#1B3A6B,#2C5282);padding:20px;height:80px;display:flex;align-items:flex-end;position:relative"><div style="position:absolute;top:8px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">● مفتوح</span></div><div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8)">'+(r.category||'مشروع')+'</div></div>';
+        ? '<div style="height:140px;overflow:hidden;position:relative"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"><div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5),transparent)"></div><div style="position:absolute;top:10px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">مفتوح</span></div></div>'
+        : '<div style="background:linear-gradient(135deg,#1B3A6B,#2C5282);padding:20px;height:80px;display:flex;align-items:flex-end;position:relative"><div style="position:absolute;top:8px;left:10px"><span style="background:rgba(22,163,74,.85);color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800">مفتوح</span></div><div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8)">'+(r.category||'مشروع')+'</div></div>';
       return '<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(27,58,107,.1);transition:all .2s" onmouseover="this.style.transform=\'translateY(-4px)\';this.style.boxShadow=\'0 12px 32px rgba(27,58,107,.18)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 16px rgba(27,58,107,.1)\'">' +
         hdr +
         '<div style="padding:14px">' +
           '<div style="font-size:15px;font-weight:800;margin-bottom:8px;line-height:1.3">'+_esc(r.title)+'</div>' +
           '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
-            (r.client_name?'<span style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">👤 '+_esc(r.client_name)+'</span>':'') +
-            (r.city?'<span style="background:#f0fdf4;color:#15803d;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #bbf7d0">📍 '+_esc(r.city)+'</span>':'') +
-            (r.budget_max?'<span style="background:#fff8e7;color:#92400e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;border:1px solid #fde68a">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'') +
+            (r.client_name?'<span style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> '+_esc(r.client_name)+'</span>':'') +
+            (r.city?'<span style="background:#f0fdf4;color:#15803d;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #bbf7d0"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+_esc(r.city)+'</span>':'') +
+            (r.budget_max?'<span style="background:#fff8e7;color:#92400e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;border:1px solid #fde68a"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'') +
             '<span style="background:var(--bg);color:var(--muted);padding:3px 9px;border-radius:20px;font-size:10px;border:1px solid var(--border)">'+(r.bid_count||0)+' عرض</span>' +
           '</div>' +
           '<div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)">' +
@@ -970,7 +970,7 @@ function _renderBids(list) {
     var bg=isAcc?'#dcfce7':isRej?'#fee2e2':'#fff8e7';
     var tc=isAcc?'#15803d':isRej?'#991b1b':'#92400e';
     var bd=isAcc?'#bbf7d0':isRej?'#fecaca':'#fde68a';
-    var sl=isAcc?'✓ مقبول':isRej?'✕ مرفوض':'⏳ معلق';
+    var sl=isAcc?'مقبول':isRej?'مرفوض':'<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> معلق';
     var key = 'c_'+b.request_id;
     var cd  = _pCache[key] || {};
     var ph  = cd.phone || '';
@@ -984,8 +984,8 @@ function _renderBids(list) {
       '</div>' +
       '<div style="padding:14px 20px">' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
-          '<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:800">💰 '+_fpr(b.price)+'</span>' +
-          (b.days?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700">⏱️ '+b.days+' يوم</span>':'') +
+          '<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> '+_fpr(b.price)+'</span>' +
+          (b.days?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> '+b.days+' يوم</span>':'') +
         '</div>' +
         (b.note?'<div style="font-size:12px;color:var(--text2);line-height:1.8;padding:10px 13px;background:var(--bg);border-radius:10px;border-right:4px solid #F0A500;margin-bottom:12px">&ldquo;'+_esc(b.note)+'&rdquo;</div>':'') +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">' +
@@ -1020,13 +1020,13 @@ function _renderProjs(list) {
           '<div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:4px">'+(r.project_number||'#'+r.id)+'</div>' +
           '<div style="font-size:15px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div>' +
         '</div>' +
-        '<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+(isProg?'⚡ جارٍ':'✓ مكتمل')+'</span>' +
+        '<span style="background:'+stBg+';color:'+stCl+';border:1.5px solid '+stBd+';padding:5px 13px;border-radius:20px;font-size:11px;font-weight:800;flex-shrink:0;margin-right:12px">'+(isProg?'<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> جارٍ':'✓ مكتمل')+'</span>' +
       '</div>' +
       '<div style="padding:14px 20px">' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
-          (r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px">📍 '+_esc(r.city)+'</span>':'') +
+          (r.city?'<span style="background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);padding:4px 11px;border-radius:20px;font-size:11px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+_esc(r.city)+'</span>':'') +
           (r.category?'<span style="background:var(--bg);color:var(--text2);border:1px solid var(--border);padding:4px 11px;border-radius:20px;font-size:11px">'+_esc(r.category)+'</span>':'') +
-          (r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800">💰 '+_fpr(r.price)+'</span>':'') +
+          (r.price?'<span style="background:#fff8e7;color:#92400e;border:1px solid #fde68a;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> '+_fpr(r.price)+'</span>':'') +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">' +
           '<button onclick="_viewProj('+r.id+')" style="'+_BS+';background:var(--p);color:#fff"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل</button>' +
