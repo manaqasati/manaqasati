@@ -810,11 +810,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div id="detail-head"></div>
       <div class="tab-btns">
         <button class="tab-btn on" onclick="showTab('bids',this)">العروض <span id="bids-count" style="font-size:11px;opacity:.6"></span></button>
-        
         <button class="tab-btn" onclick="showTab('actions',this)">الإجراءات</button>
       </div>
       <div class="tab on" id="tab-bids"><div id="bids-list"><div class="loading">جاري التحميل...</div></div></div>
-      
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
     </div>
 
@@ -1146,7 +1144,7 @@ function openDetail(id,e){
   curRequestId=id;
   document.querySelectorAll('.tab-btn').forEach(function(x,i){x.className=i===0?'tab-btn on':'tab-btn';});
   document.querySelectorAll('.tab').forEach(function(x,i){x.className=i===0?'tab on':'tab';});
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;
     var imgs=req.images||[];
     var atts=req.attachments||[];
     var imgsHtml=imgs.length?'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">'+
@@ -1175,8 +1173,14 @@ function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/requests/'+id+'/bids').then(function(r){return r.json();}).then(async function(bids){
   var pids=[...new Set(bids.map(function(b){return b.provider_id;}))];
+  var _providerData={};
   await Promise.all(pids.map(async function(pid){
-    try{var r2=await fetch(API+'/api/provider/'+pid+'/profile');var pd=await r2.json();if(pd&&pd.profile_image)_chatImages[pid]=pd.profile_image;}catch(e){}
+    try{
+      var r2=await fetch(API+'/api/provider/'+pid+'/profile');
+      var pd=await r2.json();
+      _providerData[pid]=pd||{};
+      if(pd&&pd.profile_image) _chatImages[pid]=pd.profile_image;
+    }catch(e){}
   }));
     document.getElementById('bids-count').textContent='('+bids.length+')';
     if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
@@ -1185,17 +1189,28 @@ function loadBids(id){
       var avgR=parseFloat(b.avg_rating)||0;
       var reviewCount=parseInt(b.review_count)||0;
       var ratingHtml=avgR>0?starsHtml(avgR,false)+'<span style="font-size:10px;color:rgba(255,255,255,.6);margin-right:3px">('+reviewCount+')</span>':'<span style="font-size:10px;color:rgba(255,255,255,.5)">لا يوجد تقييمات</span>';
-      var avatarHtml=b.provider_image?'<img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span>'+((b.provider_name||'م')[0])+'</span>';
+      var _pImg=_chatImages[b.provider_id]||b.provider_image||''; var _pPhone=_providerPhones[b.provider_id]||(_providerData[b.provider_id]||{}).phone||''; var avatarHtml=_pImg?'<img src="'+_pImg+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':'<span>'+((b.provider_name||'م')[0])+'</span>';
       var specs=b.provider_specialties&&b.provider_specialties.length?b.provider_specialties:[];
       var specHtml=specs.length?specs.slice(0,2).map(function(s){return'<span style="background:rgba(240,165,0,.18);color:#F0A500;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">'+s+'</span>';}).join(' '):(b.provider_city?'<span style="color:rgba(255,255,255,.55);font-size:11px">📍 '+b.provider_city+'</span>':'<span style="color:rgba(255,255,255,.45);font-size:10px">مزود خدمة</span>');
       var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
       var btnStyle='padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px';
-      var acts=!isAcc&&!isRej?'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
+      var _callBtns=_pPhone?
+        '<a href="tel:'+_pPhone+'" style="'+btnStyle+';background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;text-decoration:none"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'+
+        '<a href="https://wa.me/966'+_pPhone.replace(/^0/,\'\')+'" target="_blank" style="'+btnStyle+';background:#dcfce7;color:#15803d;border:1.5px solid #bbf7d0;text-decoration:none">واتساب</a>'
+        :'';
+      var acts=!isAcc&&!isRej?
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)">'+
           '<button onclick="acceptBid('+b.id+','+id+')" style="'+btnStyle+';background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;flex:1;justify-content:center;box-shadow:0 3px 10px rgba(22,163,74,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>'+
-          
+          _callBtns+
           '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>الملف</button>'+
           '<button onclick="rejectBid('+b.id+','+id+')" style="'+btnStyle+';background:var(--red-l);color:var(--red);border:1.5px solid #fecaca">رفض</button>'+
-        '</div>':isAcc?'<div style="padding-top:12px;border-top:1px solid #dcfce7"><button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button></div>':'';
+        '</div>'
+        :isAcc?
+        '<div style="padding-top:12px;border-top:1px solid #dcfce7;display:flex;gap:8px;flex-wrap:wrap">'+
+          _callBtns+
+          '<button onclick="openProviderProfile('+b.provider_id+')" style="'+btnStyle+';background:var(--gold-l);color:var(--gold-d);border:1.5px solid #fde68a"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض ملف المزود</button>'+
+        '</div>'
+        :'';
       return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'+
         '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'+
           '<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'+
@@ -1224,7 +1239,7 @@ function loadBids(id){
   }).catch(function(){document.getElementById('bids-list').innerHTML=errH();});
 }
 function loadActions(id){
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
+  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;
     var h='';
     if(req.status==='in_progress'){h+='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div><button class="btn-sm bs-g" onclick="markDone('+id+')" style="margin-bottom:10px;width:100%;padding:12px">تم الإنجاز — أكمل الطلب</button><button class="btn-sm bs-p" onclick="openRate('+id+','+req.accepted_bid_id+')" style="width:100%;padding:12px">تقييم المزود</button></div>';}
     if(req.status==='done'||req.status==='completed'){h+='<div class="card"><p style="text-align:center;font-size:13px;color:var(--green);font-weight:700;padding:10px">الطلب مكتمل ✓</p></div>';}
@@ -1243,7 +1258,7 @@ function uploadReqAtts(input){var files=[...input.files];input.value='';files.fo
 function deleteReqImg(reqId,idx){if(!confirm('حذف هذه الصورة؟'))return;fetch(API+'/api/requests/'+reqId+'/images/'+idx,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(){openDetail(reqId,null);});}
 function deleteReqAtt(reqId,idx){if(!confirm('حذف هذا الملف؟'))return;fetch(API+'/api/requests/'+reqId+'/attachments/'+idx,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(){openDetail(reqId,null);});}
 var _editReqId=null;
-function openEditReq(id,e){if(e)e.stopPropagation();_editReqId=id;fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){document.getElementById('e-title').value=req.title||'';document.getElementById('e-budget').value=req.budget_max||'';document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';document.getElementById('e-desc').value=req.description||'';document.getElementById('edit-msg').className='alert';document.getElementById('editReqOverlay').className='overlay show';});}
+function openEditReq(id,e){if(e)e.stopPropagation();_editReqId=id;fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){ if(req.provider_phone&&req.assigned_provider_id) _providerPhones[req.assigned_provider_id]=req.provider_phone;document.getElementById('e-title').value=req.title||'';document.getElementById('e-budget').value=req.budget_max||'';document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';document.getElementById('e-desc').value=req.description||'';document.getElementById('edit-msg').className='alert';document.getElementById('editReqOverlay').className='overlay show';});}
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
 function submitEditReq(){var title=document.getElementById('e-title').value.trim();var desc=document.getElementById('e-desc').value.trim();if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';var body={title:title,description:desc,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null};fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr())).then(function(r){return r.json();}).then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();loadReqs();var e=document.getElementById('edit-msg');e.textContent='';e.className='alert';}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}}).catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});}
 function deleteReq(id,e){if(e)e.stopPropagation();if(!confirm('هل أنت متأكد من حذف هذا الطلب؟'))return;fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(r){if(r.ok||r.id||r.message==='تم الحذف'){loadReqs();loadHome();}else alert(r.message||'تعذر الحذف');});}
@@ -1324,6 +1339,7 @@ loadHome();
 // ═══════════════════════════════════════════════════════════════
 
 var _chatImages = {};
+var _providerPhones = {};
 var _cs = {           // chat state
   reqId: null,
   receiverId: null,
