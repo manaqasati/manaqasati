@@ -1143,114 +1143,179 @@ setInterval(loadNotifCount,30000);
 loadHome();
 setTimeout(function(){try{var h=location.hash.replace('#','');if(['home','requests','notifs','profile'].indexOf(h)>=0)show(h,null,h);}catch(e){}},0);
 
-// ── Escape helper ──────────────────────────────────
-function esc(s){ var d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
 
-// ── Open Provider Profile Modal ────────────────────
+// ── esc ──────────────────────────────────────────────────────
+function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+
+// ── openProviderProfile ──────────────────────────────────────
 function openProviderProfile(pid){
   pid=String(pid);
-  var ol=document.getElementById('pvOl');
-  if(!ol){
-    ol=document.createElement('div');
+
+  if(!document.getElementById('pvOl')){
+    var ol=document.createElement('div');
     ol.id='pvOl';
-    ol.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
+    ol.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)';
     ol.addEventListener('click',function(e){if(e.target===ol)ol.style.display='none';});
+
     var sh=document.createElement('div');
     sh.style.cssText='background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column';
-    sh.innerHTML='<div style="text-align:center;padding:10px 0 0"><div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block"></div></div>'
-      +'<div id="pvBody" style="padding:18px;flex:1"></div>'
-      +'<div style="padding:12px 18px 24px;border-top:1px solid #dce5f0;background:#f4f7fb">'
-      +'<button onclick="document.getElementById(\'pvOl\').style.display=\'none\'" style="width:100%;padding:12px;background:#fff;border:1.5px solid #dce5f0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#6b85a8">إغلاق</button></div>';
+
+    var drag=document.createElement('div');
+    drag.style.cssText='text-align:center;padding:10px 0 0';
+    var dragBar=document.createElement('div');
+    dragBar.style.cssText='width:36px;height:4px;background:#d1d5db;border-radius:2px;display:inline-block';
+    drag.appendChild(dragBar);
+
+    var pvBody=document.createElement('div');
+    pvBody.id='pvBody';
+    pvBody.style.cssText='padding:18px;flex:1';
+
+    var foot=document.createElement('div');
+    foot.style.cssText='padding:12px 18px 24px;border-top:1px solid #dce5f0;background:#f4f7fb';
+    var closeBtn=document.createElement('button');
+    closeBtn.textContent='إغلاق';
+    closeBtn.style.cssText='width:100%;padding:12px;background:#fff;border:1.5px solid #dce5f0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#6b85a8';
+    closeBtn.addEventListener('click',function(){document.getElementById('pvOl').style.display='none';});
+    foot.appendChild(closeBtn);
+
+    sh.appendChild(drag);
+    sh.appendChild(pvBody);
+    sh.appendChild(foot);
     ol.appendChild(sh);
     document.body.appendChild(ol);
   }
-  ol.style.display='flex';
+
+  document.getElementById('pvOl').style.display='flex';
   var body=document.getElementById('pvBody');
   body.innerHTML='<div style="text-align:center;padding:30px"><div style="width:26px;height:26px;border:3px solid #dce5f0;border-top-color:#1B3A6B;border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div></div>';
+
   Promise.all([
     fetch(API+'/api/provider/'+pid+'/profile').then(function(r){return r.json();}),
     fetch(API+'/api/ratings/provider/'+pid).then(function(r){return r.json();})
   ]).then(function(res){
-    var p=res[0]||{},rv=res[1]||{};
-    var avg=parseFloat(rv.average)||0,cnt=parseInt(rv.count)||0,reviews=rv.reviews||[];
+    var p=res[0]||{};
+    var rv=res[1]||{};
+    var avg=parseFloat(rv.average)||0;
+    var cnt=parseInt(rv.count)||0;
+    var reviews=rv.reviews||[];
     var dist=rv.distribution||[];
+
     _pSet(pid,{name:p.name||'',img:p.profile_image||'',phone:p.phone||''});
-    var _ph=p.phone||'';
-    var _wa=_ph?waUrl(_ph,p.name||'المزود',window._projTitle||''):'';
-    function starsH(n,sz){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:'+sz+'px">★</span>';return s;}
-    var avH=p.profile_image
-      ?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
-      :'<span style="font-size:22px;font-weight:900;color:#fff">'+(p.name||'م')[0]+'</span>';
+    var ph=p.phone||'';
+    var wa=ph?waUrl(ph,p.name||'المزود',window._projTitle||''):'';
+
+    function stars(n,sz){
+      var s='';
+      for(var i=1;i<=5;i++){
+        var col=i<=Math.round(n)?'#F0A500':'#e4e4e7';
+        s+='<span style="color:'+col+';font-size:'+sz+'px">&#9733;</span>';
+      }
+      return s;
+    }
+
+    // صورة المزود
+    var avHtml='';
+    if(p.profile_image){
+      avHtml='<img src="'+esc(p.profile_image)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    } else {
+      avHtml='<span style="font-size:22px;font-weight:900;color:var(--p2)">'+(p.name||'م')[0]+'</span>';
+    }
+
+    // التخصصات
+    var specH='';
+    if((p.specialties||[]).length){
+      specH='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px">';
+      (p.specialties||[]).forEach(function(s){
+        specH+='<span style="padding:2px 9px;background:rgba(240,165,0,.12);color:#92400e;border-radius:20px;font-size:11px;font-weight:700">'+esc(s)+'</span>';
+      });
+      specH+='</div>';
+    }
+
+    // معرض الأعمال
     var portH='';
     if((p.portfolio_images||[]).length){
       portH='<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
-      p.portfolio_images.forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1" onclick="window.open(\''+img+'\',\'_blank\')"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>';});
+      (p.portfolio_images||[]).forEach(function(img){
+        portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" loading="lazy" onclick="window.open(this.src,\'_blank\')"></div>';
+      });
       portH+='</div></div>';
     }
-    var specH='';
-    if((p.specialties||[]).length){
-      specH='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
-      p.specialties.forEach(function(s){specH+='<span style="padding:3px 10px;background:rgba(240,165,0,.12);color:#92400e;border-radius:20px;font-size:11px;font-weight:700">'+esc(s)+'</span>';});
-      specH+='</div>';
-    }
+
+    // توزيع النجوم
     var distH='';
     if(cnt>0){
       distH='<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:8px">';
       [5,4,3,2,1].forEach(function(star){
-        var d=dist.find(function(x){return x.star===star;})||{count:0};
-        var pct=Math.round((d.count||0)/cnt*100);
+        var d=(dist||[]).find(function(x){return x.star===star;})||{count:0};
+        var pct=Math.round(((d.count||0)/cnt)*100);
         distH+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
-          +'<span style="font-size:10px;color:#F0A500;width:18px;text-align:center">'+star+'★</span>'
+          +'<span style="color:#F0A500;font-size:10px;width:22px">'+star+'&#9733;</span>'
           +'<div style="flex:1;height:7px;background:#e4e4e7;border-radius:4px;overflow:hidden">'
           +'<div style="height:100%;background:#F0A500;width:'+pct+'%;border-radius:4px"></div></div>'
-          +'<span style="font-size:10px;color:var(--muted);width:28px">'+pct+'%</span></div>';
+          +'<span style="font-size:10px;color:var(--muted);width:26px">'+pct+'%</span></div>';
       });
       distH+='</div>';
     }
-    var revH=reviews.length?reviews.map(function(rv){
-      return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
-        +'<span style="font-size:12px;font-weight:800">'+esc(rv.reviewer_name||'عميل')+'</span>'
-        +'<div>'+starsH(rv.rating||0,13)+'</div></div>'
-        +(rv.comment?'<div style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg);padding:8px 11px;border-radius:8px;border-right:3px solid #F0A500">'+esc(rv.comment)+'</div>':'')
-        +'</div>';
-    }).join(''):'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد تقييمات بعد</div>';
-    var contactBtns=_ph
-      ?'<div style="display:flex;gap:8px;margin-top:12px">'
-        +'<a href="'+_wa+'" target="_blank" style="flex:1;padding:11px;background:#25d366;color:#fff;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px">'
+
+    // التقييمات
+    var revH='';
+    if(reviews.length){
+      revH=reviews.map(function(rv){
+        return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+          +'<span style="font-size:12px;font-weight:800">'+esc(rv.reviewer_name||'عميل')+'</span>'
+          +'<div>'+stars(rv.rating||0,13)+'</div></div>'
+          +(rv.comment?'<div style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg);padding:8px 11px;border-radius:8px;border-right:3px solid #F0A500">'+esc(rv.comment)+'</div>':'')
+          +'</div>';
+      }).join('');
+    } else {
+      revH='<div style="text-align:center;padding:18px;color:var(--muted);font-size:12px">لا توجد تقييمات</div>';
+    }
+
+    // أزرار التواصل
+    var contactH='';
+    if(ph){
+      contactH='<div style="display:flex;gap:8px;margin-top:12px">'
+        +'<a href="'+wa+'" target="_blank" style="flex:1;padding:11px;background:#25d366;color:#fff;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px">'
         +'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>واتساب</a>'
-        +'<a href="tel:'+_ph+'" style="padding:11px 14px;background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px">'
+        +'<a href="tel:'+ph+'" style="padding:11px 14px;background:var(--green-l);color:var(--green);border:1.5px solid #bbf7d0;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px">'
         +'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>'
+        +'</div>';
+    }
+
+    body.innerHTML=''
+      +'<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);border-radius:16px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden">'
+        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
+        +'<div id="pvAvRow" style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'
+          +'<div style="width:60px;height:60px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:3px solid rgba(255,255,255,.25)">'+avHtml+'</div>'
+          +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:2px">'+esc(p.name||'—')+'</div>'
+            +'<div style="font-size:11px;color:rgba(255,255,255,.55)">'+(p.city?'&#128205; '+esc(p.city)+' ':'')+(p.experience_years?'&#183; '+p.experience_years+' سنة':'')+'</div>'
+            +'<div style="margin-top:4px">'+stars(avg,14)+'<span style="font-size:11px;color:rgba(255,255,255,.5);margin-right:3px"> '+avg.toFixed(1)+' ('+cnt+')</span></div>'
+            +specH
+          +'</div>'
         +'</div>'
-      :'';
-    body.innerHTML=
-      '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);border-radius:16px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden">'
-      +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
-      +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'
-        +'<div style="width:60px;height:60px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:3px solid rgba(255,255,255,.25)">'+avH+'</div>'
-        +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:3px">'+esc(p.name||'—')+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,.55)">'+(p.city?'📍 '+p.city+' ':'')+(p.experience_years?'• '+p.experience_years+' سنة':'')+'</div>'
-          +'<div style="margin-top:4px">'+starsH(avg,14)+'<span style="font-size:11px;color:rgba(255,255,255,.5);margin-right:3px"> '+avg.toFixed(1)+' ('+cnt+')</span></div>'
-          +specH
+        +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">منجز</div></div>'
+          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#F0A500">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">تقييم</div></div>'
+          +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#fff">'+(p.experience_years||'&#8212;')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">سنة</div></div>'
         +'</div>'
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
-        +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#fff">'+(p.completed_projects||0)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">منجز</div></div>'
-        +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#F0A500">'+avg.toFixed(1)+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">تقييم</div></div>'
-        +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:9px;text-align:center"><div style="font-size:18px;font-weight:900;color:#fff">'+(p.experience_years||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px">سنة</div></div>'
-      +'</div>'
-      +contactBtns
+        +contactH
       +'</div>'
       +(p.bio?'<div style="background:var(--p-light);border-right:3px solid var(--p);border-radius:0 11px 11px 0;padding:11px 14px;margin-bottom:14px;font-size:12px;line-height:1.9;color:var(--text2)">'+esc(p.bio)+'</div>':'')
       +portH
-      +'<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
-        +'<span>التقييمات</span>'
-        +(cnt>0?'<span style="font-size:12px;font-weight:700;color:var(--gold-d);background:var(--gold-l);padding:3px 10px;border-radius:20px">'+avg.toFixed(1)+' ★ ('+cnt+')</span>':'')
-      +'</div>'
-      +distH
-      +'<div style="margin-top:10px">'+revH+'</div></div>';
-  }).catch(function(){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذر التحميل</div>';});
+      +'<div style="margin-top:14px">'
+        +'<div style="font-size:13px;font-weight:800;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+          +'<span>&#11088; التقييمات</span>'
+          +(cnt>0?'<span style="font-size:12px;font-weight:700;color:var(--gold-d);background:var(--gold-l);padding:3px 10px;border-radius:20px">'+avg.toFixed(1)+' ('+cnt+')</span>':'')
+        +'</div>'
+        +distH
+        +'<div style="margin-top:10px">'+revH+'</div>'
+      +'</div>';
+
+  }).catch(function(){
+    document.getElementById('pvBody').innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">تعذر التحميل</div>';
+  });
 }
 
 </script>
