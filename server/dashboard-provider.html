@@ -900,8 +900,17 @@ async function _viewProj(id) {
       '</div>'
     :'');
   _el('mBd').innerHTML = body;
+  // زر إبلاغ عن العميل في تفاصيل المشروع
+  var rptBtnHtml = '';
+  if(r.client_id){
+    var cname = _esc(r.client_name||'العميل').replace(/'/g,'');
+    rptBtnHtml = '<button onclick="closeModal();openReportModal('+r.client_id+',\''+cname+'\','+r.id+')" style="'+_BS+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">' +
+      '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
+      'إبلاغ عن العميل</button>';
+  }
   _el('mFt').innerHTML =
     '<button onclick="closeModal()" style="'+_BS+';background:var(--bg);color:var(--muted);border:1px solid var(--border)">إغلاق</button>' +
+    rptBtnHtml +
     '<button onclick="closeModal();_openBidModal('+r.id+',\''+_esc(r.title).replace(/'/g,'')+'\')" style="'+_BS+';background:var(--p);color:#fff">تقديم عرض</button>';
 }
 
