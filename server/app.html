@@ -129,7 +129,7 @@ html,body{
 /* ══ SCROLL AREA ══ */
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .scroll::-webkit-scrollbar{display:none;}
-.pad{padding:12px 14px 90px;}
+.pad{padding:12px 14px 80px;}
 
 /* ══ SECTION HEADER ══ */
 .sec-hd{display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px;}
@@ -244,7 +244,7 @@ html,body{
 .fab{
   position:fixed;
   left:50%;transform:translateX(-50%);
-  bottom:calc(68px + var(--safe-bot) + 12px);
+  bottom:calc(62px + var(--safe-bot) + 14px);
   width:52px;height:52px;border-radius:50%;
   background:var(--gold);border:none;
   box-shadow:0 6px 20px rgba(240,165,0,.5);
@@ -256,7 +256,9 @@ html,body{
 
 /* ══ BOTTOM NAV ══ */
 .bnav{
-  position:relative;z-index:100;flex-shrink:0;
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;
+  z-index:100;
   background:var(--white);
   border-top:1px solid var(--border);
   padding-bottom:var(--safe-bot);
@@ -607,7 +609,7 @@ textarea.fi{resize:none;}
 <!-- ════════════════════════════════════
      CLIENT APP
 ════════════════════════════════════ -->
-<div id="client-app" style="display:none;flex:1;display:none;flex-direction:column;height:100%;overflow:hidden">
+<div id="client-app" style="display:none;flex-direction:column;height:100%;overflow:hidden;position:relative">
 
   <!-- CLIENT: HOME -->
   <div class="screen active" id="c-home">
@@ -816,7 +818,7 @@ textarea.fi{resize:none;}
 <!-- ════════════════════════════════════
      PROVIDER APP
 ════════════════════════════════════ -->
-<div id="provider-app" style="display:none;flex:1;flex-direction:column;height:100%;overflow:hidden">
+<div id="provider-app" style="display:none;flex-direction:column;height:100%;overflow:hidden;position:relative">
 
   <!-- PROVIDER: HOME -->
   <div class="screen active" id="p-home">
@@ -1235,10 +1237,10 @@ function enterApp() {
   localStorage.setItem('app_role', ROLE);
   document.getElementById('role-screen').style.display = 'none';
   if (ROLE === 'client') {
-    document.getElementById('client-app').style.display = 'flex';
+    document.getElementById('client-app').style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;position:relative';
     initClient();
   } else {
-    document.getElementById('provider-app').style.display = 'flex';
+    document.getElementById('provider-app').style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;position:relative';
     initProvider();
   }
 }
