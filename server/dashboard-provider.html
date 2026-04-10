@@ -616,10 +616,18 @@ function _waUrl(phone, name, title) {
   var txt = 'مرحباً ' + name + ',\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: *' + title + '*\nأنا ' + (_me.name||'المزود') + ', قدّمت عرضاً وأودّ التواصل معكم.';
   return 'https://wa.me/' + num + '?text=' + encodeURIComponent(txt);
 }
-function _callBtns(phone, name, title) {
-  if (!phone) return '';
-  return '<a href="' + _waUrl(phone,name,title) + '" target="_blank" style="' + _BS + ';background:#25d366;color:#fff">' + _WA + 'واتساب</a>' +
-         '<a href="tel:' + phone + '" style="' + _BS + ';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">' + _TEL + 'اتصال</a>';
+function _callBtns(phone, name, title, clientId, requestId) {
+  var btns='';
+  if(phone){
+    btns+='<a href="'+_waUrl(phone,name,title)+'" target="_blank" style="'+_BS+';background:#25d366;color:#fff">'+_WA+'واتساب</a>';
+    btns+='<a href="tel:'+phone+'" style="'+_BS+';background:var(--green-l);color:var(--green);border:1px solid #bbf7d0">'+_TEL+'اتصال</a>';
+  }
+  if(clientId){
+    var rqid = requestId||0;
+    var clnm = (name||'العميل').replace(/'/g,'');
+    btns += '<button onclick="openReportModal('+clientId+',\''+clnm+'\','+rqid+')" style="'+_BS+';background:var(--red-l);color:var(--red);border:1px solid #fecaca;cursor:pointer"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"/><line x1=\"4\" y1=\"22\" x2=\"4\" y2=\"15\"/></svg>إبلاغ</button>';
+  }
+  return btns;
 }
 
 // ── API ──
@@ -989,7 +997,7 @@ function _renderBids(list) {
     var key = 'c_'+b.request_id;
     var cd  = _pCache[key] || {};
     var ph  = cd.phone || '';
-    var cBtns = _callBtns(ph, b.client_name||cd.name||'العميل', b.request_title||'المشروع');
+    var cBtns = _callBtns(ph, b.client_name||cd.name||'العميل', b.request_title||'المشروع', b.client_id, b.request_id);
     return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09)">' +
       '<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">' +
         '<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>' +
@@ -1027,7 +1035,7 @@ function _renderProjs(list) {
     var key    = 'c_'+r.id;
     var cd     = _pCache[key] || {};
     var ph     = cd.phone || r.client_phone || '';
-    var cBtns  = isProg ? _callBtns(ph, r.client_name||cd.name||'العميل', r.title) : '';
+    var cBtns  = isProg ? _callBtns(ph, r.client_name||cd.name||'العميل', r.title, r.client_id, r.id) : '';
     return '<div style="background:#fff;border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.09)">' +
       '<div style="background:linear-gradient('+grad+');padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:relative">' +
         '<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>' +
