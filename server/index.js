@@ -1183,15 +1183,28 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     } else {
       let q = 'SELECT id,email,name FROM users WHERE is_active=TRUE';
       const params = [];
-      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$${params.length+1}`; }
-      // فلتر التخصص — يُطبَّق على المزودين فقط
-      if (specialty && typeof specialty === 'string') {
-        if (!role || role === 'provider') {
-          if (!role) { q += ` AND role='provider'`; } // إذا لم يحدد دور نقتصر على المزودين
-          params.push(specialty);
-          q += ` AND (specialties IS NOT NULL AND $${params.length}=ANY(specialties) OR notify_categories IS NOT NULL AND $${params.length}=ANY(notify_categories))`;
-        }
+
+      // فلتر الدور
+      if (role && VALID_ROLES.includes(role)) {
+        params.push(role);
+        q += ` AND role=$${params.length}`;
       }
+
+      // فلتر التخصص — للمزودين فقط
+      if (specialty && typeof specialty === 'string' && specialty !== 'الكل') {
+        // إذا لم يحدد دوراً، نقتصر على المزودين تلقائياً
+        if (!role) {
+          q += ` AND role='provider'`;
+        }
+        params.push(specialty);
+        const pn = params.length;
+        q += ` AND (
+          (specialties IS NOT NULL AND $${pn}::text = ANY(specialties))
+          OR
+          (notify_categories IS NOT NULL AND $${pn}::text = ANY(notify_categories))
+        )`;
+      }
+
       const r = await pool.query(q, params);
       targetUsers = r.rows;
     }
