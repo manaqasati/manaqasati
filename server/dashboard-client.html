@@ -1515,7 +1515,7 @@ async function _submitReport(){
 
   var r = await fetch(API+'/api/reports', {
     method:'POST',
-    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
     body: JSON.stringify(body)
   }).then(function(x){return x.json();}).catch(function(){return{};});
 
