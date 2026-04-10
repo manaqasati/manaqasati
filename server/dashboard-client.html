@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+    var p2=results[0]||{}; if(p2.name){ var el2=document.getElementById('pvOl'); if(el2) el2.setAttribute('data-report-name',p2.name); }
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -1201,15 +1202,17 @@ function openProviderProfile(pid){
     closeBtn.textContent='إغلاق';
     closeBtn.style.cssText='flex:1;padding:12px;background:#fff;border:1.5px solid #dce5f0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#6b85a8';
     closeBtn.addEventListener('click',function(){document.getElementById('pvOl').style.display='none';});
-    // زر الإبلاغ
+    // زر الإبلاغ — يقرأ pid من pvOl مباشرة
     var reportBtn=document.createElement('button');
+    reportBtn.id='pv-report-btn';
     reportBtn.innerHTML='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> إبلاغ';
     reportBtn.style.cssText='padding:12px 16px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap';
-    reportBtn.setAttribute('data-pid','');
     reportBtn.addEventListener('click',function(){
-      var pid=parseInt(ol.getAttribute('data-pid')||'0');
+      var rpid = window._currentProviderPid||0;
+      var rname = window._currentProviderName||'المزود';
       document.getElementById('pvOl').style.display='none';
-      openReportModal(pid,'المزود',null);
+      document.body.style.overflow='';
+      openReportModal(rpid, rname, null);
     });
     closeBtnWrap.appendChild(reportBtn);
     closeBtnWrap.appendChild(closeBtn);
@@ -1222,7 +1225,11 @@ function openProviderProfile(pid){
     document.body.appendChild(ol);
   }
 
-  var pvOl2=document.getElementById('pvOl'); pvOl2.style.display='flex'; pvOl2.setAttribute('data-pid',pid||0);
+  var pvOl2=document.getElementById('pvOl');
+  pvOl2.style.display='flex';
+  // خزّن pid في متغير عالمي للاستخدام في الإبلاغ
+  window._currentProviderPid = parseInt(pid)||0;
+  window._currentProviderName = 'المزود';
   var body=document.getElementById('pvBody');
   body.innerHTML='<div style="text-align:center;padding:30px"><div style="width:26px;height:26px;border:3px solid #dce5f0;border-top-color:#1B3A6B;border-radius:50%;animation:sp .7s linear infinite;margin:0 auto"></div></div>';
 
@@ -1232,6 +1239,7 @@ function openProviderProfile(pid){
   ]).then(function(res){
     var p=res[0]||{};
     var rv=res[1]||{};
+    if(p.name) window._currentProviderName = p.name;
     var avg=parseFloat(rv.average)||0;
     var cnt=parseInt(rv.count)||0;
     var reviews=rv.reviews||[];
