@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v1';
+var CACHE = 'manaqasa-v2';
 var STATIC = [
   './',
   './index.html',
