@@ -1290,18 +1290,57 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
       [newStatus, admin_note||null, req.params.id]
     );
 
+    const reportedUser = await pool.query('SELECT name, email FROM users WHERE id=$1', [b.reported_id]);
+    const reporterUser = await pool.query('SELECT name, email FROM users WHERE id=$1', [b.reporter_id]);
+    const rUser = reportedUser.rows[0] || {};
+    const repUser = reporterUser.rows[0] || {};
+
     if (action === 'warn') {
       await pool.query('UPDATE users SET report_count=COALESCE(report_count,0)+1 WHERE id=$1', [b.reported_id]);
-      await notify(b.reported_id, 'تحذير من الإدارة',
-        admin_note || 'تلقيت تحذيراً بسبب بلاغ مقدم ضدك', 'warning', null);
+      const warnMsg = admin_note || 'تلقيت تحذيراً من إدارة منصة مناقصة بسبب بلاغ مقدم ضدك. يرجى الالتزام بشروط الاستخدام.';
+      // إشعار داخلي
+      await notify(b.reported_id, 'تحذير من الإدارة', warnMsg, 'warning', null);
+      // إيميل
+      if (rUser.email) {
+        await sendEmail(rUser.email, 'تحذير من إدارة مناقصة',
+          emailTpl('تحذير رسمي من الإدارة',
+            `<div style="background:#fef2f2;border-right:4px solid #dc2626;border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:14px">
+              <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:6px">تحذير رسمي</div>
+              <p style="font-size:13px;color:#7f1d1d;line-height:1.8;margin:0">${warnMsg}</p>
+            </div>
+            <p style="font-size:12px;color:#6b85a8">يرجى مراجعة <a href="${SITE_URL}/terms.html" style="color:#1B3A6B">شروط الاستخدام</a> والالتزام بها لتجنب الإيقاف النهائي.</p>`,
+            null, null));
+      }
     }
     if (action === 'ban') {
       await pool.query('UPDATE users SET is_active=FALSE WHERE id=$1', [b.reported_id]);
-      await notify(b.reported_id, 'تم إيقاف حسابك',
-        'تم إيقاف حسابك بسبب مخالفة الشروط.', 'ban', null);
+      const banMsg = admin_note || 'تم إيقاف حسابك بسبب مخالفة شروط الاستخدام.';
+      // إشعار داخلي
+      await notify(b.reported_id, 'تم إيقاف حسابك', banMsg, 'ban', null);
+      // إيميل
+      if (rUser.email) {
+        await sendEmail(rUser.email, 'إيقاف حساب مناقصة',
+          emailTpl('تم إيقاف حسابك',
+            `<div style="background:#fef2f2;border-right:4px solid #dc2626;border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:14px">
+              <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:6px">إيقاف الحساب</div>
+              <p style="font-size:13px;color:#7f1d1d;line-height:1.8;margin:0">${banMsg}</p>
+            </div>
+            <p style="font-size:12px;color:#6b85a8">للاستفسار أو الاعتراض، تواصل مع الدعم عبر البريد الإلكتروني.</p>`,
+            null, null));
+      }
     }
+    // إشعار المُبلِّغ
     await notify(b.reporter_id, 'تمت مراجعة بلاغك',
       'شكراً، تمت مراجعة بلاغك واتخاذ الإجراء المناسب.', 'report_resolved', null);
+    if (repUser.email) {
+      await sendEmail(repUser.email, 'تمت مراجعة بلاغك',
+        emailTpl('تمت مراجعة بلاغك',
+          `<p>شكراً على إبلاغك — تمت مراجعة البلاغ واتخاذ الإجراء المناسب.</p>
+           <div style="background:#f0fdf4;border-right:3px solid #16a34a;border-radius:0 10px 10px 0;padding:12px 14px">
+             <p style="font-size:12px;color:#166534;margin:0">نحرص على توفير بيئة آمنة وموثوقة لجميع المستخدمين.</p>
+           </div>`,
+          null, null));
+    }
 
     res.json({ ok: true, message: 'تم تنفيذ الاجراء: ' + action });
   } catch(e) { res.status(500).json({ message: e.message }); }
