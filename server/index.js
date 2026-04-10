@@ -1262,6 +1262,38 @@ app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ── معالجة البلاغ ──
+app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { action, admin_note } = req.body;
+    const report = await pool.query('SELECT * FROM reports WHERE id=$1', [req.params.id]);
+    if (!report.rows.length) return res.status(404).json({ message: 'البلاغ غير موجود' });
+    const b = report.rows[0];
+
+    const newStatus = action === 'ignore' ? 'ignored' : action === 'warn' ? 'warned' : 'resolved';
+    await pool.query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP').catch(()=>{});
+    await pool.query(
+      'UPDATE reports SET status=$1, admin_note=$2, reviewed_at=NOW() WHERE id=$3',
+      [newStatus, admin_note||null, req.params.id]
+    );
+
+    if (action === 'warn') {
+      await pool.query('UPDATE users SET report_count=COALESCE(report_count,0)+1 WHERE id=$1', [b.reported_id]);
+      await notify(b.reported_id, 'تحذير من الإدارة',
+        admin_note || 'تلقيت تحذيراً بسبب بلاغ مقدم ضدك', 'warning', null);
+    }
+    if (action === 'ban') {
+      await pool.query('UPDATE users SET is_active=FALSE WHERE id=$1', [b.reported_id]);
+      await notify(b.reported_id, 'تم إيقاف حسابك',
+        'تم إيقاف حسابك بسبب مخالفة الشروط.', 'ban', null);
+    }
+    await notify(b.reporter_id, 'تمت مراجعة بلاغك',
+      'شكراً، تمت مراجعة بلاغك واتخاذ الإجراء المناسب.', 'report_resolved', null);
+
+    res.json({ ok: true, message: 'تم تنفيذ الاجراء: ' + action });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 app.get('/api/admin/charts', auth, adminOnly, async (req, res) => {
   try {
     const [byStatus, byCategory, byMonth] = await Promise.all([
