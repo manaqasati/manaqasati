@@ -461,13 +461,28 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .ist-v.gold{color:var(--gold);}
 .ist-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px;font-weight:600;}
 
-/* CATS STRIP — نفس nav من السايدبار */
-.cats-strip{background:var(--p);padding:16px 20px;border-bottom:3px solid var(--gold);}
-.cats-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
-.cats-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-left:4px;}
-.cat-chip{padding:6px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);cursor:pointer;font-size:12px;font-weight:700;font-family:'Tajawal',sans-serif;transition:all .15s;}
-.cat-chip:hover{background:rgba(255,255,255,.15);color:#fff;}
-.cat-chip.on{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(240,165,0,.35);}
+/* CATS STRIP — scroll أفقي على موبايل */
+.cats-strip{background:var(--p);padding:12px 0;border-bottom:3px solid var(--gold);}
+.cats-scroll{
+  display:flex;gap:7px;align-items:center;
+  overflow-x:auto;overflow-y:hidden;
+  padding:4px 16px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  white-space:nowrap;
+}
+.cats-scroll::-webkit-scrollbar{display:none;}
+.cats-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.5);flex-shrink:0;}
+.cat-chip{
+  padding:7px 16px;border-radius:20px;
+  border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.75);
+  cursor:pointer;font-size:12px;font-weight:700;
+  font-family:'Tajawal',sans-serif;transition:all .15s;
+  flex-shrink:0;white-space:nowrap;
+}
+.cat-chip:hover{background:rgba(255,255,255,.18);color:#fff;}
+.cat-chip.on{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(240,165,0,.4);}
 
 /* CONTENT — نفس .content و .main من لوحة العميل */
 .idx-content{flex:1;max-width:1200px;margin:0 auto;width:100%;padding:22px 18px 50px;}
@@ -604,9 +619,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
-  <!-- CATS STRIP — نفس sidebar nav links -->
   <div class="cats-strip">
-    <div class="cats-row">
+    <div class="cats-scroll">
       <span class="cats-lbl">تصفح:</span>
       <button class="cat-chip on" onclick="filterCat('',this)">الكل</button>
       <button class="cat-chip" onclick="filterCat('تبريد وتكييف',this)">تبريد وتكييف</button>
