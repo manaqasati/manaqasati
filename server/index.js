@@ -1034,14 +1034,24 @@ app.post('/api/reports', auth, async (req, res) => {
   try {
     const { reported_id, request_id, type, reason, details } = req.body;
     if (!reported_id || !reason) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (Number(reported_id) === Number(req.user.id)) return res.status(400).json({ message: 'لا يمكن الإبلاغ عن نفسك' });
+    // منع تكرار البلاغ على نفس الشخص في نفس الطلب
+    if (request_id) {
+      const dup = await pool.query(
+        'SELECT id FROM reports WHERE reporter_id=$1 AND reported_id=$2 AND request_id=$3',
+        [req.user.id, reported_id, request_id]);
+      if (dup.rows.length) return res.status(400).json({ message: 'أرسلت بلاغاً مسبقاً على هذا الشخص في هذا الطلب' });
+    }
     const r = await pool.query(
       'INSERT INTO reports(reporter_id,reported_id,request_id,type,reason,details) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
       [req.user.id, reported_id, request_id||null, type||'user', reason, details||null]);
     const admins = await pool.query("SELECT id FROM users WHERE role='admin'");
+    const reporter = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     for (const a of admins.rows) {
-      await notify(a.id, '🚩 بلاغ جديد', `بلاغ جديد: ${reason}`, 'report', r.rows[0].id);
+      await notify(a.id, 'بلاغ جديد بانتظار المراجعة',
+        `${reporter.rows[0]?.name||'مستخدم'} أبلغ عن مستخدم — السبب: ${reason}`, 'report', r.rows[0].id);
     }
-    res.json({ ok: true, message: 'تم إرسال البلاغ' });
+    res.json({ ok: true, message: 'تم إرسال البلاغ وسيتم مراجعته خلال 24 ساعة' });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -1252,10 +1262,13 @@ app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT r.*,
-        u1.name as reporter_name, u2.name as reported_name, u2.role as reported_role,
+        COALESCE(u1.name,'مستخدم محذوف') as reporter_name,
+        COALESCE(u2.name,'مستخدم محذوف') as reported_name,
+        COALESCE(u2.role,'unknown') as reported_role,
         rq.title as request_title
       FROM reports r
-      JOIN users u1 ON r.reporter_id=u1.id JOIN users u2 ON r.reported_id=u2.id
+      LEFT JOIN users u1 ON r.reporter_id=u1.id
+      LEFT JOIN users u2 ON r.reported_id=u2.id
       LEFT JOIN requests rq ON r.request_id=rq.id
       ORDER BY r.created_at DESC`);
     res.json(r.rows);
