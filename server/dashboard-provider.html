@@ -627,13 +627,6 @@ function _callBtns(phone, name, title, clientId, requestId) {
   }
   return btns;
 }
-function _reportBtn(uid, name, reqId){
-  var nm = String(name||'المستخدم').replace(/\\/g,'').replace(/'/g,'');
-  var rq = reqId||0;
-  return '<button onclick="openReportModal('+uid+',\''+nm+'\','+rq+')" style="'+_BS+';background:var(--red-l);color:var(--red);border:1px solid #fecaca;cursor:pointer">' +
-    '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
-    'إبلاغ</button>';
-}
 
 // ── API ──
 function _api(path, opts) {
@@ -1318,123 +1311,106 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 
-// ══ نظام البلاغات ══
-var _RPT_REASONS = ['سلوك غير لائق','احتيال أو نصب','عدم الاستجابة','جودة عمل سيئة','محتوى مسيء','بيانات مزيفة','أخرى'];
-var _rptOv = null;
-
-function _ensureRptModal(){
-  if(_rptOv) return;
-  _rptOv = document.createElement('div');
-  _rptOv.id = 'rpt-overlay';
-  _rptOv.style.cssText = 'display:none;position:fixed;inset:0;z-index:9000;background:rgba(10,5,30,.65);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center';
-  _rptOv.innerHTML =
-    '<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">' +
-      '<div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:12px auto 0"></div>' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #dce5f0">' +
-        '<div style="display:flex;align-items:center;gap:9px">' +
-          '<div style="width:30px;height:30px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>' +
-          '<span id="rpt-title" style="font-size:14px;font-weight:800;color:#0d1f3c"></span>' +
-        '</div>' +
-        '<button onclick="_closeRptModal()" style="width:28px;height:28px;border-radius:8px;background:#f4f7fb;border:1px solid #dce5f0;cursor:pointer;font-size:16px;color:#6b85a8;display:flex;align-items:center;justify-content:center;font-family:Tajawal,sans-serif">×</button>' +
-      '</div>' +
-      '<div style="padding:18px 20px;flex:1">' +
-        '<div style="font-size:12px;font-weight:700;color:#2d4a6e;margin-bottom:10px">سبب البلاغ *</div>' +
-        '<div id="rpt-reasons" style="display:grid;gap:7px;margin-bottom:14px"></div>' +
-        '<div style="font-size:12px;font-weight:700;color:#2d4a6e;margin-bottom:6px">تفاصيل إضافية <span style="font-weight:400;color:#9db3cc">(اختياري)</span></div>' +
-        '<textarea id="rpt-details" placeholder="اشرح المشكلة بالتفصيل..." style="width:100%;padding:10px 12px;border:1.5px solid #dce5f0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;min-height:80px;resize:vertical;line-height:1.7;box-sizing:border-box"></textarea>' +
-      '</div>' +
-      '<div style="padding:12px 20px;border-top:1px solid #dce5f0;display:flex;gap:8px;background:#f4f7fb;border-radius:0 0 22px 22px">' +
-        '<button onclick="_closeRptModal()" style="padding:11px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:#fff;color:#6b85a8;border:1px solid #dce5f0">إلغاء</button>' +
-        '<button id="rpt-submit-btn" onclick="_submitReport()" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;background:#dc2626;color:#fff;border:none">إرسال البلاغ</button>' +
-      '</div>' +
-    '</div>';
-  _rptOv.addEventListener('click', function(e){ if(e.target===_rptOv) _closeRptModal(); });
-  document.body.appendChild(_rptOv);
-}
-
+// ═══════════════════════════════════════
+// البلاغات — مناسب للمزود
+// ═══════════════════════════════════════
 var _rptTarget = {id:0, name:'', reqId:null};
+var _RPT_REASONS = ['سلوك غير لائق','احتيال أو نصب','عدم الاستجابة','جودة عمل سيئة','محتوى مسيء','بيانات مزيفة','أخرى'];
 
 function openReportModal(reportedId, reportedName, requestId){
-  _ensureRptModal();
+  var old = document.getElementById('rpt-modal-wrap');
+  if(old) old.remove();
+
   _rptTarget = {id:reportedId, name:reportedName||'المستخدم', reqId:requestId||null};
 
-  _el('rpt-title').textContent = 'الإبلاغ عن: ' + (reportedName||'المستخدم');
-  _el('rpt-details').value = '';
-
-  var container = _el('rpt-reasons');
-  container.innerHTML = _RPT_REASONS.map(function(r){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:1.5px solid #dce5f0;border-radius:10px;cursor:pointer;transition:all .15s" onclick="_pickReason(this)">' +
-      '<input type="radio" name="rpt-r" value="'+r+'" style="width:16px;height:16px;accent-color:#dc2626;flex-shrink:0">' +
+  var reasonsHtml = _RPT_REASONS.map(function(r){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:1.5px solid #dce5f0;border-radius:10px;cursor:pointer;margin-bottom:6px;background:#fff">' +
+      '<input type="radio" name="rpt-radio" value="'+r+'" style="width:16px;height:16px;accent-color:#dc2626;flex-shrink:0">' +
       '<span style="font-size:13px;font-weight:600;color:#0d1f3c">'+r+'</span>' +
     '</label>';
   }).join('');
 
-  var btn = _el('rpt-submit-btn');
-  if(btn){ btn.disabled=false; btn.textContent='إرسال البلاغ'; }
-
-  _rptOv.style.display = 'flex';
+  var wrap = document.createElement('div');
+  wrap.id = 'rpt-modal-wrap';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)';
+  wrap.innerHTML =
+    '<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">' +
+      '<div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:12px auto"></div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #dce5f0">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="width:30px;height:30px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center">' +
+            '<svg width="14" height="14" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
+          '</div>' +
+          '<span style="font-size:14px;font-weight:800;color:#0d1f3c">إبلاغ عن: '+(reportedName||'المستخدم')+'</span>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\'rpt-modal-wrap\').remove();document.body.style.overflow=\'\';" style="width:28px;height:28px;border-radius:8px;background:#f4f7fb;border:1px solid #dce5f0;cursor:pointer;font-size:18px;color:#6b85a8;display:flex;align-items:center;justify-content:center;font-family:Tajawal,sans-serif;line-height:1">×</button>' +
+      '</div>' +
+      '<div style="padding:18px 20px">' +
+        '<div style="font-size:12px;font-weight:700;color:#2d4a6e;margin-bottom:10px">سبب البلاغ *</div>' +
+        '<div id="rpt-reasons-wrap">' + reasonsHtml + '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#2d4a6e;margin-bottom:6px;margin-top:12px">تفاصيل إضافية <span style="font-weight:400;color:#9db3cc">(اختياري)</span></div>' +
+        '<textarea id="rpt-details-inp" placeholder="اشرح المشكلة بالتفصيل..." style="width:100%;padding:10px 12px;border:1.5px solid #dce5f0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;min-height:80px;resize:vertical;line-height:1.7;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid #dce5f0;display:flex;gap:8px;background:#f4f7fb">' +
+        '<button onclick="document.getElementById(\'rpt-modal-wrap\').remove();document.body.style.overflow=\'\';" style="padding:11px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:#fff;color:#6b85a8;border:1px solid #dce5f0">إلغاء</button>' +
+        '<button id="rpt-send-btn" onclick="_doSubmitReport()" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;background:#dc2626;color:#fff;border:none">إرسال البلاغ</button>' +
+      '</div>' +
+    '</div>';
+  wrap.addEventListener('click', function(e){ if(e.target===wrap){ wrap.remove(); document.body.style.overflow=''; } });
+  document.body.appendChild(wrap);
   document.body.style.overflow = 'hidden';
-}
-
-function _pickReason(label){
-  _el('rpt-reasons').querySelectorAll('label').forEach(function(l){
-    l.style.borderColor='#dce5f0'; l.style.background='#fff';
+  wrap.querySelectorAll('input[name="rpt-radio"]').forEach(function(inp){
+    inp.addEventListener('change', function(){
+      wrap.querySelectorAll('label').forEach(function(l){ l.style.borderColor='#dce5f0'; l.style.background='#fff'; });
+      var lbl=inp.closest('label'); if(lbl){lbl.style.borderColor='#dc2626';lbl.style.background='#fff5f5';}
+    });
   });
-  label.style.borderColor = '#dc2626';
-  label.style.background  = '#fff5f5';
 }
 
-function _closeRptModal(){
-  if(_rptOv) _rptOv.style.display='none';
-  document.body.style.overflow = '';
+function _reportBtn(uid, name, reqId){
+  var n = String(name||'').replace(/'/g,'').replace(/\\/g,'');
+  var r = reqId||0;
+  return '<button onclick="openReportModal('+uid+',\''+n+'\','+r+')" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca;display:inline-flex;align-items:center;gap:5px">' +
+    '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
+    'إبلاغ</button>';
 }
 
-async function _submitReport(){
-  var sel = document.querySelector('input[name="rpt-r"]:checked');
+async function _doSubmitReport(){
+  var sel = document.querySelector('#rpt-reasons-wrap input[name="rpt-radio"]:checked');
   if(!sel){
-    var c = _el('rpt-reasons');
-    if(c){ c.style.animation='none'; setTimeout(function(){ c.style.animation=''; },10); }
-    // flash red
-    _el('rpt-reasons').querySelectorAll('label').forEach(function(l){ l.style.borderColor='#fca5a5'; });
-    setTimeout(function(){ _el('rpt-reasons').querySelectorAll('label').forEach(function(l){ l.style.borderColor='#dce5f0'; }); }, 1200);
+    document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){ l.style.borderColor='#fca5a5'; });
+    setTimeout(function(){ document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){ l.style.borderColor='#dce5f0'; }); },1200);
     return;
   }
-  var btn = _el('rpt-submit-btn');
+  var btn = document.getElementById('rpt-send-btn');
   if(btn){ btn.disabled=true; btn.textContent='جاري الإرسال...'; }
-
-  var details = (_el('rpt-details')||{}).value||'';
-  var body = { reported_id:_rptTarget.id, type:'user', reason:sel.value };
-  if(details.trim()) body.details = details.trim();
-  if(_rptTarget.reqId) body.request_id = _rptTarget.reqId;
-
-  var r = await fetch(API+'/api/reports', {
-    method:'POST',
-    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  }).then(function(x){return x.json();}).catch(function(){return{};});
-
-  _closeRptModal();
-
-  if(btn){ btn.disabled=false; btn.textContent='إرسال البلاغ'; }
-
-  if(r.ok){
-    _showRptToast('تم إرسال البلاغ — ستتم المراجعة خلال 24 ساعة', 'success');
-  } else {
-    _showRptToast(r.message||'حدث خطأ، حاول مجدداً', 'error');
+  var details = (document.getElementById('rpt-details-inp')||{value:''}).value.trim();
+  var payload = { reported_id:_rptTarget.id, type:'user', reason:sel.value };
+  if(details) payload.details = details;
+  if(_rptTarget.reqId) payload.request_id = _rptTarget.reqId;
+  try {
+    var res = await fetch(API+'/api/reports',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    var data = await res.json();
+    var w = document.getElementById('rpt-modal-wrap'); if(w) w.remove();
+    document.body.style.overflow='';
+    _rptToast(data.ok?'تم إرسال البلاغ — ستتم المراجعة خلال 24 ساعة':(data.message||'حدث خطأ'), data.ok);
+  } catch(e){
+    if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}
+    _rptToast('تعذر الاتصال', false);
   }
 }
 
-function _showRptToast(msg, type){
-  var t=document.getElementById('toast');
-  if(t && typeof showToast==='function'){ showToast(msg,type); return; }
-  // fallback toast
+function _rptToast(msg, ok){
   var el=document.createElement('div');
-  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+(type==='success'?'#16a34a':'#dc2626')+';color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:99999;font-family:Tajawal,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25)';
-  el.textContent = msg;
+  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+(ok?'#16a34a':'#dc2626')+';color:#fff;padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;z-index:999999;font-family:Tajawal,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap';
+  el.textContent=msg;
   document.body.appendChild(el);
-  setTimeout(function(){ el.remove(); }, 3500);
+  setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(function(){el.remove();},400);},3500);
 }
-
 </script>
 </body>
 </html>
