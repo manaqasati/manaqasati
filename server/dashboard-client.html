@@ -240,19 +240,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bnav{display:none;position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:420px;background:var(--p);border-radius:24px;z-index:100;padding:8px 8px;box-shadow:0 8px 28px rgba(22,33,62,.3),0 2px 8px rgba(22,33,62,.2)}
 .bnav::before{content:'';position:absolute;top:0;left:25%;right:25%;height:1px;background:rgba(255,255,255,.08)}
 .bnav-inner{display:flex;align-items:center;justify-content:space-around}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 2px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:var(--hint);transition:.2s;position:relative}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 10px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:rgba(255,255,255,.35);transition:.2s;position:relative;border-radius:16px}
 .bni .bic{width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:.2s}
 .bni .bic svg{stroke:currentColor;transition:.2s}
 .bni .bt{font-size:10px;font-weight:700;transition:.2s;letter-spacing:.2px}
-.bni.on{color:var(--p)}
-.bni.on .bt{color:var(--p)}
+.bni.on{background:rgba(212,160,23,.15);color:var(--gold)}
+.bni.on .bt{color:var(--gold)}
+.bni.on .bic svg{stroke:var(--gold)}
 .bni-badge{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);color:#fff;font-size:9px;font-weight:900;width:16px;height:16px;border-radius:50%;display:none;align-items:center;justify-content:center;border:1.5px solid var(--white)}
 .bni-fab{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;padding-bottom:4px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;position:relative;margin-top:-22px}
 .bni-fab .fab-circle{width:58px;height:58px;background:linear-gradient(145deg,#F0A500,#c78500);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(240,165,0,.55),0 3px 8px rgba(240,165,0,.35),0 0 0 3px var(--white),0 0 0 4px rgba(240,165,0,.2);transition:all .28s cubic-bezier(.34,1.56,.64,1);position:relative;z-index:1}
 .bni-fab .fab-circle::before{content:'';position:absolute;inset:-6px;border-radius:50%;background:rgba(240,165,0,.12);animation:fab-ring 2.5s ease-in-out infinite}
 @keyframes fab-ring{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:.2}}
 .bni-fab .fab-circle svg{stroke:#fff;width:24px;height:24px;stroke-width:2.5;position:relative;z-index:1}
-.bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold-d);letter-spacing:.3px}
+.bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:.3px}
 .bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 4px 12px rgba(240,165,0,.4),0 0 0 3px var(--white)}
 .bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,165,0,.6),0 4px 10px rgba(240,165,0,.4),0 0 0 3px var(--white),0 0 0 5px rgba(240,165,0,.15)}
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
