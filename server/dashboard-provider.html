@@ -546,7 +546,7 @@ async function _savePortfolio() {
     social_instagram: (_el('s-social_instagram')||{}).value,
     social_twitter:   (_el('s-social_twitter')||{}).value,
   });
-    // حفظ السوشيال في localStorage
+    // حفظ السوشيال في localStorage (backup)
   localStorage.setItem('pf_social_'+_me.id, JSON.stringify({
     social_whatsapp:  (payload.social_whatsapp||'').trim(),
     social_snap:      (payload.social_snap||'').trim(),
@@ -554,11 +554,8 @@ async function _savePortfolio() {
     social_instagram: (payload.social_instagram||'').trim(),
     social_twitter:   (payload.social_twitter||'').trim(),
   }));
-  var apiPayload = Object.assign({}, payload);
-  delete apiPayload.social_whatsapp; delete apiPayload.social_snap;
-  delete apiPayload.social_tiktok; delete apiPayload.social_instagram;
-  delete apiPayload.social_twitter;
-  var r = await _api('/api/provider/profile', {method:'PUT', body:JSON.stringify(apiPayload)});
+  // إرسال كل الحقول للـ API (بما فيها السوشيال)
+  var r = await _api('/api/provider/profile', {method:'PUT', body:JSON.stringify(payload)});
   if(btn) { btn.disabled=false; btn.textContent='حفظ معرض الأعمال'; }
   if(r.id) {
     if(r.name) { _me.name=r.name; localStorage.setItem('user',JSON.stringify(_me)); var un=_el('userName'); if(un) un.textContent=r.name; }
