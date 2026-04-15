@@ -391,10 +391,21 @@ async function loadPortfolio() {
     {key:'social_instagram',label:'إنستقرام',placeholder:'instagram_username', color:'#E1306C', textColor:'#fff'},
     {key:'social_twitter', label:'إكس',       placeholder:'twitter_username', color:'#000', textColor:'#fff'},
   ];
+  // تحميل السوشيال من localStorage
+  var _savedSocial = {};
+  try { _savedSocial = JSON.parse(localStorage.getItem('pf_social_'+_me.id)||'{}'); } catch(e){}
+  var _socData = {
+    social_whatsapp:  p.social_whatsapp  || _savedSocial.social_whatsapp  || '',
+    social_snap:      p.social_snap      || _savedSocial.social_snap      || '',
+    social_tiktok:    p.social_tiktok    || _savedSocial.social_tiktok    || '',
+    social_instagram: p.social_instagram || _savedSocial.social_instagram || '',
+    social_twitter:   p.social_twitter   || _savedSocial.social_twitter   || '',
+  };
+
   var socialsHtml = socials.map(function(s){
     return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
       '<div style="width:36px;height:36px;border-radius:10px;background:'+s.color+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:'+(s.textColor||'#fff')+'">'+(_socialSvg[s.key]||'')+'</div>' +
-      '<input id="s-'+s.key+'" type="text" value="'+_esc(p[s.key]||'')+'" placeholder="'+s.placeholder+'" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;outline:none" onfocus="this.style.borderColor=\'var(--p)\'" onblur="this.style.borderColor=\'var(--border)\'">' +
+      '<input id="s-'+s.key+'" type="text" value="'+_esc(_socData[s.key]||'')+'" placeholder="'+s.placeholder+'" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;outline:none" onfocus="this.style.borderColor=\'var(--p)\'" onblur="this.style.borderColor=\'var(--border)\'">' +
     '</div>';
   }).join('');
 
@@ -508,7 +519,19 @@ async function _savePortfolio() {
     social_instagram: (_el('s-social_instagram')||{}).value,
     social_twitter:   (_el('s-social_twitter')||{}).value,
   });
-  var r = await _api('/api/provider/profile', {method:'PUT', body:JSON.stringify(payload)});
+    // حفظ السوشيال في localStorage
+  localStorage.setItem('pf_social_'+_me.id, JSON.stringify({
+    social_whatsapp:  (payload.social_whatsapp||'').trim(),
+    social_snap:      (payload.social_snap||'').trim(),
+    social_tiktok:    (payload.social_tiktok||'').trim(),
+    social_instagram: (payload.social_instagram||'').trim(),
+    social_twitter:   (payload.social_twitter||'').trim(),
+  }));
+  var apiPayload = Object.assign({}, payload);
+  delete apiPayload.social_whatsapp; delete apiPayload.social_snap;
+  delete apiPayload.social_tiktok; delete apiPayload.social_instagram;
+  delete apiPayload.social_twitter;
+  var r = await _api('/api/provider/profile', {method:'PUT', body:JSON.stringify(apiPayload)});
   if(btn) { btn.disabled=false; btn.textContent='حفظ معرض الأعمال'; }
   if(r.id) {
     if(r.name) { _me.name=r.name; localStorage.setItem('user',JSON.stringify(_me)); var un=_el('userName'); if(un) un.textContent=r.name; }
@@ -555,6 +578,7 @@ async function _delPortImg2(i) {
 
 async function _previewPortfolio() {
   var p = await _api('/api/provider/profile') || {};
+  try { var _ls=JSON.parse(localStorage.getItem('pf_social_'+_me.id)||'{}'); Object.keys(_ls).forEach(function(k){if(!p[k])p[k]=_ls[k];}); } catch(e){}
   var reviews = await _api('/api/provider/reviews') || [];
   var projs = await _api('/api/provider/projects') || [];
   var avg = reviews.length ? (reviews.reduce(function(s,r){return s+(r.rating||0);},0)/reviews.length).toFixed(1) : '—';
