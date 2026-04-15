@@ -10,15 +10,14 @@
   --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
   --p-light:#EEF2FF;--p-mid:#C7D2FE;
   --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;
-  --text:#0F172A;--text2:#1E293B;--muted:#64748B;--hint:#94A3B8;
-  --border:#E8E3DA;--border2:#D8D3CB;
-  --bg:#F6F5F1;--white:#FFFFFF;
-  --green:#15803D;--green-l:#F0FDF4;
+  --text:#0F172A;--text2:#1E293B;--muted:#8896AA;--hint:#94A3B8;
+  --border:#E6E2D9;--border2:#D8D3CB;
+  --bg:#F5F5F0;--white:#FFFFFF;
+  --green:#16A34A;--green-l:#EDFBF0;
   --red:#DC2626;--red-l:#FEF2F2;
   --yellow:#D97706;--yellow-l:#FEF3C7;
-  --radius:16px;--radius-sm:10px;--radius-lg:20px;
-  --shadow:0 2px 12px rgba(15,23,42,.07),0 0 0 1px rgba(15,23,42,.04);
-  --shadow-md:0 8px 32px rgba(15,23,42,.12);
+  --radius:14px;--radius-sm:10px;--radius-lg:18px;
+  --shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -41,7 +40,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .nav-sec{font-size:10px;font-weight:800;color:var(--hint);letter-spacing:.8px;padding:0 8px;margin:14px 0 6px;text-transform:uppercase}
 .ni{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:all .18s;position:relative}
 .ni:hover{background:var(--bg);color:var(--text)}
-.ni.on{background:rgba(201,146,10,.1);color:var(--gold)}
+.ni.on{background:var(--gold-l);color:var(--gold-d)}
 .ni.on::before{content:'';position:absolute;right:0;top:20%;bottom:20%;width:3px;background:var(--gold-d);border-radius:2px}
 .ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ni.on .ni-ic{background:var(--p);box-shadow:0 3px 10px rgba(27,58,107,.3)}
@@ -52,7 +51,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--red);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif;transition:.15s}
 .logoutbtn:hover{background:var(--red-l)}
 .main{margin-right:260px;min-height:100vh;display:flex;flex-direction:column;min-width:0}
-.topbar{background:var(--p3);height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar{background:var(--p3);height:54px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .topbar-title{font-size:15px;font-weight:800;color:#fff!important}
 .topbar-left{display:flex;align-items:center;gap:10px}
@@ -72,20 +71,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .hero-content{position:relative;z-index:1}
 .hero-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(240,165,0,.15);border:1px solid rgba(240,165,0,.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:10px}
 .hero-tag-dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
-.hero-t h2{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;line-height:1.3}
+.hero-t h2{font-size:20px;font-weight:900;color:#fff;margin-bottom:2px;line-height:1.3;letter-spacing:-.2px}
 .hero-t p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6}
 .hero-btn{background:var(--gold);color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:all .18s;flex-shrink:0;position:relative;z-index:1;box-shadow:0 4px 14px rgba(240,165,0,.35)}
 .hero-btn:hover{background:var(--gold-d);transform:translateY(-2px)}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;gap:12px;transition:all .2s;cursor:default;position:relative;overflow:hidden;box-shadow:var(--shadow)}
-.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:12px 6px 11px;text-align:center;position:relative;overflow:hidden}
+.sc::after{display:none}
 .sc.gold::after{background:linear-gradient(90deg,var(--gold),var(--gold-soft))}.sc.navy::after{background:linear-gradient(90deg,var(--p3),var(--p2))}.sc.green::after{background:linear-gradient(90deg,var(--green),#4ADE80)}.sc.blue::after{background:linear-gradient(90deg,#1D4ED8,#60A5FA)}
 .sc:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(27,58,107,.08)}
-.sic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sic{display:none}
 .sic.a{background:var(--p-light)}.sic.a svg{stroke:var(--p)}.sic.y{background:var(--gold-l)}.sic.y svg{stroke:var(--gold-d)}.sic.g{background:var(--green-l)}.sic.g svg{stroke:var(--green)}.sic.b{background:var(--p-light)}.sic.b svg{stroke:var(--p3)}
-.sn{font-size:26px;font-weight:900;color:var(--text);line-height:1}
-.st{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600}
-.card{background:var(--white);border:1px solid var(--border);border-radius:20px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.sn{font-size:22px;font-weight:900;line-height:1;margin-bottom:3px}
+.st{font-size:9px;color:var(--muted);font-weight:600}
+.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px}
 .card-accent{border-top:3px solid var(--gold)}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
 .ch-l{display:flex;align-items:center;gap:8px}
@@ -135,7 +134,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .profile-stat{background:rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center}
 .profile-stat-n{font-size:22px;font-weight:900;color:#fff}
 .profile-stat-l{font-size:11px;color:rgba(255,255,255,.55);margin-top:3px}
-.mob-head{display:none;background:var(--p3);height:54px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.mob-head{display:none;background:var(--p3);height:54px;padding:0 16px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .mob-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .mob-logo{font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px}
 .mob-logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
@@ -327,7 +326,7 @@ function _setAvatar(img){['userAv','mobAv'].forEach(function(id){var el=_el(id);
 var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',portfolio:'معرض أعمالي'};
 var _curPage='home';
 function gotoPage(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();}
-async function loadHome(){var pg=_el('page-home');if(!pg)return;pg.innerHTML='<div class="loading">جاري التحميل...</div>';var profile=await _api('/api/provider/profile');var bids=await _api('/api/provider/bids');var projs=await _api('/api/provider/projects');_myBids=bids||[];_myProjs=projs||[];var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;var pend=_myBids.filter(function(b){return b.status==='pending';}).length;var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;var done=_myProjs.filter(function(p){return p.status==='completed';}).length;var rat=profile.avg_rating?Number(profile.avg_rating).toFixed(1):'—';pg.innerHTML='<div class="hero" style="border-radius:var(--radius-lg);padding:22px;margin-bottom:16px;overflow:hidden;position:relative">'+
+async function loadHome(){var pg=_el('page-home');if(!pg)return;pg.innerHTML='<div class="loading">جاري التحميل...</div>';var profile=await _api('/api/provider/profile');var bids=await _api('/api/provider/bids');var projs=await _api('/api/provider/projects');_myBids=bids||[];_myProjs=projs||[];var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;var pend=_myBids.filter(function(b){return b.status==='pending';}).length;var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;var done=_myProjs.filter(function(p){return p.status==='completed';}).length;var rat=profile.avg_rating?Number(profile.avg_rating).toFixed(1):'—';pg.innerHTML='<div class="hero">'+
 '<svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 390 120" preserveAspectRatio="none">'+
 '<line x1="0" y1="45" x2="100" y2="65" stroke="white" stroke-width=".7" opacity=".06"/>'+
 '<line x1="100" y1="65" x2="220" y2="30" stroke="white" stroke-width=".7" opacity=".06"/>'+
@@ -348,23 +347,23 @@ async function loadHome(){var pg=_el('page-home');if(!pg)return;pg.innerHTML='<d
 '</div>'+
 '</div>'+
 '</div>'+
-'</div>'+'<div class="stat-grid"><div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn">'+acc+'</div><div class="st">عروض مقبولة</div></div></div><div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn">'+pend+'</div><div class="st">عروض معلقة</div></div></div><div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn">'+prog+'</div><div class="st">مشاريع جارية</div></div></div><div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><div class="sn">'+rat+'</div><div class="st">متوسط تقييمي</div></div></div></div><div class="card card-accent"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(\'works\')">عرض الكل ←</button></div>'+(_myBids.length?_myBids.slice(0,5).map(function(b){var c=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';var l=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';return'<div style="background:var(--white);border-radius:16px;padding:0;margin-bottom:8px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)">'+
-  '<div style="background:linear-gradient(135deg,var(--p3),var(--p));padding:12px 14px">'+
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="display:inline-block;background:rgba(201,146,10,.12);border:1px solid rgba(201,146,10,.2);color:var(--gold);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-bottom:4px;letter-spacing:.3px">'+(b.category||'خدمة')+'</div>'+
-        '<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div>'+
-      '</div>'+
-      '<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px 10px;text-align:left;flex-shrink:0">'+
-        '<div style="font-size:16px;font-weight:900;color:#fff;line-height:1">'+_fpr(b.price).replace(' ر.س','')+'</div>'+
-        '<div style="font-size:9px;color:rgba(255,255,255,.35);text-align:center">ر.س</div>'+
-      '</div>'+
+'</div>'+'<div class="stat-grid">'+
+'<div class="sc gold"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div>'+
+'<div class="sc green"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div>'+
+'<div class="sc blue"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div>'+
+'<div class="sc navy"><div class="sn" style="color:var(--p)">'+rat+'</div><div class="st">متوسط التقييم</div></div>'+
+'</div>'+'<div class="card card-accent"><div class="ch"><div class="ch-l"><div class="ch-ic" style="background:var(--p-light)"><svg width="14" height="14" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(\'works\')">عرض الكل ←</button></div>'+(_myBids.length?_myBids.slice(0,5).map(function(b){var c=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';var l=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';var barColor=b.status==='accepted'?'#16A34A':b.status==='rejected'?'#CBD5E1':'var(--gold)';
+return'<div style="background:var(--white);border-radius:14px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden">'+
+  '<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>'+
+  '<div style="flex:1;padding:12px 14px;display:flex;align-items:center;gap:10px">'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div>'+
+      '<div style="font-size:10px;color:var(--muted)">'+(b.category||'خدمة')+' · '+_fdt(b.created_at)+'</div>'+
     '</div>'+
-  '</div>'+
-  '<div style="height:1px;background:rgba(201,146,10,.15)"></div>'+
-  '<div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between">'+
-    '<span style="font-size:10px;color:var(--muted)">'+_fdt(b.created_at)+'</span>'+
-    '<span class="tag '+c+'">'+l+'</span>'+
+    '<div style="text-align:left;flex-shrink:0">'+
+      '<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">'+_fpr(b.price)+'</div>'+
+      '<span class="tag '+c+'">'+l+'</span>'+
+    '</div>'+
   '</div>'+
 '</div>';}).join(''):_empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع'))+'</div>';_loadNotifCount();}
 async function loadBrowse(){var pg=_el('page-browse');if(!pg)return;pg.innerHTML='<div class="loading">جاري التحميل...</div>';_allProjs=await _api('/api/requests')||[];var open=_allProjs.filter(function(p){return p.status==='open';});var nb=_el('nb-open');if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}pg.innerHTML='<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div><div class="pg-s">'+open.length+' مشروع متاح</div></div></div><div class="card card-accent"><div class="cb"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px"><svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div><select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option>'+CATS.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select><select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option>'+CITIES.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select></div><div id="bList">'+_renderBrowse(open)+'</div></div></div>';}
