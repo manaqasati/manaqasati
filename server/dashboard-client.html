@@ -748,7 +748,7 @@ function openDetail(id,e){
     var atts=req.attachments||[];
     var imgsHtml=imgs.length?'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">'+
       imgs.map(function(img,i){return '<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1">'+
-        '<img src="'+img+'" style="width:100%;height:100%;object-fit:cover" onclick="openImgFull(this.src)">'+
+        '<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openImgFull(\''+img+'\')">'+
         (req.status==='open'?'<button onclick="deleteReqImg('+req.id+','+i+')" style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>':'')+
       '</div>';}).join('')+
       (imgs.length<3&&req.status==='open'?'<div onclick="addReqImg('+req.id+')" style="border:2px dashed rgba(255,255,255,.3);border-radius:8px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>':'')+
@@ -886,7 +886,13 @@ function loadActions(id){
 function acceptBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr())).then(function(){openDetail(reqId,null);});}
 function rejectBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);});}
 var _currentReqId=null;
-function openImgFull(src){window.open(src,'_blank');}
+function openImgFull(src){
+  var v=document.getElementById('imgViewer');
+  var i=document.getElementById('imgViewerImg');
+  if(!v||!i) return;
+  i.src=src;
+  v.style.display='flex';
+}
 function addReqImg(id){_currentReqId=id;document.getElementById('req-img-inp').click();}
 function addReqAtt(id){_currentReqId=id;document.getElementById('req-att-inp').click();}
 function uploadReqImgs(input){var files=[...input.files];input.value='';files.forEach(function(file){if(file.size>5*1024*1024){alert('الحجم الأقصى 5MB');return;}var reader=new FileReader();reader.onload=function(e){fetch(API+'/api/requests/'+_currentReqId+'/images',Object.assign({method:'POST',body:JSON.stringify({image:e.target.result})},hdr())).then(function(r){return r.json();}).then(function(r){if(r.ok||r.id)openDetail(_currentReqId,null);else alert(r.message||'فشل الرفع');});};reader.readAsDataURL(file);});}
@@ -1036,7 +1042,7 @@ function openProviderProfile(pid){
     var avHtml=p.profile_image?'<img src="'+esc(p.profile_image)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
       :'<span style="font-size:22px;font-weight:900;color:var(--p2)">'+(p.name||'م')[0]+'</span>';
     var specH='';if((p.specialties||[]).length){specH='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px">';(p.specialties||[]).forEach(function(s){specH+='<span style="padding:2px 9px;background:rgba(240,165,0,.12);color:#92400e;border-radius:20px;font-size:11px;font-weight:700">'+esc(s)+'</span>';});specH+='</div>';}
-    var portH='';if((p.portfolio_images||[]).length){portH='<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';(p.portfolio_images||[]).forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" loading="lazy" onclick="window.open(this.src,\'_blank\')"></div>';});portH+='</div></div>';}
+    var portH='';if((p.portfolio_images||[]).length){portH='<div style="margin-top:14px"><div style="font-size:13px;font-weight:800;margin-bottom:8px">معرض الأعمال</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';(p.portfolio_images||[]).forEach(function(img){portH+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1" onclick="openImgFull(\''+img+'\')" style="cursor:pointer"><img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>';});portH+='</div></div>';}
     var distH='';if(cnt>0){distH='<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:8px">';[5,4,3,2,1].forEach(function(star){var d=(dist||[]).find(function(x){return x.star===star;})||{count:0};var pct=Math.round(((d.count||0)/cnt)*100);distH+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="color:#F0A500;font-size:10px;width:22px">'+star+'&#9733;</span><div style="flex:1;height:7px;background:#e4e4e7;border-radius:4px;overflow:hidden"><div style="height:100%;background:#F0A500;width:'+pct+'%;border-radius:4px"></div></div><span style="font-size:10px;color:var(--muted);width:26px">'+pct+'%</span></div>';});distH+='</div>';}
     var revH='';if(reviews.length){revH=reviews.map(function(rv){return'<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;font-weight:800">'+esc(rv.reviewer_name||'عميل')+'</span><div>'+stars(rv.rating||0,13)+'</div></div>'+(rv.comment?'<div style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg);padding:8px 11px;border-radius:8px;border-right:3px solid #F0A500">'+esc(rv.comment)+'</div>':'')+'</div>';}).join('');}
     else{revH='<div style="text-align:center;padding:18px;color:var(--muted);font-size:12px">لا توجد تقييمات</div>';}
