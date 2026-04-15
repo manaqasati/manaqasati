@@ -2,639 +2,232 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مناقصة — منصة المشاريع والخدمات في السعودية</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>مناقصة — الدخول</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-
 :root{
   --p:#16213E;--p2:#1A2F5E;--p3:#243972;
-  --p-light:#EEF2FF;--p-mid:#C7D2FE;
   --gold:#D4A017;--gold-d:#B8860B;--gold-l:#FEF9EC;--gold-soft:#FFE5A0;
   --text:#0F172A;--text2:#1E293B;--muted:#64748B;--hint:#94A3B8;
   --border:#E8E3DB;--border2:#D8D3CB;
   --bg:#F8F7F4;--white:#FFFFFF;
   --green:#15803D;--green-l:#F0FDF4;
   --red:#DC2626;--red-l:#FEF2F2;
-  --radius:14px;--radius-sm:10px;--radius-lg:20px;
+  --radius:14px;--radius-lg:20px;
   --shadow:0 2px 8px rgba(15,23,42,.07),0 0 0 1px rgba(15,23,42,.04);
   --shadow-md:0 8px 32px rgba(15,23,42,.12);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-
-/* ══ SIDEBAR ══ */
-.side{
-  width:260px;background:var(--white);
-  border-left:1px solid var(--border);
-  height:100vh;position:fixed;right:0;top:0;
-  display:flex;flex-direction:column;z-index:100;
-  box-shadow:4px 0 24px rgba(27,58,107,0.07)
-}
-.side-head{padding:0;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
-.side-brand{background:var(--p);padding:18px 18px 14px;position:relative;overflow:hidden}
-.side-brand::before{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;background:var(--gold)}
-.side-brand::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.net-svg{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;opacity:.25}
-.logo{font-size:22px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px;position:relative;z-index:1}
-.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--gold)}
-.logo-sub{font-size:10px;color:rgba(255,255,255,.5);font-weight:500;position:relative;z-index:1;margin-top:2px}
-.user-pill{margin:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;position:relative;z-index:1}
-.av{width:36px;height:36px;border-radius:10px;background:var(--gold);color:var(--p2);font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.av-name{font-size:13px;font-weight:800;color:#fff}
-.av-role{font-size:10px;color:rgba(255,255,255,.55);font-weight:600;margin-top:1px}
-.nav{padding:10px 10px;flex:1;overflow-y:auto}
-.nav::-webkit-scrollbar{width:3px}
-.nav::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-.nav-sec{font-size:10px;font-weight:800;color:var(--hint);letter-spacing:.8px;padding:0 8px;margin:14px 0 6px;text-transform:uppercase}
-.ni{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:all .18s;position:relative}
-.ni:hover{background:var(--bg);color:var(--text)}
-.ni.on{background:var(--gold-l);color:var(--gold-d)}
-.ni.on::before{content:'';position:absolute;right:0;top:20%;bottom:20%;width:3px;background:var(--gold);border-radius:2px}
-.ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ni.on .ni-ic{background:var(--p);box-shadow:0 3px 10px rgba(27,58,107,.3)}
-.ni.on .ni-ic svg{stroke:#fff}
-.ni-ic svg{stroke:currentColor}
-.badge{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--red);color:#fff;font-size:9px;font-weight:900;min-width:18px;height:18px;border-radius:9px;padding:0 4px;display:flex;align-items:center;justify-content:center}
-.side-foot{padding:10px 12px;border-top:1px solid var(--border)}
-.logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--red);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif;transition:.15s}
-.logoutbtn:hover{background:var(--red-l)}
-
-/* ══ MAIN ══ */
-.main{margin-right:260px;min-height:100vh;display:flex;flex-direction:column;min-width:0}
-
-/* ══ TOPBAR ══ */
-.topbar{background:var(--white);height:58px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border)}
-.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.topbar-left{display:flex;align-items:center;gap:10px}
-.topbar-title{font-size:15px;font-weight:800;color:var(--text)}
-.btn-new{background:var(--gold);color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:all .18s;box-shadow:0 3px 12px rgba(240,165,0,.3)}
-.btn-new:hover{background:var(--gold-d);transform:translateY(-1px);box-shadow:0 5px 16px rgba(240,165,0,.35)}
-.btn-new svg{flex-shrink:0}
-
-/* ══ CONTENT ══ */
-.content{padding:24px 28px;flex:1}
-.page{display:none}.page.on{display:block}
-
-/* ══ HERO ══ */
-.hero{background:var(--white);border-radius:var(--radius-lg);padding:26px 30px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;border:1px solid var(--border);box-shadow:var(--shadow)}
-.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.hero-net{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
-.hero-content{position:relative;z-index:1}
-.hero-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(240,165,0,.15);border:1px solid rgba(240,165,0,.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:10px}
-.hero-tag-dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
-.hero-t h2{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;line-height:1.3}
-.hero-t p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.6}
-.hero-btn{background:var(--gold);color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:all .18s;flex-shrink:0;position:relative;z-index:1;box-shadow:0 4px 14px rgba(240,165,0,.35)}
-.hero-btn:hover{background:var(--gold-d);transform:translateY(-2px)}
-
-/* ══ STATS ══ */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;gap:12px;transition:all .2s;cursor:default;position:relative;overflow:hidden;box-shadow:var(--shadow)}
-.sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 var(--radius) var(--radius)}
-.sc.gold::after{background:var(--gold)}
-.sc.navy::after{background:var(--p)}
-.sc.green::after{background:var(--green)}
-.sc.blue::after{background:var(--p3)}
-.sc:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(27,58,107,.08)}
-.sic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sic.a{background:var(--p-light)}.sic.a svg{stroke:var(--p)}
-.sic.y{background:var(--gold-l)}.sic.y svg{stroke:var(--gold-d)}
-.sic.g{background:var(--green-l)}.sic.g svg{stroke:var(--green)}
-.sic.b{background:var(--p-light)}.sic.b svg{stroke:var(--p3)}
-.sn{font-size:26px;font-weight:900;color:var(--text);line-height:1}
-.st{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600}
-
-/* ══ CARDS ══ */
-.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
-.card-accent{border-top:3px solid var(--gold)}
-.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.ch-l{display:flex;align-items:center;gap:8px}
-.ch-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ch h3{font-size:14px;font-weight:800;color:var(--text)}
-.ch-link{font-size:12px;color:var(--p);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:3px}
-.ch-link:hover{color:var(--p2)}
-
-/* ══ REQUEST ITEMS ══ */
-.ri{background:var(--white);border:1.5px solid var(--border);border-right:4px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:all .2s cubic-bezier(.34,1.2,.64,1);cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;position:relative;overflow:hidden}
-.ri:last-child{margin-bottom:0}
-.ri:hover{border-color:var(--p-mid);border-right-color:var(--p);box-shadow:0 4px 16px rgba(27,58,107,.1);transform:translateY(-1px)}
-.ri-title{font-size:14px;font-weight:800;color:var(--text);margin-bottom:7px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ri-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-.rm{font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:3px;font-weight:600;background:var(--bg);padding:3px 8px;border-radius:20px;border:1px solid var(--border)}
-.ri-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid var(--border);grid-column:1/-1}
-.tag{padding:5px 12px;border-radius:20px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;letter-spacing:.3px}
-.tag::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.t-open{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}.t-open::before{background:#16a34a}
-.t-prog{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}.t-prog::before{background:#2563eb}
-.t-done{background:#fff8e7;color:#b45309;border:1px solid #fde68a}.t-done::before{background:#F0A500}
-.t-rev{background:#fef3c7;color:#92400e;border:1px solid #fde68a}.t-rev::before{background:#d97706}
-
-/* ══ BUTTONS ══ */
-.btn-sm{padding:7px 13px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
-.bs-p{background:var(--p-light);color:var(--p)}.bs-p:hover{background:var(--p-mid)}
-.bs-g{background:var(--green-l);color:var(--green)}.bs-g:hover{background:#bbf7d0}
-.bs-r{background:var(--red-l);color:var(--red)}.bs-r:hover{background:#fecaca}
-.btn-p{padding:12px 22px;background:var(--p);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .18s}
-.btn-p:hover{background:var(--p2);transform:translateY(-1px)}
-.btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.btn-s{padding:12px 16px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
-
-/* ══ FORM ══ */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.ff{grid-column:1/-1}
-.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px}
-.fg input,.fg textarea,.fg select{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text);outline:none;background:var(--white);transition:all .18s}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
-.fg textarea{min-height:100px;resize:vertical}
-.form-btns{display:flex;gap:8px;margin-top:16px}
-
-/* ══ BIDS ══ */
-.bid-item{border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:10px;transition:all .2s}
-.bid-item:hover{border-color:var(--p-mid)}
-.bid-item.accepted{border-color:var(--green);background:linear-gradient(135deg,rgba(22,163,74,.04),rgba(22,163,74,.08))}
-.bid-item.rejected{opacity:.45}
-.bid-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
-.bid-name{font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px}
-.bid-price{font-size:20px;font-weight:900;color:var(--p)}
-.bid-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.bid-note{font-size:12px;color:#475569;line-height:1.7;margin-bottom:10px;font-style:italic;padding:8px 12px;background:var(--bg);border-radius:8px;border-right:3px solid var(--border2)}
-.bid-actions{display:flex;gap:6px}
-.stars-row{color:#f59e0b;font-size:12px;letter-spacing:1px}
-
-/* ══ EMPTY / LOADING ══ */
-.empty{text-align:center;padding:40px 16px;color:var(--muted)}
-.empty-ic{width:52px;height:52px;background:var(--p-light);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.empty-ic svg{stroke:var(--p)}
-.empty h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
-.empty p{font-size:12px}
-.loading{text-align:center;padding:28px;color:var(--muted);font-size:13px}
-
-/* ══ MOB HEAD ══ */
-.mob-head{display:none;background:var(--p);height:54px;padding:0 14px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.mob-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.mob-logo{font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px}
-.mob-logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
-
-/* ══ BOTTOM NAV ══ */
-.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);z-index:100;padding:4px 0 calc(env(safe-area-inset-bottom,0px) + 6px);box-shadow:0 -4px 20px rgba(27,58,107,.08)}
-.bnav::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,var(--gold) 50%,transparent 100%)}
-.bnav-inner{display:flex;align-items:flex-end}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 2px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:var(--hint);transition:.2s;position:relative}
-.bni .bic{width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:.2s}
-.bni .bic svg{stroke:currentColor;transition:.2s}
-.bni .bt{font-size:10px;font-weight:700;transition:.2s;letter-spacing:.2px}
-.bni.on{color:var(--p)}
-.bni.on .bt{color:var(--p)}
-
-/* ══ RESPONSIVE ══ */
-@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){
-  .side,.topbar{display:none}
-  .main{margin-right:0;max-width:100vw;width:100%}
-  .mob-head{display:flex}
-  .bnav{display:block}
-  .content{padding:12px 14px;padding-bottom:90px}
-  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-  .sc{padding:12px 10px;border-radius:12px}
-  .sic{width:36px;height:36px;border-radius:10px}
-  .sn{font-size:22px}
-  .st{font-size:10px}
-  .hero{padding:16px;border-radius:14px;flex-direction:column;gap:12px;text-align:center}
-  .hero-t h2{font-size:16px}
-  .hero-btn{width:100%;padding:11px;justify-content:center}
-  .card{border-radius:12px;padding:14px}
-  .ri{padding:12px 14px;border-radius:12px}
-  .ri-title{font-size:13.5px}
-  .rm{font-size:10px;padding:2px 7px}
-  .form-grid{grid-template-columns:1fr}.ff{grid-column:1}
-  .form-btns,.bid-actions,.ri-actions{flex-direction:column}
-  .btn-p,.btn-s,.btn-sm{width:100%;text-align:center;justify-content:center;padding:11px}
-}
-
-/* ══ INDEX PAGE ══ */
-.idx-page{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
-.idx-nav{background:linear-gradient(135deg,var(--p),var(--p2));padding:14px 20px;position:sticky;top:0;z-index:200;border-bottom:3px solid var(--gold);display:flex;align-items:center;justify-content:space-between;overflow:hidden;}
-.idx-nav-btns{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
-.btn-outline-w{padding:8px 16px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;}
-.btn-outline-w:hover{border-color:rgba(255,255,255,.6);}
-.idx-hero{background:linear-gradient(135deg,var(--p),var(--p2));padding:48px 20px 40px;text-align:center;position:relative;overflow:hidden;}
-.idx-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-.idx-hero-inner{max-width:560px;margin:0 auto;position:relative;z-index:1;}
-.idx-hero h1{font-size:36px;font-weight:900;color:#fff;line-height:1.22;letter-spacing:-.6px;margin-bottom:12px;}
-.idx-hero h1 em{font-style:normal;color:var(--gold);}
-.idx-hero p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.85;margin-bottom:26px;max-width:420px;margin-left:auto;margin-right:auto;}
-.idx-hero-btns{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-bottom:28px;}
-.idx-stats{display:inline-flex;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;}
-.ist{padding:11px 22px;text-align:center;border-left:1px solid rgba(255,255,255,.08);}
-.ist:last-child{border-left:none;}
-.ist-v{font-size:20px;font-weight:900;color:#fff;}
-.ist-v.gold{color:var(--gold);}
-.ist-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px;font-weight:600;}
-.cats-strip{background:var(--p);padding:12px 0;border-bottom:3px solid var(--gold);}
-.cats-scroll{display:flex;gap:7px;align-items:center;overflow-x:auto;overflow-y:hidden;padding:4px 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;white-space:nowrap;}
-.cats-scroll::-webkit-scrollbar{display:none;}
-.cats-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.5);flex-shrink:0;}
-.cat-chip{padding:7px 16px;border-radius:20px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);cursor:pointer;font-size:12px;font-weight:700;font-family:'Tajawal',sans-serif;transition:all .15s;flex-shrink:0;white-space:nowrap;}
-.cat-chip:hover{background:rgba(255,255,255,.18);color:#fff;}
-.cat-chip.on{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(240,165,0,.4);}
-.idx-content{flex:1;max-width:1200px;margin:0 auto;width:100%;padding:22px 18px 50px;}
-.pg-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
-.pg-hd h2{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-.3px;}
-.pg-hd p{font-size:12px;color:var(--muted);margin-top:2px;}
-.fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;}
-.ftab{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--muted);transition:.15s;font-family:'Tajawal',sans-serif;}
-.ftab:hover{border-color:var(--p);color:var(--p);}
-.ftab.on{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 2px 8px rgba(27,58,107,.25);}
-.frow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.finp{flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--text);background:var(--white);font-family:'Tajawal',sans-serif;transition:.15s;outline:none;}
-.finp:focus{border-color:var(--p);}
-.finp::placeholder{color:var(--hint);}
-.fsel{flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;color:var(--text);background:var(--white);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;outline:none;}
-.fsel:focus{border-color:var(--p);}
-.fcl{padding:9px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-weight:700;color:var(--muted);background:var(--white);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;white-space:nowrap;}
-.fcl:hover{border-color:var(--p);color:var(--p);}
-.res-lbl{font-size:12px;color:var(--hint);margin-bottom:10px;}
-.pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
-.pc{background:var(--white);border-radius:var(--radius-lg,18px);overflow:hidden;border:1.5px solid var(--border);box-shadow:0 2px 8px rgba(27,58,107,.06);cursor:pointer;transition:all .22s;display:flex;flex-direction:column;}
-.pc:hover{box-shadow:0 10px 28px rgba(27,58,107,.13);transform:translateY(-4px);border-color:rgba(27,58,107,.18);}
-.pc:hover .pc-img{transform:scale(1.04);}
-.pc-img-wrap{height:148px;overflow:hidden;position:relative;flex-shrink:0;}
-.pc-img{width:100%;height:148px;object-fit:cover;display:block;transition:transform .4s ease;}
-.pc-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(13,31,60,.5),transparent 55%);}
-.pc-st{position:absolute;top:9px;right:10px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;backdrop-filter:blur(8px);}
-.pc-open{background:rgba(22,163,74,.85);color:#fff;}
-.pc-done-st{background:rgba(255,255,255,.75);color:#475569;}
-.pc-body{padding:12px 14px;flex:1;display:flex;flex-direction:column;}
-.pc-num{font-size:10px;color:var(--hint);font-weight:600;letter-spacing:.3px;margin-bottom:3px;}
-.pc-title{font-size:14px;font-weight:800;color:var(--text);line-height:1.35;margin-bottom:8px;}
-.pc-chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:9px;}
-.chip{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
-.chip-g{background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;}
-.chip-y{background:var(--gold-l);color:#92400e;border:1px solid #fde68a;}
-.chip-d{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
-.chip-b{background:var(--p-light);color:var(--p);}
-.pc-footer{display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--border);margin-top:auto;}
-.pc-price{font-size:15px;font-weight:900;color:var(--p);}
-.pc-time{font-size:10px;color:var(--hint);margin-top:2px;}
-.sk{background:linear-gradient(90deg,#eef2f8 25%,#e0e8f4 50%,#eef2f8 75%);background-size:200%;animation:sk 1.4s infinite;border-radius:8px;}
-@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.sk-card{background:var(--white);border-radius:var(--radius-lg,18px);overflow:hidden;border:1.5px solid var(--border);}
-.lm-wrap{text-align:center;margin-top:24px;}
-.btn-more{padding:11px 32px;background:var(--white);border:1.5px solid var(--border);color:var(--muted);border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;}
-.btn-more:hover{border-color:var(--p);color:var(--p);}
-.idx-foot{background:var(--p2);padding:22px 20px;border-top:3px solid var(--gold);}
-.foot-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.flinks{display:flex;gap:14px;flex-wrap:wrap;}
-.flink{font-size:11px;color:rgba(255,255,255,.35);font-weight:600;cursor:pointer;transition:.15s;text-decoration:none;}
-.flink:hover{color:rgba(255,255,255,.75);}
-.fcopy{font-size:10px;color:rgba(255,255,255,.15);}
-
-@media(max-width:680px){
-  .idx-hero h1{font-size:26px;}
-  .idx-stats{display:none;}
-  .idx-content{padding:16px 12px 40px;}
-  .pg-grid{grid-template-columns:1fr;}
-}
+.auth-page{min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.auth-hero{background:var(--p);width:100%;padding:32px 20px 50px;text-align:center;position:relative;overflow:hidden;flex-shrink:0}
+.auth-hero::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:36px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.hero-stripe{position:absolute;top:0;right:0;bottom:0;width:4px;background:var(--gold)}
+.net-bg{position:absolute;inset:0;pointer-events:none;opacity:.12}
+.logo{font-size:26px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px;position:relative;z-index:1}
+.logo-dot{width:11px;height:11px;border-radius:50%;background:var(--gold)}
+.logo-sub{font-size:12px;color:rgba(255,255,255,.4);font-weight:500;margin-top:5px;position:relative;z-index:1}
+.hero-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.25);color:var(--gold);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:10px;position:relative;z-index:1}
+.hero-tag-dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
+.auth-card{width:100%;max-width:440px;background:var(--white);border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:20px;position:relative;z-index:1;border:1px solid var(--border);border-top:none}
+.auth-tabs{display:flex;background:var(--bg);border-radius:11px;padding:4px;gap:4px;margin:18px 18px 0}
+.auth-tab{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .18s}
+.auth-tab.on{background:var(--white);color:var(--p);box-shadow:var(--shadow)}
+.auth-body{padding:20px}
+.method-row{display:flex;flex-direction:row;background:var(--bg);border-radius:10px;padding:3px;gap:3px;margin-bottom:16px;width:100%}
+.mt{flex:1;min-width:0;padding:9px 8px;border:none;background:transparent;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.mt svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+.mt.on{background:var(--white);color:var(--p);box-shadow:var(--shadow)}
+.roles-wrap{display:none}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.role{border:2px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer;text-align:center;transition:all .18s;position:relative;background:var(--white)}
+.role:hover{border-color:var(--gold-soft);background:var(--gold-l)}
+.role.on{border-color:var(--gold);background:var(--gold-l)}
+.role.on::after{content:'';position:absolute;top:8px;left:10px;width:18px;height:18px;border-radius:50%;background:var(--gold);background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");background-size:11px;background-repeat:no-repeat;background-position:center}
+.role-ic{width:48px;height:48px;border-radius:14px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.role.on .role-ic{background:rgba(212,160,23,.12)}
+.role-nm{font-size:13px;font-weight:800;color:var(--text)}
+.role-ds{font-size:10px;color:var(--muted);margin-top:2px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px}
+.fi{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text);outline:none;background:var(--white);transition:all .18s}
+.fi:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.1)}
+.fi::placeholder{color:var(--hint)}
+.fi-sel{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--p);outline:none;background:var(--white);cursor:pointer;transition:all .18s}
+.fi-sel:focus{border-color:var(--gold)}
+.pw-wrap{position:relative}
+.pw-wrap .fi{padding-left:46px}
+.pw-eye{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--bg);border:none;cursor:pointer;color:var(--muted);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.pw-eye:hover{background:var(--gold-l);color:var(--gold-d)}
+.pw-eye svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.btn-submit{width:100%;justify-content:center;padding:14px;background:var(--p);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .18s;box-shadow:0 4px 14px rgba(22,33,62,.25)}
+.btn-submit:hover{background:var(--p2);transform:translateY(-1px)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.al{padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:14px;display:none;align-items:center;gap:8px}
+.al.ok{background:var(--green-l);color:var(--green);border:1px solid #BBF7D0;display:flex}
+.al.err{background:var(--red-l);color:var(--red);border:1px solid #FECACA;display:flex}
+.back-a{font-size:13px;color:var(--muted);text-decoration:none;font-weight:600;margin-top:4px;display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:9px;transition:.15s}
+.back-a:hover{background:var(--white);color:var(--p)}
+.link-btn{background:none;border:none;color:var(--gold-d);font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;padding:0;text-decoration:underline}
+.auth-footer{padding:16px;text-align:center}
+.auth-footer-brand{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--hint);font-weight:600}
+.auth-footer-dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.trust-row{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 18px 16px;padding:12px;background:var(--bg);border-radius:11px;border:1px solid var(--border)}
+.trust-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:700}
+.trust-item svg{width:12px;height:12px;stroke:var(--green);fill:none;stroke-width:2.5}
+@media(min-width:480px){.auth-hero{padding:40px 24px 56px}.auth-body{padding:24px}}
 </style>
 </head>
 <body>
-<div class="idx-page">
-
-  <!-- NAV -->
-  <nav class="idx-nav">
-    <svg class="net-svg" viewBox="0 0 500 60" preserveAspectRatio="none">
-      <line x1="30" y1="18" x2="130" y2="30" stroke="#fff" stroke-width="1.2"/>
-      <line x1="130" y1="30" x2="240" y2="14" stroke="#fff" stroke-width="1.2"/>
-      <line x1="240" y1="14" x2="380" y2="26" stroke="#fff" stroke-width="1"/>
-      <line x1="130" y1="30" x2="178" y2="16" stroke="#F0A500" stroke-width="1" stroke-opacity="0.7"/>
-      <circle cx="130" cy="30" r="6" fill="#fff" opacity="0.45"/>
-      <circle cx="178" cy="16" r="4" fill="#F0A500" opacity="0.7"/>
+<div class="auth-page" id="auth-pg">
+  <div class="auth-hero">
+    <div class="hero-stripe"></div>
+    <svg class="net-bg" viewBox="0 0 400 140" preserveAspectRatio="none">
+      <line x1="40" y1="20" x2="180" y2="60" stroke="#fff" stroke-width="1"/>
+      <line x1="180" y1="60" x2="320" y2="25" stroke="#fff" stroke-width="1"/>
+      <line x1="320" y1="25" x2="400" y2="50" stroke="#fff" stroke-width=".8"/>
+      <line x1="180" y1="60" x2="250" y2="30" stroke="#D4A017" stroke-width="1"/>
+      <circle cx="40" cy="20" r="4" fill="#fff" opacity=".3"/>
+      <circle cx="180" cy="60" r="7" fill="#fff" opacity=".3"/>
+      <circle cx="320" cy="25" r="4" fill="#fff" opacity=".25"/>
+      <circle cx="250" cy="30" r="5" fill="#D4A017" opacity=".6"/>
     </svg>
-    <div class="logo" style="position:relative;z-index:1">
-      <span class="logo-dot"></span>مناقصة
+    <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+    <div class="logo-sub">منصة المشاريع السعودية</div>
+    <div class="hero-tag"><div class="hero-tag-dot"></div><span id="hd-s">سجّل دخولك لمتابعة مشاريعك</span></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab on" onclick="setMode('login')">تسجيل الدخول</button>
+      <button class="auth-tab" onclick="setMode('register')">إنشاء حساب</button>
     </div>
-    <div class="idx-nav-btns">
-      <button class="btn-outline-w" onclick="location.href='auth.html'">تسجيل الدخول</button>
-      <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        أنشر مشروعاً
-      </button>
-    </div>
-  </nav>
-
-  <!-- HERO -->
-  <div class="idx-hero">
-    <svg class="hero-net" viewBox="0 0 1200 120" preserveAspectRatio="none" opacity="0.12">
-      <line x1="50" y1="30" x2="200" y2="55" stroke="#fff" stroke-width="1.5"/>
-      <line x1="200" y1="55" x2="380" y2="25" stroke="#fff" stroke-width="1.5"/>
-      <line x1="380" y1="25" x2="580" y2="50" stroke="#fff" stroke-width="1.2"/>
-      <line x1="580" y1="50" x2="800" y2="28" stroke="#fff" stroke-width="1.2"/>
-      <line x1="800" y1="28" x2="1000" y2="45" stroke="#fff" stroke-width="1"/>
-      <line x1="1000" y1="45" x2="1180" y2="26" stroke="#fff" stroke-width="1"/>
-      <line x1="200" y1="55" x2="300" y2="35" stroke="#F0A500" stroke-width="1.5" stroke-opacity="0.8"/>
-      <circle cx="50" cy="30" r="4" fill="#fff" opacity="0.4"/>
-      <circle cx="200" cy="55" r="8" fill="#fff" opacity="0.45"/>
-      <circle cx="380" cy="25" r="5" fill="#fff" opacity="0.35"/>
-      <circle cx="580" cy="50" r="4" fill="#fff" opacity="0.3"/>
-      <circle cx="800" cy="28" r="5" fill="#fff" opacity="0.35"/>
-      <circle cx="1000" cy="45" r="4" fill="#fff" opacity="0.25"/>
-      <circle cx="300" cy="35" r="6" fill="#F0A500" opacity="0.8"/>
-    </svg>
-    <div class="idx-hero-inner">
-      <div class="hero-tag" style="margin-bottom:16px;background:var(--gold-l);border-color:var(--gold-soft);color:var(--gold-d)"><span class="hero-tag-dot"></span>منصة سعودية موثوقة</div>
-      <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
-      <p>ربط احترافي بين أصحاب المشاريع ومزودي الخدمات في جميع مناطق المملكة العربية السعودية.</p>
-      <div class="idx-hero-btns">
-        <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex;padding:13px 26px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          أنشر مشروعك مجاناً
+    <div class="auth-body">
+      <div class="al" id="al"></div>
+      <div id="method-row" class="method-row">
+        <button class="mt on" id="mt-email" onclick="setMethod('email')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+          البريد الإلكتروني
         </button>
-        <button class="btn-outline-w" style="padding:13px 22px;border-radius:11px" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
+        <button class="mt" id="mt-phone" onclick="setMethod('phone')">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          رقم الجوال
+        </button>
       </div>
-      <div class="idx-stats">
-        <div class="ist"><div class="ist-v" id="hs-u">—</div><div class="ist-l">مشروع نشط</div></div>
-        <div class="ist"><div class="ist-v gold" id="hs-r">—</div><div class="ist-l">مشروع منشور</div></div>
-        <div class="ist"><div class="ist-v" id="hs-d">—</div><div class="ist-l">تمت الترسية</div></div>
+      <div class="roles-wrap" id="roles-wrap">
+        <div class="roles">
+          <div class="role on" id="rc-c" onclick="selRole('client')">
+            <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <div class="role-nm">عميل</div>
+            <div class="role-ds">أنشر مشاريعك</div>
+          </div>
+          <div class="role" id="rc-p" onclick="selRole('provider')">
+            <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+            <div class="role-nm">مزود خدمة</div>
+            <div class="role-ds">قدّم عروضك</div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- CATS -->
-  <div class="cats-strip">
-    <div class="cats-scroll">
-      <span class="cats-lbl">تصفح:</span>
-      <button class="cat-chip on" onclick="filterCat('',this)">الكل</button>
-      <button class="cat-chip" onclick="filterCat('تبريد وتكييف',this)">تبريد وتكييف</button>
-      <button class="cat-chip" onclick="filterCat('كهرباء',this)">كهرباء</button>
-      <button class="cat-chip" onclick="filterCat('سباكة',this)">سباكة</button>
-      <button class="cat-chip" onclick="filterCat('نجارة',this)">نجارة</button>
-      <button class="cat-chip" onclick="filterCat('تنظيف',this)">تنظيف</button>
-      <button class="cat-chip" onclick="filterCat('نقل عفش',this)">نقل عفش</button>
-      <button class="cat-chip" onclick="filterCat('حدادة',this)">حدادة</button>
-      <button class="cat-chip" onclick="filterCat('ألمنيوم',this)">ألمنيوم</button>
-      <button class="cat-chip" onclick="filterCat('مسابح',this)">مسابح</button>
-      <button class="cat-chip" onclick="filterCat('كاميرات مراقبة',this)">كاميرات مراقبة</button>
-      <button class="cat-chip" onclick="filterCat('شبكات وإنترنت',this)">شبكات وإنترنت</button>
-      <button class="cat-chip" onclick="filterCat('مظلات وسواتر',this)">مظلات وسواتر</button>
-      <button class="cat-chip" onclick="filterCat('عزل حراري',this)">عزل حراري</button>
-      <button class="cat-chip" onclick="filterCat('مكافحة حشرات',this)">مكافحة حشرات</button>
-    </div>
-  </div>
-
-  <!-- CONTENT -->
-  <div class="idx-content">
-    <div class="pg-hd">
-      <div>
-        <h2>المشاريع المتاحة</h2>
-        <p id="sub-txt">جاري تحميل المشاريع...</p>
+      <div class="fg" id="fg-name" style="display:none">
+        <label>الاسم الكامل <span style="color:var(--red)">*</span></label>
+        <input id="i-name" class="fi" type="text" placeholder="محمد أحمد العمري">
       </div>
-      <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        أنشر مشروعاً
+      <div class="fg" id="fg-email">
+        <label>البريد الإلكتروني <span style="color:var(--red)">*</span></label>
+        <input id="i-email" class="fi" type="email" placeholder="example@email.com" inputmode="email">
+      </div>
+      <div class="fg" id="fg-phone" style="display:none">
+        <label>رقم الجوال <span style="color:var(--red)">*</span></label>
+        <input id="i-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+      </div>
+      <div class="fg">
+        <label>كلمة المرور <span style="color:var(--red)">*</span></label>
+        <div class="pw-wrap">
+          <input id="i-pass" class="fi" type="password" placeholder="6 أحرف على الأقل">
+          <button class="pw-eye" type="button" onclick="togglePw('i-pass',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="fg" id="fg-pass2" style="display:none">
+        <label>تأكيد كلمة المرور <span style="color:var(--red)">*</span></label>
+        <div class="pw-wrap">
+          <input id="i-pass2" class="fi" type="password" placeholder="أعد كتابة كلمة المرور">
+          <button class="pw-eye" type="button" onclick="togglePw('i-pass2',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="fg" id="fg-reg-phone" style="display:none">
+        <label>رقم الجوال <span style="color:var(--red)">*</span></label>
+        <input id="i-reg-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+      </div>
+      <div class="fg" id="fg-city" style="display:none">
+        <label>المدينة <span style="color:var(--red)">*</span></label>
+        <select id="i-city" class="fi-sel">
+          <option value="">اختر مدينتك</option>
+          <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>بريدة</option><option>عنيزة</option><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>تبوك</option><option>حائل</option><option>عرعر</option><option>سكاكا</option><option>الباحة</option><option>جازان</option><option>نجران</option><option>وادي الدواسر</option><option>السليل</option>
+        </select>
+      </div>
+      <button class="btn-submit" id="btn-s" onclick="doSubmit()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span id="btn-t">تسجيل الدخول</span>
       </button>
-    </div>
-
-    <div class="fbar">
-      <button class="ftab on" onclick="fStatus('all',this)">الكل</button>
-      <button class="ftab" onclick="fStatus('open',this)">مفتوح للعروض</button>
-      <button class="ftab" onclick="fStatus('done',this)">تمت الترسية</button>
-    </div>
-    <div class="frow">
-      <input type="text" id="fq" class="finp" placeholder="ابحث في المشاريع..." oninput="applyAll()">
-      <select id="fc" class="fsel" onchange="applyAll()">
-        <option value="">كل المدن</option>
-        <option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option>
-        <option>مكة المكرمة</option><option>المدينة المنورة</option><option>الطائف</option>
-        <option>الأحساء</option><option>بريدة</option><option>تبوك</option><option>أبها</option>
-        <option>خميس مشيط</option><option>حائل</option><option>جازان</option><option>نجران</option>
-        <option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>ينبع</option><option>الخرج</option>
-      </select>
-      <button class="fcl" onclick="clearAll()">مسح</button>
-    </div>
-    <div class="res-lbl" id="rl" style="display:none"></div>
-
-    <div class="pg-grid" id="grid">
-      <div class="sk-card"><div class="sk" style="height:148px"></div><div style="padding:12px"><div class="sk" style="height:10px;width:35%;margin-bottom:10px"></div><div class="sk" style="height:14px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:60%"></div></div></div>
-      <div class="sk-card"><div class="sk" style="height:148px"></div><div style="padding:12px"><div class="sk" style="height:10px;width:40%;margin-bottom:10px"></div><div class="sk" style="height:14px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:70%"></div></div></div>
-      <div class="sk-card"><div class="sk" style="height:148px"></div><div style="padding:12px"><div class="sk" style="height:10px;width:30%;margin-bottom:10px"></div><div class="sk" style="height:14px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:55%"></div></div></div>
-    </div>
-
-    <div class="lm-wrap" id="lm" style="display:none">
-      <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="idx-foot">
-    <div class="foot-inner">
-      <div class="logo" style="position:relative;z-index:1"><span class="logo-dot"></span>مناقصة</div>
-      <div class="flinks">
-        <a href="auth.html" class="flink">تسجيل الدخول</a>
-        <a href="auth.html" class="flink">إنشاء حساب</a>
-        <span class="flink">تواصل معنا</span>
+      <div style="text-align:center;margin-top:12px" id="forgot-w">
+        <button class="link-btn" onclick="doForgot()">نسيت كلمة المرور؟</button>
       </div>
-      <div class="fcopy">© 2026 مناقصة — جميع الحقوق محفوظة</div>
+      <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px;display:none;line-height:1.6" id="note-reg">
+        بالتسجيل توافق على <a href="terms.html" style="color:var(--gold-d);font-weight:700;text-decoration:none">شروط الاستخدام</a>
+      </p>
+    </div>
+    <div class="trust-row">
+      <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>آمن 100%</div>
+      <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>بدون رسوم</div>
+      <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>+5000 مستخدم</div>
     </div>
   </div>
+  <a href="index.html" class="back-a">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    تصفح المشاريع بدون تسجيل
+  </a>
+  <div class="auth-footer">
+    <div class="auth-footer-brand"><div class="auth-footer-dot"></div>مناقصة · منصة المشاريع السعودية</div>
+  </div>
+</div>
+
+<div id="reset-pg" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;align-items:center">
+  <div class="auth-hero">
+    <div class="hero-stripe"></div>
+    <div class="logo" style="justify-content:center;position:relative;z-index:1"><span class="logo-dot"></span>مناقصة</div>
+    <div class="logo-sub" style="text-align:center;position:relative;z-index:1;margin-top:3px">إعادة تعيين كلمة المرور</div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-body">
+      <div class="al" id="reset-al"></div>
+      <div class="fg"><label>كلمة المرور الجديدة *</label><div class="pw-wrap"><input id="rp1" class="fi" type="password" placeholder="6 أحرف على الأقل"><button class="pw-eye" type="button" onclick="togglePw('rp1',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+      <div class="fg"><label>تأكيد كلمة المرور *</label><div class="pw-wrap"><input id="rp2" class="fi" type="password" placeholder="أعد الكتابة"><button class="pw-eye" type="button" onclick="togglePw('rp2',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+      <button class="btn-submit" onclick="doReset()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>تعيين كلمة المرور</button>
+    </div>
+  </div>
+  <a href="auth.html" class="back-a"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>العودة لتسجيل الدخول</a>
 </div>
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
-var ALL=[],CUR=[],PAGE=12,F_ST='all',F_CAT='',F_CI='',F_Q='';
-
-var CAT_COLORS={
-  'تبريد وتكييف':'135deg,#0ea5e9,#0284c7',
-  'كهرباء':'135deg,#f59e0b,#d97706',
-  'سباكة':'135deg,#3b82f6,#2563eb',
-  'نجارة':'135deg,#92400e,#78350f',
-  'تنظيف':'135deg,#10b981,#059669',
-  'نقل عفش':'135deg,#6366f1,#4f46e5',
-  'حدادة':'135deg,#64748b,#475569',
-  'مكافحة حشرات':'135deg,#15803d,#166534',
-  'كاميرات مراقبة':'135deg,#7c3aed,#6d28d9',
-  'شبكات وإنترنت':'135deg,#0891b2,#0e7490',
-  'مظلات وسواتر':'135deg,#d97706,#b45309',
-  'عزل حراري':'135deg,#0f766e,#0d9488',
-  'ألمنيوم':'135deg,#475569,#334155',
-  'مسابح':'135deg,#0284c7,#0369a1',
-  'بناء':'135deg,#1B3A6B,#2C5282',
-  'بناء مستودع':'135deg,#1B3A6B,#2C5282'
-};
-
-var CAT_EMOJI={
-  'تبريد وتكييف':'❄️',
-  'كهرباء':'⚡',
-  'سباكة':'🚿',
-  'نجارة':'🔨',
-  'تنظيف':'🧹',
-  'نقل عفش':'🚚',
-  'حدادة':'🔩',
-  'مكافحة حشرات':'🐛',
-  'كاميرات مراقبة':'📷',
-  'شبكات وإنترنت':'🌐',
-  'مظلات وسواتر':'⛺',
-  'عزل حراري':'🌡️',
-  'ألمنيوم':'🪟',
-  'مسابح':'🏊',
-  'بناء':'🏗️',
-  'بناء مستودع':'🏭'
-};
-
-function ago(d){
-  if(!d) return '';
-  var s=(Date.now()-new Date(d))/1000;
-  if(s<60) return 'الآن';
-  if(s<3600) return Math.floor(s/60)+' د';
-  if(s<86400) return Math.floor(s/3600)+' س';
-  return Math.floor(s/86400)+' يوم';
-}
-
-function locIc(){
-  return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
-}
-
-function card(p){
-  var isOpen = p.status==='open';
-  var imgs = (p.images && p.images.length) ? p.images : (p.image_url ? [p.image_url] : []);
-  var img = imgs[0] || null;
-  var grad = CAT_COLORS[p.category] || '135deg,#1B3A6B,#2C5282';
-  var emoji = CAT_EMOJI[p.category] || '🔧';
-  var badge = '<span class="pc-st '+(isOpen?'pc-open':'pc-done-st')+'" style="position:absolute;top:9px;right:10px">'+(isOpen?'● مفتوح':'تمت الترسية')+'</span>';
-
-  var hdr = img
-    ? '<div class="pc-img-wrap"><img class="pc-img" src="'+img+'" loading="lazy"><div class="pc-overlay"></div>'+badge+'</div>'
-    : '<div style="position:relative;height:148px;background:linear-gradient(135deg,#0A1628,var(--p));overflow:hidden;flex-shrink:0">'
-        +'<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.18" viewBox="0 0 300 148" preserveAspectRatio="none">'
-          +'<line x1="20" y1="30" x2="100" y2="55" stroke="#fff" stroke-width="1.2"/>'
-          +'<line x1="100" y1="55" x2="180" y2="28" stroke="#fff" stroke-width="1.2"/>'
-          +'<line x1="180" y1="28" x2="270" y2="48" stroke="#fff" stroke-width="1"/>'
-          +'<line x1="100" y1="55" x2="145" y2="35" stroke="#F0A500" stroke-width="1.2" stroke-opacity="0.9"/>'
-          +'<circle cx="20" cy="30" r="3" fill="#fff" opacity="0.4"/>'
-          +'<circle cx="100" cy="55" r="6" fill="#fff" opacity="0.5"/>'
-          +'<circle cx="180" cy="28" r="3.5" fill="#fff" opacity="0.35"/>'
-          +'<circle cx="270" cy="48" r="3" fill="#fff" opacity="0.3"/>'
-          +'<circle cx="145" cy="35" r="5" fill="#F0A500" opacity="0.85"/>'
-        +'</svg>'
-        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#F0A500,transparent)"></div>'
-        +'<div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 16px">'
-          +'<div style="width:52px;height:52px;border-radius:16px;background:rgba(240,165,0,.15);border:1.5px solid rgba(240,165,0,.35);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.2)">'+emoji+'</div>'
-          +'<div style="text-align:center">'
-            +'<div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">'+(p.category||'مشروع')+'</div>'
-            +'<div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:600;letter-spacing:.5px">منصة مناقصة</div>'
-          +'</div>'
-        +'</div>'
-        +badge
-        +'</div>';
-
-  return '<div class="pc" onclick="goAuth()">'
-    +hdr
-    +'<div class="pc-body">'
-    +(p.project_number?'<div class="pc-num">'+p.project_number+'</div>':'')
-    +'<div class="pc-title">'+p.title+'</div>'
-    +'<div class="pc-chips">'
-    +(p.city?'<span class="chip chip-g">'+locIc()+p.city+'</span>':'')
-    +(p.budget_max?'<span class="chip chip-y">'+Number(p.budget_max).toLocaleString('en-US')+' ر.س</span>':'')
-    +'<span class="chip chip-d">'+(p.bid_count||0)+' عرض</span>'
-    +(img&&p.category?'<span class="chip chip-b">'+p.category+'</span>':'')
-    +'</div>'
-    +'<div class="pc-footer">'
-    +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
-    +(isOpen?'<button class="btn-new" onclick="event.stopPropagation();goAuth()" style="padding:8px 16px;font-size:12px">تقديم عرض</button>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
-    +'</div></div></div>';
-}
-
-function goAuth(){ location.href='auth.html'; }
-
-function render(list){
-  var g=document.getElementById('grid');
-  if(!list.length){
-    g.innerHTML='<div class="empty"><div class="empty-ic">📋</div><p>لا توجد مشاريع<br><span style="font-size:12px">جرّب فلتراً مختلفاً</span></p></div>';
-    document.getElementById('lm').style.display='none';
-    return;
-  }
-  g.innerHTML=list.slice(0,PAGE).map(card).join('');
-  document.getElementById('lm').style.display=list.length>PAGE?'block':'none';
-}
-
-function filterCat(cat,btn){
-  F_CAT=cat;
-  document.querySelectorAll('.cat-chip').forEach(function(b){b.classList.remove('on');});
-  if(btn) btn.classList.add('on');
-  applyAll();
-}
-
-function fStatus(s,btn){
-  F_ST=s;
-  document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
-  if(btn) btn.classList.add('on');
-  applyAll();
-}
-
-function applyAll(){
-  F_Q=(document.getElementById('fq')||{value:''}).value.toLowerCase();
-  F_CI=(document.getElementById('fc')||{value:''}).value;
-  PAGE=12;
-  CUR=ALL.filter(function(p){
-    if(F_ST==='open' && p.status!=='open') return false;
-    if(F_ST==='done' && p.status!=='completed' && p.status!=='in_progress') return false;
-    if(F_CAT && !(p.category||'').includes(F_CAT)) return false;
-    if(F_CI && p.city!==F_CI) return false;
-    if(F_Q && !p.title.toLowerCase().includes(F_Q)) return false;
-    return true;
-  });
-  render(CUR);
-  var rl=document.getElementById('rl');
-  if(rl){
-    var hasF=F_ST!=='all'||F_CAT||F_CI||F_Q;
-    rl.style.display=hasF?'block':'none';
-    rl.textContent='عرض '+CUR.length+' من '+ALL.length+' مشروع';
-  }
-}
-
-function clearAll(){
-  F_ST='all'; F_CAT=''; F_CI=''; F_Q='';
-  document.querySelectorAll('.ftab').forEach(function(b,i){b.classList.toggle('on',i===0);});
-  document.querySelectorAll('.cat-chip').forEach(function(b,i){b.classList.toggle('on',i===0);});
-  var fq=document.getElementById('fq'); if(fq) fq.value='';
-  var fc=document.getElementById('fc'); if(fc) fc.value='';
-  var rl=document.getElementById('rl'); if(rl) rl.style.display='none';
-  CUR=ALL; PAGE=12; render(CUR);
-}
-
-function showMore(){ PAGE+=12; render(CUR); }
-
-async function load(){
-  try{
-    var r=await fetch(API+'/api/requests');
-    var d=await r.json();
-    ALL=Array.isArray(d)?d:[];
-    CUR=ALL;
-
-    var open=ALL.filter(function(p){return p.status==='open';}).length;
-    var done=ALL.filter(function(p){return p.status==='completed'||p.status==='in_progress';}).length;
-
-    document.getElementById('sub-txt').textContent=ALL.length+' مشروع — '+open+' مفتوح للعروض';
-    document.getElementById('hs-r').textContent=ALL.length;
-    document.getElementById('hs-d').textContent=done;
-
-    // عدد المستخدمين — نجلبه من stats بدون token
-    fetch(API+'/api/admin/stats')
-      .then(function(x){return x.json();})
-      .then(function(s){
-        document.getElementById('hs-u').textContent=open;
-      })
-      .catch(function(){
-        document.getElementById('hs-u').textContent=open;
-      });
-
-    render(ALL);
-  } catch(e){
-    document.getElementById('grid').innerHTML='<div class="empty"><div class="empty-ic">⚠️</div><p>تعذر تحميل المشاريع<br><span style="font-size:12px">تحقق من الاتصال بالإنترنت</span></p></div>';
-  }
-}
-
-load();
+var MODE='login',ROLE='client',METHOD='email';
+(function(){var t=new URLSearchParams(location.search).get('reset');if(!t)return;window._rt=t;document.getElementById('auth-pg').style.display='none';var rp=document.getElementById('reset-pg');rp.style.display='flex';})();
+async function apiFetch(p,o){return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'}},o||{})).then(function(r){return r.json();}).catch(function(){return{};});}
+async function doReset(){var p1=document.getElementById('rp1').value,p2=document.getElementById('rp2').value,al=document.getElementById('reset-al');if(!p1||p1.length<6){setAl(al,'كلمة المرور 6 أحرف على الأقل','err');return;}if(p1!==p2){setAl(al,'كلمتا المرور غير متطابقتين','err');return;}var r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})});if(r.ok){setAl(al,'تم التعيين! جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}else setAl(al,r.message||'حدث خطأ','err');}
+function setAl(el,msg,t){if(!el)el=document.getElementById('al');el.textContent=msg;el.className='al '+t;}
+function clearAl(){var e=document.getElementById('al');if(e){e.textContent='';e.className='al';}}
+function show(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'block':'none';}
+function showGrid(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'grid':'none';}
+function setMode(m){MODE=m;var isR=m==='register';document.querySelectorAll('.auth-tab').forEach(function(t,i){t.classList.toggle('on',i===(isR?1:0));});show('method-row',!isR);show('fg-name',isR);showGrid('roles-wrap',isR);show('fg-pass2',isR);show('fg-reg-phone',isR);show('fg-city',isR);show('forgot-w',!isR);document.getElementById('note-reg').style.display=isR?'block':'none';if(isR){show('fg-email',true);show('fg-phone',false);}else setMethod(METHOD);document.getElementById('hd-s').textContent=isR?'انضم لمناقصة اليوم':'سجّل دخولك لمتابعة مشاريعك';document.getElementById('btn-t').textContent=isR?'إنشاء الحساب':'تسجيل الدخول';clearAl();}
+function setMethod(m){METHOD=m;document.getElementById('mt-email').classList.toggle('on',m==='email');document.getElementById('mt-phone').classList.toggle('on',m==='phone');show('fg-email',m==='email');show('fg-phone',m==='phone');}
+function selRole(r){ROLE=r;document.getElementById('rc-c').classList.toggle('on',r==='client');document.getElementById('rc-p').classList.toggle('on',r==='provider');var sc=document.getElementById('rc-c').querySelector('svg');var sp=document.getElementById('rc-p').querySelector('svg');if(sc)sc.setAttribute('stroke',r==='client'?'var(--gold-d)':'var(--muted)');if(sp)sp.setAttribute('stroke',r==='provider'?'var(--gold-d)':'var(--muted)');}
+function togglePw(id,btn){var inp=document.getElementById(id);var s=inp.type==='password';inp.type=s?'text':'password';btn.innerHTML=s?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';}
+function getV(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+function validatePhone(v){var d=v.replace(/[^0-9]/g,'');return d.length===10&&d.startsWith('05');}
+function fmtPhone(v){var d=v.replace(/[^0-9]/g,'');if(d.startsWith('966'))return d;if(d.startsWith('0'))d=d.slice(1);return'966'+d;}
+async function doSubmit(){clearAl();var pass=document.getElementById('i-pass').value;if(!pass||pass.length<6){setAl(null,'كلمة المرور 6 أحرف على الأقل','err');return;}var btn=document.getElementById('btn-s');btn.disabled=true;document.getElementById('btn-t').textContent='جاري...';try{var url,body;if(MODE==='login'){if(METHOD==='email'){var email=getV('i-email');if(!email||!email.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}body={email:email,password:pass};}else{var phone=getV('i-phone');if(!validatePhone(phone)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}body={phone:fmtPhone(phone),password:pass};}url='/api/auth/login';}else{var name=getV('i-name'),em=getV('i-email'),p2=document.getElementById('i-pass2').value,rph=getV('i-reg-phone'),city=getV('i-city');if(!name){setAl(null,'أدخل اسمك الكامل','err');return;}if(!em||!em.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}if(pass!==p2){setAl(null,'كلمتا المرور غير متطابقتين','err');return;}if(!validatePhone(rph)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}if(!city){setAl(null,'يرجى اختيار مدينتك','err');return;}url='/api/auth/register';body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};}var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});if(d.token){localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(d.user));setAl(null,'تم بنجاح! جاري التحويل...','ok');setTimeout(function(){var rl=d.user.role;location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';},900);}else setAl(null,d.message||'حدث خطأ، حاول مرة أخرى','err');}catch(e){setAl(null,'تعذر الاتصال بالسيرفر','err');}finally{btn.disabled=false;document.getElementById('btn-t').textContent=MODE==='login'?'تسجيل الدخول':'إنشاء الحساب';}}
+async function doForgot(){var id=METHOD==='email'?getV('i-email'):getV('i-phone');if(!id){setAl(null,'أدخل بريدك الإلكتروني أولاً','err');return;}var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify({email:id})});setAl(null,r.message||'تم إرسال رابط إعادة التعيين','ok');}
+document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();});
 </script>
 </body>
 </html>
