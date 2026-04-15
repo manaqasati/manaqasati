@@ -345,6 +345,17 @@ function _rptToast(msg,ok){var el=document.createElement('div');el.style.cssText
 // ══════════════════════════════════════════════════════════
 // PORTFOLIO — معرض أعمال المزود
 // ══════════════════════════════════════════════════════════
+function _socUrl(key, val) {
+  if(!val) return null;
+  val = val.trim();
+  if(!val) return null;
+  if(key==='social_whatsapp') return 'https://wa.me/'+val.replace(/[^0-9]/g,'');
+  if(key==='social_snap')     return 'https://snapchat.com/add/'+val.replace(/^@/,'');
+  if(key==='social_tiktok')   return 'https://tiktok.com/@'+val.replace(/^@/,'');
+  if(key==='social_instagram')return 'https://instagram.com/'+val.replace(/^@/,'');
+  if(key==='social_twitter')  return 'https://x.com/'+val.replace(/^@/,'');
+  return null;
+}
 async function loadPortfolio() {
   var pg = _el('page-portfolio');
   if(!pg) return;
@@ -403,11 +414,15 @@ async function loadPortfolio() {
   };
 
   var socialsHtml = socials.map(function(s){
+    var val = _socData[s.key] || '';
+    var url = _socUrl(s.key, val);
+    var openBtn = url ? '<a href="' + url + '" target="_blank" style="width:36px;height:36px;border-radius:9px;background:var(--p-light);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>' : '';
     return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
-      '<div style="width:36px;height:36px;border-radius:10px;background:'+s.color+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:'+(s.textColor||'#fff')+'">'+(_socialSvg[s.key]||'')+'</div>' +
-      '<input id="s-'+s.key+'" type="text" value="'+_esc(_socData[s.key]||'')+'" placeholder="'+s.placeholder+'" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;outline:none" onfocus="this.style.borderColor=\\'var(--p)\\'" onblur="this.style.borderColor=\\'var(--border)\\'">'+
-      (_socData[s.key] ? '<a href="'+(_socUrl(s.key,_socData[s.key])||'#')+'" target="_blank" style="width:36px;height:36px;border-radius:9px;background:var(--p-light);color:var(--p);border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>' : '') +
-    '</div>';  }).join('');
+      '<div style="width:36px;height:36px;border-radius:10px;background:' + s.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + (s.textColor||'#fff') + '">' + (_socialSvg[s.key]||'') + '</div>' +
+      '<input id="s-' + s.key + '" type="text" value="' + _esc(val) + '" placeholder="' + s.placeholder + '" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;outline:none">' +
+      openBtn +
+    '</div>';
+  }).join('');
 
   var specsHtml = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'].map(function(c){
     var on=(p.specialties||[]).includes(c);
