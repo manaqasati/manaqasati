@@ -349,14 +349,20 @@ function _socUrl(key, val) {
   if(!val) return null;
   val = val.trim();
   if(!val) return null;
-  // إذا رابط كامل ارجعه مباشرة
-  if(val.startsWith('http')) return val;
-  // fallback: بناء الرابط من الاسم
-  if(key==='social_whatsapp') return 'https://wa.me/'+val.replace(/[^0-9]/g,'');
-  if(key==='social_snap')     return 'https://snapchat.com/add/'+val.replace(/^@/,'');
-  if(key==='social_tiktok')   return 'https://tiktok.com/@'+val.replace(/^@/,'');
-  if(key==='social_instagram')return 'https://instagram.com/'+val.replace(/^@/,'');
-  if(key==='social_twitter')  return 'https://x.com/'+val.replace(/^@/,'');
+  // رابط كامل — ارجعه مباشرة
+  if(val.startsWith('http://') || val.startsWith('https://')) return val;
+  // واتساب — تحويل الرقم لرابط wa.me
+  if(key==='social_whatsapp') {
+    var num = val.replace(/[^0-9]/g,'');
+    if(num.startsWith('0')) num = '966' + num.slice(1); // 05xxxxxxxx → 966
+    else if(!num.startsWith('966')) num = '966' + num;  // 5xxxxxxxx → 966
+    return 'https://wa.me/' + num;
+  }
+  // باقي المنصات — بناء الرابط من اسم المستخدم
+  if(key==='social_snap')      return 'https://snapchat.com/add/' + val.replace(/^@/,'');
+  if(key==='social_tiktok')    return 'https://tiktok.com/@'      + val.replace(/^@/,'');
+  if(key==='social_instagram') return 'https://instagram.com/'    + val.replace(/^@/,'');
+  if(key==='social_twitter')   return 'https://x.com/'            + val.replace(/^@/,'');
   return null;
 }
 async function loadPortfolio() {
@@ -399,11 +405,11 @@ async function loadPortfolio() {
     social_twitter:  '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
   };
   var socials = [
-    {key:'social_whatsapp', label:'واتساب',   placeholder:'https://wa.me/966501234567', color:'#25d366', textColor:'#fff'},
-    {key:'social_snap',     label:'سناب شات', placeholder:'https://snapchat.com/add/username', color:'#FFFC00', textColor:'#000'},
-    {key:'social_tiktok',  label:'تيك توك',  placeholder:'https://tiktok.com/@username', color:'#010101', textColor:'#fff'},
-    {key:'social_instagram',label:'إنستقرام',placeholder:'https://instagram.com/username', color:'#E1306C', textColor:'#fff'},
-    {key:'social_twitter', label:'إكس',       placeholder:'https://x.com/username', color:'#000', textColor:'#fff'},
+    {key:'social_whatsapp', label:'واتساب',   placeholder:'0501234567 أو رابط wa.me', color:'#25d366', textColor:'#fff'},
+    {key:'social_snap',     label:'سناب شات', placeholder:'اسم المستخدم أو الرابط', color:'#FFFC00', textColor:'#000'},
+    {key:'social_tiktok',  label:'تيك توك',  placeholder:'اسم المستخدم أو الرابط', color:'#010101', textColor:'#fff'},
+    {key:'social_instagram',label:'إنستقرام',placeholder:'اسم المستخدم أو الرابط', color:'#E1306C', textColor:'#fff'},
+    {key:'social_twitter', label:'إكس',       placeholder:'اسم المستخدم أو الرابط', color:'#000', textColor:'#fff'},
   ];
   // تحميل السوشيال من localStorage
   var _savedSocial = {};
