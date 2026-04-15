@@ -349,6 +349,9 @@ function _socUrl(key, val) {
   if(!val) return null;
   val = val.trim();
   if(!val) return null;
+  // إذا رابط كامل ارجعه مباشرة
+  if(val.startsWith('http')) return val;
+  // fallback: بناء الرابط من الاسم
   if(key==='social_whatsapp') return 'https://wa.me/'+val.replace(/[^0-9]/g,'');
   if(key==='social_snap')     return 'https://snapchat.com/add/'+val.replace(/^@/,'');
   if(key==='social_tiktok')   return 'https://tiktok.com/@'+val.replace(/^@/,'');
@@ -396,11 +399,11 @@ async function loadPortfolio() {
     social_twitter:  '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
   };
   var socials = [
-    {key:'social_whatsapp', label:'واتساب',   placeholder:'966501234567', color:'#25d366', textColor:'#fff'},
-    {key:'social_snap',     label:'سناب شات', placeholder:'snapchat_username', color:'#FFFC00', textColor:'#000'},
-    {key:'social_tiktok',  label:'تيك توك',  placeholder:'tiktok_username', color:'#010101', textColor:'#fff'},
-    {key:'social_instagram',label:'إنستقرام',placeholder:'instagram_username', color:'#E1306C', textColor:'#fff'},
-    {key:'social_twitter', label:'إكس',       placeholder:'twitter_username', color:'#000', textColor:'#fff'},
+    {key:'social_whatsapp', label:'واتساب',   placeholder:'https://wa.me/966501234567', color:'#25d366', textColor:'#fff'},
+    {key:'social_snap',     label:'سناب شات', placeholder:'https://snapchat.com/add/username', color:'#FFFC00', textColor:'#000'},
+    {key:'social_tiktok',  label:'تيك توك',  placeholder:'https://tiktok.com/@username', color:'#010101', textColor:'#fff'},
+    {key:'social_instagram',label:'إنستقرام',placeholder:'https://instagram.com/username', color:'#E1306C', textColor:'#fff'},
+    {key:'social_twitter', label:'إكس',       placeholder:'https://x.com/username', color:'#000', textColor:'#fff'},
   ];
   // تحميل السوشيال من localStorage
   var _savedSocial = {};
@@ -606,12 +609,12 @@ async function _previewPortfolio() {
     '</div>' : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد صور في المعرض</div>';
 
   var socLinks = [
-    {key:'social_whatsapp', label:'واتساب', color:'#25d366', url: p.social_whatsapp ? 'https://wa.me/'+p.social_whatsapp : null},
-    {key:'social_snap',     label:'سناب',   color:'#FFFC00', textColor:'#000', url: p.social_snap ? 'https://snapchat.com/add/'+p.social_snap : null},
-    {key:'social_tiktok',  label:'تيك توك',color:'#000',   url: p.social_tiktok ? 'https://tiktok.com/@'+p.social_tiktok : null},
-    {key:'social_instagram',label:'إنستا', color:'#E1306C', url: p.social_instagram ? 'https://instagram.com/'+p.social_instagram : null},
-    {key:'social_twitter', label:'تويتر', color:'#1DA1F2', url: p.social_twitter ? 'https://twitter.com/'+p.social_twitter : null},
-  ].filter(function(s){return !!p[s.key];});
+    {key:'social_whatsapp', label:'واتساب', color:'#25d366', url: _socUrl('social_whatsapp', p.social_whatsapp)},
+    {key:'social_snap',     label:'سناب',   color:'#FFFC00', textColor:'#000', url: _socUrl('social_snap', p.social_snap)},
+    {key:'social_tiktok',  label:'تيك توك',color:'#010101', url: _socUrl('social_tiktok', p.social_tiktok)},
+    {key:'social_instagram',label:'إنستا', color:'#E1306C', url: _socUrl('social_instagram', p.social_instagram)},
+    {key:'social_twitter', label:'إكس',    color:'#000',    url: _socUrl('social_twitter', p.social_twitter)},
+  ].filter(function(s){return !!s.url;});
 
   var socHtml = socLinks.length ?
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' +
@@ -671,12 +674,12 @@ async function viewProviderPortfolio(providerId) {
     '</div>' : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد صور</div>';
 
   var socLinks = [
-    {key:'social_whatsapp', label:'واتساب', color:'#25d366', url: p.social_whatsapp ? 'https://wa.me/'+p.social_whatsapp : null},
-    {key:'social_snap',     label:'سناب',   color:'#FFFC00', textColor:'#000', url: p.social_snap ? 'https://snapchat.com/add/'+p.social_snap : null},
-    {key:'social_tiktok',  label:'تيك توك',color:'#000',   url: p.social_tiktok ? 'https://tiktok.com/@'+p.social_tiktok : null},
-    {key:'social_instagram',label:'إنستا', color:'#E1306C', url: p.social_instagram ? 'https://instagram.com/'+p.social_instagram : null},
-    {key:'social_twitter', label:'تويتر', color:'#1DA1F2', url: p.social_twitter ? 'https://twitter.com/'+p.social_twitter : null},
-  ].filter(function(s){return !!p[s.key];});
+    {key:'social_whatsapp', label:'واتساب', color:'#25d366', url: _socUrl('social_whatsapp', p.social_whatsapp)},
+    {key:'social_snap',     label:'سناب',   color:'#FFFC00', textColor:'#000', url: _socUrl('social_snap', p.social_snap)},
+    {key:'social_tiktok',  label:'تيك توك',color:'#010101', url: _socUrl('social_tiktok', p.social_tiktok)},
+    {key:'social_instagram',label:'إنستا', color:'#E1306C', url: _socUrl('social_instagram', p.social_instagram)},
+    {key:'social_twitter', label:'إكس',    color:'#000',    url: _socUrl('social_twitter', p.social_twitter)},
+  ].filter(function(s){return !!s.url;});
 
   var socHtml = socLinks.length ?
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' +
