@@ -288,6 +288,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #pvOl, #cpOl { animation: fadeIn .2s; }
 @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
 @keyframes sp { to { transform:rotate(360deg) } }
+
+/* ══ SKELETON LOADING ══ */
+@keyframes shimmer{0%{background-position:-468px 0}100%{background-position:468px 0}}
+.sk{background:#eee;background-image:linear-gradient(to right,#ebebeb 8%,#d6d6d6 18%,#ebebeb 33%);background-size:800px 104px;border-radius:8px;animation:shimmer 1.2s ease-in-out infinite}
+.sk-line{height:14px;margin-bottom:8px;border-radius:6px}
+.sk-line.xl{height:22px;width:55%}
+.sk-line.lg{height:16px;width:65%}
+.sk-line.md{height:13px;width:80%}
+.sk-line.sm{height:11px;width:45%}
+.sk-av{width:48px;height:48px;min-width:48px;border-radius:50%}
+.sk-box{background:#fff;border:1px solid #e6e2d9;border-radius:14px;padding:14px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -766,9 +777,46 @@ function riCard(r,actions){
 }
 
 
+
+function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9;flex-shrink:0"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
+function _skHome(){
+  var h='<div style="background:#0D1829;padding:10px 18px 34px;position:relative;overflow:hidden;margin-bottom:0">';
+  h+='<div style="position:absolute;bottom:-1px;left:0;right:0;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0"></div>';
+  h+='<div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;padding:8px 0 16px">';
+  h+='<div class="sk sk-av" style="background:rgba(255,255,255,.15)"></div>';
+  h+='<div style="flex:1"><div class="sk sk-line lg" style="background:rgba(255,255,255,.12);margin-bottom:9px"></div>';
+  h+='<div class="sk sk-line sm" style="background:rgba(255,255,255,.08)"></div></div></div></div>';
+  h+='<div class="stat-grid" style="margin-top:-2px">';
+  for(var i=0;i<4;i++) h+='<div class="sc"><div class="sk sk-line xl" style="margin:0 auto 8px"></div><div class="sk sk-line sm" style="margin:0 auto;width:60%"></div></div>';
+  h+='</div>';
+  h+='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px;margin-top:16px">';
+  h+='<div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';
+  h+=_skRow()+_skRow()+_skRow();
+  h+='</div>';
+  return h;
+}
+function _skList(n){
+  var h='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px">';
+  h+='<div class="sk sk-line" style="width:130px;margin-bottom:14px"></div>';
+  for(var i=0;i<(n||4);i++) h+=_skRow();
+  h+='</div>';
+  return h;
+}
+function _skConvs(){
+  var h='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px">';
+  h+='<div class="sk sk-line" style="width:100px;margin-bottom:14px"></div>';
+  for(var i=0;i<5;i++){
+    h+='<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f0ece3">';
+    h+='<div class="sk sk-av"></div>';
+    h+='<div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div>';
+    h+='<div class="sk sk-line" style="width:28px"></div></div>';
+  }
+  h+='</div>';
+  return h;
+}
 function loadHome(){
   var _hEl=document.getElementById('home-reqs');
-  if(_hEl) _hEl.innerHTML=_skReqs(3);
+  if(_hEl) _hEl.innerHTML=_skList(3);
   _fetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){document.getElementById('home-reqs').innerHTML=errH();return;}
     document.getElementById('s-total').textContent=all.length;
@@ -780,7 +828,7 @@ function loadHome(){
   loadNotifCount();
 }
 function loadReqs(){
-  document.getElementById('all-reqs').innerHTML=_skReqs(5);
+  document.getElementById('all-reqs').innerHTML=_skList(5);
   _hideSpin();
   _fetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){document.getElementById('all-reqs').innerHTML=errH();return;}
@@ -821,7 +869,7 @@ function openDetail(id,e){
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:'+sz+'px">★</span>';return s;}
 
 async function loadBids(id){
-  document.getElementById('bids-list').innerHTML=_skReqs(3);
+  document.getElementById('bids-list').innerHTML=_skList(3);
   _hideSpin();
   var reqData={};
   try{
@@ -968,7 +1016,7 @@ function loadNotifCount(){_fetch('/api/notifications').then(function(ns){if(!Arr
 function loadNotifs(){
   var el=document.getElementById('notifs-list');
   if(!el) return;
-  el.innerHTML=_skReqs(4);
+  el.innerHTML=_skList(4);
   _fetch('/api/notifications').then(function(ns){if(!Array.isArray(ns)){el.innerHTML=emptyH('لا يوجد إشعارات','');return;}
     if(!ns.length){ el.innerHTML=emptyH('لا يوجد إشعارات',''); return; }
     el.innerHTML=ns.map(function(n){
@@ -998,7 +1046,7 @@ function fmtTxt(id,type){var el=document.getElementById(id);if(!el)return;var st
 function submitReq(){var title=document.getElementById('n-title').value.trim();var desc=document.getElementById('n-desc').value.trim();var city=document.getElementById('n-city').value;var cat=document.getElementById('n-cat').value;if(cat==='أخرى'){var oth=document.getElementById('n-other').value.trim();if(oth)cat='أخرى: '+oth;}if(!cat||cat===''){showNewMsg('يرجى اختيار التصنيف','err');document.getElementById('n-cat').focus();return;}if(!title||!desc||!city){showNewMsg('يرجى تعبئة العنوان والتفاصيل والمدينة','err');return;}var btn=document.getElementById('n-btn');btn.disabled=true;btn.textContent='جاري النشر...';const body={title,description:desc,category:cat,city,address:document.getElementById('n-address').value.trim(),budget_max:parseInt(document.getElementById('n-budget').value||0)||null,deadline:document.getElementById('n-deadline').value||null};if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});if(_reqImages.length)body.image_url=_reqImages[0].data;if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return{name:f.name,type:f.type,data:f.data};});fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){if(r.ok){showNewMsg('تم نشر طلبك بنجاح!','ok');['n-title','n-desc','n-address','n-budget','n-other'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('n-city').selectedIndex=0;document.getElementById('n-deadline').value='';_reqImages=[];_reqFiles=[];renderImgGrid();renderFilesList();setTimeout(function(){show('requests',null,'requests');},1600);}else{showNewMsg(r.d.message||'حدث خطأ','err');}btn.disabled=false;btn.textContent='نشر الطلب';}).catch(function(){showNewMsg('تعذر الاتصال','err');btn.disabled=false;btn.textContent='نشر الطلب';});}
 function showNewMsg(t,c){var e=document.getElementById('new-msg');e.textContent=t;e.className='alert '+c;setTimeout(function(){e.className='alert';},5000);}
 function loadProfile(){
-  document.getElementById('profile-content').innerHTML=_skReqs(3);
+  document.getElementById('profile-content').innerHTML=_skList(3);
   _hideSpin();
   fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
     var storedImg=p.profile_image||localStorage.getItem('client_avatar_'+user.id)||null;
@@ -1068,23 +1116,14 @@ setTimeout(function(){
 },0);
 
 // ── esc ──
-function _skReqs(n){
+function _skList(n){
   var s='<div class="card card-accent" style="margin-top:14px">';
   s+='<div class="ch"><div class="sk sk-line" style="width:120px"></div></div>';
   for(var i=0;i<(n||4);i++) s+='<div class="sk-card"><div style="width:4px;height:50px;border-radius:4px;background:var(--border);flex-shrink:0"></div><div class="sk-rect"><div class="sk sk-line md"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:50px"></div></div>';
   s+='</div>';
   return s;
 }
-function _skHome(){
-  var s='<div style="background:var(--p3);padding:10px 18px 34px;position:relative;overflow:hidden">';
-  s+='<div style="position:absolute;bottom:-1px;left:0;right:0;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0"></div>';
-  s+='<div style="padding:8px 0 16px;position:relative;z-index:1"><div class="sk sk-line lg" style="background:rgba(255,255,255,.15);margin-bottom:10px"></div>';
-  s+='<div class="sk sk-line sm" style="background:rgba(255,255,255,.1)"></div></div></div>';
-  s+='<div class="stat-grid" style="margin-top:-2px">';
-  for(var i=0;i<4;i++) s+='<div class="sc"><div class="sk sk-line" style="width:40px;margin:0 auto 6px"></div><div class="sk sk-line sm" style="width:60%;margin:0 auto"></div></div>';
-  s+='</div>'+_skReqs(3);
-  return s;
-}
+
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function _esc(s){return esc(s);}
 
