@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v2';
+var CACHE = 'manaqasa-v3';
 var STATIC = [
   './',
   './index.html',
@@ -6,8 +6,6 @@ var STATIC = [
   './dashboard-client.html',
   './dashboard-provider.html',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
   'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap'
 ];
 
@@ -38,23 +36,23 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
-// Fetch: cache-first for static, network-first for API
+// Fetch handler
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
 
-  // API calls — network only, no cache
-  if (url.includes('manaqasati-production') || url.includes('/api/')) {
-    e.respondWith(
-      fetch(e.request).catch(function() {
-        return new Response(JSON.stringify({ error: 'offline', message: 'لا يوجد اتصال بالإنترنت' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      })
-    );
-    return;
+  // ── API calls: NEVER intercept — go straight to network ──
+  if (
+    url.includes('manaqasati-production') ||
+    url.includes('railway.app') ||
+    url.includes('/api/')
+  ) {
+    return; // Don't call e.respondWith — browser handles it directly
   }
 
-  // Google Fonts — cache first
+  // ── Non-GET requests: pass through ──
+  if (e.request.method !== 'GET') return;
+
+  // ── Google Fonts: cache first ──
   if (url.includes('fonts.googleapis') || url.includes('fonts.gstatic')) {
     e.respondWith(
       caches.match(e.request).then(function(cached) {
@@ -69,7 +67,7 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // Static assets — cache first, fallback to network
+  // ── Static assets: cache first, fallback to network ──
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;
@@ -80,8 +78,8 @@ self.addEventListener('fetch', function(e) {
         }
         return res;
       }).catch(function() {
-        // Offline fallback for HTML pages
-        if (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html')) {
+        if (e.request.headers.get('accept') &&
+            e.request.headers.get('accept').includes('text/html')) {
           return caches.match('./auth.html');
         }
       });
