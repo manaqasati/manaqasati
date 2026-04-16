@@ -349,7 +349,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <div class="main">
-  <div class="topbar">
+  <div id="page-spinner"><div class="ps-ring"></div><div class="ps-txt">جاري التحميل</div></div>
+<div class="topbar">
     <div class="topbar-left">
       <div class="topbar-title" id="pageTitle">الرئيسية</div>
     </div>
@@ -660,6 +661,8 @@ var sel=document.getElementById('n-cat');
 var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر التصنيف';sel.appendChild(defOpt);
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
+function _showSpin(){var s=document.getElementById('page-spinner');if(s)s.className='show';}
+function _hideSpin(){var s=document.getElementById('page-spinner');if(s)s.className='';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
 function _fetch(path,opts){
   var options=Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{});
@@ -676,6 +679,10 @@ _fetch('/api/client/profile').then(function(p){if(!p)return;
 
 // ══ show() — مع حفظ الصفحة في sessionStorage ══
 function show(pg,el,key){
+  _showSpin();
+  setTimeout(function(){_showInner(pg,el,key);},30);
+}
+function _showInner(pg,el,key){
   try{
     if(pg!=="detail"&&pg!=="new"){
       history.replaceState(null,"","#"+pg);
@@ -767,6 +774,7 @@ function loadHome(){
 }
 function loadReqs(){
   document.getElementById('all-reqs').innerHTML=_skReqs(5);
+  _hideSpin();
   _fetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){document.getElementById('all-reqs').innerHTML=errH();return;}
     document.getElementById('all-reqs').innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
@@ -798,6 +806,7 @@ function openDetail(id,e){
     '</div>':'';
     document.getElementById('detail-head').innerHTML='<div class="req-detail-head"><div class="rdh-title">'+req.title+'</div><div class="rdh-meta">'+(req.city?'<span>'+req.city+'</span>':'')+(req.category?'<span>'+req.category+'</span>':'')+(req.budget_max?'<span>'+req.budget_max+' ر.س</span>':'')+(req.deadline?'<span>انتهاء: '+fmtDate(req.deadline)+'</span>':'')+stTag(req.status)+'</div>'+(req.description?'<div class="rdh-desc">'+req.description+'</div>':'')+imgsHtml+attsHtml+'<input type="file" id="req-img-inp" accept="image/*" multiple style="display:none" onchange="uploadReqImgs(this)"><input type="file" id="req-att-inp" accept=".pdf,image/*" multiple style="display:none" onchange="uploadReqAtts(this)"></div>';
     show('detail',null,null);
+    _hideSpin();
     loadBids(id);
   });
 }
@@ -806,6 +815,7 @@ function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<sp
 
 async function loadBids(id){
   document.getElementById('bids-list').innerHTML=_skReqs(3);
+  _hideSpin();
   var reqData={};
   try{
     reqData=await fetch(API+'/api/requests/'+id).then(function(r){return r.json();});
@@ -830,6 +840,7 @@ async function loadBids(id){
 
   document.getElementById('bids-list').innerHTML=bids.map(function(b){
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
+  _hideSpin();
     var avgR=parseFloat(b.avg_rating)||0;
     var reviewCount=parseInt(b.review_count)||0;
     var ratingHtml=avgR>0?starsHtml(avgR,false)+'<span style="font-size:10px;color:rgba(255,255,255,.6);margin-right:3px">('+reviewCount+')</span>':'<span style="font-size:10px;color:rgba(255,255,255,.5)">لا يوجد تقييمات</span>';
@@ -981,6 +992,7 @@ function submitReq(){var title=document.getElementById('n-title').value.trim();v
 function showNewMsg(t,c){var e=document.getElementById('new-msg');e.textContent=t;e.className='alert '+c;setTimeout(function(){e.className='alert';},5000);}
 function loadProfile(){
   document.getElementById('profile-content').innerHTML=_skReqs(3);
+  _hideSpin();
   fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
     var storedImg=p.profile_image||localStorage.getItem('client_avatar_'+user.id)||null;
     if(p.profile_image)localStorage.setItem('client_avatar_'+user.id,p.profile_image);
