@@ -21,9 +21,9 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 
-#nprogress{position:fixed;top:0;left:0;right:0;height:3px;z-index:99999;pointer-events:none}
-#nprogress .bar{background:var(--gold);height:3px;position:absolute;top:0;left:0;width:0;transition:width .2s ease}
-#nprogress .peg{position:absolute;right:0;top:0;width:100px;height:100%;box-shadow:0 0 10px var(--gold),0 0 5px var(--gold);opacity:1;transform:rotate(3deg) translate(0,-4px)}
+
+
+
 @keyframes npfade{0%{opacity:1}100%{opacity:0}}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .side{width:260px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(27,58,107,0.07)}
@@ -186,8 +186,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* ══ SKELETON LOADING ══ */
-@keyframes shimmer{0%{background-position:-468px 0}100%{background-position:468px 0}}
+
 .sk{background:#eee;background-image:linear-gradient(to right,#ebebeb 8%,#d6d6d6 18%,#ebebeb 33%);background-size:800px 104px;border-radius:8px;animation:shimmer 1.2s ease-in-out infinite}
 .sk-line{height:14px;margin-bottom:8px;border-radius:6px}
 .sk-line.xl{height:22px;width:55%}
@@ -196,6 +195,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .sk-line.sm{height:11px;width:45%}
 .sk-av{width:48px;height:48px;min-width:48px;border-radius:50%}
 .sk-box{background:#fff;border:1px solid #e6e2d9;border-radius:14px;padding:14px;margin-bottom:8px}
+
+/* ══ LOADING BAR ══ */
+#lbar-wrap{position:fixed;top:0;left:0;right:0;z-index:99999;height:4px;background:rgba(0,0,0,.08);display:none}
+#lbar-wrap.on{display:block}
+#lbar{height:4px;width:0%;background:var(--gold);border-radius:0 2px 2px 0;transition:width .3s ease;box-shadow:0 0 8px var(--gold)}
+
 </style>
 </head>
 <body>
@@ -336,9 +341,16 @@ var _pCache={},_allProjs=[],_myBids=[],_myProjs=[];
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
 var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','جدة','مكة المكرمة','الطائف','رابغ','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','المدينة المنورة','ينبع','العلا','بريدة','عنيزة','أبها','خميس مشيط','تبوك','حائل','عرعر','سكاكا','الباحة','جازان','نجران'];
 
-var _np={t:null,v:0,start:function(){this.v=10;this._set(10);this._inc();},done:function(){clearTimeout(this.t);this._set(100);var el=document.getElementById('nprogress');if(el){setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.style.opacity='';var b=el.querySelector('.bar');if(b)b.style.width='0';},300);},200);}},_set:function(v){var b=document.querySelector('#nprogress .bar');if(b)b.style.width=v+'%';},_inc:function(){if(this.v<90){this.v+=Math.random()*10+5;if(this.v>90)this.v=90;this._set(this.v);this.t=setTimeout(this._inc.bind(this),300+Math.random()*300);}}};
-function _showSpin(){_np.start();}
-function _hideSpin(){_np.done();}
+
+
+
+var _lb={el:null,wrap:null,t:null,v:0,
+  init:function(){this.el=document.getElementById('lbar');this.wrap=document.getElementById('lbar-wrap');},
+  start:function(){if(!this.el)this.init();clearTimeout(this.t);this.v=5;if(this.wrap)this.wrap.className='on';this._set(5);this._run();},
+  done:function(){clearTimeout(this.t);this._set(100);var self=this;setTimeout(function(){if(self.wrap)self.wrap.className='';self._set(0);},400);},
+  _set:function(v){if(this.el)this.el.style.width=v+'%';},
+  _run:function(){var self=this;if(self.v<90){self.v+=Math.random()*12+3;if(self.v>90)self.v=90;self._set(self.v);self.t=setTimeout(function(){self._run();},200+Math.random()*200);}}
+};
 function _el(id){return document.getElementById(id);}
 
 
@@ -1282,6 +1294,7 @@ function openImgFull(src){
 }
 </script>
 
-<div id="nprogress"><div class="bar"><div class="peg"></div></div></div>
+
+<div id="lbar-wrap"><div id="lbar"></div></div>
 </body>
 </html>
