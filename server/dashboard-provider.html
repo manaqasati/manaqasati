@@ -306,6 +306,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <script>
 'use strict';
 var API='https://manaqasati-production.up.railway.app';
+// ── Kill old SW → reload ──
+if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    Promise.all(regs.map(function(r){return r.unregister();})).then(function(){location.reload();});
+  });
+}
 var _token=localStorage.getItem('token')||'';
 var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
@@ -316,6 +322,7 @@ function _el(id){return document.getElementById(id);}
 function _esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function _fpr(p){return p?Number(p).toLocaleString('en-US')+' ر.س':'—';}
 function _fdt(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
+function _ago(d){if(!d)return'';var diff=(Date.now()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
 function _stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:13px">★</span>';return s;}
 function _empty(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
 var _WA='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>';
@@ -412,10 +419,12 @@ async function loadChat(){
   }catch(e){ console.warn('loadChat err:',e); }
   _wsConnect();
 
-  var html='<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div></div>';
-  html+='<div class="card card-accent"><div class="cb">';
-  if(convs && convs.length){
-    convs.forEach(function(cv){
+  var html='';
+  try{
+    html='<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div></div>';
+    html+='<div class="card card-accent"><div class="cb">';
+    if(convs && convs.length){
+      convs.forEach(function(cv){
       var unread=parseInt(cv.unread)>0;
       var initials=(cv.client_name||'ع')[0];
       html+='<div class="conv-item'+(unread?' unread':'')+'" data-reqid="'+cv.request_id+'" data-cid="'+cv.client_id+'" data-cname="'+_esc(cv.client_name||'عميل')+'" data-title="'+_esc(cv.request_title||'')+'" onclick="_convClick(this)">'+
@@ -433,7 +442,11 @@ async function loadChat(){
   } else {
     html+=_empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');
   }
-  html+='</div></div>';
+    html+='</div></div>';
+  }catch(buildErr){
+    console.error('loadChat build error:',buildErr);
+    html='<div style="padding:20px;text-align:center;color:var(--red)">خطأ في التحميل: '+buildErr.message+'</div>';
+  }
   pg.innerHTML=html;
   _loadChatBadge();
 }
