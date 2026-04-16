@@ -328,218 +328,180 @@ var _tTimer;
 function showToast(msg,type){var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');if(!el)return;ic.textContent=type==='success'?'✓':type==='error'?'✕':'i';ic.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';tm.textContent=msg;el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';clearTimeout(_tTimer);_tTimer=setTimeout(function(){el.style.opacity='0';el.style.transform='translateX(-50%) translateY(14px)';},3200);}
 function openModal(title,body,foot,iconSvg,iconBg){_el('mTit').textContent=title;_el('mBd').innerHTML=body;_el('mFt').innerHTML=foot||'';var ic=_el('mIc');ic.innerHTML=iconSvg||'';ic.style.background=iconBg||'var(--p-light)';_el('ov').classList.add('show');}
 function closeModal(){_el('ov').classList.remove('show');}
-// ══════════════════════════════════════════════════════
-// CHAT + PUSH NOTIFICATIONS
-// ══════════════════════════════════════════════════════
 
-// ── WebSocket ──
-var _ws = null, _wsReqId = null, _wsReceiverId = null;
-var _chatPolling = null;
+// ══ CHAT (PROVIDER) ══
+var _ws=null, _wsReqId=null, _wsReceiverId=null, _chatMsgs=[], _chatPolling=null;
 
 function _wsConnect(){
-  if(_ws && _ws.readyState <= 1) return;
-  var wsUrl = API.replace('https://','wss://').replace('http://','ws://') + '?token=' + _token;
+  if(_ws&&_ws.readyState<=1) return;
   try{
-    _ws = new WebSocket(wsUrl);
-    _ws.onopen = function(){ console.log('WS connected'); };
-    _ws.onmessage = function(e){
+    _ws=new WebSocket(API.replace('https://','wss://').replace('http://','ws://')+'?token='+_token);
+    _ws.onmessage=function(e){
       try{
-        var data = JSON.parse(e.data);
-        if(data.type === 'message'){
-          var msg = data.message;
-          // If chat is open for this request, append msg
-          if(_wsReqId && msg.request_id == _wsReqId){
-            _appendMsg(msg, false);
-          }
-          // Update unread badge
+        var d=JSON.parse(e.data);
+        if(d.type==='message'&&d.message&&_wsReqId&&d.message.request_id==_wsReqId){
+          var exists=_chatMsgs.some(function(m){return m.id===d.message.id;});
+          if(!exists){_chatMsgs.push(d.message);_renderChatMsgs(_chatMsgs);}
+        }
+        if(d.type==='message'&&d.message&&d.message.sender_id!=_me.id){
           _loadChatBadge();
-          // Browser notification
-          if(msg.sender_id != _me.id){
-            _browserNotif('💬 رسالة جديدة من ' + (msg.sender_name||'العميل'), msg.content||'');
+          if('Notification' in window&&Notification.permission==='granted'){
+            try{new Notification('💬 '+(_me.name||'رسالة جديدة'),{body:d.message.content||'',dir:'rtl'});}catch(ex){}
           }
         }
-        if(data.type === 'new_request'){
-          // New project notification for provider
-          _loadNotifCount();
-          _browserNotif('🔔 مشروع جديد', data.title || 'تحقق من التصفح');
-        }
-      }catch(e){}
+      }catch(ex){}
     };
-    _ws.onerror = function(){ /* silent */ };
-    _ws.onclose = function(){ _ws=null; setTimeout(_wsConnect, 5000); };
-  }catch(e){}
-}
-
-function _wsSend(reqId, receiverId, content){
-  if(_ws && _ws.readyState === 1){
-    _ws.send(JSON.stringify({type:'message', request_id:reqId, receiver_id:receiverId, content:content}));
-    return true;
-  }
-  return false;
-}
-
-// ── Browser Notifications ──
-function _requestNotifPerm(){
-  if('Notification' in window && Notification.permission === 'default'){
-    setTimeout(function(){
-      Notification.requestPermission();
-    }, 3000);
-  }
-}
-
-function _browserNotif(title, body){
-  if('Notification' in window && Notification.permission === 'granted'){
-    try{
-      var n = new Notification(title, {body: body, icon: '/icon-192.png', dir: 'rtl', lang: 'ar'});
-      setTimeout(function(){ n.close(); }, 5000);
-    }catch(e){}
-  }
-}
-
-// ── Chat Badge ──
-async function _loadChatBadge(){
-  try{
-    var convs = await _api('/api/provider/conversations') || [];
-    var unread = convs.filter(function(c){ return parseInt(c.unread) > 0; }).length;
-    var b1 = _el('nb-chat'); if(b1){ b1.style.display=unread?'':'none'; b1.textContent=unread; }
-    var b2 = _el('bn-chat-badge'); if(b2){ b2.style.display=unread?'flex':'none'; b2.textContent=unread; }
-  }catch(e){}
-}
-
-// ── Load Conversations List ──
-async function loadChat(){
-  var pg = _el('page-chat'); if(!pg) return;
-  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
-  _wsConnect();
-  var convs = await _api('/api/provider/conversations') || [];
-
-  var html = '<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">' + convs.length + ' محادثة</div></div></div>';
-  html += '<div class="card card-accent">';
-  if(convs.length){
-    html += '<div class="cb">';
-    convs.forEach(function(cv){
-      var unread = parseInt(cv.unread) > 0;
-      var initials = (cv.client_name||'ع')[0];
-      html += '<div class="conv-item' + (unread?' unread':'') + '" onclick="openChatRoom(' + cv.request_id + ',' + cv.client_id + ',\'' + (cv.client_name||'').replace(/'/g,'') + '\',\'' + (cv.request_title||'').replace(/'/g,'') + '\')">';
-      html += '<div class="conv-av">';
-      if(cv.client_image) html += '<img src="' + cv.client_image + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-      else html += initials;
-      html += '<div class="conv-unread-dot"></div></div>';
-      html += '<div style="flex:1;min-width:0">';
-      html += '<div class="conv-name">' + _esc(cv.client_name||'عميل') + '</div>';
-      html += '<div class="conv-last">' + _esc(cv.last_message||'') + '</div>';
-      html += '</div>';
-      html += '<div class="conv-time">' + _ago(cv.last_time) + '</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-  } else {
-    html += _empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');
-  }
-  html += '</div>';
-  pg.innerHTML = html;
-  _loadChatBadge();
-}
-
-// ── Open Chat Room ──
-var _chatMessages = [];
-async function openChatRoom(reqId, receiverId, receiverName, reqTitle){
-  _wsReqId = reqId;
-  _wsReceiverId = receiverId;
-  _wsConnect();
-
-  var pg = _el('page-chat');
-  if(!pg) return;
-
-  // Show chat UI
-  pg.innerHTML =
-    '<div class="chat-box">' +
-      '<div class="chat-header">' +
-        '<button class="chat-back" onclick="loadChat()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>' +
-        '<div>' +
-          '<div class="chat-header-name">' + _esc(receiverName) + '</div>' +
-          '<div class="chat-header-proj">' + _esc(reqTitle) + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="chat-msgs" id="chat-msgs-wrap"><div class="loading">جاري التحميل...</div></div>' +
-      '<div class="chat-input-wrap">' +
-        '<textarea class="chat-inp" id="chat-msg-inp" placeholder="اكتب رسالتك..." rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendChatMsg();}"></textarea>' +
-        '<button class="chat-send-btn" onclick="_sendChatMsg()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
-      '</div>' +
-    '</div>';
-
-  // Load messages
-  var msgs = await _api('/api/messages/' + reqId) || [];
-  _chatMessages = msgs;
-  _renderChatMsgs(msgs);
-  _loadChatBadge();
-
-  // Start polling fallback
-  clearInterval(_chatPolling);
-  _chatPolling = setInterval(async function(){
-    var newMsgs = await _api('/api/messages/' + reqId) || [];
-    if(newMsgs.length !== _chatMessages.length){
-      _chatMessages = newMsgs;
-      _renderChatMsgs(newMsgs);
-    }
-  }, 4000);
+    _ws.onerror=_ws.onclose=function(){_ws=null;};
+  }catch(e){_ws=null;}
 }
 
 function _renderChatMsgs(msgs){
-  var wrap = _el('chat-msgs-wrap'); if(!wrap) return;
-  if(!msgs.length){
-    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px">ابدأ المحادثة</div>';
+  var wrap=_el('chat-msgs-wrap');if(!wrap)return;
+  if(!msgs||!msgs.length){
+    wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">ابدأ المحادثة</div>';
     return;
   }
-  wrap.innerHTML = msgs.map(function(m){
-    var isMe = m.sender_id == _me.id;
-    return '<div style="display:flex;flex-direction:column;align-items:' + (isMe?'flex-end':'flex-start') + '">' +
-      '<div class="msg-bubble ' + (isMe?'msg-me':'msg-other') + '">' +
-        (!isMe?'<div class="msg-time" style="margin-bottom:3px;text-align:right;opacity:.55;font-size:10px">' + _esc(m.sender_name||'') + '</div>':'') +
-        _esc(m.content) +
-        '<div class="msg-time">' + _ago(m.created_at) + '</div>' +
-      '</div>' +
-    '</div>';
+  wrap.innerHTML=msgs.map(function(m){
+    var isMe=(m.sender_id==_me.id);
+    return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:6px">'+
+      '<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'16px 16px 4px 16px':'16px 16px 16px 4px')+';background:'+(isMe?'var(--p3)':'var(--white)')+';color:'+(isMe?'#fff':'var(--text)')+';border:'+(isMe?'none':'1px solid var(--border)')+';font-size:13px;line-height:1.6;word-break:break-word">'+
+        (!isMe?'<div style="font-size:10px;opacity:.55;margin-bottom:3px">'+_esc(m.sender_name||'')+'</div>':'')+
+        _esc(m.content)+
+        '<div style="font-size:10px;opacity:.45;margin-top:3px;text-align:left">'+_ago(m.created_at)+'</div>'+
+      '</div></div>';
   }).join('');
-  wrap.scrollTop = wrap.scrollHeight;
+  wrap.scrollTop=wrap.scrollHeight;
 }
 
-function _appendMsg(msg, scrollOnly){
-  _chatMessages.push(msg);
-  _renderChatMsgs(_chatMessages);
+async function _loadChatBadge(){
+  try{
+    var convs=await _api('/api/provider/conversations')||[];
+    var unread=convs.filter(function(c){return parseInt(c.unread)>0;}).length;
+    var b1=_el('nb-chat');if(b1){b1.style.display=unread?'':'none';b1.textContent=unread;}
+    var b2=_el('bn-chat-badge');if(b2){b2.style.display=unread?'flex':'none';b2.textContent=unread;}
+  }catch(e){}
+}
+
+async function loadChat(){
+  var pg=_el('page-chat');if(!pg)return;
+  pg.innerHTML='<div class="loading">جاري التحميل...</div>';
+  _wsConnect();
+  var convs=await _api('/api/provider/conversations')||[];
+  _chatMsgs=[]; _wsReqId=null; _wsReceiverId=null;
+  clearInterval(_chatPolling);
+
+  var html='<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div></div>';
+  html+='<div class="card card-accent"><div class="cb">';
+  if(convs.length){
+    convs.forEach(function(cv){
+      var unread=parseInt(cv.unread)>0;
+      var initials=(cv.client_name||'ع')[0];
+      html+='<div class="conv-item'+(unread?' unread':'')+'" data-reqid="'+cv.request_id+'" data-cid="'+cv.client_id+'" data-cname="'+_esc(cv.client_name||'عميل')+'" data-title="'+_esc(cv.request_title||'')+'" onclick="_convClick(this)">'+
+        '<div class="conv-av">'+
+          (cv.client_image?'<img src="'+cv.client_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':initials)+
+          '<div class="conv-unread-dot"></div>'+
+        '</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="conv-name">'+_esc(cv.client_name||'عميل')+'</div>'+
+          '<div class="conv-last">'+_esc(cv.last_message||'')+'</div>'+
+        '</div>'+
+        '<div class="conv-time">'+_ago(cv.last_time)+'</div>'+
+      '</div>';
+    });
+  } else {
+    html+=_empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');
+  }
+  html+='</div></div>';
+  pg.innerHTML=html;
+  _loadChatBadge();
+}
+
+function _convClick(el){
+  var reqId=parseInt(el.dataset.reqid),cid=parseInt(el.dataset.cid),cname=el.dataset.cname,title=el.dataset.title;
+  openChatRoom(reqId,cid,cname,title);
+}
+async function openChatRoom(reqId, receiverId, receiverName, reqTitle){
+  reqId=parseInt(reqId); receiverId=parseInt(receiverId);
+  _wsReqId=reqId; _wsReceiverId=receiverId;
+  _chatMsgs=[];
+  clearInterval(_chatPolling);
+  _wsConnect();
+
+  var pg=_el('page-chat');if(!pg)return;
+  pg.innerHTML=
+    '<div class="chat-box">'+
+      '<div class="chat-header">'+
+        '<button class="chat-back" onclick="loadChat()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>'+
+        '<div>'+
+          '<div class="chat-header-name">'+_esc(receiverName||'العميل')+'</div>'+
+          '<div class="chat-header-proj">'+_esc(reqTitle||'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="chat-msgs" id="chat-msgs-wrap"><div class="loading">جاري التحميل...</div></div>'+
+      '<div class="chat-input-wrap">'+
+        '<textarea class="chat-inp" id="chat-msg-inp" placeholder="اكتب رسالتك..." rows="1" style="resize:none;max-height:80px"></textarea>'+
+        '<button class="chat-send-btn" id="chat-send-btn" onclick="_sendChatMsg()">'+
+          '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'+
+        '</button>'+
+      '</div>'+
+    '</div>';
+
+  // Wire Enter key
+  var inp=_el('chat-msg-inp');
+  if(inp) inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
+
+  // Load messages
+  try{
+    var msgs=await _api('/api/messages/'+reqId)||[];
+    _chatMsgs=Array.isArray(msgs)?msgs:[];
+    _renderChatMsgs(_chatMsgs);
+  }catch(ex){
+    var w=_el('chat-msgs-wrap');
+    if(w) w.innerHTML='<div style="text-align:center;padding:20px;color:var(--red)">تعذر التحميل</div>';
+  }
+
+  // Poll every 5s
+  _chatPolling=setInterval(async function(){
+    if(_curPage!=='chat'){clearInterval(_chatPolling);return;}
+    try{
+      var msgs=await _api('/api/messages/'+reqId)||[];
+      if(Array.isArray(msgs)&&msgs.length!==_chatMsgs.length){_chatMsgs=msgs;_renderChatMsgs(_chatMsgs);}
+    }catch(ex){}
+  },5000);
 }
 
 async function _sendChatMsg(){
-  var inp = _el('chat-msg-inp'); if(!inp) return;
-  var content = inp.value.trim(); if(!content) return;
-  inp.value = '';
+  var inp=_el('chat-msg-inp');if(!inp)return;
+  var content=inp.value.trim();if(!content)return;
+  var btn=_el('chat-send-btn');
+  inp.value='';if(btn)btn.disabled=true;
 
-  var tempMsg = {id:'tmp_'+Date.now(), sender_id:_me.id, sender_name:_me.name, content:content, created_at:new Date().toISOString(), request_id:_wsReqId};
-
-  // Try WebSocket first
-  var sent = _wsSend(_wsReqId, _wsReceiverId, content);
-
-  if(!sent){
-    // Fallback to HTTP
-    var r = await _api('/api/messages', {method:'POST', body:JSON.stringify({request_id:_wsReqId, receiver_id:_wsReceiverId, content:content})});
-    if(r && r.id){
-      _appendMsg(Object.assign(tempMsg, r), false);
-    } else {
-      showToast('فشل إرسال الرسالة','error');
-      return;
-    }
-  } else {
-    _appendMsg(tempMsg, false);
+  // Try WS
+  if(_ws&&_ws.readyState===1){
+    try{_ws.send(JSON.stringify({type:'message',request_id:_wsReqId,receiver_id:_wsReceiverId,content:content}));}catch(e){}
   }
+
+  // HTTP (primary save)
+  try{
+    var r=await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_wsReqId,receiver_id:_wsReceiverId,content:content})});
+    if(r&&r.id){
+      var exists=_chatMsgs.some(function(m){return m.id===r.id;});
+      if(!exists){_chatMsgs.push(r);_renderChatMsgs(_chatMsgs);}
+    }
+  }catch(ex){}
+
+  if(btn)btn.disabled=false;
 }
 
-// ── Push on new request ──
-async function _checkNewRequests(){
-  try{
-    var open = await _api('/api/requests?status=open&limit=1') || [];
-    // Just trigger badge update
-    _loadNotifCount();
-  }catch(e){}
+function _openProvChat(reqId,clientId,clientName,reqTitle){
+  gotoPage('chat');
+  setTimeout(function(){openChatRoom(reqId,clientId,clientName,reqTitle);},100);
+}
+
+function _requestNotifPerm(){
+  if('Notification' in window&&Notification.permission==='default'){
+    setTimeout(function(){Notification.requestPermission();},3000);
+  }
 }
 
 
