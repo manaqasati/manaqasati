@@ -592,7 +592,7 @@ function _renderRequests(list){
   else {
     list.forEach(function(r){
       var isRev=r.status==='pending_review';
-      html+='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:'+(isRev?'var(--gold-l)':'#fff')+'">';
+      html+='<div style="background:'+(isRev?'var(--gold-l)':'var(--white)')+';border-radius:12px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden"><div style="width:4px;flex-shrink:0;background:'+(isRev?'var(--gold)':'var(--border)')+'"></div><div style="flex:1;padding:13px 14px">';
       html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">';
       html+='<div style="flex:1;min-width:0">';
       html+='<div style="font-size:11px;color:var(--hint);margin-bottom:3px">'+(r.project_number||'—')+' · '+_ago(r.created_at)+'</div>';
@@ -857,7 +857,9 @@ async function loadReviews(){
   pg.innerHTML='<div class="pghd"><div><div class="pg-t">التقييمات</div><div class="pg-s">'+list.length+' تقييم</div></div></div>'+
     '<div class="card card-accent"><div class="cb">'+
     (list.length?list.map(function(r){
-      return '<div style="border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+      return '<div style="background:var(--white);border-radius:12px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden">'+
+        '<div style="width:4px;flex-shrink:0;background:var(--gold)"></div>'+
+        '<div style="flex:1;padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
         '<div style="flex:1;min-width:0">'+
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
             '<div style="font-size:13px;font-weight:800;color:var(--text)">'+_esc(r.reviewer_name||'—')+'</div>'+
