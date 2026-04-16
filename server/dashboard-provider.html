@@ -240,7 +240,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <div class="main">
-  <div class="topbar">
+  <div id="page-spinner"><div class="ps-ring"></div><div class="ps-txt">جاري التحميل</div></div>
+<div class="topbar">
     <div class="topbar-left"><div class="topbar-title" id="pageTitle">الرئيسية</div></div>
     <button class="btn-new" onclick="gotoPage('browse')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>تصفح المشاريع</button>
   </div>
@@ -318,6 +319,8 @@ if(!_token||_me.role!=='provider'){location.href='auth.html';}
 var _pCache={},_allProjs=[],_myBids=[],_myProjs=[];
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
 var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','جدة','مكة المكرمة','الطائف','رابغ','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','المدينة المنورة','ينبع','العلا','بريدة','عنيزة','أبها','خميس مشيط','تبوك','حائل','عرعر','سكاكا','الباحة','جازان','نجران'];
+function _showSpin(){var s=document.getElementById('page-spinner');if(s)s.className='show';}
+function _hideSpin(){var s=document.getElementById('page-spinner');if(s)s.className='';}
 function _el(id){return document.getElementById(id);}
 function _skHome(){
   var s='';
@@ -491,6 +494,7 @@ async function loadChat(){
     html='<div style="padding:20px;text-align:center;color:var(--red)">خطأ في التحميل: '+buildErr.message+'</div>';
   }
   pg.innerHTML=html;
+  _hideSpin();
   _loadChatBadge();
 }
 
@@ -585,7 +589,11 @@ function _setAvatar(img){['userAv','mobAv'].forEach(function(id){var el=_el(id);
 (function(){var av=_el('userAv');if(av)av.textContent=(_me.name||'م')[0];var un=_el('userName');if(un)un.textContent=_me.name||'المزود';var ma=_el('mobAv');if(ma)ma.textContent=(_me.name||'م')[0];var cached=localStorage.getItem('pav_'+_me.id);if(cached)_setAvatar(cached);_api('/api/provider/profile').then(function(p){if(p&&p.profile_image){localStorage.setItem('pav_'+_me.id,p.profile_image);_setAvatar(p.profile_image);}});})();
 var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',portfolio:'معرض أعمالي',chat:'المحادثات'};
 var _curPage='home';
-function gotoPage(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();if(page==='chat')loadChat();}
+function gotoPage(page){
+  _showSpin();
+  setTimeout(function(){_gotoPageInner(page);},30);
+}
+function _gotoPageInner(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();if(page==='chat')loadChat();}
 async function loadHome(){
   var pg=_el('page-home'); if(!pg) return;
   pg.innerHTML=_skHome();
@@ -656,6 +664,7 @@ async function loadHome(){
   html+='</div>';
 
   pg.innerHTML=html;
+  _hideSpin();
   _loadNotifCount();
 }
 async function loadBrowse(){var pg=_el('page-browse');if(!pg)return;pg.innerHTML='<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div></div></div>'+_skList(5);try{_allProjs=await _api('/api/requests')||[];}catch(e){_allProjs=[];}var open=_allProjs.filter(function(p){return p.status==='open';});var nb=_el('nb-open');if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}pg.innerHTML='<div class="pghd"><div><div class="pg-t">تصفح المشاريع</div><div class="pg-s">'+open.length+' مشروع متاح</div></div></div><div class="card card-accent"><div class="cb"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px"><svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div><select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option>'+CATS.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select><select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option>'+CITIES.map(function(c){return'<option>'+c+'</option>';}).join('')+'</select></div><div id="bList">'+_renderBrowse(open)+'</div></div></div>';}
@@ -806,6 +815,7 @@ async function loadReviews(){
   }
   html+='</div></div>';
   pg.innerHTML=html;
+  _hideSpin();
 }
 async function loadNotifs(){
   var pg=_el('page-notifs'); if(!pg) return;
@@ -833,6 +843,7 @@ async function loadNotifs(){
   }
   html+='</div></div>';
   pg.innerHTML=html;
+  _hideSpin();
   _api('/api/provider/notifications/read',{method:'PUT'});
   var b1=_el('nb-notif'); if(b1) b1.style.display='none';
   var b2=_el('mob-nb'); if(b2) b2.style.display='none';
