@@ -213,6 +213,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <button class="ni" id="ni-browse" onclick="gotoPage('browse')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>تصفح المشاريع<span class="badge" id="nb-open" style="display:none">0</span></button>
     <button class="ni" id="ni-works" onclick="gotoPage('works')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>مشاريعي وعروضي</button>
     <div class="nav-sec">الحساب</div>
+    <button class="ni" id="ni-chat" onclick="gotoPage('chat')">
+      <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>المحادثات<span class="badge" id="nb-chat" style="display:none">0</span>
+    </button>
     <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي</button>
     <button class="ni" id="ni-profile" onclick="gotoPage('profile')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
     <button class="ni" id="ni-portfolio" onclick="gotoPage('portfolio')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>معرض أعمالي</button>
@@ -249,6 +252,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="page" id="page-notifs"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-profile"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-portfolio"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-chat"></div>
   </div>
 </div>
 
@@ -265,6 +269,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <button class="bni" id="bn-works" onclick="gotoPage('works')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
     <span class="bt">مشاريعي</span>
+  </button>
+  <button class="bni" id="bn-chat" onclick="gotoPage('chat')">
+    <div class="bic" style="position:relative">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="bni-badge" id="bn-chat-badge" style="display:none">0</span>
+    </div>
+    <span class="bt">محادثات</span>
   </button>
   <button class="bni" id="bn-profile" onclick="gotoPage('profile')">
     <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
@@ -317,15 +328,230 @@ var _tTimer;
 function showToast(msg,type){var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');if(!el)return;ic.textContent=type==='success'?'✓':type==='error'?'✕':'i';ic.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';tm.textContent=msg;el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';clearTimeout(_tTimer);_tTimer=setTimeout(function(){el.style.opacity='0';el.style.transform='translateX(-50%) translateY(14px)';},3200);}
 function openModal(title,body,foot,iconSvg,iconBg){_el('mTit').textContent=title;_el('mBd').innerHTML=body;_el('mFt').innerHTML=foot||'';var ic=_el('mIc');ic.innerHTML=iconSvg||'';ic.style.background=iconBg||'var(--p-light)';_el('ov').classList.add('show');}
 function closeModal(){_el('ov').classList.remove('show');}
+// ══════════════════════════════════════════════════════
+// CHAT + PUSH NOTIFICATIONS
+// ══════════════════════════════════════════════════════
+
+// ── WebSocket ──
+var _ws = null, _wsReqId = null, _wsReceiverId = null;
+var _chatPolling = null;
+
+function _wsConnect(){
+  if(_ws && _ws.readyState <= 1) return;
+  var wsUrl = API.replace('https://','wss://').replace('http://','ws://') + '?token=' + _token;
+  try{
+    _ws = new WebSocket(wsUrl);
+    _ws.onopen = function(){ console.log('WS connected'); };
+    _ws.onmessage = function(e){
+      try{
+        var data = JSON.parse(e.data);
+        if(data.type === 'message'){
+          var msg = data.message;
+          // If chat is open for this request, append msg
+          if(_wsReqId && msg.request_id == _wsReqId){
+            _appendMsg(msg, false);
+          }
+          // Update unread badge
+          _loadChatBadge();
+          // Browser notification
+          if(msg.sender_id != _me.id){
+            _browserNotif('💬 رسالة جديدة من ' + (msg.sender_name||'العميل'), msg.content||'');
+          }
+        }
+        if(data.type === 'new_request'){
+          // New project notification for provider
+          _loadNotifCount();
+          _browserNotif('🔔 مشروع جديد', data.title || 'تحقق من التصفح');
+        }
+      }catch(e){}
+    };
+    _ws.onerror = function(){ /* silent */ };
+    _ws.onclose = function(){ _ws=null; setTimeout(_wsConnect, 5000); };
+  }catch(e){}
+}
+
+function _wsSend(reqId, receiverId, content){
+  if(_ws && _ws.readyState === 1){
+    _ws.send(JSON.stringify({type:'message', request_id:reqId, receiver_id:receiverId, content:content}));
+    return true;
+  }
+  return false;
+}
+
+// ── Browser Notifications ──
+function _requestNotifPerm(){
+  if('Notification' in window && Notification.permission === 'default'){
+    setTimeout(function(){
+      Notification.requestPermission();
+    }, 3000);
+  }
+}
+
+function _browserNotif(title, body){
+  if('Notification' in window && Notification.permission === 'granted'){
+    try{
+      var n = new Notification(title, {body: body, icon: '/icon-192.png', dir: 'rtl', lang: 'ar'});
+      setTimeout(function(){ n.close(); }, 5000);
+    }catch(e){}
+  }
+}
+
+// ── Chat Badge ──
+async function _loadChatBadge(){
+  try{
+    var convs = await _api('/api/provider/conversations') || [];
+    var unread = convs.filter(function(c){ return parseInt(c.unread) > 0; }).length;
+    var b1 = _el('nb-chat'); if(b1){ b1.style.display=unread?'':'none'; b1.textContent=unread; }
+    var b2 = _el('bn-chat-badge'); if(b2){ b2.style.display=unread?'flex':'none'; b2.textContent=unread; }
+  }catch(e){}
+}
+
+// ── Load Conversations List ──
+async function loadChat(){
+  var pg = _el('page-chat'); if(!pg) return;
+  pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  _wsConnect();
+  var convs = await _api('/api/provider/conversations') || [];
+
+  var html = '<div class="pghd"><div><div class="pg-t">المحادثات</div><div class="pg-s">' + convs.length + ' محادثة</div></div></div>';
+  html += '<div class="card card-accent">';
+  if(convs.length){
+    html += '<div class="cb">';
+    convs.forEach(function(cv){
+      var unread = parseInt(cv.unread) > 0;
+      var initials = (cv.client_name||'ع')[0];
+      html += '<div class="conv-item' + (unread?' unread':'') + '" onclick="openChatRoom(' + cv.request_id + ',' + cv.client_id + ',\'' + (cv.client_name||'').replace(/'/g,'') + '\',\'' + (cv.request_title||'').replace(/'/g,'') + '\')">';
+      html += '<div class="conv-av">';
+      if(cv.client_image) html += '<img src="' + cv.client_image + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+      else html += initials;
+      html += '<div class="conv-unread-dot"></div></div>';
+      html += '<div style="flex:1;min-width:0">';
+      html += '<div class="conv-name">' + _esc(cv.client_name||'عميل') + '</div>';
+      html += '<div class="conv-last">' + _esc(cv.last_message||'') + '</div>';
+      html += '</div>';
+      html += '<div class="conv-time">' + _ago(cv.last_time) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += _empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');
+  }
+  html += '</div>';
+  pg.innerHTML = html;
+  _loadChatBadge();
+}
+
+// ── Open Chat Room ──
+var _chatMessages = [];
+async function openChatRoom(reqId, receiverId, receiverName, reqTitle){
+  _wsReqId = reqId;
+  _wsReceiverId = receiverId;
+  _wsConnect();
+
+  var pg = _el('page-chat');
+  if(!pg) return;
+
+  // Show chat UI
+  pg.innerHTML =
+    '<div class="chat-box">' +
+      '<div class="chat-header">' +
+        '<button class="chat-back" onclick="loadChat()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>' +
+        '<div>' +
+          '<div class="chat-header-name">' + _esc(receiverName) + '</div>' +
+          '<div class="chat-header-proj">' + _esc(reqTitle) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="chat-msgs" id="chat-msgs-wrap"><div class="loading">جاري التحميل...</div></div>' +
+      '<div class="chat-input-wrap">' +
+        '<textarea class="chat-inp" id="chat-msg-inp" placeholder="اكتب رسالتك..." rows="1" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_sendChatMsg();}"></textarea>' +
+        '<button class="chat-send-btn" onclick="_sendChatMsg()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
+      '</div>' +
+    '</div>';
+
+  // Load messages
+  var msgs = await _api('/api/messages/' + reqId) || [];
+  _chatMessages = msgs;
+  _renderChatMsgs(msgs);
+  _loadChatBadge();
+
+  // Start polling fallback
+  clearInterval(_chatPolling);
+  _chatPolling = setInterval(async function(){
+    var newMsgs = await _api('/api/messages/' + reqId) || [];
+    if(newMsgs.length !== _chatMessages.length){
+      _chatMessages = newMsgs;
+      _renderChatMsgs(newMsgs);
+    }
+  }, 4000);
+}
+
+function _renderChatMsgs(msgs){
+  var wrap = _el('chat-msgs-wrap'); if(!wrap) return;
+  if(!msgs.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px">ابدأ المحادثة</div>';
+    return;
+  }
+  wrap.innerHTML = msgs.map(function(m){
+    var isMe = m.sender_id == _me.id;
+    return '<div style="display:flex;flex-direction:column;align-items:' + (isMe?'flex-end':'flex-start') + '">' +
+      '<div class="msg-bubble ' + (isMe?'msg-me':'msg-other') + '">' +
+        (!isMe?'<div class="msg-time" style="margin-bottom:3px;text-align:right;opacity:.55;font-size:10px">' + _esc(m.sender_name||'') + '</div>':'') +
+        _esc(m.content) +
+        '<div class="msg-time">' + _ago(m.created_at) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function _appendMsg(msg, scrollOnly){
+  _chatMessages.push(msg);
+  _renderChatMsgs(_chatMessages);
+}
+
+async function _sendChatMsg(){
+  var inp = _el('chat-msg-inp'); if(!inp) return;
+  var content = inp.value.trim(); if(!content) return;
+  inp.value = '';
+
+  var tempMsg = {id:'tmp_'+Date.now(), sender_id:_me.id, sender_name:_me.name, content:content, created_at:new Date().toISOString(), request_id:_wsReqId};
+
+  // Try WebSocket first
+  var sent = _wsSend(_wsReqId, _wsReceiverId, content);
+
+  if(!sent){
+    // Fallback to HTTP
+    var r = await _api('/api/messages', {method:'POST', body:JSON.stringify({request_id:_wsReqId, receiver_id:_wsReceiverId, content:content})});
+    if(r && r.id){
+      _appendMsg(Object.assign(tempMsg, r), false);
+    } else {
+      showToast('فشل إرسال الرسالة','error');
+      return;
+    }
+  } else {
+    _appendMsg(tempMsg, false);
+  }
+}
+
+// ── Push on new request ──
+async function _checkNewRequests(){
+  try{
+    var open = await _api('/api/requests?status=open&limit=1') || [];
+    // Just trigger badge update
+    _loadNotifCount();
+  }catch(e){}
+}
+
+
 document.addEventListener('DOMContentLoaded',function(){_el('ov').addEventListener('click',function(e){if(e.target===this)closeModal();});});
 function openSidebar(){document.querySelector('.side').classList.add('open');_el('mobOv').style.display='block';}
 function closeSidebar(){document.querySelector('.side').classList.remove('open');_el('mobOv').style.display='none';}
 function doLogout(){localStorage.clear();location.href='auth.html';}
 function _setAvatar(img){['userAv','mobAv'].forEach(function(id){var el=_el(id);if(!el)return;if(img){el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">';el.style.padding='0';}else{el.innerHTML='';el.textContent=(_me.name||'م')[0];}});}
 (function(){var av=_el('userAv');if(av)av.textContent=(_me.name||'م')[0];var un=_el('userName');if(un)un.textContent=_me.name||'المزود';var ma=_el('mobAv');if(ma)ma.textContent=(_me.name||'م')[0];var cached=localStorage.getItem('pav_'+_me.id);if(cached)_setAvatar(cached);_api('/api/provider/profile').then(function(p){if(p&&p.profile_image){localStorage.setItem('pav_'+_me.id,p.profile_image);_setAvatar(p.profile_image);}});})();
-var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',portfolio:'معرض أعمالي'};
+var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',portfolio:'معرض أعمالي',chat:'المحادثات'};
 var _curPage='home';
-function gotoPage(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();}
+function gotoPage(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();if(page==='chat')loadChat();}
 async function loadHome(){
   var pg=_el('page-home'); if(!pg) return;
   pg.innerHTML='<div class="loading">جاري التحميل...</div>';
