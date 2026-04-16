@@ -387,8 +387,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="hero-btn" onclick="showAgreement()">+ أنشر طلباً</button>
       </div>
       <div class="stat-grid">
-        <div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="sn" id="s-total">0</div><div class="st">طلباتي</div></div></div>
-        <div class="sc gold"><div class="sic y"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="sn" id="s-open">0</div><div class="st">نشطة</div></div></div>
+        <div class="sc"><div class="sn" style="color:var(--p)" id="s-total">—</div><div class="st">إجمالي الطلبات</div></div>
+        <div class="sc"><div class="sn" style="color:var(--green)" id="s-open">—</div><div class="st">نشطة</div></div>
+        <div class="sc"><div class="sn" style="color:#2563EB" id="s-prog">—</div><div class="st">قيد التنفيذ</div></div>
+        <div class="sc"><div class="sn" style="color:var(--gold)" id="s-done">—</div><div class="st">مكتملة</div></div>
+      </div>
         <div class="sc blue"><div class="sic b"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div></div>
         <div class="sc green"><div class="sic g"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="sn" id="s-done">0</div><div class="st">مكتملة</div></div></div>
       </div>
@@ -704,22 +707,35 @@ function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width
 function errH(){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></div><h4>تعذر التحميل</h4></div>';}
 
 function riCard(r,actions){
-  var bids=r.bid_count>0?'<span class="rm"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'+r.bid_count+' عروض</span>':'';
   var canEdit=r.status==='open'||r.status==='review';
-  var borderColor=r.status==='open'?'var(--green)':r.status==='in_progress'?'var(--p)':r.status==='done'||r.status==='completed'?'var(--gold)':'var(--hint)';
-  var act=actions?'<div class="ri-actions">'+
-    '<button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button>'+
-    (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d)" onclick="openEditReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>تعديل</button>':'')+
-    (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>حذف</button>':'')+'</div>':'';
-  var catChip=r.category?'<span class="rm">'+r.category+'</span>':'';
-  return '<div class="ri" style="border-right-color:'+borderColor+'" onclick="openDetail('+r.id+',event)">'+
-    '<div>'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px">'+
-        '<div class="ri-title">'+r.title+'</div>'+stTag(r.status)+
+  var barColor=r.status==='open'?'var(--green)':r.status==='in_progress'?'#2563EB':r.status==='done'||r.status==='completed'?'var(--gold)':'var(--hint)';
+  var act=actions?
+    '<div style="display:flex;gap:7px;flex-wrap:wrap;padding-top:9px;border-top:1px solid var(--border)">'+
+      '<button class="btn-sm bs-p" onclick="openDetail('+r.id+',event)">التفاصيل والعروض</button>'+
+      (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)" onclick="openEditReq('+r.id+',event)">تعديل</button>':'')+
+      (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)">حذف</button>':'')+
+    '</div>':'';
+  return '<div style="background:var(--white);border-radius:14px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden" onclick="openDetail('+r.id+',event)">'+
+    '<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>'+
+    '<div style="flex:1;padding:13px 14px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          (r.category?'<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px;letter-spacing:.3px">'+r.category+'</div>':'')+
+          '<div style="font-size:13px;font-weight:800;color:var(--text);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+r.title+'</div>'+
+        '</div>'+
+        stTag(r.status)+
       '</div>'+
-      '<div class="ri-meta">'+catChip+(r.city?'<span class="rm">📍 '+r.city+'</span>':'')+(r.budget_max?'<span class="rm">💰 '+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'')+bids+'<span class="rm">'+timeAgo(r.created_at)+'</span></div>'+
-    '</div>'+act+'</div>';
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:'+(actions?'0':'0')+'px">'+
+        (r.city?'<span style="font-size:10px;color:var(--green);background:var(--green-l);border:1px solid #BBF7D0;padding:2px 8px;border-radius:20px">'+r.city+'</span>':'')+
+        (r.budget_max?'<span style="font-size:10px;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:2px 8px;border-radius:20px;font-weight:700">'+Number(r.budget_max).toLocaleString('en-US')+' ر.س</span>':'')+
+        (r.bid_count>0?'<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+r.bid_count+' عروض</span>':'')+
+        '<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+timeAgo(r.created_at)+'</span>'+
+      '</div>'+
+      act+
+    '</div>'+
+  '</div>';
 }
+
 
 function loadHome(){
   fetch(API+'/api/requests/my',hdr()).then(function(r){return r.json();}).then(function(all){
