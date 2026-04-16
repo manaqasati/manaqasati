@@ -20,6 +20,11 @@
   --shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+#nprogress{position:fixed;top:0;left:0;right:0;height:3px;z-index:99999;pointer-events:none}
+#nprogress .bar{background:var(--gold);height:3px;position:absolute;top:0;left:0;width:0;transition:width .2s ease}
+#nprogress .peg{position:absolute;right:0;top:0;width:100px;height:100%;box-shadow:0 0 10px var(--gold),0 0 5px var(--gold);opacity:1;transform:rotate(3deg) translate(0,-4px)}
+@keyframes npfade{0%{opacity:1}100%{opacity:0}}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .side{width:260px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(27,58,107,0.07)}
 .side-head{padding:0;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
@@ -349,7 +354,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <div class="main">
-  <div id="page-spinner"><div class="ps-ring"></div><div class="ps-txt">جاري التحميل</div></div>
+  
 <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-title" id="pageTitle">الرئيسية</div>
@@ -661,8 +666,10 @@ var sel=document.getElementById('n-cat');
 var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر التصنيف';sel.appendChild(defOpt);
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
-function _showSpin(){var s=document.getElementById('page-spinner');if(s)s.className='show';}
-function _hideSpin(){var s=document.getElementById('page-spinner');if(s)s.className='';}
+
+var _np={t:null,v:0,start:function(){this.v=10;this._set(10);this._inc();},done:function(){clearTimeout(this.t);this._set(100);var el=document.getElementById('nprogress');if(el){setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.style.opacity='';var b=el.querySelector('.bar');if(b)b.style.width='0';},300);},200);}},_set:function(v){var b=document.querySelector('#nprogress .bar');if(b)b.style.width=v+'%';},_inc:function(){if(this.v<90){this.v+=Math.random()*10+5;if(this.v>90)this.v=90;this._set(this.v);this.t=setTimeout(this._inc.bind(this),300+Math.random()*300);}}};
+function _showSpin(){_np.start();}
+function _hideSpin(){_np.done();}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
 function _fetch(path,opts){
   var options=Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{});
@@ -1376,6 +1383,7 @@ async function _cSendMsg(){
 
 
 </script>
-<div id="page-spinner"><div class="ps-ring"></div><div class="ps-txt">جاري التحميل</div></div>
+
+<div id="nprogress"><div class="bar"><div class="peg"></div></div></div>
 </body>
 </html>
