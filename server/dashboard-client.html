@@ -843,6 +843,7 @@ async function loadBids(id){
       acts+='<button class="_bp" data-pid="'+b.provider_id+'" style="'+_btnBase+';background:var(--gold-l);color:var(--gold-d);border:1px solid #fde68a">'
         +'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ملف</button>'
         +'<button class="_br" data-id="'+b.id+'" data-req="'+id+'" style="'+_btnBase+';background:var(--red-l);color:var(--red);border:1px solid #fecaca">رفض</button>'
+        +'<button class="_bc" data-pid="'+b.provider_id+'" data-pname="'+_esc(b.provider_name||'')+'" style="'+_btnBase+';background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>'
         +'</div></div>';
     }else if(isAcc){
       acts='<div style="padding-top:10px;border-top:1px solid #dcfce7">'
@@ -889,6 +890,7 @@ async function loadBids(id){
     if(btn.classList.contains('_ba'))acceptBid(btn.dataset.id,btn.dataset.req);
     if(btn.classList.contains('_br'))rejectBid(btn.dataset.id,btn.dataset.req);
     if(btn.classList.contains('_bp'))openProviderProfile(btn.dataset.pid);
+    if(btn.classList.contains('_bc'))openChatModal(curRequestId,btn.dataset.pid,btn.dataset.pname,window._projTitle||'');
   });
 }
 
@@ -1030,6 +1032,7 @@ setTimeout(function(){
 
 // ── esc ──
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function _esc(s){return esc(s);}
 
 // ── openProviderProfile ──
 function openProviderProfile(pid){
