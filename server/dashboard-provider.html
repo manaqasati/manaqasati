@@ -185,6 +185,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #pvOl,#cpOl{animation:fadeIn .2s}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes sp{to{transform:rotate(360deg)}}
+
+/* ══ SKELETON LOADING ══ */
+@keyframes shimmer{0%{background-position:-468px 0}100%{background-position:468px 0}}
+.sk{background:#eee;background-image:linear-gradient(to right,#ebebeb 8%,#d6d6d6 18%,#ebebeb 33%);background-size:800px 104px;border-radius:8px;animation:shimmer 1.2s ease-in-out infinite}
+.sk-line{height:14px;margin-bottom:8px;border-radius:6px}
+.sk-line.xl{height:22px;width:55%}
+.sk-line.lg{height:16px;width:65%}
+.sk-line.md{height:13px;width:80%}
+.sk-line.sm{height:11px;width:45%}
+.sk-av{width:48px;height:48px;min-width:48px;border-radius:50%}
+.sk-box{background:#fff;border:1px solid #e6e2d9;border-radius:14px;padding:14px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -329,38 +340,9 @@ var _np={t:null,v:0,start:function(){this.v=10;this._set(10);this._inc();},done:
 function _showSpin(){_np.start();}
 function _hideSpin(){_np.done();}
 function _el(id){return document.getElementById(id);}
-function _skHome(){
-  var s='';
-  // hero skeleton
-  s+='<div style="background:var(--p3);padding:10px 18px 34px;position:relative;overflow:hidden;margin-bottom:0">';
-  s+='<div style="position:absolute;bottom:-1px;left:0;right:0;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0"></div>';
-  s+='<div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;padding:8px 0 16px">';
-  s+='<div class="sk sk-circle" style="background:rgba(255,255,255,.15)"></div>';
-  s+='<div style="flex:1"><div class="sk sk-line lg" style="background:rgba(255,255,255,.15);margin-bottom:10px"></div>';
-  s+='<div class="sk sk-line sm" style="background:rgba(255,255,255,.1)"></div></div></div></div>';
-  // stats skeleton
-  s+='<div class="stat-grid" style="margin-top:-2px">';
-  for(var i=0;i<4;i++) s+='<div class="sc"><div class="sk sk-line" style="width:50%;margin:0 auto 6px"></div><div class="sk sk-line sm" style="width:70%;margin:0 auto"></div></div>';
-  s+='</div>';
-  // cards skeleton
-  s+='<div class="card" style="margin:16px 0 0">';
-  for(var j=0;j<3;j++) s+='<div class="sk-card"><div style="width:4px;height:50px;border-radius:4px;background:var(--border);flex-shrink:0"></div><div class="sk-rect"><div class="sk sk-line md"></div><div class="sk sk-line sm"></div></div><div style="text-align:left"><div class="sk sk-line" style="width:70px;margin-bottom:6px"></div><div class="sk sk-line sm" style="width:50px"></div></div></div>';
-  s+='</div>';
-  return s;
-}
-function _skList(n){
-  var s='<div class="card card-accent"><div class="ch"><div class="sk sk-line lg" style="width:140px"></div></div>';
-  n=n||4;
-  for(var i=0;i<n;i++) s+='<div class="sk-card"><div style="width:4px;height:50px;border-radius:4px;background:var(--border);flex-shrink:0"></div><div class="sk-rect"><div class="sk sk-line md"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';
-  s+='</div>';
-  return s;
-}
-function _skConvs(){
-  var s='<div class="card card-accent"><div class="cb">';
-  for(var i=0;i<5;i++) s+='<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)"><div class="sk sk-circle" style="width:44px;height:44px;min-width:44px"></div><div class="sk-rect"><div class="sk sk-line md"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:30px"></div></div>';
-  s+='</div></div>';
-  return s;
-}
+
+
+
 function _esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function _fpr(p){return p?Number(p).toLocaleString('en-US')+' ر.س':'—';}
 function _fdt(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
@@ -601,6 +583,43 @@ function gotoPage(page){
   setTimeout(function(){_gotoPageInner(page);},30);
 }
 function _gotoPageInner(page){document.querySelectorAll('.page').forEach(function(p){p.className='page';});var pg=_el('page-'+page);if(pg)pg.className='page on';document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});var ni=_el('ni-'+page);if(ni)ni.classList.add('on');var bn=_el('bn-'+page);if(bn)bn.classList.add('on');var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;_curPage=page;sessionStorage.setItem('mnq_prov_page',page);window.scrollTo(0,0);closeSidebar();if(page==='home')loadHome();if(page==='browse')loadBrowse();if(page==='works')loadWorks();if(page==='reviews')loadReviews();if(page==='notifs')loadNotifs();if(page==='profile')loadProfile();if(page==='portfolio')loadPortfolio();if(page==='chat')loadChat();}
+
+function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9;flex-shrink:0"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
+function _skHome(){
+  var h='<div style="background:#0D1829;padding:10px 18px 34px;position:relative;overflow:hidden;margin-bottom:0">';
+  h+='<div style="position:absolute;bottom:-1px;left:0;right:0;height:30px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0"></div>';
+  h+='<div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;padding:8px 0 16px">';
+  h+='<div class="sk sk-av" style="background:rgba(255,255,255,.15)"></div>';
+  h+='<div style="flex:1"><div class="sk sk-line lg" style="background:rgba(255,255,255,.12);margin-bottom:9px"></div>';
+  h+='<div class="sk sk-line sm" style="background:rgba(255,255,255,.08)"></div></div></div></div>';
+  h+='<div class="stat-grid" style="margin-top:-2px">';
+  for(var i=0;i<4;i++) h+='<div class="sc"><div class="sk sk-line xl" style="margin:0 auto 8px"></div><div class="sk sk-line sm" style="margin:0 auto;width:60%"></div></div>';
+  h+='</div>';
+  h+='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px;margin-top:16px">';
+  h+='<div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';
+  h+=_skRow()+_skRow()+_skRow();
+  h+='</div>';
+  return h;
+}
+function _skList(n){
+  var h='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px">';
+  h+='<div class="sk sk-line" style="width:130px;margin-bottom:14px"></div>';
+  for(var i=0;i<(n||4);i++) h+=_skRow();
+  h+='</div>';
+  return h;
+}
+function _skConvs(){
+  var h='<div style="background:#fff;border:1px solid #e6e2d9;border-radius:16px;padding:16px">';
+  h+='<div class="sk sk-line" style="width:100px;margin-bottom:14px"></div>';
+  for(var i=0;i<5;i++){
+    h+='<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f0ece3">';
+    h+='<div class="sk sk-av"></div>';
+    h+='<div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div>';
+    h+='<div class="sk sk-line" style="width:28px"></div></div>';
+  }
+  h+='</div>';
+  return h;
+}
 async function loadHome(){
   var pg=_el('page-home'); if(!pg) return;
   pg.innerHTML=_skHome();
