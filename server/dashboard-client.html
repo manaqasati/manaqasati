@@ -617,6 +617,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
+// ── Kill old service workers ──
+if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    Promise.all(regs.map(function(r){return r.unregister();})).then(function(){location.reload();});
+  });
+}
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 var _token=token;
