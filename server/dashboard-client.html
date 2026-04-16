@@ -126,9 +126,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
 .fg textarea{min-height:100px;resize:vertical}
 .form-btns{display:flex;gap:8px;margin-top:16px}
-.bid-item{border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:10px;transition:all .2s}
+.bid-item{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:10px;transition:all .2s}
 .bid-item:hover{border-color:var(--p-mid)}
-.bid-item.accepted{border-color:var(--green);background:linear-gradient(135deg,rgba(22,163,74,.04),rgba(22,163,74,.08))}
+.bid-item.accepted{border-color:var(--green);border-right:3px solid var(--green)}
 .bid-item.rejected{opacity:.45}
 .bid-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
 .bid-name{font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px}
@@ -159,7 +159,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .notif-title{font-size:13px;font-weight:800;margin-bottom:2px}
 .notif-body{font-size:11px;color:var(--muted);line-height:1.5}
 .notif-time{font-size:10px;color:var(--hint);margin-top:3px}
-.req-detail-head{background:var(--p);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden}
+.req-detail-head{background:var(--p3);border-radius:16px;padding:20px 22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden}
 .req-detail-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
 .rdh-title{font-size:20px;font-weight:900;margin-bottom:10px}
 .rdh-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;opacity:.8}
@@ -783,7 +783,7 @@ function openDetail(id,e){
   show('detail',null,null);
 }
 
-function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.3)')+';font-size:'+sz+'px">★</span>';return s;}
+function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:'+sz+'px">★</span>';return s;}
 
 async function loadBids(id){
   document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
@@ -858,7 +858,7 @@ async function loadBids(id){
     }else{acts='';}
 
     return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'"><div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:16px 20px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">'
-      +'<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#F0A500,#fbbf24)"></div>'
+      +'<div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(201,146,10,.3)"></div>'
       +'<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer" onclick="openProviderProfile('+b.provider_id+')">'
         +'<div style="width:44px;height:44px;border-radius:50%;background:var(--gold);color:var(--p2);font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,.2)">'+avatarHtml+'</div>'
         +'<div style="min-width:0"><div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:3px">'+(b.provider_name||_pd.name||'مزود')+'</div>'
@@ -867,7 +867,7 @@ async function loadBids(id){
         +'</div>'
       +'</div>'
       +'<div style="text-align:left;flex-shrink:0;margin-right:10px">'
-        +'<div style="font-size:20px;font-weight:900;color:#fff">'+Number(b.price).toLocaleString('en-US')+'</div>'
+        +'<div style="font-size:18px;font-weight:900;color:#fff">'+Number(b.price).toLocaleString('en-US')+'</div>'
         +'<div style="font-size:10px;color:rgba(255,255,255,.5)">ر.س</div>'
         +(statusTag?'<div style="margin-top:5px">'+statusTag+'</div>':'')
       +'</div></div>'
