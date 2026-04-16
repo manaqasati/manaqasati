@@ -60,7 +60,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-new:hover{background:var(--gold-d);transform:translateY(-1px);box-shadow:0 5px 16px rgba(240,165,0,.35)}
 .btn-new svg{flex-shrink:0}
 .content{padding:24px 28px;flex:1}
-.page{display:none!important}.page.on{display:block!important}.page.on{display:block}
+.page{display:none!important}.page.on{display:block!important}
 .hero{background:var(--white);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;border:1px solid var(--border);box-shadow:var(--shadow)}
 .hero::after{content:'';position:absolute;bottom:0;left:0;top:0;width:4px;background:var(--gold);border-radius:4px 0 0 4px}
 .hero::before{display:none}
@@ -670,7 +670,7 @@ function _fetch(path,opts){
     });
 }
 
-fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(function(p){
+_fetch('/api/client/profile').then(function(p){if(!p)return;
   if(p&&p.profile_image){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
 }).catch(function(){});
 
@@ -775,7 +775,7 @@ function openDetail(id,e){
   curRequestId=id;
   document.querySelectorAll('.tab-btn').forEach(function(x,i){x.className=i===0?'tab-btn on':'tab-btn';});
   document.querySelectorAll('.tab').forEach(function(x,i){x.className=i===0?'tab on':'tab';});
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(req){
+  _fetch('/api/requests/'+id).then(function(req){if(!req||!req.id){show('detail',null,null);return;}
     var imgs=req.images||[];
     var atts=req.attachments||[];
     var imgsHtml=imgs.length?'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">'+
@@ -795,9 +795,9 @@ function openDetail(id,e){
       (req.status==='open'?'<div onclick="addReqAtt('+req.id+')" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px dashed rgba(255,255,255,.25);border-radius:8px;cursor:pointer;margin-top:4px"><svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:rgba(255,255,255,.6)">إضافة ملف</span></div>':'')+
     '</div>':'';
     document.getElementById('detail-head').innerHTML='<div class="req-detail-head"><div class="rdh-title">'+req.title+'</div><div class="rdh-meta">'+(req.city?'<span>'+req.city+'</span>':'')+(req.category?'<span>'+req.category+'</span>':'')+(req.budget_max?'<span>'+req.budget_max+' ر.س</span>':'')+(req.deadline?'<span>انتهاء: '+fmtDate(req.deadline)+'</span>':'')+stTag(req.status)+'</div>'+(req.description?'<div class="rdh-desc">'+req.description+'</div>':'')+imgsHtml+attsHtml+'<input type="file" id="req-img-inp" accept="image/*" multiple style="display:none" onchange="uploadReqImgs(this)"><input type="file" id="req-att-inp" accept=".pdf,image/*" multiple style="display:none" onchange="uploadReqAtts(this)"></div>';
+    show('detail',null,null);
     loadBids(id);
   });
-  show('detail',null,null);
 }
 
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:'+sz+'px">★</span>';return s;}
@@ -944,12 +944,12 @@ function markDone(id){fetch(API+'/api/requests/'+id+'/status',Object.assign({met
 function openRate(reqId,bidId){selRequestId=reqId;selRating=0;document.querySelectorAll('.sp').forEach(function(s){s.className='sp';});document.getElementById('rate-comment').value='';document.getElementById('rate-msg').className='alert';document.getElementById('rateOverlay').className='overlay show';if(bidId){fetch(API+'/api/requests/'+reqId+'/bids').then(function(r){return r.json();}).then(function(bids){var ab=bids.find(function(b){return b.status==='accepted';});if(ab)selProviderId=ab.provider_id;});}}
 function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach(function(s,i){s.className=i<n?'sp on':'sp';});}
 function submitRate(){if(!selRating){var e=document.getElementById('rate-msg');e.textContent='يرجى اختيار تقييم';e.className='alert err';return;}var btn=document.getElementById('rate-btn');btn.disabled=true;btn.textContent='جاري الإرسال...';fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:document.getElementById('rate-comment').value,type:'client_to_provider'})},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){if(r.ok){var e=document.getElementById('rate-msg');e.textContent='شكراً على تقييمك!';e.className='alert ok';setTimeout(function(){document.getElementById('rateOverlay').className='overlay';},1400);}else{var e=document.getElementById('rate-msg');e.textContent=r.d.message||'حدث خطأ';e.className='alert err';}btn.disabled=false;btn.textContent='إرسال التقييم';});}
-function loadNotifCount(){fetch(API+'/api/notifications',hdr()).then(function(r){return r.json();}).then(function(ns){var u=ns.filter(function(n){return!n.is_read;}).length;['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.textContent=u;el.style.display=u>0?'flex':'none';});}).catch(function(){});}
+function loadNotifCount(){_fetch('/api/notifications').then(function(ns){if(!Array.isArray(ns)){el.innerHTML=emptyH('لا يوجد إشعارات','');return;}var u=ns.filter(function(n){return!n.is_read;}).length;['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(!el)return;el.textContent=u;el.style.display=u>0?'flex':'none';});}).catch(function(){});}
 function loadNotifs(){
   var el=document.getElementById('notifs-list');
   if(!el) return;
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/notifications',hdr()).then(function(r){return r.json();}).then(function(ns){
+  _fetch('/api/notifications').then(function(ns){if(!Array.isArray(ns)){el.innerHTML=emptyH('لا يوجد إشعارات','');return;}
     if(!ns.length){ el.innerHTML=emptyH('لا يوجد إشعارات',''); return; }
     el.innerHTML=ns.map(function(n){
       var isUnread=!n.is_read;
