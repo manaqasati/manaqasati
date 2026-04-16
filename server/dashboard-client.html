@@ -383,7 +383,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
   <div class="content">
 
-    <div class="page on" id="page-home">
+    <div class="page" id="page-home">
       <div class="hero">
         <svg class="hero-net" viewBox="0 0 900 120" preserveAspectRatio="none" opacity="0.12">
           <line x1="50" y1="30" x2="200" y2="55" stroke="#fff" stroke-width="1.5"/>
@@ -828,6 +828,7 @@ function _skConvs(){
   return h;
 }
 function loadHome(){
+  _showInner('home',null,'home');
   var _hEl=document.getElementById('home-reqs');
   if(_hEl) _hEl.innerHTML=_skList(3);
   _fetch('/api/requests/my').then(function(all){
@@ -1114,19 +1115,17 @@ async function changeClientPw(){var old=document.getElementById('cPwOld')?.value
 setInterval(loadNotifCount,30000);
 
 // ══ استعادة الصفحة عند التحديث ══
-var _validPages=['home','requests','notifs','profile'];
-var _savedPage=sessionStorage.getItem('mnq_page');
-if(_savedPage&&_validPages.indexOf(_savedPage)>=0){
-  show(_savedPage,null,_savedPage);
-}else{
-  loadHome();
-}
-setTimeout(function(){
-  try{
-    var h=location.hash.replace('#','');
-    if(h&&_validPages.indexOf(h)>=0)show(h,null,h);
-  }catch(e){}
-},0);
+document.addEventListener('DOMContentLoaded',function(){
+  // أخفِ كل الصفحات أولاً
+  document.querySelectorAll('.page').forEach(function(p){p.className='page';});
+  var _validPages=['home','requests','notifs','profile'];
+  var _savedPage=sessionStorage.getItem('mnq_page');
+  if(_savedPage&&_validPages.indexOf(_savedPage)>=0){
+    show(_savedPage,null,_savedPage);
+  }else{
+    loadHome();
+  }
+});
 
 // ── esc ──
 function _skList(n){
