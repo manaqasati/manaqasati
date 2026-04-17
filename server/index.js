@@ -142,6 +142,192 @@ app.get('/api/test', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// FRONTEND API ENDPOINTS - للموقع الرئيسي
+// ═══════════════════════════════════════════════════════════════
+
+console.log('📡 Loading frontend API endpoints...');
+
+// ══ جلب الطلبات/المشاريع ══
+app.get('/api/requests', async (req, res) => {
+  try {
+    console.log('📋 Loading public requests...');
+    
+    const result = await pool.query(`
+      SELECT 
+        r.id,
+        r.title,
+        r.description,
+        r.budget,
+        r.category,
+        r.status,
+        r.created_at,
+        r.deadline,
+        u.name as client_name,
+        u.city as client_city,
+        (SELECT COUNT(*) FROM bids WHERE request_id = r.id) as bid_count
+      FROM requests r 
+      LEFT JOIN users u ON u.id = r.user_id 
+      WHERE r.status = 'open' OR r.status = 'in_progress'
+      ORDER BY r.created_at DESC 
+      LIMIT 50
+    `);
+    
+    console.log('✅ Loaded requests:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Error loading requests:', error);
+    res.status(500).json({ 
+      message: 'خطأ في تحميل المشاريع',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
+
+// ══ جلب الفئات ══
+app.get('/api/categories', (req, res) => {
+  try {
+    console.log('📂 Loading categories...');
+    
+    const categories = [
+      'برمجة وتطوير',
+      'تصميم',
+      'كتابة وترجمة',
+      'تسويق رقمي',
+      'أعمال',
+      'هندسة وعمارة',
+      'صوتيات ومرئيات',
+      'استشارات',
+      'تدريب',
+      'أخرى'
+    ];
+    
+    console.log('✅ Categories loaded:', categories.length);
+    res.json(categories);
+    
+  } catch (error) {
+    console.error('❌ Error loading categories:', error);
+    res.status(500).json({ message: 'خطأ في تحميل الفئات' });
+  }
+});
+
+// ══ جلب الإحصائيات العامة ══
+app.get('/api/stats', async (req, res) => {
+  try {
+    console.log('📊 Loading public stats...');
+    
+    const stats = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM requests WHERE status = 'completed') as completed_projects,
+        (SELECT COUNT(*) FROM users WHERE role = 'provider' AND is_active = true) as active_providers,
+        (SELECT COUNT(*) FROM users WHERE role = 'client' AND is_active = true) as active_clients,
+        (SELECT COUNT(*) FROM requests WHERE status = 'open') as open_requests
+    `);
+    
+    const result = stats.rows[0] || {};
+    
+    console.log('✅ Public stats loaded:', result);
+    res.json({
+      completed_projects: parseInt(result.completed_projects) || 0,
+      active_providers: parseInt(result.active_providers) || 0,
+      active_clients: parseInt(result.active_clients) || 0,
+      open_requests: parseInt(result.open_requests) || 0
+    });
+    
+  } catch (error) {
+    console.error('❌ Error loading stats:', error);
+    res.status(500).json({ message: 'خطأ في تحميل الإحصائيات' });
+  }
+});
+
+// ══ البحث في المشاريع ══
+app.get('/api/requests/search', async (req, res) => {
+  try {
+    const { q, category, budget_min, budget_max } = req.query;
+    
+    console.log('🔍 Search requests:', { q, category, budget_min, budget_max });
+    
+    let query = `
+      SELECT 
+        r.id, r.title, r.description, r.budget, r.category, 
+        r.created_at, u.name as client_name
+      FROM requests r 
+      LEFT JOIN users u ON u.id = r.user_id 
+      WHERE r.status = 'open'
+    `;
+    
+    const params = [];
+    let paramCount = 0;
+    
+    if (q) {
+      paramCount++;
+      query += ` AND (r.title ILIKE $${paramCount} OR r.description ILIKE $${paramCount})`;
+      params.push(`%${q}%`);
+    }
+    
+    if (category) {
+      paramCount++;
+      query += ` AND r.category = $${paramCount}`;
+      params.push(category);
+    }
+    
+    if (budget_min) {
+      paramCount++;
+      query += ` AND r.budget >= $${paramCount}`;
+      params.push(parseFloat(budget_min));
+    }
+    
+    if (budget_max) {
+      paramCount++;
+      query += ` AND r.budget <= $${paramCount}`;
+      params.push(parseFloat(budget_max));
+    }
+    
+    query += ` ORDER BY r.created_at DESC LIMIT 20`;
+    
+    const result = await pool.query(query, params);
+    
+    console.log('✅ Search results:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Search error:', error);
+    res.status(500).json({ message: 'خطأ في البحث' });
+  }
+});
+
+// ══ جلب مزودين نشطين ══
+app.get('/api/providers', async (req, res) => {
+  try {
+    console.log('👥 Loading active providers...');
+    
+    const result = await pool.query(`
+      SELECT 
+        u.id, u.name, u.specialties, u.city, u.badge,
+        COALESCE(AVG(r.rating), 0) as avg_rating,
+        COUNT(DISTINCT r.id) as review_count,
+        COUNT(DISTINCT req.id) as completed_projects
+      FROM users u
+      LEFT JOIN reviews r ON r.reviewed_id = u.id  
+      LEFT JOIN requests req ON req.assigned_provider_id = u.id AND req.status = 'completed'
+      WHERE u.role = 'provider' AND u.is_active = true
+      GROUP BY u.id
+      ORDER BY avg_rating DESC, completed_projects DESC
+      LIMIT 20
+    `);
+    
+    console.log('✅ Active providers loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Error loading providers:', error);
+    res.status(500).json({ message: 'خطأ في تحميل المزودين' });
+  }
+});
+
+console.log('✅ Frontend API endpoints loaded successfully');
+
+// ═══════════════════════════════════════════════════════════════
 // ADMIN SYSTEM - كود الأدمن الكامل
 // ═══════════════════════════════════════════════════════════════
 
@@ -919,6 +1105,7 @@ app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('✅ Admin system loaded and ready');
   console.log('✅ HTML routes configured');
+  console.log('✅ Frontend API endpoints ready');
 });
 
 // Error handling
