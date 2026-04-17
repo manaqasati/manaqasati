@@ -964,7 +964,24 @@ function loadNotifs(){
     markAllRead();
   }).catch(function(){el.innerHTML=errH();});
 }
-function handleNotif(refId,type){if(refId&&(type==='bid'||type==='message'))openDetail(refId,null);}
+function handleNotif(refId,type){
+  if(!refId) return;
+  if(type==='message'){
+    // Open chat directly
+    fetch(API+'/api/requests/'+refId).then(function(r){return r.json();}).then(function(req){
+      if(req&&req.accepted_provider_id){
+        openChatModal(refId,req.accepted_provider_id,req.provider_name||'المزود',req.title||'');
+      } else if(req&&req.assigned_provider_id){
+        openChatModal(refId,req.assigned_provider_id,req.provider_name||'المزود',req.title||'');
+      } else {
+        // Fallback: open detail page
+        openDetail(refId,null);
+      }
+    }).catch(function(){openDetail(refId,null);});
+  } else if(type==='bid'){
+    openDetail(refId,null);
+  }
+}
 function markAllRead(){fetch(API+'/api/notifications/read',Object.assign({method:'PUT'},hdr())).then(function(){['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});});}
 var _reqImages=[];var _reqFiles=[];
 function previewImages(input){var files=[...input.files].slice(0,3-_reqImages.length);if(!files.length)return;files.forEach(function(file){if(file.size>5*1024*1024){alert('الحجم الأقصى 5MB');return;}var reader=new FileReader();reader.onload=function(e){_reqImages.push({name:file.name,data:e.target.result});renderImgGrid();};reader.readAsDataURL(file);});input.value='';}
