@@ -732,6 +732,94 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   }
 });
 
+// ══ المزودون مع التفاصيل (للأدمن) ══
+app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
+  try {
+    console.log('🔧 تحميل المزودين مع التفاصيل...');
+    
+    const usersExists = await tableExists('users');
+    if (!usersExists) {
+      return res.json([]);
+    }
+    
+    // query بسيط أولاً
+    const result = await safeQuery(`
+      SELECT 
+        u.id, u.name, u.email, u.phone, u.city, u.specialties, 
+        u.badge, u.is_active, u.bio, u.created_at, u.profile_image
+      FROM users u
+      WHERE u.role = 'provider'
+      ORDER BY u.created_at DESC
+    `);
+    
+    if (!result.success) {
+      console.log('❌ Failed to load providers');
+      return res.json([]);
+    }
+    
+    // إضافة إحصائيات إضافية إذا أمكن
+    const providersWithStats = await Promise.all(
+      result.rows.map(async (provider) => {
+        let stats = {
+          avg_rating: 0,
+          review_count: 0,
+          bid_count: 0,
+          completed_projects: 0
+        };
+        
+        // محاولة جلب تقييمات
+        if (await tableExists('reviews')) {
+          const reviewResult = await safeQuery(`
+            SELECT AVG(rating) as avg_rating, COUNT(*) as review_count 
+            FROM reviews WHERE reviewed_id = $1
+          `, [provider.id]);
+          
+          if (reviewResult.success && reviewResult.rows[0]) {
+            stats.avg_rating = parseFloat(reviewResult.rows[0].avg_rating) || 0;
+            stats.review_count = parseInt(reviewResult.rows[0].review_count) || 0;
+          }
+        }
+        
+        // محاولة جلب عطاءات
+        if (await tableExists('bids')) {
+          const bidResult = await safeQuery(
+            'SELECT COUNT(*) as bid_count FROM bids WHERE user_id = $1',
+            [provider.id]
+          );
+          
+          if (bidResult.success && bidResult.rows[0]) {
+            stats.bid_count = parseInt(bidResult.rows[0].bid_count) || 0;
+          }
+        }
+        
+        // محاولة جلب مشاريع مكتملة
+        if (await tableExists('requests')) {
+          const projectResult = await safeQuery(
+            'SELECT COUNT(*) as completed_projects FROM requests WHERE assigned_provider_id = $1 AND status = \'completed\'',
+            [provider.id]
+          );
+          
+          if (projectResult.success && projectResult.rows[0]) {
+            stats.completed_projects = parseInt(projectResult.rows[0].completed_projects) || 0;
+          }
+        }
+        
+        return {
+          ...provider,
+          ...stats
+        };
+      })
+    );
+    
+    console.log('✅ تم تحميل المزودين:', providersWithStats.length, 'مزود');
+    res.json(providersWithStats);
+    
+  } catch (error) {
+    console.error('❌ خطأ في تحميل المزودين:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ══ تفعيل/إيقاف المستخدم ══
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   try {
@@ -758,6 +846,33 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
     
   } catch (error) {
     console.error('❌ خطأ في التبديل:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ منح لقب ══
+app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { badge } = req.body;
+    
+    console.log('🏆 منح لقب للمستخدم:', userId, 'اللقب:', badge);
+    
+    const result = await safeQuery(
+      'UPDATE users SET badge = $1 WHERE id = $2 AND role != \'admin\' RETURNING id, name, badge',
+      [badge, userId]
+    );
+    
+    if (!result.success || !result.rows.length) {
+      console.log('❌ المستخدم غير موجود للقب:', userId);
+      return res.status(404).json({ message: 'المستخدم غير موجود' });
+    }
+    
+    console.log('✅ تم تحديث اللقب:', result.rows[0]);
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('❌ خطأ في تحديث اللقب:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -991,7 +1106,246 @@ app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
+// ══ الطلبات للأدمن ══
+app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
+  try {
+    console.log('📋 تحميل طلبات الأدمن...');
+    
+    const requestsExists = await tableExists('requests');
+    const usersExists = await tableExists('users');
+    
+    if (!requestsExists || !usersExists) {
+      return res.json([]);
+    }
+    
+    const result = await safeQuery(`
+      SELECT 
+        r.*,
+        u.name as client_name,
+        p.name as provider_name
+      FROM requests r
+      LEFT JOIN users u ON u.id = r.user_id
+      LEFT JOIN users p ON p.id = r.assigned_provider_id
+      ORDER BY r.created_at DESC
+      LIMIT 200
+    `);
+    
+    if (!result.success) {
+      return res.json([]);
+    }
+    
+    // إضافة bid_count لكل طلب
+    const requestsWithBids = await Promise.all(
+      result.rows.map(async (req) => {
+        let bid_count = 0;
+        
+        if (await tableExists('bids')) {
+          const bidResult = await safeQuery(
+            'SELECT COUNT(*) as count FROM bids WHERE request_id = $1',
+            [req.id]
+          );
+          
+          if (bidResult.success && bidResult.rows[0]) {
+            bid_count = parseInt(bidResult.rows[0].count) || 0;
+          }
+        }
+        
+        return {
+          ...req,
+          bid_count
+        };
+      })
+    );
+    
+    console.log('✅ تم تحميل طلبات الأدمن:', requestsWithBids.length);
+    res.json(requestsWithBids);
+    
+  } catch (error) {
+    console.error('❌ خطأ في طلبات الأدمن:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ البلاغات ══
+app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
+  try {
+    console.log('🚨 تحميل البلاغات...');
+    
+    const reportsExists = await tableExists('reports');
+    
+    if (!reportsExists) {
+      return res.json([]);
+    }
+    
+    const result = await safeQuery(`
+      SELECT 
+        r.*,
+        reporter.name as reporter_name,
+        reported.name as reported_name
+      FROM reports r
+      LEFT JOIN users reporter ON reporter.id = r.reporter_id
+      LEFT JOIN users reported ON reported.id = r.reported_id
+      ORDER BY r.created_at DESC
+    `);
+    
+    console.log('✅ تم تحميل البلاغات:', result.success ? result.rows.length : 0);
+    res.json(result.success ? result.rows : []);
+    
+  } catch (error) {
+    console.error('❌ خطأ في البلاغات:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ التقييمات ══
+app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
+  try {
+    console.log('⭐ تحميل التقييمات...');
+    
+    const reviewsExists = await tableExists('reviews');
+    
+    if (!reviewsExists) {
+      return res.json([]);
+    }
+    
+    const result = await safeQuery(`
+      SELECT 
+        r.*,
+        reviewer.name as reviewer_name,
+        reviewed.name as reviewed_name
+      FROM reviews r
+      LEFT JOIN users reviewer ON reviewer.id = r.reviewer_id
+      LEFT JOIN users reviewed ON reviewed.id = r.reviewed_id
+      ORDER BY r.created_at DESC
+    `);
+    
+    console.log('✅ تم تحميل التقييمات:', result.success ? result.rows.length : 0);
+    res.json(result.success ? result.rows : []);
+    
+  } catch (error) {
+    console.error('❌ خطأ في التقييمات:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ إرسال إشعار ══
+app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
+  try {
+    const { user_id, role, title, body, type, channel } = req.body;
+    
+    console.log('📢 إرسال إشعار:', title, 'إلى:', user_id || role || 'الكل');
+    
+    if (!title || !body) {
+      return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
+    }
+    
+    const notificationsExists = await tableExists('notifications');
+    if (!notificationsExists) {
+      return res.json({ ok: true, message: 'تم الإرسال (جدول الإشعارات غير موجود)', sent_count: 0 });
+    }
+    
+    let targetUsers = [];
+    
+    if (user_id) {
+      // إرسال لمستخدم محدد
+      const user = await safeQuery('SELECT id, name FROM users WHERE id = $1', [user_id]);
+      targetUsers = user.success ? user.rows : [];
+    } else if (role && ['client', 'provider'].includes(role)) {
+      // إرسال لفئة معينة
+      const users = await safeQuery('SELECT id, name FROM users WHERE role = $1 AND is_active = true', [role]);
+      targetUsers = users.success ? users.rows : [];
+    } else {
+      // إرسال للجميع
+      const users = await safeQuery('SELECT id, name FROM users WHERE role != \'admin\' AND is_active = true');
+      targetUsers = users.success ? users.rows : [];
+    }
+    
+    // إدراج الإشعارات
+    for (const user of targetUsers) {
+      await safeQuery(
+        'INSERT INTO notifications (user_id, title, body, type, is_read, created_at) VALUES ($1, $2, $3, $4, false, NOW())',
+        [user.id, title, body, type || 'admin']
+      );
+    }
+    
+    console.log('✅ تم إرسال الإشعارات إلى:', targetUsers.length, 'مستخدم');
+    
+    res.json({
+      ok: true,
+      message: `تم إرسال الإشعار لـ ${targetUsers.length} مستخدم`,
+      sent_count: targetUsers.length
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ في الإشعار:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ بحث سريع ══
+app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({ requests: [], users: [] });
+    }
+    
+    console.log('🔍 بحث الأدمن:', q);
+    
+    const searchTerm = `%${q}%`;
+    let requests = [];
+    let users = [];
+    
+    // البحث في الطلبات
+    if (await tableExists('requests') && await tableExists('users')) {
+      const requestsResult = await safeQuery(`
+        SELECT r.id, r.title, r.status, u.name as client_name
+        FROM requests r
+        LEFT JOIN users u ON u.id = r.user_id
+        WHERE r.title ILIKE $1 OR u.name ILIKE $1
+        ORDER BY r.created_at DESC
+        LIMIT 10
+      `, [searchTerm]);
+      
+      requests = requestsResult.success ? requestsResult.rows : [];
+    }
+    
+    // البحث في المستخدمين
+    if (await tableExists('users')) {
+      const usersResult = await safeQuery(`
+        SELECT id, name, email, role
+        FROM users
+        WHERE (name ILIKE $1 OR email ILIKE $1) AND role != 'admin'
+        ORDER BY name
+        LIMIT 10
+      `, [searchTerm]);
+      
+      users = usersResult.success ? usersResult.rows : [];
+    }
+    
+    console.log('✅ اكتمل البحث:', requests.length, 'طلبات،', users.length, 'مستخدمين');
+    
+    res.json({
+      requests: requests,
+      users: users
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ في البحث:', error);
+    res.json({ requests: [], users: [] });
+  }
+});
+
 console.log('✅ تم تحميل نظام الأدمن بنجاح');
+console.log('   - التوثيق والصلاحيات: ✓');
+console.log('   - إدارة المستخدمين: ✓');
+console.log('   - نقطة نهاية الحذف: ✓ (مع الأمان في المعاملات)');
+console.log('   - إدارة الطلبات: ✓');
+console.log('   - البلاغات والتقييمات: ✓');
+console.log('   - الإشعارات: ✓');
+console.log('   - البحث: ✓');
+console.log('🚀 جاهز لمعالجة طلبات الأدمن');
 
 // ═══════════════════════════════════════════════════════════════
 // SERVER START
