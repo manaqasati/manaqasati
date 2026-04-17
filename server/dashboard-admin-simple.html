@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مناقصة - لوحة الإدارة</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --p: #1B3A6B; --gold: #F0A500; --white: #ffffff; --bg: #f8fafc;
+      --border: #e2e8f0; --text: #1e293b; --muted: #64748b; --green: #059669;
+      --red: #dc2626; --red-l: #fee2e2;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Tajawal', sans-serif; background: var(--bg); color: var(--text); }
+    
+    .header {
+      background: var(--white); border-bottom: 1px solid var(--border); padding: 1rem 2rem;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-size: 1.5rem; font-weight: 900; color: var(--p); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 6rem 2rem 2rem; }
+    
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--white); padding: 1.5rem; border-radius: 12px;
+      border: 1px solid var(--border); text-align: center;
+    }
+    .stat-number { font-size: 2rem; font-weight: 900; color: var(--p); }
+    .stat-label { font-size: 0.875rem; color: var(--muted); }
+    
+    .tabs {
+      display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 1rem 1.5rem; background: none; border: none; font-family: 'Tajawal', sans-serif;
+      font-size: 1rem; font-weight: 600; color: var(--muted); cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all 0.2s;
+    }
+    .tab.active { color: var(--p); border-bottom-color: var(--p); }
+    
+    .content { background: var(--white); border-radius: 12px; border: 1px solid var(--border); padding: 2rem; }
+    
+    .user-card {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    .user-info { flex: 1; }
+    .user-name { font-weight: 700; margin-bottom: 0.25rem; }
+    .user-email { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .user-meta { font-size: 0.75rem; color: var(--muted); }
+    
+    .user-actions { display: flex; gap: 0.5rem; }
+    .btn {
+      padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; font-family: 'Tajawal', sans-serif; border: 1px solid; transition: all 0.2s;
+    }
+    .btn-toggle { background: var(--green); color: var(--white); border-color: var(--green); }
+    .btn-toggle.inactive { background: var(--red); color: var(--white); border-color: var(--red); }
+    .btn-delete { background: var(--red-l); color: var(--red); border-color: var(--red-l); }
+    .btn-delete:hover { background: var(--red); color: var(--white); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .bulk-actions { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .btn-bulk { background: var(--red); color: var(--white); border-color: var(--red); padding: 0.75rem 1.5rem; }
+    
+    .loading, .empty { text-align: center; padding: 2rem; color: var(--muted); }
+    
+    .toast {
+      position: fixed; top: 100px; right: 20px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;
+    }
+    .toast.success { border-left: 4px solid var(--green); }
+    .toast.error { border-left: 4px solid var(--red); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">مناقصة • لوحة الإدارة</div>
+    <div>
+      <span id="adminName">المدير</span>
+      <button onclick="logout()" class="btn btn-delete" style="margin-right: 1rem;">خروج</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats">
+      <div class="stat-card"><div class="stat-number" id="totalUsers">-</div><div class="stat-label">إجمالي المستخدمين</div></div>
+      <div class="stat-card"><div class="stat-number" id="totalClients">-</div><div class="stat-label">العملاء</div></div>
+      <div class="stat-card"><div class="stat-number" id="totalProviders">-</div><div class="stat-label">المزودين</div></div>
+      <div class="stat-card"><div class="stat-number" id="totalRequests">-</div><div class="stat-label">الطلبات</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('clients')">العملاء</button>
+      <button class="tab" onclick="showTab('providers')">المزودين</button>
+      <button class="tab" onclick="showTab('requests')">الطلبات</button>
+    </div>
+
+    <div class="content">
+      <div id="clients-tab">
+        <div class="bulk-actions">
+          <button onclick="bulkDelete('client')" class="btn btn-bulk">حذف جميع العملاء</button>
+        </div>
+        <div id="clientsList" class="loading">جاري التحميل...</div>
+      </div>
+
+      <div id="providers-tab" style="display: none;">
+        <div class="bulk-actions">
+          <button onclick="bulkDelete('provider')" class="btn btn-bulk">حذف جميع المزودين</button>
+        </div>
+        <div id="providersList" class="loading">جاري التحميل...</div>
+      </div>
+
+      <div id="requests-tab" style="display: none;">
+        <div id="requestsList" class="loading">جاري التحميل...</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = 'https://manaqasati-production.up.railway.app';
+let _token = localStorage.getItem('token');
+let _user = JSON.parse(localStorage.getItem('user') || '{}');
+let currentTab = 'clients';
+
+// تحقق من الأدمن
+if (!_token || _user.role !== 'admin') {
+  alert('يجب تسجيل الدخول كمدير');
+  location.href = 'auth.html';
+}
+
+document.getElementById('adminName').textContent = _user.name || 'المدير';
+
+// API Helper
+async function api(endpoint, options = {}) {
+  try {
+    const response = await fetch(API + endpoint, {
+      headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json', ...options.headers },
+      ...options
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`);
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
+
+// Toast
+function toast(message, type = 'info') {
+  const toastEl = document.createElement('div');
+  toastEl.className = `toast ${type}`;
+  toastEl.textContent = message;
+  document.body.appendChild(toastEl);
+  setTimeout(() => toastEl.remove(), 4000);
+}
+
+// Tabs
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  ['clients', 'providers', 'requests'].forEach(t => {
+    document.getElementById(t + '-tab').style.display = t === tab ? 'block' : 'none';
+  });
+  
+  currentTab = tab;
+  if (tab === 'clients') loadClients();
+  else if (tab === 'providers') loadProviders();
+  else if (tab === 'requests') loadRequests();
+}
+
+// Load Stats
+async function loadStats() {
+  try {
+    const stats = await api('/api/admin/stats');
+    document.getElementById('totalUsers').textContent = stats.total_users || 0;
+    document.getElementById('totalClients').textContent = stats.total_clients || 0;
+    document.getElementById('totalProviders').textContent = stats.total_providers || 0;
+    document.getElementById('totalRequests').textContent = stats.total_requests || 0;
+  } catch (error) {
+    console.error('Stats error:', error);
+  }
+}
+
+// Load Clients
+async function loadClients() {
+  const container = document.getElementById('clientsList');
+  container.innerHTML = '<div class="loading">جاري تحميل العملاء...</div>';
+  
+  try {
+    const clients = await api('/api/admin/users?role=client');
+    if (!clients.length) {
+      container.innerHTML = '<div class="empty">لا يوجد عملاء</div>';
+      return;
+    }
+    
+    container.innerHTML = clients.map(client => `
+      <div class="user-card">
+        <div class="user-info">
+          <div class="user-name">${client.name || 'بدون اسم'}</div>
+          <div class="user-email">${client.email}</div>
+          <div class="user-meta">${client.city || 'غير محدد'} • ${new Date(client.created_at).toLocaleDateString('ar')}</div>
+        </div>
+        <div class="user-actions">
+          <button onclick="toggleUser(${client.id})" class="btn btn-toggle ${client.is_active ? '' : 'inactive'}">
+            ${client.is_active ? 'إيقاف' : 'تفعيل'}
+          </button>
+          <button onclick="deleteUser(${client.id}, '${client.name || 'المستخدم'}')" class="btn btn-delete">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    container.innerHTML = `<div class="empty">خطأ: ${error.message}</div>`;
+  }
+}
+
+// Load Providers
+async function loadProviders() {
+  const container = document.getElementById('providersList');
+  container.innerHTML = '<div class="loading">جاري تحميل المزودين...</div>';
+  
+  try {
+    const providers = await api('/api/admin/users?role=provider');
+    if (!providers.length) {
+      container.innerHTML = '<div class="empty">لا يوجد مزودين</div>';
+      return;
+    }
+    
+    container.innerHTML = providers.map(provider => `
+      <div class="user-card">
+        <div class="user-info">
+          <div class="user-name">${provider.name || 'بدون اسم'}</div>
+          <div class="user-email">${provider.email}</div>
+          <div class="user-meta">
+            ${provider.city || 'غير محدد'} • 
+            ${(provider.specialties || []).join('، ') || 'لم يحدد'} • 
+            ${new Date(provider.created_at).toLocaleDateString('ar')}
+          </div>
+        </div>
+        <div class="user-actions">
+          <button onclick="toggleUser(${provider.id})" class="btn btn-toggle ${provider.is_active ? '' : 'inactive'}">
+            ${provider.is_active ? 'إيقاف' : 'تفعيل'}
+          </button>
+          <button onclick="deleteUser(${provider.id}, '${provider.name || 'المستخدم'}')" class="btn btn-delete">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    container.innerHTML = `<div class="empty">خطأ: ${error.message}</div>`;
+  }
+}
+
+// Load Requests
+async function loadRequests() {
+  const container = document.getElementById('requestsList');
+  container.innerHTML = '<div class="loading">جاري تحميل الطلبات...</div>';
+  
+  try {
+    const requests = await api('/api/admin/requests');
+    if (!requests.length) {
+      container.innerHTML = '<div class="empty">لا يوجد طلبات</div>';
+      return;
+    }
+    
+    container.innerHTML = requests.map(request => `
+      <div class="user-card">
+        <div class="user-info">
+          <div class="user-name">${request.title}</div>
+          <div class="user-email">${request.category || 'غير محدد'} • ${request.city || 'غير محدد'}</div>
+          <div class="user-meta">
+            ${request.status === 'pending' ? 'قيد المراجعة' : 
+              request.status === 'open' ? 'مفتوح' : 
+              request.status === 'completed' ? 'مكتمل' : request.status}
+            • ${new Date(request.created_at).toLocaleDateString('ar')}
+          </div>
+        </div>
+        <div class="user-actions">
+          ${request.status === 'pending' ? `
+            <button onclick="approveRequest(${request.id})" class="btn btn-toggle">موافقة</button>
+          ` : ''}
+          <button onclick="deleteRequest(${request.id})" class="btn btn-delete">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    container.innerHTML = `<div class="empty">خطأ: ${error.message}</div>`;
+  }
+}
+
+// Delete User
+async function deleteUser(userId, userName) {
+  if (!confirm(`حذف المستخدم "${userName}" نهائياً؟\n\nسيتم حذف جميع بياناته.\nهذا الإجراء لا يمكن التراجع عنه.`)) return;
+  
+  const button = event.target;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'جاري...';
+  
+  try {
+    await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    toast('تم حذف المستخدم بنجاح', 'success');
+    if (currentTab === 'clients') loadClients();
+    else if (currentTab === 'providers') loadProviders();
+    loadStats();
+  } catch (error) {
+    toast('فشل في الحذف: ' + error.message, 'error');
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+// Toggle User
+async function toggleUser(userId) {
+  const button = event.target;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'جاري...';
+  
+  try {
+    await api(`/api/admin/users/${userId}/toggle`, { method: 'PUT' });
+    if (currentTab === 'clients') loadClients();
+    else if (currentTab === 'providers') loadProviders();
+    toast('تم تحديث المستخدم', 'success');
+  } catch (error) {
+    toast('فشل في التحديث: ' + error.message, 'error');
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+// Bulk Delete
+async function bulkDelete(role) {
+  const roleArabic = role === 'client' ? 'العملاء' : 'المزودين';
+  if (!confirm(`حذف جميع ${roleArabic} نهائياً؟\n\n⚠️ هذا الإجراء لا يمكن التراجع عنه!`)) return;
+  
+  const confirmation = prompt(`اكتب "حذف ${roleArabic}" للتأكيد:`);
+  if (confirmation !== `حذف ${roleArabic}`) {
+    toast('تم الإلغاء', 'info');
+    return;
+  }
+  
+  const button = event.target;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'جاري الحذف...';
+  
+  try {
+    const users = await api(`/api/admin/users?role=${role}`);
+    const userIds = users.map(u => u.id);
+    
+    if (!userIds.length) {
+      toast(`لا يوجد ${roleArabic}`, 'info');
+      return;
+    }
+    
+    const result = await api('/api/admin/users/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ user_ids: userIds, role: role })
+    });
+    
+    toast(`تم حذف ${result.deleted_count} مستخدم`, 'success');
+    if (currentTab === 'clients') loadClients();
+    else if (currentTab === 'providers') loadProviders();
+    loadStats();
+  } catch (error) {
+    toast('فشل في الحذف: ' + error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+// Request Actions
+async function approveRequest(requestId) {
+  try {
+    await api(`/api/admin/requests/${requestId}/approve`, { method: 'PUT' });
+    toast('تمت الموافقة', 'success');
+    loadRequests();
+  } catch (error) {
+    toast('فشل: ' + error.message, 'error');
+  }
+}
+
+async function deleteRequest(requestId) {
+  if (!confirm('حذف هذا الطلب نهائياً؟')) return;
+  
+  try {
+    await api(`/api/admin/requests/${requestId}`, { method: 'DELETE' });
+    toast('تم حذف الطلب', 'success');
+    loadRequests();
+    loadStats();
+  } catch (error) {
+    toast('فشل في الحذف: ' + error.message, 'error');
+  }
+}
+
+// Logout
+function logout() {
+  localStorage.clear();
+  location.href = 'auth.html';
+}
+
+// Initialize
+loadStats();
+loadClients();
+</script>
+</body>
+</html>
