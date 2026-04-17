@@ -997,8 +997,17 @@ async function viewProviderPortfolio(providerId) {
   _el('mTit').textContent = 'معرض — '+_esc(p.business_name||p.name||'المزود');
 }
 function _openProvChat(reqId, clientId, clientName, reqTitle){
-  gotoPage('chat');
-  setTimeout(function(){openChatRoom(+reqId,+clientId,clientName,reqTitle);},200);
+  // Switch to chat page without triggering loadChat()
+  document.querySelectorAll('.page').forEach(function(p){p.className='page';});
+  var pg=_el('page-chat');if(pg)pg.className='page on';
+  document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});
+  var ni=_el('ni-chat');if(ni)ni.classList.add('on');
+  var bn=_el('bn-chat');if(bn)bn.classList.add('on');
+  var pt=_el('pageTitle');if(pt)pt.textContent='المحادثات';
+  _curPage='chat';
+  sessionStorage.setItem('mnq_prov_page','chat');
+  window.scrollTo(0,0);
+  openChatRoom(+reqId,+clientId,clientName,reqTitle);
 }
 function openImgFull(src){
   var v=document.getElementById('imgViewer');
