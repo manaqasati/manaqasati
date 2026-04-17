@@ -55,7 +55,6 @@ async function notify(userId, title, body, type, refId) {
   }
 }
 
-// توحيد حالة الطلب — نقبل 'review' و 'pending_review' كمرادفين
 function normalizeStatus(s) {
   if (s === 'review') return 'pending_review';
   return s;
@@ -166,7 +165,7 @@ async function setupDatabase() {
 
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       title VARCHAR(255),
       body TEXT,
       type VARCHAR(50),
@@ -205,12 +204,11 @@ async function setupDatabase() {
       UNIQUE(user_id, token)
     )`);
 
-    // ⚠️ إصلاح: إزالة قيد NOT NULL عن password_hash إذا كان موجود في DB قديم
+    // إزالة قيد NOT NULL عن password_hash إذا كان موجود في DB قديم
     try {
       await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
-      console.log('✅ password_hash NOT NULL constraint removed (if existed)');
     } catch (e) {
-      // تجاهل — العمود قد لا يكون NOT NULL أصلاً
+      // تجاهل
     }
 
     console.log('✅ Database setup complete');
@@ -228,8 +226,6 @@ setupDatabase();
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, phone, password } = req.body;
-    console.log('🔐 Login attempt:', email || phone);
-
     if ((!email && !phone) || !password) {
       return res.status(400).json({ message: 'البيانات ناقصة' });
     }
@@ -250,8 +246,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     delete user.password; delete user.password_hash;
-
-    console.log('✅ Login successful:', user.email, user.role);
+    console.log('✅ Login:', user.email, user.role);
     res.json({ user, token });
   } catch (error) {
     console.error('❌ Login error:', error);
@@ -259,12 +254,10 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// التسجيل — ✅ مصلح: يكتب في password و password_hash
+// التسجيل
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
-    console.log('📝 Register attempt:', email, role);
-
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'البيانات ناقصة' });
     }
@@ -276,13 +269,10 @@ app.post('/api/auth/register', async (req, res) => {
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
 
     const hash = await bcrypt.hash(password, 10);
-
-    // معالجة التخصصات — تقبل array أو string
     const specs = role === 'provider'
       ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null))
       : null;
 
-    // ✅ نكتب الهاش في العمودين password و password_hash (بارامترين منفصلين لتفادي خطأ inconsistent types)
     const result = await pool.query(`
       INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, bio, is_active, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
@@ -291,8 +281,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-
-    console.log('✅ Registration successful:', user.email);
+    console.log('✅ Registration:', user.email);
     res.json({ user, token });
   } catch (error) {
     console.error('❌ Registration error:', error);
@@ -300,7 +289,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// إنشاء أدمن مباشر — ✅ مصلح
+// إنشاء أدمن مباشر
 app.get('/api/direct-admin', async (req, res) => {
   try {
     const { secret, email, password } = req.query;
@@ -308,8 +297,6 @@ app.get('/api/direct-admin', async (req, res) => {
     if (!email || !password)        return res.status(400).json({ message: 'الإيميل وكلمة المرور مطلوبة' });
 
     const hash = await bcrypt.hash(password, 10);
-
-    // ✅ نكتب في العمودين (بارامترين منفصلين)
     const result = await pool.query(`
       INSERT INTO users (name, email, password, password_hash, role, is_active, created_at)
       VALUES ('المدير', $1, $2, $3, 'admin', true, NOW())
@@ -317,11 +304,93 @@ app.get('/api/direct-admin', async (req, res) => {
       DO UPDATE SET password = $2, password_hash = $3, role = 'admin', is_active = true
       RETURNING id, name, email, role
     `, [email, hash, hash]);
-
     console.log('✅ Admin created:', result.rows[0]);
     res.json({ ok: true, message: 'تم إنشاء حساب الأدمن بنجاح', user: result.rows[0] });
   } catch (error) {
     console.error('❌ Admin creation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// USER NOTIFICATIONS ✨ جديد
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/notifications', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, title, body, type, ref_id, is_read, created_at
+       FROM notifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Notifications error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/notifications/unread-count', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(r.rows[0].count) || 0 });
+  } catch (error) {
+    console.error('❌ Unread count error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/notifications/read', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',
+      [req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('❌ Mark all read error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/notifications/:id/read', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',
+      [parseInt(req.params.id), req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('❌ Mark read error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM notifications WHERE id=$1 AND user_id=$2',
+      [parseInt(req.params.id), req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('❌ Delete notif error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/notifications', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM notifications WHERE user_id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('❌ Delete all notifs error:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -396,13 +465,11 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const { badge } = req.body;
-
     const result = await pool.query(
       `UPDATE users SET badge=$1 WHERE id=$2 AND role != 'admin' RETURNING id,name,badge`,
       [badge, userId]
     );
     if (!result.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
-
     if (badge && badge !== 'none') {
       await notify(userId, '🏆 وسام جديد', `تهانينا! حصلت على وسام: ${badge}`, 'badge', null);
     }
@@ -413,7 +480,6 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   }
 });
 
-// 🗑️ حذف مستخدم — معاملة آمنة
 app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   const userId = parseInt(req.params.id);
   try {
@@ -479,7 +545,7 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// ADMIN — REQUESTS (CRUD + REVIEW + COMPLETE) ✨ جديد
+// ADMIN — REQUESTS
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
@@ -503,7 +569,6 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
     }
     query += ' ORDER BY r.created_at DESC';
     const result = await pool.query(query, params);
-    // نُرجع الحالة موحّدة
     const rows = result.rows.map(r => ({ ...r, status: normalizeStatus(r.status) }));
     res.json(rows);
   } catch (error) {
@@ -512,7 +577,6 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
   }
 });
 
-// ✨ مراجعة طلب: موافقة/رفض
 app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
@@ -521,9 +585,8 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       return res.status(400).json({ message: 'الإجراء غير صحيح' });
     }
     const newStatus = action === 'approve' ? 'open' : 'rejected';
-
     const result = await pool.query(
-      `UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes) 
+      `UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes)
        WHERE id=$3 RETURNING id, client_id, title, status, admin_notes`,
       [newStatus, reason || null, reqId]
     );
@@ -535,8 +598,6 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       ? `مشروعك "${r.title}" تم قبوله وأصبح متاحاً للعروض`
       : `مشروعك "${r.title}" تم رفضه${reason ? ': ' + reason : ''}`;
     await notify(r.client_id, title, body, 'request', reqId);
-
-    console.log(`✅ Request ${reqId} ${action}ed`);
     res.json(r);
   } catch (error) {
     console.error('❌ Review request error:', error);
@@ -544,23 +605,20 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
   }
 });
 
-// ✨ إنهاء مشروع
 app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
     const result = await pool.query(
-      `UPDATE requests SET status='completed', completed_at=NOW() 
+      `UPDATE requests SET status='completed', completed_at=NOW()
        WHERE id=$1 RETURNING id, client_id, assigned_provider_id, title, status`,
       [reqId]
     );
     if (!result.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     const r = result.rows[0];
-
     await notify(r.client_id, '🎉 مشروع مكتمل', `مشروعك "${r.title}" تم إنهاؤه`, 'request', reqId);
     if (r.assigned_provider_id) {
       await notify(r.assigned_provider_id, '🎉 مشروع مكتمل', `المشروع "${r.title}" تم إنهاؤه`, 'request', reqId);
     }
-
     res.json(r);
   } catch (error) {
     console.error('❌ Complete request error:', error);
@@ -568,12 +626,10 @@ app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) =>
   }
 });
 
-// ✨ تعديل طلب (الأدمن)
 app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
     const { title, description, category, city, budget_max, deadline, admin_notes } = req.body;
-
     const result = await pool.query(
       `UPDATE requests SET
         title        = COALESCE(NULLIF($1,''), title),
@@ -595,7 +651,6 @@ app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
-// ✨ حذف طلب — معاملة آمنة
 app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
@@ -607,7 +662,7 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
       await pool.query('DELETE FROM messages WHERE request_id=$1', [reqId]);
       await pool.query('DELETE FROM reviews WHERE request_id=$1', [reqId]);
       await pool.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [reqId]);
-      await pool.query('DELETE FROM notifications WHERE ref_id=$1 AND type=\'request\'', [reqId]);
+      await pool.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [reqId]);
 
       const del = await pool.query('DELETE FROM requests WHERE id=$1', [reqId]);
       if (del.rowCount === 0) {
@@ -615,7 +670,6 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
         return res.status(404).json({ message: 'الطلب غير موجود' });
       }
       await pool.query('COMMIT');
-      console.log(`✅ Request ${reqId} deleted`);
       res.json({ ok: true, deleted: true });
     } catch (e) {
       await pool.query('ROLLBACK');
@@ -660,8 +714,6 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     }
 
     for (const u of targetUsers) await notify(u.id, title, body, type || 'admin', null);
-
-    console.log(`✅ Sent notifications to ${targetUsers.length} users`);
     res.json({ ok: true, message: `تم إرسال الإشعار لـ ${targetUsers.length} مستخدم`, sent_count: targetUsers.length });
   } catch (error) {
     console.error('❌ Notification error:', error);
@@ -719,12 +771,10 @@ app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
   }
 });
 
-// ✨ معالجة بلاغ: warn / ban / ignore / resolve
 app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
   try {
     const reportId = parseInt(req.params.id);
     const { action, admin_note } = req.body;
-
     const statusMap = { warn: 'warned', ban: 'resolved', ignore: 'ignored', resolve: 'resolved' };
     const newStatus = statusMap[action];
     if (!newStatus) return res.status(400).json({ message: 'الإجراء غير صحيح' });
@@ -733,11 +783,8 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'البلاغ غير موجود' });
 
     const reportedId = r.rows[0].reported_id;
-
-    await pool.query(
-      'UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3',
-      [newStatus, admin_note || null, reportId]
-    );
+    await pool.query('UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3',
+      [newStatus, admin_note || null, reportId]);
 
     if (reportedId) {
       if (action === 'ban') {
@@ -749,8 +796,6 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
           `تلقيت تحذيراً بخصوص نشاطك على المنصة${admin_note ? ': ' + admin_note : ''}`, 'system', null);
       }
     }
-
-    console.log(`✅ Report ${reportId} → ${newStatus}`);
     res.json({ ok: true, status: newStatus });
   } catch (error) {
     console.error('❌ Handle report error:', error);
@@ -758,7 +803,6 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
-// ✨ بحث سريع
 app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
   try {
     const { q } = req.query;
@@ -849,10 +893,10 @@ app.get('/api/stats', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
-  console.log('✅ All admin endpoints functional:');
-  console.log('   • stats, users, providers, requests (CRUD+review+complete)');
-  console.log('   • notify, reviews, reports (with actions), search');
-  console.log('✅ password_hash bug fixed in register & direct-admin');
+  console.log('✅ Auth: login, register, direct-admin');
+  console.log('✅ User: notifications (list, unread-count, read, delete)');
+  console.log('✅ Admin: stats, users, providers, requests (CRUD+review+complete)');
+  console.log('✅ Admin: notify, reviews, reports (actions), search');
   console.log('🚀 System operational');
 });
 
