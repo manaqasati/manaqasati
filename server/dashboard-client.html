@@ -706,7 +706,7 @@ function show(pg,el,key){
   if(pg==='home')loadHome();
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
-  window.scrollTo(0,0);
+  if(pg!=='detail')window.scrollTo(0,0);
 }
 
 function showTab(t,el){
@@ -914,6 +914,9 @@ async function loadBids(id){
       +acts+'</div>';
   }).join('');
 
+  // Restore scroll position after render
+  var _savedScroll=window.scrollY||0;
+  setTimeout(function(){if(_savedScroll>0)window.scrollTo(0,_savedScroll);},50);
   var _bl=document.getElementById('bids-list');
   if(_bl)_bl.addEventListener('click',function(e){
     var btn=e.target.closest('button');
