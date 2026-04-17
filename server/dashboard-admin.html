@@ -600,6 +600,8 @@ async function loadRequests(){
   pg.innerHTML=_loading();
   _allReqs=(await _api('/api/admin/requests'))||[];
   if(!Array.isArray(_allReqs)) _allReqs=[];
+  // normalize status: backend may send 'review' instead of 'pending_review'
+  _allReqs.forEach(function(r){ if(r.status==='review') r.status='pending_review'; });
   _renderRequests(_currentReqList());
 }
 function _currentReqList(){
@@ -616,7 +618,7 @@ function _renderRequests(list){
   var tabs=['all','pending_review','open','in_progress','completed','rejected'];
   var labels={all:'الكل',pending_review:'مراجعة',open:'مفتوح',in_progress:'جارٍ',completed:'مكتمل',rejected:'مرفوض'};
   var html='<div class="pghd"><div><div class="pg-t">الطلبات</div><div class="pg-s">'+_allReqs.length+' طلب</div></div>';
-  html+='<button onclick="_exportCSV()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">تصدير CSV</button></div>';
+  html+='<button onclick="_exportCSV()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">📥 تصدير Excel</button></div>';
   html+='<div class="tab-btns">';
   tabs.forEach(function(s){
     var cnt=s==='all'?_allReqs.length:_allReqs.filter(function(r){return r.status===s;}).length;
@@ -687,12 +689,16 @@ function _completeReq(id){
 }
 function _deleteReq(id){
   askConfirm('حذف الطلب','حذف هذا الطلب نهائياً؟ لا يمكن التراجع.', function(){
-    _api('/api/admin/requests/'+id,{method:'DELETE'})
-      .then(function(r){
-        if(r&&(r.ok||r.success||r.deleted)) toast('تم الحذف','success');
-        else toast(r.message||'تم الحذف','success');
-        loadRequests();
-      });
+    fetch(API+'/api/admin/requests/'+id,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}
+    }).then(function(res){
+      if(res.status===404){ toast('الـ endpoint غير موجود في السيرفر (404)','error'); return; }
+      if(res.status===401||res.status===403){ toast('لا تملك صلاحية الحذف','error'); return; }
+      if(!res.ok){ toast('فشل الحذف ('+res.status+')','error'); return; }
+      toast('تم الحذف','success');
+      loadRequests();
+    }).catch(function(){ toast('فشل الاتصال','error'); });
   }, true);
 }
 function _editReqModal(id){
@@ -742,21 +748,82 @@ async function _saveEditReq(id){
   toast(r.id?'تم الحفظ':(r.message||'حدث خطأ'),r.id?'success':'error');
   if(r.id){ closeModal(); loadRequests(); }
 }
-async function _exportCSV(){
-  toast('جاري التحميل...','info');
-  try{
-    var res=await fetch(API+'/api/admin/export/requests',{headers:{'Authorization':'Bearer '+_token}});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var blob=await res.blob();
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url; a.download='requests-'+Date.now()+'.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    toast('تم التحميل','success');
-  }catch(e){
-    toast('فشل التحميل','error');
-  }
+/* ══ CSV/EXCEL EXPORT (client-side, no backend needed) ══ */
+function _downloadCSV(filename, rows){
+  if(!rows || !rows.length){ toast('لا يوجد بيانات للتصدير','error'); return; }
+  var headers=Object.keys(rows[0]);
+  var BOM='\uFEFF'; // UTF-8 BOM — لعرض العربية بشكل صحيح في Excel
+  var esc=function(v){ v=v==null?'':String(v); return '"'+v.replace(/"/g,'""').replace(/\r?\n/g,' ')+'"'; };
+  var csv=headers.map(esc).join(',')+'\r\n';
+  rows.forEach(function(r){ csv+=headers.map(function(h){return esc(r[h]);}).join(',')+'\r\n'; });
+  var blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('تم تحميل '+rows.length+' سجل','success');
+}
+
+function _exportCSV(){
+  if(!_allReqs.length){ toast('حمّل الطلبات أولاً','error'); return; }
+  var statusLabels={'open':'مفتوح','in_progress':'جارٍ','completed':'مكتمل','pending_review':'بانتظار المراجعة','rejected':'مرفوض'};
+  var rows=_allReqs.map(function(r){
+    return {
+      'رقم المشروع': r.project_number||r.id||'',
+      'العنوان': r.title||'',
+      'الحالة': statusLabels[r.status]||r.status||'',
+      'التصنيف': r.category||'',
+      'المدينة': r.city||'',
+      'الميزانية': r.budget_max||'',
+      'عدد العروض': r.bid_count||0,
+      'العميل': r.client_name||'',
+      'المزود': r.provider_name||'',
+      'الموعد النهائي': r.deadline?String(r.deadline).slice(0,10):'',
+      'تاريخ الإنشاء': r.created_at?_fdt(r.created_at):'',
+      'الوصف': r.description||''
+    };
+  });
+  _downloadCSV('manaqasa-requests-'+Date.now()+'.csv', rows);
+}
+
+function _exportProviders(){
+  if(!_provs.length){ toast('حمّل المزودين أولاً','error'); return; }
+  var rows=_provs.map(function(p){
+    return {
+      'المعرّف': p.id||'',
+      'الاسم': p.name||'',
+      'البريد الإلكتروني': p.email||'',
+      'الجوال': p.phone||'',
+      'المدينة': p.city||'',
+      'التصنيف': p.category||'',
+      'اللقب': (p.badge&&p.badge!=='none')?p.badge:'',
+      'التقييم': p.avg_rating?parseFloat(p.avg_rating).toFixed(2):'',
+      'عدد التقييمات': p.review_count||0,
+      'المشاريع المنجزة': p.completed_projects||0,
+      'الحالة': p.is_active===false?'موقوف':'نشط',
+      'تاريخ التسجيل': p.created_at?_fdt(p.created_at):''
+    };
+  });
+  _downloadCSV('manaqasa-providers-'+Date.now()+'.csv', rows);
+}
+
+function _exportClients(){
+  if(!_clients.length){ toast('حمّل العملاء أولاً','error'); return; }
+  var rows=_clients.map(function(u){
+    return {
+      'المعرّف': u.id||'',
+      'الاسم': u.name||'',
+      'البريد الإلكتروني': u.email||'',
+      'الجوال': u.phone||'',
+      'المدينة': u.city||'',
+      'اللقب': (u.badge&&u.badge!=='none')?u.badge:'',
+      'عدد الطلبات': u.request_count||0,
+      'الحالة': u.is_active===false?'موقوف':'نشط',
+      'تاريخ التسجيل': u.created_at?_fdt(u.created_at):''
+    };
+  });
+  _downloadCSV('manaqasa-clients-'+Date.now()+'.csv', rows);
 }
 
 /* ══ PROVIDERS ══ */
@@ -770,7 +837,8 @@ async function loadProviders(){
 }
 function _renderProviders(list){
   var pg=_el('page-providers'); if(!pg) return;
-  var html='<div class="pghd"><div><div class="pg-t">المزودون</div><div class="pg-s">'+_provs.length+' مزود</div></div></div>';
+  var html='<div class="pghd"><div><div class="pg-t">المزودون</div><div class="pg-s">'+_provs.length+' مزود</div></div>';
+  html+='<button onclick="_exportProviders()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">📥 تصدير Excel</button></div>';
   html+='<div class="card" style="padding:14px"><input type="text" id="prov-search" placeholder="ابحث بالاسم أو البريد..." oninput="_filterProvs()" class="form-input"></div>';
 
   if(!list.length){
@@ -824,7 +892,8 @@ async function loadClients(){
 }
 function _renderClients(list){
   var pg=_el('page-clients'); if(!pg) return;
-  var html='<div class="pghd"><div><div class="pg-t">العملاء</div><div class="pg-s">'+_clients.length+' عميل</div></div></div>';
+  var html='<div class="pghd"><div><div class="pg-t">العملاء</div><div class="pg-s">'+_clients.length+' عميل</div></div>';
+  html+='<button onclick="_exportClients()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">📥 تصدير Excel</button></div>';
   html+='<div class="card" style="padding:14px"><input type="text" id="cli-search" placeholder="ابحث بالاسم أو البريد..." oninput="_filterClients()" class="form-input"></div>';
 
   if(!list.length){
