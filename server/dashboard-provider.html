@@ -340,11 +340,9 @@ async function _sendChatMsg(){
   var btn=_el('chat-send-btn');
   inp.value='';if(btn)btn.disabled=true;
   try{
-    var r=await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_wsReqId,receiver_id:_wsReceiverId,content:content})});
-    if(r&&r.id){
-      var exists=_chatMsgs.some(function(m){return String(m.id)===String(r.id);});
-      if(!exists){_chatMsgs.push(r);_renderChatMsgs(_chatMsgs);}
-    }
+    await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_wsReqId,receiver_id:_wsReceiverId,content:content})});
+    var msgs=await _api('/api/messages/'+_wsReqId)||[];
+    if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs(_chatMsgs);}
   }catch(ex){console.warn('send err:',ex);}
   if(btn)btn.disabled=false;
 }
