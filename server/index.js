@@ -626,7 +626,6 @@ app.put('/api/requests/:id/complete', auth, async (req, res) => {
 });
 
 // ── BIDS ──
-// ✅ FIX: Added provider_phone and provider_image to query
 app.get('/api/requests/:id/bids', async (req, res) => {
   try {
     const reqId = parseInt(req.params.id);
@@ -872,7 +871,6 @@ app.put('/api/provider/notifications/read', auth, async (req, res) => {
 });
 
 // ── PROFILE ──
-// ✅ FIX: Added phone to public provider profile
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const r = await pool.query(`
@@ -901,12 +899,14 @@ app.get('/api/provider/profile', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// ✅ FIX: Added email to provider profile update
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, experience_years, portfolio_images, profile_image, notify_categories } = req.body;
+    const { name, phone, email, city, bio, specialties, experience_years, portfolio_images, profile_image, notify_categories } = req.body;
     const fields = []; const vals = []; let idx = 1;
     if (name !== undefined) { fields.push(`name=$${idx++}`); vals.push(name); }
     if (phone !== undefined) { fields.push(`phone=$${idx++}`); vals.push(phone||null); }
+    if (email !== undefined) { fields.push(`email=$${idx++}`); vals.push(email||null); }
     if (city !== undefined) { fields.push(`city=$${idx++}`); vals.push(city||null); }
     if (bio !== undefined) { fields.push(`bio=$${idx++}`); vals.push(bio||null); }
     if (specialties !== undefined) { fields.push(`specialties=$${idx++}`); vals.push(specialties||null); }
@@ -1035,7 +1035,6 @@ app.post('/api/reports', auth, async (req, res) => {
     const { reported_id, request_id, type, reason, details } = req.body;
     if (!reported_id || !reason) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (Number(reported_id) === Number(req.user.id)) return res.status(400).json({ message: 'لا يمكن الإبلاغ عن نفسك' });
-    // منع تكرار البلاغ على نفس الشخص في نفس الطلب
     if (request_id) {
       const dup = await pool.query(
         'SELECT id FROM reports WHERE reporter_id=$1 AND reported_id=$2 AND request_id=$3',
@@ -1182,10 +1181,8 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
     const { user_id, role, title, body, type, channel, specialty } = req.body;
-    // channel: 'both' | 'push' | 'email'  (default: 'both')
     const ch = channel || 'both';
     const VALID_ROLES = ['client','provider','admin'];
-
     let targetUsers = [];
     if (user_id) {
       const r = await pool.query('SELECT id,email,name FROM users WHERE id=$1', [user_id]);
@@ -1193,50 +1190,25 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     } else {
       let q = 'SELECT id,email,name FROM users WHERE is_active=TRUE';
       const params = [];
-
-      // فلتر الدور
-      if (role && VALID_ROLES.includes(role)) {
-        params.push(role);
-        q += ` AND role=$${params.length}`;
-      }
-
-      // فلتر التخصص — للمزودين فقط
+      if (role && VALID_ROLES.includes(role)) { params.push(role); q += ` AND role=$${params.length}`; }
       if (specialty && typeof specialty === 'string' && specialty !== 'الكل') {
-        // إذا لم يحدد دوراً، نقتصر على المزودين تلقائياً
-        if (!role) {
-          q += ` AND role='provider'`;
-        }
+        if (!role) q += ` AND role='provider'`;
         params.push(specialty);
         const pn = params.length;
-        q += ` AND (
-          (specialties IS NOT NULL AND $${pn}::text = ANY(specialties))
-          OR
-          (notify_categories IS NOT NULL AND $${pn}::text = ANY(notify_categories))
-        )`;
+        q += ` AND ((specialties IS NOT NULL AND $${pn}::text = ANY(specialties)) OR (notify_categories IS NOT NULL AND $${pn}::text = ANY(notify_categories)))`;
       }
-
       const r = await pool.query(q, params);
       targetUsers = r.rows;
     }
-
     for (const u of targetUsers) {
-      // إشعار داخل التطبيق دائماً
       await notify(u.id, title, body, type||'admin', null);
-      // Push notification
-      if (ch === 'both' || ch === 'push') {
-        await sendPush([u.id], title, body, { type: type||'admin' });
-      }
-      // Email
+      if (ch === 'both' || ch === 'push') await sendPush([u.id], title, body, { type: type||'admin' });
       if ((ch === 'both' || ch === 'email') && u.email) {
-        await sendEmail(u.email, title,
-          emailTpl(title,
-            `<p>${body.replace(/\n/g,'<br>')}</p>
-             <div style="background:#f4f7fb;border-right:3px solid #1B3A6B;border-radius:8px;padding:12px 16px;margin-top:14px">
-               <p style="font-size:12px;color:#6b85a8;margin:0">هذه رسالة رسمية من إدارة منصة مناقصة.</p>
-             </div>`,
-            null, null
-          )
-        );
+        await sendEmail(u.email, title, emailTpl(title,
+          `<p>${body.replace(/\n/g,'<br>')}</p>
+           <div style="background:#f4f7fb;border-right:3px solid #1B3A6B;border-radius:8px;padding:12px 16px;margin-top:14px">
+             <p style="font-size:12px;color:#6b85a8;margin:0">هذه رسالة رسمية من إدارة منصة مناقصة.</p>
+           </div>`, null, null));
       }
     }
     res.json({ ok: true, sent: targetUsers.length });
@@ -1275,73 +1247,51 @@ app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
-// ── معالجة البلاغ ──
 app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
   try {
     const { action, admin_note } = req.body;
     const report = await pool.query('SELECT * FROM reports WHERE id=$1', [req.params.id]);
     if (!report.rows.length) return res.status(404).json({ message: 'البلاغ غير موجود' });
     const b = report.rows[0];
-
     const newStatus = action === 'ignore' ? 'ignored' : action === 'warn' ? 'warned' : 'resolved';
     await pool.query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP').catch(()=>{});
-    await pool.query(
-      'UPDATE reports SET status=$1, admin_note=$2, reviewed_at=NOW() WHERE id=$3',
-      [newStatus, admin_note||null, req.params.id]
-    );
-
+    await pool.query('UPDATE reports SET status=$1, admin_note=$2, reviewed_at=NOW() WHERE id=$3',
+      [newStatus, admin_note||null, req.params.id]);
     const reportedUser = await pool.query('SELECT name, email FROM users WHERE id=$1', [b.reported_id]);
     const reporterUser = await pool.query('SELECT name, email FROM users WHERE id=$1', [b.reporter_id]);
     const rUser = reportedUser.rows[0] || {};
     const repUser = reporterUser.rows[0] || {};
-
     if (action === 'warn') {
       await pool.query('UPDATE users SET report_count=COALESCE(report_count,0)+1 WHERE id=$1', [b.reported_id]);
-      const warnMsg = admin_note || 'تلقيت تحذيراً من إدارة منصة مناقصة بسبب بلاغ مقدم ضدك. يرجى الالتزام بشروط الاستخدام.';
-      // إشعار داخلي
+      const warnMsg = admin_note || 'تلقيت تحذيراً من إدارة منصة مناقصة بسبب بلاغ مقدم ضدك.';
       await notify(b.reported_id, 'تحذير من الإدارة', warnMsg, 'warning', null);
-      // إيميل
       if (rUser.email) {
         await sendEmail(rUser.email, 'تحذير من إدارة مناقصة',
           emailTpl('تحذير رسمي من الإدارة',
             `<div style="background:#fef2f2;border-right:4px solid #dc2626;border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:14px">
               <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:6px">تحذير رسمي</div>
               <p style="font-size:13px;color:#7f1d1d;line-height:1.8;margin:0">${warnMsg}</p>
-            </div>
-            <p style="font-size:12px;color:#6b85a8">يرجى مراجعة <a href="${SITE_URL}/terms.html" style="color:#1B3A6B">شروط الاستخدام</a> والالتزام بها لتجنب الإيقاف النهائي.</p>`,
-            null, null));
+            </div>`, null, null));
       }
     }
     if (action === 'ban') {
       await pool.query('UPDATE users SET is_active=FALSE WHERE id=$1', [b.reported_id]);
       const banMsg = admin_note || 'تم إيقاف حسابك بسبب مخالفة شروط الاستخدام.';
-      // إشعار داخلي
       await notify(b.reported_id, 'تم إيقاف حسابك', banMsg, 'ban', null);
-      // إيميل
       if (rUser.email) {
         await sendEmail(rUser.email, 'إيقاف حساب مناقصة',
           emailTpl('تم إيقاف حسابك',
             `<div style="background:#fef2f2;border-right:4px solid #dc2626;border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:14px">
-              <div style="font-size:14px;font-weight:800;color:#991b1b;margin-bottom:6px">إيقاف الحساب</div>
               <p style="font-size:13px;color:#7f1d1d;line-height:1.8;margin:0">${banMsg}</p>
-            </div>
-            <p style="font-size:12px;color:#6b85a8">للاستفسار أو الاعتراض، تواصل مع الدعم عبر البريد الإلكتروني.</p>`,
-            null, null));
+            </div>`, null, null));
       }
     }
-    // إشعار المُبلِّغ
-    await notify(b.reporter_id, 'تمت مراجعة بلاغك',
-      'شكراً، تمت مراجعة بلاغك واتخاذ الإجراء المناسب.', 'report_resolved', null);
+    await notify(b.reporter_id, 'تمت مراجعة بلاغك', 'شكراً، تمت مراجعة بلاغك واتخاذ الإجراء المناسب.', 'report_resolved', null);
     if (repUser.email) {
       await sendEmail(repUser.email, 'تمت مراجعة بلاغك',
         emailTpl('تمت مراجعة بلاغك',
-          `<p>شكراً على إبلاغك — تمت مراجعة البلاغ واتخاذ الإجراء المناسب.</p>
-           <div style="background:#f0fdf4;border-right:3px solid #16a34a;border-radius:0 10px 10px 0;padding:12px 14px">
-             <p style="font-size:12px;color:#166534;margin:0">نحرص على توفير بيئة آمنة وموثوقة لجميع المستخدمين.</p>
-           </div>`,
-          null, null));
+          `<p>شكراً على إبلاغك — تمت مراجعة البلاغ واتخاذ الإجراء المناسب.</p>`, null, null));
     }
-
     res.json({ ok: true, message: 'تم تنفيذ الاجراء: ' + action });
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
