@@ -16,6 +16,297 @@ const pool = new Pool({
 });
 
 // Middleware
+// ══ أضف هذا الكود في نهاية index.js قبل app.listen ══
+
+// ══ إنشاء قاعدة البيانات تلقائياً ══
+app.get('/api/setup-database', async (req, res) => {
+  try {
+    const { secret } = req.query;
+    
+    // حماية - كلمة سر مطلوبة
+    if (secret !== 'manaqasa-setup-2024') {
+      return res.status(403).json({ message: 'كلمة سر مطلوبة' });
+    }
+    
+    console.log('🚀 بدء إنشاء قاعدة البيانات...');
+    
+    // إنشاء جدول المستخدمين
+    console.log('📝 إنشاء جدول المستخدمين...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(20) NOT NULL CHECK (role IN ('client', 'provider', 'admin')),
+          phone VARCHAR(20),
+          city VARCHAR(100),
+          bio TEXT,
+          specialties TEXT,
+          badge VARCHAR(100),
+          profile_image TEXT,
+          is_active BOOLEAN DEFAULT true,
+          email_verified BOOLEAN DEFAULT false,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // إنشاء جدول الطلبات
+    console.log('📝 إنشاء جدول الطلبات...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS requests (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          category VARCHAR(100),
+          budget DECIMAL(10,2),
+          currency VARCHAR(10) DEFAULT 'SAR',
+          deadline DATE,
+          skills_required TEXT,
+          status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('pending_review', 'open', 'in_progress', 'completed', 'cancelled', 'rejected')),
+          assigned_provider_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          admin_notes TEXT,
+          completed_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // إنشاء جدول العطاءات
+    console.log('📝 إنشاء جدول العطاءات...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bids (
+          id SERIAL PRIMARY KEY,
+          request_id INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(10) DEFAULT 'SAR',
+          delivery_time INTEGER,
+          proposal TEXT NOT NULL,
+          status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn')),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(request_id, user_id)
+      )
+    `);
+    
+    // إنشاء جدول التقييمات
+    console.log('📝 إنشاء جدول التقييمات...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+          id SERIAL PRIMARY KEY,
+          request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+          reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          reviewed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          comment TEXT,
+          type VARCHAR(20) DEFAULT 'general' CHECK (type IN ('general', 'project', 'communication', 'quality')),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(request_id, reviewer_id, reviewed_id)
+      )
+    `);
+    
+    // إنشاء جدول الإشعارات
+    console.log('📝 إنشاء جدول الإشعارات...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(255) NOT NULL,
+          body TEXT NOT NULL,
+          type VARCHAR(50) DEFAULT 'general' CHECK (type IN ('general', 'bid', 'project', 'payment', 'admin', 'system')),
+          is_read BOOLEAN DEFAULT false,
+          action_url TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // إنشاء جدول الرسائل
+    console.log('📝 إنشاء جدول الرسائل...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+          id SERIAL PRIMARY KEY,
+          request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+          sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          subject VARCHAR(255),
+          body TEXT NOT NULL,
+          is_read BOOLEAN DEFAULT false,
+          message_type VARCHAR(20) DEFAULT 'direct' CHECK (message_type IN ('direct', 'project', 'system')),
+          parent_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // إنشاء جدول البلاغات
+    console.log('📝 إنشاء جدول البلاغات...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reports (
+          id SERIAL PRIMARY KEY,
+          reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          reported_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+          reason VARCHAR(100) NOT NULL,
+          description TEXT,
+          status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed', 'warned', 'ignored')),
+          admin_note TEXT,
+          resolved_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    console.log('📊 إضافة فهارس للأداء...');
+    // إضافة فهارس مهمة
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_requests_user_id ON requests(user_id);
+      CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
+      CREATE INDEX IF NOT EXISTS idx_bids_request_id ON bids(request_id);
+      CREATE INDEX IF NOT EXISTS idx_bids_user_id ON bids(user_id);
+      CREATE INDEX IF NOT EXISTS idx_reviews_reviewed_id ON reviews(reviewed_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+    `);
+    
+    console.log('👥 إضافة بيانات تجريبية...');
+    
+    // إضافة مدير افتراضي
+    const adminExists = await pool.query("SELECT id FROM users WHERE email = 'admin@manaqasa.com'");
+    if (adminExists.rows.length === 0) {
+      const adminHash = await bcrypt.hash('admin123', 10);
+      await pool.query(`
+        INSERT INTO users (name, email, password_hash, role, is_active) 
+        VALUES ('مدير النظام', 'admin@manaqasa.com', $1, 'admin', true)
+      `, [adminHash]);
+    }
+    
+    // إضافة عملاء تجريبيين
+    const clientHash = await bcrypt.hash('password123', 10);
+    const clientsData = [
+      ['محمد أحمد', 'client1@test.com', '+966501234567', 'الرياض'],
+      ['سارة علي', 'client2@test.com', '+966507654321', 'جدة'],
+      ['فهد المطيري', 'client3@test.com', '+966509876543', 'الدمام']
+    ];
+    
+    for (const [name, email, phone, city] of clientsData) {
+      const exists = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+      if (exists.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO users (name, email, password_hash, role, phone, city, is_active) 
+          VALUES ($1, $2, $3, 'client', $4, $5, true)
+        `, [name, email, clientHash, phone, city]);
+      }
+    }
+    
+    // إضافة مزودي خدمات تجريبيين
+    const providerHash = await bcrypt.hash('password123', 10);
+    const providersData = [
+      ['أحمد التقني', 'provider1@test.com', '+966502345678', 'الرياض', 'برمجة وتطوير', 'مطور ويب محترف مع خبرة 5+ سنوات'],
+      ['فاطمة المصممة', 'provider2@test.com', '+966508765432', 'جدة', 'تصميم جرافيك', 'مصممة جرافيك إبداعية مع محفظة أعمال مميزة'],
+      ['عبدالله الكاتب', 'provider3@test.com', '+966503456789', 'الدمام', 'كتابة وترجمة', 'كاتب ومترجم محترف في اللغتين العربية والإنجليزية'],
+      ['نورا المسوقة', 'provider4@test.com', '+966509087654', 'الرياض', 'تسويق رقمي', 'خبيرة تسويق رقمي مع تركيز على وسائل التواصل الاجتماعي']
+    ];
+    
+    for (const [name, email, phone, city, specialties, bio] of providersData) {
+      const exists = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+      if (exists.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO users (name, email, password_hash, role, phone, city, specialties, bio, is_active) 
+          VALUES ($1, $2, $3, 'provider', $4, $5, $6, $7, true)
+        `, [name, email, providerHash, phone, city, specialties, bio]);
+      }
+    }
+    
+    // إضافة طلبات تجريبية
+    console.log('📋 إضافة طلبات تجريبية...');
+    const requestsData = [
+      [2, 'تصميم موقع إلكتروني للشركة', 'مطلوب تصميم وتطوير موقع إلكتروني احترافي لشركة تجارية مع لوحة تحكم ونظام إدارة المحتوى', 'برمجة وتطوير', 15000.00, '2024-12-31'],
+      [3, 'تصميم هوية بصرية كاملة', 'تصميم شعار وهوية بصرية كاملة تشمل الألوان والخطوط وتطبيقات الهوية على جميع المواد التسويقية', 'تصميم', 8000.00, '2024-11-15'],
+      [4, 'كتابة محتوى لمدونة تقنية', 'مطلوب كاتب محتوى محترف لكتابة 20 مقال شهرياً لمدونة تقنية متخصصة في البرمجة والتكنولوجيا', 'كتابة وترجمة', 5000.00, '2024-10-30'],
+      [2, 'حملة تسويقية على السوشيال ميديا', 'إنشاء وإدارة حملة تسويقية شاملة على منصات التواصل الاجتماعي لمدة 3 أشهر', 'تسويق رقمي', 12000.00, '2024-12-01']
+    ];
+    
+    for (const [user_id, title, description, category, budget, deadline] of requestsData) {
+      const exists = await pool.query("SELECT id FROM requests WHERE title = $1", [title]);
+      if (exists.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO requests (user_id, title, description, category, budget, deadline, status) 
+          VALUES ($1, $2, $3, $4, $5, $6, 'open')
+        `, [user_id, title, description, category, budget, deadline]);
+      }
+    }
+    
+    // إضافة عطاءات تجريبية
+    console.log('💼 إضافة عطاءات تجريبية...');
+    const bidsData = [
+      [1, 5, 13500.00, 45, 'أستطيع تطوير موقع إلكتروني احترافي باستخدام أحدث التقنيات مع ضمان التسليم في الوقت المحدد'],
+      [1, 6, 14000.00, 30, 'خبرة واسعة في تطوير المواقع الإلكترونية مع التركيز على تجربة المستخدم والأداء العالي'],
+      [2, 6, 7000.00, 20, 'تصميم هوية بصرية مميزة تعكس قيم وشخصية العلامة التجارية بشكل احترافي']
+    ];
+    
+    for (const [request_id, user_id, amount, delivery_time, proposal] of bidsData) {
+      const exists = await pool.query("SELECT id FROM bids WHERE request_id = $1 AND user_id = $2", [request_id, user_id]);
+      if (exists.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO bids (request_id, user_id, amount, delivery_time, proposal) 
+          VALUES ($1, $2, $3, $4, $5)
+        `, [request_id, user_id, amount, delivery_time, proposal]);
+      }
+    }
+    
+    // تحديد الإحصائيات النهائية
+    console.log('📊 حساب الإحصائيات النهائية...');
+    const stats = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users WHERE role = 'client') as clients,
+        (SELECT COUNT(*) FROM users WHERE role = 'provider') as providers,
+        (SELECT COUNT(*) FROM users WHERE role = 'admin') as admins,
+        (SELECT COUNT(*) FROM requests) as requests,
+        (SELECT COUNT(*) FROM bids) as bids,
+        (SELECT COUNT(*) FROM reviews) as reviews
+    `);
+    
+    const finalStats = stats.rows[0];
+    
+    console.log('🎉 تم إنشاء قاعدة البيانات بنجاح!');
+    
+    res.json({
+      success: true,
+      message: 'تم إنشاء قاعدة البيانات بنجاح',
+      statistics: {
+        clients: parseInt(finalStats.clients),
+        providers: parseInt(finalStats.providers),
+        admins: parseInt(finalStats.admins),
+        requests: parseInt(finalStats.requests),
+        bids: parseInt(finalStats.bids),
+        reviews: parseInt(finalStats.reviews)
+      },
+      test_accounts: {
+        admin: { email: 'admin@manaqasa.com', password: 'admin123' },
+        client: { email: 'client1@test.com', password: 'password123' },
+        provider: { email: 'provider1@test.com', password: 'password123' }
+      },
+      next_steps: [
+        'جرب تسجيل الدخول بحساب الأدمن',
+        'اختبر إنشاء طلب جديد',
+        'تأكد من عمل العطاءات',
+        'جرب حذف المستخدمين من لوحة الأدمن'
+      ]
+    });
+    
+  } catch (error) {
+    console.error('❌ خطأ في إنشاء قاعدة البيانات:', error);
+    res.status(500).json({
+      success: false,
+      message: 'فشل في إنشاء قاعدة البيانات',
+      error: error.message
+    });
+  }
+});
+
+console.log('✅ تم إضافة endpoint إنشاء قاعدة البيانات');
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
