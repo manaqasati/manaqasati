@@ -9,10 +9,12 @@
 :root{
   --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
   --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;
-  --text:#0F172A;--muted:#8896AA;
+  --text:#0F172A;--muted:#8896AA;--hint:#94A3B8;--text2:#1E293B;
   --border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;
-  --green:#16A34A;--red:#DC2626;--red-l:#FEF2F2;
+  --green:#16A34A;--green-l:#EDFBF0;--red:#DC2626;--red-l:#FEF2F2;
   --shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03);
+  --shadow-md:0 4px 16px rgba(15,23,42,.08);
+  --radius:14px;--radius-lg:18px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -49,7 +51,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px}
 .fi{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text);outline:none;background:var(--white);transition:all .18s}
 .fi:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.1)}
-.fi::placeholder{color:var(--hint)}
 .fi-sel{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--p);outline:none;background:var(--white);cursor:pointer;transition:all .18s}
 .fi-sel:focus{border-color:var(--gold)}
 .pw-wrap{position:relative}
@@ -100,7 +101,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="auth-body">
       <div class="al" id="al"></div>
-      <div id="method-row" class="method-row">
+
+      <!-- method row — login only -->
+      <div class="method-row" id="method-row">
         <button class="mt on" id="mt-email" onclick="setMethod('email')">
           <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
           البريد الإلكتروني
@@ -110,32 +113,40 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           رقم الجوال
         </button>
       </div>
+
+      <!-- roles — register only -->
       <div class="roles-wrap" id="roles-wrap">
         <div class="roles">
           <div class="role on" id="rc-c" onclick="selRole('client')">
             <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <div class="role-nm">عميل</div>
-            <div class="role-ds">أنشر مشاريعك</div>
+            <div class="role-nm">عميل</div><div class="role-ds">أنشر مشاريعك</div>
           </div>
           <div class="role" id="rc-p" onclick="selRole('provider')">
             <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
-            <div class="role-nm">مزود خدمة</div>
-            <div class="role-ds">قدّم عروضك</div>
+            <div class="role-nm">مزود خدمة</div><div class="role-ds">قدّم عروضك</div>
           </div>
         </div>
       </div>
+
+      <!-- name — register only -->
       <div class="fg" id="fg-name" style="display:none">
         <label>الاسم الكامل <span style="color:var(--red)">*</span></label>
         <input id="i-name" class="fi" type="text" placeholder="محمد أحمد العمري">
       </div>
+
+      <!-- email field -->
       <div class="fg" id="fg-email">
         <label>البريد الإلكتروني <span style="color:var(--red)">*</span></label>
         <input id="i-email" class="fi" type="email" placeholder="example@email.com" inputmode="email">
       </div>
+
+      <!-- phone login field -->
       <div class="fg" id="fg-phone" style="display:none">
         <label>رقم الجوال <span style="color:var(--red)">*</span></label>
         <input id="i-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
       </div>
+
+      <!-- password -->
       <div class="fg">
         <label>كلمة المرور <span style="color:var(--red)">*</span></label>
         <div class="pw-wrap">
@@ -143,6 +154,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <button class="pw-eye" type="button" onclick="togglePw('i-pass',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
+
+      <!-- confirm password — register only -->
       <div class="fg" id="fg-pass2" style="display:none">
         <label>تأكيد كلمة المرور <span style="color:var(--red)">*</span></label>
         <div class="pw-wrap">
@@ -150,21 +163,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <button class="pw-eye" type="button" onclick="togglePw('i-pass2',this)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
+
+      <!-- phone register field -->
       <div class="fg" id="fg-reg-phone" style="display:none">
         <label>رقم الجوال <span style="color:var(--red)">*</span></label>
         <input id="i-reg-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
       </div>
+
+      <!-- city — register only -->
       <div class="fg" id="fg-city" style="display:none">
         <label>المدينة <span style="color:var(--red)">*</span></label>
         <select id="i-city" class="fi-sel">
           <option value="">اختر مدينتك</option>
-          <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>بريدة</option><option>عنيزة</option><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>تبوك</option><option>حائل</option><option>عرعر</option><option>سكاكا</option><option>الباحة</option><option>جازان</option><option>نجران</option><option>وادي الدواسر</option><option>السليل</option>
+          <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option><option>الخبراء</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option><option>الحرجة</option><option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option><option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option><option>عرعر</option><option>طريف</option><option>رفحاء</option><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option><option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option><option>نجران</option><option>شرورة</option>
         </select>
       </div>
+
       <button class="btn-submit" id="btn-s" onclick="doSubmit()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         <span id="btn-t">تسجيل الدخول</span>
       </button>
+
       <div style="text-align:center;margin-top:12px" id="forgot-w">
         <button class="link-btn" onclick="doForgot()">نسيت كلمة المرور؟</button>
       </div>
@@ -187,6 +206,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- RESET PASSWORD PAGE -->
 <div id="reset-pg" style="display:none;min-height:100vh;background:var(--bg);flex-direction:column;align-items:center">
   <div class="auth-hero">
     <div class="hero-stripe"></div>
@@ -206,23 +226,169 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
-var MODE='login',ROLE='client',METHOD='email';
-(function(){var t=new URLSearchParams(location.search).get('reset');if(!t)return;window._rt=t;document.getElementById('auth-pg').style.display='none';var rp=document.getElementById('reset-pg');rp.style.display='flex';})();
-async function apiFetch(p,o){return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'}},o||{})).then(function(r){return r.json();}).catch(function(){return{};});}
-async function doReset(){var p1=document.getElementById('rp1').value,p2=document.getElementById('rp2').value,al=document.getElementById('reset-al');if(!p1||p1.length<6){setAl(al,'كلمة المرور 6 أحرف على الأقل','err');return;}if(p1!==p2){setAl(al,'كلمتا المرور غير متطابقتين','err');return;}var r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})});if(r.ok){setAl(al,'تم التعيين! جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}else setAl(al,r.message||'حدث خطأ','err');}
+var MODE='login', ROLE='client', METHOD='email';
+
+(function(){
+  var t=new URLSearchParams(location.search).get('reset');
+  if(!t)return;
+  window._rt=t;
+  document.getElementById('auth-pg').style.display='none';
+  document.getElementById('reset-pg').style.display='flex';
+})();
+
+async function apiFetch(p,o){
+  return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'}},o||{}))
+    .then(function(r){return r.json();})
+    .catch(function(){return{};});
+}
+
+async function doReset(){
+  var p1=document.getElementById('rp1').value,p2=document.getElementById('rp2').value,al=document.getElementById('reset-al');
+  if(!p1||p1.length<6){setAl(al,'كلمة المرور 6 أحرف على الأقل','err');return;}
+  if(p1!==p2){setAl(al,'كلمتا المرور غير متطابقتين','err');return;}
+  var r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})});
+  if(r.ok){setAl(al,'تم التعيين! جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}
+  else setAl(al,r.message||'حدث خطأ','err');
+}
+
 function setAl(el,msg,t){if(!el)el=document.getElementById('al');el.textContent=msg;el.className='al '+t;}
 function clearAl(){var e=document.getElementById('al');if(e){e.textContent='';e.className='al';}}
 function show(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'block':'none';}
 function showGrid(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'grid':'none';}
-function setMode(m){MODE=m;var isR=m==='register';document.querySelectorAll('.auth-tab').forEach(function(t,i){t.classList.toggle('on',i===(isR?1:0));});show('method-row',!isR);show('fg-name',isR);showGrid('roles-wrap',isR);show('fg-pass2',isR);show('fg-reg-phone',isR);show('fg-city',isR);show('forgot-w',!isR);document.getElementById('note-reg').style.display=isR?'block':'none';if(isR){show('fg-email',true);show('fg-phone',false);}else setMethod(METHOD);document.getElementById('hd-s').textContent=isR?'انضم لمناقصة اليوم':'سجّل دخولك لمتابعة مشاريعك';document.getElementById('btn-t').textContent=isR?'إنشاء الحساب':'تسجيل الدخول';clearAl();}
-function setMethod(m){METHOD=m;document.getElementById('mt-email').classList.toggle('on',m==='email');document.getElementById('mt-phone').classList.toggle('on',m==='phone');show('fg-email',m==='email');show('fg-phone',m==='phone');}
-function selRole(r){ROLE=r;document.getElementById('rc-c').classList.toggle('on',r==='client');document.getElementById('rc-p').classList.toggle('on',r==='provider');var sc=document.getElementById('rc-c').querySelector('svg');var sp=document.getElementById('rc-p').querySelector('svg');if(sc)sc.setAttribute('stroke',r==='client'?'var(--gold-d)':'var(--muted)');if(sp)sp.setAttribute('stroke',r==='provider'?'var(--gold-d)':'var(--muted)');}
-function togglePw(id,btn){var inp=document.getElementById(id);var s=inp.type==='password';inp.type=s?'text':'password';btn.innerHTML=s?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';}
+
+function setMode(m){
+  MODE=m;
+  var isR=m==='register';
+  document.querySelectorAll('.auth-tab').forEach(function(t,i){t.classList.toggle('on',i===(isR?1:0));});
+  show('method-row',!isR);
+  show('fg-name',isR);
+  showGrid('roles-wrap',isR);
+  show('fg-pass2',isR);
+  show('fg-reg-phone',isR);
+  show('fg-city',isR);
+  show('forgot-w',!isR);
+  document.getElementById('note-reg').style.display=isR?'block':'none';
+  if(isR){
+    show('fg-email',true);
+    show('fg-phone',false);
+  } else {
+    setMethod(METHOD);
+  }
+  document.getElementById('hd-s').textContent=isR?'انضم لمناقصة اليوم':'سجّل دخولك لمتابعة مشاريعك';
+  document.getElementById('btn-t').textContent=isR?'إنشاء الحساب':'تسجيل الدخول';
+  clearAl();
+}
+
+function setMethod(m){
+  METHOD=m;
+  document.getElementById('mt-email').classList.toggle('on',m==='email');
+  document.getElementById('mt-phone').classList.toggle('on',m==='phone');
+  show('fg-email',m==='email');
+  show('fg-phone',m==='phone');
+}
+
+function selRole(r){
+  ROLE=r;
+  document.getElementById('rc-c').classList.toggle('on',r==='client');
+  document.getElementById('rc-p').classList.toggle('on',r==='provider');
+  var sc=document.getElementById('rc-c').querySelector('svg');
+  var sp=document.getElementById('rc-p').querySelector('svg');
+  if(sc)sc.setAttribute('stroke',r==='client'?'var(--gold-d)':'var(--muted)');
+  if(sp)sp.setAttribute('stroke',r==='provider'?'var(--gold-d)':'var(--muted)');
+}
+
+function togglePw(id,btn){
+  var inp=document.getElementById(id);
+  var s=inp.type==='password';
+  inp.type=s?'text':'password';
+  btn.innerHTML=s
+    ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+    :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+
 function getV(id){var e=document.getElementById(id);return e?e.value.trim():'';}
 function validatePhone(v){var d=v.replace(/[^0-9]/g,'');return d.length===10&&d.startsWith('05');}
-function fmtPhone(v){var d=v.replace(/[^0-9]/g,'');if(d.startsWith('966'))return d;if(d.startsWith('0'))d=d.slice(1);return'966'+d;}
-async function doSubmit(){clearAl();var pass=document.getElementById('i-pass').value;if(!pass||pass.length<6){setAl(null,'كلمة المرور 6 أحرف على الأقل','err');return;}var btn=document.getElementById('btn-s');btn.disabled=true;document.getElementById('btn-t').textContent='جاري...';try{var url,body;if(MODE==='login'){if(METHOD==='email'){var email=getV('i-email');if(!email||!email.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}body={email:email,password:pass};}else{var phone=getV('i-phone');if(!validatePhone(phone)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}body={phone:fmtPhone(phone),password:pass};}url='/api/auth/login';}else{var name=getV('i-name'),em=getV('i-email'),p2=document.getElementById('i-pass2').value,rph=getV('i-reg-phone'),city=getV('i-city');if(!name){setAl(null,'أدخل اسمك الكامل','err');return;}if(!em||!em.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}if(pass!==p2){setAl(null,'كلمتا المرور غير متطابقتين','err');return;}if(!validatePhone(rph)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}if(!city){setAl(null,'يرجى اختيار مدينتك','err');return;}url='/api/auth/register';body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};}var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});if(d.token){localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(d.user));setAl(null,'تم بنجاح! جاري التحويل...','ok');setTimeout(function(){var rl=d.user.role;location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';},900);}else setAl(null,d.message||'حدث خطأ، حاول مرة أخرى','err');}catch(e){setAl(null,'تعذر الاتصال بالسيرفر','err');}finally{btn.disabled=false;document.getElementById('btn-t').textContent=MODE==='login'?'تسجيل الدخول':'إنشاء الحساب';}}
-async function doForgot(){var id=METHOD==='email'?getV('i-email'):getV('i-phone');if(!id){setAl(null,'أدخل بريدك الإلكتروني أولاً','err');return;}var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify({email:id})});setAl(null,r.message||'تم إرسال رابط إعادة التعيين','ok');}
+function fmtPhone(v){
+  var d=v.replace(/[^0-9]/g,'');
+  if(d.startsWith('966'))return d;
+  if(d.startsWith('0'))d=d.slice(1);
+  return '966'+d;
+}
+
+async function doSubmit(){
+  clearAl();
+  var pass=document.getElementById('i-pass').value;
+  if(!pass||pass.length<6){setAl(null,'كلمة المرور 6 أحرف على الأقل','err');return;}
+  var btn=document.getElementById('btn-s');
+  btn.disabled=true;
+  document.getElementById('btn-t').textContent='جاري...';
+  try{
+    var url, body;
+    if(MODE==='login'){
+      if(METHOD==='email'){
+        var email=getV('i-email');
+        if(!email||!email.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}
+        body={email:email,password:pass};
+      } else {
+        // Phone login — try with phone field, fallback formats
+        var phone=getV('i-phone');
+        if(!validatePhone(phone)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}
+        // Try phone login — send both phone and identifier fields
+        var phoneFormatted=fmtPhone(phone);
+        body={phone:phoneFormatted,identifier:phoneFormatted,password:pass};
+      }
+      url='/api/auth/login';
+      var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
+      // If phone login failed and error is credentials, try with raw format
+      if(!d.token && METHOD==='phone' && (d.message||'').includes('غير صحيح')){
+        var phone2=getV('i-phone').replace(/[^0-9]/g,'');
+        var altBody={phone:phone2,identifier:phone2,password:pass};
+        var d2=await apiFetch(url,{method:'POST',body:JSON.stringify(altBody)});
+        if(d2.token) d=d2;
+      }
+    } else {
+      var name=getV('i-name'),em=getV('i-email'),p2=document.getElementById('i-pass2').value;
+      var rph=getV('i-reg-phone'),city=getV('i-city');
+      if(!name){setAl(null,'أدخل اسمك الكامل','err');return;}
+      if(!em||!em.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}
+      if(pass!==p2){setAl(null,'كلمتا المرور غير متطابقتين','err');return;}
+      if(!validatePhone(rph)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}
+      if(!city){setAl(null,'يرجى اختيار مدينتك','err');return;}
+      url='/api/auth/register';
+      body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};
+      var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
+    }
+    if(d.token){
+      localStorage.setItem('token',d.token);
+      localStorage.setItem('user',JSON.stringify(d.user));
+      setAl(null,'تم بنجاح! جاري التحويل...','ok');
+      setTimeout(function(){
+        var rl=d.user.role;
+        location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+      },900);
+    } else {
+      var errMsg=d.message||'البيانات غير صحيحة';
+      if(METHOD==='phone'&&MODE==='login'){
+        errMsg='رقم الجوال أو كلمة المرور غير صحيحة';
+      }
+      setAl(null,errMsg,'err');
+    }
+  }catch(e){
+    setAl(null,'تعذر الاتصال بالسيرفر','err');
+  }finally{
+    btn.disabled=false;
+    document.getElementById('btn-t').textContent=MODE==='login'?'تسجيل الدخول':'إنشاء الحساب';
+  }
+}
+
+async function doForgot(){
+  var id=METHOD==='email'?getV('i-email'):getV('i-phone');
+  if(!id){setAl(null,'أدخل بريدك الإلكتروني أولاً','err');return;}
+  var body=METHOD==='phone'?{email:fmtPhone(id)}:{email:id};
+  var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify(body)});
+  setAl(null,r.message||'تم إرسال رابط إعادة التعيين','ok');
+}
+
 document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();});
 </script>
 </body>
