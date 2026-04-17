@@ -472,9 +472,10 @@ function _renderBrowse(list){
   if(!list.length) return _empty('لا يوجد مشاريع متاحة','');
   return list.map(function(r){
     return [
-      '<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden">',
+      '<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">',
+        (r.image_url ? '<div style="height:130px;overflow:hidden;position:relative"><img src="'+r.image_url+'" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" onerror="this.parentElement.style.display=`none`"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.45))"></div><div style="position:absolute;bottom:8px;right:10px"><span class=\"tag t-open\">نشط</span></div></div>' : ''),
+        '<div style="display:flex;overflow:hidden">',
         '<div style="width:4px;flex-shrink:0;background:var(--green)"></div>',
-        (r.image_url ? '<div style="width:90px;min-width:90px;background:#f0ece3;overflow:hidden;flex-shrink:0"><img src="'+r.image_url+'" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" onerror="this.parentElement.style.display=`none`"></div>' : ''),
         '<div style="flex:1;padding:13px 14px">',
           '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:9px">',
             '<div style="flex:1;min-width:0">',
@@ -492,6 +493,7 @@ function _renderBrowse(list){
             '<button onclick="_openBidModal('+r.id+',\''+_esc(r.title).replace(/'/g,'')+'\')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>',
             '<button onclick="_viewProj('+r.id+')" style="padding:10px 14px;background:var(--bg);color:var(--p);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>',
           '</div>',
+        '</div>',
         '</div>',
       '</div>'
     ].join('');
