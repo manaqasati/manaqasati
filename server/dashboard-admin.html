@@ -950,3 +950,657 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 </body>
 </html>
+// ═══════════════════════════════════════════════════════════════
+// كود الأدمن الكامل - أضف هذا في نهاية ملف index.js (قبل app.listen)
+// ═══════════════════════════════════════════════════════════════
+
+// ══ AUTH MIDDLEWARE ══
+const auth = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Token required' });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'manaqasa-secret-2024');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.log('Auth error:', error.message);
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+const adminOnly = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ 
+      message: 'Admin access required',
+      your_role: req.user?.role || 'unknown'
+    });
+  }
+  next();
+};
+
+// ══ إنشاء مدير مباشر ══
+app.get('/api/direct-admin', async (req, res) => {
+  try {
+    const { secret, email, password } = req.query;
+    
+    if (secret !== 'manaqasa2024') {
+      return res.status(403).json({ message: 'Invalid secret' });
+    }
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password required' });
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const result = await pool.query(`
+      INSERT INTO users (name, email, password_hash, role, is_active, created_at) 
+      VALUES ('Admin', $1, $2, 'admin', true, NOW())
+      ON CONFLICT (email) 
+      DO UPDATE SET 
+        password_hash = $2, 
+        role = 'admin', 
+        is_active = true
+      RETURNING id, name, email, role
+    `, [email, hashedPassword]);
+    
+    console.log('✅ Admin created:', result.rows[0]);
+    
+    res.json({
+      ok: true,
+      message: 'تم إنشاء حساب الأدمن بنجاح',
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin creation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ إحصائيات الأدمن ══
+app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
+  try {
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE role != 'admin') as total_users,
+        COUNT(*) FILTER (WHERE role = 'client') as total_clients,
+        COUNT(*) FILTER (WHERE role = 'provider') as providers
+      FROM users
+    `);
+    
+    const requests = await pool.query(`
+      SELECT 
+        COUNT(*) as requests,
+        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed,
+        COUNT(*) FILTER (WHERE status = 'pending_review') as pending_review
+      FROM requests
+    `);
+    
+    const bids = await pool.query('SELECT COUNT(*) as total_bids FROM bids');
+    
+    console.log('✅ Stats loaded');
+    
+    res.json({
+      total_users: parseInt(stats.rows[0].total_users) || 0,
+      total_clients: parseInt(stats.rows[0].total_clients) || 0,
+      providers: parseInt(stats.rows[0].providers) || 0,
+      requests: parseInt(requests.rows[0].requests) || 0,
+      in_progress: parseInt(requests.rows[0].in_progress) || 0,
+      completed: parseInt(requests.rows[0].completed) || 0,
+      pending_review: parseInt(requests.rows[0].pending_review) || 0,
+      total_bids: parseInt(bids.rows[0].total_bids) || 0
+    });
+    
+  } catch (error) {
+    console.error('❌ Stats error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ قائمة المستخدمين ══
+app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
+  try {
+    const { role } = req.query;
+    
+    let query = `
+      SELECT id, name, email, phone, role, city, is_active, 
+             created_at, specialties, badge
+      FROM users 
+      WHERE role != 'admin'
+    `;
+    
+    const params = [];
+    
+    if (role && ['client', 'provider'].includes(role)) {
+      query += ' AND role = $1';
+      params.push(role);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query, params);
+    
+    console.log('✅ Users loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Users error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ المزودون مع الإحصائيات ══
+app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.id, u.name, u.email, u.phone, u.city, u.specialties, 
+        u.badge, u.is_active, u.bio, u.created_at, u.profile_image,
+        COALESCE(AVG(r.rating), 0) as avg_rating,
+        COUNT(r.id) as review_count,
+        COUNT(DISTINCT b.id) as bid_count,
+        COUNT(DISTINCT req.id) FILTER (WHERE req.status = 'completed') as completed_projects
+      FROM users u
+      LEFT JOIN reviews r ON r.reviewed_id = u.id
+      LEFT JOIN bids b ON b.user_id = u.id
+      LEFT JOIN requests req ON req.assigned_provider_id = u.id
+      WHERE u.role = 'provider'
+      GROUP BY u.id
+      ORDER BY avg_rating DESC, u.created_at DESC
+    `);
+    
+    console.log('✅ Providers loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Providers error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ تفعيل/إيقاف مستخدم ══
+app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: 'لا يمكن تعديل حسابك الخاص' });
+    }
+    
+    const result = await pool.query(
+      'UPDATE users SET is_active = NOT is_active WHERE id = $1 AND role != \'admin\' RETURNING id, name, is_active',
+      [userId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    console.log('✅ User toggled:', result.rows[0]);
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('❌ Toggle error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ منح لقب ══
+app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { badge } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE users SET badge = $1 WHERE id = $2 AND role != \'admin\' RETURNING id, name, badge',
+      [badge, userId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    console.log('✅ Badge updated:', result.rows[0]);
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('❌ Badge error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ حذف مستخدم (الدالة المهمة!) ══
+app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    console.log('🗑️ Delete request for user:', userId, 'by admin:', req.user.id);
+    
+    // منع الأدمن من حذف نفسه
+    if (userId === req.user.id) {
+      return res.status(400).json({ message: 'لا يمكن حذف حسابك الخاص' });
+    }
+    
+    // التحقق من وجود المستخدم
+    const userCheck = await pool.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1', 
+      [userId]
+    );
+    
+    if (!userCheck.rows.length) {
+      return res.status(404).json({ message: 'المستخدم غير موجود' });
+    }
+    
+    const userToDelete = userCheck.rows[0];
+    console.log('👤 User to delete:', userToDelete);
+    
+    // منع حذف المديرين الآخرين
+    if (userToDelete.role === 'admin') {
+      return res.status(403).json({ message: 'لا يمكن حذف المديرين' });
+    }
+    
+    // بدء transaction للحذف الآمن
+    await pool.query('BEGIN');
+    
+    try {
+      // حذف البيانات المرتبطة أولاً لتجنب foreign key constraints
+      console.log('🧹 Cleaning related data...');
+      
+      // 1. حذف العطاءات التي قدمها المستخدم
+      const deleteBidsResult = await pool.query('DELETE FROM bids WHERE user_id = $1', [userId]);
+      console.log('🗑️ Deleted bids:', deleteBidsResult.rowCount);
+      
+      // 2. حذف التقييمات (كمراجع ومُراجَع)
+      const deleteReviewsResult = await pool.query(
+        'DELETE FROM reviews WHERE reviewer_id = $1 OR reviewed_id = $1', 
+        [userId]
+      );
+      console.log('🗑️ Deleted reviews:', deleteReviewsResult.rowCount);
+      
+      // 3. حذف الإشعارات
+      const deleteNotifsResult = await pool.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+      console.log('🗑️ Deleted notifications:', deleteNotifsResult.rowCount);
+      
+      // 4. حذف الرسائل
+      const deleteMsgsResult = await pool.query(
+        'DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1', 
+        [userId]
+      );
+      console.log('🗑️ Deleted messages:', deleteMsgsResult.rowCount);
+      
+      // 5. حذف البلاغات
+      const deleteReportsResult = await pool.query(
+        'DELETE FROM reports WHERE reporter_id = $1 OR reported_id = $1', 
+        [userId]
+      );
+      console.log('🗑️ Deleted reports:', deleteReportsResult.rowCount);
+      
+      // 6. تعامل مع الطلبات المرتبطة بالمستخدم
+      const userRequests = await pool.query('SELECT id FROM requests WHERE user_id = $1', [userId]);
+      
+      // حذف العطاءات على طلبات المستخدم
+      for (const req of userRequests.rows) {
+        await pool.query('DELETE FROM bids WHERE request_id = $1', [req.id]);
+      }
+      
+      // حذف الطلبات نفسها
+      const deleteRequestsResult = await pool.query('DELETE FROM requests WHERE user_id = $1', [userId]);
+      console.log('🗑️ Deleted requests:', deleteRequestsResult.rowCount);
+      
+      // 7. أخيراً، حذف المستخدم نفسه
+      const deleteUserResult = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      console.log('🗑️ Deleted user:', deleteUserResult.rowCount);
+      
+      // تأكيد المعاملة
+      await pool.query('COMMIT');
+      
+      console.log('✅ User deletion completed successfully');
+      
+      res.json({
+        ok: true,
+        message: 'تم حذف المستخدم وجميع بياناته بنجاح',
+        deleted_user: {
+          id: userId,
+          name: userToDelete.name,
+          email: userToDelete.email,
+          role: userToDelete.role
+        },
+        cleanup_stats: {
+          bids_deleted: deleteBidsResult.rowCount,
+          requests_deleted: deleteRequestsResult.rowCount,
+          reviews_deleted: deleteReviewsResult.rowCount,
+          notifications_deleted: deleteNotifsResult.rowCount,
+          messages_deleted: deleteMsgsResult.rowCount,
+          reports_deleted: deleteReportsResult.rowCount
+        }
+      });
+      
+    } catch (deleteError) {
+      // إلغاء المعاملة عند الخطأ
+      await pool.query('ROLLBACK');
+      console.error('💥 Delete transaction failed:', deleteError);
+      throw deleteError;
+    }
+    
+  } catch (error) {
+    console.error('❌ Delete user error:', error);
+    
+    // رسائل خطأ مفصلة
+    let errorMessage = 'فشل في حذف المستخدم';
+    if (error.message.includes('foreign key constraint')) {
+      errorMessage = 'خطأ في قاعدة البيانات - بيانات مرتبطة';
+    } else if (error.message.includes('does not exist')) {
+      errorMessage = 'المستخدم غير موجود';
+    }
+    
+    res.status(500).json({ 
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ══ الطلبات للأدمن ══
+app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        r.*,
+        u.name as client_name,
+        p.name as provider_name,
+        (SELECT COUNT(*) FROM bids WHERE request_id = r.id) as bid_count
+      FROM requests r
+      LEFT JOIN users u ON u.id = r.user_id
+      LEFT JOIN users p ON p.id = r.assigned_provider_id
+      ORDER BY r.created_at DESC
+      LIMIT 200
+    `);
+    
+    console.log('✅ Admin requests loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Admin requests error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ مراجعة الطلبات ══
+app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const { action, reason } = req.body;
+    
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+    
+    const newStatus = action === 'approve' ? 'open' : 'rejected';
+    
+    const result = await pool.query(
+      'UPDATE requests SET status = $1, admin_notes = $2 WHERE id = $3 RETURNING *',
+      [newStatus, reason || null, requestId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    
+    console.log('✅ Request reviewed:', action, requestId);
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('❌ Review error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ إنهاء مشروع ══
+app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    
+    const result = await pool.query(
+      'UPDATE requests SET status = \'completed\', completed_at = NOW() WHERE id = $1 RETURNING *',
+      [requestId]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    
+    console.log('✅ Request completed:', requestId);
+    res.json(result.rows[0]);
+    
+  } catch (error) {
+    console.error('❌ Complete error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ حذف طلب ══
+app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    
+    // حذف العطاءات أولاً
+    await pool.query('DELETE FROM bids WHERE request_id = $1', [requestId]);
+    
+    // حذف الطلب
+    const result = await pool.query('DELETE FROM requests WHERE id = $1', [requestId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    
+    console.log('✅ Request deleted:', requestId);
+    res.json({ ok: true, message: 'تم حذف الطلب' });
+    
+  } catch (error) {
+    console.error('❌ Delete request error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ البلاغات ══
+app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        r.*,
+        reporter.name as reporter_name,
+        reported.name as reported_name
+      FROM reports r
+      LEFT JOIN users reporter ON reporter.id = r.reporter_id
+      LEFT JOIN users reported ON reported.id = r.reported_id
+      ORDER BY r.created_at DESC
+    `);
+    
+    console.log('✅ Reports loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Reports error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ معالجة البلاغات ══
+app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    const { action, admin_note } = req.body;
+    
+    if (!['warn', 'ban', 'ignore'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+    
+    let newStatus;
+    switch (action) {
+      case 'warn': newStatus = 'warned'; break;
+      case 'ban': newStatus = 'resolved'; break;
+      case 'ignore': newStatus = 'ignored'; break;
+    }
+    
+    // تحديث البلاغ
+    await pool.query(
+      'UPDATE reports SET status = $1, admin_note = $2, resolved_at = NOW() WHERE id = $3',
+      [newStatus, admin_note, reportId]
+    );
+    
+    // تنفيذ الإجراء على المستخدم إذا لزم الأمر
+    if (action === 'ban') {
+      const report = await pool.query('SELECT reported_id FROM reports WHERE id = $1', [reportId]);
+      if (report.rows.length) {
+        await pool.query('UPDATE users SET is_active = false WHERE id = $1', [report.rows[0].reported_id]);
+      }
+    }
+    
+    console.log('✅ Report handled:', action, reportId);
+    res.json({ ok: true, message: 'تم تنفيذ الإجراء' });
+    
+  } catch (error) {
+    console.error('❌ Handle report error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ التقييمات ══
+app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        r.*,
+        reviewer.name as reviewer_name,
+        reviewed.name as reviewed_name
+      FROM reviews r
+      LEFT JOIN users reviewer ON reviewer.id = r.reviewer_id
+      LEFT JOIN users reviewed ON reviewed.id = r.reviewed_id
+      ORDER BY r.created_at DESC
+    `);
+    
+    console.log('✅ Reviews loaded:', result.rows.length);
+    res.json(result.rows);
+    
+  } catch (error) {
+    console.error('❌ Reviews error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ حذف تقييم ══
+app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    
+    const result = await pool.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+    
+    console.log('✅ Review deleted:', reviewId);
+    res.json({ ok: true, message: 'تم حذف التقييم' });
+    
+  } catch (error) {
+    console.error('❌ Delete review error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ إرسال إشعار ══
+app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
+  try {
+    const { user_id, role, title, body, type, channel } = req.body;
+    
+    if (!title || !body) {
+      return res.status(400).json({ message: 'Title and body required' });
+    }
+    
+    let targetUsers = [];
+    
+    if (user_id) {
+      // إرسال لمستخدم محدد
+      const user = await pool.query('SELECT id, name FROM users WHERE id = $1', [user_id]);
+      targetUsers = user.rows;
+    } else if (role && ['client', 'provider'].includes(role)) {
+      // إرسال لفئة معينة
+      const users = await pool.query('SELECT id, name FROM users WHERE role = $1 AND is_active = true', [role]);
+      targetUsers = users.rows;
+    } else {
+      // إرسال للجميع
+      const users = await pool.query('SELECT id, name FROM users WHERE role != \'admin\' AND is_active = true');
+      targetUsers = users.rows;
+    }
+    
+    // إدراج الإشعارات
+    for (const user of targetUsers) {
+      await pool.query(
+        'INSERT INTO notifications (user_id, title, body, type, is_read, created_at) VALUES ($1, $2, $3, $4, false, NOW())',
+        [user.id, title, body, type || 'admin']
+      );
+    }
+    
+    console.log('✅ Notifications sent to:', targetUsers.length, 'users');
+    
+    res.json({
+      ok: true,
+      message: `تم إرسال الإشعار لـ ${targetUsers.length} مستخدم`,
+      sent_count: targetUsers.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Notify error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ══ بحث سريع ══
+app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({ requests: [], users: [] });
+    }
+    
+    const searchTerm = `%${q}%`;
+    
+    // البحث في الطلبات
+    const requests = await pool.query(`
+      SELECT r.id, r.title, r.status, u.name as client_name
+      FROM requests r
+      LEFT JOIN users u ON u.id = r.user_id
+      WHERE r.title ILIKE $1 OR u.name ILIKE $1
+      ORDER BY r.created_at DESC
+      LIMIT 10
+    `, [searchTerm]);
+    
+    // البحث في المستخدمين
+    const users = await pool.query(`
+      SELECT id, name, email, role
+      FROM users
+      WHERE (name ILIKE $1 OR email ILIKE $1) AND role != 'admin'
+      ORDER BY name
+      LIMIT 10
+    `, [searchTerm]);
+    
+    console.log('✅ Search completed for:', q);
+    
+    res.json({
+      requests: requests.rows,
+      users: users.rows
+    });
+    
+  } catch (error) {
+    console.error('❌ Search error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+console.log('✅ Admin system loaded - all endpoints ready');
