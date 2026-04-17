@@ -567,7 +567,6 @@ async function loadHome(){
     '</div>';
 }
 
-
 var _allReqs=[], _reqFilter='all';
 async function loadRequests(){
   var pg=_el('page-requests'); if(!pg) return;
@@ -702,6 +701,7 @@ function _provList(list){
     ].join('');
   }).join('');
 }
+
 var _clients=[];
 async function loadClients(){
   var pg=_el('page-clients'); if(!pg) return;
@@ -781,8 +781,6 @@ async function loadReports(){
       '<div class="sc"><div class="sn" style="color:var(--yellow)">'+warned.length+'</div><div class="st">تم التحذير</div></div>'+
       '<div class="sc"><div class="sn" style="color:var(--green)">'+resolved.length+'</div><div class="st">تمت المعالجة</div></div>'+
       '<div class="sc"><div class="sn" style="color:var(--p)">'+_reportsList.length+'</div><div class="st">الإجمالي</div></div>'+
-    '</div>'+
-      '<div class="sc navy"><div class="sic a"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div><div><div class="sn">'+_reportsList.length+'</div><div class="st">الإجمالي</div></div></div>'+
     '</div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
       [['all','الكل'],['pending','بانتظار المراجعة'],['warned','تم التحذير'],['resolved','تمت المعالجة'],['ignored','مُتجاهَل']].map(function(x){
