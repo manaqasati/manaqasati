@@ -1255,6 +1255,14 @@ function loadNotify(){
         '<div class="form-field"><label class="form-label">أو أدخل رقم المستخدم (اختياري)</label><input type="number" class="form-input" id="notif-user-id" placeholder="مثال: 123"></div>'+
       '</div>'+
       '<div class="form-section">'+
+        '<div class="section-title"><div class="section-icon" style="background:var(--green-l);color:var(--green)">📤</div>طريقة الإرسال</div>'+
+        '<div class="recipient-options">'+
+          '<button class="recipient-btn active" data-channel="app" onclick="_setChannel(this,\'app\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>التطبيق فقط</button>'+
+          '<button class="recipient-btn" data-channel="email" onclick="_setChannel(this,\'email\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>الإيميل فقط</button>'+
+          '<button class="recipient-btn" data-channel="both" onclick="_setChannel(this,\'both\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>التطبيق + الإيميل</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="form-section">'+
         '<div class="section-title"><div class="section-icon" style="background:var(--gold-l);color:var(--gold-d)">📝</div>محتوى الإشعار</div>'+
         '<div class="form-row">'+
           '<div class="form-field"><label class="form-label">عنوان الإشعار *</label><input type="text" class="form-input" id="notif-title" placeholder="مثال: تحديث مهم على المنصة" oninput="_updatePreview()"></div>'+
