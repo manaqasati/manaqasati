@@ -806,8 +806,17 @@ function openDetail(id,e){
       '</div>';}).join('')+
       (req.status==='open'?'<div onclick="addReqAtt('+req.id+')" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px dashed rgba(255,255,255,.25);border-radius:8px;cursor:pointer;margin-top:4px"><svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:rgba(255,255,255,.6)">إضافة ملف</span></div>':'')+
     '</div>':'';
-    document.getElementById('detail-head').innerHTML='<div class="req-detail-head"><div class="rdh-title">'+req.title+'</div><div class="rdh-meta">'+(req.city?'<span>'+req.city+'</span>':'')+(req.category?'<span>'+req.category+'</span>':'')+(req.budget_max?'<span>'+req.budget_max+' ر.س</span>':'')+(req.deadline?'<span>انتهاء: '+fmtDate(req.deadline)+'</span>':'')+stTag(req.status)+'</div>'+(req.description?'<div class="rdh-desc">'+req.description+'</div>':'')+imgsHtml+attsHtml+'<input type="file" id="req-img-inp" accept="image/*" multiple style="display:none" onchange="uploadReqImgs(this)"><input type="file" id="req-att-inp" accept=".pdf,image/*" multiple style="display:none" onchange="uploadReqAtts(this)"></div>';
-    show('detail',null,null);
+    var _dh='';
+    _dh+='<div class="req-detail-head">';
+    if(imgs.length){_dh+='<div style="height:150px;overflow:hidden;margin:-20px -22px 14px;border-radius:16px 16px 0 0"><img src="'+imgs[0]+'" style="width:100%;height:100%;object-fit:cover;display:block"></div>';}
+    _dh+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+stTag(req.status)+(req.deadline?'<span style="font-size:11px;opacity:.6">\u0627\u0646\u062a\u0647\u0627\u0621: '+fmtDate(req.deadline)+'</span>':'')+'</div>';
+    _dh+='<div class="rdh-title">'+req.title+'</div>';
+    _dh+='<div class="rdh-meta">'+(req.city?'<span>'+req.city+'</span>':'')+(req.category?'<span>'+req.category+'</span>':'')+(req.budget_max?'<span>'+Number(req.budget_max).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div>';
+    if(req.description)_dh+='<div class="rdh-desc">'+req.description+'</div>';
+    if(imgs.length>1){_dh+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px">';imgs.slice(1).forEach(function(img,i){_dh+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openImgFull(\''+img+'\')"></div>';});if(imgs.length<3&&req.status==='open')_dh+='<div onclick="addReqImg('+req.id+')" style="border:2px dashed rgba(255,255,255,.3);border-radius:8px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer"></div>';_dh+='</div>';}
+    _dh+=attsHtml+'<input type="file" id="req-img-inp" accept="image/*" multiple style="display:none" onchange="uploadReqImgs(this)"><input type="file" id="req-att-inp" accept=".pdf,image/*" multiple style="display:none" onchange="uploadReqAtts(this)"></div>';
+    document.getElementById('detail-head').innerHTML=_dh;
+        show('detail',null,null);
     loadBids(id);
   });
 }
