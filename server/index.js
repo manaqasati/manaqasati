@@ -21,6 +21,42 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ═══════════════════════════════════════════════════════════════
+// HTML ROUTES - لتقديم صفحات الموقع
+// ═══════════════════════════════════════════════════════════════
+
+// الصفحة الرئيسية
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// صفحة admin dashboard
+app.get('/dashboard-admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard-admin.html'));
+});
+
+// صفحة client dashboard  
+app.get('/dashboard-client.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard-client.html'));
+});
+
+// صفحة provider dashboard
+app.get('/dashboard-provider.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard-provider.html'));
+});
+
+// صفحة auth
+app.get('/auth.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'auth.html'));
+});
+
+// صفحة app
+app.get('/app.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'app.html'));
+});
+
+console.log('✅ HTML routes configured');
+
+// ═══════════════════════════════════════════════════════════════
 // BASIC ENDPOINTS (USER REGISTRATION, LOGIN, ETC.)
 // ═══════════════════════════════════════════════════════════════
 
@@ -882,6 +918,7 @@ console.log('🚀 جاهز لمعالجة طلبات الأدمن');
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('✅ Admin system loaded and ready');
+  console.log('✅ HTML routes configured');
 });
 
 // Error handling
