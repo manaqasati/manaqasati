@@ -1187,7 +1187,10 @@ function _cWsConnect(){
   if(_cWs&&_cWs.readyState<=1)return;
   try{
     _cWs=new WebSocket(API.replace('https://','wss://').replace('http://','ws://')+'?token='+token);
-    _cWs.onmessage=function(e){try{var d=JSON.parse(e.data);if(d.type==='message'&&_cChatReqId&&d.message&&d.message.request_id==_cChatReqId){var exists=_cChatMsgs.some(function(m){return m.id===d.message.id;});if(!exists){_cChatMsgs.push(d.message);_cRenderMsgs();}}}catch(e){}};
+    _cWs.onmessage=function(e){try{var d=JSON.parse(e.data);if(d.type==='message'&&_cChatReqId&&d.message&&d.message.request_id==_cChatReqId){
+            var isFromMe=String(d.message.sender_id)===String(user.id);
+            var exists=_cChatMsgs.some(function(m){return m.id===d.message.id;});
+            if(!exists&&!isFromMe){_cChatMsgs.push(d.message);_cRenderMsgs();}}}catch(e){}};
     _cWs.onerror=_cWs.onclose=function(){_cWs=null;};
   }catch(e){_cWs=null;}
 }
@@ -1235,7 +1238,7 @@ async function openChatModal(reqId,providerId,providerName,reqTitle){
   _cWsConnect();
   _cChatPolling=setInterval(async function(){
     if(!document.getElementById('chat-overlay')){clearInterval(_cChatPolling);return;}
-    try{var msgs=await _cApiGet('/api/messages/'+reqId);if(Array.isArray(msgs)&&msgs.length>0){var lastId=msgs[msgs.length-1].id;var curLastId=_cChatMsgs.length?_cChatMsgs[_cChatMsgs.length-1].id:null;if(lastId!==curLastId){_cChatMsgs=msgs;_cRenderMsgs();}}}catch(ex){}
+    try{var msgs=await _cApiGet('/api/messages/'+reqId);if(Array.isArray(msgs)){_cChatMsgs=msgs;_cRenderMsgs();}}catch(ex){}
   },5000);
 }
 async function _cSendMsg(){
@@ -1243,7 +1246,17 @@ async function _cSendMsg(){
   var content=inp.value.trim();if(!content)return;
   var btn=document.getElementById('c-chat-send');inp.value='';if(btn)btn.disabled=true;
   if(_cWs&&_cWs.readyState===1){try{_cWs.send(JSON.stringify({type:'message',request_id:_cChatReqId,receiver_id:_cChatProviderId,content:content}));}catch(e){}}
-  try{var r=await _cApiPost('/api/messages',{request_id:_cChatReqId,receiver_id:_cChatProviderId,content:content});if(r&&r.id){var exists=_cChatMsgs.some(function(m){return m.id===r.id;});if(!exists){_cChatMsgs.push(r);_cRenderMsgs();}}}catch(ex){}
+  try{
+    var r=await _cApiPost('/api/messages',{request_id:_cChatReqId,receiver_id:_cChatProviderId,content:content});
+    if(r&&r.id){
+      var exists=_cChatMsgs.some(function(m){return m.id===r.id;});
+      if(!exists){_cChatMsgs.push(r);_cRenderMsgs();}
+    }
+    // Sync from server after short delay
+    setTimeout(async function(){
+      try{var msgs=await _cApiGet('/api/messages/'+_cChatReqId);if(Array.isArray(msgs)){_cChatMsgs=msgs;_cRenderMsgs();}}catch(ex){}
+    },800);
+  }catch(ex){}
   if(btn)btn.disabled=false;
 }
 </script>
