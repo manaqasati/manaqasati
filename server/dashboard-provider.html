@@ -553,6 +553,21 @@ async function loadWorks(){
     pw2.addEventListener('click',pw2._chatHandler);
   }
 }
+function _worksFilter(type){
+  if(type==='bids'){
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+      +'<button data-filter="all" onclick="_fBids(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid var(--p);background:var(--p);color:#fff">الكل</button>'
+      +'<button data-filter="accepted" onclick="_fBids(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #bbf7d0;background:var(--green-l);color:var(--green)">مقبولة</button>'
+      +'<button data-filter="pending" onclick="_fBids(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fde68a;background:var(--gold-l);color:#92400e">معلقة</button>'
+      +'<button data-filter="rejected" onclick="_fBids(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fecaca;background:var(--red-l);color:var(--red)">مرفوضة</button>'
+      +'</div>';
+  }
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+    +'<button data-filter="all" onclick="_fProjs(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid var(--p);background:var(--p);color:#fff">الكل</button>'
+    +'<button data-filter="in_progress" onclick="_fProjs(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #fde68a;background:#fff8e7;color:#92400e">جارية</button>'
+    +'<button data-filter="completed" onclick="_fProjs(this.dataset.filter)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:1.5px solid #bbf7d0;background:var(--green-l);color:var(--green)">مكتملة</button>'
+    +'</div>';
+}
 function _wTab(tab,btn){document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');var bw=_el('wtab-bids-wrap'),pw=_el('wtab-projs-wrap');if(bw)bw.style.display=tab==='bids'?'':'none';if(pw)pw.style.display=tab==='projs'?'':'none';}
 function _fBids(status){var list=status==='all'?_myBids:_myBids.filter(function(b){return b.status===status;});var w=_el('bids-wrap');if(w)w.innerHTML=_renderBids(list);}
 function _fProjs(status){var list=status==='all'?_myProjs:_myProjs.filter(function(p){return p.status===status;});var w=_el('projs-wrap');if(w)w.innerHTML=_renderProjs(list);}
