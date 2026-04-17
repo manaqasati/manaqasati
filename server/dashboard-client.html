@@ -967,15 +967,25 @@ function loadNotifs(){
 function handleNotif(refId,type){
   if(!refId) return;
   if(type==='message'){
-    // Open chat directly
-    fetch(API+'/api/requests/'+refId).then(function(r){return r.json();}).then(function(req){
-      if(req&&req.accepted_provider_id){
-        openChatModal(refId,req.accepted_provider_id,req.provider_name||'المزود',req.title||'');
-      } else if(req&&req.assigned_provider_id){
-        openChatModal(refId,req.assigned_provider_id,req.provider_name||'المزود',req.title||'');
+    // ref_id could be request_id — try to get request and find provider
+    fetch(API+'/api/requests/'+refId,hdr()).then(function(r){return r.json();}).then(function(req){
+      var provId=req.accepted_provider_id||req.assigned_provider_id||null;
+      var provName=req.provider_name||'المزود';
+      var title=req.title||'';
+      if(provId){
+        openChatModal(refId,provId,provName,title);
       } else {
-        // Fallback: open detail page
-        openDetail(refId,null);
+        // Try fetching messages for this request to find the sender
+        fetch(API+'/api/messages/'+refId,hdr()).then(function(r){return r.json();}).then(function(msgs){
+          if(Array.isArray(msgs)&&msgs.length){
+            var other=msgs.find(function(m){return String(m.sender_id)!==String(user.id);});
+            if(other){
+              openChatModal(refId,other.sender_id,other.sender_name||'المزود',title);
+              return;
+            }
+          }
+          openDetail(refId,null);
+        }).catch(function(){openDetail(refId,null);});
       }
     }).catch(function(){openDetail(refId,null);});
   } else if(type==='bid'){
