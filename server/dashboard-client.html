@@ -1205,9 +1205,13 @@ function _cEsc(s){var d=document.createElement('div');d.textContent=String(s||''
 function _cRenderMsgs(){
   var wrap=document.getElementById('c-chat-msgs');if(!wrap)return;
   if(!_cChatMsgs.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">ابدأ المحادثة مع المزود</div>';return;}
-  // Deduplicate
+  // Deduplicate: by id first, then by content+sender+time bucket (10s window)
   var seen={},unique=[];
-  _cChatMsgs.forEach(function(m){var k=m.id||(m.content+'_'+m.created_at);if(!seen[k]){seen[k]=1;unique.push(m);}});
+  _cChatMsgs.forEach(function(m){
+    var timeBucket=m.created_at?Math.floor(new Date(m.created_at).getTime()/10000):0;
+    var k=m.id?('id_'+m.id):('k_'+String(m.sender_id)+'_'+String(m.content)+'_'+timeBucket);
+    if(!seen[k]){seen[k]=1;unique.push(m);}
+  });
   wrap.innerHTML=unique.map(function(m){
     var isMe=(String(m.sender_id)===String(user.id));
     return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:6px">'
