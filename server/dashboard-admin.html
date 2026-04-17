@@ -848,7 +848,7 @@ function _renderRequests(list){
   tabs.forEach(function(s){
     var cnt=s==='all'?_allReqs.length:_allReqs.filter(function(r){return r.status===s;}).length;
     var act=_reqFilter===s;
-    html+='<button class="tab-btn'+(act?' active':'')+'" onclick="_reqTab(\\"'+s+'\\")">'+labels[s]+' ('+cnt+')</button>';
+    html+='<button class="tab-btn'+(act?' active':'')+'" onclick="_reqTab(\''+s+'\')">'+labels[s]+' ('+cnt+')</button>';
   });
   html+='</div>';
   
@@ -1101,7 +1101,7 @@ function _badgeModal(id, name, current, role){
   html+='</div>';
   openModal('منح لقب — '+name, html,
     '<button onclick="closeModal()" class="btn-action" style="background:var(--bg);color:var(--muted)">إلغاء</button>'+
-    '<button onclick="_saveBadge('+id+',\''+role+'\')" class="btn-action" style="background:var(--gold);color:#fff">منح اللقب</button>'
+    '<button onclick="_saveBadge('+id+',\"'+role+'\")" class="btn-action" style="background:var(--gold);color:#fff">منح اللقب</button>'
   );
 }
 async function _saveBadge(id, role){ 
