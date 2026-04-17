@@ -150,6 +150,8 @@ var _lb={el:null,wrap:null,t:null,v:0,
   _set:function(v){if(this.el)this.el.style.width=v+'%';},
   _run:function(){var self=this;if(self.v<90){self.v+=Math.random()*12+3;if(self.v>90)self.v=90;self._set(self.v);self.t=setTimeout(function(){self._run();},200+Math.random()*200);}}
 };
+function _showSpin(){try{_lb.start();}catch(e){}}
+function _hideSpin(){try{_lb.done();}catch(e){}}
 function _el(id){return document.getElementById(id);}
 function _esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function _fpr(p){return p?Number(p).toLocaleString('en-US')+' ر.س':'—';}
