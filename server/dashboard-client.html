@@ -262,7 +262,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .main{margin-right:0;max-width:100vw;width:100%}
   .mob-head{display:flex}
   .bnav{display:block}
-  .content{padding:12px 14px 100px}
+  .content{padding:12px 14px 120px}
   .stat-grid{grid-template-columns:repeat(4,1fr);gap:6px}
   .sc{padding:12px 10px;border-radius:12px}
   .sic{width:36px;height:36px;border-radius:10px}
@@ -706,7 +706,12 @@ function show(pg,el,key){
   if(pg==='home')loadHome();
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
-  if(pg!=='detail')window.scrollTo(0,0);
+  if(pg==='detail'){
+    window._detailScroll=true;
+  } else {
+    window._detailScroll=false;
+    window.scrollTo(0,0);
+  }
 }
 
 function showTab(t,el){
@@ -914,9 +919,6 @@ async function loadBids(id){
       +acts+'</div>';
   }).join('');
 
-  // Restore scroll position after render
-  var _savedScroll=window.scrollY||0;
-  setTimeout(function(){if(_savedScroll>0)window.scrollTo(0,_savedScroll);},50);
   var _bl=document.getElementById('bids-list');
   if(_bl)_bl.addEventListener('click',function(e){
     var btn=e.target.closest('button');
@@ -1198,6 +1200,7 @@ function _rptToast(msg,ok){
   setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(function(){el.remove();},400);},3500);
 }
 
+(function(){var _orig=window.scrollTo.bind(window);window.scrollTo=function(x,y){if(window._detailScroll&&y===0)return;_orig(x,y||0);};})();
 var _cChatReqId=null,_cChatProviderId=null,_cChatMsgs=[],_cChatPolling=null,_cWs=null,_cRenderTimer=null;
 function _cApiGet(path){return fetch(API+path,hdr()).then(function(r){return r.json();}).catch(function(){return[];});}
 function _cApiPost(path,body){return fetch(API+path,Object.assign({method:'POST',body:JSON.stringify(body)},hdr())).then(function(r){return r.json();}).catch(function(){return{};});}
