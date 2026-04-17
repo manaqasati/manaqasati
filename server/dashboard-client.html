@@ -612,9 +612,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
-if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(function(regs){
-    Promise.all(regs.map(function(r){return r.unregister();})).then(function(){location.reload();});
+    regs.forEach(function(r){r.unregister();});
   });
 }
 var user=JSON.parse(localStorage.getItem('user')||'{}');
@@ -1011,15 +1011,12 @@ async function changeClientPw(){var old=document.getElementById('cPwOld')?.value
 setInterval(loadNotifCount,30000);
 
 var _validPages=['home','requests','notifs','profile'];
-var _savedPage=sessionStorage.getItem('mnq_page');
-if(_savedPage&&_validPages.indexOf(_savedPage)>=0){
-  show(_savedPage,null,_savedPage);
-}else{
-  loadHome();
-}
-setTimeout(function(){
-  try{var h=location.hash.replace('#','');if(h&&_validPages.indexOf(h)>=0)show(h,null,h);}catch(e){}
-},0);
+document.addEventListener('DOMContentLoaded',function(){
+  var h=location.hash.replace('#','');
+  var saved=sessionStorage.getItem('mnq_page');
+  var pg=(h&&_validPages.indexOf(h)>=0)?h:(saved&&_validPages.indexOf(saved)>=0)?saved:'home';
+  show(pg,null,pg);
+});
 
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function _esc(s){return esc(s);}
