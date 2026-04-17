@@ -576,6 +576,15 @@ async function loadRequests(){
 }
 function _renderRequests(list){
   var pg=_el('page-requests'); if(!pg) return;
+  
+  // 🎯 إضافة الترتيب هنا
+  list.sort(function(a, b) {
+    var priorities = {'pending_review': 1, 'open': 2, 'in_progress': 3, 'completed': 4, 'rejected': 5};
+    var priorityDiff = (priorities[a.status] || 6) - (priorities[b.status] || 6);
+    if (priorityDiff !== 0) return priorityDiff;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+  
   var tabs=['all','pending_review','open','in_progress','completed','rejected'];
   var labels={all:'الكل',pending_review:'مراجعة',open:'مفتوح',in_progress:'جارٍ',completed:'مكتمل',rejected:'مرفوض'};
   var html='<div class="pghd"><div><div class="pg-t">الطلبات</div><div class="pg-s">'+list.length+' طلب</div></div>';
