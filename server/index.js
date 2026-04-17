@@ -988,10 +988,11 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, profile_image } = req.body;
+    const { name, phone, email, city, profile_image } = req.body;
     const fields = []; const vals = []; let idx = 1;
     if (name !== undefined) { fields.push(`name=$${idx++}`); vals.push(name); }
     if (phone !== undefined) { fields.push(`phone=$${idx++}`); vals.push(phone||null); }
+    if (email !== undefined) { fields.push(`email=$${idx++}`); vals.push(email||null); }
     if (city !== undefined) { fields.push(`city=$${idx++}`); vals.push(city||null); }
     if (profile_image !== undefined) { fields.push(`profile_image=$${idx++}`); vals.push(profile_image); }
     if (!fields.length) return res.status(400).json({ message: 'لا يوجد بيانات' });
