@@ -282,12 +282,12 @@ app.post('/api/auth/register', async (req, res) => {
       ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null))
       : null;
 
-    // ✅ نكتب الهاش في العمودين password و password_hash ($4 مكرر)
+    // ✅ نكتب الهاش في العمودين password و password_hash (بارامترين منفصلين لتفادي خطأ inconsistent types)
     const result = await pool.query(`
       INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, bio, is_active, created_at)
-      VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, true, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
       RETURNING id, name, email, role, city, badge
-    `, [name, email, phone || null, hash, role, specs, city || null, bio || null]);
+    `, [name, email, phone || null, hash, hash, role, specs, city || null, bio || null]);
 
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -309,14 +309,14 @@ app.get('/api/direct-admin', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
 
-    // ✅ نكتب في العمودين
+    // ✅ نكتب في العمودين (بارامترين منفصلين)
     const result = await pool.query(`
       INSERT INTO users (name, email, password, password_hash, role, is_active, created_at)
-      VALUES ('المدير', $1, $2, $2, 'admin', true, NOW())
+      VALUES ('المدير', $1, $2, $3, 'admin', true, NOW())
       ON CONFLICT (email)
-      DO UPDATE SET password = $2, password_hash = $2, role = 'admin', is_active = true
+      DO UPDATE SET password = $2, password_hash = $3, role = 'admin', is_active = true
       RETURNING id, name, email, role
-    `, [email, hash]);
+    `, [email, hash, hash]);
 
     console.log('✅ Admin created:', result.rows[0]);
     res.json({ ok: true, message: 'تم إنشاء حساب الأدمن بنجاح', user: result.rows[0] });
