@@ -685,7 +685,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <span class="bt">الطلبات</span>
   </button>
   <button class="bni" id="bn-providers" onclick="gotoPage('providers')">
-    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 717.94-7.94l-3.76 3.76z"/></svg></div>
+    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
     <span class="bt">المزودون</span>
   </button>
   <button class="bni" id="bn-reports" onclick="gotoPage('reports')">
@@ -1013,7 +1013,7 @@ function _renderProviders(list){
       html+='</div></div></div>';
       html+='<div class="user-actions">';
       html+='<button class="btn-action '+(active?'btn-delete':'btn-approve')+'" onclick="_toggleUser('+p.id+',\'provider\')">'+(active?'إيقاف':'تفعيل')+'</button>';
-      html+='<button class="btn-action" style="background:var(--gold-l);color:#92400e" onclick="_badgeModal('+p.id+',\''+_esc(p.name||'')+'\',\''+_esc(p.badge||'none')+'\',\'provider\')">منح لقب</button>';
+      html+='<button class="btn-action" style="background:var(--gold-l);color:#92400e" onclick="_badgeModal('+p.id+',\"'+((p.name||'').replace(/"/g,'&quot;'))+'\",\"'+((p.badge||'none').replace(/"/g,'&quot;'))+'\",\"provider\")">منح لقب</button>';
       html+='<button class="btn-action btn-delete" onclick="_deleteUser('+p.id+')">حذف</button>';
       html+='</div></div></div>';
     });
