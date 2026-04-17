@@ -520,14 +520,39 @@ _ft+='</div>';
 _el('mFt').style.cssText='padding:12px 20px;border-top:1px solid var(--border);display:block;background:var(--bg);border-radius:0 0 22px 22px';
 _el('mFt').innerHTML=_ft;
 }
-(function(){  if(!pw) return;
-  pw.removeEventListener('click',pw._chatHandler);
-  pw._chatHandler=function(e){
-    var pvc=e.target.closest('._pvc');
-    if(pvc){_openProvChat(+pvc.dataset.reqid,+pvc.dataset.cid,pvc.dataset.cname||'العميل',pvc.dataset.title||'');}
-  };
-  pw.addEventListener('click',pw._chatHandler);
-})();
+async function loadWorks(){
+  var pg=_el('page-works');if(!pg)return;
+  pg.innerHTML=_skList(4);
+  try{_myBids=await _api('/api/provider/bids')||[];_myProjs=await _api('/api/provider/projects')||[];}
+  catch(e){_myBids=[];_myProjs=[];}
+  var accepted=_myBids.filter(function(b){return b.status==='accepted';});
+  var inprog=_myProjs.filter(function(p){return p.status==='in_progress';});
+  await Promise.all([].concat(accepted,inprog).map(async function(item){
+    var key='c_'+(item.request_id||item.id);
+    if(!_pCache[key]){var rd=await _api('/api/requests/'+(item.request_id||item.id));if(rd&&rd.client_phone)_pCache[key]={phone:rd.client_phone,name:rd.client_name||''};}
+  }));
+  var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
+  var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
+  var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
+  var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
+  _hideSpin();
+  var _wHTML='<div class="pghd"><div><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div></div>';
+  _wHTML+='<div class="stat-grid"><div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div><div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div><div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div><div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div></div>';
+  _wHTML+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" data-tab="bids">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" data-tab="projs">المشاريع ('+_myProjs.length+')</button></div>';
+  _wHTML+='<div id="wtab-bids-wrap">'+_worksFilter("bids")+'<div id="bids-wrap">'+_renderBids(_myBids)+'</div></div>';
+  _wHTML+='<div id="wtab-projs-wrap" style="display:none">'+_worksFilter("projs")+'<div id="projs-wrap">'+_renderProjs(_myProjs)+'</div></div>';
+  pg.innerHTML=_wHTML;
+  // Tab click handlers
+  var _tb1=_el('wtab-bids');var _tb2=_el('wtab-projs');
+  if(_tb1)_tb1.onclick=function(){_wTab('bids',this);};
+  if(_tb2)_tb2.onclick=function(){_wTab('projs',this);};
+  // Chat handler
+  var pw2=_el('page-works');if(pw2){
+    pw2.removeEventListener('click',pw2._chatHandler);
+    pw2._chatHandler=function(e){var pvc=e.target.closest('._pvc');if(pvc){_openProvChat(+pvc.dataset.reqid,+pvc.dataset.cid,pvc.dataset.cname||'العميل',pvc.dataset.title||'');}};
+    pw2.addEventListener('click',pw2._chatHandler);
+  }
+}
 function _wTab(tab,btn){document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');var bw=_el('wtab-bids-wrap'),pw=_el('wtab-projs-wrap');if(bw)bw.style.display=tab==='bids'?'':'none';if(pw)pw.style.display=tab==='projs'?'':'none';}
 function _fBids(status){var list=status==='all'?_myBids:_myBids.filter(function(b){return b.status===status;});var w=_el('bids-wrap');if(w)w.innerHTML=_renderBids(list);}
 function _fProjs(status){var list=status==='all'?_myProjs:_myProjs.filter(function(p){return p.status===status;});var w=_el('projs-wrap');if(w)w.innerHTML=_renderProjs(list);}
