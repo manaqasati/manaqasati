@@ -540,11 +540,18 @@ function _renderBids(list){
             (b.days?'<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 9px;border-radius:20px">'+b.days+' يوم</span>':''),
           '</div>',
           (b.note?'<div style="font-size:11px;color:var(--muted);font-style:italic;background:var(--bg);border-right:3px solid var(--border);padding:7px 10px;border-radius:0 8px 8px 0;margin-bottom:10px">'+_esc(b.note)+'</div>':''),
-          '<div style="display:flex;gap:7px;flex-wrap:wrap;padding-top:9px;border-top:1px solid var(--border)">'+
-            cBtns+
-            '<button onclick="_viewProj('+b.request_id+')" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">عرض</button>'+
-            '<button class="_pvc" data-reqid="'+b.request_id+'" data-cid="'+b.client_id+'" data-cname="'+_esc(b.client_name||'العميل')+'" data-title="'+_esc(b.request_title||'')+'" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:rgba(201,146,10,.1);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>',
-            (!isAcc&&!isRej?'<button onclick="_delBid('+b.id+')" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--red-l);color:var(--red);border:1px solid #fecaca">سحب</button>':''),
+          '<div style="padding-top:9px;border-top:1px solid var(--border)">'+
+            (isAcc && _pCache['c_'+b.request_id] && _pCache['c_'+b.request_id].phone ?
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">'+
+              '<a href="'+_waUrl(_pCache['c_'+b.request_id].phone,b.client_name||'العميل',b.request_title||'')+'" target="_blank" style="padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:#25d366;color:#fff;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px">'+_WA+'واتساب</a>'+
+              '<a href="tel:'+_pCache['c_'+b.request_id].phone+'" style="padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px">'+_TEL+'اتصال</a>'+
+              '</div>' : ''),
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr'+(b.client_id?' 1fr':'')+';gap:7px">'+
+            '<button onclick="_viewProj('+b.request_id+')" style="padding:8px 6px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--p-light);color:var(--p);border:1px solid var(--p-mid)">عرض</button>'+
+            '<button class="_pvc" data-reqid="'+b.request_id+'" data-cid="'+b.client_id+'" data-cname="'+_esc(b.client_name||'العميل')+'" data-title="'+_esc(b.request_title||'')+'" style="padding:8px 6px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:rgba(201,146,10,.1);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>'+
+            (!isAcc&&!isRej?'<button onclick="_delBid('+b.id+')" style="padding:8px 6px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--red-l);color:var(--red);border:1px solid #fecaca">سحب</button>':'')+
+            (b.client_id?_reportBtn(b.client_id,b.client_name||'العميل',b.request_id):'')+
+            '</div>'+
           '</div>',
         '</div>',
       '</div>'
