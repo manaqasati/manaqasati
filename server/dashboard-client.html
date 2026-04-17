@@ -1195,8 +1195,11 @@ function _cEsc(s){var d=document.createElement('div');d.textContent=String(s||''
 function _cRenderMsgs(){
   var wrap=document.getElementById('c-chat-msgs');if(!wrap)return;
   if(!_cChatMsgs.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">ابدأ المحادثة مع المزود</div>';return;}
-  wrap.innerHTML=_cChatMsgs.map(function(m){
-    var isMe=(m.sender_id==user.id);
+  // Deduplicate
+  var seen={},unique=[];
+  _cChatMsgs.forEach(function(m){var k=m.id||(m.content+'_'+m.created_at);if(!seen[k]){seen[k]=1;unique.push(m);}});
+  wrap.innerHTML=unique.map(function(m){
+    var isMe=(String(m.sender_id)===String(user.id));
     return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:6px">'
       +'<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'16px 16px 4px 16px':'16px 16px 16px 4px')+';background:'+(isMe?'var(--p3)':'var(--white)')+';color:'+(isMe?'#fff':'var(--text)')+';border:'+(isMe?'none':'1px solid var(--border)')+';font-size:13px;line-height:1.6;word-break:break-word">'
         +(!isMe?'<div style="font-size:10px;opacity:.55;margin-bottom:3px">'+_cEsc(m.sender_name||'')+'</div>':'')
@@ -1232,7 +1235,7 @@ async function openChatModal(reqId,providerId,providerName,reqTitle){
   _cWsConnect();
   _cChatPolling=setInterval(async function(){
     if(!document.getElementById('chat-overlay')){clearInterval(_cChatPolling);return;}
-    try{var msgs=await _cApiGet('/api/messages/'+reqId);if(Array.isArray(msgs)&&msgs.length!==_cChatMsgs.length){_cChatMsgs=msgs;_cRenderMsgs();}}catch(ex){}
+    try{var msgs=await _cApiGet('/api/messages/'+reqId);if(Array.isArray(msgs)&&msgs.length>0){var lastId=msgs[msgs.length-1].id;var curLastId=_cChatMsgs.length?_cChatMsgs[_cChatMsgs.length-1].id:null;if(lastId!==curLastId){_cChatMsgs=msgs;_cRenderMsgs();}}}catch(ex){}
   },5000);
 }
 async function _cSendMsg(){
