@@ -132,9 +132,9 @@
 <script>
 'use strict';
 var API='https://manaqasati-production.up.railway.app';
-if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(function(regs){
-    Promise.all(regs.map(function(r){return r.unregister();})).then(function(){location.reload();});
+    regs.forEach(function(r){r.unregister();});
   });
 }
 var _token=localStorage.getItem('token')||'';
@@ -668,8 +668,10 @@ async function _delPortImg(i){await _api('/api/provider/profile/portfolio/'+i,{m
 function _loadNotifCount(){_api('/api/provider/notifications').then(function(ns){var u=(ns||[]).filter(function(n){return!n.is_read;}).length;var b1=_el('nb-notif');if(b1){b1.style.display=u?'':'none';b1.textContent=u;}});}
 setInterval(_loadNotifCount,30000);
 document.addEventListener('DOMContentLoaded',function(){
-  var saved = sessionStorage.getItem('mnq_prov_page');
-  gotoPage(saved && _pages[saved] ? saved : 'home');
+  var h=location.hash.replace('#','');
+  var saved=sessionStorage.getItem('mnq_prov_page');
+  var pg=(h&&_pages[h])?h:(saved&&_pages[saved])?saved:'home';
+  gotoPage(pg);
 });
 var _rptTarget={id:0,name:'',reqId:null};
 var _RPT_REASONS=['سلوك غير لائق','احتيال أو نصب','عدم الاستجابة','جودة عمل سيئة','محتوى مسيء','بيانات مزيفة','أخرى'];
