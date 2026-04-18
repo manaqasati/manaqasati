@@ -21,6 +21,9 @@ pool.connect()
 
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
 const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.railway.app';
+const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
+const FROM_NAME  = process.env.FROM_NAME  || 'مناقصة';
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
@@ -36,6 +39,49 @@ app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dash
 app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL (Resend)
+// ═══════════════════════════════════════════════════════════════
+async function sendEmail(to, subject, html) {
+  if (!RESEND_KEY) { console.warn('⚠️  RESEND_KEY not set — skipping email to', to); return false; }
+  if (!to) return false;
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html })
+    });
+    if (!r.ok) { console.error('❌ Resend error:', await r.text()); return false; }
+    console.log(`📧 Email sent → ${to} — "${subject}"`);
+    return true;
+  } catch(e) { console.error('❌ sendEmail:', e.message); return false; }
+}
+
+function emailTpl(title, body, btnText, btnUrl) {
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:Tahoma,Arial,sans-serif;direction:rtl">
+  <div style="max-width:580px;margin:0 auto;padding:24px 16px">
+    <div style="background:#16213E;border-radius:16px 16px 0 0;padding:32px 28px 24px;text-align:center">
+      <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:8px">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:6px"></span>
+        مناقصة
+      </div>
+      <div style="height:3px;background:#C9920A;margin-top:12px"></div>
+    </div>
+    <div style="background:#fff;padding:32px 28px 24px;border:1px solid #E6E2D9;border-top:none">
+      <div style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #E6E2D9">${title}</div>
+      <div style="font-size:14px;color:#374151;line-height:2">${body}</div>
+      ${btnText && btnUrl ? `<div style="text-align:center;margin:28px 0 8px"><a href="${btnUrl}" style="display:inline-block;background:#C9920A;color:#fff;padding:14px 40px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700">${btnText}</a></div>` : ''}
+    </div>
+    <div style="background:#f4f7fb;border-radius:0 0 16px 16px;padding:18px 28px;text-align:center;border:1px solid #E6E2D9;border-top:none">
+      <div style="font-size:11px;color:#94a3b8">© ${new Date().getFullYear()} منصة مناقصة — manaqasa.com</div>
+    </div>
+  </div>
+</body></html>`;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
@@ -656,7 +702,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       try {
         const cat = String(newReq.category).trim();
         const provs = await pool.query(`
-          SELECT id, name, specialties, notify_categories FROM users
+          SELECT id, name, email, specialties, notify_categories FROM users
           WHERE role='provider' AND is_active=TRUE
             AND (
               (specialties IS NOT NULL AND TRIM($1::text) = ANY(ARRAY(SELECT TRIM(UNNEST(specialties)))))
@@ -664,20 +710,38 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
             )
         `, [cat]);
         const cityHint = newReq.city ? ` في ${newReq.city}` : '';
+        const title = '🆕 مشروع جديد في تخصصك';
+        const bodyText = `${newReq.title}${cityHint} — اطّلع وقدّم عرضك`;
+
+        // Email body (richer than in-app notification)
+        const emailBody = `
+          <p>وصلنا طلب مشروع جديد ضمن تخصصاتك على منصة مناقصة.</p>
+          <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+            <div style="font-size:15px;font-weight:800;color:#16213E;margin-bottom:8px">${newReq.title}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.9">
+              <div><strong>التصنيف:</strong> ${cat}</div>
+              ${newReq.city ? `<div><strong>المدينة:</strong> ${newReq.city}</div>` : ''}
+              ${newReq.budget_max ? `<div><strong>الميزانية:</strong> ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س</div>` : ''}
+              ${newReq.deadline ? `<div><strong>الموعد النهائي:</strong> ${String(newReq.deadline).slice(0,10)}</div>` : ''}
+            </div>
+          </div>
+          <p style="font-size:13px;color:#6b7280">ادخل المنصة وقدّم عرضك قبل أن يختار العميل مزوداً آخر.</p>
+        `;
+
         for (const p of provs.rows) {
-          await notify(
-            p.id,
-            '🆕 مشروع جديد في تخصصك',
-            `${newReq.title}${cityHint} — اطّلع وقدّم عرضك`,
-            'new_request',
-            newReq.id
-          );
+          await notify(p.id, title, bodyText, 'new_request', newReq.id);
+          if (p.email) {
+            sendEmail(
+              p.email,
+              title,
+              emailTpl(title, emailBody, 'فتح المشروع الآن', SITE_URL + '/dashboard-provider.html')
+            ).catch(() => {}); // non-blocking
+          }
         }
-        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
+        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers (in-app + email)`);
         if (provs.rows.length === 0) {
-          // Debug: log all providers' specialties so we can see mismatches
           const all = await pool.query(`SELECT id, name, specialties, notify_categories FROM users WHERE role='provider' AND is_active=TRUE`);
-          console.log(`⚠️  No match for "${cat}". Active providers & their specialties:`,
+          console.log(`⚠️  No match for "${cat}". Active providers:`,
             all.rows.map(r => ({ id: r.id, name: r.name, specialties: r.specialties, notify_categories: r.notify_categories })));
         }
       } catch (nerr) {
@@ -1349,21 +1413,25 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, user_ids, role, title, body, type, specialty } = req.body;
+    const { user_id, user_ids, role, title, body, type, specialty, channel } = req.body;
     if (!title || !body) return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
+    const ch = (channel === 'email' || channel === 'both' || channel === 'app') ? channel : 'app';
     const VALID = ['client','provider','admin'];
     let target = [];
     if (Array.isArray(user_ids) && user_ids.length) {
-      // Multiple specific users
       const ids = user_ids.map(Number).filter(Boolean);
       if (ids.length) {
-        const u = await pool.query('SELECT id FROM users WHERE id = ANY($1::int[]) AND is_active=TRUE', [ids]);
+        const u = await pool.query(
+          'SELECT id, name, email FROM users WHERE id = ANY($1::int[]) AND is_active=TRUE',
+          [ids]
+        );
         target = u.rows;
       }
     } else if (user_id) {
-      const u = await pool.query('SELECT id FROM users WHERE id=$1', [user_id]); target = u.rows;
+      const u = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [user_id]);
+      target = u.rows;
     } else {
-      let q = 'SELECT id FROM users WHERE is_active=TRUE';
+      let q = 'SELECT id, name, email FROM users WHERE is_active=TRUE';
       const p = [];
       if (role && VALID.includes(role)) { p.push(role); q += ` AND role=$${p.length}`; }
       if (specialty && specialty !== 'الكل') {
@@ -1374,9 +1442,36 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       }
       target = (await pool.query(q, p)).rows;
     }
-    for (const u of target) await notify(u.id, title, body, type || 'admin', null);
-    res.json({ ok: true, sent_count: target.length });
-  } catch (e) { res.status(500).json({ message: e.message }); }
+
+    // Build email HTML once
+    const htmlBody = `
+      <div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>
+      <div style="background:#f4f7fb;border-right:3px solid #16213E;border-radius:8px;padding:12px 16px;margin-top:18px">
+        <p style="font-size:12px;color:#6b85a8;margin:0">رسالة رسمية من إدارة منصة مناقصة.</p>
+      </div>
+    `;
+    const emailHtml = emailTpl(title, htmlBody, 'فتح المنصة', SITE_URL);
+
+    let appCount = 0, emailCount = 0;
+    for (const u of target) {
+      if (ch === 'app' || ch === 'both') {
+        await notify(u.id, title, body, type || 'admin', null);
+        appCount++;
+      }
+      if ((ch === 'email' || ch === 'both') && u.email) {
+        const ok = await sendEmail(u.email, title, emailHtml);
+        if (ok) emailCount++;
+      }
+    }
+
+    res.json({
+      ok: true,
+      sent_count: target.length,
+      app_count: appCount,
+      email_count: emailCount,
+      channel: ch
+    });
+  } catch (e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: e.message }); }
 });
 
 // Admin: search users for notification picker (name, email, phone)
