@@ -176,6 +176,12 @@ async function setupDatabase() {
       UNIQUE(user_id, token)
     )`);
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
     console.log('✅ Database setup complete');
   } catch (error) { console.error('❌ Database setup error:', error); }
 }
@@ -273,20 +279,50 @@ app.get('/api/profile', auth, async (req, res) => {
 
 app.put('/api/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, notify_categories, experience_years, profile_image } = req.body;
-    const r = await pool.query(`
-      UPDATE users SET
-        name = COALESCE(NULLIF($1,''), name),
-        phone = $2, city = $3, bio = $4,
-        specialties = $5, notify_categories = $6,
-        experience_years = $7, profile_image = $8
-      WHERE id=$9
-      RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image
-    `, [name || '', phone || null, city || null, bio || null,
-        specialties || null, notify_categories || null,
-        experience_years || null, profile_image || null, req.user.id]);
+    // Partial update — only update fields present in req.body
+    const allowed = {
+      name: 'name', phone: 'phone', city: 'city', bio: 'bio',
+      specialties: 'specialties', notify_categories: 'notify_categories',
+      experience_years: 'experience_years', profile_image: 'profile_image'
+    };
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    for (const key in allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        const col = allowed[key];
+        let val = req.body[key];
+        if (key === 'name') {
+          if (val && String(val).trim()) {
+            sets.push(`${col}=$${idx}`);
+            params.push(String(val).trim());
+            idx++;
+          }
+          continue;
+        }
+        if (key === 'experience_years') {
+          val = (val === '' || val === null || val === undefined) ? null : parseInt(val);
+          if (isNaN(val)) val = null;
+        }
+        if (val === '') val = null;
+        sets.push(`${col}=$${idx}`);
+        params.push(val);
+        idx++;
+      }
+    }
+    if (!sets.length) {
+      const cur = await pool.query(
+        `SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image FROM users WHERE id=$1`,
+        [req.user.id]
+      );
+      return res.json(cur.rows[0] || {});
+    }
+    params.push(req.user.id);
+    const q = `UPDATE users SET ${sets.join(', ')} WHERE id=$${idx}
+      RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image`;
+    const r = await pool.query(q, params);
     res.json(r.rows[0]);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { console.error('❌ /profile PUT:', e); res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/client/profile', auth, async (req, res) => {
@@ -306,20 +342,57 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, profile_image } = req.body;
-    const r = await pool.query(`
-      UPDATE users SET name=COALESCE(NULLIF($1,''),name), phone=$2, city=$3, bio=$4, profile_image=$5
-      WHERE id=$6 RETURNING id,name,email,phone,city,bio,profile_image
-    `, [name||'', phone||null, city||null, bio||null, profile_image||null, req.user.id]);
+    // Partial update — only update fields present in req.body
+    // Prevents nullification when uploading avatar only, or saving partial changes
+    const allowed = {
+      name: 'name',
+      phone: 'phone',
+      city: 'city',
+      bio: 'bio',
+      profile_image: 'profile_image'
+    };
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    for (const key in allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        const col = allowed[key];
+        let val = req.body[key];
+        if (key === 'name') {
+          if (val && String(val).trim()) {
+            sets.push(`${col}=$${idx}`);
+            params.push(String(val).trim());
+            idx++;
+          }
+          continue;
+        }
+        if (val === '') val = null;
+        sets.push(`${col}=$${idx}`);
+        params.push(val);
+        idx++;
+      }
+    }
+    if (!sets.length) {
+      const cur = await pool.query(
+        `SELECT id,name,email,phone,city,bio,profile_image FROM users WHERE id=$1`,
+        [req.user.id]
+      );
+      return res.json(cur.rows[0] || {});
+    }
+    params.push(req.user.id);
+    const q = `UPDATE users SET ${sets.join(', ')} WHERE id=$${idx}
+      RETURNING id,name,email,phone,city,bio,profile_image`;
+    const r = await pool.query(q, params);
     res.json(r.rows[0]);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { console.error('❌ client/profile PUT:', e); res.status(500).json({ message: e.message }); }
 });
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,
-       experience_years,portfolio_images,profile_image,created_at,
+       experience_years,portfolio_images,profile_image,business_name,
+       social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,
        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
        (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
@@ -335,17 +408,67 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    const { name, phone, city, bio, specialties, notify_categories, experience_years, portfolio_images, profile_image } = req.body;
-    const r = await pool.query(`
-      UPDATE users SET name=COALESCE(NULLIF($1,''),name), phone=$2, city=$3, bio=$4,
-        specialties=$5, notify_categories=$6, experience_years=$7,
-        portfolio_images=$8, profile_image=$9
-      WHERE id=$10
-      RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image
-    `, [name||'', phone||null, city||null, bio||null, specialties||null, notify_categories||null,
-        experience_years||null, portfolio_images||null, profile_image||null, req.user.id]);
+    // Partial update — only update fields present in req.body
+    // This prevents accidental nullification when uploading avatar only, or saving profile without portfolio_images
+    const allowed = {
+      name: 'name',
+      phone: 'phone',
+      city: 'city',
+      bio: 'bio',
+      specialties: 'specialties',
+      notify_categories: 'notify_categories',
+      experience_years: 'experience_years',
+      portfolio_images: 'portfolio_images',
+      profile_image: 'profile_image',
+      business_name: 'business_name',
+      social_whatsapp: 'social_whatsapp',
+      social_snap: 'social_snap',
+      social_tiktok: 'social_tiktok',
+      social_instagram: 'social_instagram',
+      social_twitter: 'social_twitter'
+    };
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    for (const key in allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        const col = allowed[key];
+        let val = req.body[key];
+        // Special: name can't be set to empty (keep existing if empty string)
+        if (key === 'name') {
+          if (val && String(val).trim()) {
+            sets.push(`${col}=$${idx}`);
+            params.push(String(val).trim());
+            idx++;
+          }
+          continue;
+        }
+        // experience_years — cast to int or null
+        if (key === 'experience_years') {
+          val = (val === '' || val === null || val === undefined) ? null : parseInt(val);
+          if (isNaN(val)) val = null;
+        }
+        // Empty strings → null for everything else
+        if (val === '') val = null;
+        sets.push(`${col}=$${idx}`);
+        params.push(val);
+        idx++;
+      }
+    }
+    if (!sets.length) {
+      // Nothing to update — return current profile
+      const cur = await pool.query(
+        `SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter FROM users WHERE id=$1`,
+        [req.user.id]
+      );
+      return res.json(cur.rows[0] || {});
+    }
+    params.push(req.user.id);
+    const q = `UPDATE users SET ${sets.join(', ')} WHERE id=$${idx}
+      RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`;
+    const r = await pool.query(q, params);
     res.json(r.rows[0]);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) { console.error('❌ provider/profile PUT:', e); res.status(500).json({ message: e.message }); }
 });
 
 // ═══════════════════════════════════════════════════════════════
