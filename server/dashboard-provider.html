@@ -572,15 +572,36 @@ function _openBidModal(projId){
   openModal('تقديم عرض',body,foot);
 }
 async function _submitBid(projId){
-  var price=(_el('bid-price')||{}).value;
-  var days=(_el('bid-days')||{}).value;
-  var note=(_el('bid-note')||{}).value;
-  if(!price||parseFloat(price)<=0){showToast('أدخل سعر العرض','error');return;}
-  if(!days||parseInt(days)<=0){showToast('أدخل مدة التنفيذ','error');return;}
-  if(!note.trim()){showToast('أدخل رسالتك للعميل','error');return;}
-  var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:parseFloat(price),days:parseInt(days),note:note.trim()})});
-  if(r&&(r.id||r.request_id)){closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
-  else showToast((r&&r.message)||'حدث خطأ','error');
+  var priceStr=(_el('bid-price')||{}).value;
+  var daysStr=(_el('bid-days')||{}).value;
+  var note=((_el('bid-note')||{}).value||'').trim();
+  var priceNum=parseFloat(priceStr);
+  var daysNum=parseInt(daysStr);
+  if(!priceStr||isNaN(priceNum)||priceNum<=0){showToast('أدخل سعر العرض','error');return;}
+  if(!daysStr||isNaN(daysNum)||daysNum<=0){showToast('أدخل مدة التنفيذ','error');return;}
+  if(!note){showToast('أدخل رسالتك للعميل','error');return;}
+  var btn=document.querySelector('[onclick*="_submitBid"]');
+  if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  // Price column is INTEGER — round to whole number, keep positive
+  var priceInt=Math.max(1,Math.round(priceNum));
+  var daysInt=Math.max(1,Math.round(daysNum));
+  var payload={price:priceInt,days:daysInt,note:note};
+  try{
+    var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify(payload)});
+    if(r&&(r.id||r.request_id)){
+      closeModal();
+      showToast('تم إرسال عرضك بنجاح','success');
+      loadBrowse();
+    } else {
+      var errMsg=(r&&r.message)||'حدث خطأ';
+      if(r&&r.code)errMsg+=' (كود: '+r.code+')';
+      showToast(errMsg,'error');
+      if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}
+    }
+  }catch(e){
+    showToast('تعذر الاتصال بالخادم','error');
+    if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}
+  }
 }
 
 async function _viewProj(id){
