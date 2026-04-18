@@ -73,6 +73,75 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .trust-row{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 18px 16px;padding:12px;background:var(--bg);border-radius:11px;border:1px solid var(--border)}
 .trust-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:700}
 .trust-item svg{width:12px;height:12px;stroke:var(--green);fill:none;stroke-width:2.5}
+
+/* ═══ Specialties picker (provider register only) ═══ */
+.specs-wrap{
+  background:var(--gold-l);
+  border:1px solid var(--gold-soft);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-bottom:14px;
+}
+.specs-hd{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+  gap:8px;
+}
+.specs-hd-t{
+  font-size:12px;
+  font-weight:800;
+  color:var(--gold-d);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.specs-hd-t svg{width:14px;height:14px;stroke:var(--gold-d);fill:none;stroke-width:2}
+.specs-hint{
+  font-size:10px;
+  color:var(--muted);
+  font-weight:600;
+  margin-bottom:10px;
+  line-height:1.5;
+}
+.specs-count{
+  font-size:11px;
+  font-weight:900;
+  color:#fff;
+  background:var(--gold-d);
+  padding:3px 10px;
+  border-radius:20px;
+  min-width:42px;
+  text-align:center;
+}
+.specs-count.done{background:var(--green)}
+.specs-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.spec-pill{
+  padding:7px 13px;
+  border-radius:20px;
+  border:1.5px solid var(--border);
+  background:var(--white);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:'Tajawal',sans-serif;
+  transition:all .15s;
+}
+.spec-pill:hover{border-color:var(--gold);color:var(--gold-d)}
+.spec-pill.on{
+  background:var(--p);
+  color:#fff;
+  border-color:var(--p);
+  box-shadow:0 2px 8px rgba(22,33,62,.2);
+}
+.spec-pill:disabled{opacity:.4;cursor:not-allowed}
+
 @media(min-width:480px){.auth-hero{padding:40px 24px 56px}.auth-body{padding:24px}}
 </style>
 </head>
@@ -175,8 +244,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <label>المدينة <span style="color:var(--red)">*</span></label>
         <select id="i-city" class="fi-sel">
           <option value="">اختر مدينتك</option>
-          <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option><option>الخبراء</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option><option>الحرجة</option><option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option><option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option><option>عرعر</option><option>طريف</option><option>رفحاء</option><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option><option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option><option>نجران</option><option>شرورة</option>
         </select>
+      </div>
+
+      <!-- specialties — register + provider only -->
+      <div class="specs-wrap" id="fg-specs" style="display:none">
+        <div class="specs-hd">
+          <div class="specs-hd-t">
+            <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            تخصصاتك
+          </div>
+          <span class="specs-count" id="specs-count">0/3</span>
+        </div>
+        <div class="specs-hint">اختر <strong>3 تخصصات بالضبط</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
+        <div class="specs-grid" id="specs-grid"></div>
       </div>
 
       <button class="btn-submit" id="btn-s" onclick="doSubmit()">
@@ -228,6 +309,59 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 var API='https://manaqasati-production.up.railway.app';
 var MODE='login', ROLE='client', METHOD='email';
 
+// ═══ Specialties — must match dashboard-provider.html exactly ═══
+var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
+
+// ═══ Cities — single source of truth, built via DOM (no HTML bleed) ═══
+var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','الدلم','المزاحمية','الحريق','حوطة بني تميم','وادي الدواسر','السليل','الأفلاج','الغاط','ثادق','حريملاء','مرات','ضرما','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الليث','خليص','تربة','المويه','الخرمة','رنية','المدينة المنورة','ينبع','العلا','الوجه','ضباء','أملج','المهد','بدر','خيبر','بريدة','عنيزة','الرس','البكيرية','الأسياح','رياض الخبراء','عيون الجواء','النبهانية','الشماسية','البدائع','المذنب','الخبراء','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','الخفجي','بقيق','النعيرية','رأس تنورة','صفوى','سيهات','العوامية','أبها','خميس مشيط','بيشة','النماص','محايل عسير','أحد رفيدة','سراة عبيدة','ظهران الجنوب','تثليث','بلقرن','رجال ألمع','المجاردة','الحرجة','تبوك','تيماء','قيال','حقل','حائل','بقعاء','الشنان','الغزالة','عرعر','طريف','رفحاء','سكاكا','دومة الجندل','القريات','الباحة','bالباحة','بلجرشي','المندق','العقيق','قلوة','المخواة','غامد الزناد','جازان','صبيا','أبو عريش','صامطة','الدرب','ضمد','أحد المسارحة','العارضة','الريث','الحرث','نجران','شرورة'];
+
+// Fill city select via DOM
+(function fillCities(){
+  var sel=document.getElementById('i-city');
+  if(!sel)return;
+  CITIES.forEach(function(c){
+    if(c==='bالباحة')return;
+    var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);
+  });
+})();
+
+// ═══ Build specialty pills via DOM ═══
+(function buildSpecs(){
+  var grid=document.getElementById('specs-grid');
+  if(!grid)return;
+  CATS.forEach(function(c){
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='spec-pill';
+    btn.textContent=c;
+    btn.onclick=function(){_togSpec(btn);};
+    grid.appendChild(btn);
+  });
+})();
+
+function _togSpec(btn){
+  var sel=document.querySelectorAll('.spec-pill.on');
+  if(!btn.classList.contains('on')&&sel.length>=3){
+    setAl(null,'الحد الأقصى 3 تخصصات','err');
+    setTimeout(clearAl,1800);
+    return;
+  }
+  btn.classList.toggle('on');
+  _updateSpecsCount();
+}
+function _updateSpecsCount(){
+  var cnt=document.querySelectorAll('.spec-pill.on').length;
+  var el=document.getElementById('specs-count');
+  if(el){
+    el.textContent=cnt+'/3';
+    if(cnt===3)el.className='specs-count done';
+    else el.className='specs-count';
+  }
+}
+function _getSelectedSpecs(){
+  return Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
+}
+
 (function(){
   var t=new URLSearchParams(location.search).get('reset');
   if(!t)return;
@@ -255,6 +389,7 @@ function setAl(el,msg,t){if(!el)el=document.getElementById('al');el.textContent=
 function clearAl(){var e=document.getElementById('al');if(e){e.textContent='';e.className='al';}}
 function show(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'block':'none';}
 function showGrid(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'grid':'none';}
+function showFlex(id,v){var e=document.getElementById(id);if(e)e.style.display=v?'block':'none';}
 
 function setMode(m){
   MODE=m;
@@ -274,9 +409,17 @@ function setMode(m){
   } else {
     setMethod(METHOD);
   }
+  // Show specialties only when register + provider
+  _updateSpecsVisibility();
   document.getElementById('hd-s').textContent=isR?'انضم لمناقصة اليوم':'سجّل دخولك لمتابعة مشاريعك';
   document.getElementById('btn-t').textContent=isR?'إنشاء الحساب':'تسجيل الدخول';
   clearAl();
+}
+
+function _updateSpecsVisibility(){
+  var sw=document.getElementById('fg-specs');
+  if(!sw)return;
+  sw.style.display=(MODE==='register'&&ROLE==='provider')?'block':'none';
 }
 
 function setMethod(m){
@@ -295,6 +438,7 @@ function selRole(r){
   var sp=document.getElementById('rc-p').querySelector('svg');
   if(sc)sc.setAttribute('stroke',r==='client'?'var(--gold-d)':'var(--muted)');
   if(sp)sp.setAttribute('stroke',r==='provider'?'var(--gold-d)':'var(--muted)');
+  _updateSpecsVisibility();
 }
 
 function togglePw(id,btn){
@@ -330,16 +474,13 @@ async function doSubmit(){
         if(!email||!email.includes('@')){setAl(null,'أدخل بريداً إلكترونياً صحيحاً','err');return;}
         body={email:email,password:pass};
       } else {
-        // Phone login — try with phone field, fallback formats
         var phone=getV('i-phone');
         if(!validatePhone(phone)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}
-        // Try phone login — send both phone and identifier fields
         var phoneFormatted=fmtPhone(phone);
         body={phone:phoneFormatted,identifier:phoneFormatted,password:pass};
       }
       url='/api/auth/login';
       var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
-      // If phone login failed and error is credentials, try with raw format
       if(!d.token && METHOD==='phone' && (d.message||'').includes('غير صحيح')){
         var phone2=getV('i-phone').replace(/[^0-9]/g,'');
         var altBody={phone:phone2,identifier:phone2,password:pass};
@@ -354,8 +495,25 @@ async function doSubmit(){
       if(pass!==p2){setAl(null,'كلمتا المرور غير متطابقتين','err');return;}
       if(!validatePhone(rph)){setAl(null,'رقم جوال سعودي صحيح (05xxxxxxxx)','err');return;}
       if(!city){setAl(null,'يرجى اختيار مدينتك','err');return;}
+
+      // ═══ Provider must select exactly 3 specialties ═══
+      var selectedSpecs=[];
+      if(ROLE==='provider'){
+        selectedSpecs=_getSelectedSpecs();
+        if(selectedSpecs.length!==3){
+          setAl(null,'يجب اختيار 3 تخصصات بالضبط','err');
+          var sw=document.getElementById('fg-specs');
+          if(sw)sw.scrollIntoView({behavior:'smooth',block:'center'});
+          return;
+        }
+      }
+
       url='/api/auth/register';
       body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};
+      if(ROLE==='provider'){
+        body.specialties=selectedSpecs;
+        body.notify_categories=selectedSpecs;
+      }
       var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
     }
     if(d.token){
