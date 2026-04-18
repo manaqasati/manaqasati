@@ -1124,11 +1124,14 @@ function _deleteReview(id){
 
 /* ══ NOTIFY ══ */
 var _recipientRole='all', _notifChannel='app';
+var _selectedUsers={}; // {id: {id,name,email,role,...}}
+var _pickerSearchTimer=null;
+
 function loadNotify(){
   var pg=_el('page-notify'); if(!pg) return;
-  _recipientRole='all'; _notifChannel='app';
+  _recipientRole='all'; _notifChannel='app'; _selectedUsers={};
   pg.innerHTML=
-    '<div class="pghd"><div><div class="pg-t">إرسال إشعار</div><div class="pg-s">أرسل إشعاراً فورياً لجميع المستخدمين أو فئة محددة</div></div></div>'+
+    '<div class="pghd"><div><div class="pg-t">إرسال إشعار</div><div class="pg-s">أرسل إشعاراً فورياً لجميع المستخدمين أو فئة محددة أو مستخدمين محددين</div></div></div>'+
     '<div class="notif-form">'+
       '<div class="form-section">'+
         '<div class="section-title"><div class="section-icon" style="background:var(--p-light);color:var(--p)">👥</div>اختيار المستلمين</div>'+
@@ -1136,8 +1139,31 @@ function loadNotify(){
           '<button class="recipient-btn active" data-role="all" onclick="_setRecipient(this,\'all\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>جميع المستخدمين</button>'+
           '<button class="recipient-btn" data-role="client" onclick="_setRecipient(this,\'client\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>العملاء فقط</button>'+
           '<button class="recipient-btn" data-role="provider" onclick="_setRecipient(this,\'provider\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>المزودون فقط</button>'+
+          '<button class="recipient-btn" data-role="specific" onclick="_setRecipient(this,\'specific\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مستخدمين محددين</button>'+
         '</div>'+
-        '<div class="form-field"><label class="form-label">أو أدخل رقم المستخدم (اختياري)</label><input type="number" class="form-input" id="notif-user-id" placeholder="مثال: 123"></div>'+
+        '<div id="user-picker-wrap" style="display:none;margin-top:14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:12px">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">'+
+            '<div style="font-size:12px;font-weight:800;color:var(--text2)">ابحث واختر المستخدمين</div>'+
+            '<span id="sel-count" style="font-size:11px;font-weight:800;color:#fff;background:var(--p);padding:3px 10px;border-radius:20px">0 مختار</span>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+
+            '<button class="pk-role-btn active" data-prole="" onclick="_pickerRole(this,\'\')">الكل</button>'+
+            '<button class="pk-role-btn" data-prole="client" onclick="_pickerRole(this,\'client\')">عملاء</button>'+
+            '<button class="pk-role-btn" data-prole="provider" onclick="_pickerRole(this,\'provider\')">مزودون</button>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:7px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:0 12px;margin-bottom:10px">'+
+            '<svg width="14" height="14" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'+
+            '<input type="text" id="pk-search" placeholder="ابحث بالاسم أو الإيميل أو الجوال..." oninput="_pickerSearch()" style="border:none;background:transparent;font-size:13px;padding:10px 0;flex:1;outline:none;font-family:Tajawal,sans-serif">'+
+          '</div>'+
+          '<div id="sel-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;min-height:0"></div>'+
+          '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+            '<button onclick="_pkSelectAll()" style="flex:1;padding:8px;background:var(--p-light);color:var(--p);border:1px solid var(--p-mid);border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">تحديد الكل المعروض</button>'+
+            '<button onclick="_pkClearAll()" style="flex:1;padding:8px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إلغاء التحديد</button>'+
+          '</div>'+
+          '<div id="pk-results" style="max-height:280px;overflow-y:auto;background:var(--white);border:1px solid var(--border);border-radius:10px">'+
+            '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">اكتب في البحث لعرض المستخدمين</div>'+
+          '</div>'+
+        '</div>'+
       '</div>'+
       '<div class="form-section">'+
         '<div class="section-title"><div class="section-icon" style="background:var(--green-l);color:var(--green)">📤</div>طريقة الإرسال</div>'+
@@ -1164,11 +1190,141 @@ function loadNotify(){
         '<div style="margin-top:12px;font-size:12px;color:var(--muted);">✨ سيتم إرسال الإشعار فوراً عبر الطريقة المختارة</div>'+
       '</div>'+
     '</div>';
+
+  // Inject picker styles once
+  if(!_el('_pk-styles')){
+    var s=document.createElement('style');
+    s.id='_pk-styles';
+    s.textContent=
+      '.pk-role-btn{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;transition:.15s}'
+     +'.pk-role-btn.active{background:var(--p);color:#fff;border-color:var(--p)}'
+     +'.pk-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:.12s}'
+     +'.pk-row:last-child{border-bottom:none}'
+     +'.pk-row:hover{background:var(--bg)}'
+     +'.pk-row.sel{background:var(--p-light)}'
+     +'.pk-av{width:36px;height:36px;border-radius:10px;background:var(--p);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}'
+     +'.pk-chip{display:inline-flex;align-items:center;gap:5px;background:var(--p);color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}'
+     +'.pk-chip button{background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;padding:0;font-family:inherit}'
+     +'.pk-cb{width:18px;height:18px;border:2px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--white)}'
+     +'.pk-row.sel .pk-cb{background:var(--p);border-color:var(--p)}'
+     +'.pk-row.sel .pk-cb::after{content:"✓";color:#fff;font-size:12px;font-weight:900}';
+    document.head.appendChild(s);
+  }
 }
+
+var _pickerRoleFilter='';
+function _pickerRole(btn, role){
+  document.querySelectorAll('.pk-role-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  _pickerRoleFilter=role;
+  _pickerSearch();
+}
+
+function _pickerSearch(){
+  clearTimeout(_pickerSearchTimer);
+  var q=((_el('pk-search')||{}).value||'').trim();
+  _pickerSearchTimer=setTimeout(async function(){
+    var res=_el('pk-results'); if(!res) return;
+    res.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">جاري البحث...</div>';
+    var url='/api/admin/users/search?q='+encodeURIComponent(q);
+    if(_pickerRoleFilter) url+='&role='+_pickerRoleFilter;
+    try{
+      var list=await _api(url)||[];
+      if(!Array.isArray(list))list=[];
+      _renderPickerResults(list);
+    }catch(e){
+      res.innerHTML='<div style="padding:16px;text-align:center;color:var(--red);font-size:12px">خطأ في البحث</div>';
+    }
+  }, 280);
+}
+
+function _renderPickerResults(list){
+  var res=_el('pk-results'); if(!res) return;
+  if(!list.length){
+    res.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>';
+    return;
+  }
+  res.innerHTML=list.map(function(u){
+    var isSel=!!_selectedUsers[u.id];
+    var initials=(u.name||'؟')[0];
+    var roleLbl=u.role==='provider'?'مزود':u.role==='client'?'عميل':'أدمن';
+    var roleColor=u.role==='provider'?'var(--gold-d)':u.role==='client'?'var(--p)':'var(--red)';
+    var avImg=u.profile_image?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover">':initials;
+    return '<div class="pk-row'+(isSel?' sel':'')+'" onclick="_pkToggle('+u.id+',this)" data-id="'+u.id+'" data-name="'+_esc(u.name||'')+'" data-email="'+_esc(u.email||'')+'" data-role="'+u.role+'">'
+      +'<div class="pk-cb"></div>'
+      +'<div class="pk-av">'+avImg+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(u.name||'—')+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(u.email||u.phone||'')+'</div>'
+      +'</div>'
+      +'<span style="font-size:10px;font-weight:800;color:'+roleColor+';background:var(--bg);padding:3px 8px;border-radius:20px;border:1px solid var(--border);flex-shrink:0">'+roleLbl+'</span>'
+    +'</div>';
+  }).join('');
+}
+
+function _pkToggle(id, row){
+  if(_selectedUsers[id]){
+    delete _selectedUsers[id];
+    if(row)row.classList.remove('sel');
+  } else {
+    var d=row?row.dataset:null;
+    _selectedUsers[id]={id:id,name:d?d.name:'',email:d?d.email:'',role:d?d.role:''};
+    if(row)row.classList.add('sel');
+  }
+  _updateSelCount();
+  _renderChips();
+}
+
+function _updateSelCount(){
+  var n=Object.keys(_selectedUsers).length;
+  var el=_el('sel-count'); if(el) el.textContent=n+' مختار';
+}
+
+function _renderChips(){
+  var wrap=_el('sel-chips'); if(!wrap) return;
+  var ids=Object.keys(_selectedUsers);
+  if(!ids.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=ids.map(function(id){
+    var u=_selectedUsers[id];
+    return '<span class="pk-chip">'+_esc(u.name||'#'+id)+'<button onclick="_pkRemove('+id+')">×</button></span>';
+  }).join('');
+}
+
+function _pkRemove(id){
+  delete _selectedUsers[id];
+  _updateSelCount();
+  _renderChips();
+  // Un-highlight if visible
+  var row=document.querySelector('.pk-row[data-id="'+id+'"]');
+  if(row)row.classList.remove('sel');
+}
+
+function _pkSelectAll(){
+  var rows=document.querySelectorAll('#pk-results .pk-row');
+  rows.forEach(function(row){
+    var id=row.dataset.id;
+    if(!_selectedUsers[id]){
+      _selectedUsers[id]={id:parseInt(id),name:row.dataset.name,email:row.dataset.email,role:row.dataset.role};
+      row.classList.add('sel');
+    }
+  });
+  _updateSelCount();
+  _renderChips();
+}
+
+function _pkClearAll(){
+  _selectedUsers={};
+  document.querySelectorAll('.pk-row.sel').forEach(function(r){r.classList.remove('sel');});
+  _updateSelCount();
+  _renderChips();
+}
+
 function _setRecipient(btn, role){
   document.querySelectorAll('.recipient-btn[data-role]').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   _recipientRole=role;
+  var wrap=_el('user-picker-wrap');
+  if(wrap)wrap.style.display=(role==='specific')?'block':'none';
 }
 function _setChannel(btn, channel){
   document.querySelectorAll('[data-channel]').forEach(function(b){ b.classList.remove('active'); });
@@ -1185,10 +1341,19 @@ function _updatePreview(){
 async function _sendNotification(){
   var title=((_el('notif-title')||{}).value||'').trim();
   var body=((_el('notif-body')||{}).value||'').trim();
-  var userId=parseInt((_el('notif-user-id')||{}).value)||null;
   var type=(_el('notif-type')||{}).value||'admin';
 
   if(!title||!body){ toast('يرجى إدخال العنوان ونص الرسالة','error'); return; }
+
+  var payload={title:title,body:body,type:type,channel:_notifChannel};
+
+  if(_recipientRole==='specific'){
+    var ids=Object.keys(_selectedUsers).map(function(x){return parseInt(x);});
+    if(!ids.length){ toast('اختر مستخدماً واحداً على الأقل','error'); return; }
+    payload.user_ids=ids;
+  } else if(_recipientRole!=='all'){
+    payload.role=_recipientRole;
+  }
 
   var btn=_el('send-notif-btn');
   if(btn){
@@ -1196,17 +1361,16 @@ async function _sendNotification(){
     btn.innerHTML='<div class="spinner" style="border-color:rgba(255,255,255,.3);border-top-color:#fff"></div>جاري الإرسال...';
   }
 
-  var payload={title:title,body:body,type:type,channel:_notifChannel};
-  if(userId) payload.user_id=userId;
-  else if(_recipientRole!=='all') payload.role=_recipientRole;
-
   try{
     var r=await _api('/api/admin/notify',{method:'POST',body:JSON.stringify(payload)});
     if(r.ok||r.success){
       var ch=_notifChannel==='app'?'التطبيق':_notifChannel==='email'?'الإيميل':'التطبيق والإيميل';
-      toast('تم إرسال الإشعار عبر '+ch+' بنجاح','success');
-      var t=_el('notif-title'),bd=_el('notif-body'),ui=_el('notif-user-id');
-      if(t) t.value=''; if(bd) bd.value=''; if(ui) ui.value='';
+      var cnt=r.sent_count||0;
+      toast('تم إرسال الإشعار إلى '+cnt+' مستخدم عبر '+ch,'success');
+      var t=_el('notif-title'),bd=_el('notif-body');
+      if(t) t.value=''; if(bd) bd.value='';
+      _selectedUsers={}; _updateSelCount(); _renderChips();
+      document.querySelectorAll('.pk-row.sel').forEach(function(r){r.classList.remove('sel');});
       _updatePreview();
     } else {
       toast(r.message||'حدث خطأ في الإرسال','error');
