@@ -1,1177 +1,1437 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>مناقصة — لوحة المزود</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<style>
-:root{
-  --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
-  --p-light:#EEF2FF;--p-mid:#C7D2FE;
-  --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;
-  --text:#0F172A;--text2:#1E293B;--muted:#8896AA;--hint:#94A3B8;
-  --border:#E6E2D9;--border2:#D8D3CB;
-  --bg:#F5F5F0;--white:#FFFFFF;
-  --green:#16A34A;--green-l:#EDFBF0;
-  --red:#DC2626;--red-l:#FEF2F2;
-  --shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03);
-  --radius:14px;--radius-sm:10px;--radius-lg:18px;
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-.side{width:260px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(27,58,107,0.07)}
-.side-brand{background:var(--p3);padding:18px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
-.side-brand::before{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;background:var(--gold)}
-.side-brand::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
-.logo{font-size:22px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px;position:relative;z-index:1}
-.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--gold)}
-.logo-sub{font-size:10px;color:rgba(255,255,255,.5);font-weight:500;position:relative;z-index:1;margin-top:2px}
-.user-pill{margin-top:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;position:relative;z-index:1}
-.av{width:36px;height:36px;border-radius:10px;background:var(--gold);color:var(--p2);font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
-.av-name{font-size:13px;font-weight:800;color:#fff}
-.av-role{font-size:10px;color:rgba(255,255,255,.55);font-weight:600;margin-top:1px}
-.nav{padding:10px;flex:1;overflow-y:auto}
-.nav-sec{font-size:10px;font-weight:800;color:var(--hint);letter-spacing:.8px;padding:0 8px;margin:14px 0 6px;text-transform:uppercase}
-.ni{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;text-align:right;font-family:'Tajawal',sans-serif;margin-bottom:2px;transition:all .18s;position:relative}
-.ni:hover{background:var(--bg);color:var(--text)}
-.ni.on{background:var(--gold-l);color:var(--gold-d)}
-.ni.on::before{content:'';position:absolute;right:0;top:20%;bottom:20%;width:3px;background:var(--gold-d);border-radius:2px}
-.ni-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ni.on .ni-ic{background:var(--p);box-shadow:0 3px 10px rgba(27,58,107,.3)}
-.ni.on .ni-ic svg{stroke:#fff}
-.ni-ic svg{stroke:currentColor}
-.badge{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:var(--red);color:#fff;font-size:9px;font-weight:900;min-width:18px;height:18px;border-radius:9px;padding:0 4px;display:flex;align-items:center;justify-content:center}
-.side-foot{padding:10px 12px;border-top:1px solid var(--border)}
-.logoutbtn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;color:var(--red);cursor:pointer;font-size:13px;font-weight:700;border:none;background:none;width:100%;font-family:'Tajawal',sans-serif;transition:.15s}
-.logoutbtn:hover{background:var(--red-l)}
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
 
-.main{margin-right:260px;min-height:100vh;display:flex;flex-direction:column;min-width:0}
-.topbar{background:var(--p3);height:54px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.topbar-title{font-size:15px;font-weight:800;color:#fff}
-.btn-new{background:var(--gold);color:#fff;padding:9px 18px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:all .18s;box-shadow:0 3px 10px rgba(201,146,10,.3)}
-.btn-new:hover{background:var(--gold-d);transform:translateY(-1px)}
+const app = express();
+const port = process.env.PORT || 3000;
 
-.content{padding:24px 28px;flex:1}
-.page{display:none}.page.on{display:block}
-.pghd{margin-bottom:16px}
-.pg-t{font-size:18px;font-weight:900;color:var(--text)}
-.pg-s{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
-
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:12px 6px 11px;text-align:center}
-.sc:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(27,58,107,.08)}
-.sn{font-size:22px;font-weight:900;line-height:1;margin-bottom:3px}
-.st{font-size:9px;color:var(--muted);font-weight:600}
-
-.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
-.card-accent{border-top:3px solid var(--gold)}
-.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.ch-l{display:flex;align-items:center;gap:8px}
-.ch-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ch h3{font-size:14px;font-weight:800;color:var(--text)}
-.ch-link{font-size:12px;color:var(--p);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
-
-.tag{padding:5px 12px;border-radius:20px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.tag::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.t-open{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}.t-open::before{background:#16a34a}
-.t-prog{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}.t-prog::before{background:#2563eb}
-.t-done{background:#fff8e7;color:#b45309;border:1px solid #fde68a}.t-done::before{background:#F0A500}
-.t-rev{background:#fef3c7;color:#92400e;border:1px solid #fde68a}.t-rev::before{background:#d97706}
-
-.btn-sm{padding:7px 13px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
-.bs-p{background:var(--p-light);color:var(--p)}
-.bs-p:hover{background:var(--p-mid)}
-.bs-g{background:var(--green-l);color:var(--green)}
-.bs-r{background:var(--red-l);color:var(--red)}
-
-.tab-btn{padding:8px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .18s}
-.tab-btn.on{background:var(--white);color:var(--p);box-shadow:0 2px 8px rgba(27,58,107,.1)}
-
-.overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,.65);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)}
-.overlay.show{display:flex}
-.modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column}
-.modal-drag{width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:12px auto 0}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border)}
-.modal-head h3{font-size:15px;font-weight:800}
-.modal-x{width:28px;height:28px;border-radius:8px;background:var(--bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
-.modal-body{padding:18px 20px;overflow-y:auto;flex:1}
-.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg)}
-
-.empty{text-align:center;padding:40px 16px;color:var(--muted)}
-.empty-ic{width:52px;height:52px;background:var(--p-light);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.empty-ic svg{stroke:var(--p)}
-.empty h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
-.empty p{font-size:12px}
-.loading{text-align:center;padding:28px;color:var(--muted);font-size:13px}
-
-.profile-stat{background:rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center}
-.profile-stat-n{font-size:22px;font-weight:900}
-.profile-stat-l{font-size:11px;color:rgba(255,255,255,.55);margin-top:3px}
-
-.mob-head{display:none;background:var(--p3);height:54px;padding:0 16px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.mob-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.mob-logo{font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px}
-.mob-logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
-.mob-right{display:flex;align-items:center;gap:8px}
-.mob-notif{position:relative;background:rgba(255,255,255,.12);border:none;cursor:pointer;padding:7px;color:#fff;display:flex;border-radius:9px}
-.mob-notif-badge{position:absolute;top:2px;left:2px;background:var(--red);color:#fff;font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 3px}
-.mob-av{width:30px;height:30px;border-radius:9px;background:var(--gold);color:var(--p2);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.mob-out{background:rgba(255,255,255,.1);border:none;cursor:pointer;padding:6px;color:#fff;display:flex;border-radius:8px}
-
-.bnav{display:none;position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:420px;background:var(--p);border-radius:24px;z-index:100;padding:8px;box-shadow:0 8px 28px rgba(22,33,62,.3),0 2px 8px rgba(22,33,62,.2)}
-.bnav::before{content:'';position:absolute;top:0;left:25%;right:25%;height:1px;background:rgba(255,255,255,.08)}
-.bnav-inner{display:flex;align-items:center;justify-content:space-around}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 10px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;color:rgba(255,255,255,.35);transition:.2s;position:relative;border-radius:16px}
-.bni .bic{width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:.2s}
-.bni .bic svg{stroke:currentColor;transition:.2s}
-.bni .bt{font-size:10px;font-weight:700;transition:.2s;letter-spacing:.2px}
-.bni.on{background:rgba(201,146,10,.14)}
-.bni.on .bt{color:var(--gold)}
-.bni.on .bic svg{stroke:var(--gold)}
-.bni-badge{position:absolute;top:4px;right:calc(50% - 22px);background:var(--red);color:#fff;font-size:9px;font-weight:900;width:16px;height:16px;border-radius:50%;display:none;align-items:center;justify-content:center;border:1.5px solid var(--white)}
-.bni-fab{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;padding-bottom:4px;border:none;background:none;cursor:pointer;font-family:'Tajawal',sans-serif;position:relative;margin-top:-22px}
-.bni-fab .fab-circle{width:58px;height:58px;background:linear-gradient(145deg,#F0A500,#c78500);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(240,165,0,.55),0 3px 8px rgba(240,165,0,.35),0 0 0 3px var(--white),0 0 0 4px rgba(240,165,0,.2);transition:all .28s cubic-bezier(.34,1.56,.64,1);position:relative;z-index:1}
-.bni-fab .fab-circle::before{content:'';position:absolute;inset:-6px;border-radius:50%;background:rgba(240,165,0,.12);animation:fab-ring 2.5s ease-in-out infinite}
-@keyframes fab-ring{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:.2}}
-.bni-fab .fab-circle svg{stroke:#fff;width:24px;height:24px;stroke-width:2.5;position:relative;z-index:1}
-.bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:.3px}
-.bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 4px 12px rgba(240,165,0,.4),0 0 0 3px var(--white)}
-.bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,165,0,.6),0 4px 10px rgba(240,165,0,.4),0 0 0 3px var(--white),0 0 0 5px rgba(240,165,0,.15)}
-
-.fg{margin-bottom:12px}
-.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px}
-.fg input,.fg textarea,.fg select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;background:var(--white)}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--p)}
-
-.spec-pill{padding:7px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .15s;margin-bottom:4px}
-.spec-pill:hover{border-color:var(--gold);color:var(--gold-d)}
-.spec-pill.on{background:var(--p);color:#fff;border-color:var(--p)}
-
-.sk{background:#eee;background-image:linear-gradient(to right,#ebebeb 8%,#d6d6d6 18%,#ebebeb 33%);background-size:800px 104px;border-radius:8px;animation:sk 1.2s ease-in-out infinite}
-.sk-line{height:14px;margin-bottom:8px;border-radius:6px}
-.sk-line.xl{height:22px;width:55%}
-.sk-line.lg{height:16px;width:65%}
-.sk-line.md{height:13px;width:80%}
-.sk-line.sm{height:11px;width:45%}
-.sk-box{background:#fff;border:1px solid #e6e2d9;border-radius:14px;padding:14px;margin-bottom:8px}
-@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(14px);background:#0d1f3c;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:all .22s;pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-#tIc{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
-
-#lbar-wrap{position:fixed;top:0;left:0;right:0;z-index:99999;height:3px;background:rgba(0,0,0,.06);display:none}
-#lbar-wrap.on{display:block}
-#lbar{height:3px;width:0%;background:var(--gold);transition:width .3s ease}
-
-@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){
-  .side,.topbar{display:none}
-  .main{margin-right:0;max-width:100vw;width:100%}
-  .mob-head{display:flex}
-  .bnav{display:block}
-  .content{padding:12px 14px 100px}
-  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-  .card{border-radius:12px;padding:14px}
-}
-</style>
-</head>
-<body>
-
-<div class="side">
-  <div class="side-brand">
-    <div class="logo"><span class="logo-dot"></span>مناقصة</div>
-    <div class="logo-sub">لوحة المزود</div>
-    <div class="user-pill">
-      <div class="av" id="userAv">م</div>
-      <div><div class="av-name" id="userName">المزود</div><div class="av-role">مزود خدمة</div></div>
-    </div>
-  </div>
-  <div class="nav">
-    <div class="nav-sec">عام</div>
-    <button class="ni on" id="ni-home" onclick="gotoPage('home')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية</button>
-    <div class="nav-sec">المشاريع</div>
-    <button class="ni" id="ni-browse" onclick="gotoPage('browse')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>تصفح المشاريع<span class="badge" id="nb-open" style="display:none">0</span></button>
-    <button class="ni" id="ni-works" onclick="gotoPage('works')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>مشاريعي وعروضي</button>
-    <div class="nav-sec">الحساب</div>
-    <button class="ni" id="ni-chat" onclick="gotoPage('chat')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>المحادثات<span class="badge" id="nb-chat" style="display:none">0</span></button>
-    <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي</button>
-    <button class="ni" id="ni-profile" onclick="gotoPage('profile')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
-    <button class="ni" id="ni-notifs" onclick="gotoPage('notifs')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="badge" id="nb-notif" style="display:none">0</span></button>
-  </div>
-  <div class="side-foot">
-    <button class="logoutbtn" onclick="doLogout()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
-  </div>
-</div>
-
-<div class="mob-head">
-  <div class="mob-logo"><span class="mob-logo-dot"></span>مناقصة</div>
-  <div class="mob-right">
-    <button class="mob-notif" onclick="gotoPage('notifs')">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span class="mob-notif-badge" id="mob-nb" style="display:none">0</span>
-    </button>
-    <div class="mob-av" id="mobAv">م</div>
-    <button class="mob-out" onclick="doLogout()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
-  </div>
-</div>
-
-<div class="main">
-  <div class="topbar">
-    <div class="topbar-title" id="pageTitle">الرئيسية</div>
-    <button class="btn-new" onclick="gotoPage('browse')">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      تصفح المشاريع
-    </button>
-  </div>
-  <div class="content">
-    <div class="page on" id="page-home"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-browse"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-works"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-reviews"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-notifs"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-profile"><div class="loading">جاري التحميل...</div></div>
-    <div class="page" id="page-chat"><div class="loading">جاري التحميل...</div></div>
-  </div>
-</div>
-
-<div class="bnav"><div class="bnav-inner">
-  <button class="bni on" id="bn-home" onclick="gotoPage('home')">
-    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>
-    <span class="bt">الرئيسية</span>
-  </button>
-  <button class="bni" id="bn-works" onclick="gotoPage('works')">
-    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-    <span class="bt">مشاريعي</span>
-  </button>
-  <button class="bni-fab" onclick="gotoPage('browse')">
-    <div class="fab-circle">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" width="24" height="24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </div>
-    <span class="fab-label">تصفح</span>
-  </button>
-  <button class="bni" id="bn-chat" onclick="gotoPage('chat')">
-    <div class="bic" style="position:relative">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="bni-badge" id="bn-chat-badge">0</span>
-    </div>
-    <span class="bt">محادثات</span>
-  </button>
-  <button class="bni" id="bn-profile" onclick="gotoPage('profile')">
-    <div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-    <span class="bt">حسابي</span>
-  </button>
-</div></div>
-
-<div id="imgViewer" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9998;align-items:center;justify-content:center;padding:20px">
-  <img id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px;pointer-events:none">
-</div>
-
-<div id="toast"><div id="tIc"></div><span id="tMsg"></span></div>
-
-<div class="overlay" id="ov">
-  <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-head">
-      <h3 id="mTit">—</h3>
-      <button class="modal-x" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body" id="mBd"></div>
-    <div class="modal-foot" id="mFt"></div>
-  </div>
-</div>
-
-<div id="lbar-wrap"><div id="lbar"></div></div>
-
-<script>
-'use strict';
-var API='https://manaqasati-production.up.railway.app';
-
-// Unregister old service workers
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});
-}
-
-var _token=localStorage.getItem('token')||'';
-var _me=JSON.parse(localStorage.getItem('user')||'{}');
-if(!_token||_me.role!=='provider'){location.href='auth.html';}
-
-// ═══ Constants ═══
-var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
-var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','الدلم','المزاحمية','الحريق','حوطة بني تميم','وادي الدواسر','السليل','الأفلاج','الغاط','ثادق','حريملاء','مرات','ضرما','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الليث','خليص','تربة','المويه','الخرمة','رنية','المدينة المنورة','ينبع','العلا','الوجه','ضباء','أملج','المهد','بدر','خيبر','بريدة','عنيزة','الرس','البكيرية','الأسياح','رياض الخبراء','عيون الجواء','النبهانية','الشماسية','البدائع','المذنب','الخبراء','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','الخفجي','بقيق','النعيرية','رأس تنورة','صفوى','سيهات','العوامية','أبها','خميس مشيط','بيشة','النماص','محايل عسير','أحد رفيدة','سراة عبيدة','ظهران الجنوب','تثليث','بلقرن','رجال ألمع','المجاردة','الحرجة','تبوك','تيماء','قيال','حقل','حائل','بقعاء','الشنان','الغزالة','عرعر','طريف','رفحاء','سكاكا','دومة الجندل','القريات','الباحة','بلجرشي','المندق','العقيق','قلوة','المخواة','غامد الزناد','جازان','صبيا','أبو عريش','صامطة','الدرب','ضمد','أحد المسارحة','العارضة','الريث','الحرث','نجران','شرورة'];
-
-var _allProjs=[], _myBids=[], _myProjs=[], _pCache={};
-var _curPage='home';
-var _chatPolling=null, _chatReqId=null, _chatReceiverId=null, _chatMsgs=[];
-
-// ═══ Helpers ═══
-function _el(id){return document.getElementById(id);}
-function _esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
-function _fpr(p){return p?Number(p).toLocaleString('en-US')+' ر.س':'—';}
-function _fdt(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
-function _ago(d){if(!d)return'';var diff=(Date.now()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
-function _stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:13px">★</span>';return s;}
-function _empty(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='auth.html';}
-
-// ═══ API wrapper with retry + timeout ═══
-function _api(path,opts){
-  var headers={'Authorization':'Bearer '+_token,'Content-Type':'application/json'};
-  function doFetch(){
-    var fetchOpts=Object.assign({headers:headers,cache:'no-store'},opts||{});
-    return fetch(API+path,fetchOpts).then(function(r){return r.json();}).catch(function(){return null;});
-  }
-  var req=doFetch().then(function(r){
-    if(r!==null)return r;
-    return new Promise(function(res){setTimeout(res,1000);}).then(doFetch);
-  });
-  var timeout=new Promise(function(res){setTimeout(function(){res(null);},12000);});
-  return Promise.race([req,timeout]);
-}
-
-// ═══ Loading bar ═══
-var _lb={t:null,v:0,
-  start:function(){clearTimeout(this.t);this.v=5;_el('lbar-wrap').className='on';this._set(5);this._run();},
-  done:function(){clearTimeout(this.t);this._set(100);var self=this;setTimeout(function(){_el('lbar-wrap').className='';self._set(0);},400);},
-  _set:function(v){_el('lbar').style.width=v+'%';},
-  _run:function(){var self=this;if(self.v<90){self.v+=Math.random()*12+3;if(self.v>90)self.v=90;self._set(self.v);self.t=setTimeout(function(){self._run();},200+Math.random()*200);}}
-};
-
-// ═══ Toast ═══
-var _tTimer;
-function showToast(msg,type){
-  var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');
-  if(!el)return;
-  ic.textContent=type==='success'?'✓':type==='error'?'✕':'i';
-  ic.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';
-  tm.textContent=msg;
-  el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';
-  clearTimeout(_tTimer);
-  _tTimer=setTimeout(function(){el.style.opacity='0';el.style.transform='translateX(-50%) translateY(14px)';},3200);
-}
-
-// ═══ Modal ═══
-function openModal(title,body,foot){_el('mTit').textContent=title;_el('mBd').innerHTML=body;_el('mFt').innerHTML=foot||'';_el('ov').classList.add('show');}
-function closeModal(){_el('ov').classList.remove('show');}
-document.addEventListener('DOMContentLoaded',function(){
-  _el('ov').addEventListener('click',function(e){if(e.target===this)closeModal();});
+// ═══════════════════════════════════════════════════════════════
+// DATABASE
+// ═══════════════════════════════════════════════════════════════
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/manaqasa',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// ═══ Avatar ═══
-function _setAvatar(img){
-  ['userAv','mobAv'].forEach(function(id){
-    var el=_el(id);if(!el)return;
-    if(img){el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover">';}
-    else{el.innerHTML='';el.textContent=(_me.name||'م')[0];}
-  });
+pool.connect()
+  .then(() => console.log('✅ Database connected'))
+  .catch(err => console.error('❌ Database error:', err));
+
+const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
+const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.railway.app';
+
+app.use(cors());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.static('.'));
+app.use((req, res, next) => { console.log(`${req.method} ${req.path}`); next(); });
+
+// ═══════════════════════════════════════════════════════════════
+// HTML ROUTES
+// ═══════════════════════════════════════════════════════════════
+app.get('/',                       (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dashboard-admin.html'));
+app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
+app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
+app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
+app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+async function notify(userId, title, body, type, refId) {
+  try {
+    await pool.query(
+      'INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)',
+      [userId, title, body, type, refId]
+    );
+  } catch (e) { console.error('Notification error:', e); }
 }
 
-// ═══ Init user display ═══
-(function(){
-  var av=_el('userAv');if(av)av.textContent=(_me.name||'م')[0];
-  var un=_el('userName');if(un)un.textContent=_me.name||'المزود';
-  var ma=_el('mobAv');if(ma)ma.textContent=(_me.name||'م')[0];
-  var cached=localStorage.getItem('pav_'+_me.id);if(cached)_setAvatar(cached);
-  _api('/api/provider/profile').then(function(p){
-    if(p&&p.profile_image){localStorage.setItem('pav_'+_me.id,p.profile_image);_setAvatar(p.profile_image);}
-  });
-})();
+function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
 
-// ═══ Router ═══
-var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات'};
-
-function gotoPage(page){
-  _lb.start();
-  setTimeout(function(){_gotoPageInner(page);},30);
-}
-function _gotoPageInner(page){
-  document.querySelectorAll('.page').forEach(function(p){p.className='page';});
-  var pg=_el('page-'+page);if(pg)pg.className='page on';
-  document.querySelectorAll('.ni,.bni').forEach(function(b){b.classList.remove('on');});
-  var ni=_el('ni-'+page);if(ni)ni.classList.add('on');
-  var bn=_el('bn-'+page);if(bn)bn.classList.add('on');
-  var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;
-  _curPage=page;
-  sessionStorage.setItem('mnq_prov_page',page);
-  window.scrollTo(0,0);
-  if(page==='home')loadHome();
-  else if(page==='browse')loadBrowse();
-  else if(page==='works')loadWorks();
-  else if(page==='reviews')loadReviews();
-  else if(page==='notifs')loadNotifs();
-  else if(page==='profile')loadProfile();
-  else if(page==='chat')loadChat();
+function generateProjectNumber() {
+  const d = new Date();
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+  const rand = Math.floor(Math.random()*9999).toString().padStart(4,'0');
+  return `MNQ-${y}${m}${dy}-${rand}`;
 }
 
-// ═══ Skeletons ═══
-function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
-function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
-
-// ═══ HOME PAGE ═══
-async function loadHome(){
-  var pg=_el('page-home');if(!pg)return;
-  pg.innerHTML=_skList(4);
-  var profile={},bids=[],projs=[];
-  try{
-    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects')]);
-    profile=r[0]||{};bids=r[1]||[];projs=r[2]||[];
-  }catch(e){}
-  _myBids=Array.isArray(bids)?bids:[];
-  _myProjs=Array.isArray(projs)?projs:[];
-
-  var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
-  var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
-  var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
-  var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
-  var rat=(profile&&profile.avg_rating)?Number(profile.avg_rating).toFixed(1):'—';
-
-  var avHtml=(profile&&profile.profile_image)
-    ?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">'
-    :'<span style="font-size:20px;font-weight:900;color:var(--p2)">'+(_me.name||'م')[0]+'</span>';
-
-  var html='';
-  html+='<div style="background:var(--p3);padding:22px 20px 34px;position:relative;overflow:hidden;border-radius:16px;margin-bottom:16px">';
-  html+='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>';
-  html+='<div style="display:flex;align-items:center;gap:14px">';
-  html+='<div style="width:54px;height:54px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2.5px solid rgba(255,255,255,.15);overflow:hidden">'+avHtml+'</div>';
-  html+='<div>';
-  html+='<div style="font-size:10px;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:2px">مزود خدمة · '+_esc(profile.city||'السعودية')+'</div>';
-  html+='<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">'+_esc(_me.name||'المزود')+'</div>';
-  html+='<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,10,.12);border:1px solid rgba(201,146,10,.25);padding:3px 10px;border-radius:20px">';
-  html+='<span style="font-size:11px;color:var(--gold)">★★★★★</span>';
-  html+='<span style="font-size:11px;font-weight:800;color:#fff">'+rat+'</span>';
-  html+='</div>';
-  html+='</div></div></div>';
-
-  html+='<div class="stat-grid">';
-  html+='<div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div>';
-  html+='</div>';
-
-  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(\'works\')">عرض الكل ←</button></div>';
-  if(_myBids.length){
-    _myBids.slice(0,5).forEach(function(b){
-      var barColor=b.status==='accepted'?'#16A34A':b.status==='rejected'?'#CBD5E1':'var(--gold)';
-      var tagCls=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';
-      var tagLbl=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
-      html+='<div style="background:var(--white);border-radius:12px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden">';
-      html+='<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>';
-      html+='<div style="flex:1;padding:11px 14px;display:flex;align-items:center;gap:10px">';
-      html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div>';
-      html+='<div style="font-size:10px;color:var(--muted)">'+(b.category||'خدمة')+' · '+_fdt(b.created_at)+'</div>';
-      html+='</div>';
-      html+='<div style="text-align:left;flex-shrink:0">';
-      html+='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">'+_fpr(b.price)+'</div>';
-      html+='<span class="tag '+tagCls+'">'+tagLbl+'</span>';
-      html+='</div></div></div>';
-    });
-  }else{
-    html+=_empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع');
-  }
-  html+='</div>';
-  pg.innerHTML=html;
-  _lb.done();
-  _loadNotifCount();
-  _loadChatBadge();
+// ═══════════════════════════════════════════════════════════════
+// AUTH MIDDLEWARE
+// ═══════════════════════════════════════════════════════════════
+function auth(req, res, next) {
+  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'غير مصرح' });
+  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
+  catch { res.status(401).json({ message: 'جلسة منتهية' }); }
+}
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' });
+  next();
+}
+function clientOnly(req, res, next) {
+  if (req.user.role !== 'client') return res.status(403).json({ message: 'للعملاء فقط' });
+  next();
+}
+function providerOnly(req, res, next) {
+  if (req.user.role !== 'provider') return res.status(403).json({ message: 'لمزودي الخدمة فقط' });
+  next();
 }
 
-// ═══ BROWSE PROJECTS ═══
-async function loadBrowse(){
-  var pg=_el('page-browse');if(!pg)return;
-  pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div>'+_skList(5);
-  try{_allProjs=await _api('/api/requests')||[];}catch(e){_allProjs=[];}
-  if(!Array.isArray(_allProjs))_allProjs=[];
-  var open=_allProjs.filter(function(p){return p.status==='open';});
-
-  var nb=_el('nb-open');
-  if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
-
-  var html='<div class="pghd"><div class="pg-t">تصفح المشاريع</div><div class="pg-s">'+open.length+' مشروع متاح</div></div>';
-  html+='<div class="card card-accent">';
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
-  html+='<div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px">';
-  html+='<svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
-  html+='<input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif">';
-  html+='</div>';
-  html+='<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option></select>';
-  html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
-  html+='</div>';
-  html+='<div id="bList">'+_renderBrowse(open)+'</div>';
-  html+='</div>';
-  pg.innerHTML=html;
-
-  // Fill filter dropdowns via DOM (safe, no HTML bleed)
-  var catSel=_el('bCat');
-  CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
-  var citSel=_el('bCit');
-  CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;citSel.appendChild(o);});
-
-  _lb.done();
+// ═══════════════════════════════════════════════════════════════
+// DATABASE SETUP
+// ═══════════════════════════════════════════════════════════════
+async function setupDatabase() {
+  console.log('🔄 Setting up database...');
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255), password_hash VARCHAR(255),
+      phone VARCHAR(20),
+      role VARCHAR(20) NOT NULL CHECK (role IN ('client','provider','admin')),
+      specialties TEXT[], notify_categories TEXT[],
+      bio TEXT, city VARCHAR(100),
+      badge VARCHAR(50) DEFAULT 'none',
+      is_active BOOLEAN DEFAULT TRUE,
+      experience_years INTEGER,
+      portfolio_images TEXT[], profile_image TEXT,
+      report_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS requests (
+      id SERIAL PRIMARY KEY,
+      client_id INTEGER REFERENCES users(id),
+      title VARCHAR(255) NOT NULL, description TEXT NOT NULL,
+      category VARCHAR(100), city VARCHAR(100), address TEXT,
+      budget_max DECIMAL(10,2), deadline DATE,
+      image_url TEXT, images TEXT[], attachments JSONB,
+      main_image_index INTEGER DEFAULT 0,
+      project_number VARCHAR(50),
+      status VARCHAR(20) DEFAULT 'pending_review',
+      assigned_provider_id INTEGER REFERENCES users(id),
+      assigned_at TIMESTAMP, completed_at TIMESTAMP,
+      admin_notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS bids (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id),
+      price INTEGER NOT NULL, days INTEGER NOT NULL, note TEXT,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(request_id, provider_id)
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      sender_id INTEGER REFERENCES users(id),
+      receiver_id INTEGER REFERENCES users(id),
+      content TEXT NOT NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS reviews (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id),
+      reviewer_id INTEGER REFERENCES users(id),
+      reviewed_id INTEGER REFERENCES users(id),
+      rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT, type VARCHAR(30),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(request_id, reviewer_id)
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS reports (
+      id SERIAL PRIMARY KEY,
+      reporter_id INTEGER REFERENCES users(id),
+      reported_id INTEGER REFERENCES users(id),
+      request_id INTEGER REFERENCES requests(id),
+      type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT,
+      status VARCHAR(20) DEFAULT 'pending', admin_note TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS favorites (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, provider_id)
+    )`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL, platform VARCHAR(20),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, token)
+    )`);
+    try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
+    console.log('✅ Database setup complete');
+  } catch (error) { console.error('❌ Database setup error:', error); }
 }
-function _filterBrowse(){
-  var q=(_el('bQ')||{value:''}).value.toLowerCase();
-  var cat=(_el('bCat')||{value:''}).value;
-  var cit=(_el('bCit')||{value:''}).value;
-  var f=_allProjs.filter(function(p){
-    return p.status==='open'
-      &&(!q||(p.title||'').toLowerCase().includes(q))
-      &&(!cat||p.category===cat)
-      &&(!cit||p.city===cit);
-  });
-  var el=_el('bList');if(el)el.innerHTML=_renderBrowse(f);
-}
-function _renderBrowse(list){
-  if(!list.length)return _empty('لا يوجد مشاريع متاحة','');
-  return list.map(function(r){
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
-    if(r.image_url){
-      h+='<div style="height:130px;overflow:hidden;position:relative">';
-      h+='<img src="'+r.image_url+'" style="width:100%;height:100%;object-fit:cover">';
-      h+='<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.45))"></div>';
-      h+='<div style="position:absolute;bottom:8px;right:10px"><span class="tag t-open">نشط</span></div>';
-      h+='</div>';
-    }
-    h+='<div style="display:flex;overflow:hidden">';
-    h+='<div style="width:4px;flex-shrink:0;background:var(--green)"></div>';
-    h+='<div style="flex:1;padding:13px 14px">';
-    h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:9px">';
-    h+='<div style="flex:1;min-width:0">';
-    if(r.category)h+='<div style="font-size:9px;font-weight:700;color:var(--muted);margin-bottom:4px">'+_esc(r.category)+'</div>';
-    h+='<div style="font-size:14px;font-weight:800;color:var(--text);line-height:1.3">'+_esc(r.title)+'</div>';
-    h+='</div>';
-    if(r.budget_max)h+='<div style="text-align:left;flex-shrink:0"><div style="font-size:14px;font-weight:900;color:var(--p)">'+Number(r.budget_max).toLocaleString('en-US')+'</div><div style="font-size:9px;color:var(--muted)">ر.س</div></div>';
-    h+='</div>';
-    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">';
-    if(r.client_name)h+='<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+_esc(r.client_name)+'</span>';
-    if(r.city)h+='<span style="font-size:10px;font-weight:700;color:var(--green);background:var(--green-l);border:1px solid #BBF7D0;padding:2px 8px;border-radius:20px">'+_esc(r.city)+'</span>';
-    h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+(r.bid_count||0)+' عرض</span>';
-    h+='</div>';
-    h+='<div style="display:flex;gap:7px">';
-    h+='<button onclick="_openBidModal('+r.id+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
-    h+='<button onclick="_viewProj('+r.id+')" style="padding:10px 14px;background:var(--bg);color:var(--p);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif">عرض</button>';
-    h+='</div>';
-    h+='</div></div></div>';
-    return h;
-  }).join('');
-}
+setupDatabase();
 
-function _openBidModal(projId){
-  var body=''
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
-    +'<div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div>'
-    +'<div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div>'
-    +'</div>'
-    +'<div class="fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>';
-  var foot=''
-    +'<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button>'
-    +'<button onclick="_submitBid('+projId+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إرسال العرض</button>';
-  openModal('تقديم عرض',body,foot);
-}
-async function _submitBid(projId){
-  var price=(_el('bid-price')||{}).value;
-  var days=(_el('bid-days')||{}).value;
-  var note=(_el('bid-note')||{}).value;
-  if(!price||parseFloat(price)<=0){showToast('أدخل سعر العرض','error');return;}
-  if(!days||parseInt(days)<=0){showToast('أدخل مدة التنفيذ','error');return;}
-  if(!note.trim()){showToast('أدخل رسالتك للعميل','error');return;}
-  var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:parseFloat(price),days:parseInt(days),note:note.trim()})});
-  if(r&&(r.id||r.request_id)){closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
-  else showToast((r&&r.message)||'حدث خطأ','error');
-}
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
 
-async function _viewProj(id){
-  openModal('تفاصيل المشروع','<div class="loading">جاري التحميل...</div>','');
-  var r=await _api('/api/requests/'+id);
-  if(!r||!r.id){_el('mBd').innerHTML=_empty('تعذر التحميل','');return;}
-  var imgs=r.images||[];
-  var body='';
-  body+='<div style="background:var(--p);border-radius:12px;padding:16px;margin-bottom:14px;position:relative">';
-  body+='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>';
-  body+='<div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:8px">'+_esc(r.title)+'</div>';
-  body+='<div style="display:flex;gap:5px;flex-wrap:wrap">';
-  if(r.city)body+='<span style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.city)+'</span>';
-  if(r.category)body+='<span style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.category)+'</span>';
-  body+='</div></div>';
-  if(imgs.length){
-    body+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">';
-    imgs.forEach(function(img){
-      body+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="openImgFull(\''+img+'\')"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';
-    });
-    body+='</div>';
-  }
-  if(r.description)body+='<div style="background:var(--bg);border-right:3px solid var(--border);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2)">'+_esc(r.description)+'</div>';
-  body+='<div style="background:var(--bg);border-radius:9px;padding:12px 14px">';
-  body+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div>';
-  body+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div>';
-  body+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div>';
-  body+='</div>';
-  _el('mBd').innerHTML=body;
-  var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إغلاق</button>';
-  foot+='<button onclick="closeModal();_openBidModal('+r.id+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
-  _el('mFt').innerHTML=foot;
-}
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, phone, password } = req.body;
+    if ((!email && !phone) || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    const query = phone ? 'SELECT * FROM users WHERE phone=$1' : 'SELECT * FROM users WHERE email=$1';
+    const result = await pool.query(query, [email || phone]);
+    if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+    const user = result.rows[0];
+    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
+    const storedHash = user.password || user.password_hash || '';
+    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة' });
+    const ok = await bcrypt.compare(password, storedHash);
+    if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    delete user.password; delete user.password_hash;
+    res.json({ user, token });
+  } catch (e) { console.error('❌ Login:', e); res.status(500).json({ message: e.message }); }
+});
 
-function openImgFull(src){
-  var v=_el('imgViewer'),i=_el('imgViewerImg');
-  if(!v||!i)return;
-  i.src=src;v.style.display='flex';
-}
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, phone, password, role, specialties, city, bio } = req.body;
+    if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
+    const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
+    const hash = await bcrypt.hash(password, 10);
+    const specs = role === 'provider'
+      ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
+    const result = await pool.query(`
+      INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, bio, is_active, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
+      RETURNING id, name, email, role, city, badge
+    `, [name, email, phone || null, hash, hash, role, specs, city || null, bio || null]);
+    const user = result.rows[0];
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ user, token });
+  } catch (e) { console.error('❌ Register:', e); res.status(500).json({ message: e.message }); }
+});
 
-// ═══ WORKS PAGE ═══
-async function loadWorks(){
-  var pg=_el('page-works');if(!pg)return;
-  pg.innerHTML=_skList(4);
-  try{
-    _myBids=await _api('/api/provider/bids')||[];
-    _myProjs=await _api('/api/provider/projects')||[];
-  }catch(e){_myBids=[];_myProjs=[];}
-  if(!Array.isArray(_myBids))_myBids=[];
-  if(!Array.isArray(_myProjs))_myProjs=[];
+app.get('/api/direct-admin', async (req, res) => {
+  try {
+    const { secret, email, password } = req.query;
+    if (secret !== 'manaqasa2024') return res.status(403).json({ message: 'كلمة سر خاطئة' });
+    if (!email || !password)        return res.status(400).json({ message: 'الإيميل وكلمة المرور مطلوبة' });
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(`
+      INSERT INTO users (name, email, password, password_hash, role, is_active, created_at)
+      VALUES ('المدير', $1, $2, $3, 'admin', true, NOW())
+      ON CONFLICT (email) DO UPDATE SET password=$2, password_hash=$3, role='admin', is_active=true
+      RETURNING id, name, email, role
+    `, [email, hash, hash]);
+    res.json({ ok: true, user: result.rows[0] });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-  var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
-  var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
-  var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
-  var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
+app.put('/api/auth/change-password', auth, async (req, res) => {
+  try {
+    const { old_password, new_password } = req.body;
+    if (!old_password || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    const r = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+    const storedHash = r.rows[0].password || r.rows[0].password_hash || '';
+    const ok = await bcrypt.compare(old_password, storedHash);
+    if (!ok) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-  var html='<div class="pghd"><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
-  html+='<div class="stat-grid">';
-  html+='<div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div>';
-  html+='</div>';
-  html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px">';
-  html+='<button class="tab-btn on" id="wtab-bids" onclick="_wTab(\'bids\',this)">العروض ('+_myBids.length+')</button>';
-  html+='<button class="tab-btn" id="wtab-projs" onclick="_wTab(\'projs\',this)">المشاريع ('+_myProjs.length+')</button>';
-  html+='</div>';
-  html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
-  html+='<div id="wtab-projs-wrap" style="display:none">'+_renderProjs(_myProjs)+'</div>';
-  pg.innerHTML=html;
-  _lb.done();
-}
-function _wTab(tab,btn){
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});
-  if(btn)btn.classList.add('on');
-  var bw=_el('wtab-bids-wrap'),pw=_el('wtab-projs-wrap');
-  if(bw)bw.style.display=tab==='bids'?'':'none';
-  if(pw)pw.style.display=tab==='projs'?'':'none';
-}
-function _renderBids(list){
-  if(!list.length)return _empty('لا يوجد عروض','ابدأ بتصفح المشاريع');
-  return list.map(function(b){
-    var isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    var barColor=isAcc?'#16A34A':isRej?'#CBD5E1':'var(--gold)';
-    var tagCls=isAcc?'t-open':isRej?'t-done':'t-rev';
-    var tagLbl=isAcc?'مقبول':isRej?'مرفوض':'معلق';
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden">';
-    h+='<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>';
-    h+='<div style="flex:1;padding:13px 14px">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">';
-    h+='<div style="flex:1;min-width:0">';
-    h+='<div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div>';
-    h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_fdt(b.created_at)+'</div>';
-    h+='</div>';
-    h+='<span class="tag '+tagCls+'">'+tagLbl+'</span>';
-    h+='</div>';
-    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
-    h+='<span style="font-size:11px;font-weight:800;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:3px 10px;border-radius:20px">'+_fpr(b.price)+'</span>';
-    if(b.days)h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 9px;border-radius:20px">'+b.days+' يوم</span>';
-    h+='</div>';
-    if(b.note)h+='<div style="font-size:11px;color:var(--muted);font-style:italic;background:var(--bg);border-right:3px solid var(--border);padding:7px 10px;border-radius:0 8px 8px 0;margin-bottom:10px">'+_esc(b.note)+'</div>';
-    h+='<div style="display:flex;gap:7px;padding-top:9px;border-top:1px solid var(--border);flex-wrap:wrap">';
-    h+='<button onclick="_viewProj('+b.request_id+')" class="btn-sm bs-p" style="flex:1;padding:9px">عرض</button>';
-    if(b.client_id)h+='<button onclick="openChatRoom('+b.request_id+','+b.client_id+',\''+_esc(b.client_name||'العميل').replace(/'/g,'')+'\',\''+_esc(b.request_title||'').replace(/'/g,'')+'\')" class="btn-sm" style="flex:1;padding:9px;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>';
-    if(!isAcc&&!isRej)h+='<button onclick="_delBid('+b.id+')" class="btn-sm bs-r" style="flex:1;padding:9px">سحب</button>';
-    h+='</div>';
-    h+='</div></div>';
-    return h;
-  }).join('');
-}
-async function _delBid(id){
-  if(!confirm('سحب هذا العرض؟'))return;
-  await _api('/api/bids/'+id,{method:'DELETE'});
-  showToast('تم سحب العرض','success');
-  loadWorks();
-}
-function _renderProjs(list){
-  if(!list.length)return _empty('لا يوجد مشاريع','');
-  return list.map(function(r){
-    var isProg=r.status==='in_progress';
-    var barColor=isProg?'var(--gold)':'#16A34A';
-    var tagCls=isProg?'t-rev':'t-open';
-    var tagLbl=isProg?'جارٍ':'مكتمل';
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden">';
-    h+='<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>';
-    h+='<div style="flex:1;padding:13px 14px">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">';
-    h+='<div style="flex:1;min-width:0">';
-    if(r.category)h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_esc(r.category)+'</div>';
-    h+='<div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div>';
-    h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(r.project_number||'#'+r.id)+(r.city?' · '+_esc(r.city):'')+'</div>';
-    h+='</div>';
-    h+='<span class="tag '+tagCls+'">'+tagLbl+'</span>';
-    h+='</div>';
-    if(r.price)h+='<div style="margin-bottom:9px"><span style="font-size:11px;font-weight:800;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:3px 10px;border-radius:20px">'+_fpr(r.price)+'</span></div>';
-    h+='<div style="display:flex;gap:7px;padding-top:9px;border-top:1px solid var(--border);flex-wrap:wrap">';
-    h+='<button onclick="_viewProj('+r.id+')" class="btn-sm bs-p" style="flex:1;padding:9px">عرض التفاصيل</button>';
-    if(r.client_id)h+='<button onclick="openChatRoom('+r.id+','+r.client_id+',\''+_esc(r.client_name||'العميل').replace(/'/g,'')+'\',\''+_esc(r.title||'').replace(/'/g,'')+'\')" class="btn-sm" style="flex:1;padding:9px;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>';
-    h+='</div>';
-    h+='</div></div>';
-    return h;
-  }).join('');
-}
+// ═══════════════════════════════════════════════════════════════
+// PROFILES
+// ═══════════════════════════════════════════════════════════════
 
-// ═══ REVIEWS ═══
-async function loadReviews(){
-  var pg=_el('page-reviews');if(!pg)return;
-  pg.innerHTML=_skList(4);
-  var list=[];try{list=await _api('/api/provider/reviews')||[];}catch(e){}
-  if(!Array.isArray(list))list=[];
-  var avg=list.length?(list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length).toFixed(1):'—';
-  var html='<div class="pghd"><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم · معدل '+avg+'★</div></div>';
-  html+='<div class="card card-accent">';
-  if(list.length){
-    list.forEach(function(r){
-      var initials=(r.reviewer_name||'ع')[0];
-      html+='<div style="background:var(--white);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);padding:12px 14px">';
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-      html+='<div style="display:flex;align-items:center;gap:10px">';
-      html+='<div style="width:36px;height:36px;border-radius:10px;background:var(--p);color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center">'+initials+'</div>';
-      html+='<div><div style="font-size:13px;font-weight:800;color:var(--text)">'+_esc(r.reviewer_name||'عميل')+'</div><div style="font-size:10px;color:var(--muted)">'+_fdt(r.created_at)+'</div></div>';
-      html+='</div>';
-      html+='<div>'+_stars(r.rating)+'</div>';
-      html+='</div>';
-      if(r.comment)html+='<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:8px 12px;border-radius:8px;border-right:3px solid var(--gold);line-height:1.8">'+_esc(r.comment)+'</div>';
-      html+='</div>';
-    });
-  }else{
-    html+=_empty('لا يوجد تقييمات بعد','أنجز مشاريع لتحصل على تقييمات');
-  }
-  html+='</div>';
-  pg.innerHTML=html;
-  _lb.done();
-}
+app.get('/api/profile', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,
+       experience_years,portfolio_images,profile_image,created_at FROM users WHERE id=$1`,
+      [req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-// ═══ NOTIFICATIONS — FIXED endpoint ═══
-async function loadNotifs(){
-  var pg=_el('page-notifs');if(!pg)return;
-  pg.innerHTML=_skList(5);
-  var list=[];try{list=await _api('/api/notifications')||[];}catch(e){}
-  if(!Array.isArray(list))list=[];
-  var unseen=list.filter(function(n){return !n.is_read;}).length;
-  var html='<div class="pghd" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div class="pg-t">الإشعارات</div><div class="pg-s">'+unseen+' غير مقروء</div></div>';
-  if(unseen)html+='<button class="btn-sm bs-p" onclick="_markRead()">تحديد الكل مقروء</button>';
-  html+='</div>';
-  html+='<div class="card card-accent">';
-  if(list.length){
-    list.forEach(function(n){
-      var isUnread=!n.is_read;
-      html+='<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)'+(isUnread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">';
-      html+='<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(isUnread?'var(--p)':'var(--border)')+'"></div>';
-      html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:'+(isUnread?'800':'600')+';color:'+(isUnread?'var(--text)':'var(--muted)')+'">'+_esc(n.title||'')+'</div>';
-      if(n.body)html+='<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">'+_esc(n.body)+'</div>';
-      html+='</div>';
-      html+='<div style="font-size:9px;color:var(--hint);flex-shrink:0">'+_ago(n.created_at)+'</div>';
-      html+='</div>';
-    });
-  }else{
-    html+=_empty('لا يوجد إشعارات','');
-  }
-  html+='</div>';
-  pg.innerHTML=html;
-  _lb.done();
-  // Auto-mark read when viewing
-  if(unseen)_markRead();
-}
-async function _markRead(){
-  await _api('/api/notifications/read',{method:'PUT'});
-  ['nb-notif','mob-nb'].forEach(function(id){var el=_el(id);if(el)el.style.display='none';});
-  if(_curPage==='notifs')loadNotifs();
-}
-function _loadNotifCount(){
-  _api('/api/notifications').then(function(ns){
-    if(!Array.isArray(ns))return;
-    var u=ns.filter(function(n){return !n.is_read;}).length;
-    ['nb-notif','mob-nb'].forEach(function(id){
-      var el=_el(id);if(!el)return;
-      el.style.display=u?'':'none';
-      el.textContent=u;
-    });
-  });
-}
-setInterval(_loadNotifCount,30000);
+app.put('/api/profile', auth, async (req, res) => {
+  try {
+    const { name, phone, city, bio, specialties, notify_categories, experience_years, profile_image } = req.body;
+    const r = await pool.query(`
+      UPDATE users SET
+        name = COALESCE(NULLIF($1,''), name),
+        phone = $2, city = $3, bio = $4,
+        specialties = $5, notify_categories = $6,
+        experience_years = $7, profile_image = $8
+      WHERE id=$9
+      RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image
+    `, [name || '', phone || null, city || null, bio || null,
+        specialties || null, notify_categories || null,
+        experience_years || null, profile_image || null, req.user.id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-// ═══ PROFILE ═══
-async function loadProfile(){
-  var pg=_el('page-profile');if(!pg)return;
-  pg.innerHTML=_skList(3);
-  var p=await _api('/api/provider/profile')||{};
-  var reviews=await _api('/api/provider/reviews')||[];
-  var projs=await _api('/api/provider/projects')||[];
+app.get('/api/client/profile', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,city,bio,badge,profile_image,created_at,
+       (SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,
+       (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,
+       (SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests
+       FROM users WHERE id=$1`,
+      [req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-  var totalBids=_myBids.length||0;
-  try{if(!_myBids.length){var bids=await _api('/api/provider/bids')||[];if(Array.isArray(bids)){_myBids=bids;totalBids=bids.length;}}}catch(e){}
-  var completed=Array.isArray(projs)?projs.filter(function(x){return x.status==='completed';}).length:0;
-  var avgR=Array.isArray(reviews)&&reviews.length?(reviews.reduce(function(s,r){return s+(r.rating||0);},0)/reviews.length).toFixed(1):(p.avg_rating?Number(p.avg_rating).toFixed(1):'—');
+app.put('/api/client/profile', auth, async (req, res) => {
+  try {
+    const { name, phone, city, bio, profile_image } = req.body;
+    const r = await pool.query(`
+      UPDATE users SET name=COALESCE(NULLIF($1,''),name), phone=$2, city=$3, bio=$4, profile_image=$5
+      WHERE id=$6 RETURNING id,name,email,phone,city,bio,profile_image
+    `, [name||'', phone||null, city||null, bio||null, profile_image||null, req.user.id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-  var avHtml=p.profile_image
-    ?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover">'
-    :'<span style="font-size:28px;font-weight:900;color:var(--p2)">'+_esc((p.name||'م')[0])+'</span>';
+app.get('/api/provider/profile', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,
+       experience_years,portfolio_images,profile_image,business_name,
+       social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,
+       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
+       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,
+       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+       FROM users WHERE id=$1`,
+      [req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
-  var portImgs=p.portfolio_images||[];
-
-  // Build entire page with DOM-safe content
-  pg.innerHTML='';
-
-  // Header
-  var hdr=document.createElement('div');
-  hdr.style.cssText='background:var(--p3);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden';
-  var hdrHtml='';
-  hdrHtml+='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>';
-  hdrHtml+='<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">';
-  hdrHtml+='<div id="av-preview" style="width:80px;height:80px;border-radius:50%;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid rgba(255,255,255,.25);cursor:pointer" onclick="document.getElementById(\'av-inp\').click()">'+avHtml+'</div>';
-  hdrHtml+='<div style="flex:1">';
-  hdrHtml+='<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+'</div>';
-  hdrHtml+='<div style="font-size:12px;color:rgba(255,255,255,.55)">مزود خدمة · '+_esc(p.city||'')+'</div>';
-  hdrHtml+='<div style="margin-top:10px">';
-  hdrHtml+='<input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)">';
-  hdrHtml+='<button onclick="document.getElementById(\'av-inp\').click()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer">تغيير الصورة</button>';
-  hdrHtml+='</div></div></div>';
-  hdrHtml+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-  hdrHtml+='<div class="profile-stat"><div class="profile-stat-n" style="color:var(--gold)">'+totalBids+'</div><div class="profile-stat-l">عروض</div></div>';
-  hdrHtml+='<div class="profile-stat"><div class="profile-stat-n" style="color:var(--green)">'+completed+'</div><div class="profile-stat-l">مكتملة</div></div>';
-  hdrHtml+='<div class="profile-stat"><div class="profile-stat-n" style="color:#fff">'+avgR+'</div><div class="profile-stat-l">التقييم</div></div>';
-  hdrHtml+='</div>';
-  hdr.innerHTML=hdrHtml;
-  pg.appendChild(hdr);
-
-  // Personal info card
-  var infoCard=document.createElement('div');
-  infoCard.className='card card-accent';
-  infoCard.innerHTML=
-    '<div class="ch"><div class="ch-l"><h3>معلومات المنشأة</h3></div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="fg"><label>الاسم الكامل</label><input id="p-name"></div>'
-    +'<div class="fg"><label>اسم المنشأة</label><input id="p-bname" placeholder="اختياري"></div>'
-    +'<div class="fg"><label>رقم الجوال</label><input id="p-phone"></div>'
-    +'<div class="fg"><label>سنوات الخبرة</label><input type="number" id="p-exp"></div>'
-    +'<div class="fg" style="grid-column:1/-1"><label>البريد الإلكتروني</label><input type="email" id="p-email" disabled style="background:var(--bg);color:var(--hint)"></div>'
-    +'<div class="fg" style="grid-column:1/-1" id="cityWrap"><label>المدينة</label></div>'
-    +'<div class="fg" style="grid-column:1/-1"><label>نبذة عن الأعمال</label><textarea id="p-bio" style="min-height:80px" placeholder="اكتب نبذة احترافية عنك وعن خبرتك..."></textarea></div>'
-    +'</div>';
-  pg.appendChild(infoCard);
-
-  // Fill fields (safe from quotes)
-  _el('p-name').value=p.name||'';
-  _el('p-bname').value=p.business_name||'';
-  _el('p-phone').value=p.phone||'';
-  _el('p-exp').value=p.experience_years||'';
-  _el('p-email').value=p.email||'';
-  _el('p-bio').value=p.bio||'';
-
-  // Build city select via DOM
-  var citySelect=document.createElement('select');
-  citySelect.id='p-city';
-  var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر المدينة';citySelect.appendChild(defOpt);
-  CITIES.forEach(function(c){
-    var o=document.createElement('option');o.value=c;o.textContent=c;
-    if(c===p.city)o.selected=true;
-    citySelect.appendChild(o);
-  });
-  _el('cityWrap').appendChild(citySelect);
-
-  // Specialties card
-  var specsCard=document.createElement('div');
-  specsCard.className='card';
-  var specsList=p.specialties||[];
-  var specsHdr='<div class="ch"><div class="ch-l"><h3>التخصصات</h3></div><span id="specs-count" style="font-size:12px;font-weight:800;color:#fff;background:var(--p);padding:4px 10px;border-radius:20px">'+specsList.length+'/3</span></div>';
-  specsCard.innerHTML=specsHdr+'<div id="specs-grid" style="display:flex;flex-wrap:wrap;gap:6px"></div><div style="font-size:10px;color:var(--muted);margin-top:8px">اختر حتى 3 تخصصات — تصلك إشعارات المشاريع المطابقة لها</div>';
-  pg.appendChild(specsCard);
-
-  // Build specialty pills via DOM
-  var specsGrid=_el('specs-grid');
-  CATS.forEach(function(c){
-    var btn=document.createElement('button');
-    btn.type='button';
-    btn.className='spec-pill'+(specsList.indexOf(c)>=0?' on':'');
-    btn.textContent=c;
-    btn.onclick=function(){_togSpec(btn);};
-    specsGrid.appendChild(btn);
-  });
-
-  // Portfolio card
-  var portCard=document.createElement('div');
-  portCard.className='card';
-  var portHtml='<div class="ch"><div class="ch-l"><h3>معرض الأعمال</h3></div><span style="font-size:11px;color:var(--muted)">'+portImgs.length+'/6</span></div>';
-  portHtml+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  portImgs.forEach(function(img,i){
-    portHtml+='<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1">';
-    portHtml+='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openImgFull(\''+img+'\')">';
-    portHtml+='<button onclick="_delPortImg('+i+')" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center">×</button>';
-    portHtml+='</div>';
-  });
-  if(portImgs.length<6){
-    portHtml+='<div onclick="document.getElementById(\'port-inp\').click()" style="border:2px dashed var(--border);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:5px;background:var(--bg)">';
-    portHtml+='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--muted)" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-    portHtml+='<span style="font-size:11px;color:var(--muted)">إضافة</span>';
-    portHtml+='</div>';
-  }
-  portHtml+='</div>';
-  portHtml+='<input type="file" id="port-inp" accept="image/*" multiple style="display:none" onchange="_uploadPort(this)">';
-  portCard.innerHTML=portHtml;
-  pg.appendChild(portCard);
-
-  // Password card
-  var pwCard=document.createElement('div');
-  pwCard.className='card';
-  pwCard.innerHTML=
-    '<div class="ch"><div class="ch-l"><h3>تغيير كلمة المرور</h3></div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="fg"><label>الحالية</label><input type="password" id="pw-old"></div>'
-    +'<div class="fg"><label>الجديدة</label><input type="password" id="pw-new"></div>'
-    +'</div>'
-    +'<button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
-  pg.appendChild(pwCard);
-
-  // Save button
-  var saveWrap=document.createElement('div');
-  saveWrap.style.cssText='padding:4px 0 20px';
-  saveWrap.innerHTML='<button id="save-btn" onclick="_saveProfile()" style="width:100%;padding:14px;background:var(--p3);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">حفظ جميع التغييرات</button>';
-  pg.appendChild(saveWrap);
-
-  _lb.done();
-}
-
-function _togSpec(btn){
-  var sel=document.querySelectorAll('.spec-pill.on');
-  if(!btn.classList.contains('on')&&sel.length>=3){
-    showToast('الحد الأقصى 3 تخصصات','error');
-    return;
-  }
-  btn.classList.toggle('on');
-  var cnt=document.querySelectorAll('.spec-pill.on').length;
-  var sc=_el('specs-count');if(sc)sc.textContent=cnt+'/3';
-}
-
-async function _saveProfile(){
-  var btn=_el('save-btn');
-  if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  var specs=Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
-  var body={
-    name:(_el('p-name')||{}).value,
-    business_name:(_el('p-bname')||{}).value||null,
-    phone:(_el('p-phone')||{}).value||null,
-    city:(_el('p-city')||{}).value||null,
-    bio:(_el('p-bio')||{}).value||null,
-    experience_years:parseInt((_el('p-exp')||{}).value)||null,
-    specialties:specs,
-    notify_categories:specs
-  };
-  var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
-  if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
-  if(r&&r.id){
-    _me.name=r.name;
-    localStorage.setItem('user',JSON.stringify(_me));
-    var un=_el('userName');if(un)un.textContent=r.name;
-    showToast('تم الحفظ بنجاح','success');
-  }else{
-    showToast((r&&r.message)||'حدث خطأ','error');
-  }
-}
-
-async function _changePw(){
-  var o=(_el('pw-old')||{}).value;
-  var n=(_el('pw-new')||{}).value;
-  if(!o||!n){showToast('اكمل الحقلين','error');return;}
-  if(n.length<6){showToast('كلمة المرور 6 أحرف على الأقل','error');return;}
-  var r=await _api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:o,new_password:n})});
-  if(r&&r.ok){
-    showToast('تم تغيير كلمة المرور','success');
-    _el('pw-old').value='';_el('pw-new').value='';
-  }else{
-    showToast((r&&r.message)||'كلمة المرور الحالية غير صحيحة','error');
-  }
-}
-
-function _uploadAvatar(inp){
-  var f=inp.files[0];if(!f)return;
-  if(f.size>3*1024*1024){showToast('الحجم الأقصى 3MB','error');return;}
-  var rd=new FileReader();
-  rd.onload=async function(e){
-    var img=e.target.result;
-    var pr=_el('av-preview');
-    if(pr)pr.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover">';
-    _setAvatar(img);
-    localStorage.setItem('pav_'+_me.id,img);
-    await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:img})});
-    showToast('تم حفظ الصورة','success');
-  };
-  rd.readAsDataURL(f);
-}
-
-function _uploadPort(inp){
-  var files=[].slice.call(inp.files);
-  inp.value='';
-  files.forEach(function(f){
-    if(f.size>5*1024*1024){showToast(f.name+': أكبر من 5MB','error');return;}
-    var rd=new FileReader();
-    rd.onload=async function(e){
-      var r=await _api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:e.target.result})});
-      if(r&&(r.ok||r.count))showToast('تم رفع الصورة','success');
-      else showToast((r&&r.message)||'فشل الرفع','error');
+app.put('/api/provider/profile', auth, async (req, res) => {
+  try {
+    // Partial update — only update fields present in req.body
+    // This prevents accidental nullification when uploading avatar only, or saving profile without portfolio_images
+    const allowed = {
+      name: 'name',
+      phone: 'phone',
+      city: 'city',
+      bio: 'bio',
+      specialties: 'specialties',
+      notify_categories: 'notify_categories',
+      experience_years: 'experience_years',
+      portfolio_images: 'portfolio_images',
+      profile_image: 'profile_image',
+      business_name: 'business_name',
+      social_whatsapp: 'social_whatsapp',
+      social_snap: 'social_snap',
+      social_tiktok: 'social_tiktok',
+      social_instagram: 'social_instagram',
+      social_twitter: 'social_twitter'
     };
-    rd.readAsDataURL(f);
-  });
-  setTimeout(loadProfile,1500);
-}
-async function _delPortImg(i){
-  await _api('/api/provider/profile/portfolio/'+i,{method:'DELETE'});
-  showToast('تم حذف الصورة','success');
-  loadProfile();
-}
-
-// ═══ CHAT ═══
-async function _loadChatBadge(){
-  try{
-    var convs=await _api('/api/provider/conversations')||[];
-    if(!Array.isArray(convs))return;
-    var unread=convs.filter(function(c){return parseInt(c.unread)>0;}).length;
-    var b1=_el('nb-chat');if(b1){b1.style.display=unread?'':'none';b1.textContent=unread;}
-    var b2=_el('bn-chat-badge');if(b2){b2.style.display=unread?'flex':'none';b2.textContent=unread;}
-  }catch(e){}
-}
-setInterval(_loadChatBadge,30000);
-
-async function loadChat(){
-  var pg=_el('page-chat');if(!pg)return;
-  pg.innerHTML='<div class="pghd"><div class="pg-t">المحادثات</div></div>'+_skList(5);
-  var convs=[];
-  try{convs=await _api('/api/provider/conversations')||[];}catch(e){}
-  if(!Array.isArray(convs))convs=[];
-  convs.sort(function(a,b){return new Date(b.last_time||0)-new Date(a.last_time||0);});
-
-  var html='<div class="pghd"><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div>';
-  html+='<div class="card card-accent">';
-  if(convs.length){
-    convs.forEach(function(cv){
-      var unread=parseInt(cv.unread)>0;
-      var initials=(cv.client_name||'ع')[0];
-      html+='<div onclick="openChatRoom('+cv.request_id+','+cv.client_id+',\''+_esc(cv.client_name||'عميل').replace(/'/g,'')+'\',\''+_esc(cv.request_title||'').replace(/'/g,'')+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">';
-      html+='<div style="width:44px;height:44px;border-radius:50%;background:var(--p3);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative">';
-      if(cv.client_image)html+='<img src="'+cv.client_image+'" style="width:100%;height:100%;object-fit:cover">';
-      else html+=initials;
-      if(unread)html+='<div style="position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;background:var(--gold);border:2px solid var(--white)"></div>';
-      html+='</div>';
-      html+='<div style="flex:1;min-width:0">';
-      html+='<div style="font-size:13px;font-weight:'+(unread?'900':'700')+';color:var(--text);margin-bottom:2px">'+_esc(cv.client_name||'عميل')+'</div>';
-      html+='<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(cv.last_message||'')+'</div>';
-      html+='</div>';
-      html+='<div style="font-size:10px;color:var(--hint);flex-shrink:0">'+_ago(cv.last_time)+'</div>';
-      html+='</div>';
-    });
-  }else{
-    html+=_empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');
-  }
-  html+='</div>';
-  pg.innerHTML=html;
-  _lb.done();
-}
-
-async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
-  reqId=parseInt(reqId);receiverId=parseInt(receiverId);
-  _chatReqId=reqId;_chatReceiverId=receiverId;_chatMsgs=[];
-  clearInterval(_chatPolling);
-  var old=_el('prov-chat-overlay');if(old)old.remove();
-
-  var overlay=document.createElement('div');
-  overlay.id='prov-chat-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:flex-end;justify-content:center';
-  overlay.innerHTML=''
-    +'<div style="background:var(--bg);width:100%;max-width:500px;height:82vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px">'
-    +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">×</button>'
-    +'<div><div style="font-size:14px;font-weight:800;color:#fff">'+_esc(receiverName||'العميل')+'</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">'+_esc(reqTitle||'')+'</div></div>'
-    +'</div>'
-    +'<div id="p-chat-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
-    +'<div style="display:flex;gap:8px;padding:12px;background:var(--white);border-top:1px solid var(--border)">'
-    +'<textarea id="p-chat-inp" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;resize:none;max-height:80px"></textarea>'
-    +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700">إرسال</button>'
-    +'</div>'
-    +'</div>';
-  document.body.appendChild(overlay);
-  _el('p-chat-close').onclick=function(){overlay.remove();clearInterval(_chatPolling);};
-  _el('p-chat-send').onclick=_sendChatMsg;
-  _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
-
-  // Load initial messages
-  try{
-    var msgs=await _api('/api/messages/'+reqId)||[];
-    if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
-  }catch(e){}
-
-  // Poll for new messages
-  _chatPolling=setInterval(async function(){
-    if(!_el('prov-chat-overlay')){clearInterval(_chatPolling);return;}
-    try{
-      var msgs=await _api('/api/messages/'+reqId)||[];
-      if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
-    }catch(e){}
-  },2500);
-}
-
-function _renderChatMsgs(){
-  var wrap=_el('p-chat-msgs');if(!wrap)return;
-  if(!_chatMsgs.length){
-    wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">ابدأ المحادثة</div>';
-    return;
-  }
-  // Dedupe
-  var seen={},unique=[];
-  _chatMsgs.forEach(function(m){var k=m.id||(m.content+m.created_at);if(!seen[k]){seen[k]=1;unique.push(m);}});
-  wrap.innerHTML=unique.map(function(m){
-    var isMe=(String(m.sender_id)===String(_me.id));
-    var align=isMe?'flex-end':'flex-start';
-    var radius=isMe?'16px 16px 4px 16px':'16px 16px 16px 4px';
-    var bg=isMe?'var(--p3)':'var(--white)';
-    var color=isMe?'#fff':'var(--text)';
-    var border=isMe?'none':'1px solid var(--border)';
-    var h='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px">';
-    h+='<div style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:13px;line-height:1.7;word-break:break-word">';
-    if(!isMe)h+='<div style="font-size:10px;opacity:.55;margin-bottom:3px;font-weight:700">'+_esc(m.sender_name||'')+'</div>';
-    h+=_esc(m.content);
-    h+='<div style="font-size:10px;opacity:.45;margin-top:4px;text-align:left">'+_ago(m.created_at)+'</div>';
-    h+='</div></div>';
-    return h;
-  }).join('');
-  setTimeout(function(){wrap.scrollTop=wrap.scrollHeight;},30);
-}
-
-async function _sendChatMsg(){
-  var inp=_el('p-chat-inp');if(!inp)return;
-  var content=inp.value.trim();if(!content)return;
-  var btn=_el('p-chat-send');
-  inp.value='';
-  if(btn)btn.disabled=true;
-  try{
-    await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiverId,content:content})});
-    var msgs=await _api('/api/messages/'+_chatReqId)||[];
-    if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
-  }catch(e){}
-  if(btn)btn.disabled=false;
-}
-
-// ═══ Init on DOM ready ═══
-document.addEventListener('DOMContentLoaded',function(){
-  var saved=sessionStorage.getItem('mnq_prov_page');
-  var pg=(saved&&_pages[saved])?saved:'home';
-  gotoPage(pg);
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    for (const key in allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        const col = allowed[key];
+        let val = req.body[key];
+        // Special: name can't be set to empty (keep existing if empty string)
+        if (key === 'name') {
+          if (val && String(val).trim()) {
+            sets.push(`${col}=$${idx}`);
+            params.push(String(val).trim());
+            idx++;
+          }
+          continue;
+        }
+        // experience_years — cast to int or null
+        if (key === 'experience_years') {
+          val = (val === '' || val === null || val === undefined) ? null : parseInt(val);
+          if (isNaN(val)) val = null;
+        }
+        // Empty strings → null for everything else
+        if (val === '') val = null;
+        sets.push(`${col}=$${idx}`);
+        params.push(val);
+        idx++;
+      }
+    }
+    if (!sets.length) {
+      // Nothing to update — return current profile
+      const cur = await pool.query(
+        `SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter FROM users WHERE id=$1`,
+        [req.user.id]
+      );
+      return res.json(cur.rows[0] || {});
+    }
+    params.push(req.user.id);
+    const q = `UPDATE users SET ${sets.join(', ')} WHERE id=$${idx}
+      RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`;
+    const r = await pool.query(q, params);
+    res.json(r.rows[0]);
+  } catch (e) { console.error('❌ provider/profile PUT:', e); res.status(500).json({ message: e.message }); }
 });
-</script>
 
-</body>
-</html>
+// ═══════════════════════════════════════════════════════════════
+// PROVIDER-SPECIFIC ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+
+// Provider's own bids
+app.get('/api/provider/bids', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at,
+        r.title as request_title, r.category, r.city, r.client_id,
+        u.name as client_name, u.phone as client_phone
+      FROM bids b
+      JOIN requests r ON b.request_id = r.id
+      JOIN users u ON r.client_id = u.id
+      WHERE b.provider_id = $1
+      ORDER BY b.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/bids:', e); res.json([]); }
+});
+
+// Provider's accepted/in-progress/completed projects
+app.get('/api/provider/projects', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max,
+        r.image_url, r.images, r.project_number, r.status, r.assigned_at,
+        r.completed_at, r.client_id,
+        u.name as client_name, u.phone as client_phone,
+        b.price, b.days
+      FROM requests r
+      JOIN users u ON r.client_id = u.id
+      LEFT JOIN bids b ON b.request_id = r.id AND b.provider_id = $1 AND b.status = 'accepted'
+      WHERE r.assigned_provider_id = $1
+        AND r.status IN ('in_progress','completed')
+      ORDER BY r.assigned_at DESC NULLS LAST
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/projects:', e); res.json([]); }
+});
+
+// Provider's reviews (reviews about them)
+app.get('/api/provider/reviews', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id,
+        u.name as reviewer_name, u.profile_image as reviewer_image
+      FROM reviews rv
+      JOIN users u ON rv.reviewer_id = u.id
+      WHERE rv.reviewed_id = $1
+      ORDER BY rv.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/reviews:', e); res.json([]); }
+});
+
+// Provider's conversations (grouped by request + counterpart)
+app.get('/api/provider/conversations', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      WITH conv AS (
+        SELECT DISTINCT
+          request_id,
+          CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as client_id
+        FROM messages
+        WHERE sender_id = $1 OR receiver_id = $1
+      )
+      SELECT
+        c.request_id,
+        c.client_id,
+        r.title as request_title,
+        u.name as client_name,
+        u.profile_image as client_image,
+        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+      FROM conv c
+      JOIN requests r ON r.id = c.request_id
+      JOIN users u ON u.id = c.client_id
+      ORDER BY last_time DESC NULLS LAST
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/conversations:', e); res.json([]); }
+});
+
+// Add image to provider portfolio (max 6)
+app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'image required' });
+    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = cur.rows[0]?.portfolio_images || [];
+    if (imgs.length >= 6) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
+    imgs.push(image);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch (e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: e.message }); }
+});
+
+// Remove image from provider portfolio by index
+app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
+  try {
+    const idx = parseInt(req.params.i);
+    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = cur.rows[0]?.portfolio_images || [];
+    if (idx < 0 || idx >= imgs.length) return res.status(400).json({ message: 'index out of range' });
+    imgs.splice(idx, 1);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch (e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// REQUESTS
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/requests', async (req, res) => {
+  try {
+    const { category, city } = req.query;
+    let query = `
+      SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
+      r.budget_max,r.deadline,r.image_url,r.images,r.main_image_index,r.status,
+      r.client_id,r.created_at,u.name as client_name,
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
+    `;
+    const params = [];
+    if (category) { params.push(category); query += ` AND r.category=$${params.length}`; }
+    if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
+    query += ' ORDER BY r.created_at DESC';
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (e) { console.error('❌ /requests:', e); res.json([]); }
+});
+
+app.get('/api/requests/my', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.*, u.name as client_name, p.name as provider_name,
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      FROM requests r
+      JOIN users u ON r.client_id=u.id
+      LEFT JOIN users p ON r.assigned_provider_id=p.id
+      WHERE r.client_id=$1
+      ORDER BY r.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
+  } catch (e) { console.error('❌ /requests/my:', e); res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/requests/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image,
+      p.name as provider_name, p.phone as provider_phone,
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      FROM requests r JOIN users u ON r.client_id=u.id
+      LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1
+    `, [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ ...r.rows[0], status: normalizeStatus(r.rows[0].status) });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/requests', auth, clientOnly, async (req, res) => {
+  try {
+    const { title, description, category, city, address, budget_max, deadline, images, attachments } = req.body;
+    if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
+    const pn = generateProjectNumber();
+    const r = await pool.query(`
+      INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline,
+        images, attachments, project_number, status, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW())
+      RETURNING *
+    `, [req.user.id, title, description, category||null, city||null, address||null,
+        budget_max||null, deadline||null, images || null,
+        attachments ? JSON.stringify(attachments) : null, pn]);
+    res.json(r.rows[0]);
+  } catch (e) { console.error('❌ create request:', e); res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/requests/:id', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'ليست طلبك' });
+    const { title, description, category, city, address, budget_max, deadline } = req.body;
+    const r = await pool.query(`
+      UPDATE requests SET title=COALESCE(NULLIF($1,''),title),
+        description=COALESCE(NULLIF($2,''),description),
+        category=$3, city=$4, address=$5, budget_max=$6, deadline=$7
+      WHERE id=$8 RETURNING *
+    `, [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null, id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/requests/:id', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'ليست طلبك' });
+    await pool.query('BEGIN');
+    try {
+      await pool.query('DELETE FROM bids WHERE request_id=$1', [id]);
+      await pool.query('DELETE FROM messages WHERE request_id=$1', [id]);
+      await pool.query('DELETE FROM reviews WHERE request_id=$1', [id]);
+      await pool.query('DELETE FROM requests WHERE id=$1', [id]);
+      await pool.query('COMMIT');
+      res.json({ ok: true });
+    } catch (e) { await pool.query('ROLLBACK'); throw e; }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/requests/:id/images', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'لا توجد صورة' });
+    const own = await pool.query('SELECT client_id, images FROM requests WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'ليست طلبك' });
+    const current = own.rows[0].images || [];
+    current.push(image);
+    await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
+    res.json({ ok: true, count: current.length });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/requests/:id/attachments', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, type, data } = req.body;
+    if (!data) return res.status(400).json({ message: 'لا توجد بيانات' });
+    const own = await pool.query('SELECT client_id, attachments FROM requests WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'ليست طلبك' });
+    const current = own.rows[0].attachments || [];
+    current.push({ name, type, data, uploaded_at: new Date().toISOString() });
+    await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
+    res.json({ ok: true, count: current.length });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `UPDATE requests SET status='completed', completed_at=NOW()
+       WHERE id=$1 AND client_id=$2 RETURNING id, assigned_provider_id, title`,
+      [id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس طلبك' });
+    if (r.rows[0].assigned_provider_id) {
+      await notify(r.rows[0].assigned_provider_id, '🎉 مشروع مكتمل',
+        `العميل أنهى مشروع "${r.rows[0].title}"`, 'request', id);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// BIDS
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/bids/my', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.*, r.title as request_title, r.project_number, r.status as request_status,
+      u.name as client_name
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id
+      WHERE b.provider_id=$1 ORDER BY b.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/requests/:id/bids', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'ليست طلبك' });
+    const r = await pool.query(`
+      SELECT b.*, u.name as provider_name, u.phone as provider_phone, u.city as provider_city,
+      u.badge as provider_badge, u.profile_image as provider_image,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
+      FROM bids b JOIN users u ON b.provider_id=u.id
+      WHERE b.request_id=$1 ORDER BY b.created_at DESC
+    `, [id]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const { price, days, note } = req.body;
+    if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
+    const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
+
+    const r = await pool.query(`
+      INSERT INTO bids (request_id, provider_id, price, days, note, status, created_at)
+      VALUES ($1,$2,$3,$4,$5,'pending',NOW())
+      ON CONFLICT (request_id, provider_id)
+      DO UPDATE SET price=$3, days=$4, note=$5, created_at=NOW()
+      RETURNING *
+    `, [requestId, req.user.id, price, days, note || null]);
+
+    await notify(reqRow.rows[0].client_id, '💼 عرض جديد',
+      `تلقيت عرضاً جديداً على مشروع "${reqRow.rows[0].title}"`, 'bid', requestId);
+    res.json(r.rows[0]);
+  } catch (e) { console.error('❌ bid:', e); res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
+    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
+    const { price, days, note } = req.body;
+    const r = await pool.query(
+      'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *',
+      [price || null, days || null, note || null, id]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
+    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
+    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'لا يمكن حذف عرض مقبول' });
+    await pool.query('DELETE FROM bids WHERE id=$1', [id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const bid = await pool.query(`
+      SELECT b.*, r.client_id, r.title FROM bids b
+      JOIN requests r ON b.request_id=r.id WHERE b.id=$1
+    `, [bidId]);
+    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
+
+    await pool.query('BEGIN');
+    try {
+      await pool.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
+      await pool.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`,
+        [bid.rows[0].request_id, bidId]);
+      await pool.query(`
+        UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
+        WHERE id=$2
+      `, [bid.rows[0].provider_id, bid.rows[0].request_id]);
+      await pool.query('COMMIT');
+      await notify(bid.rows[0].provider_id, '🎉 تم قبول عرضك',
+        `تم قبول عرضك على مشروع "${bid.rows[0].title}"`, 'bid', bid.rows[0].request_id);
+      res.json({ ok: true });
+    } catch (e) { await pool.query('ROLLBACK'); throw e; }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const bid = await pool.query(`
+      SELECT b.*, r.client_id, r.title FROM bids b
+      JOIN requests r ON b.request_id=r.id WHERE b.id=$1
+    `, [bidId]);
+    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
+    await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
+    await notify(bid.rows[0].provider_id, '❌ تم رفض عرضك',
+      `تم رفض عرضك على مشروع "${bid.rows[0].title}"`, 'bid', bid.rows[0].request_id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/messages/:requestId', auth, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.requestId);
+    const r = await pool.query(`
+      SELECT m.*, u.name as sender_name, u.profile_image as sender_image
+      FROM messages m JOIN users u ON m.sender_id=u.id
+      WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2)
+      ORDER BY m.created_at ASC
+    `, [requestId, req.user.id]);
+    await pool.query(
+      'UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE',
+      [requestId, req.user.id]
+    );
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/messages', auth, async (req, res) => {
+  try {
+    const { request_id, receiver_id, content } = req.body;
+    if (!request_id || !receiver_id || !content) return res.status(400).json({ message: 'البيانات ناقصة' });
+    const r = await pool.query(
+      `INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at)
+       VALUES ($1,$2,$3,$4,NOW()) RETURNING *`,
+      [request_id, req.user.id, receiver_id, content]
+    );
+    const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await notify(receiver_id, '💬 رسالة جديدة',
+      `${sender.rows[0].name}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`,
+      'message', request_id);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/messages/unread-count', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(r.rows[0].count) || 0 });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// REVIEWS
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/reviews/user/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title
+      FROM reviews rv JOIN users u ON rv.reviewer_id=u.id
+      LEFT JOIN requests rq ON rv.request_id=rq.id
+      WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC
+    `, [id]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/reviews', auth, async (req, res) => {
+  try {
+    const { request_id, reviewed_id, rating, comment } = req.body;
+    if (!request_id || !reviewed_id || !rating) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (rating < 1 || rating > 5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
+    const reqRow = await pool.query('SELECT status FROM requests WHERE id=$1', [request_id]);
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
+    const r = await pool.query(`
+      INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, created_at)
+      VALUES ($1,$2,$3,$4,$5,NOW())
+      ON CONFLICT (request_id, reviewer_id) DO UPDATE SET rating=$4, comment=$5
+      RETURNING *
+    `, [request_id, req.user.id, reviewed_id, rating, comment || null]);
+    await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على تقييم ${rating} نجوم`, 'review', request_id);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// REPORTS, FAVORITES, PROVIDERS (public browse)
+// ═══════════════════════════════════════════════════════════════
+
+app.post('/api/reports', auth, async (req, res) => {
+  try {
+    const { reported_id, request_id, type, reason, details } = req.body;
+    if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
+    const r = await pool.query(`
+      INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *
+    `, [req.user.id, reported_id || null, request_id || null, type || 'other', reason, details || null]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/favorites', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT u.id, u.name, u.city, u.badge, u.specialties, u.profile_image,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count
+      FROM favorites f JOIN users u ON f.provider_id=u.id
+      WHERE f.user_id=$1 ORDER BY f.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/favorites/:providerId', auth, async (req, res) => {
+  try {
+    const pid = parseInt(req.params.providerId);
+    await pool.query(
+      `INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+      [req.user.id, pid]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/favorites/:providerId', auth, async (req, res) => {
+  try {
+    const pid = parseInt(req.params.providerId);
+    await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/providers', async (req, res) => {
+  try {
+    const { category, city } = req.query;
+    let q = `
+      SELECT id,name,city,specialties,badge,bio,profile_image,experience_years,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      FROM users WHERE role='provider' AND is_active=TRUE
+    `;
+    const params = [];
+    if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
+    if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
+    q += ' ORDER BY avg_rating DESC, review_count DESC';
+    const r = await pool.query(q, params);
+    res.json(r.rows);
+  } catch (e) { res.json([]); }
+});
+
+app.get('/api/providers/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT id,name,city,specialties,notify_categories,badge,bio,profile_image,
+      experience_years,portfolio_images,created_at,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      FROM users WHERE id=$1 AND role='provider'
+    `, [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/notifications', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id, title, body, type, ref_id, is_read, created_at
+       FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/notifications/unread-count', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(r.rows[0].count) || 0 });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/notifications/read', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE', [req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/notifications/:id/read', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',
+      [parseInt(req.params.id), req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM notifications WHERE id=$1 AND user_id=$2',
+      [parseInt(req.params.id), req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/notifications', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM notifications WHERE user_id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
+  try {
+    const [users, requests, bids, providers, pending, inProgress, completed] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM users'),
+      pool.query('SELECT COUNT(*) FROM requests'),
+      pool.query('SELECT COUNT(*) FROM bids'),
+      pool.query(`SELECT COUNT(*) FROM users WHERE role='provider'`),
+      pool.query(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
+      pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),
+      pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
+    ]);
+    res.json({
+      total_users:+users.rows[0].count, requests:+requests.rows[0].count,
+      total_bids:+bids.rows[0].count, providers:+providers.rows[0].count,
+      pending_review:+pending.rows[0].count, in_progress:+inProgress.rows[0].count,
+      completed:+completed.rows[0].count
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
+  try {
+    const { role } = req.query;
+    const VALID = ['client','provider','admin'];
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,
+      u.city,u.bio,u.badge,u.is_active,u.experience_years,u.profile_image,u.created_at,
+      (SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,
+      (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count
+      FROM users u`;
+    const params = [];
+    if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
+    q += ' ORDER BY u.created_at DESC';
+    const r = await pool.query(q, params);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    if (uid === req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
+    const r = await pool.query(
+      `UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`,
+      [uid]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const { badge } = req.body;
+    const r = await pool.query(
+      `UPDATE users SET badge=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,badge`,
+      [badge, uid]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
+  const uid = parseInt(req.params.id);
+  try {
+    if (!uid) return res.status(400).json({ message: 'معرف غير صحيح' });
+    if (uid === req.user.id) return res.status(400).json({ message: 'لا يمكن حذف حسابك' });
+    const chk = await pool.query('SELECT id, name, email, role FROM users WHERE id=$1', [uid]);
+    if (!chk.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const target = chk.rows[0];
+    if (target.role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف المديرين' });
+
+    await pool.query('BEGIN');
+    try {
+      await pool.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
+      await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [uid]);
+      await pool.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
+      await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [uid]);
+      await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [uid]);
+      try { await pool.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [uid]); } catch(e){}
+      try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1', [uid]); } catch(e){}
+      const urs = await pool.query('SELECT id FROM requests WHERE client_id=$1', [uid]);
+      for (const r of urs.rows) await pool.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
+      await pool.query('DELETE FROM requests WHERE client_id=$1', [uid]);
+      if (target.role === 'provider') {
+        await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
+      }
+      const del = await pool.query('DELETE FROM users WHERE id=$1', [uid]);
+      if (del.rowCount === 0) throw new Error('فشل الحذف');
+      await pool.query('COMMIT');
+      res.json({ ok: true, deleted_user: target });
+    } catch (e) { await pool.query('ROLLBACK'); throw e; }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      FROM users WHERE role='provider' ORDER BY avg_rating DESC
+    `);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let q = `SELECT r.*, u.name as client_name, p.name as provider_name,
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id`;
+    const params = [];
+    if (status) {
+      if (status === 'pending_review') q += ` WHERE r.status IN ('pending_review','review')`;
+      else { params.push(status); q += ' WHERE r.status=$1'; }
+    }
+    q += ' ORDER BY r.created_at DESC';
+    const r = await pool.query(q, params);
+    res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { action, reason } = req.body;
+    if (!['approve','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
+    const newStatus = action === 'approve' ? 'open' : 'rejected';
+    const r = await pool.query(
+      `UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes)
+       WHERE id=$3 RETURNING id, client_id, title, status`,
+      [newStatus, reason || null, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = r.rows[0];
+    await notify(row.client_id,
+      action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك',
+      action === 'approve'
+        ? `مشروعك "${row.title}" متاح للعروض الآن`
+        : `مشروعك "${row.title}" تم رفضه${reason ? ': ' + reason : ''}`,
+      'request', id);
+    res.json(row);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `UPDATE requests SET status='completed', completed_at=NOW()
+       WHERE id=$1 RETURNING id, client_id, assigned_provider_id, title`,
+      [id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = r.rows[0];
+    await notify(row.client_id, '🎉 مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
+    if (row.assigned_provider_id) {
+      await notify(row.assigned_provider_id, '🎉 مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
+    }
+    res.json(row);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { title, description, category, city, budget_max, deadline, admin_notes } = req.body;
+    const r = await pool.query(
+      `UPDATE requests SET title=COALESCE(NULLIF($1,''),title),
+        description=COALESCE(NULLIF($2,''),description),
+        category=$3, city=$4, budget_max=$5, deadline=$6, admin_notes=$7
+       WHERE id=$8 RETURNING *`,
+      [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ message: 'معرف غير صحيح' });
+    await pool.query('BEGIN');
+    try {
+      await pool.query('DELETE FROM bids WHERE request_id=$1', [id]);
+      await pool.query('DELETE FROM messages WHERE request_id=$1', [id]);
+      await pool.query('DELETE FROM reviews WHERE request_id=$1', [id]);
+      await pool.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
+      await pool.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
+      const del = await pool.query('DELETE FROM requests WHERE id=$1', [id]);
+      if (del.rowCount === 0) { await pool.query('ROLLBACK'); return res.status(404).json({ message: 'غير موجود' }); }
+      await pool.query('COMMIT');
+      res.json({ ok: true });
+    } catch (e) { await pool.query('ROLLBACK'); throw e; }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
+  try {
+    const { user_id, user_ids, role, title, body, type, specialty } = req.body;
+    if (!title || !body) return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
+    const VALID = ['client','provider','admin'];
+    let target = [];
+    if (Array.isArray(user_ids) && user_ids.length) {
+      // Multiple specific users
+      const ids = user_ids.map(Number).filter(Boolean);
+      if (ids.length) {
+        const u = await pool.query('SELECT id FROM users WHERE id = ANY($1::int[]) AND is_active=TRUE', [ids]);
+        target = u.rows;
+      }
+    } else if (user_id) {
+      const u = await pool.query('SELECT id FROM users WHERE id=$1', [user_id]); target = u.rows;
+    } else {
+      let q = 'SELECT id FROM users WHERE is_active=TRUE';
+      const p = [];
+      if (role && VALID.includes(role)) { p.push(role); q += ` AND role=$${p.length}`; }
+      if (specialty && specialty !== 'الكل') {
+        if (!role) q += ` AND role='provider'`;
+        p.push(specialty);
+        q += ` AND ((specialties IS NOT NULL AND $${p.length}::text=ANY(specialties))
+               OR (notify_categories IS NOT NULL AND $${p.length}::text=ANY(notify_categories)))`;
+      }
+      target = (await pool.query(q, p)).rows;
+    }
+    for (const u of target) await notify(u.id, title, body, type || 'admin', null);
+    res.json({ ok: true, sent_count: target.length });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// Admin: search users for notification picker (name, email, phone)
+app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const role = req.query.role;
+    const VALID = ['client','provider','admin'];
+    let sql = `SELECT id, name, email, phone, role, city, profile_image, is_active
+               FROM users WHERE is_active=TRUE`;
+    const params = [];
+    if (role && VALID.includes(role)) { params.push(role); sql += ` AND role=$${params.length}`; }
+    if (q) {
+      params.push('%' + q + '%');
+      sql += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`;
+    }
+    sql += ' ORDER BY name ASC LIMIT 50';
+    const r = await pool.query(sql, params);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /admin/users/search:', e); res.json([]); }
+});
+
+app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title
+      FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id
+      LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC
+    `);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM reviews WHERE id=$1', [parseInt(req.params.id)]);
+    if (r.rowCount === 0) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name,
+      COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title
+      FROM reports r
+      LEFT JOIN users u1 ON r.reporter_id=u1.id
+      LEFT JOIN users u2 ON r.reported_id=u2.id
+      LEFT JOIN requests rq ON r.request_id=rq.id
+      ORDER BY r.created_at DESC
+    `);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { action, admin_note } = req.body;
+    const map = { warn: 'warned', ban: 'resolved', ignore: 'ignored', resolve: 'resolved' };
+    const newStatus = map[action];
+    if (!newStatus) return res.status(400).json({ message: 'إجراء غير صحيح' });
+    const r = await pool.query('SELECT reported_id FROM reports WHERE id=$1', [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const reportedId = r.rows[0].reported_id;
+    await pool.query('UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3', [newStatus, admin_note || null, id]);
+    if (reportedId) {
+      if (action === 'ban') {
+        await pool.query("UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'", [reportedId]);
+        await notify(reportedId, '⚠️ تم إيقاف حسابك', `تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null);
+      } else if (action === 'warn') {
+        await notify(reportedId, '⚠️ تحذير', `تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
+      }
+    }
+    res.json({ ok: true, status: newStatus });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) return res.json({ requests: [], users: [] });
+    const p = `%${q}%`;
+    const [reqs, users] = await Promise.all([
+      pool.query(`SELECT r.id, r.title, r.status, u.name as client_name
+                  FROM requests r LEFT JOIN users u ON r.client_id=u.id
+                  WHERE r.title ILIKE $1 OR r.description ILIKE $1 OR r.project_number ILIKE $1
+                  ORDER BY r.created_at DESC LIMIT 20`, [p]),
+      pool.query(`SELECT id, name, email, role FROM users
+                  WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1
+                  ORDER BY created_at DESC LIMIT 20`, [p])
+    ]);
+    res.json({
+      requests: reqs.rows.map(r => ({ ...r, status: normalizeStatus(r.status) })),
+      users: users.rows
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PUBLIC
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/categories', (req, res) => {
+  res.json([
+    'برمجة وتطوير','تصميم','كتابة وترجمة','تسويق رقمي','أعمال',
+    'هندسة وعمارة','صوتيات ومرئيات','استشارات','تدريب','أخرى'
+  ]);
+});
+
+app.get('/api/cities', (req, res) => {
+  res.json([
+    'الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل',
+    'بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل'
+  ]);
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const s = await Promise.all([
+      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed'"),
+      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='provider' AND is_active=true"),
+      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='client'   AND is_active=true"),
+      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open'")
+    ]);
+    res.json({
+      completed_projects: +s[0].rows[0].count || 0, active_providers: +s[1].rows[0].count || 0,
+      active_clients: +s[2].rows[0].count || 0, open_requests: +s[3].rows[0].count || 0
+    });
+  } catch (e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PUSH TOKENS
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/push-token', auth, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
+       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
+      [req.user.id, token, platform || 'expo']);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/push-token', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [req.user.id, req.body.token]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════
+app.listen(port, () => {
+  console.log(`✅ Server running on port ${port}`);
+  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin');
+});
+
+process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
+process.on('unhandledRejection', (r) => console.error('Unhandled:', r));
