@@ -644,12 +644,41 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const r = await pool.query(`
       INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline,
         images, attachments, project_number, status, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW())
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open',NOW())
       RETURNING *
     `, [req.user.id, title, description, category||null, city||null, address||null,
         budget_max||null, deadline||null, images || null,
         attachments ? JSON.stringify(attachments) : null, pn]);
-    res.json(r.rows[0]);
+    const newReq = r.rows[0];
+
+    // Notify matching providers immediately (no admin review)
+    if (newReq.category) {
+      try {
+        const provs = await pool.query(`
+          SELECT id FROM users
+          WHERE role='provider' AND is_active=TRUE
+            AND (
+              (specialties IS NOT NULL AND $1::text = ANY(specialties))
+              OR (notify_categories IS NOT NULL AND $1::text = ANY(notify_categories))
+            )
+        `, [newReq.category]);
+        const cityHint = newReq.city ? ` في ${newReq.city}` : '';
+        for (const p of provs.rows) {
+          await notify(
+            p.id,
+            '🆕 مشروع جديد في تخصصك',
+            `${newReq.title}${cityHint} — اطّلع وقدّم عرضك`,
+            'new_request',
+            newReq.id
+          );
+        }
+        console.log(`📢 Notified ${provs.rows.length} providers about new request #${newReq.id} (${newReq.category})`);
+      } catch (nerr) {
+        console.error('❌ notify providers:', nerr);
+      }
+    }
+
+    res.json(newReq);
   } catch (e) { console.error('❌ create request:', e); res.status(500).json({ message: e.message }); }
 });
 
@@ -1251,33 +1280,6 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
         ? `مشروعك "${row.title}" متاح للعروض الآن`
         : `مشروعك "${row.title}" تم رفضه${reason ? ': ' + reason : ''}`,
       'request', id);
-
-    // On approval: notify matching providers (by specialty or notify_categories)
-    if (action === 'approve' && row.category) {
-      try {
-        const provs = await pool.query(`
-          SELECT id FROM users
-          WHERE role='provider' AND is_active=TRUE
-            AND (
-              (specialties IS NOT NULL AND $1::text = ANY(specialties))
-              OR (notify_categories IS NOT NULL AND $1::text = ANY(notify_categories))
-            )
-        `, [row.category]);
-        const cityHint = row.city ? ` في ${row.city}` : '';
-        for (const p of provs.rows) {
-          await notify(
-            p.id,
-            '🆕 مشروع جديد في تخصصك',
-            `${row.title}${cityHint} — اطّلع وقدّم عرضك`,
-            'new_request',
-            id
-          );
-        }
-        console.log(`📢 Notified ${provs.rows.length} providers about request #${id} (${row.category})`);
-      } catch (nerr) {
-        console.error('❌ notify providers:', nerr);
-      }
-    }
 
     res.json(row);
   } catch (e) { res.status(500).json({ message: e.message }); }
