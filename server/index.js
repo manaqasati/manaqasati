@@ -228,6 +228,18 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
+    // Ensure bids has UNIQUE(request_id, provider_id) — required for ON CONFLICT
+    try {
+      await pool.query(`DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'bids_request_id_provider_id_key'
+          ) THEN
+            ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id);
+          END IF;
+        END$$;`);
+    } catch(e){ console.error('⚠️  bids unique constraint:', e.message); }
     console.log('✅ Database setup complete');
   } catch (error) { console.error('❌ Database setup error:', error); }
 }
@@ -912,7 +924,6 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const requestId = parseInt(req.params.id);
     let { price, days, note } = req.body;
 
-    // Coerce to safe integers
     price = parseInt(Math.round(parseFloat(price)));
     days  = parseInt(days);
 
@@ -923,17 +934,35 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
 
-    const r = await pool.query(`
-      INSERT INTO bids (request_id, provider_id, price, days, note, status, created_at)
-      VALUES ($1,$2,$3,$4,$5,'pending',NOW())
-      ON CONFLICT (request_id, provider_id)
-      DO UPDATE SET price=$3, days=$4, note=$5, created_at=NOW()
-      RETURNING *
-    `, [requestId, req.user.id, price, days, note || null]);
+    // Manual check-and-upsert (avoids dependency on unique constraint)
+    const existing = await pool.query(
+      'SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2',
+      [requestId, req.user.id]
+    );
+
+    let row;
+    if (existing.rows.length) {
+      if (existing.rows[0].status === 'accepted') {
+        return res.status(400).json({ message: 'عرضك مقبول مسبقاً ولا يمكن تعديله' });
+      }
+      const upd = await pool.query(
+        `UPDATE bids SET price=$1, days=$2, note=$3, created_at=NOW()
+         WHERE request_id=$4 AND provider_id=$5 RETURNING *`,
+        [price, days, note || null, requestId, req.user.id]
+      );
+      row = upd.rows[0];
+    } else {
+      const ins = await pool.query(
+        `INSERT INTO bids (request_id, provider_id, price, days, note, status, created_at)
+         VALUES ($1,$2,$3,$4,$5,'pending',NOW()) RETURNING *`,
+        [requestId, req.user.id, price, days, note || null]
+      );
+      row = ins.rows[0];
+    }
 
     await notify(reqRow.rows[0].client_id, '💼 عرض جديد',
       `تلقيت عرضاً جديداً على مشروع "${reqRow.rows[0].title}"`, 'bid', requestId);
-    res.json(r.rows[0]);
+    res.json(row);
   } catch (e) {
     console.error('❌ POST /api/requests/:id/bids:', e.message, '| body:', JSON.stringify(req.body), '| user:', req.user && req.user.id);
     res.status(500).json({ message: e.message, code: e.code });
