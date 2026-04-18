@@ -873,7 +873,7 @@ function loadBids(id){
           +'</div>';
       }
       return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'
-        +'<div onclick="openProviderProfile('+b.provider_id+')" style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:14px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.15s" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">'
+        +'<div onclick="openProviderProfile('+b.provider_id+','+id+')" style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:14px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.15s" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">'
         +'<div style="display:flex;align-items:center;gap:10px">'
         +(b.provider_image?'<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)"><img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover"></div>':'<div style="width:40px;height:40px;border-radius:50%;background:var(--gold);color:var(--p2);font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+((b.provider_name||'م')[0])+'</div>')
         +'<div><div style="font-size:14px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px">'+(b.provider_name||'مزود')+'<svg width="11" height="11" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
@@ -1091,7 +1091,7 @@ setInterval(loadNotifCount,30000);
 var _validPages=['home','requests','notifs','profile','chat'];
 
 // ═══ PROVIDER PROFILE MODAL (for clients to view provider details) ═══
-function openProviderProfile(pid){
+function openProviderProfile(pid, reqId){
   var ol=document.getElementById('pvOverlay');
   if(!ol){
     ol=document.createElement('div');
@@ -1130,7 +1130,7 @@ function openProviderProfile(pid){
       : '<span style="font-size:28px;font-weight:900;color:#fff">'+_esc((p.name||'م')[0])+'</span>';
 
     // Header
-    var hdr='<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);margin:-0 -20px 0;padding:24px 20px;border-radius:0 0 20px 20px;position:relative">'
+    var hdr='<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);margin:0 -20px 0;padding:24px 20px;border-radius:0 0 20px 20px;position:relative">'
       +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'
       +'<div style="display:flex;align-items:center;gap:14px">'
       +'<div style="width:70px;height:70px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:3px solid rgba(255,255,255,.15);overflow:hidden">'+avH+'</div>'
@@ -1140,6 +1140,37 @@ function openProviderProfile(pid){
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+_stars(avg,14)+'<span style="font-size:11px;color:rgba(255,255,255,.6)">('+cnt+' تقييم)</span></div>'
       +(p.city?'<div style="font-size:11px;color:rgba(255,255,255,.5)">📍 '+_esc(p.city)+'</div>':'')
       +'</div></div></div>';
+
+    // Contact action buttons (chat + call + whatsapp)
+    var contactH='';
+    var btns=[];
+    var pname=_esc(p.business_name||p.name||'المزود').replace(/'/g,'');
+    var rtitle=_esc(window._projTitle||'').replace(/'/g,'');
+
+    // Chat button - needs reqId
+    if(reqId){
+      btns.push('<button onclick="closeProviderProfile();openClientChat('+reqId+','+pid+',\''+pname+'\',\''+rtitle+'\')" style="flex:1;padding:12px 10px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">'
+        +'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+        +'محادثة</button>');
+    }
+
+    // Call button - needs phone
+    if(p.phone){
+      btns.push('<a href="tel:'+_esc(p.phone)+'" style="flex:1;padding:12px 10px;background:#16a34a;color:#fff;border-radius:11px;font-size:13px;font-weight:800;text-decoration:none;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">'
+        +'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>'
+        +'اتصال</a>');
+
+      // WhatsApp with phone
+      var phoneClean=String(p.phone).replace(/[^0-9]/g,'');
+      var waNum=phoneClean.startsWith('966')?phoneClean:(phoneClean.startsWith('0')?'966'+phoneClean.slice(1):'966'+phoneClean);
+      var waMsg='مرحباً '+(p.name||'')+'،\nتواصلت معك عبر منصة مناقصة بخصوص مشروع '+(window._projTitle||'')+'.';
+      btns.push('<a href="https://wa.me/'+waNum+'?text='+encodeURIComponent(waMsg)+'" target="_blank" style="flex:1;padding:12px 10px;background:#25d366;color:#fff;border-radius:11px;font-size:13px;font-weight:800;text-decoration:none;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">'
+        +'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>'
+        +'واتساب</a>');
+    }
+    if(btns.length){
+      contactH='<div style="display:flex;gap:8px;margin-top:14px">'+btns.join('')+'</div>';
+    }
 
     // Stats
     var stats='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px">'
@@ -1176,32 +1207,6 @@ function openProviderProfile(pid){
 
     // Social links
     var socH='';
-    var socList=[
-      ['social_whatsapp','واتساب','#25d366','M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01z'],
-      ['social_instagram','انستغرام','#E4405F',null],
-      ['social_twitter','تويتر','#1DA1F2',null],
-      ['social_snap','سناب شات','#FFFC00',null],
-      ['social_tiktok','تيك توك','#000',null]
-    ];
-    var socBtns=[];
-    socList.forEach(function(s){
-      var v=p[s[0]];
-      if(v){
-        var url=v;
-        if(s[0]==='social_whatsapp'){var ph=String(v).replace(/[^0-9]/g,'');url='https://wa.me/'+(ph.startsWith('966')?ph:(ph.startsWith('0')?'966'+ph.slice(1):ph));}
-        else if(!/^https?:\/\//.test(v)){
-          if(s[0]==='social_instagram')url='https://instagram.com/'+v.replace('@','');
-          else if(s[0]==='social_twitter')url='https://twitter.com/'+v.replace('@','');
-          else if(s[0]==='social_snap')url='https://snapchat.com/add/'+v.replace('@','');
-          else if(s[0]==='social_tiktok')url='https://tiktok.com/@'+v.replace('@','');
-        }
-        socBtns.push('<a href="'+_esc(url)+'" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 12px;background:'+s[2]+';color:#fff;border-radius:9px;font-size:11px;font-weight:700;text-decoration:none;font-family:Tajawal,sans-serif">'+s[1]+'</a>');
-      }
-    });
-    if(socBtns.length){
-      socH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">التواصل</div>'
-        +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+socBtns.join('')+'</div></div>';
-    }
 
     // Reviews
     var revH='';
@@ -1218,7 +1223,7 @@ function openProviderProfile(pid){
       revH+='</div>';
     }
 
-    cont.innerHTML=hdr+stats+bioH+specH+portH+socH+revH;
+    cont.innerHTML=hdr+contactH+stats+bioH+specH+portH+socH+revH;
   }).catch(function(){
     cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">تعذر تحميل بيانات المزود</div>';
   });
