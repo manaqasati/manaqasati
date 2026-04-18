@@ -654,14 +654,15 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     // Notify matching providers immediately (no admin review)
     if (newReq.category) {
       try {
+        const cat = String(newReq.category).trim();
         const provs = await pool.query(`
-          SELECT id FROM users
+          SELECT id, name, specialties, notify_categories FROM users
           WHERE role='provider' AND is_active=TRUE
             AND (
-              (specialties IS NOT NULL AND $1::text = ANY(specialties))
-              OR (notify_categories IS NOT NULL AND $1::text = ANY(notify_categories))
+              (specialties IS NOT NULL AND TRIM($1::text) = ANY(ARRAY(SELECT TRIM(UNNEST(specialties)))))
+              OR (notify_categories IS NOT NULL AND TRIM($1::text) = ANY(ARRAY(SELECT TRIM(UNNEST(notify_categories)))))
             )
-        `, [newReq.category]);
+        `, [cat]);
         const cityHint = newReq.city ? ` في ${newReq.city}` : '';
         for (const p of provs.rows) {
           await notify(
@@ -672,10 +673,18 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
             newReq.id
           );
         }
-        console.log(`📢 Notified ${provs.rows.length} providers about new request #${newReq.id} (${newReq.category})`);
+        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
+        if (provs.rows.length === 0) {
+          // Debug: log all providers' specialties so we can see mismatches
+          const all = await pool.query(`SELECT id, name, specialties, notify_categories FROM users WHERE role='provider' AND is_active=TRUE`);
+          console.log(`⚠️  No match for "${cat}". Active providers & their specialties:`,
+            all.rows.map(r => ({ id: r.id, name: r.name, specialties: r.specialties, notify_categories: r.notify_categories })));
+        }
       } catch (nerr) {
         console.error('❌ notify providers:', nerr);
       }
+    } else {
+      console.log(`⚠️  Request #${newReq.id} has no category — no provider notifications sent`);
     }
 
     res.json(newReq);
