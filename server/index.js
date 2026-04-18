@@ -469,7 +469,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(
-      `SELECT id,name,city,bio,badge,specialties,
+      `SELECT id,name,phone,city,bio,badge,specialties,
        experience_years,portfolio_images,profile_image,business_name,
        social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,
        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
