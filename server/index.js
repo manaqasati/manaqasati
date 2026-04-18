@@ -1178,11 +1178,18 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   try {
-    const { user_id, role, title, body, type, specialty } = req.body;
+    const { user_id, user_ids, role, title, body, type, specialty } = req.body;
     if (!title || !body) return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
     const VALID = ['client','provider','admin'];
     let target = [];
-    if (user_id) {
+    if (Array.isArray(user_ids) && user_ids.length) {
+      // Multiple specific users
+      const ids = user_ids.map(Number).filter(Boolean);
+      if (ids.length) {
+        const u = await pool.query('SELECT id FROM users WHERE id = ANY($1::int[]) AND is_active=TRUE', [ids]);
+        target = u.rows;
+      }
+    } else if (user_id) {
       const u = await pool.query('SELECT id FROM users WHERE id=$1', [user_id]); target = u.rows;
     } else {
       let q = 'SELECT id FROM users WHERE is_active=TRUE';
@@ -1199,6 +1206,26 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
     for (const u of target) await notify(u.id, title, body, type || 'admin', null);
     res.json({ ok: true, sent_count: target.length });
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// Admin: search users for notification picker (name, email, phone)
+app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const role = req.query.role;
+    const VALID = ['client','provider','admin'];
+    let sql = `SELECT id, name, email, phone, role, city, profile_image, is_active
+               FROM users WHERE is_active=TRUE`;
+    const params = [];
+    if (role && VALID.includes(role)) { params.push(role); sql += ` AND role=$${params.length}`; }
+    if (q) {
+      params.push('%' + q + '%');
+      sql += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`;
+    }
+    sql += ' ORDER BY name ASC LIMIT 50';
+    const r = await pool.query(sql, params);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /admin/users/search:', e); res.json([]); }
 });
 
 app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
