@@ -464,6 +464,55 @@ app.get('/api/provider/profile', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// Public: view any provider's profile (used by clients)
+app.get('/api/provider/:id/profile', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `SELECT id,name,city,bio,badge,specialties,
+       experience_years,portfolio_images,profile_image,business_name,
+       social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,
+       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
+       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
+       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,
+       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+       FROM users WHERE id=$1 AND role='provider'`,
+      [id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
+    res.json(r.rows[0]);
+  } catch (e) { console.error('❌ /api/provider/:id/profile:', e); res.status(500).json({ message: e.message }); }
+});
+
+// Public: ratings of any provider
+app.get('/api/ratings/provider/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const agg = await pool.query(
+      `SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count
+       FROM reviews WHERE reviewed_id=$1`,
+      [id]
+    );
+    const rv = await pool.query(
+      `SELECT r.id, r.rating, r.comment, r.created_at,
+              u.name as reviewer_name, u.profile_image as reviewer_image,
+              rq.title as request_title
+       FROM reviews r
+       JOIN users u ON u.id=r.reviewer_id
+       LEFT JOIN requests rq ON rq.id=r.request_id
+       WHERE r.reviewed_id=$1
+       ORDER BY r.created_at DESC LIMIT 20`,
+      [id]
+    );
+    res.json({
+      average: parseFloat(agg.rows[0].average) || 0,
+      count: agg.rows[0].count || 0,
+      reviews: rv.rows
+    });
+  } catch (e) { console.error('❌ /api/ratings/provider/:id:', e); res.json({ average: 0, count: 0, reviews: [] }); }
+});
+
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
     // Partial update — only update fields present in req.body
