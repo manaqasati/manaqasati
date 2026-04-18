@@ -999,8 +999,15 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   try {
     const { role } = req.query;
     const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.city,u.badge,u.is_active,u.created_at,
-      (SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count FROM users u`;
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,
+      u.city,u.bio,u.badge,u.is_active,u.experience_years,u.profile_image,u.created_at,
+      (SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,
+      (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,
+      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count
+      FROM users u`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
