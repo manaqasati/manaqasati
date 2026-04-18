@@ -1238,17 +1238,47 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     const newStatus = action === 'approve' ? 'open' : 'rejected';
     const r = await pool.query(
       `UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes)
-       WHERE id=$3 RETURNING id, client_id, title, status`,
+       WHERE id=$3 RETURNING id, client_id, title, category, city, status`,
       [newStatus, reason || null, id]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+
+    // Notify client
     await notify(row.client_id,
       action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك',
       action === 'approve'
         ? `مشروعك "${row.title}" متاح للعروض الآن`
         : `مشروعك "${row.title}" تم رفضه${reason ? ': ' + reason : ''}`,
       'request', id);
+
+    // On approval: notify matching providers (by specialty or notify_categories)
+    if (action === 'approve' && row.category) {
+      try {
+        const provs = await pool.query(`
+          SELECT id FROM users
+          WHERE role='provider' AND is_active=TRUE
+            AND (
+              (specialties IS NOT NULL AND $1::text = ANY(specialties))
+              OR (notify_categories IS NOT NULL AND $1::text = ANY(notify_categories))
+            )
+        `, [row.category]);
+        const cityHint = row.city ? ` في ${row.city}` : '';
+        for (const p of provs.rows) {
+          await notify(
+            p.id,
+            '🆕 مشروع جديد في تخصصك',
+            `${row.title}${cityHint} — اطّلع وقدّم عرضك`,
+            'new_request',
+            id
+          );
+        }
+        console.log(`📢 Notified ${provs.rows.length} providers about request #${id} (${row.category})`);
+      } catch (nerr) {
+        console.error('❌ notify providers:', nerr);
+      }
+    }
+
     res.json(row);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
