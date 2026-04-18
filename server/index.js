@@ -910,8 +910,15 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
-    const { price, days, note } = req.body;
-    if (!price || !days) return res.status(400).json({ message: 'السعر والمدة مطلوبان' });
+    let { price, days, note } = req.body;
+
+    // Coerce to safe integers
+    price = parseInt(Math.round(parseFloat(price)));
+    days  = parseInt(days);
+
+    if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: 'السعر غير صحيح' });
+    if (!Number.isFinite(days)  || days  <= 0) return res.status(400).json({ message: 'المدة غير صحيحة' });
+
     const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
@@ -927,7 +934,10 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     await notify(reqRow.rows[0].client_id, '💼 عرض جديد',
       `تلقيت عرضاً جديداً على مشروع "${reqRow.rows[0].title}"`, 'bid', requestId);
     res.json(r.rows[0]);
-  } catch (e) { console.error('❌ bid:', e); res.status(500).json({ message: e.message }); }
+  } catch (e) {
+    console.error('❌ POST /api/requests/:id/bids:', e.message, '| body:', JSON.stringify(req.body), '| user:', req.user && req.user.id);
+    res.status(500).json({ message: e.message, code: e.code });
+  }
 });
 
 app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
