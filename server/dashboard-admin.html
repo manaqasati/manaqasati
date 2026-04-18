@@ -767,45 +767,55 @@ function _downloadCSV(filename, rows){
 
 function _exportCSV(){
   if(!_allReqs.length){ toast('حمّل الطلبات أولاً','error'); return; }
-  var statusLabels={'open':'مفتوح','in_progress':'جارٍ','completed':'مكتمل','pending_review':'بانتظار المراجعة','rejected':'مرفوض'};
+  var statusLabels={'open':'مفتوح','in_progress':'جارٍ','completed':'مكتمل','pending_review':'بانتظار المراجعة','review':'بانتظار المراجعة','rejected':'مرفوض'};
   var rows=_allReqs.map(function(r){
     return {
       'رقم المشروع': r.project_number||r.id||'',
+      'المعرّف': r.id||'',
       'العنوان': r.title||'',
+      'الوصف': r.description||'',
       'الحالة': statusLabels[r.status]||r.status||'',
       'التصنيف': r.category||'',
       'المدينة': r.city||'',
-      'الميزانية': r.budget_max||'',
+      'العنوان التفصيلي': r.address||'',
+      'الميزانية (ر.س)': r.budget_max||'',
       'عدد العروض': r.bid_count||0,
-      'العميل': r.client_name||'',
-      'المزود': r.provider_name||'',
       'الموعد النهائي': r.deadline?String(r.deadline).slice(0,10):'',
-      'تاريخ الإنشاء': r.created_at?_fdt(r.created_at):'',
-      'الوصف': r.description||''
+      'اسم العميل': r.client_name||'',
+      'اسم المزود': r.provider_name||'',
+      'تاريخ التعيين': r.assigned_at?_fdt(r.assigned_at):'',
+      'تاريخ الإكمال': r.completed_at?_fdt(r.completed_at):'',
+      'تاريخ الإنشاء': r.created_at?_fdt(r.created_at):''
     };
   });
-  _downloadCSV('manaqasa-requests-'+Date.now()+'.csv', rows);
+  _downloadCSV('مناقصة-الطلبات-'+Date.now()+'.csv', rows);
 }
 
 function _exportProviders(){
   if(!_provs.length){ toast('حمّل المزودين أولاً','error'); return; }
   var rows=_provs.map(function(p){
+    var specs=Array.isArray(p.specialties)?p.specialties.join(' · '):'';
+    var notif=Array.isArray(p.notify_categories)?p.notify_categories.join(' · '):'';
     return {
       'المعرّف': p.id||'',
-      'الاسم': p.name||'',
+      'الاسم الكامل': p.name||'',
       'البريد الإلكتروني': p.email||'',
-      'الجوال': p.phone||'',
+      'رقم الجوال': p.phone||'',
       'المدينة': p.city||'',
-      'التصنيف': p.category||'',
+      'التخصصات': specs,
+      'فئات الإشعارات': notif,
+      'سنوات الخبرة': p.experience_years||'',
+      'النبذة': p.bio||'',
       'اللقب': (p.badge&&p.badge!=='none')?p.badge:'',
-      'التقييم': p.avg_rating?parseFloat(p.avg_rating).toFixed(2):'',
+      'متوسط التقييم': p.avg_rating?parseFloat(p.avg_rating).toFixed(2):'0.00',
       'عدد التقييمات': p.review_count||0,
+      'عدد العروض المقدمة': p.bid_count||0,
       'المشاريع المنجزة': p.completed_projects||0,
       'الحالة': p.is_active===false?'موقوف':'نشط',
       'تاريخ التسجيل': p.created_at?_fdt(p.created_at):''
     };
   });
-  _downloadCSV('manaqasa-providers-'+Date.now()+'.csv', rows);
+  _downloadCSV('مناقصة-المزودون-'+Date.now()+'.csv', rows);
 }
 
 function _exportClients(){
@@ -813,17 +823,19 @@ function _exportClients(){
   var rows=_clients.map(function(u){
     return {
       'المعرّف': u.id||'',
-      'الاسم': u.name||'',
+      'الاسم الكامل': u.name||'',
       'البريد الإلكتروني': u.email||'',
-      'الجوال': u.phone||'',
+      'رقم الجوال': u.phone||'',
       'المدينة': u.city||'',
+      'النبذة': u.bio||'',
       'اللقب': (u.badge&&u.badge!=='none')?u.badge:'',
       'عدد الطلبات': u.request_count||0,
+      'الطلبات المكتملة': u.completed_requests||0,
       'الحالة': u.is_active===false?'موقوف':'نشط',
       'تاريخ التسجيل': u.created_at?_fdt(u.created_at):''
     };
   });
-  _downloadCSV('manaqasa-clients-'+Date.now()+'.csv', rows);
+  _downloadCSV('مناقصة-العملاء-'+Date.now()+'.csv', rows);
 }
 
 /* ══ PROVIDERS ══ */
@@ -839,7 +851,7 @@ function _renderProviders(list){
   var pg=_el('page-providers'); if(!pg) return;
   var html='<div class="pghd"><div><div class="pg-t">المزودون</div><div class="pg-s">'+_provs.length+' مزود</div></div>';
   html+='<button onclick="_exportProviders()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">📥 تصدير Excel</button></div>';
-  html+='<div class="card" style="padding:14px"><input type="text" id="prov-search" placeholder="ابحث بالاسم أو البريد..." oninput="_filterProvs()" class="form-input"></div>';
+  html+='<div class="card" style="padding:14px"><input type="text" id="prov-search" placeholder="ابحث بالاسم أو البريد أو الجوال..." oninput="_filterProvs()" class="form-input"></div>';
 
   if(!list.length){
     html+=_empty('لا يوجد مزودون','','users');
@@ -850,6 +862,7 @@ function _renderProviders(list){
       var badge=(p.badge&&p.badge!=='none')?'<span class="user-badge" style="background:var(--gold-l);color:var(--gold-d);font-weight:800">🏆 '+_esc(p.badge)+'</span>':'';
       var nameAttr=_attr(p.name||'');
       var curBadgeAttr=_attr(p.badge||'none');
+      var specs=Array.isArray(p.specialties)?p.specialties:[];
 
       html+='<div class="user-card'+(active?'':' inactive')+'">';
       html+='<div class="user-header"><div class="user-info">';
@@ -860,11 +873,38 @@ function _renderProviders(list){
       html+='<div class="user-details">';
       html+='<div class="user-name">'+_esc(p.name||'—')+badge+(active?'':'<span class="user-badge" style="background:var(--red-l);color:var(--red)">موقوف</span>')+'</div>';
       html+='<div class="user-email">'+_esc(p.email||'—')+'</div>';
+
+      // Phone row with copy + WhatsApp + call
+      if(p.phone){
+        var phoneClean=String(p.phone).replace(/[^0-9]/g,'');
+        var waNum=phoneClean.startsWith('966')?phoneClean:(phoneClean.startsWith('0')?'966'+phoneClean.slice(1):'966'+phoneClean);
+        html+='<div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">';
+        html+='<span style="font-size:12px;font-weight:700;color:var(--p);direction:ltr;display:inline-flex;align-items:center;gap:4px">';
+        html+='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
+        html+=_esc(p.phone)+'</span>';
+        html+='<a href="https://wa.me/'+waNum+'" target="_blank" title="واتساب" style="background:#25d366;color:#fff;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:3px">واتساب</a>';
+        html+='<a href="tel:'+_esc(p.phone)+'" title="اتصال" style="background:var(--green-l);color:var(--green);padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;border:1px solid #bbf7d0">اتصال</a>';
+        html+='<button onclick="_copyText(\''+_esc(p.phone).replace(/'/g,'')+'\',this)" title="نسخ" style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--p-mid);font-family:Tajawal,sans-serif">نسخ</button>';
+        html+='</div>';
+      }
+
       html+='<div class="user-badges">';
       if(p.city) html+='<span class="user-badge">'+_esc(p.city)+'</span>';
       html+='<span class="user-badge" style="background:var(--gold-l);color:#92400e">'+avg+' ★ ('+_n(p.review_count)+')</span>';
       html+='<span class="user-badge" style="background:var(--p-light);color:var(--p)">'+_n(p.completed_projects)+' منجز</span>';
-      html+='</div></div></div>';
+      if(p.experience_years) html+='<span class="user-badge">'+p.experience_years+' سنوات خبرة</span>';
+      html+='</div>';
+
+      // Specialties row
+      if(specs.length){
+        html+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">';
+        specs.forEach(function(s){
+          html+='<span style="background:var(--gold-l);color:var(--gold-d);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;border:1px solid var(--gold-soft)">'+_esc(s)+'</span>';
+        });
+        html+='</div>';
+      }
+
+      html+='</div></div>';
       html+='<div class="user-actions">';
       html+='<button class="btn-action '+(active?'btn-delete':'btn-approve')+'" onclick="_toggleUser('+p.id+',\'provider\')">'+(active?'إيقاف':'تفعيل')+'</button>';
       html+='<button class="btn-action" style="background:var(--gold-l);color:#92400e;border:2px solid var(--gold-soft)" onclick="_badgeModal('+p.id+',&quot;'+nameAttr+'&quot;,&quot;'+curBadgeAttr+'&quot;,&quot;provider&quot;)">منح لقب</button>';
@@ -877,8 +917,25 @@ function _renderProviders(list){
 }
 function _filterProvs(){
   var q=((_el('prov-search')||{}).value||'').toLowerCase();
-  var f=q?_provs.filter(function(p){return(p.name||'').toLowerCase().indexOf(q)>-1||(p.email||'').toLowerCase().indexOf(q)>-1;}):_provs;
+  var f=q?_provs.filter(function(p){
+    return (p.name||'').toLowerCase().indexOf(q)>-1
+        || (p.email||'').toLowerCase().indexOf(q)>-1
+        || (p.phone||'').toLowerCase().indexOf(q)>-1;
+  }):_provs;
   _renderProviders(f);
+}
+
+function _copyText(txt, btn){
+  try{
+    if(navigator.clipboard){ navigator.clipboard.writeText(txt); }
+    else {
+      var ta=document.createElement('textarea'); ta.value=txt;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    var orig=btn.textContent;
+    btn.textContent='✓ تم';
+    setTimeout(function(){ btn.textContent=orig; }, 1200);
+  } catch(e){ toast('تعذر النسخ','error'); }
 }
 
 /* ══ CLIENTS ══ */
@@ -894,7 +951,7 @@ function _renderClients(list){
   var pg=_el('page-clients'); if(!pg) return;
   var html='<div class="pghd"><div><div class="pg-t">العملاء</div><div class="pg-s">'+_clients.length+' عميل</div></div>';
   html+='<button onclick="_exportClients()" class="btn-new" style="background:var(--green-l);color:var(--green);box-shadow:none">📥 تصدير Excel</button></div>';
-  html+='<div class="card" style="padding:14px"><input type="text" id="cli-search" placeholder="ابحث بالاسم أو البريد..." oninput="_filterClients()" class="form-input"></div>';
+  html+='<div class="card" style="padding:14px"><input type="text" id="cli-search" placeholder="ابحث بالاسم أو البريد أو الجوال..." oninput="_filterClients()" class="form-input"></div>';
 
   if(!list.length){
     html+=_empty('لا يوجد عملاء','','users');
@@ -911,9 +968,25 @@ function _renderClients(list){
       html+='<div class="user-details">';
       html+='<div class="user-name">'+_esc(u.name||'—')+badge+(active?'':'<span class="user-badge" style="background:var(--red-l);color:var(--red)">موقوف</span>')+'</div>';
       html+='<div class="user-email">'+_esc(u.email||'—')+'</div>';
+
+      // Phone row
+      if(u.phone){
+        var phoneClean=String(u.phone).replace(/[^0-9]/g,'');
+        var waNum=phoneClean.startsWith('966')?phoneClean:(phoneClean.startsWith('0')?'966'+phoneClean.slice(1):'966'+phoneClean);
+        html+='<div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">';
+        html+='<span style="font-size:12px;font-weight:700;color:var(--p);direction:ltr;display:inline-flex;align-items:center;gap:4px">';
+        html+='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
+        html+=_esc(u.phone)+'</span>';
+        html+='<a href="https://wa.me/'+waNum+'" target="_blank" title="واتساب" style="background:#25d366;color:#fff;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:3px">واتساب</a>';
+        html+='<a href="tel:'+_esc(u.phone)+'" title="اتصال" style="background:var(--green-l);color:var(--green);padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;border:1px solid #bbf7d0">اتصال</a>';
+        html+='<button onclick="_copyText(\''+_esc(u.phone).replace(/'/g,'')+'\',this)" title="نسخ" style="background:var(--p-light);color:var(--p);padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--p-mid);font-family:Tajawal,sans-serif">نسخ</button>';
+        html+='</div>';
+      }
+
       html+='<div class="user-badges">';
       if(u.city) html+='<span class="user-badge">'+_esc(u.city)+'</span>';
       html+='<span class="user-badge" style="background:var(--p-light);color:var(--p)">'+_n(u.request_count)+' طلب</span>';
+      if(u.completed_requests) html+='<span class="user-badge" style="background:var(--green-l);color:var(--green)">'+_n(u.completed_requests)+' مكتمل</span>';
       html+='</div></div></div>';
       html+='<div class="user-actions">';
       html+='<button class="btn-action '+(active?'btn-delete':'btn-approve')+'" onclick="_toggleUser('+u.id+',\'client\')">'+(active?'إيقاف':'تفعيل')+'</button>';
@@ -927,7 +1000,11 @@ function _renderClients(list){
 }
 function _filterClients(){
   var q=((_el('cli-search')||{}).value||'').toLowerCase();
-  var f=q?_clients.filter(function(p){return(p.name||'').toLowerCase().indexOf(q)>-1||(p.email||'').toLowerCase().indexOf(q)>-1;}):_clients;
+  var f=q?_clients.filter(function(p){
+    return (p.name||'').toLowerCase().indexOf(q)>-1
+        || (p.email||'').toLowerCase().indexOf(q)>-1
+        || (p.phone||'').toLowerCase().indexOf(q)>-1;
+  }):_clients;
   _renderClients(f);
 }
 
