@@ -610,9 +610,137 @@ async function _viewProj(id){
   body+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div>';
   body+='</div>';
   _el('mBd').innerHTML=body;
-  var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إغلاق</button>';
-  foot+='<button onclick="closeModal();_openBidModal('+r.id+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
+
+  // Build footer with contact + bid buttons
+  var cname=_esc(r.client_name||'العميل').replace(/'/g,'');
+  var ctitle=_esc(r.title||'').replace(/'/g,'');
+  var foot='';
+
+  // Row 1: primary action (تقديم عرض) + محادثة
+  foot+='<div style="display:grid;grid-template-columns:1fr'+(r.client_id?' 1fr':'')+';gap:8px;margin-bottom:8px;width:100%">';
+  foot+='<button onclick="closeModal();_openBidModal('+r.id+')" style="padding:12px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
+  if(r.client_id){
+    foot+='<button onclick="closeModal();openChatRoom('+r.id+','+r.client_id+',\''+cname+'\',\''+ctitle+'\')" style="padding:12px;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">';
+    foot+='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
+    foot+='محادثة</button>';
+  }
+  foot+='</div>';
+
+  // Row 2: WhatsApp + Call (if phone available) + Report + Close
+  if(r.client_phone){
+    var phoneClean=String(r.client_phone).replace(/[^0-9]/g,'');
+    var waNum=phoneClean.startsWith('966')?phoneClean:(phoneClean.startsWith('0')?'966'+phoneClean.slice(1):'966'+phoneClean);
+    var waText='مرحباً '+(r.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(r.title||'')+'\nأنا '+(_me.name||'المزود')+'.';
+    foot+='<div style="display:grid;grid-template-columns:'+(r.client_id?'1fr 1fr 1fr 1fr':'1fr 1fr 1fr')+';gap:8px;width:100%;margin-bottom:8px">';
+    foot+='<a href="https://wa.me/'+waNum+'?text='+encodeURIComponent(waText)+'" target="_blank" style="padding:11px;background:#25d366;color:#fff;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">';
+    foot+='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm.029 18.88a9.928 9.928 0 01-4.744-1.207l-3.4 1.093 1.115-3.306A9.908 9.908 0 012.1 12.03C2.1 6.55 6.548 2.1 12.029 2.1c5.48 0 9.928 4.45 9.928 9.93 0 5.48-4.448 9.85-9.928 9.85z"/></svg>';
+    foot+='واتساب</a>';
+    foot+='<a href="tel:'+_esc(r.client_phone)+'" style="padding:11px;background:var(--green-l);color:var(--green);border:1px solid #bbf7d0;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">';
+    foot+='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
+    foot+='اتصال</a>';
+    if(r.client_id){
+      foot+='<button onclick="closeModal();openReportModal('+r.client_id+',\''+cname+'\','+r.id+')" style="padding:11px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">';
+      foot+='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+      foot+='إبلاغ</button>';
+    }
+    foot+='<button onclick="closeModal()" style="padding:11px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إغلاق</button>';
+    foot+='</div>';
+  } else {
+    foot+='<div style="display:grid;grid-template-columns:'+(r.client_id?'1fr 1fr':'1fr')+';gap:8px;width:100%">';
+    if(r.client_id){
+      foot+='<button onclick="closeModal();openReportModal('+r.client_id+',\''+cname+'\','+r.id+')" style="padding:11px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">';
+      foot+='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+      foot+='إبلاغ</button>';
+    }
+    foot+='<button onclick="closeModal()" style="padding:11px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إغلاق</button>';
+    foot+='</div>';
+  }
+
+  _el('mFt').style.cssText='padding:12px 20px;border-top:1px solid var(--border);display:block;background:var(--bg)';
   _el('mFt').innerHTML=foot;
+}
+
+// ═══ REPORT MODAL ═══
+var _rptTarget={id:0,name:'',reqId:null};
+var _RPT_REASONS=['سلوك غير لائق','احتيال أو نصب','عدم الاستجابة','معلومات مضللة','محتوى مسيء','بيانات مزيفة','أخرى'];
+
+function openReportModal(reportedId,reportedName,requestId){
+  var old=document.getElementById('rpt-modal-wrap');if(old)old.remove();
+  _rptTarget={id:reportedId,name:reportedName||'المستخدم',reqId:requestId||null};
+  var reasonsHtml=_RPT_REASONS.map(function(rs){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px;background:var(--white);transition:.15s">'
+      +'<input type="radio" name="rpt-radio" value="'+_esc(rs)+'" style="width:16px;height:16px;accent-color:var(--red);flex-shrink:0">'
+      +'<span style="font-size:13px;font-weight:600;color:var(--text)">'+_esc(rs)+'</span>'
+      +'</label>';
+  }).join('');
+  var wrap=document.createElement('div');
+  wrap.id='rpt-modal-wrap';
+  wrap.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)';
+  wrap.innerHTML=''
+    +'<div style="background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">'
+    +'<div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:12px auto"></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border)">'
+    +'<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:var(--red-l);display:flex;align-items:center;justify-content:center"><svg width="15" height="15" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>'
+    +'<span style="font-size:14px;font-weight:800;color:var(--text)">إبلاغ عن: '+_esc(reportedName||'المستخدم')+'</span></div>'
+    +'<button onclick="_closeRptModal()" style="width:28px;height:28px;border-radius:8px;background:var(--bg);border:1px solid var(--border);cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;font-family:Tajawal,sans-serif;line-height:1">×</button>'
+    +'</div>'
+    +'<div style="padding:18px 20px">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">سبب البلاغ *</div>'
+    +'<div id="rpt-reasons-wrap">'+reasonsHtml+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;margin-top:12px">تفاصيل إضافية <span style="font-weight:400;color:var(--hint)">(اختياري)</span></div>'
+    +'<textarea id="rpt-details-inp" placeholder="اشرح المشكلة بالتفصيل..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;min-height:80px;resize:vertical;line-height:1.7;box-sizing:border-box"></textarea>'
+    +'</div>'
+    +'<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg)">'
+    +'<button onclick="_closeRptModal()" style="padding:11px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--white);color:var(--muted);border:1px solid var(--border)">إلغاء</button>'
+    +'<button id="rpt-send-btn" onclick="_submitReport()" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;background:var(--red);color:#fff;border:none">إرسال البلاغ</button>'
+    +'</div>'
+    +'</div>';
+  wrap.addEventListener('click',function(e){if(e.target===wrap)_closeRptModal();});
+  document.body.appendChild(wrap);
+  document.body.style.overflow='hidden';
+  // Highlight selected radio
+  wrap.querySelectorAll('input[name="rpt-radio"]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      wrap.querySelectorAll('label').forEach(function(l){l.style.borderColor='var(--border)';l.style.background='var(--white)';});
+      var lbl=inp.closest('label');
+      if(lbl){lbl.style.borderColor='var(--red)';lbl.style.background='var(--red-l)';}
+    });
+  });
+}
+
+function _closeRptModal(){
+  var w=document.getElementById('rpt-modal-wrap');
+  if(w)w.remove();
+  document.body.style.overflow='';
+}
+
+async function _submitReport(){
+  var sel=document.querySelector('#rpt-reasons-wrap input[name="rpt-radio"]:checked');
+  if(!sel){
+    document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){l.style.borderColor='#fca5a5';});
+    setTimeout(function(){
+      document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){l.style.borderColor='var(--border)';});
+    },1200);
+    return;
+  }
+  var btn=_el('rpt-send-btn');
+  if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  var details=((document.getElementById('rpt-details-inp')||{}).value||'').trim();
+  var payload={reported_id:_rptTarget.id,type:'user',reason:sel.value};
+  if(details)payload.details=details;
+  if(_rptTarget.reqId)payload.request_id=_rptTarget.reqId;
+  try{
+    var r=await _api('/api/reports',{method:'POST',body:JSON.stringify(payload)});
+    _closeRptModal();
+    if(r&&r.ok){
+      showToast('تم إرسال البلاغ — ستتم المراجعة خلال 24 ساعة','success');
+    }else{
+      showToast((r&&r.message)||'حدث خطأ','error');
+    }
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}
+    showToast('تعذر الاتصال','error');
+  }
 }
 
 function openImgFull(src){
