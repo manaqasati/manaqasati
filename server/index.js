@@ -602,6 +602,37 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
   } catch (e) { console.error('❌ /provider/conversations:', e); res.json([]); }
 });
 
+// Client's conversations (grouped by request + counterpart provider)
+app.get('/api/client/conversations', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      WITH conv AS (
+        SELECT DISTINCT
+          m.request_id,
+          CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as provider_id
+        FROM messages m
+        JOIN requests r ON r.id = m.request_id
+        WHERE (m.sender_id = $1 OR m.receiver_id = $1) AND r.client_id = $1
+      )
+      SELECT
+        c.request_id,
+        c.provider_id,
+        r.title as request_title,
+        u.name as provider_name,
+        u.profile_image as provider_image,
+        u.phone as provider_phone,
+        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+      FROM conv c
+      JOIN requests r ON r.id = c.request_id
+      JOIN users u ON u.id = c.provider_id
+      ORDER BY last_time DESC NULLS LAST
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /client/conversations:', e); res.json([]); }
+});
+
 // Add image to provider portfolio (max 6)
 app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
   try {
@@ -1492,6 +1523,88 @@ app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
     const r = await pool.query(sql, params);
     res.json(r.rows);
   } catch (e) { console.error('❌ /admin/users/search:', e); res.json([]); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EMAIL DIAGNOSTICS (for admin UI - troubleshooting)
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/admin/email-status', auth, adminOnly, async (req, res) => {
+  const providersWithEmail = await pool.query(
+    `SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email != ''`
+  );
+  const providersTotal = await pool.query(
+    `SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE`
+  );
+  res.json({
+    resend_key_set: !!RESEND_KEY,
+    resend_key_preview: RESEND_KEY ? (RESEND_KEY.slice(0,6) + '…' + RESEND_KEY.slice(-4)) : null,
+    from_email: FROM_EMAIL,
+    from_name: FROM_NAME,
+    site_url: SITE_URL,
+    providers_active: providersTotal.rows[0].cnt,
+    providers_with_email: providersWithEmail.rows[0].cnt
+  });
+});
+
+// Test email sending with full Resend response exposed
+app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ ok: false, error: 'البريد الإلكتروني مطلوب' });
+  if (!RESEND_KEY) {
+    return res.json({
+      ok: false,
+      stage: 'config',
+      error: 'RESEND_KEY غير موجود في متغيرات البيئة',
+      hint: 'أضف RESEND_KEY في Railway → Variables'
+    });
+  }
+  try {
+    const payload = {
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to: [to],
+      subject: '🧪 اختبار الإيميل — مناقصة',
+      html: emailTpl(
+        'اختبار الإيميل يعمل ✓',
+        '<p>هذا إيميل تجريبي من منصة مناقصة للتأكد من ربط الإيميل بشكل صحيح.</p><p>إذا وصلك هذا الإيميل، فإن نظام الإشعارات بالإيميل يعمل بنجاح.</p>',
+        'فتح المنصة',
+        SITE_URL
+      )
+    };
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();
+    let parsed = null;
+    try { parsed = JSON.parse(text); } catch (e) {}
+    if (r.ok) {
+      return res.json({
+        ok: true,
+        stage: 'sent',
+        message: `تم إرسال الإيميل التجريبي بنجاح إلى ${to}`,
+        resend_id: parsed && parsed.id,
+        from_used: payload.from
+      });
+    }
+    return res.json({
+      ok: false,
+      stage: 'resend_api',
+      error: (parsed && (parsed.message || parsed.name)) || text || 'Unknown Resend error',
+      status_code: r.status,
+      raw: parsed || text,
+      from_used: payload.from,
+      hint: r.status === 403
+        ? 'الدومين غير موثّق (verified) في Resend. اذهب لـ resend.com/domains وأضف manaqasa.com مع DNS records، أو استخدم from_email بدومين @resend.dev مؤقتاً.'
+        : r.status === 422
+        ? 'مشكلة في صيغة البريد أو في الدومين. تحقق من FROM_EMAIL.'
+        : r.status === 429
+        ? 'تجاوزت الحد الأقصى للإرسال (rate limit). انتظر قليلاً.'
+        : null
+    });
+  } catch (e) {
+    return res.json({ ok: false, stage: 'network', error: e.message });
+  }
 });
 
 app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
