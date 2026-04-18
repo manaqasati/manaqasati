@@ -349,6 +349,118 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// PROVIDER-SPECIFIC ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+
+// Provider's own bids
+app.get('/api/provider/bids', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at,
+        r.title as request_title, r.category, r.city, r.client_id,
+        u.name as client_name, u.phone as client_phone
+      FROM bids b
+      JOIN requests r ON b.request_id = r.id
+      JOIN users u ON r.client_id = u.id
+      WHERE b.provider_id = $1
+      ORDER BY b.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/bids:', e); res.json([]); }
+});
+
+// Provider's accepted/in-progress/completed projects
+app.get('/api/provider/projects', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max,
+        r.image_url, r.images, r.project_number, r.status, r.assigned_at,
+        r.completed_at, r.client_id,
+        u.name as client_name, u.phone as client_phone,
+        b.price, b.days
+      FROM requests r
+      JOIN users u ON r.client_id = u.id
+      LEFT JOIN bids b ON b.request_id = r.id AND b.provider_id = $1 AND b.status = 'accepted'
+      WHERE r.assigned_provider_id = $1
+        AND r.status IN ('in_progress','completed')
+      ORDER BY r.assigned_at DESC NULLS LAST
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/projects:', e); res.json([]); }
+});
+
+// Provider's reviews (reviews about them)
+app.get('/api/provider/reviews', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id,
+        u.name as reviewer_name, u.profile_image as reviewer_image
+      FROM reviews rv
+      JOIN users u ON rv.reviewer_id = u.id
+      WHERE rv.reviewed_id = $1
+      ORDER BY rv.created_at DESC
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/reviews:', e); res.json([]); }
+});
+
+// Provider's conversations (grouped by request + counterpart)
+app.get('/api/provider/conversations', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      WITH conv AS (
+        SELECT DISTINCT
+          request_id,
+          CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as client_id
+        FROM messages
+        WHERE sender_id = $1 OR receiver_id = $1
+      )
+      SELECT
+        c.request_id,
+        c.client_id,
+        r.title as request_title,
+        u.name as client_name,
+        u.profile_image as client_image,
+        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+      FROM conv c
+      JOIN requests r ON r.id = c.request_id
+      JOIN users u ON u.id = c.client_id
+      ORDER BY last_time DESC NULLS LAST
+    `, [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { console.error('❌ /provider/conversations:', e); res.json([]); }
+});
+
+// Add image to provider portfolio (max 6)
+app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'image required' });
+    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = cur.rows[0]?.portfolio_images || [];
+    if (imgs.length >= 6) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
+    imgs.push(image);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch (e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: e.message }); }
+});
+
+// Remove image from provider portfolio by index
+app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
+  try {
+    const idx = parseInt(req.params.i);
+    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
+    const imgs = cur.rows[0]?.portfolio_images || [];
+    if (idx < 0 || idx >= imgs.length) return res.status(400).json({ message: 'index out of range' });
+    imgs.splice(idx, 1);
+    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
+    res.json({ ok: true, count: imgs.length });
+  } catch (e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
 // REQUESTS
 // ═══════════════════════════════════════════════════════════════
 
