@@ -228,7 +228,6 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
-    // Ensure bids has UNIQUE(request_id, provider_id) — required for ON CONFLICT
     try {
       await pool.query(`DO $$
         BEGIN
@@ -240,6 +239,18 @@ async function setupDatabase() {
           END IF;
         END$$;`);
     } catch(e){ console.error('⚠️  bids unique constraint:', e.message); }
+    // FIX: Also ensure reviews has UNIQUE(request_id, reviewer_id) constraint
+    try {
+      await pool.query(`DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'reviews_request_id_reviewer_id_key'
+          ) THEN
+            ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id);
+          END IF;
+        END$$;`);
+    } catch(e){ console.error('⚠️  reviews unique constraint:', e.message); }
     console.log('✅ Database setup complete');
   } catch (error) { console.error('❌ Database setup error:', error); }
 }
@@ -337,7 +348,6 @@ app.get('/api/profile', auth, async (req, res) => {
 
 app.put('/api/profile', auth, async (req, res) => {
   try {
-    // Partial update — only update fields present in req.body
     const allowed = {
       name: 'name', phone: 'phone', city: 'city', bio: 'bio',
       specialties: 'specialties', notify_categories: 'notify_categories',
@@ -400,8 +410,6 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    // Partial update — only update fields present in req.body
-    // Prevents nullification when uploading avatar only, or saving partial changes
     const allowed = {
       name: 'name',
       phone: 'phone',
@@ -464,7 +472,6 @@ app.get('/api/provider/profile', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// Public: view any provider's profile (used by clients)
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -485,7 +492,6 @@ app.get('/api/provider/:id/profile', async (req, res) => {
   } catch (e) { console.error('❌ /api/provider/:id/profile:', e); res.status(500).json({ message: e.message }); }
 });
 
-// Public: ratings of any provider
 app.get('/api/ratings/provider/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -515,8 +521,6 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    // Partial update — only update fields present in req.body
-    // This prevents accidental nullification when uploading avatar only, or saving profile without portfolio_images
     const allowed = {
       name: 'name',
       phone: 'phone',
@@ -541,7 +545,6 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         const col = allowed[key];
         let val = req.body[key];
-        // Special: name can't be set to empty (keep existing if empty string)
         if (key === 'name') {
           if (val && String(val).trim()) {
             sets.push(`${col}=$${idx}`);
@@ -550,12 +553,10 @@ app.put('/api/provider/profile', auth, async (req, res) => {
           }
           continue;
         }
-        // experience_years — cast to int or null
         if (key === 'experience_years') {
           val = (val === '' || val === null || val === undefined) ? null : parseInt(val);
           if (isNaN(val)) val = null;
         }
-        // Empty strings → null for everything else
         if (val === '') val = null;
         sets.push(`${col}=$${idx}`);
         params.push(val);
@@ -563,7 +564,6 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       }
     }
     if (!sets.length) {
-      // Nothing to update — return current profile
       const cur = await pool.query(
         `SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter FROM users WHERE id=$1`,
         [req.user.id]
@@ -582,7 +582,6 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // PROVIDER-SPECIFIC ENDPOINTS
 // ═══════════════════════════════════════════════════════════════
 
-// Provider's own bids
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -599,7 +598,6 @@ app.get('/api/provider/bids', auth, async (req, res) => {
   } catch (e) { console.error('❌ /provider/bids:', e); res.json([]); }
 });
 
-// Provider's accepted/in-progress/completed projects
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -619,7 +617,6 @@ app.get('/api/provider/projects', auth, async (req, res) => {
   } catch (e) { console.error('❌ /provider/projects:', e); res.json([]); }
 });
 
-// Provider's reviews (reviews about them)
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -634,7 +631,6 @@ app.get('/api/provider/reviews', auth, async (req, res) => {
   } catch (e) { console.error('❌ /provider/reviews:', e); res.json([]); }
 });
 
-// Provider's conversations (grouped by request + counterpart)
 app.get('/api/provider/conversations', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -663,7 +659,6 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
   } catch (e) { console.error('❌ /provider/conversations:', e); res.json([]); }
 });
 
-// Client's conversations (grouped by request + counterpart provider)
 app.get('/api/client/conversations', auth, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -694,7 +689,6 @@ app.get('/api/client/conversations', auth, async (req, res) => {
   } catch (e) { console.error('❌ /client/conversations:', e); res.json([]); }
 });
 
-// Add image to provider portfolio (max 6)
 app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
   try {
     const { image } = req.body;
@@ -708,7 +702,6 @@ app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
   } catch (e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: e.message }); }
 });
 
-// Remove image from provider portfolio by index
 app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
   try {
     const idx = parseInt(req.params.i);
@@ -789,7 +782,6 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         attachments ? JSON.stringify(attachments) : null, pn]);
     const newReq = r.rows[0];
 
-    // Notify matching providers immediately (no admin review)
     if (newReq.category) {
       try {
         const cat = String(newReq.category).trim();
@@ -805,7 +797,6 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         const title = '🆕 مشروع جديد في تخصصك';
         const bodyText = `${newReq.title}${cityHint} — اطّلع وقدّم عرضك`;
 
-        // Email body (richer than in-app notification)
         const emailBody = `
           <p>وصلنا طلب مشروع جديد ضمن تخصصاتك على منصة مناقصة.</p>
           <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
@@ -827,7 +818,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
               p.email,
               title,
               emailTpl(title, emailBody, 'فتح المشروع الآن', SITE_URL + '/dashboard-provider.html')
-            ).catch(() => {}); // non-blocking
+            ).catch(() => {});
           }
         }
         console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers (in-app + email)`);
@@ -949,6 +940,7 @@ app.get('/api/bids/my', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ✅ FIX #2: Returns provider_phone + WhatsApp. Accepted bids shown first.
 app.get('/api/requests/:id/bids', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -957,15 +949,24 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ message: 'ليست طلبك' });
     const r = await pool.query(`
-      SELECT b.*, u.name as provider_name, u.phone as provider_phone, u.city as provider_city,
-      u.badge as provider_badge, u.profile_image as provider_image,
-      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
-      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
+      SELECT b.*,
+        u.name as provider_name,
+        u.phone as provider_phone,
+        u.city as provider_city,
+        u.badge as provider_badge,
+        u.profile_image as provider_image,
+        u.social_whatsapp as provider_whatsapp,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
       FROM bids b JOIN users u ON b.provider_id=u.id
-      WHERE b.request_id=$1 ORDER BY b.created_at DESC
+      WHERE b.request_id=$1
+      ORDER BY (b.status='accepted') DESC, b.created_at DESC
     `, [id]);
     res.json(r.rows);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  } catch (e) {
+    console.error('❌ GET /api/requests/:id/bids:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
@@ -983,7 +984,6 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
 
-    // Manual check-and-upsert (avoids dependency on unique constraint)
     const existing = await pool.query(
       'SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2',
       [requestId, req.user.id]
@@ -1154,23 +1154,51 @@ app.get('/api/reviews/user/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ✅ FIX #1: Replaced ON CONFLICT with manual check-and-upsert
+// (avoids "no unique or exclusion constraint matching the ON CONFLICT specification" error)
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment } = req.body;
-    if (!request_id || !reviewed_id || !rating) return res.status(400).json({ message: 'البيانات ناقصة' });
-    if (rating < 1 || rating > 5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
+    if (!request_id || !reviewed_id || !rating)
+      return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (rating < 1 || rating > 5)
+      return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
+
     const reqRow = await pool.query('SELECT status FROM requests WHERE id=$1', [request_id]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
-    if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
-    const r = await pool.query(`
-      INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, created_at)
-      VALUES ($1,$2,$3,$4,$5,NOW())
-      ON CONFLICT (request_id, reviewer_id) DO UPDATE SET rating=$4, comment=$5
-      RETURNING *
-    `, [request_id, req.user.id, reviewed_id, rating, comment || null]);
+    if (!reqRow.rows.length)
+      return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (reqRow.rows[0].status !== 'completed')
+      return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
+
+    // Manual check-and-upsert (avoids ON CONFLICT dependency on unique constraint)
+    const existing = await pool.query(
+      'SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2',
+      [request_id, req.user.id]
+    );
+
+    let row;
+    if (existing.rows.length) {
+      const upd = await pool.query(
+        `UPDATE reviews SET rating=$1, comment=$2, created_at=NOW()
+         WHERE request_id=$3 AND reviewer_id=$4 RETURNING *`,
+        [rating, comment || null, request_id, req.user.id]
+      );
+      row = upd.rows[0];
+    } else {
+      const ins = await pool.query(
+        `INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, created_at)
+         VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING *`,
+        [request_id, req.user.id, reviewed_id, rating, comment || null]
+      );
+      row = ins.rows[0];
+    }
+
     await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على تقييم ${rating} نجوم`, 'review', request_id);
-    res.json(r.rows[0]);
-  } catch (e) { res.status(500).json({ message: e.message }); }
+    res.json(row);
+  } catch (e) {
+    console.error('❌ POST /api/reviews:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1465,7 +1493,6 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
 
-    // Notify client
     await notify(row.client_id,
       action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك',
       action === 'approve'
@@ -1562,7 +1589,6 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       target = (await pool.query(q, p)).rows;
     }
 
-    // Build email HTML once
     const htmlBody = `
       <div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>
       <div style="background:#f4f7fb;border-right:3px solid #16213E;border-radius:8px;padding:12px 16px;margin-top:18px">
@@ -1593,7 +1619,6 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch (e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: e.message }); }
 });
 
-// Admin: search users for notification picker (name, email, phone)
 app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -1613,9 +1638,6 @@ app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
   } catch (e) { console.error('❌ /admin/users/search:', e); res.json([]); }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// EMAIL DIAGNOSTICS (for admin UI - troubleshooting)
-// ═══════════════════════════════════════════════════════════════
 app.get('/api/admin/email-status', auth, adminOnly, async (req, res) => {
   const providersWithEmail = await pool.query(
     `SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email != ''`
@@ -1634,7 +1656,6 @@ app.get('/api/admin/email-status', auth, adminOnly, async (req, res) => {
   });
 });
 
-// Test email sending with full Resend response exposed
 app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ ok: false, error: 'البريد الإلكتروني مطلوب' });
