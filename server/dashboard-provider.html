@@ -1148,15 +1148,11 @@ async function loadProfile(){
     +'<button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
   pg.appendChild(pwCard);
 
-  var saveWrap=document.createElement('div');
-  saveWrap.style.cssText='padding:4px 0 14px';
-  saveWrap.innerHTML='<button id="save-btn" onclick="_saveProfile()" style="width:100%;padding:14px;background:var(--p3);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">حفظ جميع التغييرات</button>';
-  pg.appendChild(saveWrap);
-
   // 🆕 DANGER ZONE - Account Deletion (Apple Guideline 5.1.1)
+  // Placed right after password card, before final save button
   var dangerZone=document.createElement('div');
   dangerZone.className='danger-zone';
-  dangerZone.style.marginTop='10px';
+  dangerZone.style.marginTop='4px';
   dangerZone.innerHTML=
     '<div class="danger-zone-title">'+
       '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+
@@ -1170,6 +1166,11 @@ async function loadProfile(){
       'حذف الحساب نهائياً'+
     '</button>';
   pg.appendChild(dangerZone);
+
+  var saveWrap=document.createElement('div');
+  saveWrap.style.cssText='padding:14px 0 20px';
+  saveWrap.innerHTML='<button id="save-btn" onclick="_saveProfile()" style="width:100%;padding:14px;background:var(--p3);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">حفظ جميع التغييرات</button>';
+  pg.appendChild(saveWrap);
 
   _lb.done();
 }
