@@ -239,7 +239,6 @@ async function setupDatabase() {
           END IF;
         END$$;`);
     } catch(e){ console.error('⚠️  bids unique constraint:', e.message); }
-    // FIX: Also ensure reviews has UNIQUE(request_id, reviewer_id) constraint
     try {
       await pool.query(`DO $$
         BEGIN
@@ -331,6 +330,134 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🆕 ACCOUNT DELETION (Apple Guideline 5.1.1(v))
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/account/deletion-preview', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const role = req.user.role;
+    const stats = {};
+
+    if (role === 'client') {
+      const r1 = await pool.query('SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1', [userId]);
+      stats.projects = r1.rows[0].c;
+    }
+    if (role === 'provider') {
+      const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]);
+      stats.bids = r2.rows[0].c;
+      const r3 = await pool.query(
+        `SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`,
+        [userId]
+      );
+      stats.active_projects = r3.rows[0].c;
+    }
+    const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
+    stats.messages = r4.rows[0].c;
+    const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+    stats.reviews = r5.rows[0].c;
+    const r6 = await pool.query('SELECT COUNT(*)::int as c FROM notifications WHERE user_id=$1', [userId]);
+    stats.notifications = r6.rows[0].c;
+
+    res.json({ ok: true, stats, warning: 'سيتم حذف جميع بياناتك نهائياً ولا يمكن استعادتها.' });
+  } catch (e) {
+    console.error('❌ deletion-preview:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.delete('/api/account/delete', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const role = req.user.role;
+    const { confirmation } = req.body;
+
+    if (confirmation !== 'حذف' && confirmation !== 'DELETE') {
+      return res.status(400).json({
+        message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد',
+        code: 'CONFIRMATION_REQUIRED'
+      });
+    }
+
+    if (role === 'admin') {
+      return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
+    }
+
+    if (role === 'provider') {
+      const active = await pool.query(
+        `SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`,
+        [userId]
+      );
+      if (active.rows[0].c > 0) {
+        return res.status(400).json({
+          message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أو إلغاء التعيين أولاً.`,
+          code: 'ACTIVE_PROJECTS'
+        });
+      }
+    }
+
+    const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
+    if (!userInfo.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
+    const userName = userInfo.rows[0].name;
+    const userEmail = userInfo.rows[0].email;
+
+    await pool.query('BEGIN');
+    try {
+      if (role === 'provider') {
+        await pool.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
+      }
+      await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+      await pool.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
+      await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
+      await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
+      try { await pool.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]); } catch(e){}
+      try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]); } catch(e){}
+
+      if (role === 'client') {
+        const projs = await pool.query('SELECT id FROM requests WHERE client_id=$1', [userId]);
+        for (const p of projs.rows) {
+          await pool.query('DELETE FROM bids WHERE request_id=$1', [p.id]);
+        }
+        await pool.query('DELETE FROM requests WHERE client_id=$1', [userId]);
+      }
+      if (role === 'provider') {
+        await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
+      }
+
+      const del = await pool.query('DELETE FROM users WHERE id=$1', [userId]);
+      if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
+
+      await pool.query('COMMIT');
+
+      console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
+
+      if (userEmail && RESEND_KEY) {
+        const html = emailTpl(
+          'تم حذف حسابك',
+          `<p>عزيزي ${userName}،</p>
+           <p>تم حذف حسابك من منصة مناقصة بنجاح بناءً على طلبك.</p>
+           <p>تم حذف جميع بياناتك ومشاريعك ورسائلك نهائياً.</p>
+           <p>إذا كنت لم تقم بهذا الإجراء، يرجى التواصل مع الدعم فوراً عبر:
+              <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
+           <p>شكراً لاستخدامك منصة مناقصة، ونتمنى لك التوفيق.</p>`,
+          null, null
+        );
+        sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', html).catch(() => {});
+      }
+
+      res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
+    } catch (e) {
+      await pool.query('ROLLBACK');
+      console.error('❌ account delete transaction:', e);
+      throw e;
+    }
+  } catch (e) {
+    console.error('❌ DELETE /api/account/delete:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 // PROFILES
 // ═══════════════════════════════════════════════════════════════
 
@@ -411,11 +538,7 @@ app.get('/api/client/profile', auth, async (req, res) => {
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
     const allowed = {
-      name: 'name',
-      phone: 'phone',
-      city: 'city',
-      bio: 'bio',
-      profile_image: 'profile_image'
+      name: 'name', phone: 'phone', city: 'city', bio: 'bio', profile_image: 'profile_image'
     };
     const sets = [];
     const params = [];
@@ -522,20 +645,12 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
     const allowed = {
-      name: 'name',
-      phone: 'phone',
-      city: 'city',
-      bio: 'bio',
-      specialties: 'specialties',
-      notify_categories: 'notify_categories',
-      experience_years: 'experience_years',
-      portfolio_images: 'portfolio_images',
-      profile_image: 'profile_image',
-      business_name: 'business_name',
-      social_whatsapp: 'social_whatsapp',
-      social_snap: 'social_snap',
-      social_tiktok: 'social_tiktok',
-      social_instagram: 'social_instagram',
+      name: 'name', phone: 'phone', city: 'city', bio: 'bio',
+      specialties: 'specialties', notify_categories: 'notify_categories',
+      experience_years: 'experience_years', portfolio_images: 'portfolio_images',
+      profile_image: 'profile_image', business_name: 'business_name',
+      social_whatsapp: 'social_whatsapp', social_snap: 'social_snap',
+      social_tiktok: 'social_tiktok', social_instagram: 'social_instagram',
       social_twitter: 'social_twitter'
     };
     const sets = [];
@@ -940,7 +1055,6 @@ app.get('/api/bids/my', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// ✅ FIX #2: Returns provider_phone + WhatsApp. Accepted bids shown first.
 app.get('/api/requests/:id/bids', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -1154,8 +1268,6 @@ app.get('/api/reviews/user/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// ✅ FIX #1: Replaced ON CONFLICT with manual check-and-upsert
-// (avoids "no unique or exclusion constraint matching the ON CONFLICT specification" error)
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment } = req.body;
@@ -1170,7 +1282,6 @@ app.post('/api/reviews', auth, async (req, res) => {
     if (reqRow.rows[0].status !== 'completed')
       return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
 
-    // Manual check-and-upsert (avoids ON CONFLICT dependency on unique constraint)
     const existing = await pool.query(
       'SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2',
       [request_id, req.user.id]
@@ -1854,7 +1965,7 @@ app.delete('/api/push-token', auth, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
-  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin');
+  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
 });
 
 process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
