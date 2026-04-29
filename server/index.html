@@ -280,9 +280,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-more:hover{border-color:var(--p);color:var(--p);}
 .idx-foot{background:var(--p2);padding:22px 20px;border-top:3px solid var(--gold);}
 .foot-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.flinks{display:flex;gap:14px;flex-wrap:wrap;}
-.flink{font-size:11px;color:rgba(255,255,255,.35);font-weight:600;cursor:pointer;transition:.15s;text-decoration:none;}
-.flink:hover{color:rgba(255,255,255,.75);}
+.flinks{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+.flink{font-size:11px;color:rgba(255,255,255,.55);font-weight:600;cursor:pointer;transition:.15s;text-decoration:none;}
+.flink:hover{color:#fff;}
+/* 🆕 Special styling for delete account link */
+.flink-danger{color:rgba(252,165,165,.7) !important;font-weight:700 !important;}
+.flink-danger:hover{color:#fca5a5 !important;}
 .fcopy{font-size:10px;color:rgba(255,255,255,.15);}
 
 @media(max-width:680px){
@@ -290,7 +293,31 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .idx-stats{display:none;}
   .idx-content{padding:16px 12px 40px;}
   .pg-grid{grid-template-columns:1fr;}
+  .foot-inner{flex-direction:column;text-align:center;gap:14px;}
+  .flinks{justify-content:center;gap:10px;}
 }
+
+/* 🆕 Account Deletion Modal */
+.del-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,.7);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:14px}
+.del-overlay.show{display:flex}
+.del-modal{background:var(--white);border-radius:18px;width:100%;max-width:480px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.del-head{background:#fef2f2;padding:18px 20px;border-bottom:2px solid var(--red);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.del-head h3{font-size:15px;font-weight:900;color:var(--red);display:flex;align-items:center;gap:8px}
+.del-x{width:30px;height:30px;border-radius:9px;background:#fff;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);font-family:'Tajawal',sans-serif;line-height:1}
+.del-body{padding:20px;overflow-y:auto;flex:1}
+.del-warn{background:#fef2f2;border:1px solid #fca5a5;border-right:3px solid var(--red);border-radius:11px;padding:13px 15px;margin-bottom:14px}
+.del-warn-t{font-size:13px;font-weight:900;color:var(--red);margin-bottom:6px}
+.del-warn-p{font-size:12px;color:#7f1d1d;line-height:1.9}
+.del-warn-p strong{font-weight:900}
+.del-info{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.9;color:var(--text)}
+.del-info b{font-weight:800;color:var(--p)}
+.del-step{display:flex;gap:10px;padding:10px;background:var(--gold-l);border:1px solid var(--gold-soft);border-radius:10px;margin-bottom:8px;align-items:flex-start}
+.del-step-n{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#fff;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center}
+.del-step-t{font-size:12px;line-height:1.8;color:var(--text);font-weight:600}
+.del-step-t a{color:var(--gold-d);font-weight:800;text-decoration:none}
+.del-foot{padding:14px 20px;background:var(--bg);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.del-btn-mail{flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 12px rgba(220,38,38,.25)}
+.del-btn-cancel{padding:12px 18px;background:#fff;color:var(--muted);border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -420,16 +447,77 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <!-- 🆕 FOOTER WITH PRIVACY POLICY + DELETE ACCOUNT LINKS -->
   <div class="idx-foot">
     <div class="foot-inner">
       <div class="logo" style="position:relative;z-index:1"><span class="logo-dot"></span>مناقصة</div>
       <div class="flinks">
         <a href="auth.html" class="flink">تسجيل الدخول</a>
         <a href="auth.html" class="flink">إنشاء حساب</a>
-        <span class="flink">تواصل معنا</span>
+        <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" class="flink">سياسة الخصوصية</a>
+        <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" class="flink">الشروط والأحكام</a>
+        <a href="javascript:void(0)" onclick="openDeleteModal()" class="flink flink-danger">حذف الحساب</a>
+        <a href="mailto:cs@manaqasa.com" class="flink">تواصل معنا</a>
       </div>
       <div class="fcopy">© 2026 مناقصة — جميع الحقوق محفوظة</div>
+    </div>
+  </div>
+</div>
+
+<!-- 🆕 DELETE ACCOUNT MODAL (Apple Guideline 5.1.1) -->
+<div class="del-overlay" id="delOverlay" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="del-modal">
+    <div class="del-head">
+      <h3>
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        حذف الحساب نهائياً
+      </h3>
+      <button class="del-x" onclick="closeDeleteModal()">×</button>
+    </div>
+
+    <div class="del-body">
+      <div class="del-warn">
+        <div class="del-warn-t">⚠️ تحذير مهم</div>
+        <div class="del-warn-p">عند حذف حسابك، سيتم <strong>حذف جميع بياناتك نهائياً</strong> من منصة مناقصة، بما في ذلك:</div>
+      </div>
+
+      <div class="del-info">
+        <b>سيتم حذف:</b><br>
+        • معلوماتك الشخصية (الاسم، الإيميل، الجوال)<br>
+        • جميع طلباتك ومشاريعك وعروضك<br>
+        • الرسائل والمحادثات<br>
+        • التقييمات والإشعارات<br>
+        • الصور المرفوعة وملفك الشخصي
+      </div>
+
+      <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">طريقة طلب الحذف:</div>
+
+      <div class="del-step">
+        <div class="del-step-n">1</div>
+        <div class="del-step-t">أرسل بريد إلكتروني إلى: <a href="mailto:cs@manaqasa.com?subject=طلب حذف الحساب&body=السلام عليكم،%0D%0A%0D%0Aأرغب في حذف حسابي وجميع بياناتي من منصة مناقصة.%0D%0A%0D%0Aالاسم:%0D%0Aالإيميل المسجل:%0D%0Aرقم الجوال:%0D%0A%0D%0Aشكراً">cs@manaqasa.com</a></div>
+      </div>
+
+      <div class="del-step">
+        <div class="del-step-n">2</div>
+        <div class="del-step-t">اذكر في الإيميل: الاسم، الإيميل المسجل، ورقم الجوال للتحقق من هويتك</div>
+      </div>
+
+      <div class="del-step">
+        <div class="del-step-n">3</div>
+        <div class="del-step-t">سيتم حذف حسابك وجميع بياناتك نهائياً خلال <strong>30 يوم عمل</strong> من استلام الطلب</div>
+      </div>
+
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7">
+        لمزيد من التفاصيل، اطّلع على <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" style="color:var(--gold-d);font-weight:700">سياسة الخصوصية</a> — القسم 7
+      </p>
+    </div>
+
+    <div class="del-foot">
+      <a href="mailto:cs@manaqasa.com?subject=طلب حذف الحساب&body=السلام عليكم،%0D%0A%0D%0Aأرغب في حذف حسابي وجميع بياناتي من منصة مناقصة.%0D%0A%0D%0Aالاسم:%0D%0Aالإيميل المسجل:%0D%0Aرقم الجوال:%0D%0A%0D%0Aشكراً" class="del-btn-mail">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        إرسال طلب الحذف
+      </a>
+      <button class="del-btn-cancel" onclick="closeDeleteModal()">إلغاء</button>
     </div>
   </div>
 </div>
@@ -437,6 +525,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <script>
 var API='https://manaqasati-production.up.railway.app';
 var ALL=[],CUR=[],PAGE=12,F_ST='all',F_CAT='',F_CI='',F_Q='';
+
+// 🆕 Delete account modal functions
+function openDeleteModal(){
+  var ol=document.getElementById('delOverlay');
+  if(ol){ol.classList.add('show');document.body.style.overflow='hidden';}
+}
+function closeDeleteModal(){
+  var ol=document.getElementById('delOverlay');
+  if(ol){ol.classList.remove('show');document.body.style.overflow='';}
+}
 
 var CAT_COLORS={
   'تبريد وتكييف':'135deg,#0ea5e9,#0284c7',
@@ -612,16 +710,7 @@ async function load(){
     document.getElementById('sub-txt').textContent=ALL.length+' مشروع — '+open+' مفتوح للعروض';
     document.getElementById('hs-r').textContent=ALL.length;
     document.getElementById('hs-d').textContent=done;
-
-    // عدد المستخدمين — نجلبه من stats بدون token
-    fetch(API+'/api/admin/stats')
-      .then(function(x){return x.json();})
-      .then(function(s){
-        document.getElementById('hs-u').textContent=open;
-      })
-      .catch(function(){
-        document.getElementById('hs-u').textContent=open;
-      });
+    document.getElementById('hs-u').textContent=open;
 
     render(ALL);
   } catch(e){
