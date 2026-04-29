@@ -256,6 +256,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bni-fab .fab-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:.3px}
 .bni-fab:active .fab-circle{transform:scale(.9);box-shadow:0 4px 12px rgba(240,165,0,.4),0 0 0 3px var(--white)}
 .bni-fab:hover .fab-circle{transform:translateY(-2px);box-shadow:0 12px 28px rgba(240,165,0,.6),0 4px 10px rgba(240,165,0,.4),0 0 0 3px var(--white),0 0 0 5px rgba(240,165,0,.15)}
+
+/* 🆕 Account deletion danger zone styling */
+.danger-zone{background:#fef2f2;border:1.5px solid #fca5a5;border-right:4px solid var(--red);border-radius:14px;padding:18px;margin-bottom:14px}
+.danger-zone-title{font-size:14px;font-weight:900;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.danger-zone-desc{font-size:12px;color:#7f1d1d;line-height:1.8;margin-bottom:14px}
+.btn-delete-account{background:var(--red);color:#fff;border:none;padding:11px 20px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .18s;box-shadow:0 3px 12px rgba(220,38,38,.25)}
+.btn-delete-account:hover{background:#b91c1c;transform:translateY(-1px);box-shadow:0 5px 16px rgba(220,38,38,.35)}
+.delete-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:14px 0}
+.delete-stat-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px;text-align:center}
+.delete-stat-num{font-size:18px;font-weight:900;color:var(--red)}
+.delete-stat-lbl{font-size:10px;color:#991b1b;margin-top:2px;font-weight:700}
+.confirm-input{width:100%;padding:13px 16px;border:2px solid var(--red);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;outline:none;text-align:center;background:#fff;color:var(--red)}
+.confirm-input:focus{box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
   .side,.topbar{display:none}
@@ -626,6 +640,58 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- 🆕 DELETE ACCOUNT OVERLAY (Apple Guideline 5.1.1) -->
+<div class="overlay" id="deleteAccountOverlay">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-head" style="background:#fef2f2;border-bottom:2px solid var(--red)">
+      <h3 style="color:var(--red);display:flex;align-items:center;gap:8px">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        حذف الحساب نهائياً
+      </h3>
+      <button class="modal-x" onclick="closeDeleteAccount()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="alert" id="delete-msg"></div>
+
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-right:3px solid var(--red);border-radius:11px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:900;color:var(--red);margin-bottom:8px">⚠️ تحذير مهم</div>
+        <p style="font-size:12px;color:#7f1d1d;line-height:1.9">
+          عند حذف حسابك، سيتم <strong>حذف جميع بياناتك نهائياً</strong> ولن تتمكن من استعادتها أو التراجع عن هذا الإجراء.
+        </p>
+      </div>
+
+      <div id="deletion-stats-wrap">
+        <div class="loading">جاري تحميل البيانات...</div>
+      </div>
+
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">سيتم حذف:</div>
+        <ul style="font-size:11px;color:var(--text2);line-height:2;padding-right:16px">
+          <li>معلوماتك الشخصية (الاسم، الإيميل، الجوال)</li>
+          <li>جميع طلباتك ومشاريعك</li>
+          <li>الرسائل والمحادثات</li>
+          <li>التقييمات والإشعارات</li>
+          <li>الصور المرفوعة</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;text-align:center">للتأكيد، اكتب كلمة <strong style="color:var(--red);font-size:14px">"حذف"</strong> في المربع أدناه:</label>
+        <input type="text" id="deleteConfirmInput" class="confirm-input" placeholder="اكتب: حذف" oninput="checkDeleteConfirmation()" autocomplete="off">
+      </div>
+
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px">
+        إذا واجهت أي مشكلة، تواصل معنا: <a href="mailto:cs@manaqasa.com" style="color:var(--gold-d);font-weight:700">cs@manaqasa.com</a>
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-p" id="deleteAccountBtn" disabled onclick="confirmDeleteAccount()" style="flex:1;background:var(--red);box-shadow:0 3px 12px rgba(220,38,38,.25)">حذف الحساب نهائياً</button>
+      <button class="btn-s" onclick="closeDeleteAccount()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var API='https://manaqasati-production.up.railway.app';
 if('serviceWorker' in navigator){
@@ -641,7 +707,6 @@ if(!user.id){location.href='auth.html';}
 // ═══ Single source of truth for cities ═══
 var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','الدلم','المزاحمية','الحريق','حوطة بني تميم','وادي الدواسر','السليل','الأفلاج','الغاط','ثادق','حريملاء','مرات','ضرما','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الليث','خليص','تربة','المويه','الخرمة','رنية','المدينة المنورة','ينبع','العلا','الوجه','ضباء','أملج','المهد','بدر','خيبر','بريدة','عنيزة','الرس','البكيرية','الأسياح','رياض الخبراء','عيون الجواء','النبهانية','الشماسية','البدائع','المذنب','الخبراء','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','الخفجي','بقيق','النعيرية','رأس تنورة','صفوى','سيهات','العوامية','أبها','خميس مشيط','بيشة','النماص','محايل عسير','أحد رفيدة','سراة عبيدة','ظهران الجنوب','تثليث','بلقرن','رجال ألمع','المجاردة','الحرجة','تبوك','تيماء','قيال','حقل','حائل','بقعاء','الشنان','الغزالة','عرعر','طريف','رفحاء','سكاكا','دومة الجندل','القريات','الباحة','بلجرشي','المندق','العقيق','قلوة','المخواة','غامد الزناد','جازان','صبيا','أبو عريش','صامطة','الدرب','ضمد','أحد المسارحة','العارضة','الريث','الحرث','نجران','شرورة'];
 
-// Safer DOM-based city select builder (prevents HTML bleed)
 function fillCitySelect(selectEl, selectedCity){
   if(!selectEl) return;
   selectEl.innerHTML='';
@@ -686,7 +751,6 @@ var sel=document.getElementById('n-cat');
 var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر التصنيف';sel.appendChild(defOpt);
 CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
 
-// Fill the "new request" city dropdown at page load
 fillCitySelect(document.getElementById('n-city'));
 
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
@@ -976,11 +1040,9 @@ function loadProfile(){
     var storedImg=p.profile_image||localStorage.getItem('client_avatar_'+user.id)||null;
     if(p.profile_image)localStorage.setItem('client_avatar_'+user.id,p.profile_image);
 
-    // Build as DOM nodes (not string concat) — guarantees no HTML bleed
     var container=document.getElementById('profile-content');
     container.innerHTML='';
 
-    // ═══ Header card ═══
     var hdrCard=document.createElement('div');
     hdrCard.style.cssText='background:var(--p3);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden';
     hdrCard.innerHTML=
@@ -999,7 +1061,6 @@ function loadProfile(){
       '</div>';
     container.appendChild(hdrCard);
 
-    // ═══ Personal info card (City select built via DOM — no string concat) ═══
     var infoCard=document.createElement('div');
     infoCard.className='card card-accent';
     infoCard.style.marginBottom='14px';
@@ -1013,18 +1074,15 @@ function loadProfile(){
       '</div>';
     container.appendChild(infoCard);
 
-    // Fill inputs with proper value (not string interpolation — safe from quotes)
     document.getElementById('cName').value=p.name||'';
     document.getElementById('cPhone').value=p.phone||'';
     document.getElementById('cEmail').value=p.email||'';
 
-    // ═══ Build city select via DOM (this is the fix!) ═══
     var citySelect=document.createElement('select');
     citySelect.id='cCity';
     fillCitySelect(citySelect, p.city||'');
     document.getElementById('cityWrap').appendChild(citySelect);
 
-    // ═══ Password card ═══
     var pwCard=document.createElement('div');
     pwCard.className='card';
     pwCard.style.marginBottom='14px';
@@ -1037,11 +1095,28 @@ function loadProfile(){
       '<button onclick="changeClientPw()" style="margin-top:12px;background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer">تغيير كلمة المرور</button>';
     container.appendChild(pwCard);
 
-    // ═══ Save all button ═══
     var saveWrap=document.createElement('div');
-    saveWrap.style.cssText='padding:4px 0 20px';
+    saveWrap.style.cssText='padding:4px 0 14px';
     saveWrap.innerHTML='<button onclick="saveClientProfile(this)" style="width:100%;padding:14px;background:var(--p);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 4px 16px rgba(27,58,107,.25)">حفظ جميع التغييرات</button>';
     container.appendChild(saveWrap);
+
+    // 🆕 DANGER ZONE - Account Deletion (Apple Guideline 5.1.1)
+    var dangerZone=document.createElement('div');
+    dangerZone.className='danger-zone';
+    dangerZone.style.marginTop='10px';
+    dangerZone.innerHTML=
+      '<div class="danger-zone-title">'+
+        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+
+        'منطقة الخطر'+
+      '</div>'+
+      '<div class="danger-zone-desc">'+
+        'حذف الحساب إجراء نهائي ولا يمكن التراجع عنه. سيتم حذف جميع بياناتك ومشاريعك ورسائلك بشكل دائم.'+
+      '</div>'+
+      '<button class="btn-delete-account" onclick="openDeleteAccount()">'+
+        '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>'+
+        'حذف الحساب نهائياً'+
+      '</button>';
+    container.appendChild(dangerZone);
 
   }).catch(function(){document.getElementById('profile-content').innerHTML='<div class="loading">تعذر التحميل</div>';});
 }
@@ -1083,14 +1158,95 @@ function changeClientPw(){
   var nw=(document.getElementById('cPwNew')||{}).value;
   if(!old||!nw){alert('اكمل الحقلين');return;}
   if(nw.length<6){alert('كلمة المرور 6 أحرف على الأقل');return;}
-  fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:old,new_password:nw})},hdr())).then(function(r){return r.json();}).then(function(r){if(r.ok){alert('تم تغيير كلمة المرور');document.getElementById('cPwOld').value='';document.getElementById('cPwNew').value='';}else alert(r.message||'حدث خطأ');});
+  fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:old,new_password:nw})},hdr())).then(function(r){return r.json();}).then(function(r){if(r.ok){alert('تم تغيير كلمة المرور');document.getElementById('cPwOld').value='';document.getElementById('cPwNew').value='';}else alert(r.message||'حدث خطأ');});}
+
+// 🆕 ACCOUNT DELETION FUNCTIONS (Apple Guideline 5.1.1(v))
+function openDeleteAccount(){
+  // Reset form
+  document.getElementById('deleteConfirmInput').value='';
+  document.getElementById('deleteAccountBtn').disabled=true;
+  document.getElementById('delete-msg').className='alert';
+  document.getElementById('deletion-stats-wrap').innerHTML='<div class="loading">جاري تحميل البيانات...</div>';
+
+  // Show overlay
+  document.getElementById('deleteAccountOverlay').className='overlay show';
+
+  // Fetch deletion preview
+  fetch(API+'/api/account/deletion-preview',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.stats){
+      var s=d.stats;
+      var html='<div class="delete-stats-grid">';
+      if(typeof s.projects!=='undefined')html+='<div class="delete-stat-box"><div class="delete-stat-num">'+s.projects+'</div><div class="delete-stat-lbl">طلب/مشروع</div></div>';
+      if(typeof s.messages!=='undefined')html+='<div class="delete-stat-box"><div class="delete-stat-num">'+s.messages+'</div><div class="delete-stat-lbl">رسالة</div></div>';
+      if(typeof s.reviews!=='undefined')html+='<div class="delete-stat-box"><div class="delete-stat-num">'+s.reviews+'</div><div class="delete-stat-lbl">تقييم</div></div>';
+      if(typeof s.notifications!=='undefined')html+='<div class="delete-stat-box"><div class="delete-stat-num">'+s.notifications+'</div><div class="delete-stat-lbl">إشعار</div></div>';
+      html+='</div>';
+      document.getElementById('deletion-stats-wrap').innerHTML=html;
+    } else {
+      document.getElementById('deletion-stats-wrap').innerHTML='';
+    }
+  }).catch(function(){
+    document.getElementById('deletion-stats-wrap').innerHTML='';
+  });
+}
+function closeDeleteAccount(){
+  document.getElementById('deleteAccountOverlay').className='overlay';
+}
+function checkDeleteConfirmation(){
+  var val=document.getElementById('deleteConfirmInput').value.trim();
+  document.getElementById('deleteAccountBtn').disabled=(val!=='حذف'&&val!=='DELETE');
+}
+function confirmDeleteAccount(){
+  var confirmation=document.getElementById('deleteConfirmInput').value.trim();
+  if(confirmation!=='حذف'&&confirmation!=='DELETE'){
+    var e=document.getElementById('delete-msg');
+    e.textContent='يجب كتابة "حذف" للتأكيد';
+    e.className='alert err';
+    return;
+  }
+  var btn=document.getElementById('deleteAccountBtn');
+  btn.disabled=true;
+  btn.textContent='جاري حذف الحساب...';
+  fetch(API+'/api/account/delete',{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({confirmation:confirmation})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){
+    if(r.ok){
+      var e=document.getElementById('delete-msg');
+      e.textContent='تم حذف حسابك بنجاح. سيتم تسجيل خروجك...';
+      e.className='alert ok';
+      // Clear all data and redirect
+      setTimeout(function(){
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Clear avatar caches
+        Object.keys(localStorage).forEach(function(k){
+          if(k.indexOf('client_avatar_')===0||k.indexOf('provider_avatar_')===0)localStorage.removeItem(k);
+        });
+        location.href='auth.html';
+      },2000);
+    } else {
+      var e=document.getElementById('delete-msg');
+      e.textContent=(r.d&&r.d.message)||'حدث خطأ في حذف الحساب';
+      e.className='alert err';
+      btn.disabled=false;
+      btn.textContent='حذف الحساب نهائياً';
+    }
+  }).catch(function(){
+    var e=document.getElementById('delete-msg');
+    e.textContent='تعذر الاتصال بالخادم';
+    e.className='alert err';
+    btn.disabled=false;
+    btn.textContent='حذف الحساب نهائياً';
+  });
 }
 
 setInterval(loadNotifCount,30000);
 
 var _validPages=['home','requests','notifs','profile','chat'];
 
-// ═══ PROVIDER PROFILE MODAL (for clients to view provider details) ═══
+// ═══ PROVIDER PROFILE MODAL ═══
 function openProviderProfile(pid, reqId){
   var ol=document.getElementById('pvOverlay');
   if(!ol){
@@ -1124,12 +1280,10 @@ function openProviderProfile(pid, reqId){
     }
     function _esc(v){var d=document.createElement('div');d.textContent=String(v||'');return d.innerHTML;}
 
-    // Avatar
     var avH=p.profile_image
       ? '<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
       : '<span style="font-size:28px;font-weight:900;color:#fff">'+_esc((p.name||'م')[0])+'</span>';
 
-    // Header
     var hdr='<div style="background:linear-gradient(135deg,#0f2548,#1B3A6B);margin:0 -20px 0;padding:24px 20px;border-radius:0 0 20px 20px;position:relative">'
       +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'
       +'<div style="display:flex;align-items:center;gap:14px">'
@@ -1141,26 +1295,22 @@ function openProviderProfile(pid, reqId){
       +(p.city?'<div style="font-size:11px;color:rgba(255,255,255,.5)">📍 '+_esc(p.city)+'</div>':'')
       +'</div></div></div>';
 
-    // Contact action buttons (chat + call + whatsapp)
     var contactH='';
     var btns=[];
     var pname=_esc(p.business_name||p.name||'المزود').replace(/'/g,'');
     var rtitle=_esc(window._projTitle||'').replace(/'/g,'');
 
-    // Chat button - needs reqId
     if(reqId){
       btns.push('<button onclick="closeProviderProfile();openClientChat('+reqId+','+pid+',\''+pname+'\',\''+rtitle+'\')" style="flex:1;padding:12px 10px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">'
         +'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
         +'محادثة</button>');
     }
 
-    // Call button - needs phone
     if(p.phone){
       btns.push('<a href="tel:'+_esc(p.phone)+'" style="flex:1;padding:12px 10px;background:#16a34a;color:#fff;border-radius:11px;font-size:13px;font-weight:800;text-decoration:none;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">'
         +'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 15a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 4h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 11.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>'
         +'اتصال</a>');
 
-      // WhatsApp with phone
       var phoneClean=String(p.phone).replace(/[^0-9]/g,'');
       var waNum=phoneClean.startsWith('966')?phoneClean:(phoneClean.startsWith('0')?'966'+phoneClean.slice(1):'966'+phoneClean);
       var waMsg='مرحباً '+(p.name||'')+'،\nتواصلت معك عبر منصة مناقصة بخصوص مشروع '+(window._projTitle||'')+'.';
@@ -1172,21 +1322,18 @@ function openProviderProfile(pid, reqId){
       contactH='<div style="display:flex;gap:8px;margin-top:14px">'+btns.join('')+'</div>';
     }
 
-    // Stats
     var stats='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px">'
       +'<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--p)">'+(p.completed_projects||0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">مشروع مكتمل</div></div>'
       +'<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--p)">'+(p.total_bids||0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">عرض مقدم</div></div>'
       +'<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--p)">'+(p.experience_years||'—')+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">سنوات خبرة</div></div>'
       +'</div>';
 
-    // Bio
     var bioH='';
     if(p.bio){
       bioH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">نبذة</div>'
         +'<div style="font-size:13px;line-height:1.8;color:var(--text2);background:var(--bg);border-radius:10px;padding:12px 14px;border-right:3px solid var(--gold)">'+_esc(p.bio)+'</div></div>';
     }
 
-    // Specialties
     var specH='';
     if((p.specialties||[]).length){
       specH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">التخصصات</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
@@ -1194,7 +1341,6 @@ function openProviderProfile(pid, reqId){
       specH+='</div></div>';
     }
 
-    // Portfolio
     var portH='';
     if((p.portfolio_images||[]).length){
       portH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">معرض الأعمال ('+p.portfolio_images.length+')</div>'
@@ -1205,10 +1351,8 @@ function openProviderProfile(pid, reqId){
       portH+='</div></div>';
     }
 
-    // Social links
     var socH='';
 
-    // Reviews
     var revH='';
     if(reviews.length){
       revH='<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">آخر التقييمات</div>';
