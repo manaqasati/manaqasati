@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>حذف الحساب — مناقصة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
+  --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;
+  --text:#0F172A;--muted:#8896AA;
+  --border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;
+  --green:#16A34A;--green-l:#EDFBF0;
+  --red:#DC2626;--red-l:#FEF2F2;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;color:var(--text)}
+.header{background:var(--p3);width:100%;max-width:520px;border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
+.logo{font-size:20px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px}
+.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--gold)}
+.back-link{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;margin-top:12px;font-family:inherit}
+.container{background:var(--white);width:100%;max-width:520px;border-radius:18px;padding:24px;border:1px solid var(--border);box-shadow:0 4px 16px rgba(15,23,42,.06)}
+.danger-icon{width:64px;height:64px;border-radius:50%;background:var(--red-l);border:2px solid #fca5a5;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+h1{font-size:22px;font-weight:900;color:var(--red);text-align:center;margin-bottom:8px}
+.subtitle{font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.7}
+.warning-box{background:#fef2f2;border:1.5px solid #fca5a5;border-right:4px solid var(--red);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.warning-title{font-size:13px;font-weight:900;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.warning-text{font-size:12px;color:#7f1d1d;line-height:1.9}
+.warning-text strong{font-weight:900}
+.list-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.list-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px}
+.list-box ul{list-style:none;padding:0;font-size:12px;color:#475569;line-height:2.2}
+.list-box li{display:flex;align-items:center;gap:8px;padding:3px 0}
+.list-box li::before{content:'•';color:var(--red);font-weight:900;font-size:18px}
+.alert{padding:11px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;display:none;line-height:1.7}
+.alert.show{display:block}
+.alert.ok{background:var(--green-l);color:var(--green);border:1px solid #BBF7D0}
+.alert.err{background:var(--red-l);color:var(--red);border:1px solid #fecaca}
+.confirm-section{margin-bottom:20px}
+.confirm-label{display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;text-align:center;line-height:1.7}
+.confirm-label strong{color:var(--red);font-size:16px;font-weight:900}
+.confirm-input{width:100%;padding:14px 18px;border:2px solid var(--red);border-radius:12px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;outline:none;text-align:center;background:#fff;color:var(--red);transition:all .15s}
+.confirm-input:focus{box-shadow:0 0 0 4px rgba(220,38,38,.15)}
+.btn-grp{display:flex;gap:8px;flex-direction:column}
+.btn{padding:14px 20px;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-delete{background:var(--red);color:#fff;box-shadow:0 4px 14px rgba(220,38,38,.25)}
+.btn-delete:hover:not(:disabled){background:#b91c1c;transform:translateY(-1px)}
+.btn-delete:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.btn-cancel:hover{background:#e2e8f0}
+.contact{text-align:center;font-size:11px;color:var(--muted);margin-top:16px;line-height:1.8}
+.contact a{color:var(--gold-d);font-weight:700;text-decoration:none}
+.unauth{text-align:center;padding:40px 20px}
+.unauth h2{font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px}
+.unauth p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.8}
+.unauth a{display:inline-block;background:var(--p);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.user-info{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text)}
+.user-info-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0}
+.user-info-label{color:var(--muted);font-weight:600}
+.user-info-value{font-weight:700;color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+  <a href="javascript:history.back()" class="back-link">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    العودة
+  </a>
+</div>
+
+<div class="container" id="main-content">
+  <div class="loading" style="text-align:center;padding:30px">جاري التحميل...</div>
+</div>
+
+<script>
+var API='https://manaqasati-production.up.railway.app';
+var token=localStorage.getItem('token')||'';
+var user=JSON.parse(localStorage.getItem('user')||'{}');
+
+function render(){
+  var c=document.getElementById('main-content');
+
+  // Not logged in
+  if(!token||!user.id){
+    c.innerHTML=
+      '<div class="unauth">'+
+      '<div class="danger-icon"><svg width="32" height="32" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'+
+      '<h2>غير مسجّل دخول</h2>'+
+      '<p>يجب تسجيل الدخول إلى حسابك أولاً قبل أن تتمكن من حذفه.</p>'+
+      '<a href="auth.html">تسجيل الدخول</a>'+
+      '</div>';
+    return;
+  }
+
+  // Logged in - show deletion form
+  c.innerHTML=
+    '<div class="danger-icon">'+
+      '<svg width="32" height="32" fill="none" stroke="var(--red)" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>'+
+    '</div>'+
+    '<h1>حذف الحساب نهائياً</h1>'+
+    '<p class="subtitle">هذا الإجراء لا يمكن التراجع عنه. يرجى المراجعة بعناية قبل المتابعة.</p>'+
+
+    '<div class="user-info">'+
+      '<div class="user-info-row"><span class="user-info-label">الاسم:</span><span class="user-info-value">'+(user.name||'—')+'</span></div>'+
+      '<div class="user-info-row"><span class="user-info-label">نوع الحساب:</span><span class="user-info-value">'+(user.role==='provider'?'مزوّد خدمة':'عميل')+'</span></div>'+
+    '</div>'+
+
+    '<div class="warning-box">'+
+      '<div class="warning-title">⚠️ تحذير مهم</div>'+
+      '<div class="warning-text">عند حذف حسابك، سيتم <strong>حذف جميع بياناتك نهائياً</strong> ولن تتمكن من استعادتها أو التراجع عن هذا الإجراء.</div>'+
+    '</div>'+
+
+    '<div id="stats-wrap"></div>'+
+
+    '<div class="list-box">'+
+      '<div class="list-title">سيتم حذف:</div>'+
+      '<ul>'+
+        '<li>معلوماتك الشخصية (الاسم، الإيميل، الجوال)</li>'+
+        '<li>'+(user.role==='provider'?'جميع عروضك ومشاريعك':'جميع طلباتك ومشاريعك')+'</li>'+
+        '<li>الرسائل والمحادثات</li>'+
+        '<li>التقييمات والإشعارات</li>'+
+        '<li>'+(user.role==='provider'?'صور المعرض والملف الشخصي':'الصور المرفوعة')+'</li>'+
+      '</ul>'+
+    '</div>'+
+
+    '<div class="alert" id="msg"></div>'+
+
+    '<div class="confirm-section">'+
+      '<label class="confirm-label">للتأكيد، اكتب كلمة <strong>"حذف"</strong> في المربع أدناه:</label>'+
+      '<input type="text" id="confirmInput" class="confirm-input" placeholder="اكتب: حذف" autocomplete="off" oninput="checkConfirm()">'+
+    '</div>'+
+
+    '<div class="btn-grp">'+
+      '<button class="btn btn-delete" id="deleteBtn" disabled onclick="doDelete()">'+
+        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>'+
+        '<span>حذف الحساب نهائياً</span>'+
+      '</button>'+
+      '<a href="javascript:history.back()" class="btn btn-cancel">إلغاء والعودة</a>'+
+    '</div>'+
+
+    '<div class="contact">'+
+      'إذا واجهت أي مشكلة، تواصل معنا: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>'+
+    '</div>';
+
+  loadStats();
+}
+
+function loadStats(){
+  fetch(API+'/api/account/deletion-preview',{
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.stats){
+      var s=d.stats;
+      var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:16px">';
+      var labels={projects:'مشروع',bids:'عرض',messages:'رسالة',reviews:'تقييم',notifications:'إشعار'};
+      Object.keys(labels).forEach(function(k){
+        if(typeof s[k]!=='undefined'){
+          html+='<div style="background:var(--red-l);border:1px solid #fecaca;border-radius:10px;padding:10px;text-align:center">'+
+            '<div style="font-size:18px;font-weight:900;color:var(--red)">'+s[k]+'</div>'+
+            '<div style="font-size:10px;color:#991b1b;margin-top:2px;font-weight:700">'+labels[k]+'</div>'+
+          '</div>';
+        }
+      });
+      html+='</div>';
+      var w=document.getElementById('stats-wrap');
+      if(w)w.innerHTML=html;
+    }
+  }).catch(function(){});
+}
+
+function checkConfirm(){
+  var v=document.getElementById('confirmInput').value.trim();
+  document.getElementById('deleteBtn').disabled=(v!=='حذف'&&v!=='DELETE');
+}
+
+function showMsg(text,type){
+  var e=document.getElementById('msg');
+  e.textContent=text;
+  e.className='alert show '+type;
+}
+
+function doDelete(){
+  var confirmation=document.getElementById('confirmInput').value.trim();
+  if(confirmation!=='حذف'&&confirmation!=='DELETE'){
+    showMsg('يجب كتابة "حذف" للتأكيد','err');
+    return;
+  }
+  var btn=document.getElementById('deleteBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span><span>جاري حذف الحساب...</span>';
+
+  fetch(API+'/api/account/delete',{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({confirmation:confirmation})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){
+    if(r.ok){
+      showMsg('✓ تم حذف حسابك بنجاح. سيتم تسجيل خروجك خلال ثوانٍ...','ok');
+      setTimeout(function(){
+        localStorage.clear();
+        location.href='auth.html';
+      },2000);
+    }else{
+      showMsg((r.d&&r.d.message)||'حدث خطأ في حذف الحساب','err');
+      btn.disabled=false;
+      btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg><span>حذف الحساب نهائياً</span>';
+    }
+  }).catch(function(){
+    showMsg('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.','err');
+    btn.disabled=false;
+    btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg><span>حذف الحساب نهائياً</span>';
+  });
+}
+
+render();
+</script>
+</body>
+</html>
