@@ -95,6 +95,27 @@ async function notify(userId, title, body, type, refId) {
   } catch (e) { console.error('Notification error:', e); }
 }
 
+// 🆕 Notify with email - sends both in-app notification AND email
+async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
+  // In-app notification
+  await notify(userId, title, body, type, refId);
+
+  // Email notification
+  try {
+    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
+    if (u.rows.length && u.rows[0].email) {
+      const email = u.rows[0].email;
+      const userName = u.rows[0].name || '';
+      const personalizedBody = emailBody.replace(/\{name\}/g, userName);
+      sendEmail(
+        email,
+        emailSubject || title,
+        emailTpl(title, personalizedBody, btnText, btnUrl || SITE_URL)
+      ).catch(() => {});
+    }
+  } catch (e) { console.error('❌ notifyWithEmail email part:', e.message); }
+}
+
 function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
 
 function generateProjectNumber() {
@@ -295,6 +316,50 @@ app.post('/api/auth/register', async (req, res) => {
     `, [name, email, phone || null, hash, hash, role, specs, city || null, bio || null]);
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+
+    // 🆕 Welcome email + in-app notification
+    try {
+      const isProvider = role === 'provider';
+      const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
+      const welcomeBody = isProvider
+        ? `<p>عزيزي <strong>${name}</strong>،</p>
+           <p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong> — منصة المشاريع والخدمات الأولى في المملكة العربية السعودية.</p>
+           <p>نحن سعداء بانضمامك كمزود خدمة. الآن يمكنك:</p>
+           <ul style="line-height:2.2;color:#374151">
+             <li>📋 تصفح المشاريع المتاحة في تخصصاتك</li>
+             <li>💼 تقديم عروضك للعملاء</li>
+             <li>💬 التواصل المباشر مع العملاء</li>
+             <li>⭐ بناء سمعتك من خلال التقييمات</li>
+             <li>📸 إضافة معرض أعمالك لجذب المزيد من العملاء</li>
+           </ul>
+           <p>💡 <strong>نصيحة:</strong> أكمل ملفك الشخصي وأضف صور أعمالك لتزيد فرص قبول عروضك.</p>
+           <p>إذا احتجت أي مساعدة، تواصل معنا على: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
+        : `<p>عزيزي <strong>${name}</strong>،</p>
+           <p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong> — منصة المشاريع والخدمات الأولى في المملكة العربية السعودية.</p>
+           <p>نحن سعداء بانضمامك. الآن يمكنك:</p>
+           <ul style="line-height:2.2;color:#374151">
+             <li>📝 نشر مشاريعك واحتياجاتك</li>
+             <li>💰 استقبال عروض من أفضل المزودين</li>
+             <li>⭐ اختيار المزود المناسب من تقييمات حقيقية</li>
+             <li>💬 التواصل المباشر مع المزودين</li>
+             <li>🛡️ حماية كاملة لبياناتك</li>
+           </ul>
+           <p>💡 <strong>نصيحة:</strong> اكتب تفاصيل واضحة في طلباتك للحصول على أفضل العروض.</p>
+           <p>إذا احتجت أي مساعدة، تواصل معنا على: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
+
+      await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! نحن سعداء بانضمامك إلينا.`, 'welcome', null);
+
+      if (email) {
+        sendEmail(
+          email,
+          welcomeTitle,
+          emailTpl(welcomeTitle, welcomeBody,
+            isProvider ? 'استكشف المشاريع المتاحة' : 'انشر طلبك الأول',
+            SITE_URL + (isProvider ? '/dashboard-provider.html' : '/dashboard-client.html'))
+        ).catch(() => {});
+      }
+    } catch (we) { console.error('⚠️ welcome notification:', we.message); }
+
     res.json({ user, token });
   } catch (e) { console.error('❌ Register:', e); res.status(500).json({ message: e.message }); }
 });
@@ -325,6 +390,21 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
     if (!ok) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
+
+    // 🆕 Send password change notification
+    try {
+      const u = r.rows[0];
+      if (u.email) {
+        const title = '🔐 تم تغيير كلمة المرور';
+        const body = `<p>عزيزي <strong>${u.name}</strong>،</p>
+                      <p>تم تغيير كلمة المرور الخاصة بحسابك في منصة مناقصة بنجاح.</p>
+                      <p>إذا لم تقم بهذا الإجراء، يرجى التواصل معنا فوراً على:
+                         <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>
+                      <p>وقت التغيير: ${new Date().toLocaleString('ar-SA')}</p>`;
+        sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(() => {});
+      }
+    } catch(e) {}
+
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -897,6 +977,32 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         attachments ? JSON.stringify(attachments) : null, pn]);
     const newReq = r.rows[0];
 
+    // 🆕 Confirmation email to client about their new project
+    try {
+      const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
+      if (clientInfo.rows.length && clientInfo.rows[0].email) {
+        const cName = clientInfo.rows[0].name;
+        const cEmail = clientInfo.rows[0].email;
+        const ctitle = '✅ تم نشر مشروعك بنجاح';
+        const cBody = `
+          <p>عزيزي <strong>${cName}</strong>،</p>
+          <p>تم نشر مشروعك بنجاح على منصة مناقصة. سيتمكن المزودون المتخصصون من تقديم عروضهم قريباً.</p>
+          <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+            <div style="font-size:15px;font-weight:800;color:#16213E;margin-bottom:8px">${newReq.title}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.9">
+              <div><strong>رقم المشروع:</strong> ${pn}</div>
+              ${newReq.category ? `<div><strong>التصنيف:</strong> ${newReq.category}</div>` : ''}
+              ${newReq.city ? `<div><strong>المدينة:</strong> ${newReq.city}</div>` : ''}
+              ${newReq.budget_max ? `<div><strong>الميزانية:</strong> ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س</div>` : ''}
+            </div>
+          </div>
+          <p style="font-size:13px;color:#6b7280">سنقوم بإشعارك فوراً عند وصول أول عرض.</p>
+        `;
+        sendEmail(cEmail, ctitle, emailTpl(ctitle, cBody, 'متابعة المشروع', SITE_URL + '/dashboard-client.html')).catch(() => {});
+        await notify(req.user.id, ctitle, `تم نشر "${newReq.title}" بنجاح`, 'request_published', newReq.id);
+      }
+    } catch(e) { console.error('⚠️ client confirmation email:', e.message); }
+
     if (newReq.category) {
       try {
         const cat = String(newReq.category).trim();
@@ -1031,10 +1137,49 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
       [id, req.user.id]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس طلبك' });
+
+    // 🆕 Notify provider with email about project completion
     if (r.rows[0].assigned_provider_id) {
+      const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
+      const projTitle = r.rows[0].title;
+
       await notify(r.rows[0].assigned_provider_id, '🎉 مشروع مكتمل',
-        `العميل أنهى مشروع "${r.rows[0].title}"`, 'request', id);
+        `العميل أنهى مشروع "${projTitle}". لا تنسَ الحصول على تقييم!`, 'request', id);
+
+      if (provInfo.rows.length && provInfo.rows[0].email) {
+        const pName = provInfo.rows[0].name;
+        const subject = '🎉 مشروع مكتمل - استلم تقييمك!';
+        const body = `
+          <p>عزيزي <strong>${pName}</strong>،</p>
+          <p>قام العميل بإنهاء المشروع التالي:</p>
+          <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+            <div style="font-size:15px;font-weight:800;color:#16213E">${projTitle}</div>
+          </div>
+          <p>تهانينا على إنجاز هذا المشروع! 🎊</p>
+          <p>قد يقوم العميل بتقييمك قريباً، وهذا التقييم سيساعدك في الحصول على المزيد من المشاريع.</p>
+          <p style="font-size:13px;color:#6b7280">💡 <strong>نصيحة:</strong> تأكد من إكمال جميع المتطلبات للحصول على تقييم 5 نجوم.</p>
+        `;
+        sendEmail(provInfo.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
+      }
     }
+
+    // 🆕 Email to client confirming completion
+    try {
+      const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
+      if (clientInfo.rows.length && clientInfo.rows[0].email) {
+        const cName = clientInfo.rows[0].name;
+        const subject = '✅ تم إنهاء مشروعك';
+        const body = `
+          <p>عزيزي <strong>${cName}</strong>،</p>
+          <p>تم تحديد مشروعك "<strong>${r.rows[0].title}</strong>" كمكتمل بنجاح.</p>
+          <p>نتمنى أن تكون قد حصلت على الخدمة المناسبة.</p>
+          <p>💡 <strong>تذكير:</strong> لا تنسَ تقييم المزود لمساعدة العملاء الآخرين على اتخاذ قرارات أفضل.</p>
+          <p>شكراً لاستخدامك منصة مناقصة!</p>
+        `;
+        sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'تقييم المزود', SITE_URL + '/dashboard-client.html')).catch(() => {});
+      }
+    } catch(e) {}
+
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -1104,6 +1249,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     );
 
     let row;
+    let isUpdate = false;
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') {
         return res.status(400).json({ message: 'عرضك مقبول مسبقاً ولا يمكن تعديله' });
@@ -1114,6 +1260,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         [price, days, note || null, requestId, req.user.id]
       );
       row = upd.rows[0];
+      isUpdate = true;
     } else {
       const ins = await pool.query(
         `INSERT INTO bids (request_id, provider_id, price, days, note, status, created_at)
@@ -1123,8 +1270,41 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       row = ins.rows[0];
     }
 
-    await notify(reqRow.rows[0].client_id, '💼 عرض جديد',
-      `تلقيت عرضاً جديداً على مشروع "${reqRow.rows[0].title}"`, 'bid', requestId);
+    // 🆕 Notify client with email about new bid
+    const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
+    const projTitle = reqRow.rows[0].title;
+    const provName = provInfo.rows[0]?.name || 'مزود';
+
+    const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : '💼 عرض جديد';
+    const inAppBody = isUpdate
+      ? `قام ${provName} بتحديث عرضه على مشروع "${projTitle}"`
+      : `تلقيت عرضاً جديداً من ${provName} على مشروع "${projTitle}"`;
+
+    await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
+
+    // Email to client about new bid
+    if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate) {
+      const cName = clientInfo.rows[0].name;
+      const cEmail = clientInfo.rows[0].email;
+      const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
+      const body = `
+        <p>عزيزي <strong>${cName}</strong>،</p>
+        <p>تلقيت عرضاً جديداً على مشروعك:</p>
+        <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+          <div style="font-size:15px;font-weight:800;color:#16213E;margin-bottom:8px">${projTitle}</div>
+          <div style="font-size:13px;color:#475569;line-height:1.9">
+            <div><strong>المزود:</strong> ${provName}</div>
+            <div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div>
+            <div><strong>المدة:</strong> ${days} يوم</div>
+            ${note ? `<div><strong>ملاحظة:</strong> ${note.replace(/\n/g,'<br>')}</div>` : ''}
+          </div>
+        </div>
+        <p style="font-size:13px;color:#6b7280">يمكنك مراجعة العرض ومقارنته بالعروض الأخرى من خلال لوحة التحكم.</p>
+      `;
+      sendEmail(cEmail, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL + '/dashboard-client.html')).catch(() => {});
+    }
+
     res.json(row);
   } catch (e) {
     console.error('❌ POST /api/requests/:id/bids:', e.message, '| body:', JSON.stringify(req.body), '| user:', req.user && req.user.id);
@@ -1170,18 +1350,85 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
 
+    const acceptedBid = bid.rows[0];
+
     await pool.query('BEGIN');
     try {
       await pool.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
       await pool.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`,
-        [bid.rows[0].request_id, bidId]);
+        [acceptedBid.request_id, bidId]);
       await pool.query(`
         UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
         WHERE id=$2
-      `, [bid.rows[0].provider_id, bid.rows[0].request_id]);
+      `, [acceptedBid.provider_id, acceptedBid.request_id]);
       await pool.query('COMMIT');
-      await notify(bid.rows[0].provider_id, '🎉 تم قبول عرضك',
-        `تم قبول عرضك على مشروع "${bid.rows[0].title}"`, 'bid', bid.rows[0].request_id);
+
+      // 🆕 Notify ACCEPTED provider with email
+      const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
+      const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
+      const cName = clientInfo.rows[0]?.name || 'العميل';
+      const cPhone = clientInfo.rows[0]?.phone || '';
+
+      await notify(acceptedBid.provider_id, '🎉 تم قبول عرضك!',
+        `تهانينا! تم قبول عرضك على مشروع "${acceptedBid.title}". تواصل مع العميل لبدء التنفيذ.`, 'bid_accepted', acceptedBid.request_id);
+
+      if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
+        const subject = `🎉 تم قبول عرضك على "${acceptedBid.title}"`;
+        const body = `
+          <p>تهانينا <strong>${acceptedProv.rows[0].name}</strong>! 🎊</p>
+          <p>تم قبول عرضك على المشروع التالي:</p>
+          <div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin:16px 0">
+            <div style="font-size:15px;font-weight:800;color:#16213E;margin-bottom:8px">${acceptedBid.title}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.9">
+              <div><strong>العميل:</strong> ${cName}</div>
+              ${cPhone ? `<div><strong>الجوال:</strong> ${cPhone}</div>` : ''}
+              <div><strong>السعر المتفق عليه:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div>
+              <div><strong>المدة:</strong> ${acceptedBid.days} يوم</div>
+            </div>
+          </div>
+          <p>🚀 <strong>الخطوات التالية:</strong></p>
+          <ul style="line-height:2.2;color:#374151">
+            <li>تواصل مع العميل عبر المنصة لتنسيق التفاصيل</li>
+            <li>التزم بالتسليم في الموعد المحدد</li>
+            <li>قدّم خدمة احترافية للحصول على تقييم 5 نجوم</li>
+          </ul>
+          <p style="font-size:13px;color:#6b7280">⚠️ <strong>تذكير:</strong> رسوم المنصة 1% من قيمة العقد، تُسدد خلال 10 أيام من اكتمال المشروع.</p>
+        `;
+        sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
+      }
+
+      // 🆕 Notify REJECTED providers with email (those who had pending bids)
+      const rejected = await pool.query(`
+        SELECT b.provider_id, u.name, u.email FROM bids b
+        JOIN users u ON b.provider_id = u.id
+        WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected'
+      `, [acceptedBid.request_id, bidId]);
+
+      for (const rej of rejected.rows) {
+        await notify(rej.provider_id, '😔 لم يُقبل عرضك',
+          `للأسف، اختار العميل عرضاً آخر على مشروع "${acceptedBid.title}". لا تستسلم، هناك مشاريع أخرى متاحة!`, 'bid_rejected', acceptedBid.request_id);
+
+        if (rej.email) {
+          const subject = `📋 لم يُقبل عرضك على "${acceptedBid.title}"`;
+          const body = `
+            <p>عزيزي <strong>${rej.name}</strong>،</p>
+            <p>للأسف، اختار العميل عرضاً آخر على المشروع التالي:</p>
+            <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+              <div style="font-size:15px;font-weight:800;color:#16213E">${acceptedBid.title}</div>
+            </div>
+            <p>لا تيأس! هناك مشاريع أخرى متاحة في تخصصك.</p>
+            <p>💡 <strong>نصائح لزيادة فرص قبول عروضك:</strong></p>
+            <ul style="line-height:2.2;color:#374151">
+              <li>قدّم سعراً تنافسياً يناسب جودة العمل</li>
+              <li>اكتب ملاحظة واضحة تشرح خبرتك</li>
+              <li>أكمل ملفك الشخصي وأضف صور أعمالك</li>
+              <li>كن سريعاً في تقديم العروض</li>
+            </ul>
+          `;
+          sendEmail(rej.email, subject, emailTpl(subject, body, 'تصفح المشاريع المتاحة', SITE_URL + '/dashboard-provider.html')).catch(() => {});
+        }
+      }
+
       res.json({ ok: true });
     } catch (e) { await pool.query('ROLLBACK'); throw e; }
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -1197,8 +1444,25 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
     await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
+
+    // 🆕 Notify rejected provider with email
+    const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
     await notify(bid.rows[0].provider_id, '❌ تم رفض عرضك',
-      `تم رفض عرضك على مشروع "${bid.rows[0].title}"`, 'bid', bid.rows[0].request_id);
+      `تم رفض عرضك على مشروع "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
+
+    if (provInfo.rows.length && provInfo.rows[0].email) {
+      const subject = `📋 تم رفض عرضك على "${bid.rows[0].title}"`;
+      const body = `
+        <p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p>
+        <p>تم رفض عرضك على المشروع التالي:</p>
+        <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+          <div style="font-size:15px;font-weight:800;color:#16213E">${bid.rows[0].title}</div>
+        </div>
+        <p>لا تيأس! هناك مشاريع أخرى متاحة في تخصصك.</p>
+      `;
+      sendEmail(provInfo.rows[0].email, subject, emailTpl(subject, body, 'تصفح المشاريع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
+    }
+
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -1224,6 +1488,9 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// 🆕 Smart message email throttling - only email if no message in last 18 min
+const _msgEmailCache = {}; // { "userId-requestId": timestamp }
+
 app.post('/api/messages', auth, async (req, res) => {
   try {
     const { request_id, receiver_id, content } = req.body;
@@ -1234,9 +1501,41 @@ app.post('/api/messages', auth, async (req, res) => {
       [request_id, req.user.id, receiver_id, content]
     );
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const senderName = sender.rows[0].name;
+
     await notify(receiver_id, '💬 رسالة جديدة',
-      `${sender.rows[0].name}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`,
+      `${senderName}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`,
       'message', request_id);
+
+    // 🆕 Email throttled - only send if no email in last 18 minutes
+    const cacheKey = `${receiver_id}-${request_id}`;
+    const now = Date.now();
+    const lastEmailTime = _msgEmailCache[cacheKey] || 0;
+    const EIGHTEEN_MIN = 18 * 60 * 1000;
+
+    if (now - lastEmailTime > EIGHTEEN_MIN) {
+      _msgEmailCache[cacheKey] = now;
+      try {
+        const recvInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [receiver_id]);
+        const reqInfo = await pool.query('SELECT title FROM requests WHERE id=$1', [request_id]);
+        if (recvInfo.rows.length && recvInfo.rows[0].email) {
+          const subject = `💬 رسالة جديدة من ${senderName}`;
+          const body = `
+            <p>عزيزي <strong>${recvInfo.rows[0].name}</strong>،</p>
+            <p>وصلتك رسالة جديدة من <strong>${senderName}</strong> بخصوص:</p>
+            <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
+              <div style="font-size:14px;font-weight:700;color:#16213E;margin-bottom:8px">${reqInfo.rows[0]?.title || 'مشروع'}</div>
+              <div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;line-height:1.8">
+                "${content.slice(0, 200).replace(/</g,'&lt;')}${content.length > 200 ? '...' : ''}"
+              </div>
+            </div>
+            <p style="font-size:12px;color:#6b7280">للرد على الرسالة، ادخل إلى المنصة.</p>
+          `;
+          sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(() => {});
+        }
+      } catch(e) { console.error('⚠️ message email:', e.message); }
+    }
+
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -1276,7 +1575,7 @@ app.post('/api/reviews', auth, async (req, res) => {
     if (rating < 1 || rating > 5)
       return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
 
-    const reqRow = await pool.query('SELECT status FROM requests WHERE id=$1', [request_id]);
+    const reqRow = await pool.query('SELECT status, title FROM requests WHERE id=$1', [request_id]);
     if (!reqRow.rows.length)
       return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqRow.rows[0].status !== 'completed')
@@ -1304,7 +1603,29 @@ app.post('/api/reviews', auth, async (req, res) => {
       row = ins.rows[0];
     }
 
-    await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على تقييم ${rating} نجوم`, 'review', request_id);
+    // 🆕 Notify reviewed user with email
+    const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const reviewedInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reviewed_id]);
+    const stars = '⭐'.repeat(rating);
+
+    await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على ${rating} ${rating === 5 ? '⭐⭐⭐⭐⭐' : 'نجوم'} من ${reviewerInfo.rows[0]?.name || 'العميل'}`, 'review', request_id);
+
+    if (reviewedInfo.rows.length && reviewedInfo.rows[0].email) {
+      const subject = `⭐ تقييم جديد ${rating === 5 ? '5 نجوم!' : `${rating} نجوم`}`;
+      const body = `
+        <p>عزيزي <strong>${reviewedInfo.rows[0].name}</strong>،</p>
+        <p>حصلت على تقييم جديد من <strong>${reviewerInfo.rows[0]?.name || 'العميل'}</strong>:</p>
+        <div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:18px;margin:16px 0;text-align:center">
+          <div style="font-size:32px;letter-spacing:6px;margin-bottom:8px">${stars}</div>
+          <div style="font-size:14px;font-weight:700;color:#92400e">${rating} من 5 نجوم</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:6px">على مشروع: ${reqRow.rows[0].title}</div>
+          ${comment ? `<div style="margin-top:14px;padding:12px;background:#fff;border-radius:8px;font-size:13px;color:#374151;line-height:1.8;text-align:right">"${comment.replace(/</g,'&lt;')}"</div>` : ''}
+        </div>
+        <p>${rating >= 4 ? '🎉 رائع! استمر في تقديم خدمات متميزة لتحصل على المزيد من المشاريع.' : '💡 نأمل أن تستفيد من هذا التقييم لتطوير خدماتك.'}</p>
+      `;
+      sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(() => {});
+    }
+
     res.json(row);
   } catch (e) {
     console.error('❌ POST /api/reviews:', e.message);
@@ -1604,12 +1925,35 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
 
-    await notify(row.client_id,
-      action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك',
-      action === 'approve'
-        ? `مشروعك "${row.title}" متاح للعروض الآن`
-        : `مشروعك "${row.title}" تم رفضه${reason ? ': ' + reason : ''}`,
-      'request', id);
+    // 🆕 Notify client with email about admin review action
+    const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
+    const inAppTitle = action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك';
+    const inAppBody = action === 'approve'
+      ? `مشروعك "${row.title}" متاح للعروض الآن`
+      : `مشروعك "${row.title}" تم رفضه${reason ? ': ' + reason : ''}`;
+
+    await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
+
+    if (clientInfo.rows.length && clientInfo.rows[0].email) {
+      const subject = inAppTitle;
+      const body = action === 'approve' ? `
+        <p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p>
+        <p>تمت الموافقة على مشروعك ونشره على المنصة:</p>
+        <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin:16px 0">
+          <div style="font-size:15px;font-weight:800;color:#15803d">${row.title}</div>
+        </div>
+        <p>سيتمكن المزودون من تقديم عروضهم الآن، وسنشعرك فوراً عند وصول أي عرض.</p>
+      ` : `
+        <p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p>
+        <p>للأسف، تم رفض مشروعك:</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;margin:16px 0">
+          <div style="font-size:15px;font-weight:800;color:#dc2626;margin-bottom:8px">${row.title}</div>
+          ${reason ? `<div style="font-size:13px;color:#7f1d1d"><strong>السبب:</strong> ${reason}</div>` : ''}
+        </div>
+        <p>يمكنك تعديل المشروع وإعادة نشره. للاستفسار: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>
+      `;
+      sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'فتح المنصة', SITE_URL + '/dashboard-client.html')).catch(() => {});
+    }
 
     res.json(row);
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -1966,6 +2310,7 @@ app.delete('/api/push-token', auth, async (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
+  console.log('📧 Full email notifications: welcome, project published, new bid, bid accepted/rejected, message, review, project completed, password change, admin actions');
 });
 
 process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
