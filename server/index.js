@@ -106,17 +106,17 @@ function emailTpl(title, body, btnText, btnUrl) {
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-// 🔔 Send Push Notification to a user (silent - won't throw on failure)
+// 🔔 Send Push Notification (Web + Native iOS/Android via Expo)
 async function sendPush(userId, title, body, url, refType, refId) {
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
   try {
+    // Get ALL push tokens for the user (web + ios + android)
     const r = await pool.query(
-      `SELECT token FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+      `SELECT token, platform FROM push_tokens WHERE user_id=$1`,
       [userId]
     );
     if (!r.rows.length) return;
 
-    const payload = JSON.stringify({
+    const webPayload = JSON.stringify({
       title: title || 'مناقصة',
       body: body || '',
       url: url || '/',
@@ -125,26 +125,94 @@ async function sendPush(userId, title, body, url, refType, refId) {
       tag: `${refType || 'general'}-${refId || Date.now()}`
     });
 
-    for (const row of r.rows) {
-      let subscription;
-      try {
-        subscription = JSON.parse(row.token);
-      } catch (e) { continue; }
+    // Collect Expo (native) tokens for batch send
+    const expoMessages = [];
 
-      try {
-        await webpush.sendNotification(subscription, payload);
-      } catch (err) {
-        // 410 Gone = subscription expired, remove it
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          try {
-            await pool.query(
-              'DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',
-              [userId, row.token]
-            );
-          } catch(e) {}
-        } else {
-          console.error('❌ sendPush error:', err.statusCode, err.message);
+    for (const row of r.rows) {
+      const platform = row.platform || 'web';
+
+      // ─── Web Push (browsers) ──────────────────────────
+      if (platform === 'web') {
+        if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) continue;
+        let subscription;
+        try { subscription = JSON.parse(row.token); }
+        catch (e) { continue; }
+
+        try {
+          await webpush.sendNotification(subscription, webPayload);
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            try {
+              await pool.query(
+                'DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',
+                [userId, row.token]
+              );
+            } catch(e) {}
+          } else {
+            console.error('❌ sendPush web error:', err.statusCode, err.message);
+          }
         }
+      }
+      // ─── Native Push (iOS/Android via Expo) ───────────
+      else if (platform === 'ios' || platform === 'android' || platform === 'expo') {
+        // Expo Push tokens look like: ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+        if (row.token && row.token.startsWith('ExponentPushToken')) {
+          expoMessages.push({
+            to: row.token,
+            sound: 'default',
+            title: title || 'مناقصة',
+            body: body || '',
+            data: {
+              url: url || '/',
+              type: refType || 'general',
+              ref_id: refId || null
+            },
+            badge: 1,
+            priority: 'high',
+            channelId: 'default'
+          });
+        }
+      }
+    }
+
+    // ─── Send all native pushes to Expo Push API in one batch ───
+    if (expoMessages.length > 0) {
+      try {
+        const expoResp = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(expoMessages)
+        });
+        const expoResult = await expoResp.json();
+
+        // Handle errors per ticket — remove invalid tokens
+        if (expoResult && expoResult.data && Array.isArray(expoResult.data)) {
+          for (let i = 0; i < expoResult.data.length; i++) {
+            const ticket = expoResult.data[i];
+            if (ticket.status === 'error') {
+              const errCode = ticket.details && ticket.details.error;
+              // DeviceNotRegistered = token invalid → remove from DB
+              if (errCode === 'DeviceNotRegistered') {
+                const badToken = expoMessages[i].to;
+                try {
+                  await pool.query(
+                    'DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',
+                    [userId, badToken]
+                  );
+                  console.log(`🗑️  Removed invalid Expo token for user ${userId}`);
+                } catch(e) {}
+              } else {
+                console.error('❌ Expo push error:', errCode, ticket.message);
+              }
+            }
+          }
+        }
+      } catch (expoErr) {
+        console.error('❌ Expo push API error:', expoErr.message);
       }
     }
   } catch (e) {
@@ -2443,6 +2511,31 @@ app.post('/api/push/unsubscribe', auth, async (req, res) => {
   }
 });
 
+// 🔔 Register Native Push Token (iOS/Android via Expo)
+app.post('/api/push/register-native', auth, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    if (!String(token).startsWith('ExponentPushToken')) {
+      return res.status(400).json({ message: 'صيغة token غير صحيحة' });
+    }
+    const plat = (platform === 'ios' || platform === 'android') ? platform : 'expo';
+
+    // Remove old tokens of same platform for this user (only one device per platform)
+    // This prevents notification duplication if user reinstalls
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
+       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
+      [req.user.id, token, plat]
+    );
+    console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/register-native:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // Check if user has active push subscriptions (for UI state)
 app.get('/api/push/status', auth, async (req, res) => {
   try {
@@ -2483,6 +2576,7 @@ app.listen(port, () => {
   console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
   console.log('📧 Full email notifications: welcome, project published, new bid, bid accepted/rejected, message, review, project completed, password change, admin actions');
   console.log('🔔 Web Push: ' + (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY ? 'ENABLED ✅' : 'DISABLED (set VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY)'));
+  console.log('📱 Native Push (iOS/Android via Expo): ENABLED ✅');
 });
 
 process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
