@@ -168,7 +168,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #lbar-wrap.on{display:block}
 #lbar{height:3px;width:0%;background:var(--gold);transition:width .3s ease}
 
-/* 🆕 Account deletion danger zone styling */
+/* Account deletion danger zone */
 .danger-zone{background:#fef2f2;border:1.5px solid #fca5a5;border-right:4px solid var(--red);border-radius:14px;padding:18px;margin-bottom:14px}
 .danger-zone-title{font-size:14px;font-weight:900;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:8px}
 .danger-zone-desc{font-size:12px;color:#7f1d1d;line-height:1.8;margin-bottom:14px}
@@ -183,6 +183,38 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-p{padding:12px 22px;background:var(--p);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .18s}
 .btn-p:disabled{opacity:.5;cursor:not-allowed}
 .btn-s{padding:12px 16px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+
+/* 🔔 PUSH BANNER */
+.push-banner{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:420px;background:linear-gradient(135deg,#16213E,#1A2F5E);border:1px solid var(--gold);border-radius:18px;padding:16px 18px;z-index:200;box-shadow:0 12px 40px rgba(15,23,42,.4);display:none;animation:slideUp .35s cubic-bezier(.34,1.56,.64,1)}
+.push-banner.show{display:block}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.push-banner-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.push-banner-icon{width:38px;height:38px;border-radius:11px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(201,146,10,.4)}
+.push-banner-title{font-size:13px;font-weight:900;color:#fff;margin-bottom:2px}
+.push-banner-sub{font-size:11px;color:rgba(255,255,255,.6)}
+.push-banner-list{font-size:11px;color:rgba(255,255,255,.78);line-height:2;margin-bottom:12px;padding-right:18px}
+.push-banner-actions{display:flex;gap:8px}
+.push-banner-yes{flex:1;padding:11px;background:var(--gold);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:.15s}
+.push-banner-yes:hover:not(:disabled){background:var(--gold-d)}
+.push-banner-yes:disabled{opacity:.6;cursor:wait}
+.push-banner-no{padding:11px 14px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.push-banner-no:hover{background:rgba(255,255,255,.15)}
+@media(min-width:769px){.push-banner{bottom:24px;left:auto;right:24px;transform:none;max-width:340px}@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}}
+
+/* 🔔 PUSH TOGGLE CARD */
+.push-toggle-card{background:linear-gradient(135deg,#fef9e7,#fff8e6);border:1.5px solid var(--gold-soft);border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.push-toggle-icon{width:42px;height:42px;border-radius:11px;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(201,146,10,.3)}
+.push-toggle-info{flex:1;min-width:0}
+.push-toggle-title{font-size:13px;font-weight:900;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.push-toggle-sub{font-size:11px;color:var(--text2);line-height:1.6}
+.push-toggle-switch{width:48px;height:26px;background:var(--border2);border-radius:13px;position:relative;cursor:pointer;transition:.25s;flex-shrink:0;border:none;padding:0}
+.push-toggle-switch::after{content:'';position:absolute;top:2px;right:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.push-toggle-switch.on{background:var(--green)}
+.push-toggle-switch.on::after{right:24px}
+.push-toggle-switch:disabled{opacity:.55;cursor:wait}
+.push-status-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px}
+.push-status-badge.active{background:var(--green-l);color:var(--green)}
+.push-status-badge.inactive{background:var(--bg);color:var(--muted)}
 
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
@@ -283,6 +315,28 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </button>
 </div></div>
 
+<!-- 🔔 PUSH NOTIFICATION BANNER -->
+<div class="push-banner" id="pushBanner">
+  <div class="push-banner-head">
+    <div class="push-banner-icon">
+      <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    </div>
+    <div>
+      <div class="push-banner-title">فعّل الإشعارات الفورية</div>
+      <div class="push-banner-sub">لا تفوت أي مشروع جديد</div>
+    </div>
+  </div>
+  <ul class="push-banner-list">
+    <li>مشاريع جديدة في تخصصك</li>
+    <li>قبول/رفض عروضك</li>
+    <li>رسائل من العملاء</li>
+  </ul>
+  <div class="push-banner-actions">
+    <button class="push-banner-yes" onclick="enablePushFromBanner()">✓ السماح بالإشعارات</button>
+    <button class="push-banner-no" onclick="dismissPushBanner()">لاحقاً</button>
+  </div>
+</div>
+
 <div id="imgViewer" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9998;align-items:center;justify-content:center;padding:20px">
   <img id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px;pointer-events:none">
 </div>
@@ -301,7 +355,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- 🆕 DELETE ACCOUNT OVERLAY (Apple Guideline 5.1.1) -->
+<!-- DELETE ACCOUNT OVERLAY -->
 <div class="overlay" id="deleteAccountOverlay">
   <div class="modal">
     <div class="modal-drag"></div>
@@ -365,14 +419,138 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 'use strict';
 var API='https://manaqasati-production.up.railway.app';
 
-// Unregister old service workers
+// ═══ SERVICE WORKER REGISTRATION (for Push Notifications) ═══
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    console.log('✅ SW registered:',reg.scope);
+  }).catch(function(err){
+    console.log('SW register error:',err);
+  });
 }
 
 var _token=localStorage.getItem('token')||'';
 var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
+
+// ═══ PUSH NOTIFICATION HELPERS ═══
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var rawData=window.atob(base64);
+  var outputArray=new Uint8Array(rawData.length);
+  for(var i=0;i<rawData.length;++i){outputArray[i]=rawData.charCodeAt(i);}
+  return outputArray;
+}
+
+async function pushSubscribe(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){
+    alert('متصفحك لا يدعم الإشعارات الفورية');
+    return false;
+  }
+  try{
+    var perm=await Notification.requestPermission();
+    if(perm!=='granted'){
+      alert('يجب السماح بالإشعارات من إعدادات المتصفح');
+      return false;
+    }
+    var reg=await navigator.serviceWorker.ready;
+    var existing=await reg.pushManager.getSubscription();
+    if(existing){
+      await fetch(API+'/api/push/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+        body:JSON.stringify({subscription:existing.toJSON()})
+      });
+      return true;
+    }
+    var keyResp=await fetch(API+'/api/push/vapid-public-key');
+    var keyData=await keyResp.json();
+    if(!keyData.publicKey){console.error('No VAPID key');return false;}
+    var sub=await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:urlBase64ToUint8Array(keyData.publicKey)
+    });
+    var resp=await fetch(API+'/api/push/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+      body:JSON.stringify({subscription:sub.toJSON()})
+    });
+    var r=await resp.json();
+    return r.ok===true;
+  }catch(e){
+    console.error('push subscribe error:',e);
+    return false;
+  }
+}
+
+async function pushUnsubscribe(){
+  try{
+    var reg=await navigator.serviceWorker.ready;
+    var sub=await reg.pushManager.getSubscription();
+    if(sub){
+      var endpoint=sub.endpoint;
+      await sub.unsubscribe();
+      await fetch(API+'/api/push/unsubscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+        body:JSON.stringify({endpoint:endpoint})
+      });
+    }
+    return true;
+  }catch(e){
+    console.error('push unsubscribe error:',e);
+    return false;
+  }
+}
+
+async function isPushActive(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return false;
+  try{
+    if(Notification.permission!=='granted')return false;
+    var reg=await navigator.serviceWorker.ready;
+    var sub=await reg.pushManager.getSubscription();
+    return !!sub;
+  }catch(e){return false;}
+}
+
+function showPushBanner(){
+  var b=document.getElementById('pushBanner');
+  if(b)b.classList.add('show');
+}
+function dismissPushBanner(){
+  var b=document.getElementById('pushBanner');
+  if(b)b.classList.remove('show');
+  localStorage.setItem('manaqasa_push_dismissed_'+_me.id,Date.now());
+}
+async function enablePushFromBanner(){
+  var btn=document.querySelector('.push-banner-yes');
+  if(btn){btn.disabled=true;btn.textContent='جاري التفعيل...';}
+  var ok=await pushSubscribe();
+  if(ok){
+    var b=document.getElementById('pushBanner');
+    if(b)b.classList.remove('show');
+    localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');
+    setTimeout(function(){alert('🎉 تم تفعيل الإشعارات بنجاح!');},200);
+  }else{
+    if(btn){btn.disabled=false;btn.textContent='✓ السماح بالإشعارات';}
+  }
+}
+
+async function maybeShowPushBanner(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+  if(Notification.permission==='denied')return;
+  var active=await isPushActive();
+  if(active){
+    localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');
+    return;
+  }
+  var dismissed=localStorage.getItem('manaqasa_push_dismissed_'+_me.id);
+  if(dismissed){
+    var diff=Date.now()-parseInt(dismissed);
+    if(diff<7*24*60*60*1000)return;
+  }
+  setTimeout(showPushBanner,3000);
+}
 
 // ═══ Constants ═══
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
@@ -1067,6 +1245,24 @@ async function loadProfile(){
   hdr.innerHTML=hdrHtml;
   pg.appendChild(hdr);
 
+  // 🔔 PUSH NOTIFICATIONS TOGGLE CARD
+  var pushCard=document.createElement('div');
+  pushCard.className='push-toggle-card';
+  pushCard.innerHTML=
+    '<div class="push-toggle-icon">'+
+      '<svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'+
+    '</div>'+
+    '<div class="push-toggle-info">'+
+      '<div class="push-toggle-title">'+
+        'الإشعارات الفورية '+
+        '<span class="push-status-badge inactive" id="pushStatusBadge">معطّلة</span>'+
+      '</div>'+
+      '<div class="push-toggle-sub">استلم إشعارات بمشاريع جديدة في تخصصك حتى عند إغلاق المتصفح</div>'+
+    '</div>'+
+    '<button class="push-toggle-switch" id="pushToggleSwitch" onclick="togglePush()" type="button"></button>';
+  pg.appendChild(pushCard);
+  setTimeout(updatePushToggleUI,100);
+
   var infoCard=document.createElement('div');
   infoCard.className='card card-accent';
   infoCard.innerHTML=
@@ -1148,8 +1344,7 @@ async function loadProfile(){
     +'<button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
   pg.appendChild(pwCard);
 
-  // 🆕 DANGER ZONE - Account Deletion (Apple Guideline 5.1.1)
-  // Placed right after password card, before final save button
+  // DANGER ZONE
   var dangerZone=document.createElement('div');
   dangerZone.className='danger-zone';
   dangerZone.style.marginTop='4px';
@@ -1173,6 +1368,44 @@ async function loadProfile(){
   pg.appendChild(saveWrap);
 
   _lb.done();
+}
+
+// 🔔 Push toggle UI
+async function updatePushToggleUI(){
+  var sw=document.getElementById('pushToggleSwitch');
+  var bg=document.getElementById('pushStatusBadge');
+  if(!sw||!bg)return;
+  var active=await isPushActive();
+  if(active){
+    sw.classList.add('on');
+    bg.className='push-status-badge active';
+    bg.textContent='مفعّلة';
+  }else{
+    sw.classList.remove('on');
+    bg.className='push-status-badge inactive';
+    bg.textContent='معطّلة';
+  }
+}
+
+async function togglePush(){
+  var sw=document.getElementById('pushToggleSwitch');
+  if(!sw||sw.disabled)return;
+  sw.disabled=true;
+  var active=await isPushActive();
+  if(active){
+    if(confirm('هل تريد إيقاف الإشعارات الفورية؟')){
+      var ok=await pushUnsubscribe();
+      if(ok)localStorage.removeItem('manaqasa_push_enabled_'+_me.id);
+    }
+  }else{
+    var ok=await pushSubscribe();
+    if(ok){
+      localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');
+      setTimeout(function(){alert('🎉 تم تفعيل الإشعارات بنجاح!');},200);
+    }
+  }
+  await updatePushToggleUI();
+  sw.disabled=false;
 }
 
 function _togSpec(btn){
@@ -1263,18 +1496,14 @@ async function _delPortImg(i){
   loadProfile();
 }
 
-// 🆕 ACCOUNT DELETION FUNCTIONS (Apple Guideline 5.1.1(v))
+// ACCOUNT DELETION
 function openDeleteAccount(){
-  // Reset form
   _el('deleteConfirmInput').value='';
   _el('deleteAccountBtn').disabled=true;
   _el('delete-msg').className='alert';
   _el('deletion-stats-wrap').innerHTML='<div class="loading">جاري تحميل البيانات...</div>';
-
-  // Show overlay
   _el('deleteAccountOverlay').className='overlay show';
 
-  // Fetch deletion preview
   _api('/api/account/deletion-preview').then(function(d){
     if(d&&d.stats){
       var s=d.stats;
@@ -1286,7 +1515,6 @@ function openDeleteAccount(){
       if(typeof s.notifications!=='undefined')html+='<div class="delete-stat-box"><div class="delete-stat-num">'+s.notifications+'</div><div class="delete-stat-lbl">إشعار</div></div>';
       html+='</div>';
 
-      // Show warning if there are active in-progress projects
       if(d.warning){
         html='<div style="background:#fef3c7;border:1px solid #fde68a;border-right:3px solid #d97706;border-radius:11px;padding:12px 14px;margin-bottom:10px"><div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:5px">⚠️ تنبيه</div><p style="font-size:11px;color:#78350f;line-height:1.7">'+d.warning+'</p></div>'+html;
       }
@@ -1482,6 +1710,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var saved=sessionStorage.getItem('mnq_prov_page');
   var pg=(saved&&_pages[saved])?saved:'home';
   gotoPage(pg);
+  // 🔔 Maybe show push banner after 1.5s
+  setTimeout(maybeShowPushBanner,1500);
 });
 </script>
 
