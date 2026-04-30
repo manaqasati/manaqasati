@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const webpush = require('web-push');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,6 +25,24 @@ const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.r
 const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
 const FROM_NAME  = process.env.FROM_NAME  || 'مناقصة';
+
+// ═══════════════════════════════════════════════════════════════
+// 🔔 WEB PUSH NOTIFICATIONS (VAPID)
+// ═══════════════════════════════════════════════════════════════
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT     = process.env.VAPID_SUBJECT     || 'mailto:cs@manaqasa.com';
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    console.log('✅ Web Push (VAPID) configured');
+  } catch (e) {
+    console.error('❌ VAPID setup error:', e.message);
+  }
+} else {
+  console.warn('⚠️  VAPID keys not set — push notifications disabled');
+}
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
@@ -86,12 +105,70 @@ function emailTpl(title, body, btnText, btnUrl) {
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
+
+// 🔔 Send Push Notification to a user (silent - won't throw on failure)
+async function sendPush(userId, title, body, url, refType, refId) {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
+  try {
+    const r = await pool.query(
+      `SELECT token FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+      [userId]
+    );
+    if (!r.rows.length) return;
+
+    const payload = JSON.stringify({
+      title: title || 'مناقصة',
+      body: body || '',
+      url: url || '/',
+      type: refType || 'general',
+      ref_id: refId || null,
+      tag: `${refType || 'general'}-${refId || Date.now()}`
+    });
+
+    for (const row of r.rows) {
+      let subscription;
+      try {
+        subscription = JSON.parse(row.token);
+      } catch (e) { continue; }
+
+      try {
+        await webpush.sendNotification(subscription, payload);
+      } catch (err) {
+        // 410 Gone = subscription expired, remove it
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          try {
+            await pool.query(
+              'DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',
+              [userId, row.token]
+            );
+          } catch(e) {}
+        } else {
+          console.error('❌ sendPush error:', err.statusCode, err.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('❌ sendPush helper error:', e.message);
+  }
+}
+
 async function notify(userId, title, body, type, refId) {
   try {
     await pool.query(
       'INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)',
       [userId, title, body, type, refId]
     );
+    // 🔔 Also send push notification (silent, async)
+    const url = (() => {
+      if (!type) return '/';
+      if (type === 'message') return '/dashboard-client.html#messages';
+      if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
+      if (type === 'new_request') return '/dashboard-provider.html';
+      if (type === 'request' || type === 'request_published') return '/dashboard-client.html';
+      if (type === 'review') return '/';
+      return '/';
+    })();
+    sendPush(userId, title, body, url, type, refId).catch(() => {});
   } catch (e) { console.error('Notification error:', e); }
 }
 
@@ -2305,12 +2382,107 @@ app.delete('/api/push-token', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// 🔔 WEB PUSH NOTIFICATIONS API
+// ═══════════════════════════════════════════════════════════════
+
+// Get VAPID public key (for client to subscribe)
+app.get('/api/push/vapid-public-key', (req, res) => {
+  if (!VAPID_PUBLIC_KEY) return res.status(503).json({ message: 'Push غير مفعّل' });
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+// Subscribe a device to push notifications
+app.post('/api/push/subscribe', auth, async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
+    }
+    const tokenStr = JSON.stringify(subscription);
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web')
+       ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`,
+      [req.user.id, tokenStr]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/subscribe:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Unsubscribe a device from push notifications
+app.post('/api/push/unsubscribe', auth, async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    if (endpoint) {
+      // Find by endpoint match
+      const r = await pool.query(
+        `SELECT id, token FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+        [req.user.id]
+      );
+      for (const row of r.rows) {
+        try {
+          const sub = JSON.parse(row.token);
+          if (sub.endpoint === endpoint) {
+            await pool.query('DELETE FROM push_tokens WHERE id=$1', [row.id]);
+          }
+        } catch(e) {}
+      }
+    } else {
+      // Remove all web push subscriptions for this user
+      await pool.query(
+        `DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+        [req.user.id]
+      );
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/unsubscribe:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Check if user has active push subscriptions (for UI state)
+app.get('/api/push/status', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+      [req.user.id]
+    );
+    res.json({ subscribed: r.rows[0].cnt > 0, count: r.rows[0].cnt });
+  } catch (e) {
+    res.json({ subscribed: false, count: 0 });
+  }
+});
+
+// Test push notification (admin only)
+app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    const targetId = user_id || req.user.id;
+    await sendPush(
+      targetId,
+      '🧪 اختبار الإشعارات',
+      'هذا إشعار تجريبي من منصة مناقصة. إذا وصلك فالإشعارات تشتغل بنجاح! 🎉',
+      '/',
+      'test',
+      null
+    );
+    res.json({ ok: true, message: 'تم إرسال الإشعار التجريبي' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
   console.log('📧 Full email notifications: welcome, project published, new bid, bid accepted/rejected, message, review, project completed, password change, admin actions');
+  console.log('🔔 Web Push: ' + (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY ? 'ENABLED ✅' : 'DISABLED (set VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY)'));
 });
 
 process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
