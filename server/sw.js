@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v3';
+var CACHE = 'manaqasa-v4';
 var STATIC = [
   './',
   './index.html',
@@ -36,10 +36,72 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
+// ═══════════════════════════════════════════════════════════════
+// 🔔 PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+// Handle incoming push notifications
+self.addEventListener('push', function(e) {
+  var data = {};
+  try {
+    if (e.data) {
+      data = e.data.json();
+    }
+  } catch (err) {
+    data = { title: 'مناقصة', body: e.data ? e.data.text() : 'إشعار جديد' };
+  }
+
+  var title = data.title || 'مناقصة';
+  var options = {
+    body: data.body || '',
+    icon: '/manaqasa-icon-512.png',
+    badge: '/manaqasa-icon-512.png',
+    dir: 'rtl',
+    lang: 'ar',
+    tag: data.tag || 'manaqasa-' + Date.now(),
+    renotify: true,
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/',
+      type: data.type || 'general',
+      ref_id: data.ref_id || null
+    }
+  };
+
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Handle notification click — open the relevant page
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+
+  var targetUrl = (e.notification.data && e.notification.data.url) || '/';
+
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // If a window is already open, focus it and navigate
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url.indexOf(self.location.origin) === 0 && 'focus' in client) {
+          client.focus();
+          if ('navigate' in client) {
+            return client.navigate(targetUrl);
+          }
+          return;
+        }
+      }
+      // Otherwise open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
 // Fetch handler
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
-
   // ── API calls: NEVER intercept — go straight to network ──
   if (
     url.includes('manaqasati-production') ||
@@ -48,10 +110,8 @@ self.addEventListener('fetch', function(e) {
   ) {
     return; // Don't call e.respondWith — browser handles it directly
   }
-
   // ── Non-GET requests: pass through ──
   if (e.request.method !== 'GET') return;
-
   // ── Google Fonts: cache first ──
   if (url.includes('fonts.googleapis') || url.includes('fonts.gstatic')) {
     e.respondWith(
@@ -66,7 +126,6 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
-
   // ── Static assets: cache first, fallback to network ──
   e.respondWith(
     caches.match(e.request).then(function(cached) {
