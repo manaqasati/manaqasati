@@ -762,8 +762,23 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
+    // 🆕 Email change with uniqueness check
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      const newEmail = String(req.body.email || '').trim().toLowerCase();
+      if (!newEmail || !newEmail.includes('@') || !newEmail.includes('.')) {
+        return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
+      }
+      // Check if email is taken by ANOTHER user
+      const dup = await pool.query(
+        'SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2',
+        [newEmail, req.user.id]
+      );
+      if (dup.rows.length) {
+        return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
+      }
+    }
     const allowed = {
-      name: 'name', phone: 'phone', city: 'city', bio: 'bio', profile_image: 'profile_image'
+      name: 'name', phone: 'phone', email: 'email', city: 'city', bio: 'bio', profile_image: 'profile_image'
     };
     const sets = [];
     const params = [];
@@ -779,6 +794,9 @@ app.put('/api/client/profile', auth, async (req, res) => {
             idx++;
           }
           continue;
+        }
+        if (key === 'email') {
+          val = String(val || '').trim().toLowerCase();
         }
         if (val === '') val = null;
         sets.push(`${col}=$${idx}`);
@@ -798,7 +816,11 @@ app.put('/api/client/profile', auth, async (req, res) => {
       RETURNING id,name,email,phone,city,bio,profile_image`;
     const r = await pool.query(q, params);
     res.json(r.rows[0]);
-  } catch (e) { console.error('❌ client/profile PUT:', e); res.status(500).json({ message: e.message }); }
+  } catch (e) {
+    console.error('❌ client/profile PUT:', e);
+    if (e.code === '23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.get('/api/provider/profile', auth, async (req, res) => {
@@ -869,8 +891,22 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
+    // 🆕 Email change with uniqueness check
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      const newEmail = String(req.body.email || '').trim().toLowerCase();
+      if (!newEmail || !newEmail.includes('@') || !newEmail.includes('.')) {
+        return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
+      }
+      const dup = await pool.query(
+        'SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2',
+        [newEmail, req.user.id]
+      );
+      if (dup.rows.length) {
+        return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
+      }
+    }
     const allowed = {
-      name: 'name', phone: 'phone', city: 'city', bio: 'bio',
+      name: 'name', phone: 'phone', email: 'email', city: 'city', bio: 'bio',
       specialties: 'specialties', notify_categories: 'notify_categories',
       experience_years: 'experience_years', portfolio_images: 'portfolio_images',
       profile_image: 'profile_image', business_name: 'business_name',
@@ -892,6 +928,9 @@ app.put('/api/provider/profile', auth, async (req, res) => {
             idx++;
           }
           continue;
+        }
+        if (key === 'email') {
+          val = String(val || '').trim().toLowerCase();
         }
         if (key === 'experience_years') {
           val = (val === '' || val === null || val === undefined) ? null : parseInt(val);
@@ -915,7 +954,11 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`;
     const r = await pool.query(q, params);
     res.json(r.rows[0]);
-  } catch (e) { console.error('❌ provider/profile PUT:', e); res.status(500).json({ message: e.message }); }
+  } catch (e) {
+    console.error('❌ provider/profile PUT:', e);
+    if (e.code === '23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
