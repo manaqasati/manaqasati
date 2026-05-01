@@ -1714,8 +1714,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var saved=sessionStorage.getItem('mnq_prov_page');
   var pg=(saved&&_pages[saved])?saved:'home';
   gotoPage(pg);
-  // 🔔 Maybe show push banner after 1.5s
-  setTimeout(maybeShowPushBanner,1500);
+  // 🔔 Push banner auto-show disabled — users can enable from profile settings
+  // setTimeout(maybeShowPushBanner,1500);
 });
 </script>
 
