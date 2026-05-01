@@ -1766,8 +1766,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var pg=(h&&_validPages.indexOf(h)>=0)?h:((saved&&_validPages.indexOf(saved)>=0)?saved:'home');
   show(pg,null,pg);
   _loadChatBadge();
-  // 🔔 Maybe show push banner after 1.5s
-  setTimeout(maybeShowPushBanner, 1500);
+  // 🔔 Push banner auto-show disabled — users can enable from profile settings
+  // setTimeout(maybeShowPushBanner, 1500);
 });
 </script>
 </body>
