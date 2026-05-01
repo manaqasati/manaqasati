@@ -1266,7 +1266,7 @@ function loadProfile(){
       '<div class="form-grid" style="padding:0">'+
         '<div class="fg"><label>الاسم الكامل</label><input id="cName" placeholder="اسمك الكامل"></div>'+
         '<div class="fg"><label>رقم الجوال</label><input id="cPhone" placeholder="05xxxxxxxx"></div>'+
-        '<div class="fg ff"><label>البريد الإلكتروني</label><input id="cEmail" type="email" disabled style="background:var(--bg);color:var(--hint)"></div>'+
+        '<div class="fg ff"><label>البريد الإلكتروني</label><input id="cEmail" type="email" placeholder="example@email.com"></div>'+
         '<div class="fg ff" id="cityWrap"><label>المدينة</label></div>'+
       '</div>';
     container.appendChild(infoCard);
@@ -1372,13 +1372,16 @@ function uploadClientAvatar(input){
 function saveClientProfile(btn){
   var name=(document.getElementById('cName')||{}).value;if(name)name=name.trim();
   var phone=(document.getElementById('cPhone')||{}).value;
+  var email=(document.getElementById('cEmail')||{}).value;if(email)email=email.trim();
   var city=(document.getElementById('cCity')||{}).value;
   if(!name){alert('الاسم مطلوب');return;}
+  if(!email||!email.includes('@')||!email.includes('.')){alert('يرجى إدخال بريد إلكتروني صحيح');return;}
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone||null,city:city||null})},hdr())).then(function(r){return r.json();}).then(function(r){
+  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone||null,email:email,city:city||null})},hdr())).then(function(r){return r.json();}).then(function(r){
     if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
     if(r.id){
       user.name=r.name;
+      if(r.email)user.email=r.email;
       localStorage.setItem('user',JSON.stringify(user));
       document.getElementById('userName').textContent=r.name;
       document.getElementById('welcomeName').textContent='مرحباً، '+r.name.split(' ')[0];
