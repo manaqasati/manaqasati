@@ -116,13 +116,32 @@ async function sendPush(userId, title, body, url, refType, refId) {
     );
     if (!r.rows.length) return;
 
+    // 🆕 Calculate smart badge: count unread notifications + unread messages
+    let badgeCount = 1;
+    try {
+      const badgeRes = await pool.query(`
+        SELECT
+          (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false) +
+          (SELECT COUNT(*)::int FROM messages
+           WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL))
+          AS total
+      `, [userId]);
+      const total = badgeRes.rows[0]?.total;
+      if (typeof total === 'number' && total > 0) {
+        badgeCount = total;
+      }
+    } catch(e) {
+      console.error('badge count error:', e.message);
+    }
+
     const webPayload = JSON.stringify({
       title: title || 'مناقصة',
       body: body || '',
       url: url || '/',
       type: refType || 'general',
       ref_id: refId || null,
-      tag: `${refType || 'general'}-${refId || Date.now()}`
+      tag: `${refType || 'general'}-${refId || Date.now()}`,
+      badge: badgeCount
     });
 
     // Collect Expo (native) tokens for batch send
@@ -167,7 +186,7 @@ async function sendPush(userId, title, body, url, refType, refId) {
               type: refType || 'general',
               ref_id: refId || null
             },
-            badge: 1,
+            badge: badgeCount,
             priority: 'high',
             channelId: 'default'
           });
@@ -2589,6 +2608,22 @@ app.get('/api/push/status', auth, async (req, res) => {
     res.json({ subscribed: r.rows[0].cnt > 0, count: r.rows[0].cnt });
   } catch (e) {
     res.json({ subscribed: false, count: 0 });
+  }
+});
+
+// 🆕 Get current badge count (unread messages + notifications)
+app.get('/api/push/badge', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false) +
+        (SELECT COUNT(*)::int FROM messages
+         WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL))
+        AS total
+    `, [req.user.id]);
+    res.json({ badge: r.rows[0]?.total || 0 });
+  } catch (e) {
+    res.json({ badge: 0 });
   }
 });
 
