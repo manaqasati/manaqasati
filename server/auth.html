@@ -233,7 +233,7 @@ function _notifyMobileApp(token, user){
   try {
     if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'AUTH',
+        type: 'AUTH_SAVE',
         token: token,
         user: typeof user === 'string' ? user : JSON.stringify(user)
       }));
