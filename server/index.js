@@ -188,7 +188,11 @@ async function sendPush(userId, title, body, url, refType, refId) {
             },
             badge: badgeCount,
             priority: 'high',
-            channelId: 'default'
+            channelId: 'default',
+            _displayInForeground: true,
+            ttl: 0,
+            mutableContent: true,
+            interruptionLevel: 'time-sensitive'
           });
         }
       }
