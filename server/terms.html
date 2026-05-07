@@ -3,407 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مناقصة — الشروط والسياسات</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<title>الشروط والأحكام — مناقصة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
+:root{--p:#16213E;--gold:#C9920A;--bg:#F5F5F0;--border:#E6E2D9;--text:#0F172A;--muted:#64748B}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{font-family:'Tajawal',sans-serif;background:#f8fafc;color:#0f172a;direction:rtl}
-a{text-decoration:none;color:inherit}
-
-/* NAV */
-.nav{background:#0f2545;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.nav-logo{font-size:20px;font-weight:900;color:#fff}.nav-logo b{color:#F5A623}
-.nav-back{color:rgba(255,255,255,.7);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:.15s}
-.nav-back:hover{color:#fff}
-.nav-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-
-/* HERO */
-.hero{background:linear-gradient(135deg,#0f2545,#1473E6);padding:48px 24px 40px;text-align:center}
-.hero h1{font-size:26px;font-weight:900;color:#fff;margin-bottom:8px}
-.hero p{font-size:14px;color:rgba(255,255,255,.65);max-width:500px;margin:0 auto}
-
-/* TABS */
-.tabs-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;display:flex;gap:4px;position:sticky;top:60px;z-index:99;overflow-x:auto}
-.tab-btn{padding:14px 20px;font-size:13px;font-weight:700;color:#64748b;border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:2.5px solid transparent;white-space:nowrap;transition:.15s}
-.tab-btn.on{color:#1473E6;border-bottom-color:#1473E6}
-.tab-btn:hover:not(.on){color:#374151}
-
-/* CONTENT */
-.container{max-width:800px;margin:0 auto;padding:32px 24px 60px}
-.section{display:none}.section.on{display:block}
-
-/* ARTICLE */
-.article-section{margin-bottom:28px}
-.art-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#1473E6;color:#fff;border-radius:8px;font-size:13px;font-weight:900;margin-left:10px;flex-shrink:0}
-.art-title{display:flex;align-items:center;font-size:16px;font-weight:800;color:#0f2545;margin-bottom:10px}
-.art-body{font-size:14px;color:#374151;line-height:2;padding-right:42px}
-.art-body ul{padding-right:16px}
-.art-body ul li{margin-bottom:4px}
-.art-body ul li::marker{color:#1473E6}
-
-/* FAQ */
-.faq-item{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff}
-.faq-q{padding:16px 18px;font-size:14px;font-weight:700;color:#0f172a;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
-.faq-q:hover{background:#f8fafc}
-.faq-icon{width:20px;height:20px;flex-shrink:0;transition:.2s;fill:none;stroke:#1473E6;stroke-width:2;stroke-linecap:round}
-.faq-item.open .faq-icon{transform:rotate(45deg)}
-.faq-a{display:none;padding:0 18px 16px;font-size:13px;color:#374151;line-height:1.9;border-top:1px solid #f1f5f9}
-.faq-item.open .faq-a{display:block}
-
-/* CONTACT CARD */
-.contact-card{background:linear-gradient(135deg,#EBF3FD,#f0f7ff);border:1.5px solid #93c5fd;border-radius:16px;padding:24px;text-align:center;margin-top:32px}
-.contact-card h3{font-size:16px;font-weight:800;color:#0f2545;margin-bottom:6px}
-.contact-card p{font-size:13px;color:#374151;margin-bottom:16px}
-.contact-email{display:inline-flex;align-items:center;gap:8px;background:#1473E6;color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:700}
-.contact-email svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-
-/* HIGHLIGHT */
-.highlight-box{background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:16px 18px;margin-bottom:20px}
-.highlight-box p{font-size:13px;color:#166534;line-height:1.9;font-weight:500}
-
-/* DATE */
-.doc-date{font-size:12px;color:#94a3b8;text-align:center;margin-bottom:24px}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);line-height:1.8}
+.header{background:var(--p);padding:24px 20px;text-align:center}
+.logo{font-size:22px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.container{max-width:760px;margin:0 auto;padding:40px 20px}
+h1{font-size:24px;font-weight:900;color:var(--p);margin-bottom:8px}
+.date{font-size:13px;color:var(--muted);margin-bottom:32px;padding-bottom:16px;border-bottom:2px solid var(--gold)}
+h2{font-size:17px;font-weight:800;color:var(--p);margin:28px 0 12px;padding-right:12px;border-right:3px solid var(--gold)}
+p,li{font-size:14px;color:#374151;line-height:2;margin-bottom:8px}
+ul{padding-right:20px;margin-bottom:12px}
+li{margin-bottom:4px}
+strong{color:var(--p)}
+a{color:var(--gold);text-decoration:none}
+.footer{text-align:center;padding:24px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:40px}
+.tabs{display:flex;gap:12px;margin-bottom:32px}
+.tab{padding:10px 20px;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;border:2px solid var(--border);color:var(--muted);background:#fff}
+.tab.active{background:var(--p);color:#fff;border-color:var(--p)}
 </style>
 </head>
 <body>
-
-<nav class="nav">
-  <div class="nav-logo">مناقصة<b>.</b></div>
-  <a href="index.html" class="nav-back">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    العودة للرئيسية
-  </a>
-</nav>
-
-<div class="hero">
-  <h1>الشروط والسياسات</h1>
-  <p>شفافية كاملة في كيفية عمل المنصة وحماية حقوقك</p>
+<div class="header">
+  <div class="logo"><span class="logo-dot"></span>مناقصة</div>
 </div>
-
-<div class="tabs-bar">
-  <button class="tab-btn on" onclick="showTab('terms')">اتفاقية الاستخدام</button>
-  <button class="tab-btn" onclick="showTab('privacy')">سياسة الخصوصية</button>
-  <button class="tab-btn" onclick="showTab('faq')">الأسئلة الشائعة</button>
-  <button class="tab-btn" onclick="showTab('contact')">تواصل معنا</button>
-</div>
-
 <div class="container">
-
-  <!-- اتفاقية الاستخدام -->
-  <div class="section on" id="tab-terms">
-    <p class="doc-date">آخر تحديث: مارس 2026</p>
-
-    <div class="highlight-box">
-      <p>باستخدامك لمنصة مناقصة فإنك توافق على جميع البنود والأنظمة المعمول بها في المملكة العربية السعودية. يُرجى قراءة هذه الاتفاقية بعناية قبل الاستخدام.</p>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">1</span>مقدمة</div>
-      <div class="art-body">تنظم هذه الاتفاقية العلاقة بين منصة مناقصة والمستخدم، وتحدد شروط استخدام الخدمات المقدمة. المنصة وسيط تقني يربط بين أصحاب المشاريع ومزودي الخدمات في المملكة العربية السعودية.</div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">2</span>التعريفات</div>
-      <div class="art-body">
-        <ul>
-          <li><strong>المنصة:</strong> نظام إلكتروني لطرح وإدارة المناقصات والعروض على manaqasa.com</li>
-          <li><strong>المستخدم:</strong> أي فرد أو جهة تقوم بالتسجيل أو التصفح أو تقديم عرض</li>
-          <li><strong>مزود الخدمة:</strong> المستخدم الذي يقدم عرضاً على مشروع</li>
-          <li><strong>العميل:</strong> المستخدم الذي ينشر مشروعاً ويطلب عروضاً</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">3</span>شروط الاستخدام</div>
-      <div class="art-body">
-        <ul>
-          <li>تقديم معلومات صحيحة ومحدثة عند التسجيل</li>
-          <li>عدم التلاعب في الأسعار أو تقديم عروض وهمية</li>
-          <li>الالتزام بالأنظمة والتراخيص المطلوبة لمزاولة النشاط</li>
-          <li>عدم نشر محتوى مضلل أو مخالف للأنظمة</li>
-          <li>عدم استخدام المنصة لأغراض غير مشروعة</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">4</span>الحسابات</div>
-      <div class="art-body">
-        <ul>
-          <li>حساب واحد لكل مستخدم — يُمنع إنشاء حسابات متعددة</li>
-          <li>يتحمل المستخدم مسؤولية سرية بيانات الدخول</li>
-          <li>يُمنع نقل الحساب أو بيعه لطرف آخر</li>
-          <li>يحق للمنصة تعليق الحساب عند الاشتباه بالمخالفة</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">5</span>المشاريع والعروض</div>
-      <div class="art-body">
-        <ul>
-          <li>العميل مسؤول عن دقة تفاصيل المشروع المنشور</li>
-          <li>مزود الخدمة مسؤول عن صحة العرض المقدم والتزامه</li>
-          <li>المنصة لا تضمن إتمام أي اتفاق بين الأطراف</li>
-          <li>يُطبّق عمولة 1% من قيمة العرض المقبول عند إتمام الصفقة</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">6</span>المسؤولية</div>
-      <div class="art-body">
-        <ul>
-          <li>المنصة وسيط تقني فقط ولا تطرف في العقود</li>
-          <li>لا تتحمل المنصة مسؤولية أي نزاع أو خسارة بين المستخدمين</li>
-          <li>يتحمل كل طرف مسؤولية التحقق من التعاملات قبل الإتمام</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">7</span>المحتوى</div>
-      <div class="art-body">
-        <ul>
-          <li>يُمنع نشر أي محتوى مخالف للأنظمة أو القيم العامة</li>
-          <li>يحق للمنصة حذف أو تعديل أي محتوى دون إشعار مسبق</li>
-          <li>المستخدم يمنح المنصة حق استخدام المحتوى لأغراض التشغيل</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">8</span>الإيقاف والعقوبات</div>
-      <div class="art-body">يحق للمنصة:
-        <ul>
-          <li>إيقاف الحسابات المخالفة بشكل مؤقت أو دائم</li>
-          <li>حظر المستخدم نهائياً عند تكرار المخالفات</li>
-          <li>اتخاذ إجراءات قانونية عند الضرورة</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">9</span>التعديلات</div>
-      <div class="art-body">يحق للمنصة تعديل هذه الاتفاقية في أي وقت. تكون التعديلات ملزمة بعد نشرها على المنصة. استمرارك في الاستخدام يعني موافقتك على التعديلات.</div>
-    </div>
-
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">10</span>النظام القانوني</div>
-      <div class="art-body">تخضع هذه الاتفاقية لأنظمة المملكة العربية السعودية، وتكون المحاكم السعودية المختصة هي المرجع في حل النزاعات.</div>
-    </div>
+  <div class="tabs">
+    <a href="privacy.html" class="tab">سياسة الخصوصية</a>
+    <a href="terms.html" class="tab active">الشروط والأحكام</a>
   </div>
 
-  <!-- سياسة الخصوصية -->
-  <div class="section" id="tab-privacy">
-    <p class="doc-date">آخر تحديث: مارس 2026</p>
+  <h1>الشروط والأحكام</h1>
+  <div class="date">آخر تحديث: 19 أبريل 2026</div>
 
-    <div class="highlight-box">
-      <p>نلتزم بحماية خصوصية بياناتك. توضح هذه السياسة كيفية جمع واستخدام وحماية معلوماتك عند استخدام منصة مناقصة.</p>
-    </div>
+  <p>مرحباً بك في منصة <strong>مناقصة (Manaqasa)</strong>. باستخدامك للتطبيق، فإنك توافق على الشروط والأحكام التالية. يرجى قراءتها بعناية.</p>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">1</span>البيانات التي نجمعها</div>
-      <div class="art-body">
-        <ul>
-          <li>بيانات التسجيل: الاسم، رقم الجوال، البريد الإلكتروني</li>
-          <li>بيانات المشاريع والعروض المنشورة</li>
-          <li>بيانات الاستخدام: الصفحات المزارة والتفاعلات</li>
-          <li>بيانات الجهاز: عنوان IP، المتصفح، نظام التشغيل</li>
-          <li>الصور المرفوعة مع المشاريع</li>
-        </ul>
-      </div>
-    </div>
+  <h2>1. قبول الشروط</h2>
+  <p>باستخدامك لتطبيق مناقصة، فإنك توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي من هذه الشروط، يرجى عدم استخدام التطبيق.</p>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">2</span>كيف نستخدم بياناتك</div>
-      <div class="art-body">
-        <ul>
-          <li>إنشاء وإدارة حسابك على المنصة</li>
-          <li>معالجة المشاريع والعروض</li>
-          <li>إرسال الإشعارات والتحديثات المتعلقة بحسابك</li>
-          <li>تحسين أداء المنصة وتجربة المستخدم</li>
-          <li>الامتثال للمتطلبات القانونية والتنظيمية</li>
-        </ul>
-      </div>
-    </div>
+  <h2>2. وصف الخدمة</h2>
+  <p>منصة مناقصة هي منصة إلكترونية تربط بين:</p>
+  <ul>
+    <li><strong>العملاء:</strong> الأشخاص والجهات التي تبحث عن خدمات ومقاولين</li>
+    <li><strong>مزوّدي الخدمات:</strong> المقاولون والفنيون الذين يقدمون عروضهم</li>
+  </ul>
+  <p>نحن نوفر المنصة فقط ولسنا طرفاً في أي عقد بين العميل والمزود.</p>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">3</span>مشاركة البيانات</div>
-      <div class="art-body">
-        <ul>
-          <li>لا يتم بيع أو تأجير بياناتك لأي طرف ثالث</li>
-          <li>قد تُشارك مع جهات حكومية عند الطلب القانوني</li>
-          <li>تُشارك مع مزودي خدمات تقنيين لدعم تشغيل المنصة بحد أدنى ضروري</li>
-          <li>بيانات المشاريع مرئية للمستخدمين المسجلين بطبيعة عمل المنصة</li>
-        </ul>
-      </div>
-    </div>
+  <h2>3. شروط التسجيل</h2>
+  <ul>
+    <li>يجب أن يكون عمرك 18 سنة أو أكثر</li>
+    <li>يجب تقديم معلومات صحيحة ودقيقة عند التسجيل</li>
+    <li>أنت مسؤول عن الحفاظ على سرية كلمة مرورك</li>
+    <li>يُمنع إنشاء أكثر من حساب واحد لنفس الشخص</li>
+    <li>يُمنع استخدام حساب شخص آخر</li>
+  </ul>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">4</span>حماية البيانات</div>
-      <div class="art-body">نطبق إجراءات أمنية متعددة لحماية بياناتك تشمل تشفير الاتصالات (HTTPS)، تشفير كلمات المرور، وتقييد الوصول للبيانات الحساسة. مع الإقرار بأنه لا يوجد نظام آمن بنسبة 100%.</div>
-    </div>
+  <h2>4. قواعد الاستخدام</h2>
+  <p>يلتزم المستخدم بعدم:</p>
+  <ul>
+    <li>نشر معلومات كاذبة أو مضللة</li>
+    <li>انتهاك حقوق الآخرين أو التحرش بهم</li>
+    <li>نشر محتوى مسيء أو غير لائق</li>
+    <li>محاولة اختراق أو إلحاق الضرر بالمنصة</li>
+    <li>استخدام المنصة لأغراض غير مشروعة</li>
+    <li>التلاعب بنظام التقييمات</li>
+    <li>التواصل خارج المنصة لتجنب رسوم الخدمة</li>
+  </ul>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">5</span>حقوقك</div>
-      <div class="art-body">
-        <ul>
-          <li>الاطلاع على بياناتك الشخصية المخزنة</li>
-          <li>طلب تعديل أو تحديث بياناتك</li>
-          <li>طلب حذف حسابك وبياناتك وفق الأنظمة</li>
-          <li>التواصل معنا عبر cs@manaqasa.com لأي استفسار</li>
-        </ul>
-      </div>
-    </div>
+  <h2>5. المسؤولية</h2>
+  <p><strong>مسؤولية العميل:</strong></p>
+  <ul>
+    <li>دقة وصف المشروع والمتطلبات</li>
+    <li>الالتزام بالاتفاق مع المزود</li>
+    <li>دفع المستحقات المتفق عليها</li>
+  </ul>
+  <p><strong>مسؤولية المزود:</strong></p>
+  <ul>
+    <li>صحة المعلومات والمؤهلات المقدمة</li>
+    <li>تنفيذ العمل وفق الاتفاق</li>
+    <li>الالتزام بالمواعيد والجودة</li>
+  </ul>
+  <p><strong>حدود مسؤولية المنصة:</strong></p>
+  <p>منصة مناقصة ليست مسؤولة عن أي نزاعات تنشأ بين العملاء والمزوّدين. نحن نوفر المنصة كوسيط فقط.</p>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">6</span>ملفات التتبع (Cookies)</div>
-      <div class="art-body">نستخدم ملفات تعريف الارتباط الضرورية لتشغيل الجلسات وتحسين تجربة المستخدم. يمكنك التحكم في هذه الملفات من إعدادات متصفحك.</div>
-    </div>
+  <h2>6. التقييمات والمراجعات</h2>
+  <ul>
+    <li>التقييمات يجب أن تكون صادقة وتعكس التجربة الفعلية</li>
+    <li>يُمنع نشر تقييمات كاذبة أو مدفوعة</li>
+    <li>للمنصة الحق في حذف أي تقييم مخالف للسياسات</li>
+  </ul>
 
-    <div class="article-section">
-      <div class="art-title"><span class="art-num">7</span>التعديلات</div>
-      <div class="art-body">نحتفظ بحق تعديل سياسة الخصوصية في أي وقت. تكون التعديلات سارية بعد نشرها على المنصة. ننصح بمراجعة السياسة دورياً.</div>
-    </div>
-  </div>
+  <h2>7. رسوم الخدمة</h2>
+  <ul>
+    <li>التسجيل ونشر الطلبات مجاني للعملاء</li>
+    <li>تقديم العروض مجاني للمزوّدين</li>
+    <li>رسوم المنصة: <strong>1% من قيمة العقد</strong> عند إتمام الصفقة</li>
+    <li>تُسدَّد الرسوم خلال 10 أيام من إكمال المشروع</li>
+  </ul>
 
-  <!-- الأسئلة الشائعة -->
-  <div class="section" id="tab-faq">
-    <p class="doc-date">إجابات على أكثر الأسئلة شيوعاً</p>
+  <h2>8. إنهاء الحساب</h2>
+  <p>للمنصة الحق في إيقاف أو حذف أي حساب يخالف هذه الشروط، دون إشعار مسبق في حالات المخالفات الجسيمة.</p>
 
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">ما هي منصة مناقصة؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">منصة إلكترونية سعودية تجمع بين أصحاب المشاريع ومزودي الخدمات، تتيح نشر المشاريع واستقبال العروض وإدارة التواصل بشكل منظم وسهل.</div>
-    </div>
+  <h2>9. الملكية الفكرية</h2>
+  <p>جميع محتويات المنصة (التصميم، الشعار، الكود) هي ملك لمنصة مناقصة ومحمية بحقوق الملكية الفكرية. لا يجوز نسخها أو استخدامها دون إذن.</p>
 
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">كيف أسجل في المنصة؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">اضغط على "حساب جديد" واختر نوع حسابك (عميل أو مزود خدمة)، ثم أدخل بياناتك الأساسية: الاسم، البريد الإلكتروني، رقم الجوال، وكلمة المرور. التسجيل سريع ومجاني.</div>
-    </div>
+  <h2>10. تعديل الشروط</h2>
+  <p>نحتفظ بالحق في تعديل هذه الشروط في أي وقت. سيتم إشعارك بأي تغييرات جوهرية عبر البريد الإلكتروني أو إشعار داخل التطبيق.</p>
 
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">هل التسجيل مجاني؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">نعم، التسجيل ونشر المشاريع وتقديم العروض مجاني تماماً. تُطبّق عمولة بسيطة 1% من قيمة العرض المقبول فقط عند إتمام الصفقة.</div>
-    </div>
+  <h2>11. القانون المطبّق</h2>
+  <p>تخضع هذه الشروط للأنظمة والقوانين المعمول بها في <strong>المملكة العربية السعودية</strong>. أي نزاع يُحسم وفق الأنظمة السعودية.</p>
 
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">كيف أنشر مشروعاً؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">بعد تسجيل الدخول كعميل، اضغط على "مشروع جديد"، أدخل عنوان المشروع، التفاصيل، التصنيف، المدينة والميزانية المتوقعة. يمكنك إضافة صور للمشروع لجذب عروض أفضل.</div>
-    </div>
+  <h2>12. تواصل معنا</h2>
+  <p>البريد الإلكتروني: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
+  <p>المنصة: <a href="https://manaqasa.com">manaqasa.com</a></p>
 
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">كيف أقدم عرضاً على مشروع؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">سجّل دخولك كمزود خدمة، تصفّح المشاريع المتاحة، اختر المشروع المناسب لتخصصك واضغط "تقديم عرض". أدخل سعرك ومدة التنفيذ ووصفاً لخبرتك.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">هل تضمن المنصة ترسية المشروع؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">لا، المنصة وسيط تقني فقط. الاختيار النهائي يعود للعميل بناءً على معايير يحددها مثل السعر والخبرة والتقييمات.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">كيف يتم التواصل بين الطرفين؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">من خلال نظام الرسائل المباشر داخل المنصة. بعد قبول العرض يمكن للطرفين التواصل عبر الرسائل الداخلية أو معلومات التواصل المتبادلة.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">هل يمكن تعديل العرض بعد تقديمه؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">نعم، يمكن لمزود الخدمة تعديل عرضه (السعر والملاحظات) قبل قبوله من العميل. بعد القبول لا يمكن التعديل.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">ماذا أفعل في حال وجود نزاع؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">تواصل مع الطرف الآخر أولاً عبر نظام الرسائل. إذا لم يُحل النزاع، تواصل مع فريق الدعم عبر cs@manaqasa.com مع توضيح تفاصيل المشكلة.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">هل بياناتي آمنة؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">نعم، نستخدم تشفير SSL لجميع الاتصالات، ولا نشارك بياناتك مع أطراف ثالثة. راجع سياسة الخصوصية للتفاصيل الكاملة.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">كيف يتم احتساب العمولة؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">عمولة المنصة 1% من قيمة العرض المقبول فقط، تُحتسب عند إتمام الصفقة. النشر والتصفح وتقديم العروض مجاني تماماً. مثال: عرض بقيمة 1000 ريال → عمولة 10 ريال.</div>
-    </div>
-
-    <div class="faq-item" onclick="toggleFaq(this)">
-      <div class="faq-q">هل يمكن إيقاف الحساب؟
-        <svg class="faq-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <div class="faq-a">نعم، يتم إيقاف الحساب في حال مخالفة شروط الاستخدام أو تقديم معلومات مضللة. يمكن التواصل معنا لمراجعة القرار.</div>
-    </div>
-  </div>
-
-  <!-- تواصل معنا -->
-  <div class="section" id="tab-contact">
-    <div style="max-width:500px;margin:0 auto;text-align:center;padding-top:20px">
-      <div style="width:64px;height:64px;background:#EBF3FD;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#1473E6" stroke-width="2" stroke-linecap="round" style="width:28px;height:28px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
-      </div>
-      <h2 style="font-size:22px;font-weight:900;color:#0f2545;margin-bottom:8px">نحن هنا لمساعدتك</h2>
-      <p style="font-size:14px;color:#64748b;margin-bottom:32px;line-height:1.8">فريق الدعم متاح للإجابة على استفساراتك وحل أي مشكلة تواجهها على المنصة</p>
-
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:16px;text-align:right">
-        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">البريد الإلكتروني للدعم</div>
-        <a href="mailto:cs@manaqasa.com" style="font-size:18px;font-weight:800;color:#1473E6">cs@manaqasa.com</a>
-      </div>
-
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:24px;margin-bottom:16px;text-align:right">
-        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">ساعات العمل</div>
-        <div style="font-size:15px;font-weight:700;color:#0f172a">الأحد — الخميس</div>
-        <div style="font-size:13px;color:#64748b;margin-top:2px">9:00 صباحاً — 5:00 مساءً</div>
-      </div>
-
-      <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:24px;text-align:right">
-        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px">وقت الاستجابة</div>
-        <div style="font-size:15px;font-weight:700;color:#0f172a">خلال 24 ساعة</div>
-        <div style="font-size:13px;color:#64748b;margin-top:2px">في أيام العمل الرسمية</div>
-      </div>
-
-      <a href="mailto:cs@manaqasa.com" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#1473E6;color:#fff;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:800;margin-top:24px;transition:.15s">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
-        مراسلتنا الآن
-      </a>
-    </div>
-  </div>
-
+  <div class="footer">© 2026 منصة مناقصة — جميع الحقوق محفوظة</div>
 </div>
-
-<script>
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('on'); });
-  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('on'); });
-  document.getElementById('tab-'+id).classList.add('on');
-  event.target.classList.add('on');
-}
-
-function toggleFaq(el) {
-  el.classList.toggle('open');
-}
-</script>
 </body>
 </html>
