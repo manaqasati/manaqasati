@@ -4,159 +4,123 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>سياسة الخصوصية — مناقصة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--primary:#1B3A6B;--accent:#D4973A;--prov:#1D6A5A;--t:#1B2B4B;--t2:#2C3E60;--t3:#6B7A99;--bg:#F7F8FC;--white:#fff;--border:rgba(27,58,107,.1)}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--t)}
-nav{background:var(--prov);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.logo{font-size:20px;font-weight:900;color:#fff;cursor:pointer}.logo span{color:var(--accent)}
-.back-btn{padding:7px 16px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif}
-.back-btn:hover{background:rgba(255,255,255,.18)}
-.hero{background:linear-gradient(135deg,#0F4A3D,var(--prov));padding:48px 24px;text-align:center}
-.hero h1{font-size:28px;font-weight:900;color:#fff;margin-bottom:8px}
-.hero p{font-size:13px;color:rgba(255,255,255,.5)}
-.wrap{max-width:760px;margin:0 auto;padding:40px 24px 60px}
-.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:18px}
-h2{font-size:17px;font-weight:800;color:var(--prov);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid rgba(29,106,90,.1);display:flex;align-items:center;gap:8px}
-h2 .num{width:28px;height:28px;border-radius:50%;background:var(--prov);color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-p{font-size:14px;color:var(--t2);line-height:2;margin-bottom:10px}
-p:last-child{margin-bottom:0}
-ul{padding-right:18px;margin-bottom:10px}
-li{font-size:14px;color:var(--t2);line-height:2;margin-bottom:4px}
-.highlight{background:#E1F5EE;border-right:3px solid var(--prov);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px;color:#085041;line-height:1.8}
-.data-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-.data-table th{padding:10px 14px;text-align:right;background:var(--bg);font-weight:800;color:var(--t);border-bottom:1px solid var(--border)}
-.data-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--t2);vertical-align:top;line-height:1.7}
-.data-table tr:last-child td{border-bottom:none}
-.right-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-.rc-g{background:#E1F5EE;color:#085041}.rc-r{background:#FCEBEB;color:#7f1d1d}.rc-y{background:#FAEEDA;color:#633806}
-footer{background:var(--prov);padding:20px 24px;text-align:center;font-size:12px;color:rgba(255,255,255,.4)}
+:root{--p:#16213E;--gold:#C9920A;--bg:#F5F5F0;--border:#E6E2D9;--text:#0F172A;--muted:#64748B}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);line-height:1.8}
+.header{background:var(--p);padding:24px 20px;text-align:center}
+.logo{font-size:22px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.container{max-width:760px;margin:0 auto;padding:40px 20px}
+h1{font-size:24px;font-weight:900;color:var(--p);margin-bottom:8px}
+.date{font-size:13px;color:var(--muted);margin-bottom:32px;padding-bottom:16px;border-bottom:2px solid var(--gold)}
+h2{font-size:17px;font-weight:800;color:var(--p);margin:28px 0 12px;padding-right:12px;border-right:3px solid var(--gold)}
+p,li{font-size:14px;color:#374151;line-height:2;margin-bottom:8px}
+ul{padding-right:20px;margin-bottom:12px}
+li{margin-bottom:4px}
+strong{color:var(--p)}
+a{color:var(--gold);text-decoration:none}
+.footer{text-align:center;padding:24px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:40px}
+.tabs{display:flex;gap:12px;margin-bottom:32px}
+.tab{padding:10px 20px;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;border:2px solid var(--border);color:var(--muted);background:#fff}
+.tab.active{background:var(--p);color:#fff;border-color:var(--p)}
 </style>
 </head>
 <body>
-<nav>
-  <div class="logo" onclick="location.href='index.html'">مناقصة<span>.</span></div>
-  <button class="back-btn" onclick="history.back()">← رجوع</button>
-</nav>
-<div class="hero">
+<div class="header">
+  <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+</div>
+<div class="container">
+  <div class="tabs">
+    <a href="privacy.html" class="tab active">سياسة الخصوصية</a>
+    <a href="terms.html" class="tab">الشروط والأحكام</a>
+  </div>
+
   <h1>سياسة الخصوصية</h1>
-  <p>آخر تحديث: يناير 2025 — نلتزم بحماية بياناتك الشخصية وفق الأنظمة السعودية</p>
+  <div class="date">آخر تحديث: 19 أبريل 2026</div>
+
+  <p>تحترم منصة <strong>مناقصة (Manaqasa)</strong> خصوصية مستخدميها وتلتزم بحماية بياناتهم الشخصية. توضّح هذه السياسة كيف نجمع ونستخدم ونحمي معلوماتك عند استخدامك لتطبيقنا.</p>
+
+  <h2>1. المعلومات التي نجمعها</h2>
+  <p><strong>أ. معلومات الحساب:</strong></p>
+  <ul>
+    <li>الاسم الكامل</li>
+    <li>البريد الإلكتروني</li>
+    <li>رقم الجوال</li>
+    <li>المدينة</li>
+    <li>نوع الحساب (عميل / مزود خدمة)</li>
+    <li>التخصصات (للمزوّدين فقط)</li>
+  </ul>
+  <p><strong>ب. المحتوى الذي تنشئه:</strong></p>
+  <ul>
+    <li>تفاصيل الطلبات والمشاريع</li>
+    <li>الصور المرفقة بالطلبات</li>
+    <li>العروض المقدّمة</li>
+    <li>الرسائل والمحادثات</li>
+    <li>التقييمات والتعليقات</li>
+  </ul>
+  <p><strong>ج. معلومات الجهاز:</strong></p>
+  <ul>
+    <li>نوع الجهاز وإصدار نظام التشغيل</li>
+    <li>معرّف التطبيق</li>
+  </ul>
+
+  <h2>2. كيف نستخدم هذه المعلومات</h2>
+  <ul>
+    <li>إنشاء حسابك وإدارته</li>
+    <li>عرض طلباتك للمزوّدين المناسبين</li>
+    <li>تمكينك من استقبال وتقديم العروض</li>
+    <li>تسهيل التواصل بين العملاء والمزوّدين</li>
+    <li>إرسال إشعارات مهمة عن حسابك وطلباتك</li>
+    <li>تحسين جودة الخدمة</li>
+    <li>الامتثال للمتطلبات القانونية</li>
+  </ul>
+
+  <h2>3. أذونات التطبيق</h2>
+  <p><strong>الكاميرا والصور:</strong> يحتاج التطبيق الوصول إلى الكاميرا ومعرض الصور لرفع صورة شخصية وإضافة صور للطلبات. لا نستخدم الكاميرا إلا بطلب منك.</p>
+  <p><strong>الإنترنت:</strong> لحفظ بياناتك وعرض الطلبات والتواصل مع الخوادم.</p>
+  <p><strong>التخزين:</strong> لحفظ الصور والمرفقات مؤقتاً قبل رفعها.</p>
+
+  <h2>4. مشاركة البيانات</h2>
+  <p><strong>لا نبيع بياناتك لأي طرف ثالث.</strong> نشاركها فقط في الحالات التالية:</p>
+  <ul>
+    <li>بين المستخدمين: اسمك ومدينتك وتقييماتك تظهر للعملاء والمزوّدين ذوي العلاقة</li>
+    <li>تقديم الخدمة: نشارك بيانات محدودة مع مزوّدي البنية التحتية</li>
+    <li>المتطلبات القانونية: عند طلب رسمي من الجهات المختصة</li>
+  </ul>
+
+  <h2>5. حماية البيانات</h2>
+  <ul>
+    <li>جميع البيانات مشفّرة أثناء النقل باستخدام HTTPS</li>
+    <li>كلمات المرور مشفّرة باستخدام bcrypt</li>
+    <li>خوادم آمنة على Railway</li>
+    <li>الوصول محدود للموظفين المخوّلين فقط</li>
+  </ul>
+
+  <h2>6. حقوقك</h2>
+  <ul>
+    <li><strong>الوصول:</strong> يمكنك رؤية وتعديل بياناتك في أي وقت من الملف الشخصي</li>
+    <li><strong>التعديل:</strong> يمكنك تحديث معلوماتك</li>
+    <li><strong>الحذف:</strong> يمكنك طلب حذف حسابك بالتواصل معنا</li>
+    <li><strong>الاعتراض:</strong> يمكنك إيقاف الإشعارات من الإعدادات</li>
+  </ul>
+
+  <h2>7. حذف الحساب</h2>
+  <p>لحذف حسابك وجميع بياناتك، تواصل معنا عبر البريد: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
+  <p>سنحذف بياناتك خلال <strong>30 يوم عمل</strong> من استلام الطلب.</p>
+
+  <h2>8. الأطفال</h2>
+  <p>خدماتنا مخصّصة للأشخاص <strong>18 سنة فأكبر</strong>. لا نجمع بيانات من القاصرين عن قصد.</p>
+
+  <h2>9. التحديثات على هذه السياسة</h2>
+  <p>قد نحدّث هذه السياسة من وقت لآخر. سننشر أي تعديلات على هذه الصفحة مع تاريخ التحديث في الأعلى.</p>
+
+  <h2>10. تواصل معنا</h2>
+  <p>البريد الإلكتروني: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
+  <p>المنصة: <a href="https://manaqasa.com">manaqasa.com</a></p>
+
+  <div class="footer">© 2026 منصة مناقصة — جميع الحقوق محفوظة</div>
 </div>
-<div class="wrap">
-
-  <div class="card">
-    <h2><span class="num">١</span>مقدمة والتزامنا</h2>
-    <p>تلتزم منصة مناقصة بحماية خصوصية مستخدميها وفقاً لنظام حماية البيانات الشخصية في المملكة العربية السعودية (نظام حماية البيانات الشخصية — PDPL) الصادر بالمرسوم الملكي رقم م/19.</p>
-    <div class="highlight">نحن لا نبيع بياناتك الشخصية لأي طرف ثالث، ولا نستخدمها إلا للأغراض المذكورة في هذه السياسة.</div>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٢</span>البيانات التي نجمعها</h2>
-    <table class="data-table">
-      <thead><tr><th>نوع البيانات</th><th>الغرض</th><th>الضرورة</th></tr></thead>
-      <tbody>
-        <tr><td>الاسم والبريد الإلكتروني</td><td>إنشاء الحساب والتواصل</td><td><span class="right-chip rc-r">ضروري</span></td></tr>
-        <tr><td>رقم الجوال</td><td>التحقق والإشعارات</td><td><span class="right-chip rc-y">اختياري</span></td></tr>
-        <tr><td>المدينة والموقع</td><td>ربطك بمزودين في منطقتك</td><td><span class="right-chip rc-y">اختياري</span></td></tr>
-        <tr><td>الصور المرفوعة</td><td>توضيح طلبات الخدمة</td><td><span class="right-chip rc-g">حسب الطلب</span></td></tr>
-        <tr><td>سجل المحادثات</td><td>حماية حقوق الطرفين</td><td><span class="right-chip rc-r">تلقائي</span></td></tr>
-        <tr><td>بيانات الاستخدام</td><td>تحسين الخدمة فقط</td><td><span class="right-chip rc-r">تلقائي</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٣</span>كيف نستخدم بياناتك</h2>
-    <p>نستخدم بياناتك حصرياً في الأغراض التالية:</p>
-    <ul>
-      <li>تشغيل الخدمة وربطك بمزودي الخدمة المناسبين</li>
-      <li>إرسال إشعارات وإيميلات تخص طلباتك وعروضك فقط</li>
-      <li>التحقق من هوية المستخدمين لضمان أمان المنصة</li>
-      <li>حل النزاعات والرجوع لسجل المحادثات عند الحاجة</li>
-      <li>تحليل الاستخدام بشكل مجمع (بدون تحديد هويتك) لتحسين الخدمة</li>
-    </ul>
-    <div class="highlight">لن نرسل لك أي إيميلات تسويقية دون إذنك الصريح.</div>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٤</span>مشاركة البيانات مع الغير</h2>
-    <p><strong>لا نشارك بياناتك الشخصية</strong> إلا في الحالات التالية:</p>
-    <ul>
-      <li><strong>بين العميل والمزود:</strong> الاسم والمدينة وسجل المحادثات لإتمام الخدمة</li>
-      <li><strong>مزودو خدمة البريد:</strong> شركة Resend لإرسال الإيميلات فقط، وفق سياسة خصوصيتهم</li>
-      <li><strong>الجهات الحكومية:</strong> إذا طُلب بأمر قضائي أو نظامي</li>
-    </ul>
-    <div class="highlight">لا نشارك بياناتك مع شركات التسويق أو أي جهة تجارية ثالثة.</div>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٥</span>حماية البيانات والأمان</h2>
-    <p>نتخذ الإجراءات التقنية التالية لحماية بياناتك:</p>
-    <ul>
-      <li>تشفير كلمات المرور (bcrypt) — لا يمكن لأحد حتى فريقنا معرفة كلمتك</li>
-      <li>HTTPS لتشفير جميع البيانات المنقولة</li>
-      <li>نسخ احتياطية منتظمة على Railway Cloud</li>
-      <li>رموز JWT لإدارة جلسات المستخدم بأمان</li>
-      <li>تقييد الوصول لقاعدة البيانات على المختصين فقط</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٦</span>حقوقك في بياناتك</h2>
-    <p>وفق نظام حماية البيانات الشخصية السعودي، لك الحق في:</p>
-    <ul>
-      <li><strong>الاطلاع:</strong> طلب نسخة من بياناتك الشخصية المحفوظة لدينا</li>
-      <li><strong>التعديل:</strong> تصحيح أي بيانات غير دقيقة من إعدادات حسابك</li>
-      <li><strong>الحذف:</strong> طلب حذف حسابك وبياناتك نهائياً</li>
-      <li><strong>الاعتراض:</strong> الاعتراض على أي استخدام لبياناتك خارج الغرض المحدد</li>
-      <li><strong>نقل البيانات:</strong> الحصول على بياناتك بصيغة قابلة للنقل</li>
-    </ul>
-    <p>لممارسة أي من هذه الحقوق، تواصل معنا على: <strong>cs@manaqasa.com</strong></p>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٧</span>ملفات تعريف الارتباط (Cookies)</h2>
-    <p>لا تستخدم المنصة ملفات تعريف الارتباط لأغراض تتبعية. نستخدم فقط:</p>
-    <ul>
-      <li>تخزين رمز المصادقة (token) في localStorage لإبقائك مسجلاً</li>
-      <li>تخزين بيانات حسابك محلياً لتجنب تكرار تسجيل الدخول</li>
-    </ul>
-    <div class="highlight">يمكنك مسح هذه البيانات في أي وقت من إعدادات المتصفح أو بالضغط على "تسجيل الخروج".</div>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٨</span>مدة الاحتفاظ بالبيانات</h2>
-    <p>نحتفظ ببياناتك طالما حسابك نشط. عند حذف الحساب:</p>
-    <ul>
-      <li>تُحذف بيانات الملف الشخصي فوراً</li>
-      <li>تُحفظ سجلات المعاملات المالية لمدة 5 سنوات وفق النظام السعودي</li>
-      <li>قد تبقى بيانات مجمعة ومجهولة الهوية لأغراض إحصائية</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">٩</span>خصوصية الأطفال</h2>
-    <p>المنصة موجهة للبالغين (18 سنة فأكثر). إذا اكتشفنا أن قاصراً سجّل على المنصة، سنحذف حسابه فوراً. إذا كنت والداً وتعتقد أن طفلك سجّل على المنصة، يرجى التواصل معنا على cs@manaqasa.com.</p>
-  </div>
-
-  <div class="card">
-    <h2><span class="num">١٠</span>التحديثات على السياسة</h2>
-    <p>قد نُحدّث هذه السياسة من وقت لآخر. عند أي تعديل جوهري سنُخطرك عبر:</p>
-    <ul>
-      <li>إيميل إلى عنوانك المسجل</li>
-      <li>إشعار ظاهر عند تسجيل دخولك التالي</li>
-    </ul>
-    <p>استمرارك في استخدام المنصة بعد الإشعار يُعدّ موافقة على السياسة المحدّثة.</p>
-  </div>
-
-  <div class="card" style="background:var(--prov);border:none">
-    <p style="color:rgba(255,255,255,.7);text-align:center;margin-bottom:8px">للاستفسار أو ممارسة حقوقك في بياناتك الشخصية:</p>
-    <p style="color:#fff;text-align:center;font-size:16px;font-weight:800">cs@manaqasa.com</p>
-    <p style="color:rgba(255,255,255,.5);text-align:center;font-size:12px;margin-top:8px">سنرد على جميع الطلبات خلال 30 يوم عمل</p>
-  </div>
-
-</div>
-<footer>© 2025 منصة مناقصة — manaqasa.com — جميع الحقوق محفوظة</footer>
 </body>
 </html>
