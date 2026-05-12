@@ -1704,7 +1704,7 @@ async function openClientChat(reqId,receiverId,receiverName,reqTitle){
   document.getElementById('cl-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendClientMsg();}});
 
   try{
-    var r=await fetch(API+'/api/messages/'+reqId,hdr());
+    var r=await fetch(API+'/api/messages/'+reqId+'?with='+receiverId,hdr());
     var msgs=await r.json();
     if(Array.isArray(msgs)){_chatMsgs=msgs;_renderClientMsgs();}
   }catch(e){}
@@ -1712,7 +1712,7 @@ async function openClientChat(reqId,receiverId,receiverName,reqTitle){
   _chatPolling=setInterval(async function(){
     if(!document.getElementById('cl-chat-overlay')){clearInterval(_chatPolling);return;}
     try{
-      var r=await fetch(API+'/api/messages/'+reqId,hdr());
+      var r=await fetch(API+'/api/messages/'+reqId+'?with='+receiverId,hdr());
       var msgs=await r.json();
       if(Array.isArray(msgs)){_chatMsgs=msgs;_renderClientMsgs();}
     }catch(e){}
