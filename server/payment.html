@@ -1,4 +1,3 @@
-cat > ~/Downloads/payment.html << 'EOF'
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -7,56 +6,98 @@ cat > ~/Downloads/payment.html << 'EOF'
 <title>دفع عمولة الخدمة — مناقصة</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#16213E;--gold:#C9920A;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;--bg:#F5F5F0;--border:#E6E2D9;--text:#0F172A;--muted:#64748B;--green:#16A34A;--green-l:#EDFBF0;--shadow:0 4px 16px rgba(15,23,42,.08);--radius:14px}
+:root{
+  --p:#16213E;--p2:#1A2F5E;
+  --gold:#C9920A;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;
+  --bg:#F5F5F0;--border:#E6E2D9;--text:#0F172A;--muted:#64748B;
+  --green:#16A34A;--green-l:#EDFBF0;
+  --shadow:0 4px 16px rgba(15,23,42,.08);
+  --radius:14px;
+}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* Header */
 .header{background:var(--p);padding:24px 20px;text-align:center;position:relative;overflow:hidden}
 .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:28px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0}
+.net-bg{position:absolute;inset:0;pointer-events:none;opacity:.1}
 .logo{font-size:22px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px;position:relative;z-index:1}
 .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
 .header-sub{font-size:13px;color:rgba(255,255,255,.5);margin-top:6px;position:relative;z-index:1}
+
 .container{max-width:600px;margin:0 auto;padding:32px 20px}
-.calc-card,.bank-card,.steps-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
+
+/* Calculator */
+.calc-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .card-title{font-size:16px;font-weight:800;color:var(--p);margin-bottom:20px;display:flex;align-items:center;gap:8px}
 .card-title::before{content:'';width:4px;height:20px;background:var(--gold);border-radius:2px;display:inline-block}
+
 .fg{margin-bottom:16px}
 .fg label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px}
 .fi{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:15px;color:var(--text);outline:none;background:#fff;transition:all .18s}
 .fi:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,10,.1)}
+
 .result-box{background:var(--gold-l);border:1.5px solid var(--gold-soft);border-radius:10px;padding:16px;text-align:center;margin-top:16px}
 .result-label{font-size:12px;color:var(--gold);font-weight:700;margin-bottom:4px}
 .result-amount{font-size:28px;font-weight:900;color:var(--p)}
 .result-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* Bank Info */
+.bank-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .bank-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
 .bank-logo{width:48px;height:48px;background:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.bank-logo svg{width:28px;height:28px;fill:#C9920A}
 .bank-name{font-size:15px;font-weight:800;color:var(--p)}
 .bank-sub{font-size:12px;color:var(--muted)}
-.info-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+
+.info-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
 .info-row:last-child{border-bottom:none}
 .info-label{font-size:12px;font-weight:700;color:var(--muted)}
-.info-value{font-size:13px;font-weight:700;color:var(--text);direction:ltr;text-align:left}
-.copy-btn{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--p);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;flex-shrink:0}
+.info-value{font-size:14px;font-weight:700;color:var(--text);direction:ltr;text-align:left}
+.copy-btn{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--p);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
 .copy-btn:hover{background:var(--gold-l);border-color:var(--gold);color:var(--gold)}
 .copy-btn.copied{background:var(--green-l);border-color:var(--green);color:var(--green)}
+
+/* Steps */
+.steps-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .step{display:flex;gap:12px;margin-bottom:16px}
 .step:last-child{margin-bottom:0}
 .step-num{width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .step-text{font-size:13px;color:#374151;line-height:1.8}
 .step-text strong{color:var(--p)}
+
+/* Warning */
 .warning{background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#92400E;line-height:1.8}
+
+/* Contact */
 .contact-card{background:var(--p);border-radius:var(--radius);padding:20px;text-align:center;color:#fff;margin-bottom:20px}
 .contact-title{font-size:15px;font-weight:800;margin-bottom:8px}
 .contact-sub{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:12px}
 .contact-email{color:var(--gold);font-weight:700;font-size:14px}
+
 .footer{text-align:center;padding:16px;font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
+
 <div class="header">
+  <svg class="net-bg" viewBox="0 0 600 120" preserveAspectRatio="none">
+    <line x1="50" y1="20" x2="200" y2="70" stroke="#fff" stroke-width="1"/>
+    <line x1="200" y1="70" x2="400" y2="30" stroke="#fff" stroke-width="1"/>
+    <line x1="400" y1="30" x2="580" y2="60" stroke="#fff" stroke-width=".8"/>
+    <line x1="200" y1="70" x2="300" y2="40" stroke="#C9920A" stroke-width="1.2"/>
+    <circle cx="50" cy="20" r="4" fill="#fff" opacity=".3"/>
+    <circle cx="200" cy="70" r="7" fill="#fff" opacity=".3"/>
+    <circle cx="400" cy="30" r="4" fill="#fff" opacity=".25"/>
+    <circle cx="300" cy="40" r="5" fill="#C9920A" opacity=".7"/>
+  </svg>
   <div class="logo"><span class="logo-dot"></span>مناقصة</div>
   <div class="header-sub">نظام دفع عمولة الخدمة</div>
 </div>
+
 <div class="container">
+
+  <!-- Calculator -->
   <div class="calc-card">
     <div class="card-title">احسب العمولة المستحقة</div>
     <div class="fg">
@@ -69,87 +110,113 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div class="result-sub" id="commissionSub"></div>
     </div>
   </div>
-  <div class="warning">تُسدَّد العمولة خلال <strong>10 أيام</strong> من تاريخ اكتمال المشروع. التأخر قد يؤثر على تقييمك وإمكانية تقديم عروض مستقبلية.</div>
+
+  <!-- Warning -->
+  <div class="warning">
+    تُسدَّد العمولة خلال <strong>10 أيام</strong> من تاريخ اكتمال المشروع. التأخر قد يؤثر على تقييمك وإمكانية تقديم عروض مستقبلية.
+  </div>
+
+  <!-- Bank Info -->
   <div class="bank-card">
     <div class="card-title">معلومات الحساب البنكي</div>
+
     <div class="bank-header">
       <div class="bank-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C9920A" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="#C9920A" stroke-width="2"/></svg>
       </div>
       <div>
         <div class="bank-name">مصرف الراجحي</div>
         <div class="bank-sub">Al Rajhi Bank</div>
       </div>
     </div>
+
     <div class="info-row">
       <div class="info-label">اسم صاحب الحساب</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div class="info-value">عمرو عبدالله العمرو</div>
-        <button class="copy-btn" onclick="copyText('عمرو عبدالله العمرو',this)">نسخ</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="info-value" id="name-val">عمرو عبدالله العمرو</div>
+        <button class="copy-btn" onclick="copyText('عمرو عبدالله العمرو', this)">نسخ</button>
       </div>
     </div>
+
     <div class="info-row">
       <div class="info-label">رقم الحساب</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div class="info-value">374000010006080891560</div>
-        <button class="copy-btn" onclick="copyText('374000010006080891560',this)">نسخ</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="info-value" id="acc-val">374000010006080891560</div>
+        <button class="copy-btn" onclick="copyText('374000010006080891560', this)">نسخ</button>
       </div>
     </div>
+
     <div class="info-row">
       <div class="info-label">رقم الآيبان (IBAN)</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div class="info-value">SA6780000374608010891560</div>
-        <button class="copy-btn" onclick="copyText('SA6780000374608010891560',this)">نسخ</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="info-value" id="iban-val">SA6780000374608010891560</div>
+        <button class="copy-btn" onclick="copyText('SA6780000374608010891560', this)">نسخ</button>
       </div>
     </div>
+
     <div class="info-row">
       <div class="info-label">البنك</div>
       <div class="info-value">مصرف الراجحي</div>
     </div>
+
     <div class="info-row">
       <div class="info-label">العملة</div>
       <div class="info-value">ريال سعودي (SAR)</div>
     </div>
   </div>
+
+  <!-- Steps -->
   <div class="steps-card">
     <div class="card-title">خطوات الدفع</div>
-    <div class="step"><div class="step-num">1</div><div class="step-text">احسب العمولة المستحقة (1% من قيمة العقد المتفق عليه مع العميل)</div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-text">حوّل المبلغ عبر تطبيق البنك للآيبان: <strong>SA6780000374608010891560</strong></div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-text">في ملاحظات التحويل اذكر: <strong>رقم المشروع واسمك</strong></div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-text">أرسل إشعار التحويل لدعم المنصة: <strong>cs@manaqasa.com</strong></div></div>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">احسب العمولة المستحقة (1% من قيمة العقد المتفق عليه)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">حوّل المبلغ عبر تطبيق البنك أو الصراف الآلي للآيبان: <strong>SA6780000374608010891560</strong></div>
+    </div>
   </div>
+
+  <!-- Contact -->
   <div class="contact-card">
     <div class="contact-title">هل لديك استفسار؟</div>
     <div class="contact-sub">تواصل معنا عبر البريد الإلكتروني</div>
     <a class="contact-email" href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>
   </div>
-  <div class="footer">2026 منصة مناقصة — جميع الحقوق محفوظة</div>
+
+  <div class="footer">© 2026 منصة مناقصة — جميع الحقوق محفوظة</div>
 </div>
+
 <script>
-function calcCommission(){
-  var val=parseFloat(document.getElementById('contractValue').value)||0;
-  var commission=val*0.01;
-  var box=document.getElementById('resultBox');
-  var amount=document.getElementById('commissionAmount');
-  var sub=document.getElementById('commissionSub');
-  if(val>0){
-    box.style.display='block';
-    amount.textContent=commission.toLocaleString('ar-SA',{minimumFractionDigits:0,maximumFractionDigits:2})+' ر.س';
-    sub.textContent='1% من '+val.toLocaleString('ar-SA')+' ر.س';
-  }else{
-    box.style.display='none';
+function calcCommission() {
+  const val = parseFloat(document.getElementById('contractValue').value) || 0;
+  const commission = val * 0.01;
+  const box = document.getElementById('resultBox');
+  const amount = document.getElementById('commissionAmount');
+  const sub = document.getElementById('commissionSub');
+
+  if (val > 0) {
+    box.style.display = 'block';
+    amount.textContent = commission.toLocaleString('ar-SA', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + ' ر.س';
+    sub.textContent = '1% من ' + val.toLocaleString('ar-SA') + ' ر.س';
+  } else {
+    box.style.display = 'none';
   }
 }
-function copyText(text,btn){
-  navigator.clipboard.writeText(text).then(function(){
-    var orig=btn.textContent;
-    btn.textContent='تم النسخ';
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'تم النسخ';
     btn.classList.add('copied');
-    setTimeout(function(){btn.textContent=orig;btn.classList.remove('copied');},2000);
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('copied');
+    }, 2000);
   });
 }
 </script>
+
 </body>
 </html>
-EOF
-echo "Done"
