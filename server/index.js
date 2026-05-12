@@ -1807,6 +1807,23 @@ app.post('/api/messages', auth, async (req, res) => {
     }
 
     res.json(r.rows[0]);
+
+    // ✅ WebSocket: إرسال فوري للمستقبل
+    const newMsg = r.rows[0];
+    wsBroadcast(receiver_id, {
+      type: 'new_message',
+      message: { ...newMsg, sender_name: senderName },
+      request_id,
+      sender_id: req.user.id,
+      sender_name: senderName
+    });
+    // أيضاً أبلغ المرسل (للتأكيد وتحديث قائمة المحادثات)
+    wsBroadcast(req.user.id, {
+      type: 'message_sent',
+      message: { ...newMsg, sender_name: senderName },
+      request_id
+    });
+
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -2710,9 +2727,56 @@ app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// WEBSOCKET SERVER
+// ═══════════════════════════════════════════════════════════════
+const http = require('http');
+const WebSocket = require('ws');
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Map: userId → Set of WebSocket connections
+const _wsClients = new Map();
+
+function wsBroadcast(userId, data) {
+  const conns = _wsClients.get(String(userId));
+  if (!conns) return;
+  const msg = JSON.stringify(data);
+  conns.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(msg);
+  });
+}
+
+wss.on('connection', (ws, req) => {
+  let userId = null;
+
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw);
+      if (msg.type === 'auth' && msg.token) {
+        const decoded = jwt.verify(msg.token, JWT_SECRET);
+        userId = String(decoded.id);
+        if (!_wsClients.has(userId)) _wsClients.set(userId, new Set());
+        _wsClients.get(userId).add(ws);
+        ws.send(JSON.stringify({ type: 'connected', userId }));
+      }
+    } catch (e) {}
+  });
+
+  ws.on('close', () => {
+    if (userId && _wsClients.has(userId)) {
+      _wsClients.get(userId).delete(ws);
+      if (_wsClients.get(userId).size === 0) _wsClients.delete(userId);
+    }
+  });
+
+  ws.on('error', () => {});
+});
+
+// ═══════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
   console.log('📧 Full email notifications: welcome, project published, new bid, bid accepted/rejected, message, review, project completed, password change, admin actions');
