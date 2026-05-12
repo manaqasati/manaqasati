@@ -283,7 +283,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .flinks{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
 .flink{font-size:11px;color:rgba(255,255,255,.55);font-weight:600;cursor:pointer;transition:.15s;text-decoration:none;}
 .flink:hover{color:#fff;}
-/* 🆕 Special styling for delete account link */
 .flink-danger{color:rgba(252,165,165,.7) !important;font-weight:700 !important;}
 .flink-danger:hover{color:#fca5a5 !important;}
 .fcopy{font-size:10px;color:rgba(255,255,255,.15);}
@@ -297,7 +296,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .flinks{justify-content:center;gap:10px;}
 }
 
-/* 🆕 Account Deletion Modal */
+/* ══ Account Deletion Modal ══ */
 .del-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,.7);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:14px}
 .del-overlay.show{display:flex}
 .del-modal{background:var(--white);border-radius:18px;width:100%;max-width:480px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
@@ -447,15 +446,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
-  <!-- 🆕 FOOTER WITH PRIVACY POLICY + DELETE ACCOUNT LINKS -->
+  <!-- FOOTER -->
   <div class="idx-foot">
     <div class="foot-inner">
       <div class="logo" style="position:relative;z-index:1"><span class="logo-dot"></span>مناقصة</div>
       <div class="flinks">
         <a href="auth.html" class="flink">تسجيل الدخول</a>
         <a href="auth.html" class="flink">إنشاء حساب</a>
-        <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" class="flink">سياسة الخصوصية</a>
-        <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" class="flink">الشروط والأحكام</a>
+        <a href="/privacy.html" class="flink">سياسة الخصوصية</a>
+        <a href="/terms.html" class="flink">الشروط والأحكام</a>
+        <a href="/payment.html" class="flink">دفع العمولة</a>
         <a href="javascript:void(0)" onclick="openDeleteModal()" class="flink flink-danger">حذف الحساب</a>
         <a href="mailto:cs@manaqasa.com" class="flink">تواصل معنا</a>
       </div>
@@ -464,7 +464,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- 🆕 DELETE ACCOUNT MODAL (Apple Guideline 5.1.1) -->
+<!-- DELETE ACCOUNT MODAL -->
 <div class="del-overlay" id="delOverlay" onclick="if(event.target===this)closeDeleteModal()">
   <div class="del-modal">
     <div class="del-head">
@@ -508,7 +508,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
 
       <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.7">
-        لمزيد من التفاصيل، اطّلع على <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" style="color:var(--gold-d);font-weight:700">سياسة الخصوصية</a> — القسم 7
+        لمزيد من التفاصيل، اطّلع على <a href="/privacy.html" style="color:var(--gold-d);font-weight:700">سياسة الخصوصية</a> — القسم 7
       </p>
     </div>
 
@@ -526,7 +526,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 var API='https://manaqasati-production.up.railway.app';
 var ALL=[],CUR=[],PAGE=12,F_ST='all',F_CAT='',F_CI='',F_Q='';
 
-// 🆕 Delete account modal functions
 function openDeleteModal(){
   var ol=document.getElementById('delOverlay');
   if(ol){ol.classList.add('show');document.body.style.overflow='hidden';}
