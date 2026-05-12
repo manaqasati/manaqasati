@@ -360,10 +360,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <div class="nav">
     <div class="nav-sec">القائمة</div>
-    <button class="ni on" onclick="show('home',this,'home')">
+    <button class="ni on" onclick="show('home',this,'home')" onmouseenter="clPrefetch('reqs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>الرئيسية
     </button>
-    <button class="ni" onclick="show('requests',this,'requests')">
+    <button class="ni" onclick="show('requests',this,'requests')" onmouseenter="clPrefetch('reqs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>طلباتي
     </button>
     <button class="ni" id="chat-ni" onclick="show('chat',this,'chat')">
@@ -373,7 +373,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <button class="ni" onclick="show('profile',this,'profile')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي
     </button>
-    <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')">
+    <button class="ni" id="notif-ni" onclick="show('notifs',this,'notifs')" onmouseenter="clPrefetch('notifs')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
       الإشعارات<span class="badge" id="notif-badge" style="display:none">0</span>
     </button>
@@ -763,6 +763,25 @@ var token=localStorage.getItem('token')||'';
 var _token=token;
 if(!user.id){location.href='auth.html';}
 
+// ✅ SWR Cache System
+var _clCache={};
+var _CL_TTL={reqs:45000,notifs:15000,chat:20000,profile:120000};
+function _clCacheGet(k){var c=_clCache[k];var t=_CL_TTL[k]||60000;return(c&&Date.now()-c.t<t)?c.v:null;}
+function _clCacheSet(k,v){_clCache[k]={v:v,t:Date.now()};}
+function _clCacheClear(k){if(k)delete _clCache[k];else _clCache={};}
+
+// ✅ Prefetch
+var _clPfTimer={};
+function clPrefetch(page){
+  clearTimeout(_clPfTimer[page]);
+  _clPfTimer[page]=setTimeout(function(){
+    if(page==='reqs'&&!_clCacheGet('reqs'))
+      _fetch('/api/requests/my').then(function(d){if(d)_clCacheSet('reqs',d);});
+    else if(page==='notifs'&&!_clCacheGet('notifs'))
+      _fetch('/api/notifications').then(function(d){if(d)_clCacheSet('notifs',d);});
+  },150);
+}
+
 // ═══ PUSH NOTIFICATION HELPERS ═══
 function urlBase64ToUint8Array(base64String){
   var padding='='.repeat((4-base64String.length%4)%4);
@@ -1033,23 +1052,33 @@ function riCard(r,actions){
 }
 
 function loadHome(){
-  document.getElementById('home-reqs').innerHTML=_skCards(3);
+  var cached=_clCacheGet('reqs');
+  if(cached){_renderHomeReqs(cached);}
+  else{document.getElementById('home-reqs').innerHTML=_skCards(3);}
   _fetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){document.getElementById('home-reqs').innerHTML=errH();return;}
-    document.getElementById('s-total').textContent=all.length;
-    document.getElementById('s-open').textContent=all.filter(function(r){return r.status==='open';}).length;
-    document.getElementById('s-prog').textContent=all.filter(function(r){return r.status==='in_progress';}).length;
-    document.getElementById('s-done').textContent=all.filter(function(r){return r.status==='done'||r.status==='completed';}).length;
-    document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
-  }).catch(function(){document.getElementById('home-reqs').innerHTML=errH();});
+    if(!Array.isArray(all)){if(!cached)document.getElementById('home-reqs').innerHTML=errH();return;}
+    _clCacheSet('reqs',all);
+    _renderHomeReqs(all);
+  }).catch(function(){if(!cached)document.getElementById('home-reqs').innerHTML=errH();});
   loadNotifCount();
 }
+function _renderHomeReqs(all){
+  document.getElementById('s-total').textContent=all.length;
+  document.getElementById('s-open').textContent=all.filter(function(r){return r.status==='open';}).length;
+  document.getElementById('s-prog').textContent=all.filter(function(r){return r.status==='in_progress';}).length;
+  document.getElementById('s-done').textContent=all.filter(function(r){return r.status==='done'||r.status==='completed';}).length;
+  document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
+}
 function loadReqs(){
-  document.getElementById('all-reqs').innerHTML=_skCards(5);
+  // ✅ استخدم نفس Cache الـ home
+  var cached=_clCacheGet('reqs');
+  if(cached){document.getElementById('all-reqs').innerHTML=cached.length?cached.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');}
+  else{document.getElementById('all-reqs').innerHTML=_skCards(5);}
   _fetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){document.getElementById('all-reqs').innerHTML=errH();return;}
+    if(!Array.isArray(all)){if(!cached)document.getElementById('all-reqs').innerHTML=errH();return;}
+    _clCacheSet('reqs',all);
     document.getElementById('all-reqs').innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
-  }).catch(function(){document.getElementById('all-reqs').innerHTML=errH();});
+  }).catch(function(){if(!cached)document.getElementById('all-reqs').innerHTML=errH();});
 }
 
 function openDetail(id,e){
@@ -1164,22 +1193,29 @@ function loadNotifCount(){fetch(API+'/api/notifications',hdr()).then(function(r)
 function loadNotifs(){
   var el=document.getElementById('notifs-list');
   if(!el)return;
-  el.innerHTML=_skCards(4);
+  var cached=_clCacheGet('notifs');
+  if(cached){_renderClientNotifs(cached,el);}
+  else{el.innerHTML=_skCards(4);}
   fetch(API+'/api/notifications',hdr()).then(function(r){return r.json();}).then(function(ns){
-    if(!Array.isArray(ns)||!ns.length){el.innerHTML=emptyH('لا يوجد إشعارات','');return;}
-    el.innerHTML=ns.map(function(n){
-      var isUnread=!n.is_read;
-      return '<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)'+(isUnread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">'
-        +'<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(isUnread?'var(--p)':'var(--border)')+'"></div>'
-        +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:13px;font-weight:'+(isUnread?'800':'600')+';color:'+(isUnread?'var(--text)':'var(--muted)')+'">'+n.title+'</div>'
-          +(n.body?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+n.body+'</div>':'')+
-        '</div>'
-        +'<div style="font-size:9px;color:var(--hint);flex-shrink:0">'+timeAgo(n.created_at)+'</div>'
+    if(!Array.isArray(ns)){if(!cached)el.innerHTML=emptyH('لا يوجد إشعارات','');return;}
+    _clCacheSet('notifs',ns);
+    _renderClientNotifs(ns,el);
+  }).catch(function(){if(!cached)el.innerHTML=errH();});
+}
+function _renderClientNotifs(ns,el){
+  if(!ns||!ns.length){el.innerHTML=emptyH('لا يوجد إشعارات','');return;}
+  el.innerHTML=ns.map(function(n){
+    var isUnread=!n.is_read;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)'+(isUnread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">'
+      +'<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(isUnread?'var(--p)':'var(--border)')+'"></div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:'+(isUnread?'800':'600')+';color:'+(isUnread?'var(--text)':'var(--muted)')+'">'+n.title+'</div>'
+        +(n.body?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+n.body+'</div>':'')
+      +'</div>'
+      +'<div style="font-size:9px;color:var(--hint);flex-shrink:0">'+timeAgo(n.created_at)+'</div>'
       +'</div>';
-    }).join('');
-    markAllRead();
-  }).catch(function(){el.innerHTML=errH();});
+  }).join('');
+  markAllRead();
 }
 function markAllRead(){fetch(API+'/api/notifications/read',Object.assign({method:'PUT'},hdr())).then(function(){['notif-badge','mob-notif-badge','bn-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});}).catch(function(){});}
 
