@@ -1750,14 +1750,22 @@ async function _sendClientMsg(){
   var content=inp.value.trim();if(!content)return;
   var btn=document.getElementById('cl-chat-send');
   inp.value='';
-  if(btn)btn.disabled=true;
+
+  // ✅ Optimistic UI — show message immediately
+  var me=JSON.parse(localStorage.getItem('user')||'{}');
+  var tempMsg={id:'tmp_'+Date.now(),sender_id:me.id,content:content,created_at:new Date().toISOString(),sender_name:'أنت'};
+  _chatMsgs.push(tempMsg);
+  _renderClientMsgs();
+
   try{
     await fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiverId,content:content})},hdr()));
-    var r=await fetch(API+'/api/messages/'+_chatReqId,hdr());
+    var r=await fetch(API+'/api/messages/'+_chatReqId+'?with='+_chatReceiverId,hdr());
     var msgs=await r.json();
     if(Array.isArray(msgs)){_chatMsgs=msgs;_renderClientMsgs();}
-  }catch(e){}
-  if(btn)btn.disabled=false;
+  }catch(e){
+    _chatMsgs=_chatMsgs.filter(function(m){return m.id!==tempMsg.id;});
+    _renderClientMsgs();
+  }
 }
 
 document.addEventListener('DOMContentLoaded',function(){
