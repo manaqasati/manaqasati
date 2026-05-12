@@ -1053,9 +1053,27 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
         r.title as request_title,
         u.name as client_name,
         u.profile_image as client_image,
-        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+        (SELECT content FROM messages
+          WHERE request_id = c.request_id
+          AND (
+            (sender_id = $1 AND receiver_id = c.client_id)
+            OR (sender_id = c.client_id AND receiver_id = $1)
+          )
+          ORDER BY created_at DESC LIMIT 1
+        ) as last_message,
+        (SELECT MAX(created_at) FROM messages
+          WHERE request_id = c.request_id
+          AND (
+            (sender_id = $1 AND receiver_id = c.client_id)
+            OR (sender_id = c.client_id AND receiver_id = $1)
+          )
+        ) as last_time,
+        (SELECT COUNT(*) FROM messages
+          WHERE request_id = c.request_id
+          AND receiver_id = $1
+          AND sender_id = c.client_id
+          AND is_read = FALSE
+        ) as unread
       FROM conv c
       JOIN requests r ON r.id = c.request_id
       JOIN users u ON u.id = c.client_id
@@ -1083,9 +1101,27 @@ app.get('/api/client/conversations', auth, async (req, res) => {
         u.name as provider_name,
         u.profile_image as provider_image,
         u.phone as provider_phone,
-        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+        (SELECT content FROM messages
+          WHERE request_id = c.request_id
+          AND (
+            (sender_id = $1 AND receiver_id = c.provider_id)
+            OR (sender_id = c.provider_id AND receiver_id = $1)
+          )
+          ORDER BY created_at DESC LIMIT 1
+        ) as last_message,
+        (SELECT MAX(created_at) FROM messages
+          WHERE request_id = c.request_id
+          AND (
+            (sender_id = $1 AND receiver_id = c.provider_id)
+            OR (sender_id = c.provider_id AND receiver_id = $1)
+          )
+        ) as last_time,
+        (SELECT COUNT(*) FROM messages
+          WHERE request_id = c.request_id
+          AND receiver_id = $1
+          AND sender_id = c.provider_id
+          AND is_read = FALSE
+        ) as unread
       FROM conv c
       JOIN requests r ON r.id = c.request_id
       JOIN users u ON u.id = c.provider_id
