@@ -1685,16 +1685,39 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.requestId);
-    const r = await pool.query(`
-      SELECT m.*, u.name as sender_name, u.profile_image as sender_image
-      FROM messages m JOIN users u ON m.sender_id=u.id
-      WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2)
-      ORDER BY m.created_at ASC
-    `, [requestId, req.user.id]);
-    await pool.query(
-      'UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE',
-      [requestId, req.user.id]
-    );
+    const withUser = parseInt(req.query.with) || null;
+
+    let r;
+    if (withUser) {
+      // ✅ Filter by specific conversation between two users
+      r = await pool.query(`
+        SELECT m.*, u.name as sender_name, u.profile_image as sender_image
+        FROM messages m JOIN users u ON m.sender_id=u.id
+        WHERE m.request_id=$1
+          AND (
+            (m.sender_id=$2 AND m.receiver_id=$3)
+            OR
+            (m.sender_id=$3 AND m.receiver_id=$2)
+          )
+        ORDER BY m.created_at ASC
+      `, [requestId, req.user.id, withUser]);
+      await pool.query(
+        'UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND sender_id=$3 AND is_read=FALSE',
+        [requestId, req.user.id, withUser]
+      );
+    } else {
+      // Fallback: all messages where user is participant
+      r = await pool.query(`
+        SELECT m.*, u.name as sender_name, u.profile_image as sender_image
+        FROM messages m JOIN users u ON m.sender_id=u.id
+        WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2)
+        ORDER BY m.created_at ASC
+      `, [requestId, req.user.id]);
+      await pool.query(
+        'UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE',
+        [requestId, req.user.id]
+      );
+    }
     res.json(r.rows);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
