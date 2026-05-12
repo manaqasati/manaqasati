@@ -431,6 +431,7 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
+_myId=_me.id||null;
 
 // ═══ PUSH NOTIFICATION HELPERS ═══
 function urlBase64ToUint8Array(base64String){
@@ -559,6 +560,12 @@ var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','ا�
 var _allProjs=[], _myBids=[], _myProjs=[], _pCache={};
 var _curPage='home';
 var _chatPolling=null, _chatReqId=null, _chatReceiverId=null, _chatMsgs=[];
+var _myId=null;
+// ✅ Simple page data cache (60 seconds TTL)
+var _dataCache={};
+function _cacheGet(key){var c=_dataCache[key];return(c&&Date.now()-c.t<60000)?c.v:null;}
+function _cacheSet(key,val){_dataCache[key]={v:val,t:Date.now()};}
+function _cacheClear(key){if(key)delete _dataCache[key];else _dataCache={};}
 
 // ═══ Helpers ═══
 function _el(id){return document.getElementById(id);}
@@ -666,12 +673,17 @@ function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line"
 // ═══ HOME PAGE ═══
 async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
-  pg.innerHTML=_skList(4);
+  // ✅ Show skeleton only if no cache
+  var cachedHome=_cacheGet('home_data');
+  if(!cachedHome) pg.innerHTML=_skList(4);
   var profile={},bids=[],projs=[];
   try{
     var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects')]);
     profile=r[0]||{};bids=r[1]||[];projs=r[2]||[];
-  }catch(e){}
+    _cacheSet('home_data',{profile:profile,bids:bids,projs:projs});
+  }catch(e){
+    if(cachedHome){profile=cachedHome.profile;bids=cachedHome.bids;projs=cachedHome.projs;}
+  }
   _myBids=Array.isArray(bids)?bids:[];
   _myProjs=Array.isArray(projs)?projs:[];
 
@@ -1730,13 +1742,24 @@ async function _sendChatMsg(){
   var content=inp.value.trim();if(!content)return;
   var btn=_el('p-chat-send');
   inp.value='';
-  if(btn)btn.disabled=true;
+  inp.style.height='auto';
+
+  // ✅ Optimistic UI — show message immediately
+  var tempMsg={id:'tmp_'+Date.now(),sender_id:_myId,content:content,created_at:new Date().toISOString(),sender_name:'أنت'};
+  _chatMsgs.push(tempMsg);
+  _renderChatMsgs();
+
   try{
     await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiverId,content:content})});
-    var msgs=await _api('/api/messages/'+_chatReqId)||[];
+    // Refresh in background to get real ID
+    var msgs=await _api('/api/messages/'+_chatReqId+'?with='+_chatReceiverId)||[];
     if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
-  }catch(e){}
-  if(btn)btn.disabled=false;
+  }catch(e){
+    // Remove temp message on error
+    _chatMsgs=_chatMsgs.filter(function(m){return m.id!==tempMsg.id;});
+    _renderChatMsgs();
+    if(btn)btn.disabled=false;
+  }
 }
 
 // ═══ Init on DOM ready ═══
