@@ -1686,14 +1686,14 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
 
   try{
-    var msgs=await _api('/api/messages/'+reqId)||[];
+    var msgs=await _api('/api/messages/'+reqId+'?with='+receiverId)||[];
     if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
   }catch(e){}
 
   _chatPolling=setInterval(async function(){
     if(!_el('prov-chat-overlay')){clearInterval(_chatPolling);return;}
     try{
-      var msgs=await _api('/api/messages/'+reqId)||[];
+      var msgs=await _api('/api/messages/'+reqId+'?with='+receiverId)||[];
       if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
     }catch(e){}
   },2500);
