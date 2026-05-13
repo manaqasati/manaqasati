@@ -1054,14 +1054,24 @@ function riCard(r,actions){
 }
 
 function loadHome(){
-  var cached=_clCacheGet('reqs');
-  if(cached){_renderHomeReqs(cached);}
-  else{document.getElementById('home-reqs').innerHTML=_skCards(3);}
+  var reqs=document.getElementById('home-reqs');
+  if(reqs)reqs.innerHTML=_skCards(3);
   _fetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){if(!cached)document.getElementById('home-reqs').innerHTML=errH();return;}
+    if(!Array.isArray(all)){
+      if(reqs)reqs.innerHTML=errH();
+      return;
+    }
     _clCacheSet('reqs',all);
-    _renderHomeReqs(all);
-  }).catch(function(){if(!cached)document.getElementById('home-reqs').innerHTML=errH();});
+    var s=document.getElementById('s-total');
+    var so=document.getElementById('s-open');
+    var sp=document.getElementById('s-prog');
+    var sd=document.getElementById('s-done');
+    if(s)s.textContent=all.length;
+    if(so)so.textContent=all.filter(function(r){return r.status==='open';}).length;
+    if(sp)sp.textContent=all.filter(function(r){return r.status==='in_progress';}).length;
+    if(sd)sd.textContent=all.filter(function(r){return r.status==='done'||r.status==='completed';}).length;
+    if(reqs)reqs.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
+  }).catch(function(){if(reqs)reqs.innerHTML=errH();});
   loadNotifCount();
 }
 function _renderHomeReqs(all){
@@ -1072,15 +1082,13 @@ function _renderHomeReqs(all){
   document.getElementById('home-reqs').innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
 }
 function loadReqs(){
-  // ✅ استخدم نفس Cache الـ home
-  var cached=_clCacheGet('reqs');
-  if(cached){document.getElementById('all-reqs').innerHTML=cached.length?cached.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');}
-  else{document.getElementById('all-reqs').innerHTML=_skCards(5);}
+  var el=document.getElementById('all-reqs');
+  if(el)el.innerHTML=_skCards(5);
   _fetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){if(!cached)document.getElementById('all-reqs').innerHTML=errH();return;}
+    if(!Array.isArray(all)){if(el)el.innerHTML=errH();return;}
     _clCacheSet('reqs',all);
-    document.getElementById('all-reqs').innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
-  }).catch(function(){if(!cached)document.getElementById('all-reqs').innerHTML=errH();});
+    if(el)el.innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
+  }).catch(function(){if(el)el.innerHTML=errH();});
 }
 
 function openDetail(id,e){
