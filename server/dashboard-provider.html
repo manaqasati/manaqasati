@@ -605,7 +605,7 @@ function doLogout(){localStorage.removeItem('token');localStorage.removeItem('us
 
 // ═══ API wrapper with retry + timeout ═══
 function _api(path,opts){
-  var headers={'Authorization':'Bearer '+_token,'Content-Type':'application/json'};
+  var headers={'Authorization':'Bearer '+(localStorage.getItem('token')||_token||''),'Content-Type':'application/json'};
   function doFetch(){
     var fetchOpts=Object.assign({headers:headers,cache:'no-store'},opts||{});
     return fetch(API+path,fetchOpts).then(function(r){return r.json();}).catch(function(){return null;});
