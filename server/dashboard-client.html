@@ -1821,73 +1821,53 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ═══════════════════════════════════════════════════════════════
-// ✅ WEBSOCKET - اتصال فوري
-// ═══════════════════════════════════════════════════════════════
-var _ws = null;
-var _wsReconnectTimer = null;
 
-function _wsConnect() {
+
+// ✅ WebSocket للمتصفح فقط (التطبيق يستخدم Native WebSocket)
+if (!window.__IS_NATIVE_APP__) {
+  var _ws = null, _wsRT = null;
+  function _wsConnect() {
+    try {
+      var wsUrl = 'https://manaqasati-production.up.railway.app'.replace('https://','wss://');
+      _ws = new WebSocket(wsUrl);
+      _ws.onopen = function() {
+        var t = localStorage.getItem('token') || '';
+        if (t) _ws.send(JSON.stringify({ type: 'auth', token: t }));
+        clearTimeout(_wsRT);
+      };
+      _ws.onmessage = function(e) {
+        try {
+          window.dispatchEvent(new CustomEvent('ws_message', { detail: JSON.parse(e.data) }));
+        } catch(err) {}
+      };
+      _ws.onclose = function() { _wsRT = setTimeout(_wsConnect, 3000); };
+      _ws.onerror = function() { _ws.close(); };
+    } catch(e) {}
+  }
+  setTimeout(_wsConnect, 800);
+}
+
+// ✅ استقبل رسائل WebSocket من التطبيق Native
+window.addEventListener('ws_message', function(e) {
   try {
-    var wsUrl = API.replace('https://', 'wss://').replace('http://', 'ws://');
-    _ws = new WebSocket(wsUrl);
-
-    _ws.onopen = function() {
-      // إرسال token للمصادقة
-      var t = localStorage.getItem('token') || '';
-      if (t) _ws.send(JSON.stringify({ type: 'auth', token: t }));
-      clearTimeout(_wsReconnectTimer);
-    };
-
-    _ws.onmessage = function(e) {
-      try {
-        var msg = JSON.parse(e.data);
-        _wsHandleMessage(msg);
-      } catch(err) {}
-    };
-
-    _ws.onclose = function() {
-      // إعادة الاتصال بعد 3 ثوانٍ
-      _wsReconnectTimer = setTimeout(_wsConnect, 3000);
-    };
-
-    _ws.onerror = function() {
-      _ws.close();
-    };
-  } catch(e) {}
-}
-
-// ابدأ الاتصال عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(_wsConnect, 500);
-});
-
-function _wsHandleMessage(msg) {
-  if (msg.type === 'new_message') {
-    // ✅ تحديث قائمة المحادثات فوراً
-    var pg = document.getElementById('chat-content');
-    if (pg && !document.getElementById('cl-chat-overlay')) {
-      _refreshConvList();
-    }
-    // ✅ تحديث الرسائل لو المحادثة مفتوحة
-    if (document.getElementById('cl-chat-overlay') &&
-        _chatReqId == msg.request_id &&
-        _chatReceiverId == msg.sender_id) {
-      if (!_chatMsgs.find(function(m){ return m.id == msg.message.id; })) {
-        _chatMsgs.push(msg.message);
-        _renderClientMsgs();
+    var msg = e.detail;
+    if (msg.type === 'new_message') {
+      var pg = document.getElementById('chat-content');
+      if (pg && !document.getElementById('cl-chat-overlay')) {
+        _refreshConvList();
       }
+      if (document.getElementById('cl-chat-overlay') &&
+          _chatReqId == msg.request_id &&
+          _chatReceiverId == msg.sender_id) {
+        if (!_chatMsgs.find(function(m){ return m.id == msg.message.id; })) {
+          _chatMsgs.push(msg.message);
+          _renderClientMsgs();
+        }
+      }
+      loadNotifCount();
     }
-    // ✅ تحديث badge
-    _loadChatBadge();
-  }
-  if (msg.type === 'message_sent') {
-    // تحديث قائمة المحادثات للمرسل أيضاً
-    var pg = document.getElementById('chat-content');
-    if (pg && !document.getElementById('cl-chat-overlay')) {
-      _refreshConvList();
-    }
-  }
-}
+  } catch(e) {}
+});
 
 </script>
 </body>
