@@ -952,9 +952,10 @@ CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.text
 fillCitySelect(document.getElementById('n-city'));
 
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
-function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
+function hdr(){var t=localStorage.getItem('token')||token||'';return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},cache:'no-store'};}
 function _fetch(path,opts){
-  var options=Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{});
+  var t=localStorage.getItem('token')||token||'';
+  var options=Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},cache:'no-store'},opts||{});
   return fetch(API+path,options).then(function(r){return r.json();})
     .catch(function(){
       return new Promise(function(res){setTimeout(res,1500);})
