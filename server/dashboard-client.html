@@ -1687,7 +1687,7 @@ function _renderConvList(convs,pg){
       var initials=(cv.provider_name||'م')[0];
       var pname=String(cv.provider_name||'المزود').replace(/'/g,'');
       var ptitle=String(cv.request_title||'').replace(/'/g,'');
-      html+='<div onclick="openClientChat('+cv.request_id+','+cv.provider_id+',''+pname+'',''+ptitle+'')" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg)':'')+'">';
+      html+='<div onclick="openClientChat('+cv.request_id+','+cv.provider_id+',\''+pname+'\',\''+ptitle+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg)':'')+'">';
       html+='<div style="width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative">';
       if(cv.provider_image)html+='<img src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">';
       else html+=_esc(initials);
@@ -1723,7 +1723,6 @@ async function loadChatPage(){
   // ✅ ابدأ Polling لقائمة المحادثات (كل 5 ثوانٍ)
   clearInterval(_convListPolling);
   _convListPolling=setInterval(_refreshConvList,30000);
-}
   _loadChatBadge();
 }
 
@@ -1829,31 +1828,6 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ═══════════════════════════════════════════════════════════════
-
-
-// ✅ WebSocket للمتصفح فقط (التطبيق يستخدم Native WebSocket)
-if (!window.__IS_NATIVE_APP__) {
-  var _ws = null, _wsRT = null;
-  function _wsConnect() {
-    try {
-      var wsUrl = 'https://manaqasati-production.up.railway.app'.replace('https://','wss://');
-      _ws = new WebSocket(wsUrl);
-      _ws.onopen = function() {
-        var t = localStorage.getItem('token') || '';
-        if (t) _ws.send(JSON.stringify({ type: 'auth', token: t }));
-        clearTimeout(_wsRT);
-      };
-      _ws.onmessage = function(e) {
-        try {
-          window.dispatchEvent(new CustomEvent('ws_message', { detail: JSON.parse(e.data) }));
-        } catch(err) {}
-      };
-      _ws.onclose = function() { _wsRT = setTimeout(_wsConnect, 3000); };
-      _ws.onerror = function() { _ws.close(); };
-    } catch(e) {}
-  }
-  setTimeout(_wsConnect, 800);
-}
 
 // ✅ استقبل رسائل WebSocket من التطبيق Native
 window.addEventListener('ws_message', function(e) {
