@@ -1714,13 +1714,15 @@ async function loadChatPage(){
   var convs=[];
   try{
     var r=await fetch(API+'/api/client/conversations',hdr());
+    if(!r.ok){pg.innerHTML='<div class="loading">تعذر تحميل المحادثات ('+r.status+')</div>';return;}
     convs=await r.json();
     if(!Array.isArray(convs))convs=[];
-  }catch(e){convs=[];}
+  }catch(e){
+    pg.innerHTML='<div class="loading">تعذر الاتصال، تحقق من الإنترنت</div>';
+    return;
+  }
   convs.sort(function(a,b){return new Date(b.last_time||0)-new Date(a.last_time||0);});
   _renderConvList(convs,pg);
-
-  // ✅ ابدأ Polling لقائمة المحادثات (كل 5 ثوانٍ)
   clearInterval(_convListPolling);
   _convListPolling=setInterval(_refreshConvList,30000);
   _loadChatBadge();
