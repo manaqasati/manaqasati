@@ -1708,6 +1708,24 @@ function _renderConvList(convs,pg){
   pg.innerHTML=html;
 }
 
+
+function _escChat(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function _agoChat(d){if(!d)return'';var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
+
+async function _loadChatBadge(){
+  try{
+    var r=await fetch(API+'/api/client/conversations',hdr());
+    var convs=await r.json();
+    if(!Array.isArray(convs))return;
+    var unread=convs.filter(function(c){return parseInt(c.unread||0)>0;}).length;
+    var b1=document.getElementById('chat-badge');
+    if(b1){b1.style.display=unread?'':'none';b1.textContent=unread;}
+    var b2=document.getElementById('bn-chat-badge');
+    if(b2){b2.style.display=unread?'flex':'none';b2.textContent=unread;}
+  }catch(e){}
+}
+setInterval(_loadChatBadge,30000);
+
 async function loadChatPage(){
   var pg=document.getElementById('chat-content');if(!pg)return;
   pg.innerHTML='<div class="loading">جاري التحميل...</div>';
