@@ -710,6 +710,17 @@ function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align
 function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
 
 // ═══ HOME PAGE ═══
+// ✅ Verified badge logic
+function _isVerified(p){
+  return !!(p&&p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0);
+}
+function _verifiedBadge(small){
+  var sz=small?'10px':'11px';
+  return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(37,99,235,.2);border:1px solid rgba(37,99,235,.4);color:#60a5fa;font-size:'+sz+';font-weight:800;padding:2px 7px;border-radius:20px;flex-shrink:0">'
+    +'<svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
+    +'موثّق</span>';
+}
+
 function _renderHome(data){
   var pg=_el('page-home');if(!pg)return;
   var profile=data.profile||{}, bids=data.bids||[], projs=data.projs||[];
@@ -721,23 +732,56 @@ function _renderHome(data){
   var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
   var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
   var rat=(profile&&profile.avg_rating)?Number(profile.avg_rating).toFixed(1):'—';
+  var verified=_isVerified(profile);
+  var acceptRate=_myBids.length?Math.round((acc/_myBids.length)*100):0;
   var avHtml=(profile&&profile.profile_image)
     ?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">'
     :'<span style="font-size:20px;font-weight:900;color:var(--p2)">'+(_me.name||'م')[0]+'</span>';
 
   var html='';
-  html+='<div style="background:var(--p3);padding:22px 20px 34px;position:relative;overflow:hidden;border-radius:16px;margin-bottom:16px">';
+  // ── Hero Card ──
+  html+='<div style="background:var(--p3);padding:22px 20px 20px;position:relative;overflow:hidden;border-radius:16px;margin-bottom:16px">';
   html+='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>';
-  html+='<div style="display:flex;align-items:center;gap:14px">';
-  html+='<div style="width:54px;height:54px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2.5px solid rgba(255,255,255,.15);overflow:hidden">'+avHtml+'</div>';
+  html+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">';
+  html+='<div style="width:58px;height:58px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2.5px solid rgba(255,255,255,.15);overflow:hidden;position:relative">'+avHtml;
+  // ✅ علامة الموثّق على الصورة
+  if(verified)html+='<div style="position:absolute;bottom:0;left:0;width:18px;height:18px;background:#2563eb;border-radius:50%;border:2px solid var(--p3);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
+  html+='</div>';
   html+='<div>';
-  html+='<div style="font-size:10px;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:2px">مزود خدمة · '+_esc(profile.city||'السعودية')+'</div>';
-  html+='<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">'+_esc(_me.name||'المزود')+'</div>';
+  html+='<div style="font-size:10px;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:3px">مزود خدمة · '+_esc(profile.city||'السعودية')+'</div>';
+  html+='<div style="font-size:19px;font-weight:900;color:#fff;margin-bottom:5px;display:flex;align-items:center;gap:7px">'+_esc(_me.name||'المزود')+(verified?_verifiedBadge(false):'')+'</div>';
   html+='<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,10,.12);border:1px solid rgba(201,146,10,.25);padding:3px 10px;border-radius:20px">';
   html+='<span style="font-size:11px;color:var(--gold)">★★★★★</span>';
   html+='<span style="font-size:11px;font-weight:800;color:#fff">'+rat+'</span>';
   html+='</div>';
-  html+='</div></div></div>';
+  html+='</div></div>';
+
+  // ✅ لوحة الإحصائيات
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">';
+  html+='<div style="font-size:20px;font-weight:900;color:#fff">'+_myBids.length+'</div>';
+  html+='<div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">عرض مقدّم</div></div>';
+  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">';
+  html+='<div style="font-size:20px;font-weight:900;color:var(--gold)">'+acceptRate+'%</div>';
+  html+='<div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">نسبة القبول</div></div>';
+  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">';
+  html+='<div style="font-size:20px;font-weight:900;color:var(--green)">'+done+'</div>';
+  html+='<div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">مشروع منجز</div></div>';
+  html+='</div></div>';
+
+  // ── إرشاد للموثّق
+  if(!verified){
+    var missing=[];
+    if(!profile.profile_image)missing.push('صورة شخصية');
+    if(!profile.bio)missing.push('نبذة');
+    if(!(profile.specialties||[]).length)missing.push('تخصص');
+    if(!(parseFloat(profile.avg_rating)||0))missing.push('تقييم أول');
+    html+='<div style="background:var(--gold-l);border:1.5px solid var(--gold-soft);border-right:4px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">';
+    html+='<div style="flex:1"><div style="font-size:12px;font-weight:900;color:var(--gold-d);margin-bottom:3px">أكمل ملفك للحصول على شارة موثّق</div>';
+    html+='<div style="font-size:11px;color:var(--gold-d);opacity:.8">متبقي: '+missing.join(' · ')+'</div></div>';
+    html+='<button onclick="gotoPage(&quot;profile&quot;)" style="background:var(--gold);color:#fff;border:none;padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">أكمل الملف</button>';
+    html+='</div>';
+  }
 
   html+='<div class="stat-grid">';
   html+='<div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div>';
