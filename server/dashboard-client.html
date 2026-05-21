@@ -1132,41 +1132,110 @@ function openDetail(id,e){
 
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:'+sz+'px">★</span>';return s;}
 
-function loadBids(id){
-  document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/requests/'+id).then(function(r){return r.json();}).then(function(reqData){
-    window._projTitle=reqData.title||'';
-  }).catch(function(){});
-  fetch(API+'/api/requests/'+id+'/bids',hdr()).then(function(r){return r.json();}).then(function(bids){
-    if(!Array.isArray(bids)){document.getElementById('bids-list').innerHTML=errH();return;}
-    document.getElementById('bids-count').textContent='('+bids.length+')';
-    if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
+function _lastActiveText(d){
+  if(!d)return null;
+  var mins=Math.floor((Date.now()-new Date(d))/60000);
+  if(mins<2)return'<span style="color:#4ade80">● نشط الآن</span>';
+  if(mins<60)return'<span style="color:#4ade80">● نشط منذ '+mins+' د</span>';
+  var hrs=Math.floor(mins/60);
+  if(hrs<24)return'<span style="color:var(--gold)">● نشط منذ '+hrs+' س</span>';
+  return'<span style="color:var(--muted)">● آخر نشاط منذ '+Math.floor(hrs/24)+' يوم</span>';
+}
 
-    document.getElementById('bids-list').innerHTML=bids.map(function(b){
-      var isAcc=b.status==='accepted',isRej=b.status==='rejected';
-      var avgR=parseFloat(b.provider_rating)||0;
-      var reviewCount=parseInt(b.provider_reviews)||0;
-      var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
-      var acts='';
-      if(!isAcc&&!isRej){
-        acts='<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap">'
-          +'<button onclick="acceptBid('+b.id+','+id+')" style="flex:1;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">قبول العرض</button>'
-          +'<button onclick="rejectBid('+b.id+','+id+')" style="padding:10px 16px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">رفض</button>'
-          +'</div>';
-      }
-      return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'
-        +'<div onclick="openProviderProfile('+b.provider_id+','+id+')" style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:14px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.15s" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">'
-        +'<div style="display:flex;align-items:center;gap:10px">'
-        +(b.provider_image?'<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)"><img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover"></div>':'<div style="width:40px;height:40px;border-radius:50%;background:var(--gold);color:var(--p2);font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+((b.provider_name||'م')[0])+'</div>')
-        +'<div><div style="font-size:14px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px">'+(b.provider_name||'مزود')+'<svg width="11" height="11" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
-        +'<div style="font-size:11px;color:rgba(255,255,255,.6)">'+(b.provider_city||'')+' · '+starsHtml(avgR,false)+' ('+reviewCount+')</div></div></div>'
-        +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#fff">'+Number(b.price).toLocaleString('en-US')+'</div><div style="font-size:10px;color:rgba(255,255,255,.5)">ر.س</div>'+(statusTag?'<div style="margin-top:4px">'+statusTag+'</div>':'')+'</div>'
+function _starsLarge(n,cnt){
+  var s='';
+  for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)')+';font-size:15px">★</span>';
+  if(cnt)s+='<span style="font-size:11px;color:rgba(255,255,255,.55);margin-right:4px">('+cnt+')</span>';
+  return s;
+}
+
+async function loadBids(id){
+  document.getElementById('bids-list').innerHTML='<div class="loading">جاري التحميل...</div>';
+  try{
+    var reqData=await fetch(API+'/api/requests/'+id).then(function(r){return r.json();});
+    window._projTitle=reqData.title||'';
+  }catch(e){}
+
+  var bids=[];
+  try{bids=await fetch(API+'/api/requests/'+id+'/bids',hdr()).then(function(r){return r.json();});}
+  catch(e){document.getElementById('bids-list').innerHTML=errH();return;}
+
+  if(!Array.isArray(bids)){document.getElementById('bids-list').innerHTML=errH();return;}
+  document.getElementById('bids-count').textContent='('+bids.length+')';
+  if(!bids.length){document.getElementById('bids-list').innerHTML=emptyH('لا يوجد عروض بعد','انتظر قليلاً');return;}
+
+  // ✅ جلب بيانات المزودين (تقييمات + صور أعمال + آخر نشاط)
+  var provProfiles={};
+  await Promise.all(bids.map(async function(b){
+    try{
+      var p=await fetch(API+'/api/provider/'+b.provider_id+'/profile').then(function(r){return r.json();});
+      if(p)provProfiles[b.provider_id]=p;
+    }catch(e){}
+  }));
+
+  var _bidsContainer=document.getElementById('bids-list');
+  _bidsContainer.innerHTML=bids.map(function(b){
+    var isAcc=b.status==='accepted',isRej=b.status==='rejected';
+    var p=provProfiles[b.provider_id]||{};
+    var avgR=parseFloat(p.avg_rating||b.provider_rating)||0;
+    var reviewCount=parseInt(p.review_count||b.provider_reviews)||0;
+    var portImgs=p.portfolio_images||[];
+    var lastActive=_lastActiveText(p.last_active||p.last_seen);
+    var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
+    var acts='';
+    if(!isAcc&&!isRej){
+      acts='<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap">'
+        +'<button onclick="acceptBid('+b.id+','+id+')" style="flex:1;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">قبول العرض</button>'
+        +'<button onclick="rejectBid('+b.id+','+id+')" style="padding:10px 16px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">رفض</button>'
+        +'</div>';
+    }
+
+    // ✅ صور الأعمال
+    var portH='';
+    if(portImgs.length){
+      portH='<div style="margin-bottom:10px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">معرض الأعمال</div>'
+        +'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">';
+      portImgs.slice(0,4).forEach(function(img){
+        portH+='<div style="width:72px;height:72px;flex-shrink:0;border-radius:9px;overflow:hidden;cursor:pointer;border:1.5px solid var(--border)" class="_pimg" data-src="'+img+'"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';
+      });
+      if(portImgs.length>4)portH+='<div style="width:72px;height:72px;flex-shrink:0;border-radius:9px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted)" onclick="openProviderProfile('+b.provider_id+','+id+')">+'+( portImgs.length-4)+'</div>';
+      portH+='</div></div>';
+    }
+
+    return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'
+      // ── Header: صورة + اسم + تقييم + آخر نشاط
+      +'<div onclick="openProviderProfile('+b.provider_id+','+id+')" style="background:linear-gradient(135deg,#0f2548,#1B3A6B);padding:14px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.15s" onmouseover="this.style.opacity=.9" onmouseout="this.style.opacity=1">'
+        +'<div style="display:flex;align-items:center;gap:11px">'
+          +(b.provider_image?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)"><img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover"></div>':'<div style="width:48px;height:48px;border-radius:50%;background:var(--gold);color:var(--p2);font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+((b.provider_name||'م')[0])+'</div>')
+          +'<div>'
+            +'<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:5px">'+(b.provider_name||'مزود')+'<svg width="10" height="10" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
+            // ✅ تقييم كبير وواضح
+            +'<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">'+_starsLarge(avgR,reviewCount)+'</div>'
+            // ✅ آخر نشاط
+            +(lastActive?'<div style="font-size:10px;font-weight:700">'+lastActive+'</div>':'<div style="font-size:10px;color:rgba(255,255,255,.4)">'+(b.provider_city||p.city||'')+'</div>')
+          +'</div>'
         +'</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:var(--p-light);color:var(--p);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">⏱ '+(b.days||'—')+' يوم</span></div>'
-        +(b.note?'<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:10px;border-radius:10px;border-right:3px solid var(--gold);margin-bottom:10px">"'+b.note+'"</div>':'')
-        +acts+'</div>';
-    }).join('');
-  }).catch(function(){document.getElementById('bids-list').innerHTML=errH();});
+        +'<div style="text-align:left">'
+          +'<div style="font-size:20px;font-weight:900;color:#fff">'+Number(b.price).toLocaleString('en-US')+'</div>'
+          +'<div style="font-size:10px;color:rgba(255,255,255,.5)">ر.س</div>'
+          +(statusTag?'<div style="margin-top:5px">'+statusTag+'</div>':'')
+        +'</div>'
+      +'</div>'
+      // ── تفاصيل العرض
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<span style="background:var(--p-light);color:var(--p);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">⏱ '+(b.days||'—')+' يوم</span>'
+        +(p.completed_projects?'<span style="background:var(--green-l);color:var(--green);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #BBF7D0">'+p.completed_projects+' مشروع منجز</span>':'')
+        +(p.experience_years?'<span style="background:var(--bg);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:12px;border:1px solid var(--border)">'+p.experience_years+' سنة خبرة</span>':'')
+      +'</div>'
+      // ✅ صور أعمال المزود
+      +portH
+      // ── ملاحظة العرض
+      +(b.note?'<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:10px 13px;border-radius:10px;border-right:3px solid var(--gold);margin-bottom:10px;line-height:1.7">"'+b.note+'"</div>':'')
+      +acts
+    +'</div>';
+  }).join('');
+  _bidsContainer.querySelectorAll('._pimg').forEach(function(el){el.addEventListener('click',function(){openImgFull(el.getAttribute('data-src'));});});
 }
 
 function loadActions(id){
