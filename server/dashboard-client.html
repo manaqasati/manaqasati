@@ -1132,6 +1132,15 @@ function openDetail(id,e){
 
 function starsHtml(n,big){var s='';var sz=big?16:12;for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:'+sz+'px">★</span>';return s;}
 
+
+// ✅ Verified badge
+function _isVerified(p){
+  return !!(p&&p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0);
+}
+function _verifiedBadge(){
+  return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(37,99,235,.25);border:1px solid rgba(37,99,235,.5);color:#93c5fd;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;flex-shrink:0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>';
+}
+
 function _lastActiveText(d){
   if(!d)return null;
   var mins=Math.floor((Date.now()-new Date(d))/60000);
@@ -1209,7 +1218,7 @@ async function loadBids(id){
         +'<div style="display:flex;align-items:center;gap:11px">'
           +(b.provider_image?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)"><img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover"></div>':'<div style="width:48px;height:48px;border-radius:50%;background:var(--gold);color:var(--p2);font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+((b.provider_name||'م')[0])+'</div>')
           +'<div>'
-            +'<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:5px">'+(b.provider_name||'مزود')+'<svg width="10" height="10" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
+            +'<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+(b.provider_name||'مزود')+(_isVerified(p)?_verifiedBadge():'')+'<svg width="10" height="10" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
             // ✅ تقييم كبير وواضح
             +'<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">'+_starsLarge(avgR,reviewCount)+'</div>'
             // ✅ آخر نشاط
