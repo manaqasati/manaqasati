@@ -328,6 +328,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 }
 #pvOl, #cpOl { animation: fadeIn .2s; }
 @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+@keyframes zoomIn { from { opacity:0;transform:scale(.85) } to { opacity:1;transform:scale(1) } }
 @keyframes sp { to { transform:rotate(360deg) } }
 </style>
 </head>
@@ -1245,6 +1246,9 @@ async function loadBids(id){
     +'</div>';
   }).join('');
   _bidsContainer.querySelectorAll('._pimg').forEach(function(el){el.addEventListener('click',function(){openImgFull(el.getAttribute('data-src'));});});
+  // ✅ حفظ بيانات العروض للوصول عند القبول
+  window._currentBids=bids;
+  window._currentBidProviders=provProfiles;
 }
 
 function loadActions(id){
@@ -1256,7 +1260,53 @@ function loadActions(id){
     document.getElementById('actions-wrap').innerHTML=h||emptyH('لا يوجد إجراءات','');
   });
 }
-function acceptBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr())).then(function(){openDetail(reqId,null);});}
+function acceptBid(bidId,reqId){
+  // ابحث عن بيانات المزود من العروض المحفوظة
+  var bid=(window._currentBids||[]).find(function(b){return String(b.id)===String(bidId);});
+  var provProfile=(bid&&window._currentBidProviders)?window._currentBidProviders[bid.provider_id]:{};
+
+  var btn=document.querySelector('[onclick*="acceptBid('+bidId+'"]');
+  if(btn){btn.disabled=true;btn.textContent='جاري القبول...';}
+
+  fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
+  .then(function(r){return r.json();})
+  .then(function(){
+    if(!bid){openDetail(reqId,null);return;}
+
+    // ✅ عرض رسالة نجاح مؤقتة
+    var overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(10,5,30,.7);z-index:9998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)';
+    overlay.innerHTML=
+      '<div style="background:var(--white);border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;animation:zoomIn .3s cubic-bezier(.34,1.56,.64,1)">'
+      +'<div style="width:64px;height:64px;background:var(--green-l);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">'
+      +'<svg width="32" height="32" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      +'<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:6px">تم قبول العرض!</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7">جاري فتح المحادثة مع <strong>'+_escChat(bid.provider_name||'المزود')+'</strong>...</div>'
+      +'<div style="width:100%;height:3px;background:var(--border);border-radius:3px;overflow:hidden">'
+      +'<div id="_accept-bar" style="height:100%;background:var(--green);width:0%;transition:width 1.5s linear"></div>'
+      +'</div></div>';
+    document.body.appendChild(overlay);
+    setTimeout(function(){var b=document.getElementById('_accept-bar');if(b)b.style.width='100%';},50);
+
+    // ✅ بعد 1.6 ثانية افتح المحادثة تلقائياً
+    setTimeout(function(){
+      overlay.remove();
+      openDetail(reqId,null);
+      setTimeout(function(){
+        openClientChat(
+          reqId,
+          bid.provider_id,
+          bid.provider_name||'المزود',
+          window._projTitle||''
+        );
+      },400);
+    },1600);
+  })
+  .catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='قبول العرض';}
+    openDetail(reqId,null);
+  });
+}
 function rejectBid(bidId,reqId){fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);});}
 
 function openImgFull(src){
