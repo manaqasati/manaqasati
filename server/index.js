@@ -59,6 +59,23 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 app.get('/provider.html',          (req, res) => res.sendFile(__dirname + '/provider.html'));
+app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
+
+// ✅ بطاقة المزود الشخصية: /pro/اسم-49
+app.get('/pro/:slug', async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    // استخرج الـ ID من نهاية الـ slug (اسم-49 → 49)
+    const match = slug.match(/(\d+)$/);
+    if (!match) return res.status(404).sendFile(__dirname + '/pro.html');
+    const id = parseInt(match[1]);
+    const r = await pool.query('SELECT id FROM users WHERE id=$1 AND role=$2', [id, 'provider']);
+    if (!r.rows.length) return res.status(404).sendFile(__dirname + '/pro.html');
+    res.sendFile(__dirname + '/pro.html');
+  } catch(e) {
+    res.sendFile(__dirname + '/pro.html');
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // EMAIL (Resend)
