@@ -1482,6 +1482,37 @@ async function loadProfile(){
   pg.appendChild(pushCard);
   setTimeout(updatePushToggleUI,100);
 
+  // ✅ زر معاينة البطاقة الشخصية
+  var previewCard=document.createElement('div');
+  previewCard.style.cssText='background:linear-gradient(135deg,rgba(201,146,10,.08),rgba(201,146,10,.03));border:1.5px solid rgba(201,146,10,.2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px';
+  var mySlug=encodeURIComponent((p.name||'مزود').replace(/\s+/g,'-'))+'-'+(_me.id||'');
+  previewCard.innerHTML=
+    '<div style="flex:1">'
+    +'<div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-family:monospace">/pro/'+mySlug+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<button id="copy-card-btn" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">نسخ الرابط</button>'
+    +'<a href="/pro/'+mySlug+'" target="_blank" style="padding:8px 14px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px">'
+    +'<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+    +'معاينة</a>'
+    +'</div>';
+  pg.appendChild(previewCard);
+  var copyBtn=previewCard.querySelector('#copy-card-btn');
+  if(copyBtn){
+    copyBtn.addEventListener('click',function(){
+      var link=window.location.origin+'/pro/'+mySlug;
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(link).then(function(){
+          copyBtn.textContent='تم النسخ ✓';
+          setTimeout(function(){copyBtn.textContent='نسخ الرابط';},2000);
+        });
+      }else{
+        copyBtn.textContent=link;
+      }
+    });
+  }
+
   var infoCard=document.createElement('div');
   infoCard.className='card card-accent';
   infoCard.innerHTML=
