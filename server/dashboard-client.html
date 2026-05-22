@@ -1653,7 +1653,11 @@ var _validPages=['home','requests','notifs','profile','chat'];
 
 // ═══ PROVIDER PROFILE MODAL ═══
 function openProviderProfile(pid, reqId){
-  window.open('provider.html?id='+pid, '_blank');
+  // جلب اسم المزود من العروض المحفوظة
+  var bid = (window._currentBids||[]).find(function(b){return String(b.provider_id)===String(pid);});
+  var name = bid ? (bid.provider_name||'مزود') : 'مزود';
+  var slug = name.replace(/\s+/g,'-') + '-' + pid;
+  window.open('/pro/'+encodeURIComponent(slug), '_blank');
 }
 
 
