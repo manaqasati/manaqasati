@@ -247,21 +247,89 @@ function render(p, rat){
   var pSpecs= (p.specialties||[]).join('، ');
   var url   = location.href;
 
-  // SEO
-  var pgT = pName+(pSpecs?' — '+pSpecs:'')+' | مناقصة';
-  var pgD = pName+' مزود خدمة في '+pCity+(pSpecs?'، متخصص في '+pSpecs:'')+(avg>0?'. تقييم '+avg.toFixed(1)+' من 5':'')+'. تواصل الآن.';
-  document.getElementById('pg-title').textContent = pgT;
-  document.getElementById('pg-desc').content = pgD;
-  document.getElementById('og-title').content = pgT;
-  document.getElementById('og-desc').content = pgD;
-  document.getElementById('pg-can').href = url;
+  // ── SEO ─────────────────────────────────────────────────────
+  var specList = p.specialties||[];
+  var expText  = p.experience_years ? p.experience_years+' سنة خبرة' : '';
+
+  // عنوان الصفحة: اسم المزود + تخصصه الأول + المدينة
+  var pgT = pName
+    + (specList[0] ? ' — '+specList[0] : '')
+    + (pCity !== 'السعودية' ? ' في '+pCity : '')
+    + ' | مناقصة';
+
+  // وصف غني بالكلمات المفتاحية
+  var pgD = pName+' مزود خدمة محترف'
+    + (pCity !== 'السعودية' ? ' في '+pCity : ' في السعودية')
+    + (pSpecs ? '، متخصص في '+pSpecs : '')
+    + (expText ? '، '+expText : '')
+    + (avg>0 ? '، تقييم '+avg.toFixed(1)+' من 5 بناءً على '+cnt+' تقييم' : '')
+    + '. تواصل معه مباشرة عبر منصة مناقصة.';
+
+  // Keywords meta tag
+  var kwArr = [pName, pCity];
+  specList.forEach(function(s){ kwArr.push(s); kwArr.push(s+' '+pCity); kwArr.push(s+' السعودية'); });
+  if(expText) kwArr.push(expText);
+  kwArr.push('مزود خدمة', 'مقاول', 'منصة مناقصة', 'خدمات '+pCity);
+
+  // Update meta tags
+  document.getElementById('pg-title').textContent  = pgT;
+  document.getElementById('pg-desc').content       = pgD;
+  document.getElementById('og-title').content      = pgT;
+  document.getElementById('og-desc').content       = pgD;
+  document.getElementById('pg-can').href           = url;
   document.title = pgT;
-  if(p.profile_image&&p.profile_image.startsWith('http'))
-    document.getElementById('og-img').content=p.profile_image;
-  var sc={"@context":"https://schema.org","@type":"LocalBusiness","name":pName,"description":pgD,"address":{"@type":"PostalAddress","addressLocality":pCity,"addressCountry":"SA"},"url":url};
-  if(phone) sc.telephone=phone;
-  if(avg>0) sc.aggregateRating={"@type":"AggregateRating","ratingValue":avg.toFixed(1),"reviewCount":cnt};
-  document.getElementById('schema').textContent=JSON.stringify(sc);
+
+  // Add keywords meta dynamically
+  var kwMeta = document.querySelector('meta[name="keywords"]');
+  if(!kwMeta){ kwMeta=document.createElement('meta'); kwMeta.name='keywords'; document.head.appendChild(kwMeta); }
+  kwMeta.content = kwArr.join(', ');
+
+  if(p.profile_image && p.profile_image.startsWith('http'))
+    document.getElementById('og-img').content = p.profile_image;
+
+  // JSON-LD Schema — LocalBusiness مع كل التفاصيل
+  var sc = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": pName,
+    "description": pgD,
+    "url": url,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": pCity,
+      "addressRegion": pCity,
+      "addressCountry": "SA"
+    },
+    "areaServed": pCity,
+    "knowsAbout": specList,
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "الخدمات المقدمة",
+      "itemListElement": specList.map(function(s,i){
+        return {"@type":"Offer","itemOffered":{"@type":"Service","name":s},"areaServed":pCity};
+      })
+    }
+  };
+  if(phone) sc.telephone = phone;
+  if(p.profile_image && p.profile_image.startsWith('http')) sc.image = p.profile_image;
+  if(avg>0) sc.aggregateRating = {
+    "@type": "AggregateRating",
+    "ratingValue": avg.toFixed(1),
+    "reviewCount": cnt,
+    "bestRating": "5",
+    "worstRating": "1"
+  };
+  if(reviews.length){
+    sc.review = reviews.slice(0,3).map(function(rv){
+      return {
+        "@type": "Review",
+        "author": {"@type":"Person","name": rv.reviewer_name||'عميل'},
+        "reviewRating": {"@type":"Rating","ratingValue": rv.rating},
+        "reviewBody": rv.comment||''
+      };
+    });
+  }
+  document.getElementById('schema').textContent = JSON.stringify(sc);
 
   // PROFILE CARD
   var avHtml=p.profile_image?'<img src="'+p.profile_image+'" alt="'+pName+'" loading="eager">':pName.charAt(0);
