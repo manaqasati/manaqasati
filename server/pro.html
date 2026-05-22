@@ -304,7 +304,8 @@ function render(p, rat){
     html+='<a href="/auth.html" class="cbtn cbtn-call">اتصال — سجّل دخول</a>';
     html+='<a href="/auth.html" class="cbtn cbtn-wa">واتساب — سجّل دخول</a>';
   }
-  html+='<button class="cbtn cbtn-msg" onclick="location.href=\'/auth.html\'">'
+  var provId = getId();
+  html+='<button class="cbtn cbtn-msg" onclick="goMsg(''+provId+'')">'
     +'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
     +'رسالة عبر المنصة</button>';
   html+='</div></div>';
@@ -362,6 +363,12 @@ function render(p, rat){
   document.querySelectorAll('.port-img').forEach(function(el){
     el.addEventListener('click',function(){ openImg(el.getAttribute('data-src')); });
   });
+}
+
+function goMsg(provId){
+  // حفظ المزود المقصود ثم توجيه لصفحة الدخول
+  try{ localStorage.setItem('msg_provider_id', provId); }catch(e){}
+  location.href = '/auth.html?redirect=msg&provider_id=' + provId;
 }
 
 function doShare(name,url){
