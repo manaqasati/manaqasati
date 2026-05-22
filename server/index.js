@@ -1350,6 +1350,24 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     if (newReq.category) {
       try {
         const cat = String(newReq.category).trim();
+
+        // ✅ استفسار مباشر — إشعار المزود المحدد فقط
+        const directProvId = req.body.direct_provider_id;
+        if(directProvId) {
+          const dp = await pool.query('SELECT id,name,email FROM users WHERE id=$1 AND role=$2', [directProvId, 'provider']);
+          if(dp.rows.length){
+            const dprov = dp.rows[0];
+            const clientInfo2 = await pool.query('SELECT name FROM users WHERE id=$1',[req.user.id]);
+            const cName2 = clientInfo2.rows[0]?.name||'عميل';
+            await notify(dprov.id, '💬 استفسار مباشر جديد',
+              `${cName2} يريد التواصل معك مباشرة عبر المنصة`, 'new_request', newReq.id);
+            if(dprov.email) sendEmail(dprov.email, '💬 استفسار مباشر',
+              emailTpl('استفسار مباشر', `<p>يريد <strong>${cName2}</strong> التواصل معك مباشرة عبر منصة مناقصة.</p>`,
+              'فتح المحادثة', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+          }
+          return res.json(newReq);
+        }
+
         const provs = await pool.query(`
           SELECT id, name, email, specialties, notify_categories FROM users
           WHERE role='provider' AND is_active=TRUE
