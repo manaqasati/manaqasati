@@ -58,6 +58,7 @@ app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dash
 app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
+app.get('/provider.html',          (req, res) => res.sendFile(__dirname + '/provider.html'));
 
 // ═══════════════════════════════════════════════════════════════
 // EMAIL (Resend)
