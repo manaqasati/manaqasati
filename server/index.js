@@ -1899,10 +1899,8 @@ app.get('/api/providers', async (req, res) => {
   try {
     const { category, city, specialty } = req.query;
     let q = `
-      SELECT id, name, city, specialties, badge, bio, experience_years, last_bumped_at, created_at,
-        CASE WHEN profile_image IS NOT NULL AND length(profile_image) > 0
-          THEN CASE WHEN profile_image LIKE 'http%' THEN profile_image ELSE 'has_image' END
-          ELSE NULL END as profile_image,
+      SELECT id, name, city, specialties, badge, bio, profile_image,
+        experience_years, last_bumped_at, created_at,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count,
         (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects
