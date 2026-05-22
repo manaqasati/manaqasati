@@ -373,7 +373,7 @@ function render(p, rat){
     html+='<a href="/auth.html" class="cbtn cbtn-wa">واتساب — سجّل دخول</a>';
   }
   var provId = getId();
-  html+='<button class="cbtn cbtn-msg" onclick="goMsg(''+provId+'')">'
+  html+='<button class="cbtn cbtn-msg" id="_msg-btn">';
     +'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
     +'رسالة عبر المنصة</button>';
   html+='</div></div>';
@@ -428,6 +428,13 @@ function render(p, rat){
   html+='<div class="pg-foot">© مناقصة — جميع الحقوق محفوظة</div>';
 
   document.getElementById('main-content').innerHTML=html;
+  // msg button event
+  var msgBtn = document.getElementById('_msg-btn');
+  if(msgBtn){
+    msgBtn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> رسالة عبر المنصة';
+    msgBtn.addEventListener('click', function(){ goMsg(getId()); });
+  }
+
   document.querySelectorAll('.port-img').forEach(function(el){
     el.addEventListener('click',function(){ openImg(el.getAttribute('data-src')); });
   });
@@ -447,11 +454,58 @@ function doShare(name,url){
 // LOAD
 (function(){
   var id=getId();
-  if(!id){ document.getElementById('profile-card').innerHTML='<p style="padding:30px;color:var(--muted)">رابط غير صحيح</p>'; return; }
-  var d1=null,d2=null,done=0;
-  function tryRender(){ done++; if(done<2)return; if(!d1||d1.message){ document.getElementById('profile-card').innerHTML='<p style="padding:30px;color:var(--muted)">المزود غير موجود</p>'; return; } render(d1,d2||{}); }
-  var x1=new XMLHttpRequest(); x1.open('GET',API+'/api/providers/'+id,true); x1.onload=function(){try{d1=JSON.parse(x1.responseText);}catch(e){d1=null;} tryRender();}; x1.onerror=function(){tryRender();}; x1.send();
-  var x2=new XMLHttpRequest(); x2.open('GET',API+'/api/ratings/provider/'+id,true); x2.onload=function(){try{d2=JSON.parse(x2.responseText);}catch(e){d2=null;} tryRender();}; x2.onerror=function(){tryRender();}; x2.send();
+  if(!id){
+    document.getElementById('profile-card').innerHTML='<p style="padding:30px;color:var(--muted)">رابط غير صحيح</p>';
+    return;
+  }
+
+  var d1=null, d2=null, done=0;
+  var rendered=false;
+
+  function tryRender(){
+    done++;
+    if(rendered) return;
+    if(done < 2) return;
+    rendered=true;
+    if(!d1 || d1.message==='غير موجود'){
+      document.getElementById('profile-card').innerHTML='<p style="padding:30px;color:var(--muted)">المزود غير موجود</p>';
+      return;
+    }
+    render(d1, d2||{});
+  }
+
+  // Timeout — اعرض ما عندنا بعد 6 ثواني حتى لو طلب التقييمات فشل
+  setTimeout(function(){
+    if(rendered) return;
+    rendered=true;
+    if(!d1){
+      document.getElementById('profile-card').innerHTML='<p style="padding:30px;color:var(--muted)">تعذر التحميل — تحقق من الاتصال</p>';
+      return;
+    }
+    render(d1, d2||{});
+  }, 6000);
+
+  // Request 1: بيانات المزود
+  var x1=new XMLHttpRequest();
+  x1.open('GET', API+'/api/providers/'+id, true);
+  x1.timeout = 10000;
+  x1.onload=function(){
+    try{ d1=JSON.parse(x1.responseText); }catch(e){ d1=null; }
+    tryRender();
+  };
+  x1.onerror=x1.ontimeout=function(){ tryRender(); };
+  x1.send();
+
+  // Request 2: التقييمات
+  var x2=new XMLHttpRequest();
+  x2.open('GET', API+'/api/ratings/provider/'+id, true);
+  x2.timeout = 10000;
+  x2.onload=function(){
+    try{ d2=JSON.parse(x2.responseText); }catch(e){ d2=null; }
+    tryRender();
+  };
+  x2.onerror=x2.ontimeout=function(){ d2={}; tryRender(); };
+  x2.send();
 })();
 </script>
 </body>
