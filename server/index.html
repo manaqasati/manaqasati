@@ -371,7 +371,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           أنشر مشروعك مجاناً
         </button>
-        <button class="btn-outline-w" style="padding:13px 22px;border-radius:11px" onclick="goAuth()">سجّل كمزود خدمة</button>
+        <button class="btn-outline-w" style="padding:13px 22px;border-radius:11px" onclick="location.href='/auth.html?mode=register&role=provider'">سجّل كمزود خدمة</button>
       </div>
       <div class="idx-stats">
         <div class="ist"><div class="ist-v" id="hs-u">—</div><div class="ist-l">مشروع نشط</div></div>
@@ -797,7 +797,7 @@ function loadProviders(){
       var cnt=parseInt(p.review_count)||0;
       var vrf=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
       var sp=(p.specialties||[]);
-      var lastT=p.last_bumped_at||p.created_at||new Date().toISOString();
+      var lastT=p.last_active||p.last_bumped_at||p.created_at||new Date().toISOString();
       var mins=Math.floor((Date.now()-new Date(lastT))/60000);
       var actColor=mins<60?'#16A34A':mins<1440?'#C9920A':'#8896AA';
       var actTxt=mins<60?'نشط الآن':mins<1440?'منذ '+Math.floor(mins/60)+' س':'منذ '+Math.floor(mins/1440)+' يوم';
