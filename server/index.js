@@ -491,6 +491,7 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
     // ✅ PATCH 1: Bump system column
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
@@ -542,6 +543,8 @@ app.post('/api/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, storedHash);
     if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    // ✅ تحديث آخر نشاط
+    pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
     delete user.password; delete user.password_hash;
     res.json({ user, token });
   } catch (e) { console.error('❌ Login:', e); res.status(500).json({ message: e.message }); }
@@ -2045,7 +2048,7 @@ app.get('/api/providers/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
       SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,
-      experience_years,portfolio_images,business_name,created_at,
+      experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
