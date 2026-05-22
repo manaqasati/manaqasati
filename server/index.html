@@ -819,7 +819,7 @@ function loadProviders(){
       var borderC=vrf?'#2563EB':'#E6E2D9';
       var badge=vrf?'<span style="font-size:9px;background:rgba(37,99,235,.1);color:#60A5FA;border:1px solid rgba(37,99,235,.25);padding:2px 7px;border-radius:20px;font-weight:800">&#10003; موثّق</span>':'';
       var dot=vrf?'<div style="position:absolute;bottom:0;left:0;width:16px;height:16px;background:#2563EB;border-radius:50%;border:2px solid #fff"></div>':'';
-      html+='<div class="_pc" data-pid="'+p.id+'" style="background:#fff;border-radius:14px;padding:16px;border:1.5px solid #E6E2D9;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.07)">';
+      html+='<div class="_pc" data-pid="'+p.id+'" data-name="'+(p.name||'مزود')+'" style="background:#fff;border-radius:14px;padding:16px;border:1.5px solid #E6E2D9;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.07)">';
       html+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">';
       html+='<div style="width:52px;height:52px;border-radius:50%;background:#FFF8E6;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid '+borderC+';position:relative">'+avEl+dot+'</div>';
       html+='<div style="flex:1;min-width:0">';
@@ -836,7 +836,7 @@ function loadProviders(){
     grid.innerHTML=html;
     grid.querySelectorAll('._pc').forEach(function(el){
       var pid=el.getAttribute('data-pid');
-      el.addEventListener('click',function(){ window.open('provider.html?id='+pid,'_blank'); });
+      el.addEventListener('click',function(){ window.open('/pro/'+encodeURIComponent(p.name||'مزود').replace(/%20/g,'-')+'-'+pid,'_blank'); });
       el.addEventListener('mouseover',function(){ el.style.borderColor='#B0BDD0'; el.style.transform='translateY(-2px)'; });
       el.addEventListener('mouseout', function(){ el.style.borderColor='#E6E2D9'; el.style.transform=''; });
     });
