@@ -59,18 +59,93 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 
-// ✅ بطاقة المزود الشخصية: /pro/اسم-49
+// ✅ بطاقة المزود — مع Server-Side Rendering للـ SEO
 app.get('/pro/:slug', async (req, res) => {
   try {
     const slug = req.params.slug;
-    // استخرج الـ ID من نهاية الـ slug (اسم-49 → 49)
     const match = slug.match(/(\d+)$/);
-    if (!match) return res.status(404).sendFile(__dirname + '/pro.html');
+    if (!match) return res.sendFile(__dirname + '/pro.html');
     const id = parseInt(match[1]);
-    const r = await pool.query('SELECT id FROM users WHERE id=$1 AND role=$2', [id, 'provider']);
-    if (!r.rows.length) return res.status(404).sendFile(__dirname + '/pro.html');
-    res.sendFile(__dirname + '/pro.html');
+
+    // جلب بيانات المزود
+    const r = await pool.query(`
+      SELECT id, name, phone, city, bio, specialties, profile_image,
+        business_name, experience_years,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects
+      FROM users WHERE id=$1 AND role='provider'
+    `, [id]);
+
+    if (!r.rows.length) return res.sendFile(__dirname + '/pro.html');
+    const p = r.rows[0];
+
+    const pName   = p.business_name || p.name || 'مزود خدمة';
+    const pCity   = p.city || 'السعودية';
+    const specs   = (p.specialties || []).join('، ');
+    const avg     = parseFloat(p.avg_rating) || 0;
+    const cnt     = parseInt(p.review_count) || 0;
+    const pageUrl = `${SITE_URL}/pro/${slug}`;
+
+    const title = `${pName}${specs ? ' — ' + specs : ''}${pCity !== 'السعودية' ? ' في ' + pCity : ''} | مناقصة`;
+    const desc  = `${pName} مزود خدمة في ${pCity}${specs ? '، متخصص في ' + specs : ''}${avg > 0 ? '، تقييم ' + avg.toFixed(1) + ' من 5' : ''}. تواصل معه على منصة مناقصة.`;
+    const keywords = [pName, pCity, ...( p.specialties||[]), ...(p.specialties||[]).map(s => s+' '+pCity), 'مزود خدمة', 'مناقصة'].join(', ');
+
+    // قراءة pro.html وحقن الـ meta tags
+    const fs = require('fs');
+    let html = fs.readFileSync(__dirname + '/pro.html', 'utf8');
+
+    // استبدال الـ meta tags بقيم حقيقية
+    html = html
+      .replace('<title>ملف المزود — مناقصة</title>',
+        `<title>${title}</title>`)
+      .replace('<meta name="description" content="مزود خدمة على منصة مناقصة السعودية">',
+        `<meta name="description" content="${desc}">`)
+      .replace('<script type="application/ld+json" id="ld"></script>', `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "${pName}",
+  "description": "${desc.replace(/"/g, '\"')}",
+  "url": "${pageUrl}",
+  "telephone": "${p.phone || ''}",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "${pCity}",
+    "addressCountry": "SA"
+  }
+  ${avg > 0 ? `,"aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "${avg.toFixed(1)}",
+    "reviewCount": "${cnt}",
+    "bestRating": "5"
+  }` : ''}
+}
+</script>
+<script type="application/ld+json" id="ld"></script>`)
+      // Open Graph
+      .replace('</head>', `
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${desc}">
+  <meta property="og:url" content="${pageUrl}">
+  <meta property="og:image" content="${SITE_URL}/og/pro/${id}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:image" content="${SITE_URL}/og/pro/${id}">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="مناقصة">
+  <meta property="og:locale" content="ar_SA">
+  <meta name="keywords" content="${keywords}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${desc}">
+  <link rel="canonical" href="${pageUrl}">
+</head>`);
+
+    res.send(html);
   } catch(e) {
+    console.error('❌ /pro/:slug SSR:', e.message);
     res.sendFile(__dirname + '/pro.html');
   }
 });
@@ -2614,6 +2689,116 @@ app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
       '/', 'test', null);
     res.json({ ok: true, message: 'تم إرسال الإشعار التجريبي' });
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ✅ Open Graph Image — صورة المشاركة في واتساب وتويتر
+app.get('/og/pro/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT name, business_name, city, specialties, avg_rating, review_count
+      FROM users
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(AVG(rating),0)::float as avg_rating,
+               COUNT(*)::int as review_count
+        FROM reviews WHERE reviewed_id=users.id
+      ) rv ON true
+      WHERE id=$1 AND role='provider'
+    `, [id]);
+
+    if (!r.rows.length) return res.status(404).send('Not found');
+    const p = r.rows[0];
+    const name = p.business_name || p.name || 'مزود';
+    const city = p.city || 'السعودية';
+    const specs = (p.specialties||[]).slice(0,2).join(' · ');
+    const avg = parseFloat(p.avg_rating)||0;
+    const stars = '★'.repeat(Math.round(avg)) + '☆'.repeat(5-Math.round(avg));
+
+    // SVG image للـ OG
+    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D1829"/>
+      <stop offset="100%" style="stop-color:#16213E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="620" width="1200" height="10" fill="#C9920A"/>
+  <text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text>
+  <text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text>
+  <text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text>
+  <text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">📍 ${city}</text>
+  ${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}
+  <text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text>
+</svg>`;
+
+    res.header('Content-Type', 'image/svg+xml');
+    res.header('Cache-Control', 'public, max-age=3600');
+    res.send(svg);
+  } catch(e) {
+    res.status(500).send('error');
+  }
+});
+
+// ✅ SITEMAP — يساعد قوقل يكتشف صفحات المزودين
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const providers = await pool.query(`
+      SELECT id, name, business_name, created_at
+      FROM users WHERE role='provider' AND is_active=TRUE
+      ORDER BY created_at DESC
+    `);
+
+    const baseUrl = SITE_URL;
+    const now = new Date().toISOString().split('T')[0];
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <lastmod>${now}</lastmod>
+  </url>
+  <url>
+    <loc>${baseUrl}/auth.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+
+    for (const p of providers.rows) {
+      const slug = encodeURIComponent((p.business_name || p.name || 'مزود').replace(/\s+/g, '-')) + '-' + p.id;
+      const lastmod = p.created_at ? p.created_at.toISOString().split('T')[0] : now;
+      xml += `
+  <url>
+    <loc>${baseUrl}/pro/${slug}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <lastmod>${lastmod}</lastmod>
+  </url>`;
+    }
+
+    xml += '
+</urlset>';
+
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch(e) {
+    console.error('❌ sitemap:', e.message);
+    res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+  }
+});
+
+// ✅ robots.txt
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`User-agent: *
+Allow: /
+Allow: /pro/
+Disallow: /dashboard-admin.html
+Disallow: /dashboard-client.html
+Disallow: /dashboard-provider.html
+Sitemap: ${SITE_URL}/sitemap.xml`);
 });
 
 // ═══════════════════════════════════════════════════════════════
