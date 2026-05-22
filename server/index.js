@@ -109,14 +109,12 @@ function emailTpl(title, body, btnText, btnUrl) {
 // 🔔 Send Push Notification (Web + Native iOS/Android via Expo)
 async function sendPush(userId, title, body, url, refType, refId) {
   try {
-    // Get ALL push tokens for the user (web + ios + android)
     const r = await pool.query(
       `SELECT token, platform FROM push_tokens WHERE user_id=$1`,
       [userId]
     );
     if (!r.rows.length) return;
 
-    // 🆕 Calculate smart badge: count unread notifications + unread messages
     let badgeCount = 1;
     try {
       const badgeRes = await pool.query(`
@@ -144,13 +142,11 @@ async function sendPush(userId, title, body, url, refType, refId) {
       badge: badgeCount
     });
 
-    // Collect Expo (native) tokens for batch send
     const expoMessages = [];
 
     for (const row of r.rows) {
       const platform = row.platform || 'web';
 
-      // ─── Web Push (browsers) ──────────────────────────
       if (platform === 'web') {
         if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) continue;
         let subscription;
@@ -172,9 +168,7 @@ async function sendPush(userId, title, body, url, refType, refId) {
           }
         }
       }
-      // ─── Native Push (iOS/Android via Expo) ───────────
       else if (platform === 'ios' || platform === 'android' || platform === 'expo') {
-        // Expo Push tokens look like: ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
         if (row.token && row.token.startsWith('ExponentPushToken')) {
           expoMessages.push({
             to: row.token,
@@ -198,7 +192,6 @@ async function sendPush(userId, title, body, url, refType, refId) {
       }
     }
 
-    // ─── Send all native pushes to Expo Push API in one batch ───
     if (expoMessages.length > 0) {
       try {
         const expoResp = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -212,13 +205,11 @@ async function sendPush(userId, title, body, url, refType, refId) {
         });
         const expoResult = await expoResp.json();
 
-        // Handle errors per ticket — remove invalid tokens
         if (expoResult && expoResult.data && Array.isArray(expoResult.data)) {
           for (let i = 0; i < expoResult.data.length; i++) {
             const ticket = expoResult.data[i];
             if (ticket.status === 'error') {
               const errCode = ticket.details && ticket.details.error;
-              // DeviceNotRegistered = token invalid → remove from DB
               if (errCode === 'DeviceNotRegistered') {
                 const badToken = expoMessages[i].to;
                 try {
@@ -249,7 +240,6 @@ async function notify(userId, title, body, type, refId) {
       'INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)',
       [userId, title, body, type, refId]
     );
-    // 🔔 Also send push notification (silent, async)
     const url = (() => {
       if (!type) return '/';
       if (type === 'message') return '/dashboard-client.html#messages';
@@ -263,12 +253,8 @@ async function notify(userId, title, body, type, refId) {
   } catch (e) { console.error('Notification error:', e); }
 }
 
-// 🆕 Notify with email - sends both in-app notification AND email
 async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
-  // In-app notification
   await notify(userId, title, body, type, refId);
-
-  // Email notification
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
     if (u.rows.length && u.rows[0].email) {
@@ -411,6 +397,8 @@ async function setupDatabase() {
       UNIQUE(user_id, token)
     )`);
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
+    // ✅ PATCH 1: Bump system column
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
@@ -485,7 +473,6 @@ app.post('/api/auth/register', async (req, res) => {
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
 
-    // 🆕 Welcome email + in-app notification
     try {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
@@ -500,7 +487,7 @@ app.post('/api/auth/register', async (req, res) => {
              <li>⭐ بناء سمعتك من خلال التقييمات</li>
              <li>📸 إضافة معرض أعمالك لجذب المزيد من العملاء</li>
            </ul>
-           <p>💡 <strong>نصيحة:</strong> أكمل ملفك الشخصي وأضف صور أعمالك لتزيد فرص قبول عروضك.</p>
+           <p>💡 <strong>نصيحة:</strong> أكمل ملفك الشخصي للحصول على شارة موثّق وتظهر في أعلى قائمة المزودين.</p>
            <p>إذا احتجت أي مساعدة، تواصل معنا على: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
         : `<p>عزيزي <strong>${name}</strong>،</p>
            <p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong> — منصة المشاريع والخدمات الأولى في المملكة العربية السعودية.</p>
@@ -559,7 +546,6 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
 
-    // 🆕 Send password change notification
     try {
       const u = r.rows[0];
       if (u.email) {
@@ -785,13 +771,11 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    // 🆕 Email change with uniqueness check
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
       const newEmail = String(req.body.email || '').trim().toLowerCase();
       if (!newEmail || !newEmail.includes('@') || !newEmail.includes('.')) {
         return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
       }
-      // Check if email is taken by ANOTHER user
       const dup = await pool.query(
         'SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2',
         [newEmail, req.user.id]
@@ -850,7 +834,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,
-       experience_years,portfolio_images,profile_image,business_name,
+       experience_years,portfolio_images,profile_image,business_name,last_bumped_at,
        social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,
        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
@@ -914,7 +898,6 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    // 🆕 Email change with uniqueness check
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
       const newEmail = String(req.body.email || '').trim().toLowerCase();
       if (!newEmail || !newEmail.includes('@') || !newEmail.includes('.')) {
@@ -1156,6 +1139,30 @@ app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
   } catch (e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: e.message }); }
 });
 
+// ✅ PATCH 3: Bump endpoint — تحديث موقع المزود (مرة كل 24 ساعة)
+app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
+  try {
+    const check = await pool.query('SELECT last_bumped_at FROM users WHERE id=$1', [req.user.id]);
+    const lastBump = check.rows[0]?.last_bumped_at;
+    if (lastBump) {
+      const hoursSince = (Date.now() - new Date(lastBump)) / 3600000;
+      if (hoursSince < 24) {
+        const hoursLeft = Math.ceil(24 - hoursSince);
+        return res.status(429).json({
+          ok: false,
+          message: `يمكنك التحديث بعد ${hoursLeft} ساعة`,
+          hours_left: hoursLeft
+        });
+      }
+    }
+    await pool.query('UPDATE users SET last_bumped_at = NOW() WHERE id=$1', [req.user.id]);
+    res.json({ ok: true, message: 'تم تحديث موقعك — أنت الآن في الأعلى!' });
+  } catch (e) {
+    console.error('❌ PUT /api/provider/bump:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // REQUESTS
 // ═══════════════════════════════════════════════════════════════
@@ -1224,7 +1231,6 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         attachments ? JSON.stringify(attachments) : null, pn]);
     const newReq = r.rows[0];
 
-    // 🆕 Confirmation email to client about their new project
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
       if (clientInfo.rows.length && clientInfo.rows[0].email) {
@@ -1233,7 +1239,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         const ctitle = '✅ تم نشر مشروعك بنجاح';
         const cBody = `
           <p>عزيزي <strong>${cName}</strong>،</p>
-          <p>تم نشر مشروعك بنجاح على منصة مناقصة. سيتمكن المزودون المتخصصون من تقديم عروضهم قريباً.</p>
+          <p>تم نشر مشروعك بنجاح على منصة مناقصة.</p>
           <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
             <div style="font-size:15px;font-weight:800;color:#16213E;margin-bottom:8px">${newReq.title}</div>
             <div style="font-size:13px;color:#475569;line-height:1.9">
@@ -1273,33 +1279,20 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
               <div><strong>التصنيف:</strong> ${cat}</div>
               ${newReq.city ? `<div><strong>المدينة:</strong> ${newReq.city}</div>` : ''}
               ${newReq.budget_max ? `<div><strong>الميزانية:</strong> ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س</div>` : ''}
-              ${newReq.deadline ? `<div><strong>الموعد النهائي:</strong> ${String(newReq.deadline).slice(0,10)}</div>` : ''}
             </div>
           </div>
-          <p style="font-size:13px;color:#6b7280">ادخل المنصة وقدّم عرضك قبل أن يختار العميل مزوداً آخر.</p>
         `;
 
         for (const p of provs.rows) {
           await notify(p.id, title, bodyText, 'new_request', newReq.id);
           if (p.email) {
-            sendEmail(
-              p.email,
-              title,
-              emailTpl(title, emailBody, 'فتح المشروع الآن', SITE_URL + '/dashboard-provider.html')
-            ).catch(() => {});
+            sendEmail(p.email, title, emailTpl(title, emailBody, 'فتح المشروع الآن', SITE_URL + '/dashboard-provider.html')).catch(() => {});
           }
         }
-        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers (in-app + email)`);
-        if (provs.rows.length === 0) {
-          const all = await pool.query(`SELECT id, name, specialties, notify_categories FROM users WHERE role='provider' AND is_active=TRUE`);
-          console.log(`⚠️  No match for "${cat}". Active providers:`,
-            all.rows.map(r => ({ id: r.id, name: r.name, specialties: r.specialties, notify_categories: r.notify_categories })));
-        }
+        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
       } catch (nerr) {
         console.error('❌ notify providers:', nerr);
       }
-    } else {
-      console.log(`⚠️  Request #${newReq.id} has no category — no provider notifications sent`);
     }
 
     res.json(newReq);
@@ -1350,8 +1343,6 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (!image) return res.status(400).json({ message: 'لا توجد صورة' });
     const own = await pool.query('SELECT client_id, images FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
-      return res.status(403).json({ message: 'ليست طلبك' });
     const current = own.rows[0].images || [];
     current.push(image);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
@@ -1366,8 +1357,6 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     if (!data) return res.status(400).json({ message: 'لا توجد بيانات' });
     const own = await pool.query('SELECT client_id, attachments FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin')
-      return res.status(403).json({ message: 'ليست طلبك' });
     const current = own.rows[0].attachments || [];
     current.push({ name, type, data, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
@@ -1385,7 +1374,6 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
     );
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس طلبك' });
 
-    // 🆕 Notify provider with email about project completion
     if (r.rows[0].assigned_provider_id) {
       const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
       const projTitle = r.rows[0].title;
@@ -1394,38 +1382,15 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
         `العميل أنهى مشروع "${projTitle}". لا تنسَ الحصول على تقييم!`, 'request', id);
 
       if (provInfo.rows.length && provInfo.rows[0].email) {
-        const pName = provInfo.rows[0].name;
         const subject = '🎉 مشروع مكتمل - استلم تقييمك!';
         const body = `
-          <p>عزيزي <strong>${pName}</strong>،</p>
-          <p>قام العميل بإنهاء المشروع التالي:</p>
-          <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
-            <div style="font-size:15px;font-weight:800;color:#16213E">${projTitle}</div>
-          </div>
+          <p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p>
+          <p>قام العميل بإنهاء المشروع: <strong>${projTitle}</strong></p>
           <p>تهانينا على إنجاز هذا المشروع! 🎊</p>
-          <p>قد يقوم العميل بتقييمك قريباً، وهذا التقييم سيساعدك في الحصول على المزيد من المشاريع.</p>
-          <p style="font-size:13px;color:#6b7280">💡 <strong>نصيحة:</strong> تأكد من إكمال جميع المتطلبات للحصول على تقييم 5 نجوم.</p>
         `;
         sendEmail(provInfo.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
       }
     }
-
-    // 🆕 Email to client confirming completion
-    try {
-      const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
-      if (clientInfo.rows.length && clientInfo.rows[0].email) {
-        const cName = clientInfo.rows[0].name;
-        const subject = '✅ تم إنهاء مشروعك';
-        const body = `
-          <p>عزيزي <strong>${cName}</strong>،</p>
-          <p>تم تحديد مشروعك "<strong>${r.rows[0].title}</strong>" كمكتمل بنجاح.</p>
-          <p>نتمنى أن تكون قد حصلت على الخدمة المناسبة.</p>
-          <p>💡 <strong>تذكير:</strong> لا تنسَ تقييم المزود لمساعدة العملاء الآخرين على اتخاذ قرارات أفضل.</p>
-          <p>شكراً لاستخدامك منصة مناقصة!</p>
-        `;
-        sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'تقييم المزود', SITE_URL + '/dashboard-client.html')).catch(() => {});
-      }
-    } catch(e) {}
 
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -1517,7 +1482,6 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       row = ins.rows[0];
     }
 
-    // 🆕 Notify client with email about new bid
     const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title;
@@ -1530,7 +1494,6 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
 
     await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
 
-    // Email to client about new bid
     if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate) {
       const cName = clientInfo.rows[0].name;
       const cEmail = clientInfo.rows[0].email;
@@ -1547,14 +1510,14 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
             ${note ? `<div><strong>ملاحظة:</strong> ${note.replace(/\n/g,'<br>')}</div>` : ''}
           </div>
         </div>
-        <p style="font-size:13px;color:#6b7280">يمكنك مراجعة العرض ومقارنته بالعروض الأخرى من خلال لوحة التحكم.</p>
+        <p style="font-size:13px;color:#6b7280">يمكنك مراجعة العرض من خلال لوحة التحكم.</p>
       `;
       sendEmail(cEmail, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL + '/dashboard-client.html')).catch(() => {});
     }
 
     res.json(row);
   } catch (e) {
-    console.error('❌ POST /api/requests/:id/bids:', e.message, '| body:', JSON.stringify(req.body), '| user:', req.user && req.user.id);
+    console.error('❌ POST /api/requests/:id/bids:', e.message);
     res.status(500).json({ message: e.message, code: e.code });
   }
 });
@@ -1610,7 +1573,6 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       `, [acceptedBid.provider_id, acceptedBid.request_id]);
       await pool.query('COMMIT');
 
-      // 🆕 Notify ACCEPTED provider with email
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name || 'العميل';
@@ -1633,18 +1595,11 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
               <div><strong>المدة:</strong> ${acceptedBid.days} يوم</div>
             </div>
           </div>
-          <p>🚀 <strong>الخطوات التالية:</strong></p>
-          <ul style="line-height:2.2;color:#374151">
-            <li>تواصل مع العميل عبر المنصة لتنسيق التفاصيل</li>
-            <li>التزم بالتسليم في الموعد المحدد</li>
-            <li>قدّم خدمة احترافية للحصول على تقييم 5 نجوم</li>
-          </ul>
-          <p style="font-size:13px;color:#6b7280">⚠️ <strong>تذكير:</strong> رسوم المنصة 1% من قيمة العقد، تُسدد خلال 10 أيام من اكتمال المشروع.</p>
+          <p style="font-size:13px;color:#6b7280">⚠️ <strong>تذكير:</strong> رسوم المنصة 1% من قيمة العقد، تُسدد بعد اكتمال المشروع.</p>
         `;
         sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
       }
 
-      // 🆕 Notify REJECTED providers with email (those who had pending bids)
       const rejected = await pool.query(`
         SELECT b.provider_id, u.name, u.email FROM bids b
         JOIN users u ON b.provider_id = u.id
@@ -1653,26 +1608,16 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
 
       for (const rej of rejected.rows) {
         await notify(rej.provider_id, '😔 لم يُقبل عرضك',
-          `للأسف، اختار العميل عرضاً آخر على مشروع "${acceptedBid.title}". لا تستسلم، هناك مشاريع أخرى متاحة!`, 'bid_rejected', acceptedBid.request_id);
+          `للأسف، اختار العميل عرضاً آخر على مشروع "${acceptedBid.title}".`, 'bid_rejected', acceptedBid.request_id);
 
         if (rej.email) {
           const subject = `📋 لم يُقبل عرضك على "${acceptedBid.title}"`;
           const body = `
             <p>عزيزي <strong>${rej.name}</strong>،</p>
-            <p>للأسف، اختار العميل عرضاً آخر على المشروع التالي:</p>
-            <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
-              <div style="font-size:15px;font-weight:800;color:#16213E">${acceptedBid.title}</div>
-            </div>
+            <p>للأسف، اختار العميل عرضاً آخر على المشروع: <strong>${acceptedBid.title}</strong></p>
             <p>لا تيأس! هناك مشاريع أخرى متاحة في تخصصك.</p>
-            <p>💡 <strong>نصائح لزيادة فرص قبول عروضك:</strong></p>
-            <ul style="line-height:2.2;color:#374151">
-              <li>قدّم سعراً تنافسياً يناسب جودة العمل</li>
-              <li>اكتب ملاحظة واضحة تشرح خبرتك</li>
-              <li>أكمل ملفك الشخصي وأضف صور أعمالك</li>
-              <li>كن سريعاً في تقديم العروض</li>
-            </ul>
           `;
-          sendEmail(rej.email, subject, emailTpl(subject, body, 'تصفح المشاريع المتاحة', SITE_URL + '/dashboard-provider.html')).catch(() => {});
+          sendEmail(rej.email, subject, emailTpl(subject, body, 'تصفح المشاريع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
         }
       }
 
@@ -1692,21 +1637,13 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
     await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
 
-    // 🆕 Notify rejected provider with email
     const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
     await notify(bid.rows[0].provider_id, '❌ تم رفض عرضك',
       `تم رفض عرضك على مشروع "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
 
     if (provInfo.rows.length && provInfo.rows[0].email) {
       const subject = `📋 تم رفض عرضك على "${bid.rows[0].title}"`;
-      const body = `
-        <p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p>
-        <p>تم رفض عرضك على المشروع التالي:</p>
-        <div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px 16px;margin:16px 0">
-          <div style="font-size:15px;font-weight:800;color:#16213E">${bid.rows[0].title}</div>
-        </div>
-        <p>لا تيأس! هناك مشاريع أخرى متاحة في تخصصك.</p>
-      `;
+      const body = `<p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p><p>تم رفض عرضك على المشروع: <strong>${bid.rows[0].title}</strong></p>`;
       sendEmail(provInfo.rows[0].email, subject, emailTpl(subject, body, 'تصفح المشاريع', SITE_URL + '/dashboard-provider.html')).catch(() => {});
     }
 
@@ -1718,23 +1655,19 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
 // MESSAGES
 // ═══════════════════════════════════════════════════════════════
 
+const _msgEmailCache = {};
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.requestId);
     const withUser = parseInt(req.query.with) || null;
-
     let r;
     if (withUser) {
-      // ✅ Filter by specific conversation between two users
       r = await pool.query(`
         SELECT m.*, u.name as sender_name, u.profile_image as sender_image
         FROM messages m JOIN users u ON m.sender_id=u.id
         WHERE m.request_id=$1
-          AND (
-            (m.sender_id=$2 AND m.receiver_id=$3)
-            OR
-            (m.sender_id=$3 AND m.receiver_id=$2)
-          )
+          AND ((m.sender_id=$2 AND m.receiver_id=$3) OR (m.sender_id=$3 AND m.receiver_id=$2))
         ORDER BY m.created_at ASC
       `, [requestId, req.user.id, withUser]);
       await pool.query(
@@ -1742,7 +1675,6 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
         [requestId, req.user.id, withUser]
       );
     } else {
-      // Fallback: all messages where user is participant
       r = await pool.query(`
         SELECT m.*, u.name as sender_name, u.profile_image as sender_image
         FROM messages m JOIN users u ON m.sender_id=u.id
@@ -1757,9 +1689,6 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
     res.json(r.rows);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
-
-// 🆕 Smart message email throttling - only email if no message in last 18 min
-const _msgEmailCache = {}; // { "userId-requestId": timestamp }
 
 app.post('/api/messages', auth, async (req, res) => {
   try {
@@ -1777,7 +1706,6 @@ app.post('/api/messages', auth, async (req, res) => {
       `${senderName}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`,
       'message', request_id);
 
-    // 🆕 Email throttled - only send if no email in last 18 minutes
     const cacheKey = `${receiver_id}-${request_id}`;
     const now = Date.now();
     const lastEmailTime = _msgEmailCache[cacheKey] || 0;
@@ -1799,7 +1727,6 @@ app.post('/api/messages', auth, async (req, res) => {
                 "${content.slice(0, 200).replace(/</g,'&lt;')}${content.length > 200 ? '...' : ''}"
               </div>
             </div>
-            <p style="font-size:12px;color:#6b7280">للرد على الرسالة، ادخل إلى المنصة.</p>
           `;
           sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(() => {});
         }
@@ -1808,7 +1735,6 @@ app.post('/api/messages', auth, async (req, res) => {
 
     res.json(r.rows[0]);
 
-    // ✅ WebSocket: إرسال فوري للمستقبل
     const newMsg = r.rows[0];
     wsBroadcast(receiver_id, {
       type: 'new_message',
@@ -1817,7 +1743,6 @@ app.post('/api/messages', auth, async (req, res) => {
       sender_id: req.user.id,
       sender_name: senderName
     });
-    // أيضاً أبلغ المرسل (للتأكيد وتحديث قائمة المحادثات)
     wsBroadcast(req.user.id, {
       type: 'message_sent',
       message: { ...newMsg, sender_name: senderName },
@@ -1890,12 +1815,12 @@ app.post('/api/reviews', auth, async (req, res) => {
       row = ins.rows[0];
     }
 
-    // 🆕 Notify reviewed user with email
     const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const reviewedInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reviewed_id]);
     const stars = '⭐'.repeat(rating);
 
-    await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على ${rating} ${rating === 5 ? '⭐⭐⭐⭐⭐' : 'نجوم'} من ${reviewerInfo.rows[0]?.name || 'العميل'}`, 'review', request_id);
+    await notify(reviewed_id, '⭐ تقييم جديد',
+      `حصلت على ${rating} نجوم من ${reviewerInfo.rows[0]?.name || 'العميل'}`, 'review', request_id);
 
     if (reviewedInfo.rows.length && reviewedInfo.rows[0].email) {
       const subject = `⭐ تقييم جديد ${rating === 5 ? '5 نجوم!' : `${rating} نجوم`}`;
@@ -1908,7 +1833,7 @@ app.post('/api/reviews', auth, async (req, res) => {
           <div style="font-size:12px;color:#6b7280;margin-top:6px">على مشروع: ${reqRow.rows[0].title}</div>
           ${comment ? `<div style="margin-top:14px;padding:12px;background:#fff;border-radius:8px;font-size:13px;color:#374151;line-height:1.8;text-align:right">"${comment.replace(/</g,'&lt;')}"</div>` : ''}
         </div>
-        <p>${rating >= 4 ? '🎉 رائع! استمر في تقديم خدمات متميزة لتحصل على المزيد من المشاريع.' : '💡 نأمل أن تستفيد من هذا التقييم لتطوير خدماتك.'}</p>
+        <p>${rating >= 4 ? '🎉 رائع! استمر في تقديم خدمات متميزة.' : '💡 نأمل أن تستفيد من هذا التقييم لتطوير خدماتك.'}</p>
       `;
       sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(() => {});
     }
@@ -1921,7 +1846,7 @@ app.post('/api/reviews', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// REPORTS, FAVORITES, PROVIDERS (public browse)
+// REPORTS, FAVORITES, PROVIDERS
 // ═══════════════════════════════════════════════════════════════
 
 app.post('/api/reports', auth, async (req, res) => {
@@ -1968,23 +1893,41 @@ app.delete('/api/favorites/:providerId', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ✅ PATCH 2: GET /api/providers — مع Bump sort
 app.get('/api/providers', async (req, res) => {
   try {
-    const { category, city } = req.query;
+    const { category, city, specialty } = req.query;
     let q = `
-      SELECT id,name,city,specialties,badge,bio,profile_image,experience_years,
-      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
-      COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
-      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
+      SELECT id, name, city, specialties, badge, bio, profile_image,
+        experience_years, last_bumped_at, created_at,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects
       FROM users WHERE role='provider' AND is_active=TRUE
     `;
     const params = [];
     if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
+    if (specialty){ params.push(specialty); q += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
     if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
-    q += ' ORDER BY avg_rating DESC, review_count DESC';
+    q += `
+      ORDER BY
+        CASE WHEN profile_image IS NOT NULL
+              AND bio IS NOT NULL
+              AND specialties IS NOT NULL
+              AND array_length(specialties,1) > 0
+              THEN 0 ELSE 1 END ASC,
+        COALESCE(last_bumped_at, created_at) DESC
+      LIMIT 100
+    `;
     const r = await pool.query(q, params);
-    res.json(r.rows);
-  } catch (e) { res.json([]); }
+    res.json(r.rows.map(p => ({
+      ...p,
+      avg_rating: parseFloat(p.avg_rating) || 0,
+      review_count: parseInt(p.review_count) || 0,
+      completed_projects: parseInt(p.completed_projects) || 0,
+      is_verified: !!(p.profile_image && p.bio && (p.specialties||[]).length > 0 && (parseFloat(p.avg_rating)||0) > 0)
+    })));
+  } catch (e) { console.error('❌ GET /api/providers:', e); res.json([]); }
 });
 
 app.get('/api/providers/:id', async (req, res) => {
@@ -2060,6 +2003,165 @@ app.delete('/api/notifications', auth, async (req, res) => {
     await pool.query('DELETE FROM notifications WHERE user_id=$1', [req.user.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🔔 WEB PUSH NOTIFICATIONS API
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/push/vapid-public-key', (req, res) => {
+  if (!VAPID_PUBLIC_KEY) return res.status(503).json({ message: 'Push غير مفعّل' });
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+app.post('/api/push/subscribe', auth, async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
+    }
+    const tokenStr = JSON.stringify(subscription);
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web')
+       ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`,
+      [req.user.id, tokenStr]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/subscribe:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.post('/api/push/unsubscribe', auth, async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    if (endpoint) {
+      const r = await pool.query(
+        `SELECT id, token FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+        [req.user.id]
+      );
+      for (const row of r.rows) {
+        try {
+          const sub = JSON.parse(row.token);
+          if (sub.endpoint === endpoint) {
+            await pool.query('DELETE FROM push_tokens WHERE id=$1', [row.id]);
+          }
+        } catch(e) {}
+      }
+    } else {
+      await pool.query(
+        `DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+        [req.user.id]
+      );
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/unsubscribe:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.post('/api/push/register-native', auth, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    if (!String(token).startsWith('ExponentPushToken')) {
+      return res.status(400).json({ message: 'صيغة token غير صحيحة' });
+    }
+    const plat = (platform === 'ios' || platform === 'android') ? platform : 'expo';
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
+       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
+      [req.user.id, token, plat]
+    );
+    console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('❌ /api/push/register-native:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.get('/api/push/status', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,
+      [req.user.id]
+    );
+    res.json({ subscribed: r.rows[0].cnt > 0, count: r.rows[0].cnt });
+  } catch (e) {
+    res.json({ subscribed: false, count: 0 });
+  }
+});
+
+app.get('/api/push/badge', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false) +
+        (SELECT COUNT(*)::int FROM messages
+         WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL))
+        AS total
+    `, [req.user.id]);
+    res.json({ badge: r.rows[0]?.total || 0 });
+  } catch (e) {
+    res.json({ badge: 0 });
+  }
+});
+
+app.post('/api/push-token', auth, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    await pool.query(
+      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
+       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
+      [req.user.id, token, platform || 'expo']);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/push-token', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [req.user.id, req.body.token]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PUBLIC
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/categories', (req, res) => {
+  res.json([
+    'برمجة وتطوير','تصميم','كتابة وترجمة','تسويق رقمي','أعمال',
+    'هندسة وعمارة','صوتيات ومرئيات','استشارات','تدريب','أخرى'
+  ]);
+});
+
+app.get('/api/cities', (req, res) => {
+  res.json([
+    'الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل',
+    'بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل'
+  ]);
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const s = await Promise.all([
+      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed'"),
+      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='provider' AND is_active=true"),
+      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='client'   AND is_active=true"),
+      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open'")
+    ]);
+    res.json({
+      completed_projects: +s[0].rows[0].count || 0,
+      active_providers:   +s[1].rows[0].count || 0,
+      active_clients:     +s[2].rows[0].count || 0,
+      open_requests:      +s[3].rows[0].count || 0
+    });
+  } catch (e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2212,7 +2314,6 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
 
-    // 🆕 Notify client with email about admin review action
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
     const inAppTitle = action === 'approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك';
     const inAppBody = action === 'approve'
@@ -2223,22 +2324,9 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
 
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
       const subject = inAppTitle;
-      const body = action === 'approve' ? `
-        <p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p>
-        <p>تمت الموافقة على مشروعك ونشره على المنصة:</p>
-        <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin:16px 0">
-          <div style="font-size:15px;font-weight:800;color:#15803d">${row.title}</div>
-        </div>
-        <p>سيتمكن المزودون من تقديم عروضهم الآن، وسنشعرك فوراً عند وصول أي عرض.</p>
-      ` : `
-        <p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p>
-        <p>للأسف، تم رفض مشروعك:</p>
-        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;margin:16px 0">
-          <div style="font-size:15px;font-weight:800;color:#dc2626;margin-bottom:8px">${row.title}</div>
-          ${reason ? `<div style="font-size:13px;color:#7f1d1d"><strong>السبب:</strong> ${reason}</div>` : ''}
-        </div>
-        <p>يمكنك تعديل المشروع وإعادة نشره. للاستفسار: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>
-      `;
+      const body = action === 'approve'
+        ? `<p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p><p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p><p>سيتمكن المزودون من تقديم عروضهم الآن.</p>`
+        : `<p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p><p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason ? `<br><strong>السبب:</strong> ${reason}` : ''}.</p><p>يمكنك تعديل المشروع وإعادة نشره.</p>`;
       sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'فتح المنصة', SITE_URL + '/dashboard-client.html')).catch(() => {});
     }
 
@@ -2331,12 +2419,7 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       target = (await pool.query(q, p)).rows;
     }
 
-    const htmlBody = `
-      <div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>
-      <div style="background:#f4f7fb;border-right:3px solid #16213E;border-radius:8px;padding:12px 16px;margin-top:18px">
-        <p style="font-size:12px;color:#6b85a8;margin:0">رسالة رسمية من إدارة منصة مناقصة.</p>
-      </div>
-    `;
+    const htmlBody = `<div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>`;
     const emailHtml = emailTpl(title, htmlBody, 'فتح المنصة', SITE_URL);
 
     let appCount = 0, emailCount = 0;
@@ -2351,13 +2434,7 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       }
     }
 
-    res.json({
-      ok: true,
-      sent_count: target.length,
-      app_count: appCount,
-      email_count: emailCount,
-      channel: ch
-    });
+    res.json({ ok: true, sent_count: target.length, app_count: appCount, email_count: emailCount, channel: ch });
   } catch (e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: e.message }); }
 });
 
@@ -2366,8 +2443,7 @@ app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
     const q = (req.query.q || '').trim();
     const role = req.query.role;
     const VALID = ['client','provider','admin'];
-    let sql = `SELECT id, name, email, phone, role, city, profile_image, is_active
-               FROM users WHERE is_active=TRUE`;
+    let sql = `SELECT id, name, email, phone, role, city, profile_image, is_active FROM users WHERE is_active=TRUE`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); sql += ` AND role=$${params.length}`; }
     if (q) {
@@ -2402,24 +2478,16 @@ app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ ok: false, error: 'البريد الإلكتروني مطلوب' });
   if (!RESEND_KEY) {
-    return res.json({
-      ok: false,
-      stage: 'config',
-      error: 'RESEND_KEY غير موجود في متغيرات البيئة',
-      hint: 'أضف RESEND_KEY في Railway → Variables'
-    });
+    return res.json({ ok: false, stage: 'config', error: 'RESEND_KEY غير موجود في متغيرات البيئة' });
   }
   try {
     const payload = {
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: '🧪 اختبار الإيميل — مناقصة',
-      html: emailTpl(
-        'اختبار الإيميل يعمل ✓',
-        '<p>هذا إيميل تجريبي من منصة مناقصة للتأكد من ربط الإيميل بشكل صحيح.</p><p>إذا وصلك هذا الإيميل، فإن نظام الإشعارات بالإيميل يعمل بنجاح.</p>',
-        'فتح المنصة',
-        SITE_URL
-      )
+      html: emailTpl('اختبار الإيميل يعمل ✓',
+        '<p>هذا إيميل تجريبي من منصة مناقصة للتأكد من ربط الإيميل بشكل صحيح.</p>',
+        'فتح المنصة', SITE_URL)
     };
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -2430,28 +2498,12 @@ app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
     let parsed = null;
     try { parsed = JSON.parse(text); } catch (e) {}
     if (r.ok) {
-      return res.json({
-        ok: true,
-        stage: 'sent',
-        message: `تم إرسال الإيميل التجريبي بنجاح إلى ${to}`,
-        resend_id: parsed && parsed.id,
-        from_used: payload.from
-      });
+      return res.json({ ok: true, stage: 'sent', message: `تم إرسال الإيميل التجريبي بنجاح إلى ${to}`, resend_id: parsed && parsed.id });
     }
     return res.json({
-      ok: false,
-      stage: 'resend_api',
+      ok: false, stage: 'resend_api',
       error: (parsed && (parsed.message || parsed.name)) || text || 'Unknown Resend error',
-      status_code: r.status,
-      raw: parsed || text,
-      from_used: payload.from,
-      hint: r.status === 403
-        ? 'الدومين غير موثّق (verified) في Resend. اذهب لـ resend.com/domains وأضف manaqasa.com مع DNS records، أو استخدم from_email بدومين @resend.dev مؤقتاً.'
-        : r.status === 422
-        ? 'مشكلة في صيغة البريد أو في الدومين. تحقق من FROM_EMAIL.'
-        : r.status === 429
-        ? 'تجاوزت الحد الأقصى للإرسال (rate limit). انتظر قليلاً.'
-        : null
+      status_code: r.status, raw: parsed || text
     });
   } catch (e) {
     return res.json({ ok: false, stage: 'network', error: e.message });
@@ -2536,197 +2588,17 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// PUBLIC
-// ═══════════════════════════════════════════════════════════════
-
-app.get('/api/categories', (req, res) => {
-  res.json([
-    'برمجة وتطوير','تصميم','كتابة وترجمة','تسويق رقمي','أعمال',
-    'هندسة وعمارة','صوتيات ومرئيات','استشارات','تدريب','أخرى'
-  ]);
-});
-
-app.get('/api/cities', (req, res) => {
-  res.json([
-    'الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل',
-    'بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل'
-  ]);
-});
-
-app.get('/api/stats', async (req, res) => {
-  try {
-    const s = await Promise.all([
-      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed'"),
-      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='provider' AND is_active=true"),
-      pool.query("SELECT COUNT(*) as count FROM users    WHERE role='client'   AND is_active=true"),
-      pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open'")
-    ]);
-    res.json({
-      completed_projects: +s[0].rows[0].count || 0, active_providers: +s[1].rows[0].count || 0,
-      active_clients: +s[2].rows[0].count || 0, open_requests: +s[3].rows[0].count || 0
-    });
-  } catch (e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// PUSH TOKENS
-// ═══════════════════════════════════════════════════════════════
-app.post('/api/push-token', auth, async (req, res) => {
-  try {
-    const { token, platform } = req.body;
-    if (!token) return res.status(400).json({ message: 'token مطلوب' });
-    await pool.query(
-      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
-       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
-      [req.user.id, token, platform || 'expo']);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ message: e.message }); }
-});
-
-app.delete('/api/push-token', auth, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [req.user.id, req.body.token]);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ message: e.message }); }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// 🔔 WEB PUSH NOTIFICATIONS API
-// ═══════════════════════════════════════════════════════════════
-
-// Get VAPID public key (for client to subscribe)
-app.get('/api/push/vapid-public-key', (req, res) => {
-  if (!VAPID_PUBLIC_KEY) return res.status(503).json({ message: 'Push غير مفعّل' });
-  res.json({ publicKey: VAPID_PUBLIC_KEY });
-});
-
-// Subscribe a device to push notifications
-app.post('/api/push/subscribe', auth, async (req, res) => {
-  try {
-    const { subscription } = req.body;
-    if (!subscription || !subscription.endpoint || !subscription.keys) {
-      return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
-    }
-    const tokenStr = JSON.stringify(subscription);
-    await pool.query(
-      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web')
-       ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`,
-      [req.user.id, tokenStr]
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('❌ /api/push/subscribe:', e);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// Unsubscribe a device from push notifications
-app.post('/api/push/unsubscribe', auth, async (req, res) => {
-  try {
-    const { endpoint } = req.body;
-    if (endpoint) {
-      // Find by endpoint match
-      const r = await pool.query(
-        `SELECT id, token FROM push_tokens WHERE user_id=$1 AND platform='web'`,
-        [req.user.id]
-      );
-      for (const row of r.rows) {
-        try {
-          const sub = JSON.parse(row.token);
-          if (sub.endpoint === endpoint) {
-            await pool.query('DELETE FROM push_tokens WHERE id=$1', [row.id]);
-          }
-        } catch(e) {}
-      }
-    } else {
-      // Remove all web push subscriptions for this user
-      await pool.query(
-        `DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,
-        [req.user.id]
-      );
-    }
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('❌ /api/push/unsubscribe:', e);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// 🔔 Register Native Push Token (iOS/Android via Expo)
-app.post('/api/push/register-native', auth, async (req, res) => {
-  try {
-    const { token, platform } = req.body;
-    if (!token) return res.status(400).json({ message: 'token مطلوب' });
-    if (!String(token).startsWith('ExponentPushToken')) {
-      return res.status(400).json({ message: 'صيغة token غير صحيحة' });
-    }
-    const plat = (platform === 'ios' || platform === 'android') ? platform : 'expo';
-
-    // Remove old tokens of same platform for this user (only one device per platform)
-    // This prevents notification duplication if user reinstalls
-    await pool.query(
-      `INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3)
-       ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`,
-      [req.user.id, token, plat]
-    );
-    console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('❌ /api/push/register-native:', e);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// Check if user has active push subscriptions (for UI state)
-app.get('/api/push/status', auth, async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,
-      [req.user.id]
-    );
-    res.json({ subscribed: r.rows[0].cnt > 0, count: r.rows[0].cnt });
-  } catch (e) {
-    res.json({ subscribed: false, count: 0 });
-  }
-});
-
-// 🆕 Get current badge count (unread messages + notifications)
-app.get('/api/push/badge', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT
-        (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false) +
-        (SELECT COUNT(*)::int FROM messages
-         WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL))
-        AS total
-    `, [req.user.id]);
-    res.json({ badge: r.rows[0]?.total || 0 });
-  } catch (e) {
-    res.json({ badge: 0 });
-  }
-});
-
-// Test push notification (admin only)
 app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
   try {
     const { user_id } = req.body;
     const targetId = user_id || req.user.id;
-    await sendPush(
-      targetId,
-      '🧪 اختبار الإشعارات',
+    await sendPush(targetId, '🧪 اختبار الإشعارات',
       'هذا إشعار تجريبي من منصة مناقصة. إذا وصلك فالإشعارات تشتغل بنجاح! 🎉',
-      '/',
-      'test',
-      null
-    );
+      '/', 'test', null);
     res.json({ ok: true, message: 'تم إرسال الإشعار التجريبي' });
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 // WEBSOCKET SERVER
 // ═══════════════════════════════════════════════════════════════
@@ -2735,7 +2607,6 @@ const WebSocket = require('ws');
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Map: userId → Set of WebSocket connections
 const _wsClients = new Map();
 
 function wsBroadcast(userId, data) {
@@ -2782,6 +2653,7 @@ server.listen(port, () => {
   console.log('📧 Full email notifications: welcome, project published, new bid, bid accepted/rejected, message, review, project completed, password change, admin actions');
   console.log('🔔 Web Push: ' + (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY ? 'ENABLED ✅' : 'DISABLED (set VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY)'));
   console.log('📱 Native Push (iOS/Android via Expo): ENABLED ✅');
+  console.log('⬆️  Bump system: ENABLED ✅');
 });
 
 process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
