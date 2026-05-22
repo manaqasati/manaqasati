@@ -257,7 +257,7 @@ function render(p, rat){
   var cnt   = parseInt(p.review_count)||0;
   if(rat){ if(!avg) avg=parseFloat(rat.average)||0; if(!cnt) cnt=parseInt(rat.count)||0; }
   var vrf   = !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
-  var last  = p.last_bumped_at||p.created_at;
+  var last  = p.last_active||p.last_bumped_at||p.created_at;
   var ph    = p.phone||'';
   var revs  = (rat&&rat.reviews)||[];
   var ports = p.portfolio_images||[];
