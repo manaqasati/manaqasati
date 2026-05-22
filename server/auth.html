@@ -462,8 +462,11 @@ async function doSubmit(){
         var redir=params.get('redirect');
         var provId=params.get('provider_id');
         if(redir==='msg'&&provId&&rl==='client'){
-          // روّح للمحادثة مع المزود مباشرة
-          location.href='dashboard-client.html?open_chat='+provId;
+          // احفظ المزود وروّح للداشبورد
+          try{ localStorage.setItem('pending_contact_provider', provId); }catch(e){}
+          location.href='dashboard-client.html';
+        } else if(redir==='msg'&&provId&&rl==='provider'){
+          location.href='dashboard-provider.html';
         } else {
           location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
         }
