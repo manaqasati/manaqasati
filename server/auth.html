@@ -457,7 +457,16 @@ async function doSubmit(){
       setAl(null,'تم بنجاح! جاري التحويل...','ok');
       setTimeout(function(){
         var rl=d.user.role;
-        location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+        // ✅ تحقق من redirect بعد تسجيل الدخول
+        var params=new URLSearchParams(location.search);
+        var redir=params.get('redirect');
+        var provId=params.get('provider_id');
+        if(redir==='msg'&&provId&&rl==='client'){
+          // روّح للمحادثة مع المزود مباشرة
+          location.href='dashboard-client.html?open_chat='+provId;
+        } else {
+          location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+        }
       },900);
     } else {
       var errMsg=d.message||'البيانات غير صحيحة';
