@@ -271,7 +271,7 @@ function render(p, rat){
     h += '<a href="/auth.html" class="cbtn c-wa" style="background:rgba(22,163,74,.1);color:#16A34A;border:1.5px solid rgba(22,163,74,.2)">واتساب</a>';
     h += '</div>';
   }
-  h += '<button class="cbtn c-msg" id="msgbtn"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>رسالة عبر المنصة</button>';
+  h += '<button class="cbtn c-msg" id="msgbtn"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>رسالة عبر المنصة (يتطلب تسجيل)</button>';
   h += '</div></div>';
 
   // BIO
@@ -323,7 +323,18 @@ function render(p, rat){
   var pid = getId();
   var mb = document.getElementById('msgbtn');
   if(mb) mb.addEventListener('click', function(){
-    location.href='/auth.html?redirect=msg&provider_id='+pid;
+    // تحقق لو مسجل دخول
+    var userData = null;
+    try{ userData = JSON.parse(localStorage.getItem('user')||'null'); }catch(e){}
+    var token = localStorage.getItem('token')||'';
+    if(userData && token){
+      // مسجل — خزّن المزود وروح للداشبورد
+      try{ localStorage.setItem('pending_contact_provider', pid); }catch(e){}
+      location.href = '/dashboard-client.html';
+    } else {
+      // غير مسجل — روح لتسجيل الدخول مع redirect
+      location.href = '/auth.html?redirect=msg&provider_id='+pid;
+    }
   });
 
   var sb = document.getElementById('sharebtn');
