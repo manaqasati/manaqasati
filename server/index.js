@@ -1950,10 +1950,11 @@ app.get('/api/providers/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT id,name,city,specialties,notify_categories,badge,bio,profile_image,
-      experience_years,portfolio_images,created_at,
+      SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,
+      experience_years,portfolio_images,business_name,created_at,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
       (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects
       FROM users WHERE id=$1 AND role='provider'
     `, [id]);
