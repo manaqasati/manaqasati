@@ -53,6 +53,7 @@ app.use((req, res, next) => { console.log(`${req.method} ${req.path}`); next(); 
 // HTML ROUTES
 // ═══════════════════════════════════════════════════════════════
 app.get('/',                       (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/google0ed958111c5d0ae7.html', (req, res) => res.send('google-site-verification: google0ed958111c5d0ae7.html'));
 app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dashboard-admin.html'));
 app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
 app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
