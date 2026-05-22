@@ -1154,7 +1154,7 @@ function openDetail(id,e){
     _dh+='<div style="background:var(--white);border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow)">';
     if(imgs.length){_dh+='<div style="height:180px;overflow:hidden;position:relative"><img src="'+imgs[0]+'" style="width:100%;height:100%;object-fit:cover;display:block"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(15,23,42,.4))"></div></div>';}
     _dh+='<div style="padding:16px 18px">';
-    _dh+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+stTag(req.status)+(req.deadline?'<span style="font-size:11px;color:var(--muted);font-weight:600">انتهاء: '+fmtDate(req.deadline)+'</span>':'')+'</div>';
+    _dh+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+stTag(req.status)+'<div style="display:flex;align-items:center;gap:6px">'+(req.deadline?'<span style="font-size:11px;color:var(--muted);font-weight:600">انتهاء: '+fmtDate(req.deadline)+'</span>':'')+'<button onclick="_shareReq('+id+',\''+( req.title||'')+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة</button></div></div>';
     _dh+='<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:10px;line-height:1.3">'+req.title+'</div>';
     _dh+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
     if(req.city)_dh+='<span style="background:var(--green-l);color:var(--green);border:1px solid #BBF7D0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700">📍 '+req.city+'</span>';
@@ -1269,7 +1269,9 @@ async function loadBids(id){
         +'<div style="display:flex;align-items:center;gap:11px">'
           +(b.provider_image?'<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)"><img src="'+b.provider_image+'" style="width:100%;height:100%;object-fit:cover"></div>':'<div style="width:48px;height:48px;border-radius:50%;background:var(--gold);color:var(--p2);font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+((b.provider_name||'م')[0])+'</div>')
           +'<div>'
-            +'<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+(b.provider_name||'مزود')+(_isVerified(p)?_verifiedBadge():'')+'<svg width="10" height="10" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
+            +'<div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+(b.provider_name||'مزود')+(_isVerified(p)?_verifiedBadge():'')
+      +'<span class="_sp-btn" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;color:rgba(255,255,255,.7);font-size:10px;font-weight:700;cursor:pointer">مشاركة</span>'
+      +'<svg width="10" height="10" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>'
             // ✅ تقييم كبير وواضح
             +'<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">'+_starsLarge(avgR,reviewCount)+'</div>'
             // ✅ آخر نشاط
@@ -1296,6 +1298,17 @@ async function loadBids(id){
     +'</div>';
   }).join('');
   _bidsContainer.querySelectorAll('._pimg').forEach(function(el){el.addEventListener('click',function(){openImgFull(el.getAttribute('data-src'));});});
+
+  // ✅ زر مشاركة المزود
+  _bidsContainer.querySelectorAll('._sp-btn').forEach(function(el,i){
+    var bid = bids[i];
+    if(!bid) return;
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      _shareProvider(bid.provider_id, bid.provider_name||'مزود');
+    });
+  });
+
   // ✅ حفظ بيانات العروض للوصول عند القبول
   window._currentBids=bids;
   window._currentBidProviders=provProfiles;
@@ -1702,6 +1715,29 @@ setInterval(loadNotifCount,30000);
 var _validPages=['home','requests','notifs','profile','chat'];
 
 // ═══ PROVIDER PROFILE MODAL ═══
+function _shareProvider(pid, pname){
+  var slug = encodeURIComponent((pname||'مزود').replace(/\s+/g,'-'))+'-'+pid;
+  var url = window.location.origin+'/pro/'+slug;
+  if(navigator.share){
+    navigator.share({ title: pname+' — مناقصة', text: 'تواصل مع '+pname+' على منصة مناقصة', url: url });
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){ showToast('تم نسخ رابط المزود ✓','success'); });
+  }
+}
+
+function _shareReq(id, title){
+  var url = window.location.origin + '/request/' + id;
+  if(navigator.share){
+    navigator.share({ title: title + ' — مناقصة', text: 'طلب مشروع على منصة مناقصة', url: url });
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      showToast('تم نسخ رابط الطلب ✓', 'success');
+    });
+  } else {
+    showToast(url, 'info');
+  }
+}
+
 function openProviderProfile(pid, reqId){
   // جلب اسم المزود من العروض المحفوظة
   var bid = (window._currentBids||[]).find(function(b){return String(b.provider_id)===String(pid);});
