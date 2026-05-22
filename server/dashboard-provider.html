@@ -1498,17 +1498,30 @@ async function loadProfile(){
     +'معاينة</a>'
     +'</div>';
   pg.appendChild(previewCard);
-  var copyBtn=previewCard.querySelector('#copy-card-btn');
-  if(copyBtn){
-    copyBtn.addEventListener('click',function(){
-      var link=window.location.origin+'/pro/'+mySlug;
+  // Copy button
+  var cpBtn = document.getElementById('_copy-card');
+  if(cpBtn){
+    cpBtn.addEventListener('click', function(){
       if(navigator.clipboard){
-        navigator.clipboard.writeText(link).then(function(){
-          copyBtn.textContent='تم النسخ ✓';
-          setTimeout(function(){copyBtn.textContent='نسخ الرابط';},2000);
+        navigator.clipboard.writeText(cardUrl).then(function(){
+          cpBtn.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم النسخ ✓';
+          setTimeout(function(){ cpBtn.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>نسخ الرابط'; }, 2000);
         });
-      }else{
-        copyBtn.textContent=link;
+      }
+    });
+  }
+  // Share button
+  var shBtn = document.getElementById('_share-card');
+  if(shBtn){
+    shBtn.addEventListener('click', function(){
+      var nm = (_me&&_me.name)||'مزود';
+      if(navigator.share){
+        navigator.share({ title: nm+' — مناقصة', text: 'تواصل مع '+nm+' على منصة مناقصة', url: cardUrl });
+      } else if(navigator.clipboard){
+        navigator.clipboard.writeText(cardUrl).then(function(){
+          shBtn.textContent='تم النسخ ✓';
+          setTimeout(function(){ shBtn.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة البطاقة'; }, 2000);
+        });
       }
     });
   }
