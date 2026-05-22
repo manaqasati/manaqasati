@@ -764,6 +764,56 @@ var token=localStorage.getItem('token')||'';
 var _token=token;
 if(!user.id){location.href='auth.html';}
 
+// ✅ تحقق من pending provider بعد تسجيل الدخول
+(function(){
+  var provId=null;
+  try{ provId=localStorage.getItem('pending_contact_provider'); }catch(e){}
+  if(!provId) return;
+  try{ localStorage.removeItem('pending_contact_provider'); }catch(e){}
+
+  // انتظر 1.5 ثانية حتى يكتمل تحميل الصفحة
+  setTimeout(function(){
+    var xhr1=new XMLHttpRequest();
+    xhr1.open('GET','https://manaqasati-production.up.railway.app/api/providers/'+provId,true);
+    xhr1.onload=function(){
+      var prov=null;
+      try{ prov=JSON.parse(xhr1.responseText); }catch(e){}
+      if(!prov||!prov.id) return;
+      var provName=prov.business_name||prov.name||'المزود';
+
+      // ابحث عن محادثة موجودة
+      fetch('https://manaqasati-production.up.railway.app/api/client/conversations',
+        {headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('token')||token||'')},cache:'no-store'})
+        .then(function(r){return r.json();})
+        .then(function(convs){
+          var existing=Array.isArray(convs)?convs.find(function(c){return String(c.provider_id)===String(provId);}):null;
+          if(existing){
+            openClientChat(existing.request_id, provId, provName, existing.request_title||'');
+            return;
+          }
+          // إنشاء طلب استفسار تلقائي
+          fetch('https://manaqasati-production.up.railway.app/api/requests',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('token')||token||'')},
+            body:JSON.stringify({
+              title:'استفسار مع '+provName,
+              description:'محادثة مباشرة عبر منصة مناقصة',
+              category:(prov.specialties&&prov.specialties[0])||'استفسار',
+              city:prov.city||'',
+              direct_provider_id:prov.id
+            })
+          }).then(function(r){return r.json();}).then(function(req){
+            if(req&&req.id){
+              openClientChat(req.id, prov.id, provName, req.title||'استفسار');
+            }
+          }).catch(function(e){ console.log('create inquiry error:',e); });
+        }).catch(function(e){ console.log('convs error:',e); });
+    };
+    xhr1.onerror=function(){};
+    xhr1.send();
+  }, 1500);
+})();
+
 // ✅ SWR Cache System
 var _clCache={};
 var _CL_TTL={reqs:45000,notifs:15000,chat:20000,profile:120000};
