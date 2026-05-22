@@ -336,8 +336,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <span class="logo-dot"></span>مناقصة
     </div>
     <div class="idx-nav-btns">
-      <button class="btn-outline-w" onclick="location.href='auth.html'">تسجيل الدخول</button>
-      <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex">
+      <button class="btn-outline-w" onclick="goAuth()">تسجيل الدخول</button>
+      <button class="btn-new" onclick="goAuth()" style="display:inline-flex">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         أنشر مشروعاً
       </button>
@@ -367,11 +367,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <h1>أنشر مناقصتك<br>واحصل على <em>أفضل العروض</em></h1>
       <p>ربط احترافي بين أصحاب المشاريع ومزودي الخدمات في جميع مناطق المملكة العربية السعودية.</p>
       <div class="idx-hero-btns">
-        <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex;padding:13px 26px">
+        <button class="btn-new" onclick="goAuth()" style="display:inline-flex;padding:13px 26px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           أنشر مشروعك مجاناً
         </button>
-        <button class="btn-outline-w" style="padding:13px 22px;border-radius:11px" onclick="location.href='auth.html'">سجّل كمزود خدمة</button>
+        <button class="btn-outline-w" style="padding:13px 22px;border-radius:11px" onclick="goAuth()">سجّل كمزود خدمة</button>
       </div>
       <div class="idx-stats">
         <div class="ist"><div class="ist-v" id="hs-u">—</div><div class="ist-l">مشروع نشط</div></div>
@@ -410,7 +410,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <h2>المشاريع المتاحة</h2>
         <p id="sub-txt">جاري تحميل المشاريع...</p>
       </div>
-      <button class="btn-new" onclick="location.href='auth.html'" style="display:inline-flex">
+      <button class="btn-new" onclick="goAuth()" style="display:inline-flex">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         أنشر مشروعاً
       </button>
@@ -445,6 +445,48 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
     </div>
   </div>
+
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- قسم مزودو الخدمات                                    -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <div style="margin-top:40px">
+      <div class="pg-hd">
+        <div>
+          <h2>مزودو الخدمات</h2>
+          <p id="prov-count-lbl">جاري التحميل...</p>
+        </div>
+        <button class="btn-outline-w" onclick="goAuth()" style="padding:9px 18px;border-radius:10px;border-color:var(--border);color:var(--muted);font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:var(--white)">تسجيل كمزود ←</button>
+      </div>
+
+      <!-- فلاتر المزودين -->
+      <div class="frow" style="margin-bottom:14px">
+        <select id="prov-city" onchange="loadProviders()" class="fsel">
+          <option value="">كل المدن</option>
+          <option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option>
+          <option>مكة المكرمة</option><option>المدينة المنورة</option><option>الطائف</option>
+          <option>الأحساء</option><option>بريدة</option><option>تبوك</option><option>أبها</option>
+          <option>خميس مشيط</option><option>حائل</option><option>جازان</option><option>نجران</option>
+          <option>القطيف</option><option>الجبيل</option><option>ينبع</option><option>الخرج</option>
+        </select>
+        <select id="prov-spec" onchange="loadProviders()" class="fsel">
+          <option value="">كل التخصصات</option>
+          <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
+          <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
+          <option>حدادة</option><option>ألمنيوم</option><option>مسابح</option>
+          <option>كاميرات مراقبة</option><option>شبكات وإنترنت</option>
+          <option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option>
+        </select>
+        <button class="fcl" onclick="document.getElementById('prov-city').value='';document.getElementById('prov-spec').value='';loadProviders()">مسح</button>
+      </div>
+
+      <!-- شبكة كروت المزودين -->
+      <div id="prov-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:60%"></div></div></div></div>
+        <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:70%"></div></div></div></div>
+        <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:55%"></div></div></div></div>
+      </div>
+    </div>
 
   <!-- FOOTER -->
   <div class="idx-foot">
@@ -636,7 +678,7 @@ function card(p){
     +'</div></div></div>';
 }
 
-function goAuth(){ location.href='auth.html'; }
+function goAuth(){ goAuth(); }
 
 function render(list){
   var g=document.getElementById('grid');
@@ -718,6 +760,96 @@ async function load(){
 }
 
 load();
+
+// ═══════════════════════════════════════════════════════════
+// مزودو الخدمات
+// ═══════════════════════════════════════════════════════════
+async function loadProviders(){
+  var city = document.getElementById('prov-city').value;
+  var spec = document.getElementById('prov-spec').value;
+  var grid = document.getElementById('prov-grid');
+  if(!grid) return;
+
+  var url = API + '/api/providers?';
+  if(city) url += 'city=' + encodeURIComponent(city) + '&';
+  if(spec) url += 'specialty=' + encodeURIComponent(spec);
+
+  try {
+    var r = await fetch(url);
+    var providers = await r.json();
+    if(!Array.isArray(providers)) providers = [];
+
+    var lbl = document.getElementById('prov-count-lbl');
+    if(lbl) lbl.textContent = providers.length + ' مزود متاح' + (city ? ' في ' + city : '') + (spec ? ' — ' + spec : '');
+
+    if(!providers.length){
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ic"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><h4>لا يوجد مزودون</h4><p>جرّب فلتراً مختلفاً</p></div>';
+      return;
+    }
+
+    grid.innerHTML = providers.map(function(p){
+      var verified = p.is_verified;
+      var avg = parseFloat(p.avg_rating) || 0;
+      var starsFull = Math.round(avg);
+      var starsHtml = '';
+      for(var i=1;i<=5;i++) starsHtml += '<span style="color:' + (i<=starsFull?'#C9920A':'#E2E8F0') + ';font-size:13px">&#9733;</span>';
+
+      var specs = (p.specialties||[]).slice(0,2).map(function(s){
+        return '<span class="chip chip-b" style="font-size:10px">' + s + '</span>';
+      }).join('');
+
+      var lastBump = p.last_bumped_at || p.created_at;
+      var minsAgo = Math.floor((Date.now() - new Date(lastBump)) / 60000);
+      var activeColor = minsAgo < 60 ? '#16A34A' : minsAgo < 1440 ? '#C9920A' : '#8896AA';
+      var activeTxt = minsAgo < 60 ? 'نشط الآن' : minsAgo < 1440 ? 'نشط منذ ' + Math.floor(minsAgo/60) + ' س' : 'منذ ' + Math.floor(minsAgo/1440) + ' يوم';
+
+      var avHtml = p.profile_image
+        ? '<img src="' + p.profile_image + '" style="width:100%;height:100%;object-fit:cover">'
+        : '<span style="font-size:20px;font-weight:900;color:#A87000">' + (p.name||'م')[0] + '</span>';
+
+      var verBadge = verified
+        ? '<span style="font-size:9px;font-weight:800;color:#60A5FA;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.25);padding:2px 6px;border-radius:20px">&#10003; موثّق</span>'
+        : '';
+
+      var verDot = verified
+        ? '<div style="position:absolute;bottom:0;left:0;width:16px;height:16px;background:#2563EB;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center"><svg width="8" height="8" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
+        : '';
+
+      var borderColor = verified ? '#2563EB' : 'var(--border)';
+
+      return '<div class="_prov-card" style="background:var(--white);border-radius:14px;padding:16px;border:1.5px solid var(--border);cursor:pointer;transition:border-color .2s,transform .2s;box-shadow:0 1px 4px rgba(15,23,42,.05)">'
+        + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
+          + '<div style="width:52px;height:52px;border-radius:50%;background:var(--gold-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:2px solid ' + borderColor + ';position:relative">'
+            + avHtml + verDot
+          + '</div>'
+          + '<div style="flex:1;min-width:0">'
+            + '<div style="font-size:14px;font-weight:900;color:var(--text);display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:2px">' + (p.business_name||p.name) + verBadge + '</div>'
+            + '<div style="display:flex;align-items:center;gap:3px;margin-bottom:2px">' + starsHtml + '<span style="font-size:10px;color:var(--muted);margin-right:3px">(' + (p.review_count||0) + ')</span></div>'
+            + '<span style="color:' + activeColor + ';font-size:10px;font-weight:700">&#9679; ' + activeTxt + '</span>'
+          + '</div>'
+        + '</div>'
+        + (specs ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' + specs + '</div>' : '')
+        + '<div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">'
+          + '<div style="font-size:11px;color:var(--muted)">' + (p.city ? '&#128205; ' + p.city : '') + (p.completed_projects ? ' · ' + p.completed_projects + ' منجز' : '') + '</div>'
+          + '<div style="font-size:12px;font-weight:700;color:var(--p);background:#EEF2FF;padding:5px 12px;border-radius:20px">عرض الملف</div>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+
+    // Add click + hover events after render
+    grid.querySelectorAll('._prov-card').forEach(function(el){
+      el.addEventListener('click', function(){ location.href='auth.html'; });
+      el.addEventListener('mouseover', function(){ el.style.borderColor='#B0BDD0'; el.style.transform='translateY(-2px)'; });
+      el.addEventListener('mouseout',  function(){ el.style.borderColor='var(--border)'; el.style.transform='none'; });
+    });
+
+  } catch(e) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><p>تعذر تحميل المزودين</p></div>';
+  }
+}
+
+loadProviders();
+
 </script>
 </body>
 </html>
