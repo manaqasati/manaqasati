@@ -1726,15 +1726,15 @@ function _shareProvider(pid, pname){
 }
 
 function _shareReq(id, title){
-  var url = window.location.origin + '/request/' + id;
+  // بناء الـ slug من العنوان
+  var slug = encodeURIComponent((title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+id;
+  var url = window.location.origin + '/project/' + slug;
   if(navigator.share){
-    navigator.share({ title: title + ' — مناقصة', text: 'طلب مشروع على منصة مناقصة', url: url });
+    navigator.share({ title: (title||'مشروع') + ' — مناقصة', text: 'مشروع على منصة مناقصة', url: url });
   } else if(navigator.clipboard){
     navigator.clipboard.writeText(url).then(function(){
-      showToast('تم نسخ رابط الطلب ✓', 'success');
+      showToast('تم نسخ رابط المشروع ✓', 'success');
     });
-  } else {
-    showToast(url, 'info');
   }
 }
 
