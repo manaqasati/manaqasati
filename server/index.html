@@ -768,7 +768,10 @@ function card(p){
         +badge
         +'</div>';
 
-  return '<div class="pc" onclick="goAuth()">'
+  var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
+  var projUrl='/project/'+projSlug;
+
+  return '<div class="pc" onclick="location.href=\''+projUrl+'\'" style="cursor:pointer">'
     +hdr
     +'<div class="pc-body">'
     +(p.project_number?'<div class="pc-num">'+p.project_number+'</div>':'')
@@ -781,11 +784,11 @@ function card(p){
     +'</div>'
     +'<div class="pc-footer">'
     +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
-    +(isOpen?'<button class="btn-new" onclick="event.stopPropagation();goAuth()" style="padding:8px 16px;font-size:12px">تقديم عرض</button>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
+    +(isOpen?'<a href="'+projUrl+'" onclick="event.stopPropagation()" class="btn-new" style="padding:8px 16px;font-size:12px;text-decoration:none">تقديم عرض</a>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
     +'</div></div></div>';
 }
 
-function goAuth(){ goAuth(); }
+function goAuth(){ location.href='/auth.html'; }
 
 function render(list){
   var g=document.getElementById('grid');
