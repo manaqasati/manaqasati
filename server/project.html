@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>مشروع — مناقصة</title>
+<meta name="description" content="مشروع على منصة مناقصة السعودية">
+<meta name="robots" content="index,follow">
+<script type="application/ld+json" id="ld"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
+  --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;
+  --text:#0F172A;--text2:#374151;--muted:#8896AA;--hint:#B0BDD0;
+  --border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;
+  --green:#16A34A;--green-l:#DCFCE7;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+.nav{background:var(--p);height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--gold)}
+.back{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;border:none;background:none;font-family:inherit;cursor:pointer;padding:6px 10px;border-radius:8px}
+.back:hover{background:rgba(255,255,255,.1);color:#fff}
+.logo{font-size:17px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px;text-decoration:none}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.nav-in{padding:7px 16px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,var(--p3),var(--p));padding:24px 16px 28px;position:relative;overflow:hidden;border-bottom:3px solid var(--gold)}
+.hero-net{position:absolute;inset:0;opacity:.08;pointer-events:none}
+.hero-inner{max-width:680px;margin:0 auto;position:relative;z-index:1}
+.hero-cat{display:inline-flex;align-items:center;gap:5px;background:rgba(201,146,10,.15);border:1px solid rgba(201,146,10,.3);color:var(--gold);font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+.hero-title{font-size:22px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:10px}
+.hero-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hero-chip{display:flex;align-items:center;gap:4px;font-size:12px;color:rgba(255,255,255,.6);font-weight:600}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800}
+.st-open{background:rgba(22,163,74,.2);color:#4ADE80;border:1px solid rgba(22,163,74,.3)}
+.st-closed{background:rgba(136,150,170,.1);color:var(--muted);border:1px solid rgba(136,150,170,.2)}
+.st-inprog{background:rgba(37,99,235,.2);color:#60A5FA;border:1px solid rgba(37,99,235,.3)}
+
+/* CONTENT */
+.wrap{max-width:680px;margin:0 auto;padding:16px}
+
+/* CARD */
+.card{background:var(--white);border-radius:16px;padding:18px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.card-ic{width:32px;height:32px;border-radius:9px;background:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-title{font-size:14px;font-weight:900;color:var(--text)}
+.card-sub{font-size:11px;color:var(--muted);margin-right:auto}
+
+/* PROJECT DETAILS */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.detail-item{background:var(--bg);border-radius:10px;padding:12px}
+.detail-label{font-size:10px;color:var(--muted);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.detail-val{font-size:14px;font-weight:800;color:var(--text)}
+.detail-val.gold{color:var(--gold)}
+.desc-text{font-size:13px;color:var(--text2);line-height:2}
+
+/* CLIENT CARD */
+.client-card{background:var(--p);border-radius:16px;padding:18px;margin-bottom:12px;border-bottom:3px solid var(--gold);box-shadow:0 4px 20px rgba(13,24,41,.15)}
+.client-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.client-av{width:52px;height:52px;border-radius:50%;background:rgba(201,146,10,.15);border:2px solid rgba(201,146,10,.3);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--gold);flex-shrink:0;overflow:hidden}
+.client-av img{width:100%;height:100%;object-fit:cover}
+.client-name{font-size:15px;font-weight:900;color:#fff;margin-bottom:2px}
+.client-city{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:4px}
+.client-lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.8px;text-align:center;margin-bottom:10px;text-transform:uppercase}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.cbtn{display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:12px;font-size:13px;font-weight:800;text-decoration:none;cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.cbtn:active{transform:scale(.97)}
+.c-call{background:var(--gold);color:#fff;box-shadow:0 3px 12px rgba(201,146,10,.35)}
+.c-wa{background:#16A34A;color:#fff;box-shadow:0 3px 12px rgba(22,163,74,.25)}
+.c-msg{grid-column:1/-1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);border:1.5px solid rgba(255,255,255,.12)}
+
+/* BIDS */
+.bid-item{padding:14px;background:var(--bg);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);position:relative;overflow:hidden}
+.bid-item:last-child{margin-bottom:0}
+.bid-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bid-av{width:38px;height:38px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden}
+.bid-av img{width:100%;height:100%;object-fit:cover}
+.bid-name{font-size:13px;font-weight:900;color:var(--text)}
+.bid-city{font-size:11px;color:var(--muted)}
+.bid-price{margin-right:auto;font-size:14px;font-weight:900;color:var(--gold)}
+.bid-preview{font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:8px;position:relative}
+.bid-blur{display:inline;filter:blur(4px);user-select:none;color:var(--muted)}
+.bid-lock{display:inline-flex;align-items:center;gap:4px;background:var(--p);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;cursor:pointer;text-decoration:none;margin-top:4px}
+.bid-stars{color:var(--gold);font-size:12px;letter-spacing:1px}
+.bid-ver{font-size:9px;background:rgba(37,99,235,.1);color:#2563EB;border:1px solid rgba(37,99,235,.2);padding:2px 7px;border-radius:20px;font-weight:800}
+
+/* CTA */
+.cta-card{background:linear-gradient(135deg,var(--p3),var(--p));border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:14px;border-bottom:3px solid var(--gold);box-shadow:var(--shadow-md)}
+.cta-logo{font-size:18px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:8px}
+.cta-text{font-size:12px;color:rgba(255,255,255,.5);line-height:1.8;margin-bottom:14px}
+.cta-btn{display:inline-block;padding:12px 28px;background:var(--gold);color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;text-decoration:none;box-shadow:0 4px 14px rgba(201,146,10,.4)}
+
+/* SHARE */
+.share-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px;box-shadow:var(--shadow)}
+.share-btn:hover{border-color:var(--p);color:var(--p)}
+
+/* VIEWER */
+.viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.viewer.on{display:flex}
+.viewer img{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain}
+.vcl{position:absolute;top:14px;right:14px;width:40px;height:40px;background:rgba(255,255,255,.1);border:none;border-radius:50%;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* SK */
+.sk{background:linear-gradient(90deg,#eef2f8 25%,#e2eaf4 50%,#eef2f8 75%);background-size:200%;animation:sk 1.3s infinite;border-radius:8px}
+@keyframes sk{0%{background-position:200%}100%{background-position:-200%}}
+.foot{text-align:center;font-size:11px;color:var(--muted);padding:12px}
+
+@media(max-width:480px){
+  .detail-grid{grid-template-columns:1fr 1fr}
+  .hero-title{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="back" onclick="location.href='/'">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    الرئيسية
+  </button>
+  <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
+  <button class="nav-in" onclick="location.href='/auth.html'">دخول</button>
+</nav>
+
+<!-- HERO SKELETON -->
+<div id="hero-sec">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="sk" style="height:22px;width:30%;margin-bottom:10px"></div>
+      <div class="sk" style="height:28px;width:80%;margin-bottom:12px"></div>
+      <div class="sk" style="height:16px;width:50%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="wrap" id="wrap">
+  <div class="card"><div class="sk" style="height:14px;width:30%;margin-bottom:14px"></div><div class="sk" style="height:60px"></div></div>
+  <div class="card"><div class="sk" style="height:14px;width:25%;margin-bottom:14px"></div><div class="sk" style="height:80px"></div></div>
+</div>
+
+<!-- VIEWER -->
+<div class="viewer" id="viewer" onclick="if(event.target===this)cImg()">
+  <button class="vcl" onclick="cImg()">✕</button>
+  <img id="vi" src="" alt="">
+</div>
+
+<script>
+var API = 'https://manaqasati-production.up.railway.app';
+
+function getId(){
+  var slug = location.pathname.split('/').pop();
+  var m = slug.match(/(\d+)$/);
+  if(m) return m[1];
+  return new URLSearchParams(location.search).get('id')||'';
+}
+function oImg(s){ document.getElementById('vi').src=s; document.getElementById('viewer').classList.add('on'); document.body.style.overflow='hidden'; }
+function cImg(){ document.getElementById('viewer').classList.remove('on'); document.body.style.overflow=''; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d){ return d?new Date(d).toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'}):''; }
+function fmtMoney(v){ return v?Number(v).toLocaleString('ar-SA')+'  ر.س':'غير محدد'; }
+function stBadge(s){
+  if(s==='open')    return '<span class="status-badge st-open">&#9679; مفتوح للعروض</span>';
+  if(s==='in_progress') return '<span class="status-badge st-inprog">&#9679; قيد التنفيذ</span>';
+  return '<span class="status-badge st-closed">&#9679; مغلق</span>';
+}
+function mkStars(n){
+  var h='';
+  for(var i=1;i<=5;i++) h+='<span style="color:'+(i<=Math.round(n)?'#C9920A':'#E6E2D9')+'">&#9733;</span>';
+  return h;
+}
+function blurText(text){
+  if(!text) return '';
+  var words = text.trim().split(/\s+/);
+  var visible = words.slice(0,5).join(' ');
+  var hidden  = words.slice(5).join(' ');
+  if(!hidden) return esc(visible);
+  return esc(visible)+' <span class="bid-blur">'+esc(hidden)+'</span>';
+}
+function ph966(p){
+  if(!p) return '';
+  var n=p.replace(/\D/g,'');
+  if(n.startsWith('966')) return n;
+  if(n.startsWith('0')) return '966'+n.slice(1);
+  return '966'+n;
+}
+
+function render(req, bids){
+  var url = location.href;
+  var title = req.title||'مشروع';
+  var cat   = req.category||'';
+  var city  = req.city||'السعودية';
+  var desc  = req.description||'';
+  var budget= req.budget||'';
+  var deadline = req.deadline||'';
+  var status= req.status||'open';
+  var imgs  = req.images||[];
+  var client= req.client||{};
+  var ph    = client.phone||'';
+
+  // SEO
+  var pgT = title+(cat?' — '+cat:'')+(city?' في '+city:'')+' | مناقصة';
+  var pgD = title+' في '+city+(cat?' — تصنيف: '+cat:'')+(budget?' — الميزانية: '+fmtMoney(budget):'')+'. قدّم عرضك على منصة مناقصة.';
+  document.title = pgT;
+  document.querySelector('title').textContent = pgT;
+  document.querySelector('meta[name="description"]').content = pgD;
+  var sc={
+    "@context":"https://schema.org","@type":"Service",
+    "name":title,"description":pgD,"url":url,
+    "areaServed":city,
+    "offers":{"@type":"Offer","availability":"https://schema.org/InStock"}
+  };
+  document.getElementById('ld').textContent=JSON.stringify(sc);
+
+  // HERO
+  document.getElementById('hero-sec').innerHTML=
+    '<div class="hero"><div class="hero-inner">'
+    +'<div class="hero-cat"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>'+esc(cat)+'</div>'
+    +'<h1 class="hero-title">'+esc(title)+'</h1>'
+    +'<div class="hero-meta">'
+    +stBadge(status)
+    +'<span class="hero-chip"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</span>'
+    +(deadline?'<span class="hero-chip"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+fmtDate(deadline)+'</span>':'')
+    +'</div>'
+    +'</div></div>';
+
+  var html='';
+
+  // PROJECT DETAILS
+  html+='<div class="card">';
+  html+='<div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div><div class="card-title">تفاصيل المشروع</div></div>';
+  html+='<div class="detail-grid">';
+  html+='<div class="detail-item"><div class="detail-label">الميزانية</div><div class="detail-val gold">'+fmtMoney(budget)+'</div></div>';
+  html+='<div class="detail-item"><div class="detail-label">المدينة</div><div class="detail-val">'+esc(city)+'</div></div>';
+  html+='<div class="detail-item"><div class="detail-label">العروض المقدمة</div><div class="detail-val">'+bids.length+' عرض</div></div>';
+  html+='<div class="detail-item"><div class="detail-label">تاريخ النشر</div><div class="detail-val" style="font-size:12px">'+fmtDate(req.created_at)+'</div></div>';
+  html+='</div>';
+  if(desc){
+    html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">';
+    html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">وصف المشروع</div>';
+    html+='<p class="desc-text">'+esc(desc)+'</p>';
+    html+='</div>';
+  }
+  html+='</div>';
+
+  // IMAGES
+  if(imgs.length){
+    html+='<div class="card">';
+    html+='<div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div class="card-title">صور المشروع</div><div class="card-sub">'+imgs.length+' صورة</div></div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
+    for(var i=0;i<imgs.length;i++){
+      html+='<div style="border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;background:var(--bg);border:1px solid var(--border)" data-imgurl="'+imgs[i]+'">'
+        +'<img src="'+imgs[i]+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">'
+        +'</div>';
+    }
+    html+='</div></div>';
+  }
+
+  // CLIENT CONTACT
+  html+='<div class="client-card">';
+  html+='<div class="client-top">';
+  var avHtml = client.profile_image?'<img src="'+client.profile_image+'" alt="">':(client.name||'ع').charAt(0);
+  html+='<div class="client-av">'+avHtml+'</div>';
+  html+='<div><div class="client-name">'+esc(client.name||'العميل')+'</div><div class="client-city"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</div></div>';
+  html+='</div>';
+  html+='<div class="client-lbl">تواصل مع صاحب المشروع</div>';
+  html+='<div class="btns">';
+  if(ph){
+    html+='<a href="tel:'+ph+'" class="cbtn c-call"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 7.63 19.79 19.79 0 01.01 4 2 2 0 012 1.84h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.91 9.91a16 16 0 006.72 6.72l1.24-1.24a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>اتصال</a>';
+    html+='<a href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener" class="cbtn c-wa"><svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>واتساب</a>';
+  }else{
+    html+='<a href="/auth.html" class="cbtn c-call" style="background:rgba(201,146,10,.15);color:var(--gold);border:1.5px solid rgba(201,146,10,.3)">اتصال</a>';
+    html+='<a href="/auth.html" class="cbtn c-wa" style="background:rgba(22,163,74,.1);color:#4ADE80;border:1.5px solid rgba(22,163,74,.2)">واتساب</a>';
+  }
+  html+='<button class="cbtn c-msg" id="msgbtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>رسالة عبر المنصة</button>';
+  html+='</div></div>';
+
+  // BIDS
+  if(bids.length){
+    html+='<div class="card">';
+    html+='<div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="card-title">العروض المقدمة</div><div class="card-sub">'+bids.length+' عرض</div></div>';
+
+    for(var j=0;j<bids.length;j++){
+      var b=bids[j];
+      var bAvHtml=b.provider_image?'<img src="'+b.provider_image+'" alt="">':(b.provider_name||'م').charAt(0);
+      var bAvg=parseFloat(b.avg_rating)||0;
+      var bVrf=!!(b.is_verified||bAvg>0);
+      html+='<div class="bid-item">';
+      html+='<div class="bid-head">';
+      html+='<div class="bid-av">'+bAvHtml+'</div>';
+      html+='<div><div class="bid-name" style="display:flex;align-items:center;gap:5px">'+esc(b.provider_name||'مزود')+(bVrf?'<span class="bid-ver">&#10003; موثّق</span>':'')+'</div>';
+      html+='<div style="display:flex;align-items:center;gap:5px;margin-top:2px"><span class="bid-stars">'+mkStars(bAvg)+'</span><span style="font-size:10px;color:var(--muted)">('+( b.review_count||0)+')</span></div>';
+      html+='</div>';
+      html+='<div class="bid-price">'+fmtMoney(b.price)+'</div>';
+      html+='</div>';
+      // Preview — first 5 words visible, rest blurred
+      if(b.proposal){
+        html+='<p class="bid-preview">'+blurText(b.proposal)+'</p>';
+      }
+      html+='<a href="/auth.html" class="bid-lock">';
+      html+='<svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
+      html+='سجّل دخول لعرض العرض كاملاً</a>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
+  // SHARE
+  html+='<button class="share-btn" id="sharebtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة هذا المشروع</button>';
+
+  // CTA
+  html+='<div class="cta-card"><div class="cta-logo"><span class="logo-dot"></span>مناقصة</div><p class="cta-text">منصة المشاريع والخدمات الأولى في السعودية — سجّل وقدّم عرضك الآن</p><a href="/auth.html?mode=register&role=provider" class="cta-btn">قدّم عرضك الآن &#8592;</a></div>';
+  html+='<div class="foot">&#169; مناقصة — جميع الحقوق محفوظة</div>';
+
+  document.getElementById('wrap').innerHTML=html;
+
+  // Image events
+  document.querySelectorAll('[data-imgurl]').forEach(function(el){
+    el.addEventListener('click',function(){ oImg(el.getAttribute('data-imgurl')); });
+  });
+
+  // Msg button
+  var rid=getId();
+  var mb=document.getElementById('msgbtn');
+  if(mb) mb.addEventListener('click',function(){
+    var u=null; try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
+    var t=localStorage.getItem('token')||'';
+    if(u&&t){ location.href='/dashboard-client.html'; }
+    else { location.href='/auth.html?redirect=msg_req&request_id='+rid; }
+  });
+
+  // Share button
+  var sb=document.getElementById('sharebtn');
+  if(sb) sb.addEventListener('click',function(){
+    if(navigator.share){ navigator.share({title:title+' — مناقصة',url:url}); }
+    else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ sb.textContent='تم النسخ ✓'; setTimeout(function(){ sb.textContent='مشاركة هذا المشروع'; },2000); }); }
+  });
+}
+
+// LOAD
+(function(){
+  var id=getId();
+  if(!id){ document.getElementById('wrap').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">رابط غير صحيح</p>'; return; }
+
+  var d1=null, d2=null, done=0, rendered=false;
+
+  function tryRender(){
+    done++; if(done<2||rendered) return; rendered=true;
+    if(!d1||d1.message){ document.getElementById('wrap').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">المشروع غير موجود</p>'; return; }
+    render(d1, d2||[]);
+  }
+
+  setTimeout(function(){
+    if(rendered) return; rendered=true;
+    if(d1) render(d1,d2||[]);
+    else document.getElementById('wrap').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">تعذر التحميل</p>';
+  },8000);
+
+  var x1=new XMLHttpRequest();
+  x1.open('GET',API+'/api/requests/public/'+id,true); x1.timeout=10000;
+  x1.onload=function(){ try{d1=JSON.parse(x1.responseText);}catch(e){d1=null;} tryRender(); };
+  x1.onerror=x1.ontimeout=function(){ tryRender(); }; x1.send();
+
+  var x2=new XMLHttpRequest();
+  x2.open('GET',API+'/api/bids/public/'+id,true); x2.timeout=10000;
+  x2.onload=function(){ try{d2=JSON.parse(x2.responseText);}catch(e){d2=[];} tryRender(); };
+  x2.onerror=x2.ontimeout=function(){ d2=[]; tryRender(); }; x2.send();
+})();
+</script>
+</body>
+</html>
