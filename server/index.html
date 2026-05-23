@@ -456,18 +456,125 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <h2>مزودو الخدمات</h2>
           <p id="prov-count-lbl">جاري التحميل...</p>
         </div>
-        <button class="btn-outline-w" onclick="goAuth()" style="padding:9px 18px;border-radius:10px;border-color:var(--border);color:var(--muted);font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:var(--white)">تسجيل كمزود ←</button>
+        <button onclick="location.href='/auth.html?mode=register&role=provider'" style="padding:9px 18px;border-radius:10px;background:var(--p);color:#fff;border:none;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>سجّل كمزود</button>
       </div>
 
       <!-- فلاتر المزودين -->
       <div class="frow" style="margin-bottom:14px">
         <select id="prov-city" onchange="loadProviders()" class="fsel">
           <option value="">كل المدن</option>
-          <option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option>
-          <option>مكة المكرمة</option><option>المدينة المنورة</option><option>الطائف</option>
-          <option>الأحساء</option><option>بريدة</option><option>تبوك</option><option>أبها</option>
-          <option>خميس مشيط</option><option>حائل</option><option>جازان</option><option>نجران</option>
-          <option>القطيف</option><option>الجبيل</option><option>ينبع</option><option>الخرج</option>
+          <option>الرياض</option>
+          <option>جدة</option>
+          <option>مكة المكرمة</option>
+          <option>المدينة المنورة</option>
+          <option>الدمام</option>
+          <option>الخبر</option>
+          <option>الطائف</option>
+          <option>بريدة</option>
+          <option>تبوك</option>
+          <option>الأحساء</option>
+          <option>خميس مشيط</option>
+          <option>حائل</option>
+          <option>الجبيل</option>
+          <option>جازان</option>
+          <option>نجران</option>
+          <option>أبها</option>
+          <option>ينبع</option>
+          <option>القطيف</option>
+          <option>الخرج</option>
+          <option>عرعر</option>
+          <option>سكاكا</option>
+          <option>حفر الباطن</option>
+          <option>الباحة</option>
+          <option>الدوادمي</option>
+          <option>بيشة</option>
+          <option>الزلفي</option>
+          <option>شقراء</option>
+          <option>عنيزة</option>
+          <option>الرس</option>
+          <option>الليث</option>
+          <option>القنفذة</option>
+          <option>رابغ</option>
+          <option>صبيا</option>
+          <option>الوجه</option>
+          <option>ضباء</option>
+          <option>تيماء</option>
+          <option>الجوف</option>
+          <option>العقبة</option>
+          <option>وادي الدواسر</option>
+          <option>الأفلاج</option>
+          <option>السليل</option>
+          <option>حوطة</option>
+          <option>المجمعة</option>
+          <option>رماح</option>
+          <option>ثادق</option>
+          <option>العيينة</option>
+          <option>الدرعية</option>
+          <option>حريملاء</option>
+          <option>صفوى</option>
+          <option>سيهات</option>
+          <option>المبرز</option>
+          <option>الهفوف</option>
+          <option>العيون</option>
+          <option>بقيق</option>
+          <option>أم القرى</option>
+          <option>المضيبي</option>
+          <option>رفحاء</option>
+          <option>طريف</option>
+          <option>قيال</option>
+          <option>صوير</option>
+          <option>الشيحية</option>
+          <option>الشنان</option>
+          <option>الصوير</option>
+          <option>البكيرية</option>
+          <option>الأسياح</option>
+          <option>البدائع</option>
+          <option>ضرية</option>
+          <option>النبهانية</option>
+          <option>الخبراء</option>
+          <option>مليجة</option>
+          <option>المذنب</option>
+          <option>عيون الجواء</option>
+          <option>الشماسية</option>
+          <option>الرفيعة</option>
+          <option>المندق</option>
+          <option>قلوة</option>
+          <option>المخواة</option>
+          <option>بلجرشي</option>
+          <option>العقيق</option>
+          <option>النماص</option>
+          <option>أبو عريش</option>
+          <option>صامطة</option>
+          <option>فرسان</option>
+          <option>بيش</option>
+          <option>العيدابي</option>
+          <option>الحرث</option>
+          <option>الريث</option>
+          <option>الدرب</option>
+          <option>الشقيق</option>
+          <option>فيفاء</option>
+          <option>الطوال</option>
+          <option>شرورة</option>
+          <option>سبت العلايا</option>
+          <option>تنومة</option>
+          <option>محايل عسير</option>
+          <option>سراة عبيدة</option>
+          <option>المسارحة</option>
+          <option>القريات</option>
+          <option>دومة الجندل</option>
+          <option>طبرجل</option>
+          <option>صفاء</option>
+          <option>حقل</option>
+          <option>الشرما</option>
+          <option>قيال</option>
+          <option>البدع</option>
+          <option>مهد الذهب</option>
+          <option>بدر</option>
+          <option>المهد</option>
+          <option>الحناكية</option>
+          <option>العلا</option>
+          <option>خيبر</option>
+          <option>تيماء</option>
         </select>
         <select id="prov-spec" onchange="loadProviders()" class="fsel">
           <option value="">كل التخصصات</option>
@@ -481,7 +588,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
 
       <!-- شبكة كروت المزودين -->
-      <div id="prov-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      <div id="prov-grid" class="pg-grid">
         <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:60%"></div></div></div></div>
         <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:70%"></div></div></div></div>
         <div class="sk-card"><div style="padding:16px;display:flex;gap:12px;align-items:center"><div class="sk" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="sk" style="height:13px;margin-bottom:8px"></div><div class="sk" style="height:10px;width:55%"></div></div></div></div>
@@ -765,21 +872,21 @@ load();
 // مزودو الخدمات
 // ═══════════════════════════════════════════════════════════
 function loadProviders(){
-  var city = (document.getElementById('prov-city')||{}).value||'';
-  var spec  = (document.getElementById('prov-spec')||{}).value||'';
-  var grid  = document.getElementById('prov-grid');
+  var city=(document.getElementById('prov-city')||{}).value||'';
+  var spec=(document.getElementById('prov-spec')||{}).value||'';
+  var grid=document.getElementById('prov-grid');
   if(!grid) return;
 
-  var url = API+'/api/providers';
+  var url=API+'/api/providers';
   var qs=[];
   if(city) qs.push('city='+encodeURIComponent(city));
   if(spec)  qs.push('specialty='+encodeURIComponent(spec));
   if(qs.length) url+='?'+qs.join('&');
 
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', url, true);
-  xhr.timeout = 15000;
-  xhr.onload = function(){
+  var xhr=new XMLHttpRequest();
+  xhr.open('GET',url,true);
+  xhr.timeout=15000;
+  xhr.onload=function(){
     if(xhr.status!==200){ grid.innerHTML='<p style="text-align:center;color:#8896AA;padding:30px;grid-column:1/-1">تعذر تحميل المزودين</p>'; return; }
     var list;
     try{ list=JSON.parse(xhr.responseText); }catch(e){ list=[]; }
@@ -802,65 +909,63 @@ function loadProviders(){
       var actColor=mins<60?'#16A34A':mins<1440?'#C9920A':'#8896AA';
       var actTxt=mins<60?'نشط الآن':mins<1440?'منذ '+Math.floor(mins/60)+' س':'منذ '+Math.floor(mins/1440)+' يوم';
 
-      // ── Header — صورة أو خلفية مع أيقونة ─────────────
-      var hdr='';
-      if(p.profile_image){
-        hdr='<div class="pc-img-wrap" style="height:130px">'
-          +'<img class="pc-img" src="'+p.profile_image+'" loading="lazy" style="height:130px">'
+      // ── Header ── نفس ارتفاع بطاقة المشروع (148px)
+      var hdrHtml='';
+      if(p.profile_image && p.profile_image!=='has_image'){
+        hdrHtml='<div class="pc-img-wrap">'
+          +'<img class="pc-img" src="'+p.profile_image+'" loading="lazy">'
           +'<div class="pc-overlay"></div>'
-          // اسم فوق الصورة
           +'<div style="position:absolute;bottom:10px;right:12px;left:12px;display:flex;align-items:center;gap:8px">'
-            +'<div style="width:38px;height:38px;border-radius:50%;border:2px solid '+(vrf?'#60A5FA':'rgba(255,255,255,.5)')+';overflow:hidden;flex-shrink:0;background:rgba(0,0,0,.3)">'
+            +'<div style="width:34px;height:34px;border-radius:50%;border:2px solid '+(vrf?'#60A5FA':'rgba(255,255,255,.5)')+';overflow:hidden;flex-shrink:0">'
               +'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover">'
             +'</div>'
-            +'<div>'
-              +'<div style="font-size:13px;font-weight:900;color:#fff;line-height:1.2">'+(p.business_name||p.name)+'</div>'
-              +'<div style="font-size:10px;color:rgba(255,255,255,.65);font-weight:600">'+p.city+'</div>'
+            +'<div style="min-width:0">'
+              +'<div style="font-size:12px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.business_name||p.name)+'</div>'
+              +'<div style="font-size:10px;color:rgba(255,255,255,.6)">'+p.city+'</div>'
             +'</div>'
-            +(vrf?'<span style="margin-right:auto;font-size:9px;background:rgba(37,99,235,.7);color:#fff;padding:2px 7px;border-radius:20px;font-weight:800;border:1px solid rgba(255,255,255,.3)">&#10003; موثّق</span>':'')
+            +(vrf?'<span style="margin-right:auto;font-size:9px;background:rgba(37,99,235,.7);color:#fff;padding:2px 7px;border-radius:20px;font-weight:800;border:1px solid rgba(255,255,255,.3);flex-shrink:0">&#10003; موثّق</span>':'')
           +'</div>'
         +'</div>';
       } else {
-        // خلفية نيفي مع حرف
-        hdr='<div style="height:130px;background:linear-gradient(135deg,#0A1628,var(--p));overflow:hidden;position:relative;flex-shrink:0">'
-          +'<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.15" viewBox="0 0 300 130" preserveAspectRatio="none">'
-            +'<line x1="20" y1="25" x2="100" y2="50" stroke="#fff" stroke-width="1.2"/>'
-            +'<line x1="100" y1="50" x2="180" y2="25" stroke="#fff" stroke-width="1.2"/>'
-            +'<line x1="180" y1="25" x2="270" y2="45" stroke="#fff" stroke-width="1"/>'
-            +'<line x1="100" y1="50" x2="145" y2="30" stroke="var(--gold)" stroke-width="1.2" stroke-opacity=".9"/>'
-            +'<circle cx="100" cy="50" r="5" fill="#fff" opacity=".5"/>'
-            +'<circle cx="145" cy="30" r="4" fill="var(--gold)" opacity=".85"/>'
+        hdrHtml='<div class="pc-img-wrap" style="background:linear-gradient(135deg,#0A1628,var(--p))">'
+          +'<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.15" viewBox="0 0 300 148" preserveAspectRatio="none">'
+            +'<line x1="20" y1="30" x2="100" y2="60" stroke="#fff" stroke-width="1.2"/>'
+            +'<line x1="100" y1="60" x2="180" y2="30" stroke="#fff" stroke-width="1.2"/>'
+            +'<line x1="180" y1="30" x2="270" y2="55" stroke="#fff" stroke-width="1"/>'
+            +'<line x1="100" y1="60" x2="145" y2="35" stroke="#C9920A" stroke-width="1.5" stroke-opacity=".9"/>'
+            +'<circle cx="100" cy="60" r="5" fill="#fff" opacity=".5"/>'
+            +'<circle cx="145" cy="35" r="4" fill="#C9920A" opacity=".85"/>'
           +'</svg>'
           +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--gold),transparent)"></div>'
-          +'<div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">'
-            +'<div style="width:52px;height:52px;border-radius:50%;background:rgba(201,146,10,.15);border:2px solid rgba(201,146,10,.4);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--gold)">'+(p.name||'م').charAt(0)+'</div>'
+          +'<div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'
+            +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(201,146,10,.15);border:2px solid rgba(201,146,10,.35);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:var(--gold)">'+(p.name||'م').charAt(0)+'</div>'
             +'<div style="text-align:center">'
-              +'<div style="font-size:13px;font-weight:900;color:#fff">'+(p.business_name||p.name)+'</div>'
+              +'<div style="font-size:12px;font-weight:900;color:#fff">'+(p.business_name||p.name)+'</div>'
               +'<div style="font-size:10px;color:rgba(255,255,255,.45)">'+(p.city||'السعودية')+'</div>'
             +'</div>'
           +'</div>'
-          +(vrf?'<span style="position:absolute;top:9px;left:10px;font-size:9px;background:rgba(37,99,235,.8);color:#fff;padding:3px 8px;border-radius:20px;font-weight:800">&#10003; موثّق</span>':'')
+          +(vrf?'<span style="position:absolute;top:8px;left:8px;font-size:9px;background:rgba(37,99,235,.8);color:#fff;padding:2px 7px;border-radius:20px;font-weight:800">&#10003; موثّق</span>':'')
         +'</div>';
       }
 
-      // ── Stars ────────────────────────────────────────────
+      // ── Stars ────────────────────────────────────────────────
       var stars='';
       for(var s=1;s<=5;s++) stars+='<span style="color:'+(s<=Math.round(avg)?'#C9920A':'#E2E8F0')+';font-size:11px">&#9733;</span>';
 
-      // ── Chips ────────────────────────────────────────────
+      // ── Chips ────────────────────────────────────────────────
       var chips='';
-      if(p.city) chips+='<span class="chip chip-g">'+locIc()+p.city+'</span>';
-      if(sp[0])  chips+='<span class="chip chip-b">'+sp[0]+'</span>';
-      if(sp[1])  chips+='<span class="chip chip-d">'+sp[1]+'</span>';
+      if(p.city)  chips+='<span class="chip chip-g">&#128205;'+p.city+'</span>';
+      if(sp[0])   chips+='<span class="chip chip-b">'+sp[0]+'</span>';
+      if(sp[1])   chips+='<span class="chip chip-d">'+sp[1]+'</span>';
 
-      html+='<div class="pc _pvc" data-pid="'+p.id+'">'
-        +hdr
+      html+='<div class="pc _pvc" data-pid="'+p.id+'" data-pname="'+(p.business_name||p.name||'مزود')+'">'
+        +hdrHtml
         +'<div class="pc-body">'
           +'<div class="pc-title">'+(p.business_name||p.name)+'</div>'
           +'<div class="pc-chips">'+chips+'</div>'
           +'<div class="pc-footer">'
             +'<div>'
-              +'<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">'+stars+'<span style="font-size:10px;color:var(--muted);margin-right:3px">('+cnt+')</span></div>'
+              +'<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">'+stars+' <span style="font-size:10px;color:var(--muted)">('+cnt+')</span></div>'
               +'<div style="font-size:10px;font-weight:700;color:'+actColor+'">&#9679; '+actTxt+'</div>'
             +'</div>'
             +'<button class="btn-new" style="padding:8px 16px;font-size:12px">عرض الملف</button>'
@@ -868,16 +973,12 @@ function loadProviders(){
         +'</div>'
       +'</div>';
     }
-
     grid.innerHTML=html;
 
     grid.querySelectorAll('._pvc').forEach(function(el){
       var pid=el.getAttribute('data-pid');
-      var pname='';
-      // get name from title div
-      var t=el.querySelector('.pc-title');
-      if(t) pname=t.textContent.replace(/\s+/g,'-');
-      el.addEventListener('click', function(){ window.open('/pro/'+encodeURIComponent(pname)+'-'+pid,'_blank'); });
+      var pname=(el.getAttribute('data-pname')||'مزود').replace(/\s+/g,'-');
+      el.addEventListener('click',function(){ window.open('/pro/'+encodeURIComponent(pname)+'-'+pid,'_blank'); });
     });
   };
   xhr.onerror=xhr.ontimeout=function(){ grid.innerHTML='<p style="text-align:center;color:#8896AA;padding:30px;grid-column:1/-1">تعذر تحميل المزودين</p>'; };
