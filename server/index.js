@@ -2800,6 +2800,23 @@ app.get('/sitemap.xml', async (req, res) => {
   </url>`;
     }
 
+    // ✅ صفحات المشاريع
+    const requests = await pool.query(`
+      SELECT r.id, r.title, r.category, r.city, r.updated_at
+      FROM requests r WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 500
+    `);
+    for (const r of requests.rows) {
+      const slug = encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40)) + '-' + r.id;
+      const lastmod = r.updated_at ? r.updated_at.toISOString().split('T')[0] : now;
+      xml += `
+  <url>
+    <loc>${baseUrl}/project/${slug}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <lastmod>${lastmod}</lastmod>
+  </url>`;
+    }
+
     xml += '\n</urlset>';
 
     res.header('Content-Type', 'application/xml');
