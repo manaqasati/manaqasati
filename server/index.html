@@ -784,7 +784,7 @@ function card(p){
     +'</div>'
     +'<div class="pc-footer">'
     +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
-    +(isOpen?'<a href="'+projUrl+'" onclick="event.stopPropagation()" class="btn-new" style="padding:8px 16px;font-size:12px;text-decoration:none">تقديم عرض</a>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
+    +(isOpen?'<a href="'+projUrl+'" onclick="event.stopPropagation()" class="btn-new" style="padding:8px 16px;font-size:12px;text-decoration:none">عرض المشروع</a>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
     +'</div></div></div>';
 }
 
