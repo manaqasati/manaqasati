@@ -127,7 +127,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT b.id, b.price, b.message as proposal, b.created_at,
+      SELECT b.id, b.price, b.note as proposal, b.days, b.created_at,
         u.name as provider_name, u.city as provider_city,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE 'has_image' END
