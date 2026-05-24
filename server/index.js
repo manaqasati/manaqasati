@@ -578,6 +578,12 @@ async function setupDatabase() {
     // ✅ PATCH 1: Bump system column
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tiktok VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
@@ -2185,6 +2191,7 @@ app.get('/api/providers/:id', async (req, res) => {
     const r = await pool.query(`
       SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,
       experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,
+      website,instagram,twitter,snapchat,tiktok,youtube,
       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,
       COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,
       (SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,
