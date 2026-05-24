@@ -1608,17 +1608,6 @@ async function loadProfile(){
   portCard.innerHTML=portHtml;
   pg.appendChild(portCard);
 
-  var pwCard=document.createElement('div');
-  pwCard.className='card';
-  pwCard.innerHTML=
-    '<div class="ch"><div class="ch-l"><h3>تغيير كلمة المرور</h3></div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="fg"><label>الحالية</label><input type="password" id="pw-old"></div>'
-    +'<div class="fg"><label>الجديدة</label><input type="password" id="pw-new"></div>'
-    +'</div>'
-    +'<button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
-  pg.appendChild(pwCard);
-
   // DANGER ZONE
   // ── روابط التواصل ─────────────────────────────────────────
   var socialCard=document.createElement('div');
@@ -1675,6 +1664,19 @@ async function loadProfile(){
       'حذف الحساب نهائياً'+
     '</button>';
   pg.appendChild(dangerZone);
+
+  // كلمة المرور — بعد التواصل الاجتماعي
+  var pwCard=document.createElement('div');
+  pwCard.className='card';
+  pwCard.style.cssText='margin-bottom:14px';
+  pwCard.innerHTML=
+    '<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:14px">تغيير كلمة المرور</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    +'<div class="fg"><label>الحالية</label><input type="password" id="pw-old"></div>'
+    +'<div class="fg"><label>الجديدة</label><input type="password" id="pw-new"></div>'
+    +'</div>'
+    +'<button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
+  pg.appendChild(pwCard);
 
   var saveWrap=document.createElement('div');
   saveWrap.style.cssText='padding:14px 0 20px';
