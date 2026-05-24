@@ -53,6 +53,10 @@ app.use((req, res, next) => { console.log(`${req.method} ${req.path}`); next(); 
 // HTML ROUTES
 // ═══════════════════════════════════════════════════════════════
 app.get('/',                       (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/favicon.ico', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#16213E"/><circle cx="16" cy="16" r="5" fill="#C9920A"/></svg>');
+});
 app.get('/google0ed958111c5d0ae7.html', (req, res) => res.send('google-site-verification: google0ed958111c5d0ae7.html'));
 app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dashboard-admin.html'));
 app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
