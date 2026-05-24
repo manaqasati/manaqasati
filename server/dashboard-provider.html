@@ -1625,18 +1625,18 @@ async function loadProfile(){
   socialCard.className='card';
   socialCard.style.cssText='margin-bottom:14px';
   var socFields=[
-    {id:'p-website',   icon:'🌐', label:'الموقع الإلكتروني', val:p.website||'',   ph:'https://example.com',     link:function(v){return v;}},
-    {id:'p-instagram', icon:'📸', label:'انستقرام',           val:p.instagram||'', ph:'اسم المستخدم',            link:function(v){return 'https://instagram.com/'+v;}},
-    {id:'p-twitter',   icon:'🐦', label:'تويتر / X',          val:p.twitter||'',   ph:'اسم المستخدم',            link:function(v){return 'https://x.com/'+v;}},
-    {id:'p-snapchat',  icon:'👻', label:'سناب شات',           val:p.snapchat||'',  ph:'اسم المستخدم',            link:function(v){return 'https://snapchat.com/add/'+v;}},
-    {id:'p-tiktok',    icon:'🎵', label:'تيك توك',             val:p.tiktok||'',    ph:'اسم المستخدم',            link:function(v){return 'https://tiktok.com/@'+v;}},
-    {id:'p-youtube',   icon:'▶️', label:'يوتيوب',             val:p.youtube||'',   ph:'https://youtube.com/...', link:function(v){return v;}},
+    {id:'p-website',   icon:'W', label:'الموقع الإلكتروني', val:p.website||'',   ph:'https://example.com',     link:function(v){return v;}},
+    {id:'p-instagram', icon:'IN', label:'انستقرام',           val:p.instagram||'', ph:'اسم المستخدم',            link:function(v){return 'https://instagram.com/'+v;}},
+    {id:'p-twitter',   icon:'X', label:'تويتر / X',          val:p.twitter||'',   ph:'اسم المستخدم',            link:function(v){return 'https://x.com/'+v;}},
+    {id:'p-snapchat',  icon:'SC', label:'سناب شات',           val:p.snapchat||'',  ph:'اسم المستخدم',            link:function(v){return 'https://snapchat.com/add/'+v;}},
+    {id:'p-tiktok',    icon:'TT', label:'تيك توك',             val:p.tiktok||'',    ph:'اسم المستخدم',            link:function(v){return 'https://tiktok.com/@'+v;}},
+    {id:'p-youtube',   icon:'YT', label:'يوتيوب',             val:p.youtube||'',   ph:'https://youtube.com/...', link:function(v){return v;}},
   ];
   var socHtml='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">روابط التواصل</div>'
     +'<div style="font-size:11px;color:var(--muted);margin-bottom:14px">اختيارية — تظهر في بطاقتك الشخصية</div>';
   socFields.forEach(function(f){
     socHtml+='<div style="margin-bottom:10px">';
-    socHtml+='<label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">'+f.icon+' '+f.label+'</label>';
+    socHtml+='<label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">'+f.label+'</label>';
     socHtml+='<div style="display:flex;align-items:center;gap:6px">';
     socHtml+='<input id="'+f.id+'" type="text" placeholder="'+f.ph+'" value="'+f.val+'" '
       +'style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg);direction:ltr;text-align:left">';
