@@ -988,7 +988,12 @@ app.put('/api/client/profile', auth, async (req, res) => {
       }
     }
     const allowed = {
-      name: 'name', phone: 'phone', email: 'email', city: 'city', bio: 'bio', profile_image: 'profile_image'
+      name: 'name', phone: 'phone', email: 'email', city: 'city', bio: 'bio',
+      profile_image: 'profile_image', business_name: 'business_name',
+      experience_years: 'experience_years', specialties: 'specialties',
+      notify_categories: 'notify_categories', portfolio_images: 'portfolio_images',
+      website: 'website', instagram: 'instagram', twitter: 'twitter',
+      snapchat: 'snapchat', tiktok: 'tiktok', youtube: 'youtube',
     };
     // ✅ Upload images to Cloudinary before saving
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) {
