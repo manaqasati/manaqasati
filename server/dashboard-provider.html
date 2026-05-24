@@ -433,6 +433,30 @@ var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
 _myId=_me.id||null;
 
+// ✅ فتح طلب مباشرة بعد تسجيل الدخول من صفحة مشروع
+(function(){
+  var reqId=null;
+  try{ reqId=localStorage.getItem('pending_open_request'); }catch(e){}
+  if(!reqId) return;
+  try{ localStorage.removeItem('pending_open_request'); }catch(e){}
+  setTimeout(function(){
+    // روّح لصفحة العروض وابحث عن الطلب
+    if(typeof gotoPage==='function'){
+      gotoPage('browse');
+      setTimeout(function(){
+        var cards=document.querySelectorAll('[data-rid]');
+        for(var i=0;i<cards.length;i++){
+          if(cards[i].getAttribute('data-rid')===String(reqId)){
+            cards[i].scrollIntoView({behavior:'smooth',block:'center'});
+            cards[i].click();
+            break;
+          }
+        }
+      },1500);
+    }
+  },1800);
+})();
+
 // ═══ PUSH NOTIFICATION HELPERS ═══
 function urlBase64ToUint8Array(base64String){
   var padding='='.repeat((4-base64String.length%4)%4);
