@@ -1492,23 +1492,7 @@ async function loadProfile(){
   hdr.innerHTML=hdrHtml;
   pg.appendChild(hdr);
 
-  // 🔔 PUSH NOTIFICATIONS TOGGLE CARD
-  var pushCard=document.createElement('div');
-  pushCard.className='push-toggle-card';
-  pushCard.innerHTML=
-    '<div class="push-toggle-icon">'+
-      '<svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>'+
-    '</div>'+
-    '<div class="push-toggle-info">'+
-      '<div class="push-toggle-title">'+
-        'الإشعارات الفورية '+
-        '<span class="push-status-badge inactive" id="pushStatusBadge">معطّلة</span>'+
-      '</div>'+
-      '<div class="push-toggle-sub">استلم إشعارات بمشاريع جديدة في تخصصك حتى عند إغلاق المتصفح</div>'+
-    '</div>'+
-    '<button class="push-toggle-switch" id="pushToggleSwitch" onclick="togglePush()" type="button"></button>';
-  pg.appendChild(pushCard);
-  setTimeout(updatePushToggleUI,100);
+  // Push card removed from profile page
 
   // ✅ زر معاينة البطاقة الشخصية
   var previewCard=document.createElement('div');
