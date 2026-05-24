@@ -370,7 +370,7 @@ function render(p, rat){
     for(var k=0;k<revs.length;k++){
       var rv=revs[k];
       var ra=rv.reviewer_image?'<img src="'+rv.reviewer_image+'" alt="">':(rv.reviewer_name||'م').charAt(0);
-      var rd=rv.created_at?new Date(rv.created_at).toLocaleDateString('ar-SA'):'';
+      var rd=rv.created_at?new Date(rv.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'' ;
       var rs='';
       for(var ss=1;ss<=5;ss++) rs+='<span style="color:'+(ss<=rv.rating?'#C9920A':'#E6E2D9')+'">&#9733;</span>';
       html+='<div class="rev"><div class="rev-head"><div class="rev-av">'+ra+'</div><div><div class="rev-name">'+esc(rv.reviewer_name||'عميل')+'</div><div class="rev-date">'+rd+(rv.request_title?' · '+esc(rv.request_title):'')+'</div></div><div class="rev-stars">'+rs+'</div></div>'+(rv.comment?'<p class="rev-comment">'+esc(rv.comment)+'</p>':'')+'</div>';
