@@ -778,12 +778,12 @@ function card(p){
     +'<div class="pc-title">'+p.title+'</div>'
     +'<div class="pc-chips">'
     +(p.city?'<span class="chip chip-g">'+locIc()+p.city+'</span>':'')
-    +(p.budget_max?'<span class="chip chip-y">'+Number(p.budget_max).toLocaleString('en-US')+' ر.س</span>':'')
+    +(p.budget_max?'<span class="chip chip-y">'+Number(p.budget_max).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',')+' ر.س</span>':'')
     +'<span class="chip chip-d">'+p.bid_count||0+' عرض</span>'
     +(img&&p.category?'<span class="chip chip-b">'+p.category+'</span>':'')
     +'</div>'
     +'<div class="pc-footer">'
-    +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
+    +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
     +(isOpen?'<a href="'+projUrl+'" onclick="event.stopPropagation()" class="btn-new" style="padding:8px 16px;font-size:12px;text-decoration:none">عرض المشروع</a>':'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
     +'</div></div></div>';
 }
