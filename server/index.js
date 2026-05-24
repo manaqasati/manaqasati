@@ -110,11 +110,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
       SELECT r.id, r.title, r.description, r.category, r.city,
         r.budget_max as budget, r.budget_min,
         r.deadline, r.status, r.created_at,
-        COALESCE(
-          (SELECT json_agg(img) FROM jsonb_array_elements_text(r.images::jsonb) img
-           WHERE img NOT LIKE 'data:%'),
-          '[]'::json
-        ) as images,
+        '[]'::json as images,
         json_build_object(
           'id', u.id, 'name', u.name, 'city', u.city,
           'phone', u.phone
