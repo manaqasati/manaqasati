@@ -1146,9 +1146,8 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       specialties: 'specialties', notify_categories: 'notify_categories',
       experience_years: 'experience_years', portfolio_images: 'portfolio_images',
       profile_image: 'profile_image', business_name: 'business_name',
-      social_whatsapp: 'social_whatsapp', social_snap: 'social_snap',
-      social_tiktok: 'social_tiktok', social_instagram: 'social_instagram',
-      social_twitter: 'social_twitter'
+      website: 'website', instagram: 'instagram', twitter: 'twitter',
+      snapchat: 'snapchat', tiktok: 'tiktok', youtube: 'youtube',
     };
     // ✅ Upload images to Cloudinary before saving
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) {
@@ -1196,7 +1195,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     }
     if (!sets.length) {
       const cur = await pool.query(
-        `SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter FROM users WHERE id=$1`,
+        `SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,instagram,twitter,snapchat,tiktok,youtube FROM users WHERE id=$1`,
         [req.user.id]
       );
       return res.json(cur.rows[0] || {});
