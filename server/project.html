@@ -188,7 +188,7 @@ function fmtMoney(v){
 }
 function fmtDate(d){
   if(!d) return '';
-  return new Date(d).toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+  var dt=new Date(d); var months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']; return dt.getDate()+' '+months[dt.getMonth()]+' '+dt.getFullYear();
 }
 function ago(d){
   if(!d) return '';
