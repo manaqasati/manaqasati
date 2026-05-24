@@ -61,9 +61,10 @@ app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 
 // ✅ بطاقة المزود — مع Server-Side Rendering للـ SEO
-app.get('/pro/*', async (req, res) => {
+app.get(/^\/pro\/(.+)$/, async (req, res) => {
   try {
-    const slug = decodeURIComponent(req.params[0] || '');
+    const raw = req.path.replace(/^\/pro\//, '');
+    const slug = decodeURIComponent(raw);
     const match = slug.match(/(\d+)$/);
     if (!match) return res.sendFile(__dirname + '/pro.html');
     const id = parseInt(match[1]);
