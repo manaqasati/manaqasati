@@ -212,6 +212,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <script>
+function fmtN(n){ return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0'; }
+
 var API = 'https://manaqasati-production.up.railway.app';
 
 function getId(){
