@@ -1513,7 +1513,7 @@ async function loadProfile(){
   // ✅ زر معاينة البطاقة الشخصية
   var previewCard=document.createElement('div');
   previewCard.style.cssText='background:linear-gradient(135deg,rgba(201,146,10,.08),rgba(201,146,10,.03));border:1.5px solid rgba(201,146,10,.2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px';
-  var mySlug=encodeURIComponent((p.name||'مزود').replace(/\s+/g,'-'))+'-'+(_me.id||'');
+  var mySlug=(_me.id||'');
   previewCard.innerHTML=
     '<div style="flex:1">'
     +'<div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div>'
@@ -1653,6 +1653,36 @@ async function loadProfile(){
     '</button>';
   pg.appendChild(dangerZone);
 
+  // ── روابط التواصل الاختيارية ──────────────────────────────
+  var socialCard=document.createElement('div');
+  socialCard.className='card';
+  socialCard.style.cssText='margin-bottom:14px';
+  var socFields=[
+    {id:'p-website',  label:'🌐 الموقع الإلكتروني', val:p.website||'',  ph:'https://example.com',        pre:''},
+    {id:'p-instagram',label:'📸 انستقرام',           val:p.instagram||'',ph:'اسم المستخدم',              pre:'instagram.com/'},
+    {id:'p-twitter',  label:'🐦 تويتر / X',          val:p.twitter||'',  ph:'اسم المستخدم',              pre:'x.com/'},
+    {id:'p-snapchat', label:'👻 سناب شات',            val:p.snapchat||'', ph:'اسم المستخدم',              pre:'snapchat.com/add/'},
+    {id:'p-tiktok',   label:'🎵 تيك توك',             val:p.tiktok||'',   ph:'اسم المستخدم',              pre:'tiktok.com/@'},
+    {id:'p-youtube',  label:'▶️ يوتيوب',              val:p.youtube||'',  ph:'https://youtube.com/@...',  pre:''},
+  ];
+  var socHtml='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">روابط التواصل</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:14px">اختيارية — تظهر في بطاقتك الشخصية</div>';
+  socFields.forEach(function(f){
+    socHtml+='<div style="margin-bottom:12px">';
+    socHtml+='<label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px">'+f.label+'</label>';
+    if(f.pre){
+      socHtml+='<div style="display:flex;align-items:center;gap:6px">';
+      socHtml+='<span style="font-size:11px;color:var(--hint);white-space:nowrap">'+f.pre+'</span>';
+      socHtml+='<input id="'+f.id+'" type="text" placeholder="'+f.ph+'" value="'+f.val+'" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg);direction:ltr;text-align:left">';
+      socHtml+='</div>';
+    }else{
+      socHtml+='<input id="'+f.id+'" type="url" placeholder="'+f.ph+'" value="'+f.val+'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg);direction:ltr;text-align:left">';
+    }
+    socHtml+='</div>';
+  });
+  socialCard.innerHTML=socHtml;
+  pg.appendChild(socialCard);
+
   var saveWrap=document.createElement('div');
   saveWrap.style.cssText='padding:14px 0 20px';
   saveWrap.innerHTML='<button id="save-btn" onclick="_saveProfile()" style="width:100%;padding:14px;background:var(--p3);border:none;color:#fff;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">حفظ جميع التغييرات</button>';
@@ -1695,7 +1725,7 @@ async function togglePush(){
       setTimeout(function(){alert('🎉 تم تفعيل الإشعارات بنجاح!');},200);
     }
   }
-  await updatePushToggleUI();
+  // push toggle removed
   sw.disabled=false;
 }
 
