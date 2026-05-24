@@ -938,8 +938,9 @@ async function loadBrowse(){
   }catch(e){if(!cached){_allProjs=[];_renderBrowse();}}
 }
 function _renderBrowse(){
+  try{
   var pg=_el('page-browse');if(!pg)return;
-  var open=_allProjs.filter(function(p){return p.status==='open';});
+  var open=(_allProjs||[]).filter(function(p){return p.status==='open';});
 
   var nb=_el('nb-open');
   if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
@@ -964,6 +965,7 @@ function _renderBrowse(){
   CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;citSel.appendChild(o);});
 
   _lb.done();
+  }catch(e){ console.error('_renderBrowse error:',e); _lb.done(); }
 }
 function _filterBrowse(){
   var q=(_el('bQ')||{value:''}).value.toLowerCase();
