@@ -1626,10 +1626,10 @@ async function loadProfile(){
   socialCard.style.cssText='margin-bottom:14px';
   var socFields=[
     {id:'p-website',   icon:'W', label:'الموقع الإلكتروني', val:p.website||'',   ph:'https://example.com',     link:function(v){return v;}},
-    {id:'p-instagram', icon:'IN', label:'انستقرام',           val:p.instagram||'', ph:'اسم المستخدم',            link:function(v){return 'https://instagram.com/'+v;}},
+    {id:'p-instagram', icon:'IN', label:'انستقرام',           val:p.instagram||'', ph:'https://instagram.com/username'},
     {id:'p-twitter',   icon:'X', label:'تويتر / X',          val:p.twitter||'',   ph:'اسم المستخدم',            link:function(v){return 'https://x.com/'+v;}},
-    {id:'p-snapchat',  icon:'SC', label:'سناب شات',           val:p.snapchat||'',  ph:'اسم المستخدم',            link:function(v){return 'https://snapchat.com/add/'+v;}},
-    {id:'p-tiktok',    icon:'TT', label:'تيك توك',             val:p.tiktok||'',    ph:'اسم المستخدم',            link:function(v){return 'https://tiktok.com/@'+v;}},
+    {id:'p-snapchat',  icon:'SC', label:'سناب شات',           val:p.snapchat||'',  ph:'https://snapchat.com/add/username'},
+    {id:'p-tiktok',    icon:'TT', label:'تيك توك',             val:p.tiktok||'',    ph:'https://tiktok.com/@username'},
     {id:'p-youtube',   icon:'YT', label:'يوتيوب',             val:p.youtube||'',   ph:'https://youtube.com/...', link:function(v){return v;}},
   ];
   var socHtml='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">روابط التواصل</div>'
@@ -1649,15 +1649,13 @@ async function loadProfile(){
   pg.insertBefore(socialCard, dangerZone);
 
   // Social preview buttons events
-  var prefixMap = {instagram:'https://instagram.com/',twitter:'https://x.com/',snapchat:'https://snapchat.com/add/',tiktok:'https://tiktok.com/@'};
   socialCard.querySelectorAll('._soc-prev').forEach(function(btn){
     btn.addEventListener('click', function(){
       var fid = btn.getAttribute('data-id');
-      var key = fid.replace('p-','');
       var val = (document.getElementById(fid)||{}).value||'';
-      if(!val){ alert('أدخل الرابط أولاً'); return; }
-      var url = (key==='website'||key==='youtube') ? val : (prefixMap[key]||'')+val;
-      if(url) window.open(url,'_blank');
+      if(!val){ showToast('أدخل الرابط أولاً','error'); return; }
+      var url = val.startsWith('http') ? val : 'https://'+val;
+      window.open(url,'_blank');
     });
   });
 
@@ -1750,7 +1748,13 @@ async function _saveProfile(){
     bio:(_el('p-bio')||{}).value||null,
     experience_years:parseInt((_el('p-exp')||{}).value)||null,
     specialties:specs,
-    notify_categories:specs
+    notify_categories:specs,
+    website:  (_el('p-website')  ||{}).value||null,
+    instagram:(_el('p-instagram')||{}).value||null,
+    twitter:  (_el('p-twitter')  ||{}).value||null,
+    snapchat: (_el('p-snapchat') ||{}).value||null,
+    tiktok:   (_el('p-tiktok')   ||{}).value||null,
+    youtube:  (_el('p-youtube')  ||{}).value||null,
   };
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
