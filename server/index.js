@@ -60,6 +60,87 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 
+app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
+
+// ✅ صفحة المشروع العامة مع SSR
+app.get(/^\/project\/(.+)$/, async (req, res) => {
+  try {
+    const raw = req.path.replace(/^\/project\//, '');
+    const slug = decodeURIComponent(raw);
+    const match = slug.match(/(\d+)$/);
+    if (!match) return res.sendFile(__dirname + '/project.html');
+    const id = parseInt(match[1]);
+
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.description, r.category, r.city, r.budget, r.deadline, r.status, r.created_at,
+        u.name as client_name, u.city as client_city,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count
+      FROM requests r
+      JOIN users u ON u.id=r.client_id
+      WHERE r.id=$1
+    `, [id]);
+
+    if (!r.rows.length) return res.sendFile(__dirname + '/project.html');
+    const p = r.rows[0];
+    const fs = require('fs');
+    let html = fs.readFileSync(__dirname + '/project.html', 'utf8');
+
+    const pageUrl = SITE_URL + '/project/' + raw;
+    const pgT = p.title + (p.category ? ' — ' + p.category : '') + (p.city ? ' في ' + p.city : '') + ' | مناقصة';
+    const pgD = p.title + ' في ' + (p.city||'السعودية') + (p.category ? ' — ' + p.category : '') + '. قدّم عرضك على منصة مناقصة.';
+
+    html = html
+      .replace('<title>مشروع — مناقصة</title>', '<title>' + pgT + '</title>')
+      .replace('<meta name="description" content="مشروع على منصة مناقصة السعودية">', '<meta name="description" content="' + pgD + '">')
+      .replace('</head>', '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><link rel="canonical" href="' + pageUrl + '"></head>');
+
+    res.send(html);
+  } catch(e) {
+    console.error('/project SSR:', e.message);
+    res.sendFile(__dirname + '/project.html');
+  }
+});
+
+// ✅ API عام — بيانات المشروع بدون auth
+app.get('/api/requests/public/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.description, r.category, r.city, r.budget, r.deadline,
+        r.status, r.created_at, r.images,
+        json_build_object(
+          'id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone
+        ) as client
+      FROM requests r
+      JOIN users u ON u.id=r.client_id
+      WHERE r.id=$1
+    `, [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+// ✅ API عام — العروض مع أول 5 كلمات فقط
+app.get('/api/bids/public/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      SELECT b.id, b.price, b.proposal, b.created_at,
+        u.name as provider_name,
+        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
+          THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE 'has_image' END
+          ELSE NULL END as provider_image,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
+      FROM bids b
+      JOIN users u ON u.id=b.provider_id
+      WHERE b.request_id=$1
+      ORDER BY b.created_at ASC
+    `, [id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json([]); }
+});
+
 // ✅ بطاقة المزود — مع Server-Side Rendering للـ SEO
 app.get(/^\/pro\/(.+)$/, async (req, res) => {
   try {
