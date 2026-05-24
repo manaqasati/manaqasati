@@ -72,7 +72,8 @@ app.get(/^\/project\/(.+)$/, async (req, res) => {
     const id = parseInt(match[1]);
 
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city, r.budget, r.deadline, r.status, r.created_at,
+      SELECT r.id, r.title, r.description, r.category, r.city,
+        r.budget_max as budget, r.deadline, r.status, r.created_at,
         u.name as client_name, u.city as client_city,
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count
       FROM requests r
@@ -106,8 +107,9 @@ app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city, r.budget, r.deadline,
-        r.status, r.created_at, r.images,
+      SELECT r.id, r.title, r.description, r.category, r.city,
+        r.budget_max as budget, r.budget_min,
+        r.deadline, r.status, r.created_at, r.images,
         json_build_object(
           'id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone
         ) as client
