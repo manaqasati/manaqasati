@@ -984,7 +984,7 @@ function loadProviders(){
     grid.querySelectorAll('._pvc').forEach(function(el){
       var pid=el.getAttribute('data-pid');
       var pname=(el.getAttribute('data-pname')||'مزود').replace(/\s+/g,'-');
-      el.addEventListener('click',function(){ window.open('/pro/'+encodeURIComponent(pname)+'-'+pid,'_blank'); });
+      el.addEventListener('click',function(){ location.href='/pro/'+encodeURIComponent(pname)+'-'+pid; });
     });
   };
   xhr.onerror=xhr.ontimeout=function(){ grid.innerHTML='<p style="text-align:center;color:#8896AA;padding:30px;grid-column:1/-1">تعذر تحميل المزودين</p>'; };
