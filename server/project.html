@@ -326,14 +326,21 @@ function render(req, bids){
     el.addEventListener('click',function(){ oImg(el.getAttribute('data-imgurl')); });
   });
 
-  // Msg button
+  // Msg button — يفتح محادثة مباشرة مع العميل بعد تسجيل الدخول
   var rid=getId();
   var mb=document.getElementById('msgbtn');
   if(mb) mb.addEventListener('click',function(){
     var u=null; try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
-    if(u&&t){ location.href='/dashboard-client.html'; }
-    else { location.href='/auth.html?redirect=msg_req&request_id='+rid; }
+    if(u&&t){
+      // مسجل — خزّن الطلب وافتح الداشبورد
+      try{ localStorage.setItem('pending_open_request', rid); }catch(e){}
+      location.href='/dashboard-provider.html';
+    } else {
+      // غير مسجل — روح لتسجيل الدخول مع redirect
+      try{ localStorage.setItem('pending_open_request', rid); }catch(e){}
+      location.href='/auth.html?redirect=req&request_id='+rid;
+    }
   });
 
   // Share button
