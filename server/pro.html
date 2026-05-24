@@ -401,6 +401,38 @@ function render(p, rat){
     else { location.href='/auth.html?redirect=msg&provider_id='+pid; }
   });
 
+  // ── Social Links ────────────────────────────────────────────
+  var socLinks=[
+    {key:'website',  label:'الموقع الإلكتروني', bg:'#1B3A6B'},
+    {key:'instagram',label:'انستقرام',            bg:'#E1306C'},
+    {key:'twitter',  label:'تويتر / X',           bg:'#000'},
+    {key:'snapchat', label:'سناب شات',            bg:'#FFCC00'},
+    {key:'tiktok',   label:'تيك توك',              bg:'#000'},
+    {key:'youtube',  label:'يوتيوب',               bg:'#FF0000'},
+  ];
+  var hasSoc=socLinks.some(function(s){return !!p[s.key];});
+  if(hasSoc){
+    var sDiv=document.createElement('div');
+    sDiv.className='sec';
+    var sHtml='<div class="sh"><div class="si"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div><h2 class="sl2">روابط التواصل</h2></div>';
+    sHtml+='<div style="display:flex;flex-direction:column;gap:8px">';
+    socLinks.forEach(function(s){
+      if(!p[s.key]) return;
+      var rawUrl=String(p[s.key]);
+      var url3=rawUrl.startsWith('http')?rawUrl:'https://'+rawUrl;
+      var disp=url3.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'');
+      sHtml+='<a href="'+url3+'" target="_blank" rel="noopener" '
+        +'style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)">'
+        +'<span style="width:32px;height:32px;border-radius:8px;background:'+s.bg+';flex-shrink:0"></span>'
+        +'<span style="font-size:13px;font-weight:700;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+disp+'</span>'
+        +'<svg width="12" height="12" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24" style="margin-right:auto;flex-shrink:0"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+        +'</a>';
+    });
+    sHtml+='</div>';
+    sDiv.innerHTML=sHtml;
+    ct.appendChild(sDiv);
+  }
+
   // Share button
   var nm2=nm, url2=url;
   var sb=document.getElementById('sharebtn');
