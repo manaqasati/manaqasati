@@ -954,7 +954,7 @@ function _renderBrowse(){
   html+='<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option></select>';
   html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
   html+='</div>';
-  html+='<div id="bList">'+_renderBrowse(open)+'</div>';
+  html+='<div id="bList">'+_renderBrowseList(open)+'</div>';
   html+='</div>';
   pg.innerHTML=html;
 
@@ -975,9 +975,9 @@ function _filterBrowse(){
       &&(!cat||p.category===cat)
       &&(!cit||p.city===cit);
   });
-  var el=_el('bList');if(el)el.innerHTML=_renderBrowse(f);
+  var el=_el('bList');if(el)el.innerHTML=_renderBrowseList(f);
 }
-function _renderBrowse(list){
+function _renderBrowseList(list){
   if(!list.length)return _empty('لا يوجد مشاريع متاحة','');
   return list.map(function(r){
     var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
