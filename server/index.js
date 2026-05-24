@@ -1401,7 +1401,7 @@ app.get('/api/requests', async (req, res) => {
     const { category, city } = req.query;
     let query = `
       SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
-      r.budget_max,r.deadline,r.image_url,r.images,r.main_image_index,r.status,
+      r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
@@ -1418,7 +1418,9 @@ app.get('/api/requests', async (req, res) => {
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT r.*, u.name as client_name, p.name as provider_name,
+      SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
+      r.budget_max,r.deadline,r.image_url,r.status,r.created_at,r.assigned_provider_id,
+      u.name as client_name, p.name as provider_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
       FROM requests r
       JOIN users u ON r.client_id=u.id
