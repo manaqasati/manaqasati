@@ -109,12 +109,18 @@ app.get('/api/requests/public/:id', async (req, res) => {
     const r = await pool.query(`
       SELECT r.id, r.title, r.description, r.category, r.city,
         r.budget_max as budget, r.budget_min,
-        r.deadline, r.status, r.created_at, r.images,
+        r.deadline, r.status, r.created_at,
+        COALESCE(
+          (SELECT json_agg(img) FROM jsonb_array_elements_text(r.images::jsonb) img
+           WHERE img NOT LIKE 'data:%'),
+          '[]'::json
+        ) as images,
         json_build_object(
-          'id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone
+          'id', u.id, 'name', u.name, 'city', u.city,
+          'phone', u.phone
         ) as client
       FROM requests r
-      JOIN users u ON u.id=r.client_id
+      LEFT JOIN users u ON u.id=r.client_id
       WHERE r.id=$1
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -893,6 +899,22 @@ app.put('/api/profile', auth, async (req, res) => {
       specialties: 'specialties', notify_categories: 'notify_categories',
       experience_years: 'experience_years', profile_image: 'profile_image'
     };
+    // ✅ Upload images to Cloudinary before saving
+    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) {
+      req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    }
+    if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
+      const uploaded = [];
+      for (const img of req.body.portfolio_images) {
+        if (img && img.startsWith('data:')) {
+          uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio'));
+        } else if (img) {
+          uploaded.push(img);
+        }
+      }
+      req.body.portfolio_images = uploaded;
+    }
+
     const sets = [];
     const params = [];
     let idx = 1;
@@ -966,6 +988,22 @@ app.put('/api/client/profile', auth, async (req, res) => {
     const allowed = {
       name: 'name', phone: 'phone', email: 'email', city: 'city', bio: 'bio', profile_image: 'profile_image'
     };
+    // ✅ Upload images to Cloudinary before saving
+    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) {
+      req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    }
+    if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
+      const uploaded = [];
+      for (const img of req.body.portfolio_images) {
+        if (img && img.startsWith('data:')) {
+          uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio'));
+        } else if (img) {
+          uploaded.push(img);
+        }
+      }
+      req.body.portfolio_images = uploaded;
+    }
+
     const sets = [];
     const params = [];
     let idx = 1;
@@ -1099,6 +1137,22 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       social_tiktok: 'social_tiktok', social_instagram: 'social_instagram',
       social_twitter: 'social_twitter'
     };
+    // ✅ Upload images to Cloudinary before saving
+    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) {
+      req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    }
+    if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
+      const uploaded = [];
+      for (const img of req.body.portfolio_images) {
+        if (img && img.startsWith('data:')) {
+          uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio'));
+        } else if (img) {
+          uploaded.push(img);
+        }
+      }
+      req.body.portfolio_images = uploaded;
+    }
+
     const sets = [];
     const params = [];
     let idx = 1;
@@ -2927,7 +2981,31 @@ Sitemap: ${SITE_URL}/sitemap.xml`);
 // WEBSOCKET SERVER
 // ═══════════════════════════════════════════════════════════════
 const http = require('http');
-const WebSocket = require('ws');
+const WebSocket  = require('ws');
+const cloudinary = require('cloudinary').v2;
+
+// ✅ Cloudinary Setup
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ✅ Upload base64 image to Cloudinary
+async function uploadToCloud(base64Data, folder='manaqasa') {
+  try {
+    if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
+    const result = await cloudinary.uploader.upload(base64Data, {
+      folder,
+      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+      resource_type: 'image',
+    });
+    return result.secure_url;
+  } catch(e) {
+    console.error('Cloudinary upload error:', e.message);
+    return base64Data; // fallback to base64
+  }
+}
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
