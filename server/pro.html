@@ -403,31 +403,36 @@ function render(p, rat){
 
   // ── Social Links ────────────────────────────────────────────
   var socLinks=[
-    {key:'website',  label:'الموقع الإلكتروني', bg:'#1B3A6B'},
-    {key:'instagram',label:'انستقرام',            bg:'#E1306C'},
-    {key:'twitter',  label:'تويتر / X',           bg:'#000'},
-    {key:'snapchat', label:'سناب شات',            bg:'#FFCC00'},
-    {key:'tiktok',   label:'تيك توك',              bg:'#000'},
-    {key:'youtube',  label:'يوتيوب',               bg:'#FF0000'},
+    {key:'website',   label:'الموقع الإلكتروني', grad:'linear-gradient(135deg,#1B3A6B,#2d5a9e)', ic:'<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>'},
+    {key:'instagram',  label:'انستقرام',          grad:'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', ic:'<svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>'},
+    {key:'twitter',    label:'تويتر / X',         grad:'linear-gradient(135deg,#111,#333)', ic:'<svg width="16" height="16" fill="#fff" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'},
+    {key:'snapchat',   label:'سناب شات',          grad:'linear-gradient(135deg,#FFFC00,#FFD000)', ic:'<svg width="18" height="18" fill="#000" viewBox="0 0 24 24"><path d="M12.166 3C8.703 3 5.928 5.842 5.928 9.39c0 .418.04.838.117 1.249-.306.19-.65.293-1.002.301-.187 0-.374-.03-.553-.089l-.09-.03c-.046-.016-.094-.024-.142-.024-.33 0-.614.276-.614.617 0 .277.178.52.44.6.059.018.725.201 1.562.38-.38 1.001-1.093 1.763-1.145 1.816-.095.1-.15.235-.15.376 0 .398.372.63.742.63.09 0 .182-.018.266-.054.33-.138.82-.303 1.45-.374.156.403.41 1.097 1.098 1.097.214 0 .454-.067.712-.199.512-.261 1.032-.393 1.545-.393.514 0 1.034.132 1.546.393.258.132.497.199.712.199.688 0 .942-.694 1.098-1.097.63.07 1.12.236 1.45.374.084.036.175.054.265.054.37 0 .742-.232.742-.63 0-.14-.055-.276-.15-.376-.052-.053-.765-.815-1.145-1.815.837-.18 1.503-.363 1.562-.381.262-.08.44-.323.44-.6 0-.34-.284-.617-.614-.617-.048 0-.096.008-.143.024l-.09.03c-.178.059-.366.089-.552.089-.352-.008-.696-.11-1.002-.3.077-.412.117-.832.117-1.25C18.072 5.842 15.297 3 12.166 3"/></svg>'},
+    {key:'tiktok',     label:'تيك توك',            grad:'linear-gradient(135deg,#010101,#1a1a2e)', ic:'<svg width="16" height="16" fill="#fff" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>'},
+    {key:'youtube',    label:'يوتيوب',             grad:'linear-gradient(135deg,#FF0000,#cc0000)', ic:'<svg width="18" height="18" fill="#fff" viewBox="0 0 24 24"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 00.5 6.19 31.5 31.5 0 000 12a31.5 31.5 0 00.5 5.81 3.02 3.02 0 002.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 002.12-2.14A31.5 31.5 0 0024 12a31.5 31.5 0 00-.5-5.81zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/></svg>'},
   ];
+
   var hasSoc=socLinks.some(function(s){return !!p[s.key];});
   if(hasSoc){
     var sDiv=document.createElement('div');
     sDiv.className='sec';
     var sHtml='<div class="sh"><div class="si"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div><h2 class="sl2">روابط التواصل</h2></div>';
-    sHtml+='<div style="display:flex;flex-direction:column;gap:8px">';
+    sHtml+='<div style="display:flex;flex-direction:column;gap:10px">';
+
     socLinks.forEach(function(s){
       if(!p[s.key]) return;
       var rawUrl=String(p[s.key]);
       var url3=rawUrl.startsWith('http')?rawUrl:'https://'+rawUrl;
-      var disp=url3.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'');
       sHtml+='<a href="'+url3+'" target="_blank" rel="noopener" '
-        +'style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)">'
-        +'<span style="width:32px;height:32px;border-radius:8px;background:'+s.bg+';flex-shrink:0"></span>'
-        +'<span style="font-size:13px;font-weight:700;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+disp+'</span>'
-        +'<svg width="12" height="12" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24" style="margin-right:auto;flex-shrink:0"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+        +'style="display:flex;align-items:center;gap:14px;padding:14px 16px;'
+        +'background:'+s.grad+';border-radius:14px;text-decoration:none;'
+        +'box-shadow:0 2px 8px rgba(0,0,0,.15);transition:transform .15s;cursor:pointer">'
+        +'<span style="width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;'
+        +'display:flex;align-items:center;justify-content:center;flex-shrink:0">'+s.ic+'</span>'
+        +'<span style="font-size:15px;font-weight:800;color:#fff;flex:1">'+s.label+'</span>'
+        +'<svg width="16" height="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>'
         +'</a>';
     });
+
     sHtml+='</div>';
     sDiv.innerHTML=sHtml;
     document.getElementById('wrap').appendChild(sDiv);
