@@ -22,9 +22,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .cover svg{position:absolute;inset:0;width:100%;height:100%}
 .cover-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 /* PROFILE TOP */
-.profile-sec{max-width:680px;margin:0 auto;padding:0 16px}
-.profile-top{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-50px;margin-bottom:14px;gap:12px;flex-wrap:wrap}
-.proj-icon{width:100px;height:100px;border-radius:16px;border:4px solid #fff;background:linear-gradient(135deg,#0D1829,#16213E);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:var(--shadow-md);flex-shrink:0}
+.profile-sec{max-width:680px;margin:0 auto;padding:0 16px;position:relative;z-index:2}
+.profile-top{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-50px;margin-bottom:14px;gap:12px;flex-wrap:wrap;position:relative;z-index:2}
+.proj-icon{width:100px;height:100px;border-radius:16px;border:4px solid #fff;background:linear-gradient(135deg,#0D1829,#16213E);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:var(--shadow-md);flex-shrink:0;position:relative;z-index:3}
 .proj-ic-emoji{font-size:30px}
 .proj-ic-lbl{font-size:9px;font-weight:800;color:rgba(255,255,255,.45);text-align:center;padding:0 4px;line-height:1.3}
 .proj-actions{display:flex;gap:8px;padding-bottom:8px;flex-wrap:wrap}
@@ -93,7 +93,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </nav>
 
 <div class="cover">
-  <svg viewBox="0 0 800 180" preserveAspectRatio="none" opacity=".1">
+  <svg viewBox="0 0 800 180" preserveAspectRatio="none" opacity=".1" style="position:absolute;inset:0;z-index:0">
     <line x1="50" y1="40" x2="200" y2="90" stroke="#fff" stroke-width="1.5"/>
     <line x1="200" y1="90" x2="380" y2="45" stroke="#fff" stroke-width="1.5"/>
     <line x1="380" y1="45" x2="580" y2="80" stroke="#fff" stroke-width="1"/>
@@ -265,8 +265,15 @@ function render(req, bids){
   if(bb)bb.addEventListener('click',function(){
     var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
-    if(u&&t&&u.role==='provider'){try{localStorage.setItem('pending_bid_request',rid);}catch(e){}location.href='/dashboard-provider.html';}
-    else{location.href='/auth.html?redirect=bid&request_id='+rid;}
+    if(u&&t&&u.role==='provider'){
+      // مسجل كمزود — افتح نموذج العرض مباشرة
+      try{localStorage.setItem('auto_open_bid',rid);}catch(e){}
+      location.href='/dashboard-provider.html#bid='+rid;
+    } else if(u&&t&&u.role==='client'){
+      location.href='/dashboard-client.html';
+    } else {
+      location.href='/auth.html?redirect=/dashboard-provider.html&request_id='+rid+'&action=bid';
+    }
   });
   if(mb)mb.addEventListener('click',doMsg);
   if(mb2)mb2.addEventListener('click',doMsg);
