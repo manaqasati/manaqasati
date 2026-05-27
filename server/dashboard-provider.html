@@ -435,38 +435,34 @@ var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
 _myId=_me.id||null;
 
-// ✅ Auto-open bid or chat
+// ✅ Auto-open bid or chat via URL param
 (function(){
-  var bidId=localStorage.getItem('mnq_auto_bid');
-  var chatReqId=localStorage.getItem('mnq_auto_chat_req')||localStorage.getItem('open_chat_request');
+  var params=new URLSearchParams(location.search);
+  var bidId=params.get('bid')||localStorage.getItem('mnq_auto_bid');
+  var chatId=params.get('chat')||localStorage.getItem('mnq_auto_chat_req')||localStorage.getItem('open_chat_request');
+  localStorage.removeItem('mnq_auto_bid');
+  localStorage.removeItem('mnq_auto_chat_req');
+  localStorage.removeItem('open_chat_request');
+  if(params.get('bid')||params.get('chat')) history.replaceState(null,'',location.pathname);
 
   if(bidId){
-    localStorage.removeItem('mnq_auto_bid');
-    // فتح نموذج العرض بعد تحميل الصفحة
-    setTimeout(function(){ _openBidModal(bidId); },1200);
+    setTimeout(function(){ _openBidModal(bidId); },1000);
     return;
   }
-
-  if(chatReqId){
-    localStorage.removeItem('mnq_auto_chat_req');
-    localStorage.removeItem('open_chat_request');
-    // فتح المحادثات والبحث عن المحادثة
+  if(chatId){
     setTimeout(function(){
       gotoPage('messages');
-      var tries=0;
-      var interval=setInterval(function(){
+      var tries=0,interval=setInterval(function(){
         tries++;
-        var cards=document.querySelectorAll('[data-rid],[data-cid]');
-        for(var i=0;i<cards.length;i++){
-          var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
-          if(crid===String(chatReqId)){
-            clearInterval(interval);
-            cards[i].click();
-            return;
+        var found=false;
+        document.querySelectorAll('[data-rid],[data-cid]').forEach(function(c){
+          if(found) return;
+          if((c.getAttribute('data-rid')||c.getAttribute('data-cid'))===String(chatId)){
+            found=true; clearInterval(interval); c.click();
           }
-        }
-        if(tries>10) clearInterval(interval);
-      },500);
+        });
+        if(tries>12) clearInterval(interval);
+      },400);
     },1000);
   }
 })();
@@ -938,21 +934,18 @@ function openBidFormDirectly(reqId){
 }
 
 async function loadBrowse(){
-  var pg=_el('page-browse');if(!pg)return;
-  // ✅ SWR: عرض الـ Cache فوراً
-  var cached=_cacheGet('browse');
-  if(cached){
-    _allProjs=cached;
-    _renderBrowse();
-  } else {
+  var pg=_el('page-browse');
+  if(!pg) return;
+  if(!Array.isArray(_allProjs)||_allProjs.length===0){
     pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div>'+_skList(5);
   }
   try{
-    var fresh=await _api('/api/requests')||[];
+    var fresh=await _api('/api/requests');
     _allProjs=Array.isArray(fresh)?fresh:[];
-    _cacheSet('browse',_allProjs);
-    _renderBrowse();
-  }catch(e){if(!cached){_allProjs=[];_renderBrowse();}}
+  }catch(e){
+    _allProjs=[];
+  }
+  _renderBrowse();
 }
 function _renderBrowse(){
   try{
