@@ -1485,7 +1485,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         uploadedImages.push(img);
       }
     }
-    const images = uploadedImages.length ? JSON.stringify(uploadedImages) : null;
+    const images = uploadedImages.length ? uploadedImages : null;
 
     const pn = generateProjectNumber();
     const r = await pool.query(`
@@ -1494,7 +1494,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open',NOW())
       RETURNING *
     `, [req.user.id, title, description, category||null, city||null, address||null,
-        budget_max||null, deadline||null, images || null,
+        budget_max||null, deadline||null, images ? JSON.stringify(images) : null,
         attachments ? JSON.stringify(attachments) : null, pn]);
     const newReq = r.rows[0];
 
