@@ -1442,7 +1442,7 @@ app.get('/api/requests', async (req, res) => {
       r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
-      (SELECT img FROM unnest(r.images) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail
+      (SELECT img FROM unnest(COALESCE(r.images, ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
     `;
     const params = [];
@@ -1995,12 +1995,19 @@ app.post('/api/direct-message', auth, async (req, res) => {
       requestId = newReq.rows[0].id;
     }
 
-    // Send message if provided
-    if (message && message.trim()) {
+    // دائماً أرسل رسالة ترحيب تلقائية لتظهر المحادثة في القائمة
+    const msgText = (message && message.trim()) ? message.trim() : '👋 مرحباً، أود التواصل معك';
+    const receiverId = senderRole === 'client' ? providerId : clientId;
+    
+    // تحقق إذا في رسائل مسبقة
+    const existing = await pool.query(
+      'SELECT id FROM messages WHERE request_id=$1 LIMIT 1', [requestId]
+    );
+    if(!existing.rows.length || (message && message.trim())) {
       await pool.query(`
-        INSERT INTO messages (request_id, sender_id, content, created_at)
-        VALUES ($1,$2,$3,NOW())
-      `, [requestId, senderId, message.trim()]);
+        INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at)
+        VALUES ($1,$2,$3,$4,NOW())
+      `, [requestId, senderId, receiverId, msgText]);
     }
 
     res.json({ request_id: requestId, success: true });
