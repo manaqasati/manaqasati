@@ -957,7 +957,8 @@ async function loadBrowse(){
 function _renderBrowse(){
   try{
   var pg=_el('page-browse');if(!pg)return;
-  var open=(_allProjs||[]).filter(function(p){return p.status==='open';});
+  if(!Array.isArray(_allProjs)) _allProjs=[];
+  var open=_allProjs.filter(function(p){return p&&p.status==='open';});
 
   var nb=_el('nb-open');
   if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
@@ -997,7 +998,7 @@ function _filterBrowse(){
   var el=_el('bList');if(el)el.innerHTML=_renderBrowseList(f);
 }
 function _renderBrowseList(list){
-  if(!list.length)return _empty('لا يوجد مشاريع متاحة','');
+  if(!list||!list.length)return _empty('لا يوجد مشاريع متاحة حالياً. تفقد لاحقاً!','');
   return list.map(function(r){
     var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
     if(r.image_url){
@@ -1020,7 +1021,7 @@ function _renderBrowseList(list){
     h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">';
     if(r.client_name)h+='<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+_esc(r.client_name)+'</span>';
     if(r.city)h+='<span style="font-size:10px;font-weight:700;color:var(--green);background:var(--green-l);border:1px solid #BBF7D0;padding:2px 8px;border-radius:20px">'+_esc(r.city)+'</span>';
-    h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+(r.bid_count||0)+' عرض</span>';
+    h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+parseInt(r.bid_count||0)+' عرض</span>';
     h+='</div>';
     h+='<div style="display:flex;gap:7px">';
     h+='<button onclick="_openBidNudge('+r.id+','+(r.bid_count||0)+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
