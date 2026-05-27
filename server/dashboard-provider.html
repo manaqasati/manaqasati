@@ -435,28 +435,52 @@ var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
 _myId=_me.id||null;
 
-// ✅ فتح طلب مباشرة بعد تسجيل الدخول من صفحة مشروع
+// ✅ فتح محادثة أو عرض بعد تسجيل الدخول
 (function(){
-  var reqId=null;
-  try{ reqId=localStorage.getItem('pending_open_request'); }catch(e){}
-  if(!reqId) return;
-  try{ localStorage.removeItem('pending_open_request'); }catch(e){}
-  setTimeout(function(){
-    // روّح لصفحة العروض وابحث عن الطلب
-    if(typeof gotoPage==='function'){
-      gotoPage('browse');
-      setTimeout(function(){
-        var cards=document.querySelectorAll('[data-rid]');
-        for(var i=0;i<cards.length;i++){
-          if(cards[i].getAttribute('data-rid')===String(reqId)){
-            cards[i].scrollIntoView({behavior:'smooth',block:'center'});
-            cards[i].click();
-            break;
+  // فتح محادثة
+  var chatId=null;
+  try{ chatId=localStorage.getItem('open_chat_request')||localStorage.getItem('pending_open_request'); }catch(e){}
+  if(chatId){
+    try{ localStorage.removeItem('open_chat_request'); localStorage.removeItem('pending_open_request'); }catch(e){}
+    setTimeout(function(){
+      if(typeof gotoPage==='function'){
+        gotoPage('messages');
+        setTimeout(function(){
+          var cards=document.querySelectorAll('[data-rid],[data-cid]');
+          for(var i=0;i<cards.length;i++){
+            var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
+            if(crid===String(chatId)){ cards[i].scrollIntoView({behavior:'smooth',block:'center'}); cards[i].click(); break; }
           }
-        }
-      },1500);
-    }
-  },1800);
+        },1500);
+      }
+    },1200);
+    return;
+  }
+
+  // فتح نموذج تقديم عرض
+  var bidId=null;
+  try{ bidId=localStorage.getItem('pending_bid_request'); }catch(e){}
+  if(bidId){
+    try{ localStorage.removeItem('pending_bid_request'); }catch(e){}
+    setTimeout(function(){
+      if(typeof gotoPage==='function'){
+        gotoPage('browse');
+        setTimeout(function(){
+          // ابحث عن الطلب وافتح نموذج العرض
+          var cards=document.querySelectorAll('[data-rid]');
+          for(var i=0;i<cards.length;i++){
+            if(cards[i].getAttribute('data-rid')===String(bidId)){
+              cards[i].scrollIntoView({behavior:'smooth',block:'center'});
+              var bidBtn=cards[i].querySelector('.bid-btn,button');
+              if(bidBtn) bidBtn.click();
+              else cards[i].click();
+              break;
+            }
+          }
+        },2000);
+      }
+    },1200);
+  }
 })();
 
 // ═══ PUSH NOTIFICATION HELPERS ═══
