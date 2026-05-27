@@ -2017,6 +2017,26 @@ app.post('/api/direct-message', auth, async (req, res) => {
   }
 });
 
+// ✅ Search users for direct chat
+app.get('/api/users/search', auth, async (req, res) => {
+  try {
+    const q = (req.query.q||'').trim();
+    if(!q) return res.json([]);
+    const role = req.user.role === 'client' ? 'provider' : 'client';
+    const r = await pool.query(`
+      SELECT id, name, business_name, phone, city, profile_image, role
+      FROM users
+      WHERE role=$1 AND (
+        name ILIKE $2 OR
+        business_name ILIKE $2 OR
+        phone LIKE $3
+      )
+      LIMIT 10
+    `, [role, '%'+q+'%', '%'+q+'%']);
+    res.json(r.rows);
+  } catch(e) { res.json([]); }
+});
+
 // ✅ Timeline API
 app.get('/api/requests/:id/timeline', auth, async (req, res) => {
   try {
