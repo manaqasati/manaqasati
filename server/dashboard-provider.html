@@ -435,44 +435,39 @@ var _me=JSON.parse(localStorage.getItem('user')||'{}');
 if(!_token||_me.role!=='provider'){location.href='auth.html';}
 _myId=_me.id||null;
 
-// ✅ فتح محادثة أو عرض بعد تسجيل الدخول
+// ✅ Auto-open bid or chat
 (function(){
-  // ── 1. فتح محادثة مباشرة ─────────────────────────────
-  var chatId=null;
-  try{ chatId=localStorage.getItem('open_chat_request')||localStorage.getItem('pending_open_request'); }catch(e){}
-  if(chatId){
-    try{ localStorage.removeItem('open_chat_request'); localStorage.removeItem('pending_open_request'); }catch(e){}
-    setTimeout(function(){
-      gotoPage('messages');
-      setTimeout(function(){
-        var cards=document.querySelectorAll('[data-rid],[data-cid]');
-        for(var i=0;i<cards.length;i++){
-          var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
-          if(crid===String(chatId)){
-            cards[i].scrollIntoView({behavior:'smooth',block:'center'});
-            cards[i].click();
-            break;
-          }
-        }
-      },1500);
-    },1000);
+  var bidId=localStorage.getItem('mnq_auto_bid');
+  var chatReqId=localStorage.getItem('mnq_auto_chat_req')||localStorage.getItem('open_chat_request');
+
+  if(bidId){
+    localStorage.removeItem('mnq_auto_bid');
+    // فتح نموذج العرض بعد تحميل الصفحة
+    setTimeout(function(){ _openBidModal(bidId); },1200);
     return;
   }
 
-  // ── 2. فتح نموذج تقديم عرض مباشرة ───────────────────
-  var bidId=null;
-  // من localStorage أو من URL hash
-  try{ bidId=localStorage.getItem('auto_open_bid'); }catch(e){}
-  if(!bidId && location.hash.startsWith('#bid=')){
-    bidId=location.hash.replace('#bid=','');
-  }
-  if(bidId){
-    try{ localStorage.removeItem('auto_open_bid'); }catch(e){}
-    history.replaceState(null,'',location.pathname); // remove hash
+  if(chatReqId){
+    localStorage.removeItem('mnq_auto_chat_req');
+    localStorage.removeItem('open_chat_request');
+    // فتح المحادثات والبحث عن المحادثة
     setTimeout(function(){
-      // افتح نموذج العرض مباشرة
-      openBidFormDirectly(bidId);
-    },800);
+      gotoPage('messages');
+      var tries=0;
+      var interval=setInterval(function(){
+        tries++;
+        var cards=document.querySelectorAll('[data-rid],[data-cid]');
+        for(var i=0;i<cards.length;i++){
+          var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
+          if(crid===String(chatReqId)){
+            clearInterval(interval);
+            cards[i].click();
+            return;
+          }
+        }
+        if(tries>10) clearInterval(interval);
+      },500);
+    },1000);
   }
 })();
 
