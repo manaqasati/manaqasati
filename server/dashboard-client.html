@@ -1134,8 +1134,13 @@ function riCard(r,actions){
       (canEdit?'<button class="btn-sm" style="background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)" onclick="openEditReq('+r.id+',event)">تعديل</button>':'')+
       (canEdit?'<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)">حذف</button>':'')+
     '</div>':'';
+  var thumbHtml='';
+  if(r.thumbnail&&r.thumbnail.startsWith('http')){
+    thumbHtml='<div style="width:80px;flex-shrink:0;overflow:hidden"><img src="'+r.thumbnail+'" style="width:80px;height:100%;object-fit:cover;display:block"></div>';
+  }
   return '<div style="background:var(--white);border-radius:14px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden" onclick="openDetail('+r.id+',event)">'+
     '<div style="width:4px;flex-shrink:0;background:'+barColor+'"></div>'+
+    thumbHtml+
     '<div style="flex:1;padding:13px 14px">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'+
         '<div style="flex:1;min-width:0">'+
