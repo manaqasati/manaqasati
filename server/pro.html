@@ -291,27 +291,20 @@ function render(p,rat){
   if(mb)mb.addEventListener('click',function(){
     var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
-    if(u&&t){
-      // أنشئ محادثة وافتحها مباشرة
-      mb.textContent='جاري الفتح...';
-      mb.disabled=true;
-      fetch('https://manaqasati-production.up.railway.app/api/direct-message',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
-        body:JSON.stringify({provider_id:pid})
-      }).then(function(r){return r.json();}).then(function(d){
-        if(d.request_id){
-          try{localStorage.setItem('auto_open_chat',d.request_id);}catch(e){}
-          var dest=u.role==='provider'?'/dashboard-provider.html':'/dashboard-client.html';
-          location.href=dest+'#chat='+d.request_id;
-        }
-      }).catch(function(){
-        location.href='/dashboard-client.html';
-      });
-    } else {
-      // غير مسجل — سجل دخول ثم فتح المحادثة
-      location.href='/auth.html?redirect=/pro/'+pid+'&action=msg&provider_id='+pid;
+    if(!u||!t){
+      location.href='/auth.html?next=/pro/'+pid+'&action=msg';
+      return;
     }
+    mb.textContent='...'; mb.disabled=true;
+    fetch('https://manaqasati-production.up.railway.app/api/direct-message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
+      body:JSON.stringify({provider_id:pid})
+    }).then(function(r){return r.json();}).then(function(d){
+      var dest=u.role==='provider'?'/dashboard-provider.html':'/dashboard-client.html';
+      var chatParam=d.request_id?'?chat='+d.request_id:'';
+      location.href=dest+chatParam;
+    }).catch(function(){location.href='/dashboard-client.html';});
   });
 
   var nm2=nm,url2=url;
