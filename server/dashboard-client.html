@@ -748,6 +748,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <script>
+var _convListPolling=null;
 function fmtN(n){ return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0'; }
 
 var API='https://manaqasati-production.up.railway.app';
@@ -1044,7 +1045,7 @@ function show(pg,el,key){
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
   if(pg==='chat'){loadChatPage();}
-  else{clearInterval(_convListPolling);} // ✅ أوقف polling لما تغادر صفحة المحادثات
+  else{ if(typeof _convListPolling!=='undefined'&&_convListPolling) clearInterval(_convListPolling); }
   if(pg==='detail'){
     window._detailScroll=true;
   } else {
