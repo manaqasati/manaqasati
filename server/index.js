@@ -1429,7 +1429,7 @@ app.get('/api/requests', async (req, res) => {
       r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
-      (SELECT img FROM jsonb_array_elements_text(COALESCE(r.images,'[]')::jsonb) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail
+      NULL::text as thumbnail
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
     `;
     const params = [];
