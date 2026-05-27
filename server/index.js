@@ -1423,7 +1423,13 @@ app.get('/api/requests', async (req, res) => {
       SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
       r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
-      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
+      CASE
+        WHEN r.images IS NOT NULL AND jsonb_array_length(r.images::jsonb) > 0
+          AND (r.images::jsonb->>0) LIKE 'http%'
+        THEN (r.images::jsonb->>0)
+        ELSE NULL
+      END as thumbnail
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
     `;
     const params = [];
@@ -1918,6 +1924,63 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ✅ API محادثة مباشرة بدون مشروع
+app.post('/api/direct-message', auth, async (req, res) => {
+  try {
+    const { provider_id, message } = req.body;
+    if (!provider_id) return res.status(400).json({ message: 'provider_id مطلوب' });
+
+    const senderId   = req.user.id;
+    const senderRole = req.user.role;
+    let clientId, providerId;
+
+    if (senderRole === 'client') {
+      clientId   = senderId;
+      providerId = parseInt(provider_id);
+    } else if (senderRole === 'provider') {
+      providerId = senderId;
+      clientId   = parseInt(provider_id);
+    } else {
+      return res.status(403).json({ message: 'غير مصرح' });
+    }
+
+    // Find or create a direct request between this client and provider
+    let reqRow = await pool.query(`
+      SELECT id FROM requests
+      WHERE client_id=$1 AND assigned_provider_id=$2 AND category='direct'
+      ORDER BY created_at DESC LIMIT 1
+    `, [clientId, providerId]);
+
+    let requestId;
+    if (reqRow.rows.length) {
+      requestId = reqRow.rows[0].id;
+    } else {
+      // Create a lightweight direct-chat request
+      const prov = await pool.query('SELECT name FROM users WHERE id=$1', [providerId]);
+      const provName = prov.rows[0]?.name || 'مزود';
+      const newReq = await pool.query(`
+        INSERT INTO requests (client_id, title, description, category, status, assigned_provider_id, created_at)
+        VALUES ($1, $2, 'محادثة مباشرة', 'direct', 'in_progress', $3, NOW())
+        RETURNING id
+      `, [clientId, 'محادثة مع ' + provName, providerId]);
+      requestId = newReq.rows[0].id;
+    }
+
+    // Send message if provided
+    if (message && message.trim()) {
+      await pool.query(`
+        INSERT INTO messages (request_id, sender_id, content, created_at)
+        VALUES ($1,$2,$3,NOW())
+      `, [requestId, senderId, message.trim()]);
+    }
+
+    res.json({ request_id: requestId, success: true });
+  } catch(e) {
+    console.error('direct-message:', e.message);
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
