@@ -1901,7 +1901,7 @@ async function loadChatPage(){
       window._convData=window._convData||[];
       window._convData[idx]=cv;
       var initials=(cv.provider_name||'م')[0];
-      html+='<div data-conv-idx="'+idx+'" class="_conv-item" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg)':'')+'">';
+      html+='<div data-conv-idx="'+idx+'" data-rid="'+(cv.request_id||'')+'" class="_conv-item" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg)':'')+'">';
       html+='<div style="width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative">';
       if(cv.provider_image)html+='<img src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">';
       else html+=_escChat(initials);
