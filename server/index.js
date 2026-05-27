@@ -1424,15 +1424,7 @@ app.get('/api/requests', async (req, res) => {
       r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
-      CASE
-        WHEN r.images IS NOT NULL
-          AND r.images::text != 'null'
-          AND r.images::text != '[]'
-          AND (r.images::jsonb->>0) IS NOT NULL
-          AND (r.images::jsonb->>0) LIKE 'http%'
-        THEN (r.images::jsonb->>0)
-        ELSE NULL
-      END as thumbnail
+      NULL as thumbnail
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
     `;
     const params = [];
