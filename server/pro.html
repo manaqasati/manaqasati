@@ -206,7 +206,7 @@ function render(p,rat){
   // 1. PROFILE CARD
   html+='<div class="profile-card">';
   if(p.business_name&&p.business_name!==p.name)html+='<div class="pbiz">'+esc(p.business_name)+'</div>';
-  html+='<h1 class="pname">'+esc(p.name)+'</h1>';
+  html+='<h1 class="pname" style="display:flex;align-items:center;gap:6px">'+esc(p.name)+(vrf?'<svg width="20" height="20" fill="#2563EB" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>':'')+'</h1>';
   if(sp.length)html+='<div class="phead">'+esc(sp.join(' · '))+'</div>';
   if(vrf)html+='<div class="ver-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مزود موثّق على مناقصة</div>';
   html+='<div class="pinfo-row"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</div>';
@@ -291,8 +291,24 @@ function render(p,rat){
   if(mb)mb.addEventListener('click',function(){
     var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
-    if(u&&t){try{localStorage.setItem('pending_contact_provider',pid);}catch(e){}location.href='/dashboard-client.html';}
-    else{location.href='/auth.html?redirect=msg&provider_id='+pid;}
+    if(u&&t){
+      // فتح محادثة مباشرة
+      fetch('https://manaqasati-production.up.railway.app/api/direct-message',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
+        body:JSON.stringify({provider_id:pid})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d.request_id){
+          try{localStorage.setItem('open_chat_request',d.request_id);}catch(e){}
+          location.href='/dashboard-client.html';
+        }
+      }).catch(function(){
+        try{localStorage.setItem('pending_contact_provider',pid);}catch(e){}
+        location.href='/dashboard-client.html';
+      });
+    } else {
+      location.href='/auth.html?redirect=msg&provider_id='+pid;
+    }
   });
 
   var nm2=nm,url2=url;
