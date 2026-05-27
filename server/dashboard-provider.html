@@ -1933,6 +1933,61 @@ async function _loadChatBadge(){
 }
 setInterval(_loadChatBadge,30000);
 
+function _openNewChatSearch(){
+  var body='<div style="margin-bottom:12px">'
+    +'<input id="p-chat-inp" placeholder="ابحث باسم العميل أو رقم الجوال..." style="width:100%;padding:11px 13px;border:1.5px solid var(--p-light,#dde4ef);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg)">'
+    +'</div><div id="p-chat-res" style="max-height:240px;overflow-y:auto"></div>';
+  var foot='<button onclick="closeModal()" style="flex:1;padding:11px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إلغاء</button>';
+  openModal('محادثة جديدة',body,foot);
+  setTimeout(function(){
+    var inp=document.getElementById('p-chat-inp');
+    var res=document.getElementById('p-chat-res');
+    if(!inp) return;
+    inp.focus();
+    var timer=null;
+    inp.addEventListener('input',function(){
+      clearTimeout(timer);
+      timer=setTimeout(function(){
+        var q=inp.value.trim();
+        if(!q){res.innerHTML='';return;}
+        res.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px">جاري البحث...</div>';
+        _api('/api/users/search?q='+encodeURIComponent(q))
+          .then(function(users){
+            if(!users||!users.length){res.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>';return;}
+            var h='';
+            users.forEach(function(u){
+              h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border-bottom:1px solid var(--border)">';
+              h+='<div style="width:38px;height:38px;border-radius:50%;background:var(--p3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">'+(u.profile_image?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'ع')[0])+'</div>';
+              h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--text)">'+(u.name||'عميل')+'</div><div style="font-size:11px;color:var(--muted)">'+(u.city||'')+'</div></div>';
+              h+='<button data-uid="'+u.id+'" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>';
+              h+='</div>';
+            });
+            res.innerHTML=h;
+            res.querySelectorAll('button[data-uid]').forEach(function(btn){
+              btn.addEventListener('click',function(){
+                var uid=btn.getAttribute('data-uid');
+                closeModal();
+                _api('/api/direct-message',{method:'POST',body:JSON.stringify({provider_id:uid})})
+                  .then(function(d){
+                    if(d&&d.request_id){
+                      showToast('تم فتح المحادثة ✓','success');
+                      loadChat();
+                      setTimeout(function(){
+                        var cards=document.querySelectorAll('[data-rid]');
+                        for(var i=0;i<cards.length;i++){
+                          if(cards[i].getAttribute('data-rid')===String(d.request_id)){cards[i].click();break;}
+                        }
+                      },1000);
+                    }
+                  });
+              });
+            });
+          });
+      },400);
+    });
+  },200);
+}
+
 async function loadChat(){
   var pg=_el('page-chat');if(!pg)return;
   pg.innerHTML='<div class="pghd"><div class="pg-t">المحادثات</div></div>'+_skList(3);
@@ -1959,6 +2014,10 @@ async function _refreshProvConvList(){
 
 function _renderProvConvList(convs,pg){
   var html='<div class="pghd"><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div>';
+  html+='<div style="margin-bottom:12px">'
+    +'<button id="prov-new-chat-btn" style="width:100%;padding:13px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">'
+    +'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+    +'محادثة جديدة مع عميل</button></div>';
   html+='<div class="card card-accent">';
   if(convs.length){
     convs.forEach(function(cv){
