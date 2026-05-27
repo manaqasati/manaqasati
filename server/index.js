@@ -1470,8 +1470,23 @@ app.get('/api/requests/:id', async (req, res) => {
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
-    const { title, description, category, city, address, budget_max, deadline, images, attachments } = req.body;
+    const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
+
+    // ✅ رفع الصور لـ Cloudinary
+    const rawImages = req.body.images || [];
+    const images_arr = Array.isArray(rawImages) ? rawImages : [];
+    const uploadedImages = [];
+    for (const img of images_arr) {
+      if (img && img.startsWith('data:')) {
+        const url = await uploadToCloud(img, 'manaqasa/projects');
+        uploadedImages.push(url);
+      } else if (img && img.startsWith('http')) {
+        uploadedImages.push(img);
+      }
+    }
+    const images = uploadedImages.length ? JSON.stringify(uploadedImages) : null;
+
     const pn = generateProjectNumber();
     const r = await pool.query(`
       INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline,
@@ -3077,12 +3092,14 @@ async function uploadToCloud(base64Data, folder='manaqasa') {
       transformation: [{ quality: 'auto', fetch_format: 'auto' }],
       resource_type: 'image',
     });
+    console.log('✅ Cloudinary upload:', result.secure_url);
     return result.secure_url;
   } catch(e) {
-    console.error('Cloudinary upload error:', e.message);
-    return base64Data; // fallback to base64
+    console.error('❌ Cloudinary upload error:', e.message);
+    return base64Data;
   }
 }
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
