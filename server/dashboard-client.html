@@ -1200,6 +1200,12 @@ function loadReqs(){
 
 function openDetail(id,e){
   if(e)e.stopPropagation();
+  fetch(API+'/api/requests/'+id,hdr()).then(function(r){return r.json();}).then(function(req){
+    var slug=encodeURIComponent((req.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+id;
+    location.href='/project/'+slug;
+  }).catch(function(){location.href='/project/'+id;});
+}
+function _openDetail_unused(id,e){
   curRequestId=id;
   document.querySelectorAll('.tab-btn').forEach(function(x,i){x.className=i===0?'tab-btn on':'tab-btn';});
   document.querySelectorAll('.tab').forEach(function(x,i){x.className=i===0?'tab on':'tab';});
