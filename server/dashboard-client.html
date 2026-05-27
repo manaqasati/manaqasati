@@ -1075,13 +1075,20 @@ function show(pg,el,key){
   if(pg==='profile')loadProfile();
   if(pg==='chat'){
     loadChatPage();
-    if(window._openChatId){
-      var _oci=window._openChatId; window._openChatId=null;
+    // فتح محادثة محددة تلقائياً
+    var _chatTarget=window._openChatId||null;
+    try{var _ac=localStorage.getItem('auto_open_chat');if(_ac){_chatTarget=_ac;localStorage.removeItem('auto_open_chat');}}catch(e){}
+    window._openChatId=null;
+    if(_chatTarget){
       setTimeout(function(){
         var cards=document.querySelectorAll('[data-rid],[data-cid]');
         for(var i=0;i<cards.length;i++){
           var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
-          if(crid===String(_oci)){ cards[i].click(); break; }
+          if(crid===String(_chatTarget)){
+            cards[i].scrollIntoView({behavior:'smooth',block:'center'});
+            cards[i].click();
+            break;
+          }
         }
       },1500);
     }
