@@ -114,7 +114,12 @@ app.get('/api/requests/public/:id', async (req, res) => {
       SELECT r.id, r.title, r.description, r.category, r.city,
         r.budget_max as budget, r.budget_min,
         r.deadline, r.status, r.created_at,
-        '[]'::json as images,
+        COALESCE(
+          (SELECT json_agg(img ORDER BY idx)
+           FROM jsonb_array_elements_text(COALESCE(r.images,'[]')::jsonb) WITH ORDINALITY arr(img, idx)
+           WHERE img LIKE 'http%'),
+          '[]'::json
+        ) as images,
         json_build_object(
           'id', u.id, 'name', u.name, 'city', u.city,
           'phone', u.phone
@@ -1424,7 +1429,7 @@ app.get('/api/requests', async (req, res) => {
       r.budget_max,r.deadline,r.status,
       r.client_id,r.created_at,u.name as client_name,
       COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
-      NULL as thumbnail
+      (SELECT img FROM jsonb_array_elements_text(COALESCE(r.images,'[]')::jsonb) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail
       FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'
     `;
     const params = [];
