@@ -1045,7 +1045,19 @@ function show(pg,el,key){
   if(pg==='home')loadHome();
   if(pg==='notifs')loadNotifs();
   if(pg==='profile')loadProfile();
-  if(pg==='chat'){loadChatPage();}
+  if(pg==='chat'){
+    loadChatPage();
+    if(window._openChatId){
+      var _oci=window._openChatId; window._openChatId=null;
+      setTimeout(function(){
+        var cards=document.querySelectorAll('[data-rid],[data-cid]');
+        for(var i=0;i<cards.length;i++){
+          var crid=cards[i].getAttribute('data-rid')||cards[i].getAttribute('data-cid');
+          if(crid===String(_oci)){ cards[i].click(); break; }
+        }
+      },1500);
+    }
+  }
   else{ try{ if(window._cpl) clearInterval(window._cpl); window._cpl=null; }catch(e){} }
   if(pg==='detail'){
     window._detailScroll=true;
@@ -1247,11 +1259,15 @@ async function loadBids(id){
     var lastActive=_lastActiveText(p.last_active||p.last_seen);
     var statusTag=isAcc?'<span style="background:rgba(22,163,74,.2);color:#4ade80;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">✓ مقبول</span>':isRej?'<span style="background:rgba(220,38,38,.2);color:#fca5a5;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">مرفوض</span>':'';
     var acts='';
+    var chatBtn='<button class="_chat-bid-btn" data-pid="'+b.provider_id+'" data-rid="'+id+'" style="padding:10px 14px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px"><svg width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z\"/></svg>محادثة</button>';
     if(!isAcc&&!isRej){
       acts='<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap">'
         +'<button onclick="acceptBid('+b.id+','+id+')" style="flex:1;padding:10px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">قبول العرض</button>'
-        +'<button onclick="rejectBid('+b.id+','+id+')" style="padding:10px 16px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">رفض</button>'
+        +chatBtn
+        +'<button onclick="rejectBid('+b.id+','+id+')" style="padding:10px 14px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">رفض</button>'
         +'</div>';
+    } else {
+      acts='<div style="padding-top:12px;border-top:1px solid var(--border);display:flex;gap:7px">'+chatBtn+'</div>';
     }
 
     // ✅ صور الأعمال
@@ -1302,6 +1318,23 @@ async function loadBids(id){
     +'</div>';
   }).join('');
   _bidsContainer.querySelectorAll('._pimg').forEach(function(el){el.addEventListener('click',function(){openImgFull(el.getAttribute('data-src'));});});
+
+  // ✅ زر محادثة المزود
+  _bidsContainer.querySelectorAll('._chat-bid-btn').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      var pid=el.getAttribute('data-pid');
+      var rid=el.getAttribute('data-rid');
+      fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:pid})},hdr()))
+        .then(function(r){return r.json();})
+        .then(function(d){
+          if(d.request_id){
+            window._openChatId=d.request_id;
+            show('chat');
+          }
+        });
+    });
+  });
 
   // ✅ زر مشاركة المزود
   _bidsContainer.querySelectorAll('._sp-btn').forEach(function(el,i){
