@@ -1894,7 +1894,13 @@ async function loadChatPage(){
     if(!Array.isArray(convs))convs=[];
   }catch(e){convs=[];}
   convs.sort(function(a,b){return new Date(b.last_time||0)-new Date(a.last_time||0);});
-  var html='<div class="card card-accent" style="padding:0">';
+  var html='';
+  // زر محادثة جديدة
+  html+='<div style="margin-bottom:12px">'
+    +'<button id="new-chat-btn" style="width:100%;padding:13px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">'
+    +'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+    +'محادثة جديدة مع مزود</button></div>';
+  html+='<div class="card card-accent" style="padding:0">';
   if(convs.length){
     convs.forEach(function(cv,idx){
       var unread=parseInt(cv.unread||0)>0;
@@ -1921,6 +1927,10 @@ async function loadChatPage(){
   html+='</div>';
   pg.innerHTML=html;
   // attach click handlers
+  // زر محادثة جديدة
+  var ncb=pg.querySelector('#new-chat-btn');
+  if(ncb) ncb.addEventListener('click',function(){ openNewChatModal(); });
+
   pg.querySelectorAll('._conv-item').forEach(function(el){
     el.addEventListener('click',function(){
       var idx=parseInt(el.getAttribute('data-conv-idx'));
