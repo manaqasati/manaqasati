@@ -73,6 +73,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* CTA */
 .cta{background:linear-gradient(135deg,var(--p3),var(--p));border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:14px;border-bottom:3px solid var(--gold);box-shadow:var(--shadow-md)}
 .cta-btn{display:inline-block;padding:12px 28px;background:var(--gold);color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;text-decoration:none;box-shadow:0 4px 14px rgba(201,146,10,.4)}
+/* BID MODAL */
+.bid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:16px}
+.bid-overlay.on{display:flex}
+.bid-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.bid-modal-head{background:linear-gradient(135deg,#0D1829,#16213E);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+.bid-modal-body{padding:20px}
+.bid-fg{margin-bottom:14px}
+.bid-fg label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px}
+.bid-fg input,.bid-fg textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:'Tajawal',sans-serif;background:var(--bg)}
+.bid-fg input:focus,.bid-fg textarea:focus{outline:none;border-color:var(--p)}
+.bid-submit{width:100%;padding:14px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;margin-top:4px}
+.bid-submit:hover{background:var(--p2)}
+
 /* VIEWER */
 .viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;align-items:center;justify-content:center;padding:16px}
 .viewer.on{display:flex}
@@ -118,6 +131,25 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div class="wrap" id="wrap">
   <div class="card"><div class="sk" style="height:20px;width:70%;margin-bottom:10px"></div><div class="sk" style="height:14px;width:45%"></div></div>
   <div class="sk" style="height:80px;border-radius:14px;margin-bottom:12px"></div>
+</div>
+
+<!-- BID MODAL -->
+<div class="bid-overlay" id="bid-overlay" onclick="if(event.target===this)closeBidModal()">
+  <div class="bid-modal">
+    <div class="bid-modal-head">
+      <span style="font-size:15px;font-weight:900;color:#fff">تقديم عرض</span>
+      <button onclick="closeBidModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center">&#10005;</button>
+    </div>
+    <div class="bid-modal-body">
+      <div id="bid-proj-title" style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:10px;border-right:3px solid var(--gold)"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="bid-fg"><label>السعر (ر.س) *</label><input id="bid-price" type="number" placeholder="5,000"></div>
+        <div class="bid-fg"><label>مدة التنفيذ (أيام) *</label><input id="bid-days" type="number" placeholder="7"></div>
+      </div>
+      <div class="bid-fg"><label>رسالتك للعميل *</label><textarea id="bid-note" rows="4" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..."></textarea></div>
+      <button class="bid-submit" id="bid-submit-btn" onclick="submitBidFromPage()">إرسال العرض</button>
+    </div>
+  </div>
 </div>
 
 <div class="viewer" id="viewer" onclick="if(event.target===this)cImg()">
@@ -262,19 +294,7 @@ function render(req, bids){
   var bb=document.getElementById('bidbtn');
   var mb=document.getElementById('msgbtn');
   var mb2=document.getElementById('msgbtn2');
-  if(bb)bb.addEventListener('click',function(){
-    var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
-    var t=localStorage.getItem('token')||'';
-    if(u&&t&&u.role==='provider'){
-      localStorage.setItem('mnq_auto_bid',rid);
-      location.href='/dashboard-provider.html';
-    } else if(u&&t){
-      location.href='/dashboard-client.html';
-    } else {
-      localStorage.setItem('mnq_auto_bid',rid);
-      location.href='/auth.html?redirect=provider';
-    }
-  });
+  if(bb)bb.addEventListener('click',function(){ openBidModal(); });
   if(mb)mb.addEventListener('click',doMsg);
   if(mb2)mb2.addEventListener('click',doMsg);
 
@@ -284,6 +304,63 @@ function render(req, bids){
     if(navigator.share){navigator.share({title:title+' — مناقصة',url:url});}
     else if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){sb.textContent='تم النسخ ✓';setTimeout(function(){sb.textContent='مشاركة';},2000);});}
   });
+}
+
+function openBidModal(){
+  var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
+  var t=localStorage.getItem('token')||'';
+  if(!u||!t){
+    // حفظ المشروع ثم التسجيل
+    localStorage.setItem('mnq_auto_bid',getId());
+    location.href='/auth.html?redirect=provider';
+    return;
+  }
+  if(u.role!=='provider'){
+    alert('هذه الخاصية للمزودين فقط. سجّل كمزود خدمة.');
+    return;
+  }
+  document.getElementById('bid-proj-title').textContent=document.title.replace(' | مناقصة','');
+  document.getElementById('bid-price').value='';
+  document.getElementById('bid-days').value='';
+  document.getElementById('bid-note').value='';
+  document.getElementById('bid-overlay').classList.add('on');
+  document.body.style.overflow='hidden';
+  document.getElementById('bid-price').focus();
+}
+function closeBidModal(){
+  document.getElementById('bid-overlay').classList.remove('on');
+  document.body.style.overflow='';
+}
+async function submitBidFromPage(){
+  var price=document.getElementById('bid-price').value;
+  var days=document.getElementById('bid-days').value;
+  var note=document.getElementById('bid-note').value.trim();
+  var t=localStorage.getItem('token')||'';
+  var id=getId();
+  if(!price||!days||!note){alert('يرجى تعبئة جميع الحقول');return;}
+  var btn=document.getElementById('bid-submit-btn');
+  btn.disabled=true;btn.textContent='جاري الإرسال...';
+  try{
+    var r=await fetch('https://manaqasati-production.up.railway.app/api/requests/'+id+'/bids',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},
+      body:JSON.stringify({price:parseInt(price),days:parseInt(days),note:note})
+    });
+    var d=await r.json();
+    if(d.id||d.request_id){
+      closeBidModal();
+      // تحديث عدد العروض
+      var bidsEl=document.querySelector('.stat-box:last-child .stat-val');
+      if(bidsEl) bidsEl.textContent=parseInt(bidsEl.textContent||0)+1;
+      alert('تم إرسال عرضك بنجاح! سيتواصل معك العميل قريباً.');
+    } else {
+      alert(d.message||'تعذر إرسال العرض');
+      btn.disabled=false;btn.textContent='إرسال العرض';
+    }
+  }catch(e){
+    alert('تعذر الاتصال بالسيرفر');
+    btn.disabled=false;btn.textContent='إرسال العرض';
+  }
 }
 
 (function(){
