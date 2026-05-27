@@ -362,7 +362,14 @@ function render(req, bids){
   // Bid button
   var bb=document.getElementById('bidbtn');
   if(bb) bb.addEventListener('click',function(){
-    location.href='/auth.html?mode=register&role=provider';
+    var u=null; try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
+    var t=localStorage.getItem('token')||'';
+    if(u&&t&&u.role==='provider'){
+      try{localStorage.setItem('pending_bid_request',rid);}catch(e){}
+      location.href='/dashboard-provider.html';
+    } else {
+      location.href='/auth.html?redirect=bid&request_id='+rid;
+    }
   });
 
   // Msg buttons
