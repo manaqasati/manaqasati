@@ -266,13 +266,13 @@ function render(req, bids){
     var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
     if(u&&t&&u.role==='provider'){
-      // مسجل كمزود — افتح نموذج العرض مباشرة
-      try{localStorage.setItem('auto_open_bid',rid);}catch(e){}
-      location.href='/dashboard-provider.html#bid='+rid;
-    } else if(u&&t&&u.role==='client'){
+      localStorage.setItem('mnq_auto_bid',rid);
+      location.href='/dashboard-provider.html';
+    } else if(u&&t){
       location.href='/dashboard-client.html';
     } else {
-      location.href='/auth.html?redirect=/dashboard-provider.html&request_id='+rid+'&action=bid';
+      localStorage.setItem('mnq_auto_bid',rid);
+      location.href='/auth.html?redirect=provider';
     }
   });
   if(mb)mb.addEventListener('click',doMsg);
