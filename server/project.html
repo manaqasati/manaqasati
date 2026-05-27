@@ -281,11 +281,10 @@ function render(req, bids){
   html+='</div>';
 
   // STATS
-  html+='<div class="stats">'
-    +'<div class="stat"><div class="sv gold">'+fmtMoney(budget)+'</div><div class="sl">الميزانية</div></div>'
-    +'<div class="stat"><div class="sv">'+bids.length+'</div><div class="sl">عرض مقدم</div></div>'
-    +'<div class="stat"><div class="sv">'+imgs.length||0+'</div><div class="sl">صورة</div></div>'
-    +'</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
+    +'<div style="background:var(--white);border-radius:12px;padding:16px;text-align:center;border:1px solid var(--border)"><div style="font-size:22px;font-weight:900;color:var(--gold)">'+(budget?Number(budget).toLocaleString('en-US'):'—')+'</div>'+(budget?'<div style="font-size:11px;color:var(--gold-d);font-weight:700">ر.س</div>':'')+'<div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:600">الميزانية</div></div>'
+    +'<div style="background:var(--white);border-radius:12px;padding:16px;text-align:center;border:1px solid var(--border)"><div style="font-size:22px;font-weight:900;color:var(--text)">'+bids.length+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:600">عروض مقدمة</div></div>'
+  +'</div>';
 
   // DESC
   if(desc){
