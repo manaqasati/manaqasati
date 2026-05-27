@@ -1485,8 +1485,6 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         uploadedImages.push(img);
       }
     }
-    const images = uploadedImages.length ? uploadedImages : null;
-
     const pn = generateProjectNumber();
     const r = await pool.query(`
       INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline,
@@ -1494,7 +1492,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open',NOW())
       RETURNING *
     `, [req.user.id, title, description, category||null, city||null, address||null,
-        budget_max||null, deadline||null, images ? JSON.stringify(images) : null,
+        budget_max||null, deadline||null, uploadedImages.length ? uploadedImages : null,
         attachments ? JSON.stringify(attachments) : null, pn]);
     const newReq = r.rows[0];
 
