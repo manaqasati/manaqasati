@@ -1458,9 +1458,10 @@ app.get('/api/requests/my', auth, async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,
-      r.budget_max,r.deadline,r.image_url,r.status,r.created_at,r.assigned_provider_id,
+      r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,
       u.name as client_name, p.name as provider_name,
-      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count
+      COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,
+      (SELECT img FROM unnest(COALESCE(r.images, ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail
       FROM requests r
       JOIN users u ON r.client_id=u.id
       LEFT JOIN users p ON r.assigned_provider_id=p.id
