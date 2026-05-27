@@ -585,7 +585,22 @@ async function setupDatabase() {
     // ✅ PATCH 1: Bump system column
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
+    try { await pool.query(`CREATE TABLE IF NOT EXISTS favorites (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, provider_id)
+    )`); } catch(e){}
+    try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      event VARCHAR(100) NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
+
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
@@ -1581,6 +1596,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       }
     }
 
+    await addTimeline(newReq.id, 'published', 'تم نشر المشروع');
     res.json(newReq);
   } catch (e) { console.error('❌ create request:', e); res.status(500).json({ message: e.message }); }
 });
@@ -1907,7 +1923,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
         }
       }
 
-      res.json({ ok: true });
+      await addTimeline(bid.request_id, 'bid_accepted', 'تم قبول عرض المزود'); res.json({ ok: true });
     } catch (e) { await pool.query('ROLLBACK'); throw e; }
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -1992,6 +2008,95 @@ app.post('/api/direct-message', auth, async (req, res) => {
     console.error('direct-message:', e.message);
     res.status(500).json({ message: e.message });
   }
+});
+
+// ✅ Timeline API
+app.get('/api/requests/:id/timeline', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      'SELECT * FROM request_timeline WHERE request_id=$1 ORDER BY created_at ASC', [id]
+    );
+    res.json(r.rows);
+  } catch(e) { res.status(500).json([]); }
+});
+
+// ✅ Add timeline event (internal helper)
+async function addTimeline(requestId, event, description) {
+  try {
+    await pool.query(
+      'INSERT INTO request_timeline (request_id, event, description) VALUES ($1,$2,$3)',
+      [requestId, event, description]
+    );
+  } catch(e) {}
+}
+
+// ✅ Favorites/Bookmarks API
+app.post('/api/favorites/provider/:id', auth, async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id);
+    const existing = await pool.query(
+      'SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]
+    );
+    if (existing.rows.length) {
+      await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]);
+      res.json({ saved: false });
+    } else {
+      await pool.query('INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, pid]);
+      res.json({ saved: true });
+    }
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/favorites', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT u.id, u.name, u.business_name, u.city, u.profile_image, u.specialties,
+       COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating
+       FROM favorites f JOIN users u ON u.id=f.provider_id
+       WHERE f.user_id=$1`, [req.user.id]
+    );
+    res.json(r.rows);
+  } catch(e) { res.status(500).json([]); }
+});
+
+// ✅ Smart Search API
+app.get('/api/search', async (req, res) => {
+  try {
+    const q = (req.query.q||'').trim();
+    const city = req.query.city||'';
+    const type = req.query.type||'all'; // all | projects | providers
+    if (!q && !city) return res.json({ projects:[], providers:[] });
+
+    const results = { projects: [], providers: [] };
+
+    if (type !== 'providers') {
+      const pr = await pool.query(`
+        SELECT id, title, category, city, budget_max, status, created_at,
+          (SELECT COUNT(*) FROM bids WHERE request_id=requests.id) as bid_count
+        FROM requests
+        WHERE status='open'
+          AND ($1='' OR title ILIKE $2 OR description ILIKE $2 OR category ILIKE $2)
+          AND ($3='' OR city ILIKE $4)
+        ORDER BY created_at DESC LIMIT 20
+      `, [q, '%'+q+'%', city, '%'+city+'%']);
+      results.projects = pr.rows;
+    }
+
+    if (type !== 'projects') {
+      const pv = await pool.query(`
+        SELECT id, name, business_name, city, specialties, profile_image,
+          COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating
+        FROM users WHERE role='provider'
+          AND ($1='' OR name ILIKE $2 OR business_name ILIKE $2 OR bio ILIKE $2 OR specialties::text ILIKE $2)
+          AND ($3='' OR city ILIKE $4)
+        ORDER BY avg_rating DESC LIMIT 20
+      `, [q, '%'+q+'%', city, '%'+city+'%']);
+      results.providers = pv.rows;
+    }
+
+    res.json(results);
+  } catch(e) { res.status(500).json({ projects:[], providers:[] }); }
 });
 
 // ═══════════════════════════════════════════════════════════════
