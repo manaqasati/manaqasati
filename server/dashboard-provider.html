@@ -452,18 +452,24 @@ _myId=_me.id||null;
   if(chatId){
     setTimeout(function(){
       gotoPage('messages');
-      var tries=0,interval=setInterval(function(){
+      var tries=0;
+      var iv=setInterval(function(){
         tries++;
-        var found=false;
-        document.querySelectorAll('[data-rid],[data-cid]').forEach(function(c){
-          if(found) return;
-          if((c.getAttribute('data-rid')||c.getAttribute('data-cid'))===String(chatId)){
-            found=true; clearInterval(interval); c.click();
+        var cards=document.querySelectorAll('[data-rid]');
+        for(var i=0;i<cards.length;i++){
+          if(cards[i].getAttribute('data-rid')===String(chatId)){
+            clearInterval(iv);
+            cards[i].click();
+            return;
           }
-        });
-        if(tries>12) clearInterval(interval);
-      },400);
-    },1000);
+        }
+        if(tries>=12){
+          clearInterval(iv);
+          var first=document.querySelector('[data-rid]');
+          if(first) first.click();
+        }
+      },500);
+    },1500);
   }
 })();
 
