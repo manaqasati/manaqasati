@@ -1301,8 +1301,10 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
         (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
       FROM requests r
       JOIN users u ON u.id = r.client_id
-      WHERE r.assigned_provider_id=$1
-        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
+      WHERE (r.assigned_provider_id=$1 OR EXISTS(
+        SELECT 1 FROM messages m2 WHERE m2.request_id=r.id AND m2.sender_id=$1
+      ))
+      AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
       ORDER BY r.id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
@@ -1325,9 +1327,11 @@ app.get('/api/client/conversations', auth, async (req, res) => {
         (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
       FROM requests r
       JOIN users u ON u.id = CASE WHEN r.client_id=$1 THEN r.assigned_provider_id ELSE r.client_id END
-      WHERE r.client_id=$1
-        AND r.assigned_provider_id IS NOT NULL
-        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
+      WHERE (r.client_id=$1 OR EXISTS(
+        SELECT 1 FROM messages m2 WHERE m2.request_id=r.id AND m2.sender_id=$1
+      ))
+      AND r.assigned_provider_id IS NOT NULL
+      AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
       ORDER BY r.id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
