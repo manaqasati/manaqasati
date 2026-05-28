@@ -449,9 +449,19 @@ _myId=_me.id||null;
     setTimeout(function(){ _openBidModal(bidId); },1000);
     return;
   }
+  // أيضاً تحقق من localStorage المباشر
+  var directChatId=localStorage.getItem('mnq_open_chat_id');
+  var directOtherId=localStorage.getItem('mnq_open_chat_other');
+  if(directChatId){
+    localStorage.removeItem('mnq_open_chat_id');
+    localStorage.removeItem('mnq_open_chat_other');
+    chatId=directChatId;
+  }
+
   if(chatId){
     setTimeout(function(){
       gotoPage('messages');
+      // حاول تفتح مباشرة أو عبر polling
       var tries=0;
       var iv=setInterval(function(){
         tries++;
@@ -463,7 +473,8 @@ _myId=_me.id||null;
             return;
           }
         }
-        if(tries>=12){
+        // بعد 5 ثوان افتح أول محادثة
+        if(tries>=10){
           clearInterval(iv);
           var first=document.querySelector('[data-rid]');
           if(first) first.click();
