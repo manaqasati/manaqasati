@@ -1290,44 +1290,20 @@ app.get('/api/provider/reviews', auth, async (req, res) => {
 app.get('/api/provider/conversations', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      WITH conv AS (
-        SELECT DISTINCT
-          request_id,
-          CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as client_id
-        FROM messages
-        WHERE sender_id = $1 OR receiver_id = $1
-      )
-      SELECT
-        c.request_id,
-        c.client_id,
+      SELECT DISTINCT ON (r.id)
+        r.id as request_id,
+        r.client_id,
         r.title as request_title,
         u.name as client_name,
         u.profile_image as client_image,
-        (SELECT content FROM messages
-          WHERE request_id = c.request_id
-          AND (
-            (sender_id = $1 AND receiver_id = c.client_id)
-            OR (sender_id = c.client_id AND receiver_id = $1)
-          )
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message,
-        (SELECT MAX(created_at) FROM messages
-          WHERE request_id = c.request_id
-          AND (
-            (sender_id = $1 AND receiver_id = c.client_id)
-            OR (sender_id = c.client_id AND receiver_id = $1)
-          )
-        ) as last_time,
-        (SELECT COUNT(*) FROM messages
-          WHERE request_id = c.request_id
-          AND receiver_id = $1
-          AND sender_id = c.client_id
-          AND is_read = FALSE
-        ) as unread
-      FROM conv c
-      JOIN requests r ON r.id = c.request_id
-      JOIN users u ON u.id = c.client_id
-      ORDER BY last_time DESC NULLS LAST
+        (SELECT content FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT created_at FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
+      FROM requests r
+      JOIN users u ON u.id = r.client_id
+      WHERE r.assigned_provider_id=$1
+        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
+      ORDER BY r.id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
   } catch (e) { console.error('❌ /provider/conversations:', e); res.json([]); }
@@ -1336,46 +1312,23 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
 app.get('/api/client/conversations', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      WITH conv AS (
-        SELECT DISTINCT
-          m.request_id,
-          CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as provider_id
-        FROM messages m
-        JOIN requests r ON r.id = m.request_id
-        WHERE (m.sender_id = $1 OR m.receiver_id = $1) AND r.client_id = $1
-      )
-      SELECT
-        c.request_id,
-        c.provider_id,
+      SELECT DISTINCT ON (r.id)
+        r.id as request_id,
+        CASE WHEN r.client_id = $1 THEN r.assigned_provider_id
+             ELSE r.client_id END as provider_id,
         r.title as request_title,
         u.name as provider_name,
         u.profile_image as provider_image,
         u.phone as provider_phone,
-        (SELECT content FROM messages
-          WHERE request_id = c.request_id
-          AND (
-            (sender_id = $1 AND receiver_id = c.provider_id)
-            OR (sender_id = c.provider_id AND receiver_id = $1)
-          )
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message,
-        (SELECT MAX(created_at) FROM messages
-          WHERE request_id = c.request_id
-          AND (
-            (sender_id = $1 AND receiver_id = c.provider_id)
-            OR (sender_id = c.provider_id AND receiver_id = $1)
-          )
-        ) as last_time,
-        (SELECT COUNT(*) FROM messages
-          WHERE request_id = c.request_id
-          AND receiver_id = $1
-          AND sender_id = c.provider_id
-          AND is_read = FALSE
-        ) as unread
-      FROM conv c
-      JOIN requests r ON r.id = c.request_id
-      JOIN users u ON u.id = c.provider_id
-      ORDER BY last_time DESC NULLS LAST
+        (SELECT content FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT created_at FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
+      FROM requests r
+      JOIN users u ON u.id = CASE WHEN r.client_id=$1 THEN r.assigned_provider_id ELSE r.client_id END
+      WHERE r.client_id=$1
+        AND r.assigned_provider_id IS NOT NULL
+        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
+      ORDER BY r.id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
   } catch (e) { console.error('❌ /client/conversations:', e); res.json([]); }
