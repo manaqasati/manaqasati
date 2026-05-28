@@ -2100,7 +2100,11 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
         SELECT m.*, u.name as sender_name, u.profile_image as sender_image
         FROM messages m JOIN users u ON m.sender_id=u.id
         WHERE m.request_id=$1
-          AND ((m.sender_id=$2 AND m.receiver_id=$3) OR (m.sender_id=$3 AND m.receiver_id=$2))
+          AND (
+            (m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL))
+            OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL))
+            OR (m.sender_id IS NULL)
+          )
         ORDER BY m.created_at ASC
       `, [requestId, req.user.id, withUser]);
       await pool.query(
