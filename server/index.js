@@ -1954,7 +1954,7 @@ app.post('/api/direct-message', auth, async (req, res) => {
     }
 
     // دائماً أرسل رسالة ترحيب تلقائية لتظهر المحادثة في القائمة
-    const msgText = (message && message.trim()) ? message.trim() : '👋 مرحباً، أود التواصل معك';
+    const msgText = (message && message.trim()) ? message.trim() : 'السلام عليكم';
     const receiverId = senderRole === 'client' ? providerId : clientId;
     
     // تحقق إذا في رسائل مسبقة
