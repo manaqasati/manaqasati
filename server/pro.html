@@ -292,7 +292,7 @@ function render(p,rat){
     var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
     var t=localStorage.getItem('token')||'';
     if(!u||!t){
-      location.href='/auth.html?next=/pro/'+pid+'&action=msg';
+      location.href='/auth.html?action=msg&provider_id='+pid;
       return;
     }
     mb.textContent='...'; mb.disabled=true;
