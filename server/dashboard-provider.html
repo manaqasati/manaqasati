@@ -460,11 +460,21 @@ _myId=_me.id||null;
   if(chatId){
     setTimeout(function(){
       gotoPage('messages');
-      // افتح نافذة المحادثة مباشرة بدون polling
       setTimeout(function(){
-        openChatRoom(chatId, directOtherId||'', '', 'محادثة مباشرة');
-      },800);
-    },800);
+        // جلب بيانات المحادثة من الـ API ثم فتحها
+        _api('/api/requests/'+chatId).then(function(req){
+          if(req&&req.id){
+            var otherId=req.client_id||directOtherId||'';
+            var otherName=req.client_name||'';
+            openChatRoom(String(req.id),String(otherId),otherName,req.title||'محادثة');
+          } else {
+            openChatRoom(String(chatId),String(directOtherId||''),'','محادثة مباشرة');
+          }
+        }).catch(function(){
+          openChatRoom(String(chatId),String(directOtherId||''),'','محادثة مباشرة');
+        });
+      },600);
+    },600);
   }
 })();
 
@@ -2068,8 +2078,9 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
 
   try{
-    var msgs=await _api('/api/messages/'+reqId+'?with='+receiverId)||[];
-    if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
+    var url='/api/messages/'+reqId+(receiverId?'?with='+receiverId:'');
+    var msgs=await _api(url)||[];
+    if(Array.isArray(msgs)&&msgs.length){_chatMsgs=msgs;_renderChatMsgs();}
   }catch(e){}
 
   _chatPolling=setInterval(async function(){
