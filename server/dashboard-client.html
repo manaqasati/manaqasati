@@ -1981,9 +1981,13 @@ async function openClientChat(reqId,receiverId,receiverName,reqTitle){
   _chatPolling=setInterval(async function(){
     if(!document.getElementById('cl-chat-overlay')){clearInterval(_chatPolling);return;}
     try{
-      var r=await fetch(API+'/api/messages/'+reqId+'?with='+receiverId,hdr());
+      var url=API+'/api/messages/'+reqId+(receiverId&&!isNaN(receiverId)?'?with='+receiverId:'');
+      var r=await fetch(url,hdr());
       var msgs=await r.json();
-      if(Array.isArray(msgs)){_chatMsgs=msgs;_renderClientMsgs();}
+      // لا تمسح الرسائل الحالية إذا جاء رد فارغ
+      if(Array.isArray(msgs)&&msgs.length>=_chatMsgs.filter(function(m){return !String(m.id).startsWith('tmp_');}).length){
+        _chatMsgs=msgs;_renderClientMsgs();
+      }
     }catch(e){}
   },2500);
 }
