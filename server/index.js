@@ -2400,6 +2400,17 @@ app.get('/api/notifications', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ✅ Alias for notifications count
+app.get('/api/notifications/count', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id=$1 AND is_read=FALSE',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(r.rows[0].count) });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
 app.get('/api/notifications/unread-count', auth, async (req, res) => {
   try {
     const r = await pool.query(
