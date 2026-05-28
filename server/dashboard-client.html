@@ -1054,6 +1054,47 @@ fetch(API+'/api/client/profile',hdr()).then(function(r){return r.json();}).then(
 function _skCard(){return '<div class="sk-box"><div style="display:flex;gap:8px;align-items:center"><div style="width:4px;height:50px;border-radius:4px;background:#e6e2d9;flex-shrink:0"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div></div>';}
 function _skCards(n){var h='<div class="card card-accent"><div class="ch"><div class="sk sk-line" style="width:120px;height:16px"></div></div>';for(var i=0;i<(n||4);i++)h+=_skCard();return h+'</div>';}
 
+function openNewChatModal(){
+  var ol=document.createElement('div');
+  ol.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  ol.innerHTML='<div style="background:#fff;border-radius:18px;width:100%;max-width:440px;overflow:hidden"><div style="background:var(--p3);padding:16px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;font-weight:900;color:#fff">محادثة جديدة</span><button id="ncm-x" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:18px">x</button></div><div style="padding:16px"><input id="ncm-q" placeholder="ابحث باسم المزود..." style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;box-sizing:border-box"><div id="ncm-r" style="margin-top:8px;max-height:260px;overflow-y:auto"></div></div></div>';
+  document.body.appendChild(ol);
+  document.getElementById('ncm-x').onclick=function(){ol.remove();};
+  ol.addEventListener('click',function(e){if(e.target===ol)ol.remove();});
+  var inp=document.getElementById('ncm-q'),res=document.getElementById('ncm-r'),timer=null;
+  inp.focus();
+  inp.addEventListener('input',function(){
+    clearTimeout(timer);
+    var q=inp.value.trim();
+    if(!q){res.innerHTML='';return;}
+    res.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px">جاري البحث...</div>';
+    timer=setTimeout(function(){
+      fetch(API+'/api/users/search?q='+encodeURIComponent(q),hdr()).then(function(r){return r.json();}).then(function(us){
+        if(!us||!us.length){res.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted)">لا نتائج</div>';return;}
+        var h='';
+        us.forEach(function(u){
+          h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">';
+          h+='<div style="width:40px;height:40px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900">'+(u.profile_image?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'م')[0])+'</div>';
+          h+='<div style="flex:1"><div style="font-size:13px;font-weight:800">'+(u.business_name||u.name)+'</div><div style="font-size:11px;color:var(--muted)">'+(u.city||'')+'</div></div>';
+          h+='<button data-uid="'+u.id+'" style="padding:8px 14px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>';
+          h+='</div>';
+        });
+        res.innerHTML=h;
+        res.querySelectorAll('button[data-uid]').forEach(function(btn){
+          btn.addEventListener('click',function(){
+            ol.remove();
+            fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:btn.getAttribute('data-uid')})},hdr()))
+              .then(function(r){return r.json();})
+              .then(function(d){
+                if(d.request_id){showToast('تم ✓','success');openClientChat(String(d.request_id),btn.getAttribute('data-uid'),'','محادثة');}
+              });
+          });
+        });
+      });
+    },400);
+  });
+}
+
 function show(pg,el,key){
   try{
     if(pg!=="detail"&&pg!=="new"){
