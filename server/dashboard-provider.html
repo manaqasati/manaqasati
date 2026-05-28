@@ -2078,9 +2078,11 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
 
   try{
-    var url='/api/messages/'+reqId+(receiverId?'?with='+receiverId:'');
+    var url='/api/messages/'+reqId+(receiverId&&!isNaN(receiverId)?'?with='+receiverId:'');
     var msgs=await _api(url)||[];
-    if(Array.isArray(msgs)&&msgs.length){_chatMsgs=msgs;_renderChatMsgs();}
+    if(Array.isArray(msgs)&&msgs.length>=_chatMsgs.filter(function(m){return !String(m.id).startsWith('tmp_');}).length){
+      _chatMsgs=msgs;_renderChatMsgs();
+    }
   }catch(e){}
 
   _chatPolling=setInterval(async function(){
