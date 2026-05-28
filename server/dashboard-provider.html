@@ -449,7 +449,6 @@ _myId=_me.id||null;
     setTimeout(function(){ _openBidModal(bidId); },1000);
     return;
   }
-  // أيضاً تحقق من localStorage المباشر
   var directChatId=localStorage.getItem('mnq_open_chat_id');
   var directOtherId=localStorage.getItem('mnq_open_chat_other');
   if(directChatId){
@@ -461,26 +460,11 @@ _myId=_me.id||null;
   if(chatId){
     setTimeout(function(){
       gotoPage('messages');
-      // حاول تفتح مباشرة أو عبر polling
-      var tries=0;
-      var iv=setInterval(function(){
-        tries++;
-        var cards=document.querySelectorAll('[data-rid]');
-        for(var i=0;i<cards.length;i++){
-          if(cards[i].getAttribute('data-rid')===String(chatId)){
-            clearInterval(iv);
-            cards[i].click();
-            return;
-          }
-        }
-        // بعد 5 ثوان افتح أول محادثة
-        if(tries>=10){
-          clearInterval(iv);
-          var first=document.querySelector('[data-rid]');
-          if(first) first.click();
-        }
-      },500);
-    },1500);
+      // افتح نافذة المحادثة مباشرة بدون polling
+      setTimeout(function(){
+        openChatRoom(chatId, directOtherId||'', '', 'محادثة مباشرة');
+      },800);
+    },800);
   }
 })();
 
