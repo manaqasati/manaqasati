@@ -370,6 +370,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 var ALL=[],CUR=[],PAGE=12,F_ST='all',F_CAT='',F_CI='',F_Q='';
 
 var CAT_COLORS={
@@ -404,7 +405,7 @@ function locIc(){
 
 function card(p){
   var isOpen = p.status === 'open';
-  var img = p.thumbnail || (p.images && p.images[0]) || p.image_url || null;
+  var img = null; var _imgs=[p.thumbnail,p.images&&p.images[0],p.image_url]; for(var _ii=0;_ii<_imgs.length;_ii++){if(isImg(_imgs[_ii])){img=_imgs[_ii];break;}}
   var emoji = CAT_EMOJI[p.category] || '🔧';
   var bidN = parseInt(p.bid_count) || 0;
   var bidLabel = bidN === 0 ? 'لا عروض' : bidN + ' ' + (bidN === 1 ? 'عرض' : 'عروض');
@@ -542,7 +543,7 @@ function provCard(p){
   var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
   var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
   var verified=isVerified?'<div class="pv-verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</div>':'';
-  var avHtml=p.profile_image?'<img src="'+p.profile_image+'" loading="lazy">':initials;
+  var avHtml=isImg(p.profile_image)?'<img src="'+p.profile_image+'" loading="lazy">':initials;
   var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
   return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
     +verified
