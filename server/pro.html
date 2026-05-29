@@ -177,6 +177,8 @@ function ago(d){
 }
 
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}"
+
 
 function goMsg(){
   var token=localStorage.getItem('token');
@@ -256,7 +258,7 @@ async function load(){
     // معرض الأعمال
     if(p.portfolio_images&&p.portfolio_images.length){
       document.getElementById('port-card').style.display='block';
-      document.getElementById('portfolio').innerHTML=p.portfolio_images.filter(function(i){return i&&i.startsWith('http');}).map(function(img){
+      document.getElementById('portfolio').innerHTML=p.portfolio_images.filter(function(i){return isImg(i);}).map(function(img){
         return '<div class="port-img" onclick="openImg(\''+img+'\')"><img src="'+img+'" loading="lazy" alt="عمل"></div>';
       }).join('');
     }
