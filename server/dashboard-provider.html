@@ -313,6 +313,7 @@ function fmtN(n){ return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(
 
 'use strict';
 var API='https://manaqasati-production.up.railway.app';
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(function(reg){console.log('SW registered:',reg.scope);}).catch(function(err){console.log('SW register error:',err);});
