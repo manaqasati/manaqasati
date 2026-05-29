@@ -403,61 +403,44 @@ function locIc(){
 }
 
 function card(p){
-  var isOpen = p.status==='open';
-  // ✅ إصلاح 1: استخدام p.thumbnail أولاً لأن API يرجعه
+  var isOpen = p.status === 'open';
   var img = p.thumbnail || (p.images && p.images[0]) || p.image_url || null;
   var emoji = CAT_EMOJI[p.category] || '🔧';
-  var badge = '<span class="pc-st '+(isOpen?'pc-open':'pc-done-st')+'" style="position:absolute;top:9px;right:10px">'+(isOpen?'● مفتوح':'تمت الترسية')+'</span>';
+  var bidN = parseInt(p.bid_count) || 0;
+  var bidLabel = bidN === 0 ? 'لا عروض' : bidN + ' ' + (bidN === 1 ? 'عرض' : 'عروض');
+  var projSlug = encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40)) + '-' + p.id;
+
+  var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : 'تمت الترسية') + '</span>';
 
   var hdr = img
-    ? '<div class="pc-img-wrap"><img class="pc-img" src="'+img+'" loading="lazy"><div class="pc-overlay"></div>'+badge+'</div>'
-    : '<div style="position:relative;height:148px;background:linear-gradient(135deg,#0A1628,var(--p));overflow:hidden;flex-shrink:0">'
-        +'<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.18" viewBox="0 0 300 148" preserveAspectRatio="none">'
-          +'<line x1="20" y1="30" x2="100" y2="55" stroke="#fff" stroke-width="1.2"/>'
-          +'<line x1="100" y1="55" x2="180" y2="28" stroke="#fff" stroke-width="1.2"/>'
-          +'<line x1="180" y1="28" x2="270" y2="48" stroke="#fff" stroke-width="1"/>'
-          +'<line x1="100" y1="55" x2="145" y2="35" stroke="#C9920A" stroke-width="1.2" stroke-opacity="0.9"/>'
-          +'<circle cx="20" cy="30" r="3" fill="#fff" opacity="0.4"/>'
-          +'<circle cx="100" cy="55" r="6" fill="#fff" opacity="0.5"/>'
-          +'<circle cx="180" cy="28" r="3.5" fill="#fff" opacity="0.35"/>'
-          +'<circle cx="270" cy="48" r="3" fill="#fff" opacity="0.3"/>'
-          +'<circle cx="145" cy="35" r="5" fill="#C9920A" opacity="0.85"/>'
-        +'</svg>'
-        +'<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9920A,transparent)"></div>'
-        +'<div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 16px">'
-          +'<div style="width:52px;height:52px;border-radius:16px;background:rgba(201,146,10,.15);border:1.5px solid rgba(201,146,10,.35);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.2)">'+emoji+'</div>'
-          +'<div style="text-align:center">'
-            +'<div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:3px">'+(p.category||'مشروع')+'</div>'
-            +'<div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:600;letter-spacing:.5px">منصة مناقصة</div>'
-          +'</div>'
-        +'</div>'
-        +badge
-        +'</div>';
+    ? ('<div class="pc-img-wrap"><img class="pc-img" src="' + img + '" loading="lazy"><div class="pc-overlay"></div>' + badge + '</div>')
+    : ('<div style="position:relative;height:148px;background:linear-gradient(135deg,#0A1628,var(--p));overflow:hidden;flex-shrink:0">'
+        + '<div style="position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 16px">'
+          + '<div style="width:52px;height:52px;border-radius:16px;background:rgba(201,146,10,.15);border:1.5px solid rgba(201,146,10,.35);display:flex;align-items:center;justify-content:center;font-size:26px">' + emoji + '</div>'
+          + '<div style="text-align:center"><div style="font-size:13px;font-weight:900;color:#fff">' + (p.category||'مشروع') + '</div></div>'
+        + '</div>'
+        + badge
+      + '</div>');
 
-  // ✅ إصلاح 3: عرض عدد العروض مع التمييز (bdi) وصيغة الجمع
-  var bidN = parseInt(p.bid_count) || 0;
-  var bidLabel = bidN === 0 ? 'لا عروض' : '<bdi>'+bidN+'</bdi> '+(bidN===1?'عرض':'عروض');
-
-  var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
-  return '<div class="pc" onclick="location.href=\''/project/'+projSlug+'\'">'
-    +hdr
-    +'<div class="pc-body">'
-    +(p.project_number?'<div class="pc-num">'+p.project_number+'</div>':'')
-    +'<div class="pc-title">'+p.title+'</div>'
-    +'<div class="pc-chips">'
-    +(p.city?'<span class="chip chip-g">'+locIc()+p.city+'</span>':'')
-    +(p.budget_max?'<span class="chip chip-y">'+Number(p.budget_max).toLocaleString('en-US')+' ر.س</span>':'')
-    +'<span class="chip chip-d">'+bidLabel+'</span>'
-    +(img&&p.category?'<span class="chip chip-b">'+p.category+'</span>':'')
-    +'</div>'
-    +'<div class="pc-footer">'
-    +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
-    // ✅ إصلاح 2: الزر بـ inline-flex صريح بدون اعتماد على class فقط
-    +(isOpen
-      ?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#C9920A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(201,146,10,.35);flex-shrink:0;white-space:nowrap">تقديم عرض</button>'
-      :'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
-    +'</div></div></div>';
+  return '<div class="pc" data-slug="' + projSlug + '" onclick="goProject(this)">'
+    + hdr
+    + '<div class="pc-body">'
+    + (p.project_number ? '<div class="pc-num">' + p.project_number + '</div>' : '')
+    + '<div class="pc-title">' + p.title + '</div>'
+    + '<div class="pc-chips">'
+    + (p.city ? '<span class="chip chip-g">' + locIc() + p.city + '</span>' : '')
+    + (p.budget_max ? '<span class="chip chip-y">' + Number(p.budget_max).toLocaleString('en-US') + ' ر.س</span>' : '')
+    + '<span class="chip chip-d"><bdi>' + bidN + '</bdi> ' + (bidN===1?'عرض':'عروض') + '</span>'
+    + (img && p.category ? '<span class="chip chip-b">' + p.category + '</span>' : '')
+    + '</div>'
+    + '<div class="pc-footer">'
+    + '<div><div class="pc-price">' + (p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : 'مفتوح') + '</div><div class="pc-time">' + ago(p.created_at) + '</div></div>'
+    + (isOpen
+        ? '<button onclick="event.stopPropagation();handleBidClick(' + p.id + ')" style="display:inline-flex;align-items:center;padding:8px 14px;background:#C9920A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(201,146,10,.35);flex-shrink:0;white-space:nowrap">تقديم عرض</button>'
+        : '<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
+    + '</div></div></div>';
 }
+
 
 function goAuth(){ location.href='auth.html'; }
 
@@ -566,7 +549,7 @@ function provCard(p){
   var verified=isVerified?'<div class="pv-verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</div>':'';
   var avHtml=p.profile_image?'<img src="'+p.profile_image+'" loading="lazy">':initials;
   var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
-  return '<div class="pv" onclick="location.href=\''/pro/'+pvSlug+'\'">'
+  return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
     +verified
     +'<div class="pv-av">'+avHtml+'</div>'
     +'<div class="pv-name">'+(p.business_name||p.name||'—')+'</div>'
