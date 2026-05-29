@@ -126,6 +126,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .idx-content{padding:16px 12px 40px}
   .pg-grid{grid-template-columns:1fr}
 }
+
+/* ══ PROVIDERS SECTION ══ */
+.prov-section{background:var(--white);border-top:1px solid var(--border);padding:32px 18px 40px;}
+.prov-inner{max-width:1200px;margin:0 auto;}
+.prov-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.prov-hd h2{font-size:17px;font-weight:900;color:var(--text);}
+.prov-hd p{font-size:12px;color:var(--muted);margin-top:2px;}
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.pv{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;}
+.pv:hover{box-shadow:0 6px 20px rgba(13,24,41,.1);transform:translateY(-3px);border-color:rgba(13,24,41,.15);}
+.pv-av{width:64px;height:64px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--p2);margin-bottom:10px;overflow:hidden;flex-shrink:0;border:2.5px solid var(--gold-soft);}
+.pv-av img{width:100%;height:100%;object-fit:cover;}
+.pv-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.pv-city{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.pv-specs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;}
+.pv-spec{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--p-light);color:var(--p);}
+.pv-stars{font-size:12px;color:#F0A500;letter-spacing:1px;}
+.pv-stats{font-size:10px;color:var(--muted);margin-top:3px;}
+.pv-verified{position:absolute;top:10px;left:10px;background:#2563eb;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px;}
+@media(max-width:680px){.prov-grid{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
@@ -246,6 +266,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
     <div class="lm-wrap" id="lm" style="display:none">
       <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
+    </div>
+  </div>
+
+
+  <!-- PROVIDERS SECTION -->
+  <div class="prov-section" id="provSection" style="display:none">
+    <div class="prov-inner">
+      <div class="prov-hd">
+        <div>
+          <h2>مزودو الخدمات المتاحون</h2>
+          <p>تواصل مباشرة مع مزودين موثّقين في منطقتك</p>
+        </div>
+        <button class="btn-outline-w" onclick="location.href='auth.html'" style="background:var(--p);color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:none">عرض الكل</button>
+      </div>
+      <div class="prov-grid" id="provGrid">
+        <div class="sk-card" style="border-radius:14px;height:180px"></div>
+        <div class="sk-card" style="border-radius:14px;height:180px"></div>
+        <div class="sk-card" style="border-radius:14px;height:180px"></div>
+        <div class="sk-card" style="border-radius:14px;height:180px"></div>
+      </div>
     </div>
   </div>
 
@@ -414,6 +454,38 @@ function clearAll(){
 }
 
 function showMore(){PAGE+=12;render(CUR);}
+
+function provCard(p){
+  var avg=parseFloat(p.avg_rating)||0;
+  var stars='';for(var i=1;i<=5;i++)stars+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#D1D5DB')+'">★</span>';
+  var initials=(p.business_name||p.name||'م')[0];
+  var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
+  var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
+  var verified=isVerified?'<div class="pv-verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</div>':'';
+  var avHtml=p.profile_image?'<img src="'+p.profile_image+'" loading="lazy">':initials;
+  return '<div class="pv" onclick="goAuth()">'
+    +verified
+    +'<div class="pv-av">'+avHtml+'</div>'
+    +'<div class="pv-name">'+(p.business_name||p.name||'—')+'</div>'
+    +(p.city?'<div class="pv-city">📍 '+p.city+'</div>':'')
+    +(specs?'<div class="pv-specs">'+specs+'</div>':'')
+    +(avg>0?'<div class="pv-stars">'+stars+' <span style="font-size:11px;color:var(--muted)">'+avg.toFixed(1)+'</span></div>':'<div style="font-size:10px;color:var(--muted)">جديد</div>')
+    +(p.completed_projects>0?'<div class="pv-stats">'+p.completed_projects+' مشروع منجز</div>':'')
+    +'</div>';
+}
+
+async function loadProviders(){
+  try{
+    var r=await fetch(API+'/api/providers');
+    var d=await r.json();
+    if(!Array.isArray(d)||!d.length) return;
+    var sec=document.getElementById('provSection');
+    if(sec) sec.style.display='block';
+    var g=document.getElementById('provGrid');
+    if(g) g.innerHTML=d.slice(0,8).map(provCard).join('');
+  }catch(e){}
+}
+
 
 async function load(){
   try{
