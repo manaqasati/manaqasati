@@ -294,11 +294,45 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         </select>
         <select id="pf-city" onchange="filterProviders()" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--white);font-family:Tajawal,sans-serif;color:var(--text);outline:none;cursor:pointer">
           <option value="">كل المدن</option>
-          <option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option>
-          <option>مكة المكرمة</option><option>المدينة المنورة</option><option>الطائف</option>
-          <option>الأحساء</option><option>بريدة</option><option>تبوك</option><option>أبها</option>
-          <option>خميس مشيط</option><option>حائل</option><option>جازان</option><option>نجران</option>
-          <option>القطيف</option><option>الجبيل</option><option>ينبع</option><option>الخرج</option>
+          <optgroup label="منطقة الرياض">
+            <option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option>
+          </optgroup>
+          <optgroup label="منطقة مكة المكرمة">
+            <option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option>
+          </optgroup>
+          <optgroup label="منطقة المدينة المنورة">
+            <option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option>
+          </optgroup>
+          <optgroup label="منطقة القصيم">
+            <option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option>
+          </optgroup>
+          <optgroup label="المنطقة الشرقية">
+            <option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option>
+          </optgroup>
+          <optgroup label="منطقة عسير">
+            <option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option>
+          </optgroup>
+          <optgroup label="منطقة تبوك">
+            <option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option>
+          </optgroup>
+          <optgroup label="منطقة حائل">
+            <option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option>
+          </optgroup>
+          <optgroup label="منطقة الحدود الشمالية">
+            <option>عرعر</option><option>طريف</option><option>رفحاء</option>
+          </optgroup>
+          <optgroup label="منطقة الجوف">
+            <option>سكاكا</option><option>دومة الجندل</option><option>القريات</option>
+          </optgroup>
+          <optgroup label="منطقة الباحة">
+            <option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option>
+          </optgroup>
+          <optgroup label="منطقة جازان">
+            <option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option>
+          </optgroup>
+          <optgroup label="منطقة نجران">
+            <option>نجران</option><option>شرورة</option>
+          </optgroup>
         </select>
         <button onclick="clearProvFilters()" style="padding:9px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-weight:700;color:var(--muted);background:var(--white);cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">مسح</button>
       </div>
