@@ -438,7 +438,8 @@ function card(p){
   var bidN = parseInt(p.bid_count) || 0;
   var bidLabel = bidN === 0 ? 'لا عروض' : '<bdi>'+bidN+'</bdi> '+(bidN===1?'عرض':'عروض');
 
-  return '<div class="pc" onclick="goAuth()">'
+  var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
+  return '<div class="pc" onclick="location.href=\''/project/'+projSlug+'\'">'
     +hdr
     +'<div class="pc-body">'
     +(p.project_number?'<div class="pc-num">'+p.project_number+'</div>':'')
@@ -453,12 +454,50 @@ function card(p){
     +'<div><div class="pc-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+' ر.س':'مفتوح')+'</div><div class="pc-time">'+ago(p.created_at)+'</div></div>'
     // ✅ إصلاح 2: الزر بـ inline-flex صريح بدون اعتماد على class فقط
     +(isOpen
-      ?'<button onclick="event.stopPropagation();goAuth()" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#C9920A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(201,146,10,.35);flex-shrink:0;white-space:nowrap">تقديم عرض</button>'
+      ?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:#C9920A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(201,146,10,.35);flex-shrink:0;white-space:nowrap">تقديم عرض</button>'
       :'<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
     +'</div></div></div>';
 }
 
 function goAuth(){ location.href='auth.html'; }
+
+function getUser(){
+  try{
+    var t=localStorage.getItem('token');
+    var u=JSON.parse(localStorage.getItem('user')||'null');
+    return (t&&u)?u:null;
+  }catch(e){return null;}
+}
+
+function handleBidClick(reqId){
+  var u=getUser();
+  if(u){
+    var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';
+    location.href=dash+'?bid='+reqId;
+  } else {
+    location.href='auth.html?mode=register&next=bid&ref='+reqId;
+  }
+}
+
+function initNav(){
+  var u=getUser();
+  if(!u) return;
+  var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';
+  var name=(u.name||'').split(' ')[0];
+  // الـ nav
+  document.querySelectorAll('.idx-nav-btns').forEach(function(wrap){
+    wrap.innerHTML='<button onclick="location.href=\''+dash+'\'" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 3px 10px rgba(201,146,10,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>لوحة التحكم، '+name+'</button>';
+  });
+  // الهيرو
+  document.querySelectorAll('.idx-hero-btns').forEach(function(wrap){
+    if(u.role==='provider'){
+      wrap.innerHTML='<button onclick="location.href=\'dashboard-provider.html\'" style="display:inline-flex;align-items:center;gap:6px;padding:13px 26px;background:var(--gold);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 4px 14px rgba(201,146,10,.35)">تصفح المشاريع ←</button>';
+    } else {
+      wrap.innerHTML='<button onclick="location.href=\'dashboard-client.html\'" style="display:inline-flex;align-items:center;gap:6px;padding:13px 26px;background:var(--gold);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 4px 14px rgba(201,146,10,.35)">لوحة التحكم ←</button>';
+    }
+  });
+}
+
 
 function render(list){
   var g=document.getElementById('grid');
@@ -526,7 +565,8 @@ function provCard(p){
   var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
   var verified=isVerified?'<div class="pv-verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</div>':'';
   var avHtml=p.profile_image?'<img src="'+p.profile_image+'" loading="lazy">':initials;
-  return '<div class="pv" onclick="goAuth()">'
+  var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
+  return '<div class="pv" onclick="location.href=\''/pro/'+pvSlug+'\'">'
     +verified
     +'<div class="pv-av">'+avHtml+'</div>'
     +'<div class="pv-name">'+(p.business_name||p.name||'—')+'</div>'
@@ -615,6 +655,7 @@ async function load(){
 
 load();
 loadProviders();
+initNav();
 </script>
 </body>
 </html>
