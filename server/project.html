@@ -100,7 +100,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 <nav class="nav">
-  <button class="back" onclick="location.href='/'"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>الرئيسية</button>
+  <button class="back" onclick="history.length>1?history.back():location.href='/'" title="رجوع"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
   <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
   <button class="nav-in" onclick="location.href='/auth.html'">دخول</button>
 </nav>
