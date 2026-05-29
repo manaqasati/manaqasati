@@ -160,9 +160,14 @@ var API='https://manaqasati-production.up.railway.app';
 var _provId=null,_provPhone=null,_provName='مزود';
 
 function slug2id(){
-  var path=location.pathname.replace(/^\/pro\//,'');
-  var m=path.match(/(\d+)$/);
-  return m?parseInt(m[1]):null;
+  // First: try ?id= param (most reliable)
+  var params=new URLSearchParams(location.search);
+  if(params.get('id')&&/^\d+$/.test(params.get('id'))) return parseInt(params.get('id'));
+  // Second: last number in pathname
+  var path=decodeURIComponent(location.pathname);
+  var nums=path.match(/\d+/g);
+  if(nums&&nums.length) return parseInt(nums[nums.length-1]);
+  return null;
 }
 
 function stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#D1D5DB')+'">★</span>';return s;}
