@@ -1067,16 +1067,33 @@ async function loadBids(id){
     html+='</div>';
     html+='<div style="text-align:center;flex-shrink:0"><div style="font-size:22px;font-weight:900;color:var(--gold)">'+fmtN(b.price)+'</div><div style="font-size:10px;color:rgba(255,255,255,.4)">ر.س</div>'+(b.days?'<div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px">'+b.days+' يوم</div>':'')+'</div>';
     html+='</div>';
+    // ✅ إصلاح: استخدام p.id بدل b.provider_id تفادياً لـ undefined
+    var safeProvId = p.id || b.provider_id || '';
+    var safeProvSlug = encodeURIComponent((p.business_name||p.name||b.provider_name||'مزود').replace(/\s+/g,'-')) + '-' + safeProvId;
+
     html+='<div style="padding:14px 16px">';
-    html+='<div style="font-size:10px;color:var(--muted);margin-bottom:10px">قُدِّم '+agoFmt(b.created_at)+'</div>';
-    if(b.note)html+='<div style="font-size:13px;color:var(--text2);background:var(--bg);padding:12px;border-radius:10px;border-right:3px solid var(--gold);line-height:1.9;margin-bottom:12px">'+esc(b.note)+'</div>';
-    html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html+='<a href="/pro/'+provSlug+'" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;color:var(--text);text-decoration:none"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
-    html+='<button class="_chat-prov-btn" data-pid="'+b.provider_id+'" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
+    html+='<div style="font-size:10px;color:var(--muted);margin-bottom:12px">قُدِّم '+agoFmt(b.created_at)+'</div>';
+
+    // ══ الأزرار ══
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+    html+='<a href="/pro/'+safeProvSlug+'" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;color:var(--text);text-decoration:none"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
+    html+='<button class="_chat-prov-btn" data-pid="'+safeProvId+'" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
     if(!isAcc&&!isRej){
       html+='<button onclick="acceptBid('+b.id+','+id+')" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:9px 14px;background:#16A34A;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>قبول العرض</button>';
       html+='<button onclick="rejectBid('+b.id+','+id+')" style="padding:9px 14px;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">رفض</button>';
     }
+    html+='</div>';
+
+    // ✅ تفاصيل العرض تحت الأزرار مباشرة
+    html+='<div style="border-top:1px solid var(--border);padding-top:10px">';
+    html+='<div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:6px;letter-spacing:.3px">تفاصيل العرض</div>';
+    if(b.note){
+      html+='<div style="font-size:13px;color:var(--text2);background:var(--bg);padding:11px 13px;border-radius:9px;border-right:3px solid var(--gold);line-height:1.9">'+esc(b.note)+'</div>';
+    } else {
+      html+='<div style="font-size:12px;color:var(--hint);font-style:italic">لم يضف المزود ملاحظات</div>';
+    }
+    html+='</div>';
+
     html+='</div></div></div>';
     return html;
   }).join('');
