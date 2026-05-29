@@ -278,7 +278,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <h2>مزودو الخدمات المتاحون</h2>
           <p id="prov-count-lbl">جاري التحميل...</p>
         </div>
-        <button onclick="location.href='auth.html'" style="display:inline-flex;align-items:center;padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">عرض الكل</button>
+        <button onclick="location.href='auth.html?role=provider'" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 3px 10px rgba(201,146,10,.3)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>سجّل كمزود خدمة</button>
       </div>
 
       <!-- فلاتر التخصص والمدينة -->
@@ -333,6 +333,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <optgroup label="منطقة نجران">
             <option>نجران</option><option>شرورة</option>
           </optgroup>
+        </select>
+        <select id="pf-sort" onchange="filterProviders()" style="flex:1;min-width:130px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--white);font-family:Tajawal,sans-serif;color:var(--text);outline:none;cursor:pointer">
+          <option value="bump">الأحدث نشاطاً</option>
+          <option value="rating">الأعلى تقييماً</option>
+          <option value="projects">الأكثر إنجازاً</option>
+          <option value="verified">الموثّقون أولاً</option>
         </select>
         <button onclick="clearProvFilters()" style="padding:9px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-weight:700;color:var(--muted);background:var(--white);cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">مسح</button>
       </div>
@@ -560,10 +566,21 @@ function renderProviders(list){
 function filterProviders(){
   var cat=(document.getElementById('pf-cat')||{value:''}).value;
   var city=(document.getElementById('pf-city')||{value:''}).value;
+  var sort=(document.getElementById('pf-sort')||{value:'bump'}).value;
   var filtered=ALL_PROVS.filter(function(p){
     if(cat && !(p.specialties||[]).some(function(s){return s===cat;})) return false;
     if(city && p.city!==city) return false;
     return true;
+  });
+  filtered=filtered.slice().sort(function(a,b){
+    if(sort==='rating') return (parseFloat(b.avg_rating)||0)-(parseFloat(a.avg_rating)||0);
+    if(sort==='projects') return (parseInt(b.completed_projects)||0)-(parseInt(a.completed_projects)||0);
+    if(sort==='verified'){
+      var av=!!(a.profile_image&&a.bio&&(a.specialties||[]).length>0&&(parseFloat(a.avg_rating)||0)>0);
+      var bv=!!(b.profile_image&&b.bio&&(b.specialties||[]).length>0&&(parseFloat(b.avg_rating)||0)>0);
+      return (bv?1:0)-(av?1:0);
+    }
+    return 0; // bump — already sorted by API
   });
   renderProviders(filtered);
 }
@@ -571,6 +588,7 @@ function filterProviders(){
 function clearProvFilters(){
   var c=document.getElementById('pf-cat'); if(c) c.value='';
   var ci=document.getElementById('pf-city'); if(ci) ci.value='';
+  var cs=document.getElementById('pf-sort'); if(cs) cs.value='bump';
   renderProviders(ALL_PROVS);
 }
 
