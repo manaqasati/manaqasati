@@ -276,10 +276,33 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div class="prov-hd">
         <div>
           <h2>مزودو الخدمات المتاحون</h2>
-          <p>تواصل مباشرة مع مزودين موثّقين في منطقتك</p>
+          <p id="prov-count-lbl">جاري التحميل...</p>
         </div>
-        <button class="btn-outline-w" onclick="location.href='auth.html'" style="background:var(--p);color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;border:none">عرض الكل</button>
+        <button onclick="location.href='auth.html'" style="display:inline-flex;align-items:center;padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">عرض الكل</button>
       </div>
+
+      <!-- فلاتر التخصص والمدينة -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <select id="pf-cat" onchange="filterProviders()" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--white);font-family:Tajawal,sans-serif;color:var(--text);outline:none;cursor:pointer">
+          <option value="">كل التخصصات</option>
+          <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
+          <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
+          <option>حدادة</option><option>ألمنيوم</option><option>مسابح</option>
+          <option>كاميرات مراقبة</option><option>شبكات وإنترنت</option>
+          <option>مظلات وسواتر</option><option>عزل حراري</option>
+          <option>مكافحة حشرات</option><option>بناء</option><option>جبس وطباشير</option>
+        </select>
+        <select id="pf-city" onchange="filterProviders()" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--white);font-family:Tajawal,sans-serif;color:var(--text);outline:none;cursor:pointer">
+          <option value="">كل المدن</option>
+          <option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option>
+          <option>مكة المكرمة</option><option>المدينة المنورة</option><option>الطائف</option>
+          <option>الأحساء</option><option>بريدة</option><option>تبوك</option><option>أبها</option>
+          <option>خميس مشيط</option><option>حائل</option><option>جازان</option><option>نجران</option>
+          <option>القطيف</option><option>الجبيل</option><option>ينبع</option><option>الخرج</option>
+        </select>
+        <button onclick="clearProvFilters()" style="padding:9px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-weight:700;color:var(--muted);background:var(--white);cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">مسح</button>
+      </div>
+
       <div class="prov-grid" id="provGrid">
         <div class="sk-card" style="border-radius:14px;height:180px"></div>
         <div class="sk-card" style="border-radius:14px;height:180px"></div>
@@ -474,16 +497,47 @@ function provCard(p){
     +'</div>';
 }
 
+var ALL_PROVS=[];
+
 async function loadProviders(){
   try{
     var r=await fetch(API+'/api/providers');
     var d=await r.json();
     if(!Array.isArray(d)||!d.length) return;
+    ALL_PROVS=d;
     var sec=document.getElementById('provSection');
     if(sec) sec.style.display='block';
-    var g=document.getElementById('provGrid');
-    if(g) g.innerHTML=d.slice(0,8).map(provCard).join('');
+    renderProviders(ALL_PROVS);
   }catch(e){}
+}
+
+function renderProviders(list){
+  var g=document.getElementById('provGrid');
+  var lbl=document.getElementById('prov-count-lbl');
+  if(!g) return;
+  if(lbl) lbl.textContent=list.length+' مزود متاح';
+  if(!list.length){
+    g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:13px">لا يوجد مزودون بهذه الفلاتر</div>';
+    return;
+  }
+  g.innerHTML=list.slice(0,12).map(provCard).join('');
+}
+
+function filterProviders(){
+  var cat=(document.getElementById('pf-cat')||{value:''}).value;
+  var city=(document.getElementById('pf-city')||{value:''}).value;
+  var filtered=ALL_PROVS.filter(function(p){
+    if(cat && !(p.specialties||[]).some(function(s){return s===cat;})) return false;
+    if(city && p.city!==city) return false;
+    return true;
+  });
+  renderProviders(filtered);
+}
+
+function clearProvFilters(){
+  var c=document.getElementById('pf-cat'); if(c) c.value='';
+  var ci=document.getElementById('pf-city'); if(ci) ci.value='';
+  renderProviders(ALL_PROVS);
 }
 
 
