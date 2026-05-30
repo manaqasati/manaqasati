@@ -1066,8 +1066,8 @@ function loadNotifCount(){
     var cnt=Array.isArray(d)?d.filter(function(n){return!n.is_read;}).length:(d&&d.unread)||0;
     ['notifBadge','mob-notif-badge'].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=cnt;el.style.display=cnt?'flex':'none';}});
   }).catch(function(){});
-  jFetch('/api/messages/unread-count').then(function(d){
-    var cnt=d&&d.count?d.count:0;
+  jFetch('/api/client/conversations').then(function(convs){
+    var cnt=Array.isArray(convs)?convs.reduce(function(s,c){return s+(parseInt(c.unread)||0);},0):0;
     ['chatBadge','bn-chat-badge'].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=cnt;el.style.display=cnt?'flex':'none';}});
   }).catch(function(){});
 }
