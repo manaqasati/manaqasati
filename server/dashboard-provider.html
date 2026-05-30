@@ -223,7 +223,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <div class="mob-head">
-  <div class="mob-logo"><span class="mob-logo-dot"></span>مناقصة</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="history.length>1?history.back():location.href='/'" style="background:rgba(255,255,255,.12);border:none;color:#fff;cursor:pointer;padding:6px;border-radius:8px;display:flex"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="mob-logo"><span class="mob-logo-dot"></span>مناقصة</div>
+  </div>
   <div class="mob-right">
     <button class="mob-notif" onclick="gotoPage('notifs')">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -236,7 +239,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title" id="pageTitle">الرئيسية</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="history.length>1?history.back():location.href='/'" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;padding:7px 10px;border-radius:8px;display:flex;align-items:center;font-family:Tajawal,sans-serif"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="topbar-title" id="pageTitle">الرئيسية</div>
+    </div>
     <button class="btn-new" onclick="gotoPage('browse')">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       تصفح المشاريع
