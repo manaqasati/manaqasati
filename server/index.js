@@ -141,9 +141,16 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
   try {
     const raw = req.path.replace(/^\/pro\//, '');
     const slug = decodeURIComponent(raw);
-    const match = slug.match(/(\d+)$/);
-    if (!match) return res.sendFile(__dirname + '/pro.html');
-    const id = parseInt(match[1]);
+    // ✅ يقبل ID في النهاية (وليد-49) أو البداية (49-وليد) أو ?id=
+    const params = new URLSearchParams(req.query);
+    let id = null;
+    if (params.get('id') && /^\d+$/.test(params.get('id'))) {
+      id = parseInt(params.get('id'));
+    } else {
+      const m = slug.match(/(\d+)$/) || slug.match(/^(\d+)-/);
+      if (m) id = parseInt(m[1]);
+    }
+    if (!id) return res.sendFile(__dirname + '/pro.html');
     const r = await pool.query(`
       SELECT id, name, phone, city, bio, specialties, profile_image, business_name, experience_years,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
