@@ -179,9 +179,10 @@ function mkStars(n){
 }
 function blurText(text){
   if(!text) return '';
+  try{ if(localStorage.getItem('token')) return esc(text); }catch(e){}
   var words = text.trim().split(/\s+/);
-  var visible = words.slice(0,5).join(' ');
-  var hidden  = words.slice(5).join(' ');
+  var visible = words.slice(0,8).join(' ');
+  var hidden = words.slice(8).join(' ');
   if(!hidden) return esc(visible);
   return esc(visible)+' <span class="bid-blur">'+esc(hidden)+'</span>';
 }
