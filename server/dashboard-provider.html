@@ -554,7 +554,7 @@ function _renderHome(data){
   var cardUrlDisplay='manaqasa.com/pro/'+(_me.name||'مزود').replace(/\s+/g,'-')+'-'+_me.id;
   html+='<div style="background:linear-gradient(135deg,rgba(201,146,10,.1),rgba(201,146,10,.05));border:1.5px solid rgba(201,146,10,.25);border-radius:14px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">';
   html+='<div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div><div style="font-size:11px;color:var(--gold-d);opacity:.7">شاركها مع عملائك</div></div>';
-  html+='<a href="'+cardUrl+'" target="_blank" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>عرض البطاقة</a></div>';
+  html+='<a href="'+cardUrl+'" target="_blank" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 3px 10px rgba(201,146,10,.3)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض كما يراك العملاء</a></div>';
   var lastBump=profile.last_bumped_at;
   var hoursLeft=lastBump?Math.max(0,24-Math.floor((Date.now()-new Date(lastBump))/3600000)):0;
   if(hoursLeft>0){
@@ -947,10 +947,17 @@ async function loadProfile(){
   var cardUrlDisplay='manaqasa.com/pro/'+(_me.name||'مزود').replace(/\s+/g,'-')+'-'+_me.id;
   var previewCard=document.createElement('div');
   previewCard.style.cssText='background:linear-gradient(135deg,rgba(201,146,10,.08),rgba(201,146,10,.03));border:1.5px solid rgba(201,146,10,.2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px';
-  previewCard.innerHTML='<div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div><div style="font-size:11px;color:var(--muted)">'+cardUrlDisplay+'</div></div>'
-    +'<div style="display:flex;gap:6px">'
+  previewCard.innerHTML=''
+    +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:4px">بطاقتي الشخصية</div>'
+      +'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cardUrlDisplay+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;flex-shrink:0">'
     +'<button id="copy-card-btn" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">نسخ الرابط</button>'
-    +'<a href="'+cardUrl+'" target="_blank" style="padding:8px 14px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>معاينة</a>'
+    +'<a href="'+cardUrl+'" target="_blank" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(201,146,10,.3)">'
+      +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+      +'عرض كما يراك العملاء'
+    +'</a>'
     +'</div>';
   pg.appendChild(previewCard);
   // ✅ إصلاح 2: event listener مباشرة
