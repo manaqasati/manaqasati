@@ -424,6 +424,18 @@ function render(){
       if(provId){
         h+='<a href="'+proUrl+'" class="bid-btn bid-btn-pro" target="_blank"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض الملف</a>';
       }
+      // ✅ أزرار القبول والرفض لصاحب المشروع
+      if(isOwner&&req.status==='open'){
+        var isAcc=b.status==='accepted',isRej=b.status==='rejected';
+        if(isAcc){
+          h+='<span style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:var(--green-l);color:var(--green);border-radius:10px;font-size:11px;font-weight:800;border:1px solid #bbf7d0">✓ مقبول</span>';
+        } else if(isRej){
+          h+='<span style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:#FEF2F2;color:var(--red);border-radius:10px;font-size:11px;font-weight:800;border:1px solid #fecaca">✕ مرفوض</span>';
+        } else {
+          h+='<button onclick="acceptBid('+b.id+')" style="display:inline-flex;align-items:center;gap:4px;padding:8px 14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">✓ قبول</button>';
+          h+='<button onclick="rejectBid('+b.id+')" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;background:#FEF2F2;color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✕ رفض</button>';
+        }
+      }
       h+='</div></div></div>';
     });
   }
@@ -530,6 +542,24 @@ function openViewer(src){
 function shareProject(){
   if(navigator.share){navigator.share({title:_req&&_req.title||'مشروع',url:location.href});}
   else{navigator.clipboard&&navigator.clipboard.writeText(location.href).then(function(){alert('تم نسخ الرابط');});}
+}
+
+// ═══ OWNER BID ACTIONS ═══
+async function acceptBid(bidId){
+  if(!confirm('هل تؤكد قبول هذا العرض؟'))return;
+  try{
+    var r=await fetch(API+'/api/bids/'+bidId+'/accept',{method:'PUT',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}});
+    if(r.ok){alert('✅ تم قبول العرض');load();}
+    else{var d=await r.json();alert(d.message||'تعذر القبول');}
+  }catch(e){alert('تعذر الاتصال');}
+}
+async function rejectBid(bidId){
+  if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
+  try{
+    var r=await fetch(API+'/api/bids/'+bidId+'/reject',{method:'PUT',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}});
+    if(r.ok){alert('تم الرفض');load();}
+    else{var d=await r.json();alert(d.message||'تعذر الرفض');}
+  }catch(e){alert('تعذر الاتصال');}
 }
 
 // ═══ START ═══
