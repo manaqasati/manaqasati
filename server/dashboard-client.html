@@ -1013,8 +1013,16 @@ async function loadBids(id){
   if(!el)return;
   el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">جاري تحميل العروض...</div>';
   var bids=[];
-  try{bids=await fetch(API+'/api/requests/'+id+'/bids',hdr()).then(function(r){return r.json();});}catch(e){}
-  if(!Array.isArray(bids))bids=[];
+  try{
+    var _br=await fetch(API+'/api/requests/'+id+'/bids',hdr());
+    if(!_br.ok) throw new Error('HTTP '+_br.status);
+    bids=await _br.json();
+  }catch(e){
+    el.innerHTML='<div style="padding:30px;text-align:center"><div style="font-size:13px;color:var(--red);margin-bottom:12px">⚠️ تعذر تحميل العروض</div>'
+      +'<button onclick="loadBids('+id+')" style="padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer">إعادة المحاولة</button></div>';
+    return;
+  }
+  if(!Array.isArray(bids)){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">لا توجد بيانات</div>';return;}
   var statEl=document.getElementById('det-bids-stat');
   if(statEl&&statEl.querySelector)statEl.querySelector('div').textContent=bids.length;
   document.getElementById('bids-count').textContent='('+bids.length+')';
@@ -1154,12 +1162,20 @@ function loadTimeline(id){
 function agoFmt(d){if(!d)return '';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<2)return 'الآن';if(m<60)return 'منذ '+m+' دقيقة';var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';return 'منذ '+Math.floor(h/24)+' يوم';}
 
 function acceptBid(bidId,reqId){
-  if(!confirm('هل تقبل هذا العرض؟ سيتم إغلاق الطلب للعروض الأخرى.'))return;
-  fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr())).then(function(r){return r.json();}).then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadReqs();}).catch(function(){showToast('تعذر القبول','error');});
+  if(!confirm('هل تؤكد قبول هذا العرض؟ سيتم إغلاق الطلب للمزودين الآخرين.')) return;
+  showToast('جاري قبول العرض...','info');
+  fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){showToast('✅ تم قبول العرض بنجاح','success');loadBids(reqId);loadReqs();})
+    .catch(function(){showToast('❌ تعذر قبول العرض، حاول مجدداً','error');});
 }
 
 function rejectBid(bidId,reqId){
-  fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);});
+  if(!confirm('هل تؤكد رفض هذا العرض؟')) return;
+  fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){showToast('تم رفض العرض','success');loadBids(reqId);})
+    .catch(function(){showToast('❌ تعذر الرفض','error');});
 }
 
 function updateReq(id){
