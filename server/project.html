@@ -531,11 +531,16 @@ async function submitBid(btn){
   }
 }
 
-var _chatReqId=null,_chatMsgs=[];
+var _chatReqId=null,_chatMsgs=[],_chatReceiver=null;
 
 function doMsg(){
   var u=getUser();
   if(!u){goLogin();return;}
+  // العميل صاحب المشروع لا يحتاج يراسل نفسه
+  var ownerId=(_req&&_req.client_id)||(_req&&_req.client&&_req.client.id);
+  if(u.role==='client'&&String(u.id)===String(ownerId)){
+    alert('هذا مشروعك — يمكنك التواصل مع المزودين عبر العروض');return;
+  }
   var clientName=(_req&&_req.client&&_req.client.name)||(_req&&_req.client_name)||'صاحب المشروع';
   document.getElementById('chat-modal-title').textContent='رسالة إلى '+clientName;
   document.getElementById('chatOverlay').style.display='flex';
@@ -550,12 +555,15 @@ async function openChatRoom(){
   var u=getUser();if(!u)return;
   var wrap=document.getElementById('chat-msgs-wrap');
   wrap.innerHTML='<div style="text-align:center;color:#8896AA;font-size:12px;padding:20px">جاري التحميل...</div>';
+  // الطرف الآخر = صاحب المشروع (العميل)
+  var ownerId=(_req&&_req.client_id)||(_req&&_req.client&&_req.client.id);
+  _chatReceiver=ownerId;
   try{
-    // فتح أو إنشاء محادثة مرتبطة بالطلب
+    // direct-message يستخدم provider_id كمعرّف الطرف الآخر
     var r=await fetch(API+'/api/direct-message',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({request_id:_rid})
+      body:JSON.stringify({provider_id:ownerId})
     });
     var d=await r.json();
     _chatReqId=d.request_id||_rid;
@@ -601,13 +609,15 @@ async function sendChatMsg(){
   var inp=document.getElementById('chat-input');
   var msg=(inp.value||'').trim();
   if(!msg||!_chatReqId)return;
+  if(!_chatReceiver){alert('تعذر تحديد المستلم');return;}
   inp.value='';
   try{
     var r=await fetch(API+'/api/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({request_id:_chatReqId,content:msg})
+      body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiver,content:msg})
     });
+    if(!r.ok){throw new Error('HTTP '+r.status);}
     var m=await r.json();
     if(m&&m.id){_chatMsgs.push(m);renderMsgs(document.getElementById('chat-msgs-wrap'));}
   }catch(e){inp.value=msg;alert('تعذر الإرسال');}
