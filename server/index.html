@@ -200,7 +200,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div class="idx-stats">
         <div class="ist"><div class="ist-v gold" id="hs-u">—</div><div class="ist-l">مشروع نشط</div></div>
         <div class="ist"><div class="ist-v" id="hs-r">—</div><div class="ist-l">مشروع منشور</div></div>
-        <div class="ist"><div class="ist-v" id="hs-d">—</div><div class="ist-l">تمت الترسية</div></div>
+        <div class="ist"><div class="ist-v" id="hs-d">—</div><div class="ist-l">تم الترسية</div></div>
       </div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:10px" id="sub-txt"></div>
     </div>
@@ -242,7 +242,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="fbar">
       <button class="ftab on" onclick="fStatus('all',this)">الكل</button>
       <button class="ftab" onclick="fStatus('open',this)">مفتوح للعروض</button>
-      <button class="ftab" onclick="fStatus('done',this)">تمت الترسية</button>
+      <button class="ftab" onclick="fStatus('done',this)">تم الترسية</button>
     </div>
     <div class="frow">
       <input type="text" id="fq" class="finp" placeholder="ابحث في المشاريع..." oninput="applyAll()">
@@ -405,13 +405,15 @@ function locIc(){
 
 function card(p){
   var isOpen = p.status === 'open';
+  var isDone = p.status === 'completed' || p.status === 'in_progress' || p.status === 'done';
   var img = null; var _imgs=[p.thumbnail,p.images&&p.images[0],p.image_url]; for(var _ii=0;_ii<_imgs.length;_ii++){if(isImg(_imgs[_ii])){img=_imgs[_ii];break;}}
   var emoji = CAT_EMOJI[p.category] || '🔧';
   var bidN = parseInt(p.bid_count) || 0;
   var bidLabel = bidN === 0 ? 'لا عروض' : bidN + ' ' + (bidN === 1 ? 'عرض' : 'عروض');
   var projSlug = encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40)) + '-' + p.id;
 
-  var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : 'تمت الترسية') + '</span>';
+  var isDone = p.status==='completed'||p.status==='in_progress'||p.status==='done';
+  var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : isDone ? '✓ تم الترسية' : '● مغلق') + '</span>';
 
   var hdr = img
     ? ('<div class="pc-img-wrap"><img class="pc-img" src="' + img + '" loading="lazy"><div class="pc-overlay"></div>' + badge + '</div>')
@@ -509,7 +511,7 @@ function applyAll(){
   PAGE=12;
   CUR=ALL.filter(function(p){
     if(F_ST==='open'&&p.status!=='open')return false;
-    if(F_ST==='done'&&p.status!=='completed'&&p.status!=='in_progress')return false;
+    if(F_ST==='done'&&p.status!=='completed'&&p.status!=='in_progress'&&p.status!=='done')return false;
     if(F_CAT&&!(p.category||'').includes(F_CAT))return false;
     if(F_CI&&p.city!==F_CI)return false;
     if(F_Q&&!p.title.toLowerCase().includes(F_Q))return false;
