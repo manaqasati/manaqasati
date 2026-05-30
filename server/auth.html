@@ -478,7 +478,14 @@ async function doSubmit(){
           if(rl==='provider')    location.href='dashboard-provider.html';
           else                   location.href='dashboard-client.html';
         } else {
-          location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+          // ✅ ارجع للصفحة السابقة إذا موجودة
+          var _back=null;
+          try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
+          if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
+            location.href=_back;
+          } else {
+            location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+          }
         }
       },900);
     } else {
