@@ -633,6 +633,8 @@ async function load(){
 }
 
 load();
+function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/pro/'+slug+(id?'?id='+id:'');}
+
 loadProviders();
 initNav();
 </script>
