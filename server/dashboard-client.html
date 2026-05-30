@@ -1020,7 +1020,19 @@ async function loadBids(id){
   document.getElementById('bids-count').textContent='('+bids.length+')';
   if(!bids.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:12px;opacity:.3"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div style="font-size:14px;font-weight:700;margin-bottom:4px">لا توجد عروض بعد</div><div style="font-size:12px">سيصلك إشعار عند وصول أول عرض</div></div>';return;}
   var provs={};
-  await Promise.all(bids.map(async function(b){try{var p=await fetch(API+'/api/providers/'+b.provider_id).then(function(r){return r.json();});if(p&&p.id)provs[b.provider_id]=p;}catch(e){}}));
+  // ✅ استخدم بيانات bid مباشرة (تفادي جلب base64 ضخم)
+  bids.forEach(function(b){
+    if(b.provider_id) provs[b.provider_id]={
+      id:b.provider_id, name:b.provider_name||'مزود',
+      business_name:b.provider_business_name||null,
+      city:b.provider_city||null, phone:b.provider_phone||null,
+      badge:b.provider_badge||'none',
+      profile_image:b.provider_image||null,
+      avg_rating:parseFloat(b.provider_rating)||0,
+      review_count:parseInt(b.provider_reviews)||0,
+      specialties:b.provider_specialties||[], bio:b.provider_bio||null
+    };
+  });
   var bestBid=null;
   var pendingBids=bids.filter(function(b){return b.status==='pending';});
   if(pendingBids.length>1){bestBid=pendingBids.reduce(function(best,b){var p=provs[b.provider_id]||{};var score=(parseFloat(p.avg_rating)||0)*10-(b.price/1000);var bScore=(parseFloat((provs[best.provider_id]||{}).avg_rating)||0)*10-(best.price/1000);return score>bScore?b:best;});}
