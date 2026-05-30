@@ -887,16 +887,15 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
       SELECT b.*,
         u.name as provider_name, u.phone as provider_phone,
         u.city as provider_city, u.badge as provider_badge,
-        CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image
-             WHEN u.profile_image LIKE 'data:%' THEN 'has_image'
-             ELSE NULL END as provider_image,
+        CASE WHEN u.profile_image IS NOT NULL AND u.profile_image LIKE 'http%'
+             THEN u.profile_image ELSE NULL END as provider_image,
         u.social_whatsapp as provider_whatsapp,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
         u.business_name as provider_business_name,
-        u.avg_rating as provider_avg
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_avg
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1
       ORDER BY (b.status='accepted') DESC, b.created_at DESC
