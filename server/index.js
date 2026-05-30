@@ -58,6 +58,8 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
+app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
+app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
 
 app.get(/^\/project\/(.+)$/, async (req, res) => {
   try {
@@ -881,7 +883,24 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const r = await pool.query(`SELECT b.*, u.name as provider_name, u.phone as provider_phone, u.city as provider_city, u.badge as provider_badge, u.profile_image as provider_image, u.social_whatsapp as provider_whatsapp, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 ORDER BY (b.status='accepted') DESC, b.created_at DESC`, [id]);
+    const r = await pool.query(`
+      SELECT b.*,
+        u.name as provider_name, u.phone as provider_phone,
+        u.city as provider_city, u.badge as provider_badge,
+        CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image
+             WHEN u.profile_image LIKE 'data:%' THEN 'has_image'
+             ELSE NULL END as provider_image,
+        u.social_whatsapp as provider_whatsapp,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
+        u.specialties as provider_specialties,
+        u.bio as provider_bio,
+        u.business_name as provider_business_name,
+        u.avg_rating as provider_avg
+      FROM bids b JOIN users u ON b.provider_id=u.id
+      WHERE b.request_id=$1
+      ORDER BY (b.status='accepted') DESC, b.created_at DESC
+    `, [id]);
     res.json(r.rows);
   } catch(e) { console.error('❌ GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: e.message }); }
 });
