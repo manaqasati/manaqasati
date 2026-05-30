@@ -484,7 +484,9 @@ async function doSubmit(){
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
             location.href=_back;
           } else {
-            location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+            var _back=null;try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
+          if(_back&&_back.startsWith('/')){location.href=_back;}
+          else{location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';}
           }
         }
       },900);

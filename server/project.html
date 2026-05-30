@@ -126,7 +126,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     الرئيسية
   </button>
   <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
-  <button class="nav-in" onclick="location.href='/auth.html'">دخول</button>
+  <button class="nav-in" onclick="localStorage.setItem('_after_login',location.href);location.href='/auth.html'">دخول</button>
 </nav>
 
 <!-- HERO SKELETON -->
