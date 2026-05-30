@@ -1065,7 +1065,6 @@ async function loadBids(id){
     var cnt=parseInt(p.review_count)||0;
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
     var isBest=bestBid&&bestBid.id===b.id;
-    var provSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+b.provider_id;
     var stars='';for(var s=1;s<=5;s++)stars+='<span style="color:'+(s<=Math.round(avg)?'#C9920A':'#E6E2D9')+';font-size:12px">&#9733;</span>';
     var border=isAcc?'#16A34A':isRej?'#EF4444':isBest?'#F59E0B':'var(--border)';
     var html='<div style="background:var(--white);border-radius:16px;overflow:hidden;margin-bottom:10px;border:1.5px solid '+border+'">';
