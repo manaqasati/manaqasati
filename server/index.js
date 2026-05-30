@@ -741,14 +741,19 @@ app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
 // ═══ REQUESTS ═══
 app.get('/api/requests', async (req, res) => {
   try {
-    const { category, city } = req.query;
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE r.status='open'`;
+    const { category, city, status } = req.query;
+    // ✅ يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE 1=1`;
     const params = [];
+    if (status && status !== 'all') {
+      if (status === 'open') { query += ` AND r.status='open'`; }
+      else if (status === 'done') { query += ` AND r.status IN ('completed','in_progress','done')`; }
+    }
     if (category) { params.push(category); query += ` AND r.category=$${params.length}`; }
     if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
-    query += ' ORDER BY r.created_at DESC';
+    query += ' ORDER BY r.created_at DESC LIMIT 100';
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('❌ /requests:', e); res.json([]); }
 });
 
