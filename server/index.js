@@ -120,10 +120,14 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT b.id, b.price, b.note as proposal, b.days, b.created_at,
-        u.name as provider_name, u.city as provider_city,
+      SELECT b.id, b.price, b.note as proposal, b.days, b.status, b.created_at,
+        u.id as provider_id,
+        u.name as provider_name,
+        u.city as provider_city,
+        u.phone as provider_phone,
+        u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
-          THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE 'has_image' END
+          THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE NULL END
           ELSE NULL END as provider_image,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
