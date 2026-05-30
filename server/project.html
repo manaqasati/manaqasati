@@ -197,6 +197,23 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- IMAGE VIEWER -->
+<!-- CHAT MODAL -->
+<div id="chatOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)">
+  <div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="background:linear-gradient(135deg,#0D1829,#16213E);padding:14px 18px;border-radius:22px 22px 0 0;border-bottom:3px solid #C9920A;display:flex;align-items:center;justify-content:space-between">
+      <div id="chat-modal-title" style="font-size:14px;font-weight:900;color:#fff">رسالة</div>
+      <button onclick="closeChat()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div id="chat-msgs-wrap" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#F5F5F0;min-height:200px;max-height:50vh">
+      <div style="text-align:center;color:#8896AA;font-size:12px;padding:20px">جاري التحميل...</div>
+    </div>
+    <div style="padding:12px;border-top:1px solid #E6E2D9;display:flex;gap:8px;background:#fff">
+      <input id="chat-input" placeholder="اكتب رسالتك..." style="flex:1;padding:11px 13px;border:1.5px solid #E6E2D9;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}">
+      <button onclick="sendChatMsg()" style="padding:11px 18px;background:#16213E;color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer">إرسال</button>
+    </div>
+  </div>
+</div>
+
 <div class="viewer" id="viewer" onclick="this.classList.remove('on')">
   <button class="vcl" onclick="document.getElementById('viewer').classList.remove('on')">✕</button>
   <img id="viewerImg" src="" alt="">
@@ -464,7 +481,7 @@ function render(){
     var bar=document.createElement('div');
     bar.className='owner-bar';
     bar.innerHTML=
-      '<button onclick="location.href=\'dashboard-client.html\'" style="padding:11px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">← الداشبورد</button>'
+      '<button onclick="location.href=\'/dashboard-client.html\'" style="padding:11px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">← الداشبورد</button>'
       +'<button onclick="editProject()" style="flex:1;padding:11px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">تعديل المشروع</button>'
       +'<button onclick="deleteProject()" style="padding:11px 16px;background:#FEF2F2;color:var(--red);border:1px solid #FECACA;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">حذف</button>';
     document.body.appendChild(bar);
@@ -514,23 +531,98 @@ async function submitBid(btn){
   }
 }
 
+var _chatReqId=null,_chatMsgs=[];
+
 function doMsg(){
   var u=getUser();
   if(!u){goLogin();return;}
-  if(u.role==='provider'){location.href='dashboard-provider.html';}
-  else{location.href='dashboard-client.html';}
+  var clientName=(_req&&_req.client&&_req.client.name)||(_req&&_req.client_name)||'صاحب المشروع';
+  document.getElementById('chat-modal-title').textContent='رسالة إلى '+clientName;
+  document.getElementById('chatOverlay').style.display='flex';
+  openChatRoom();
+}
+
+function closeChat(){
+  document.getElementById('chatOverlay').style.display='none';
+}
+
+async function openChatRoom(){
+  var u=getUser();if(!u)return;
+  var wrap=document.getElementById('chat-msgs-wrap');
+  wrap.innerHTML='<div style="text-align:center;color:#8896AA;font-size:12px;padding:20px">جاري التحميل...</div>';
+  try{
+    // فتح أو إنشاء محادثة مرتبطة بالطلب
+    var r=await fetch(API+'/api/direct-message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
+      body:JSON.stringify({request_id:_rid})
+    });
+    var d=await r.json();
+    _chatReqId=d.request_id||_rid;
+    loadChatMsgs();
+  }catch(e){
+    _chatReqId=_rid;
+    loadChatMsgs();
+  }
+}
+
+async function loadChatMsgs(){
+  if(!_chatReqId)return;
+  var wrap=document.getElementById('chat-msgs-wrap');
+  try{
+    var r=await fetch(API+'/api/messages/'+_chatReqId,{
+      headers:{'Authorization':'Bearer '+getToken()}
+    });
+    var msgs=await r.json();
+    _chatMsgs=Array.isArray(msgs)?msgs:[];
+    renderMsgs(wrap);
+  }catch(e){
+    wrap.innerHTML='<div style="text-align:center;color:#8896AA;font-size:12px;padding:20px">لا توجد رسائل بعد — ابدأ المحادثة</div>';
+  }
+}
+
+function renderMsgs(wrap){
+  var u=getUser();
+  if(!_chatMsgs.length){
+    wrap.innerHTML='<div style="text-align:center;color:#8896AA;font-size:12px;padding:20px">لا توجد رسائل — ابدأ المحادثة</div>';
+    return;
+  }
+  wrap.innerHTML=_chatMsgs.map(function(m){
+    var isMe=u&&String(m.sender_id)===String(u.id);
+    return '<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isMe?'#16213E':'#fff')+';color:'+(isMe?'#fff':'#0F172A')+';align-self:'+(isMe?'flex-end':'flex-start')+';font-size:13px;line-height:1.6;border:1px solid #E6E2D9">'
+      +esc(m.content)
+      +'<div style="font-size:10px;opacity:.45;margin-top:3px">'+ago(m.created_at)+'</div>'
+      +'</div>';
+  }).join('');
+  wrap.scrollTop=wrap.scrollHeight;
+}
+
+async function sendChatMsg(){
+  var inp=document.getElementById('chat-input');
+  var msg=(inp.value||'').trim();
+  if(!msg||!_chatReqId)return;
+  inp.value='';
+  try{
+    var r=await fetch(API+'/api/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
+      body:JSON.stringify({request_id:_chatReqId,content:msg})
+    });
+    var m=await r.json();
+    if(m&&m.id){_chatMsgs.push(m);renderMsgs(document.getElementById('chat-msgs-wrap'));}
+  }catch(e){inp.value=msg;alert('تعذر الإرسال');}
 }
 
 function editProject(){
   localStorage.setItem('mnq_edit_req',_rid);
-  location.href='dashboard-client.html';
+  location.href='/dashboard-client.html';
 }
 
 function deleteProject(){
   if(!confirm('هل تريد حذف هذا المشروع نهائياً؟'))return;
   fetch(API+'/api/requests/'+_rid,{method:'DELETE',headers:{'Authorization':'Bearer '+getToken()}})
     .then(function(r){return r.json();})
-    .then(function(){location.href='dashboard-client.html';})
+    .then(function(){location.href='/dashboard-client.html';})
     .catch(function(){alert('تعذر الحذف');});
 }
 
