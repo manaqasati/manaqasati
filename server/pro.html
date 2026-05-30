@@ -8,301 +8,283 @@
 <script type="application/ld+json" id="ld"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#16213E;--p2:#1A2F5E;--p3:#0D1829;--gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;--text:#0F172A;--muted:#8896AA;--hint:#94A3B8;--border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;--green:#16A34A;--green-l:#EDFBF0;--red:#DC2626;--p-light:#EEF2FF;--p-mid:#C7D2FE;}
+:root{--p:#16213E;--p2:#1A2F5E;--p3:#0D1829;--gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;--gold-soft:#FFE5A0;--text:#0F172A;--text2:#374151;--muted:#8896AA;--border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;--green:#16A34A;--red:#DC2626;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.1);}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-.top-bar{background:var(--p3);padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold)}
-.back-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:.15s}
-.back-btn:hover{background:rgba(255,255,255,.2)}
-.top-title{font-size:14px;font-weight:800;color:#fff;flex:1}
-.logo-sm{font-size:16px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px}
-.hero{background:linear-gradient(135deg,var(--p3),var(--p));padding:28px 20px 24px;position:relative;overflow:hidden}
-.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
-.hero-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;gap:18px}
-.av{width:80px;height:80px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:var(--p2);flex-shrink:0;border:3px solid rgba(255,255,255,.2);overflow:hidden}
+/* NAV */
+.nav{background:var(--p);height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--gold)}
+.back-btn{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;border:none;background:none;font-family:inherit;cursor:pointer;padding:6px 10px;border-radius:8px}
+.back-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
+.logo{font-size:17px;font-weight:900;color:#fff;display:flex;align-items:center;gap:5px;text-decoration:none}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+/* HERO */
+.hero{background:linear-gradient(135deg,#0D1829,#16213E);padding:28px 20px 24px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.hero-net{position:absolute;inset:0;pointer-events:none;opacity:.15}
+.hero-inner{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:16px;position:relative;z-index:1}
+.av{width:88px;height:88px;border-radius:50%;background:rgba(201,146,10,.2);border:3px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:var(--gold);flex-shrink:0;overflow:hidden}
 .av img{width:100%;height:100%;object-fit:cover}
-.hero-info{flex:1}
-.hero-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.verified-badge{background:rgba(37,99,235,.3);border:1px solid rgba(37,99,235,.5);color:#93c5fd;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:3px}
-.hero-city{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:8px}
-.hero-stars{display:flex;align-items:center;gap:6px}
-.stars{color:#F0A500;font-size:15px;letter-spacing:1px}
-.rating-num{font-size:13px;font-weight:800;color:#fff}
+.hero-info{flex:1;min-width:0}
+.hero-name{font-size:22px;font-weight:900;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.verified{background:rgba(37,99,235,.3);border:1px solid rgba(37,99,235,.5);color:#93c5fd;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:3px}
+.hero-cat{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px}
+.hero-city{font-size:12px;color:rgba(255,255,255,.45);display:flex;align-items:center;gap:4px}
+.hero-stars{display:flex;align-items:center;gap:5px;margin-top:6px}
+.stars span{font-size:14px}
+.rating-val{font-size:13px;font-weight:800;color:#fff}
 .rating-cnt{font-size:11px;color:rgba(255,255,255,.4)}
-.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;max-width:600px;margin-left:auto;margin-right:auto}
-.hs{background:rgba(255,255,255,.08);border-radius:10px;padding:10px;text-align:center}
-.hs-n{font-size:20px;font-weight:900;color:#fff}
-.hs-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
-.content{max-width:600px;margin:0 auto;padding:20px 16px 40px}
-.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
-.card-title{font-size:14px;font-weight:900;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.specs{display:flex;flex-wrap:wrap;gap:6px}
-.spec{padding:6px 14px;border-radius:20px;background:var(--p-light);color:var(--p);font-size:12px;font-weight:700;border:1px solid var(--p-mid)}
-.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.port-img{border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer}
-.port-img img{width:100%;height:100%;object-fit:cover;transition:.3s}
-.port-img:hover img{transform:scale(1.05)}
-.bio-text{font-size:13px;line-height:1.9;color:var(--text2)}
-.contact-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:8px;z-index:100}
-.btn-wa{flex:1;padding:13px;background:#25D366;color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none}
-.btn-msg{flex:1;padding:13px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px}
-.review-item{padding:12px 0;border-bottom:1px solid var(--border)}
-.review-item:last-child{border-bottom:none}
-.empty{text-align:center;padding:32px;color:var(--muted)}
+/* ACTIONS */
+.actions{max-width:680px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px;background:var(--p3);position:sticky;top:52px;z-index:90;border-bottom:1px solid rgba(255,255,255,.08)}
+.btn-wa{display:flex;align-items:center;gap:6px;padding:10px 18px;background:#16A34A;color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;transition:.15s}
+.btn-wa:hover{background:#15803D}
+.btn-call{display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--gold);color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;transition:.15s}
+.btn-call:hover{background:var(--gold-d)}
+.btn-msg{display:flex;align-items:center;gap:6px;padding:10px 18px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-msg:hover{background:rgba(255,255,255,.1)}
+.btn-share{display:flex;align-items:center;gap:6px;padding:10px 14px;background:transparent;color:rgba(255,255,255,.5);border:1.5px solid rgba(255,255,255,.15);border-radius:22px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-share:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+/* STATS */
+.stats{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px}
+.stat-box{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;box-shadow:var(--shadow)}
+.stat-val{font-size:22px;font-weight:900;line-height:1.1}
+.stat-lbl{font-size:10px;color:var(--muted);font-weight:600;margin-top:5px}
+/* CONTENT */
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 100px}
+.card{background:var(--white);border-radius:16px;padding:18px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.card-ic{width:30px;height:30px;border-radius:8px;background:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-title{font-size:14px;font-weight:900;color:var(--text)}
+/* SPECS */
+.specs{display:flex;flex-wrap:wrap;gap:7px}
+.spec{padding:6px 14px;border-radius:20px;background:var(--bg);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text)}
+/* SOCIAL */
+.social-link{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;text-decoration:none;margin-bottom:8px;font-size:13px;font-weight:800;transition:.15s}
+.social-link:last-child{margin-bottom:0}
+.social-link:hover{filter:brightness(1.05)}
+.social-yt{background:#FF0000;color:#fff}
+.social-ig{background:linear-gradient(135deg,#E1306C,#833AB4);color:#fff}
+.social-tw{background:#1DA1F2;color:#fff}
+.social-sn{background:#FFFC00;color:#000}
+.social-tt{background:#000;color:#fff}
+.social-def{background:var(--p);color:#fff}
+/* PORTFOLIO */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pimg{border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;background:var(--bg)}
+.pimg img{width:100%;height:100%;object-fit:cover;transition:.3s}
+.pimg:hover img{transform:scale(1.05)}
+/* REVIEWS */
+.rv-item{padding:12px 0;border-bottom:1px solid var(--border)}
+.rv-item:last-child{border-bottom:none}
+/* ACTIVE BADGE */
+.active-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.15);color:#4ade80;border:1px solid rgba(22,163,74,.2)}
+/* VIEWER */
+.viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.viewer.on{display:flex}
+.viewer img{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain}
+.vcl{position:absolute;top:14px;right:14px;width:38px;height:38px;background:rgba(255,255,255,.1);border:none;border-radius:50%;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sk{background:linear-gradient(90deg,#eef2f8 25%,#e2eaf4 50%,#eef2f8 75%);background-size:200%;animation:sk 1.3s infinite;border-radius:8px}
+@keyframes sk{0%{background-position:200%}100%{background-position:-200%}}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:13px}
-.social-links{display:flex;flex-wrap:wrap;gap:8px}
-.social-link{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;background:var(--bg);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:700;color:var(--text);text-decoration:none;transition:.15s}
-.social-link:hover{border-color:var(--p);color:var(--p)}
-@media(max-width:480px){.hero-inner{flex-direction:column;text-align:center}.hero-name{justify-content:center}}
+@media(max-width:480px){.hero-inner{gap:12px}.av{width:72px;height:72px}.hero-name{font-size:18px}.actions{padding:12px 14px;top:52px}.stats{padding:12px 14px}}
 </style>
 </head>
 <body>
 
-<div class="top-bar">
+<nav class="nav">
   <button class="back-btn" onclick="history.length>1?history.back():location.href='/'">
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
     رجوع
   </button>
-  <div class="top-title" id="top-title">ملف المزود</div>
-  <div class="logo-sm">
-    <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#C9920A"/></svg>
-    مناقصة
-  </div>
-</div>
+  <a href="/" class="logo"><span class="logo-dot"></span>مناقصة</a>
+  <span id="nav-name" style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6)"></span>
+</nav>
 
 <div id="loading" class="loading">جاري تحميل الملف...</div>
-<div id="main" style="display:none;padding-bottom:80px">
 
+<div id="main" style="display:none">
+  <!-- HERO -->
   <div class="hero">
+    <svg class="hero-net" viewBox="0 0 700 160" preserveAspectRatio="none">
+      <line x1="50" y1="30" x2="200" y2="60" stroke="#fff" stroke-width="1.5"/>
+      <line x1="200" y1="60" x2="350" y2="30" stroke="#fff" stroke-width="1.5"/>
+      <line x1="350" y1="30" x2="520" y2="50" stroke="#fff" stroke-width="1"/>
+      <line x1="520" y1="50" x2="670" y2="28" stroke="#fff" stroke-width="1"/>
+      <line x1="200" y1="60" x2="270" y2="38" stroke="#C9920A" stroke-width="1.5" stroke-opacity=".8"/>
+      <circle cx="200" cy="60" r="8" fill="#fff" opacity=".35"/>
+      <circle cx="270" cy="38" r="5" fill="#C9920A" opacity=".8"/>
+    </svg>
     <div class="hero-inner">
       <div class="av" id="av">م</div>
       <div class="hero-info">
         <div class="hero-name" id="hero-name">—</div>
+        <div class="hero-cat" id="hero-cat"></div>
         <div class="hero-city" id="hero-city"></div>
         <div class="hero-stars" id="hero-stars"></div>
       </div>
     </div>
-    <div class="hero-stats">
-      <div class="hs"><div class="hs-n" id="st-proj">—</div><div class="hs-l">مشروع منجز</div></div>
-      <div class="hs"><div class="hs-n" id="st-rating" style="color:var(--gold)">—</div><div class="hs-l">التقييم</div></div>
-      <div class="hs"><div class="hs-n" id="st-exp">—</div><div class="hs-l">سنوات خبرة</div></div>
-    </div>
   </div>
 
-  <div class="content">
+  <!-- ACTIONS -->
+  <div class="actions" id="actions"></div>
 
-    <!-- التخصصات -->
-    <div class="card" id="specs-card" style="display:none">
-      <div class="card-title">
-        <svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-        التخصصات
-      </div>
-      <div class="specs" id="specs"></div>
-    </div>
-
-    <!-- النبذة -->
-    <div class="card" id="bio-card" style="display:none">
-      <div class="card-title">
-        <svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        نبذة عن المزود
-      </div>
-      <div class="bio-text" id="bio"></div>
-    </div>
-
-    <!-- معرض الأعمال -->
-    <div class="card" id="port-card" style="display:none">
-      <div class="card-title">
-        <svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        معرض الأعمال
-      </div>
-      <div class="port-grid" id="portfolio"></div>
-    </div>
-
-    <!-- روابط التواصل -->
-    <div class="card" id="social-card" style="display:none">
-      <div class="card-title">
-        <svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        روابط التواصل
-      </div>
-      <div class="social-links" id="social-links"></div>
-    </div>
-
-    <!-- التقييمات -->
-    <div class="card">
-      <div class="card-title">
-        <svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        التقييمات <span id="rev-count" style="font-size:12px;color:var(--muted);font-weight:600"></span>
-      </div>
-      <div id="reviews"><div class="empty">لا توجد تقييمات بعد</div></div>
-    </div>
-
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-box"><div class="stat-val" id="st-done" style="color:var(--green)">0</div><div class="stat-lbl">مشروع منجز</div></div>
+    <div class="stat-box"><div class="stat-val" id="st-cnt" style="color:var(--p)">0</div><div class="stat-lbl">تقييم</div></div>
+    <div class="stat-box"><div class="stat-val" id="st-avg" style="color:var(--gold)">—</div><div class="stat-lbl">التقييم</div></div>
   </div>
+
+  <!-- CONTENT -->
+  <div class="wrap" id="wrap"></div>
 </div>
 
-<!-- شريط التواصل -->
-<div class="contact-bar" id="contact-bar" style="display:none">
-  <a id="wa-btn" href="#" class="btn-wa" target="_blank" rel="noopener">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-    واتساب
-  </a>
-  <button id="msg-btn" class="btn-msg" onclick="goMsg()">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    راسل المزود
-  </button>
-</div>
-
-<div id="imgViewer" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <img id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px">
+<!-- VIEWER -->
+<div class="viewer" id="viewer" onclick="this.classList.remove('on')">
+  <button class="vcl" onclick="event.stopPropagation();document.getElementById('viewer').classList.remove('on')">✕</button>
+  <img id="viewerImg" src="" alt="">
 </div>
 
 <script>
-var API='https://manaqasati-production.up.railway.app';
-var _provId=null,_provPhone=null,_provName='مزود';
+var API = 'https://manaqasati-production.up.railway.app';
+var _provId = null, _phone = null;
+
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function ago(d){if(!d)return'';var s=(Date.now()-new Date(d))/1000;if(s<3600)return Math.floor(s/60)+' دقيقة';if(s<86400)return Math.floor(s/3600)+' ساعة';if(s<2592000)return Math.floor(s/86400)+' يوم';return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short'});}
+function mkStars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)')+';font-size:15px">★</span>';return s;}
 
 function slug2id(){
-  var params=new URLSearchParams(location.search);
-  if(params.get('id')&&/^\d+$/.test(params.get('id'))) return parseInt(params.get('id'));
+  var p=new URLSearchParams(location.search);
+  if(p.get('id')&&/^\d+$/.test(p.get('id')))return parseInt(p.get('id'));
   var path=decodeURIComponent(location.pathname);
   var nums=path.match(/\d+/g);
-  if(nums&&nums.length) return parseInt(nums[nums.length-1]);
+  if(nums&&nums.length)return parseInt(nums[nums.length-1]);
   return null;
 }
 
-function stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#D1D5DB')+'">★</span>';return s;}
+function ph966(p){if(!p)return'';var n=String(p).replace(/[^0-9]/g,'');if(n.startsWith('966'))return'+'+n;if(n.startsWith('0'))return'+966'+n.slice(1);return'+966'+n;}
 
-function ago(d){
-  if(!d)return'';
-  var s=(Date.now()-new Date(d))/1000;
-  if(s<3600)return Math.floor(s/60)+' دقيقة';
-  if(s<86400)return Math.floor(s/3600)+' ساعة';
-  if(s<2592000)return Math.floor(s/86400)+' يوم';
-  return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-}
-
-function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
-function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
-
-
-function goMsg(){
-  var token=localStorage.getItem('token');
-  if(!token){location.href='/auth.html?mode=register&ref=pro&pid='+_provId;return;}
-  fetch(API+'/api/direct-message',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify({provider_id:_provId})
-  }).then(function(r){return r.json();}).then(function(d){
-    if(d.request_id){
-      localStorage.setItem('mnq_open_chat_id',d.request_id);
-      localStorage.setItem('mnq_open_chat_other',_provId);
-      location.href='/dashboard-client.html';
-    }
-  }).catch(function(){location.href='/auth.html';});
+function showErr(msg){
+  document.getElementById('loading').innerHTML='<div style="padding:60px;text-align:center"><div style="font-size:32px;margin-bottom:12px">⚠️</div><div style="font-size:14px;font-weight:700;color:var(--red)">'+msg+'</div></div>';
 }
 
 async function load(){
   var id=slug2id();
-  if(!id){document.getElementById('loading').innerHTML='<div style="padding:60px;text-align:center">مزود غير موجود</div>';return;}
+  if(!id){showErr('مزود غير موجود');return;}
   _provId=id;
   try{
     var r=await fetch(API+'/api/providers/'+id);
+    if(!r.ok)throw new Error('not found');
     var p=await r.json();
-    if(!p||!p.id){document.getElementById('loading').innerHTML='<div style="padding:60px;text-align:center">مزود غير موجود</div>';return;}
-
-    _provPhone=p.phone||null;
-    _provName=p.business_name||p.name||'مزود';
-    document.title=_provName+' — مناقصة';
-    document.getElementById('top-title').textContent=_provName;
-    document.getElementById('loading').style.display='none';
-    document.getElementById('main').style.display='block';
-
-    // الأفاتار
-    var avEl=document.getElementById('av');
-    // ✅ اقبل URL وbase64
-    if(p.profile_image&&(p.profile_image.startsWith('http')||p.profile_image.startsWith('data:'))){
-      avEl.innerHTML='<img src="'+p.profile_image+'" alt="'+esc(_provName)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-    } else {
-      avEl.textContent=_provName[0];
-    }
-
-    // الاسم والشارة
-    var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&parseFloat(p.avg_rating)>0);
-    var nameHtml=esc(_provName)+(isVerified?'<span class="verified-badge"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'');
-    document.getElementById('hero-name').innerHTML=nameHtml;
-
-    // المدينة والخبرة
-    var cityParts=[];
-    if(p.city)cityParts.push('📍 '+p.city);
-    if(p.experience_years)cityParts.push('⏱️ '+p.experience_years+' سنوات خبرة');
-    document.getElementById('hero-city').textContent=cityParts.join(' · ');
-
-    // التقييم
-    var avg=parseFloat(p.avg_rating)||0;
-    var cnt=parseInt(p.review_count)||0;
-    if(avg>0){
-      document.getElementById('hero-stars').innerHTML=
-        '<div class="stars">'+stars(avg)+'</div>'
-        +'<span class="rating-num">'+avg.toFixed(1)+'</span>'
-        +'<span class="rating-cnt">('+cnt+' تقييم)</span>';
-    }
-
-    // الإحصائيات
-    document.getElementById('st-proj').textContent=p.completed_projects||'0';
-    document.getElementById('st-rating').textContent=avg>0?avg.toFixed(1):'—';
-    document.getElementById('st-exp').textContent=p.experience_years?p.experience_years+'y':'—';
-
-    // التخصصات
-    if(p.specialties&&p.specialties.length){
-      document.getElementById('specs-card').style.display='block';
-      document.getElementById('specs').innerHTML=p.specialties.map(function(s){return '<span class="spec">'+esc(s)+'</span>';}).join('');
-    }
-
-    // النبذة
-    if(p.bio){
-      document.getElementById('bio-card').style.display='block';
-      document.getElementById('bio').textContent=p.bio;
-    }
-
-    // معرض الأعمال
-    if(p.portfolio_images&&p.portfolio_images.length){
-      document.getElementById('port-card').style.display='block';
-      document.getElementById('portfolio').innerHTML=p.portfolio_images.filter(function(i){return isImg(i);}).map(function(img){
-        return '<div class="port-img" onclick="openImg(\''+img+'\')"><img src="'+img+'" loading="lazy" alt="عمل"></div>';
-      }).join('');
-    }
-
-    // روابط التواصل
-    var socials=[];
-    if(p.website)socials.push({url:p.website,label:'الموقع',icon:'🌐'});
-    if(p.instagram)socials.push({url:p.instagram,label:'انستقرام',icon:'📷'});
-    if(p.twitter)socials.push({url:p.twitter,label:'تويتر',icon:'🐦'});
-    if(p.snapchat)socials.push({url:p.snapchat,label:'سناب',icon:'👻'});
-    if(p.tiktok)socials.push({url:p.tiktok,label:'تيك توك',icon:'🎵'});
-    if(p.youtube)socials.push({url:p.youtube,label:'يوتيوب',icon:'▶️'});
-    if(socials.length){
-      document.getElementById('social-card').style.display='block';
-      document.getElementById('social-links').innerHTML=socials.map(function(s){
-        var url=s.url.startsWith('http')?s.url:'https://'+s.url;
-        return '<a href="'+url+'" class="social-link" target="_blank" rel="noopener">'+s.icon+' '+s.label+'</a>';
-      }).join('');
-    }
-
-    // واتساب
-    if(p.phone){
-      var num='966'+String(p.phone).replace(/^0/,'').replace(/[^0-9]/g,'');
-      var waMsg='مرحباً، أتواصل معك عبر منصة مناقصة.';
-      document.getElementById('wa-btn').href='https://wa.me/'+num+'?text='+encodeURIComponent(waMsg);
-    } else {
-      document.getElementById('wa-btn').style.display='none';
-    }
-    document.getElementById('contact-bar').style.display='flex';
-
-    // التقييمات
-    loadReviews(id);
-
+    if(!p||!p.id){showErr('مزود غير موجود');return;}
+    render(p);
   }catch(e){
-    console.error(e);
-    document.getElementById('loading').innerHTML='<div style="padding:60px;text-align:center;color:#dc2626">تعذر تحميل الملف</div>';
+    showErr('تعذر تحميل الملف');
   }
+}
+
+function render(p){
+  var name=p.business_name||p.name||'مزود';
+  var phone=ph966(p.phone||'');
+  _phone=phone;
+  document.title=name+' — مناقصة';
+  document.getElementById('nav-name').textContent=name;
+
+  // Avatar
+  var avEl=document.getElementById('av');
+  if(isImg(p.profile_image)){
+    avEl.innerHTML='<img src="'+p.profile_image+'" alt="'+esc(name)+'">';
+  } else {
+    avEl.textContent=name[0]||'م';
+  }
+
+  // Name + verified
+  var isVerified=!!(p.bio&&(p.specialties||[]).length>0);
+  document.getElementById('hero-name').innerHTML=esc(name)+(isVerified?'<span class="verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'');
+
+  // Category
+  var specs=(p.specialties||[]).join(' · ');
+  if(specs)document.getElementById('hero-cat').textContent=specs;
+
+  // City + active
+  var cityEl=document.getElementById('hero-city');
+  cityEl.innerHTML=(p.city?'<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+esc(p.city):'');
+
+  // Stars
+  var avg=parseFloat(p.avg_rating)||0;
+  var cnt=parseInt(p.review_count)||0;
+  if(avg>0){
+    document.getElementById('hero-stars').innerHTML=
+      mkStars(avg)
+      +'<span class="rating-val">'+avg.toFixed(1)+'</span>'
+      +'<span class="rating-cnt">('+cnt+' تقييم)</span>';
+  }
+
+  // Stats
+  document.getElementById('st-done').textContent=p.completed_projects||'0';
+  document.getElementById('st-cnt').textContent=cnt;
+  document.getElementById('st-avg').textContent=avg>0?avg.toFixed(1):'—';
+
+  // Actions
+  var acts='';
+  if(phone){
+    acts+='<a href="https://wa.me/'+phone.replace('+','')+'" class="btn-wa" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>واتساب</a>';
+    acts+='<a href="tel:'+phone+'" class="btn-call"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.86 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.77 0h3a2 2 0 012 1.72c.18.97.44 1.9.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45c.91.26 1.84.52 2.81.7A2 2 0 0122 15.16z"/></svg>اتصال</a>';
+  }
+  acts+='<button class="btn-msg" onclick="goMsg()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>رسالة</button>';
+  acts+='<button class="btn-share" onclick="doShare()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة</button>';
+  document.getElementById('actions').innerHTML=acts;
+
+  // Show main
+  document.getElementById('loading').style.display='none';
+  document.getElementById('main').style.display='block';
+
+  // Content
+  var h='';
+
+  // Bio
+  if(p.bio){
+    h+='<div class="card"><div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="card-title">الملف التعريفي</div></div>';
+    h+='<p style="font-size:13px;color:var(--text2);line-height:1.85">'+esc(p.bio)+'</p></div>';
+  }
+
+  // Specialties
+  if(p.specialties&&p.specialties.length){
+    h+='<div class="card"><div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div><div class="card-title">التخصصات</div></div>';
+    h+='<div class="specs">'+p.specialties.map(function(s){return'<span class="spec">'+esc(s)+'</span>';}).join('')+'</div></div>';
+  }
+
+  // Social links
+  var socials=[];
+  if(p.youtube)socials.push({url:p.youtube,label:'يوتيوب',cls:'social-yt',icon:'▶'});
+  if(p.instagram)socials.push({url:p.instagram,label:'انستقرام',cls:'social-ig',icon:'📷'});
+  if(p.twitter)socials.push({url:p.twitter,label:'تويتر',cls:'social-tw',icon:'🐦'});
+  if(p.snapchat)socials.push({url:p.snapchat,label:'سناب',cls:'social-sn',icon:'👻'});
+  if(p.tiktok)socials.push({url:p.tiktok,label:'تيك توك',cls:'social-tt',icon:'♪'});
+  if(p.website)socials.push({url:p.website,label:'الموقع',cls:'social-def',icon:'🌐'});
+  if(socials.length){
+    h+='<div class="card"><div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div><div class="card-title">روابط التواصل</div></div>';
+    socials.forEach(function(s){
+      var url=s.url.startsWith('http')?s.url:'https://'+s.url;
+      h+='<a href="'+url+'" target="_blank" rel="noopener" class="social-link '+s.cls+'"><span>'+s.icon+' '+esc(s.label)+'</span><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 3 12 9 6"/></svg></a>';
+    });
+    h+='</div>';
+  }
+
+  // Portfolio
+  if(p.portfolio_images&&p.portfolio_images.length){
+    var valid=p.portfolio_images.filter(function(i){return isImg(i);});
+    if(valid.length){
+      h+='<div class="card"><div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div class="card-title">معرض الأعمال</div><span style="font-size:11px;color:var(--muted);margin-right:auto">'+valid.length+' صورة</span></div>';
+      h+='<div class="pgrid">'+valid.map(function(img){return'<div class="pimg" onclick="openViewer(\''+img+'\')"><img src="'+img+'" loading="lazy" alt="عمل"></div>';}).join('')+'</div></div>';
+    }
+  }
+
+  // Reviews
+  h+='<div class="card"><div class="card-head"><div class="card-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="card-title">التقييمات</div></div><div id="reviews-wrap"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري تحميل التقييمات...</div></div></div>';
+
+  document.getElementById('wrap').innerHTML=h;
+  loadReviews(p.id);
 }
 
 async function loadReviews(id){
@@ -310,25 +292,41 @@ async function loadReviews(id){
     var r=await fetch(API+'/api/ratings/provider/'+id);
     var d=await r.json();
     var reviews=d.reviews||[];
-    document.getElementById('rev-count').textContent=reviews.length?'('+reviews.length+')':'';
-    if(!reviews.length)return;
-    document.getElementById('reviews').innerHTML=reviews.map(function(rv){
-      return '<div class="review-item">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'
-          +'<div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(rv.reviewer_name||'عميل')+'</div>'
-          +'<div>'+stars(rv.rating)+'</div>'
+    var el=document.getElementById('reviews-wrap');
+    if(!el)return;
+    if(!reviews.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد تقييمات بعد</div>';return;}
+    el.innerHTML=reviews.map(function(rv){
+      var avg=parseFloat(rv.rating)||0;
+      var stars='';for(var i=1;i<=5;i++)stars+='<span style="color:'+(i<=Math.round(avg)?'#F0A500':'#e4e4e7')+';font-size:13px">★</span>';
+      return'<div class="rv-item">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+          +'<div style="font-size:13px;font-weight:800">'+esc(rv.reviewer_name||'عميل')+'</div>'
+          +'<div>'+stars+'</div>'
         +'</div>'
-        +(rv.comment?'<div style="font-size:12px;color:var(--text2);line-height:1.8">'+esc(rv.comment)+'</div>':'')
-        +'<div style="font-size:10px;color:var(--hint);margin-top:4px">'+ago(rv.created_at)+' مضت</div>'
+        +(rv.comment?'<div style="font-size:12px;color:var(--text2);line-height:1.7">'+esc(rv.comment)+'</div>':'')
+        +'<div style="font-size:10px;color:var(--muted);margin-top:4px">'+ago(rv.created_at)+' مضت</div>'
       +'</div>';
     }).join('');
   }catch(e){}
 }
 
-function openImg(src){
-  var v=document.getElementById('imgViewer');
-  var i=document.getElementById('imgViewerImg');
-  if(v&&i){i.src=src;v.style.display='flex';}
+function goMsg(){
+  var token=localStorage.getItem('token');
+  if(!token){localStorage.setItem('_after_login',location.href);location.href='/auth.html';return;}
+  fetch(API+'/api/direct-message',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({provider_id:_provId})})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.request_id){localStorage.setItem('mnq_open_chat_id',d.request_id);location.href='/dashboard-client.html';}})
+    .catch(function(){location.href='/auth.html';});
+}
+
+function doShare(){
+  if(navigator.share){navigator.share({title:document.title,url:location.href});}
+  else{navigator.clipboard&&navigator.clipboard.writeText(location.href).then(function(){alert('تم نسخ الرابط');});}
+}
+
+function openViewer(src){
+  document.getElementById('viewerImg').src=src;
+  document.getElementById('viewer').classList.add('on');
 }
 
 load();
