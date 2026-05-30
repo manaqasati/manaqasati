@@ -44,6 +44,17 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static('.'));
+
+// ✅ منع الكاش على ملفات HTML
+app.use(function(req, res, next){
+  if(req.path.endsWith('.html') || req.path === '/'){
+    res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma','no-cache');
+    res.setHeader('Expires','0');
+  }
+  next();
+});
+
 app.use((req, res, next) => { console.log(`${req.method} ${req.path}`); next(); });
 
 app.get('/',                       (req, res) => res.sendFile(__dirname + '/index.html'));
@@ -869,6 +880,9 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: e.message }); }
 });
 
+// Alias
+app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.redirect(307, req.path.replace('/done','/complete')); });
+
 // ═══ BIDS ═══
 app.get('/api/bids/my', auth, async (req, res) => {
   try {
@@ -884,18 +898,17 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
     const r = await pool.query(`
-      SELECT b.*,
+      SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
+             b.status, b.created_at,
         u.name as provider_name, u.phone as provider_phone,
         u.city as provider_city, u.badge as provider_badge,
-        CASE WHEN u.profile_image IS NOT NULL AND u.profile_image LIKE 'http%'
-             THEN u.profile_image ELSE NULL END as provider_image,
-        u.social_whatsapp as provider_whatsapp,
-        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
+        u.business_name as provider_business_name,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
-        u.business_name as provider_business_name,
-        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as provider_avg
+        CASE WHEN u.profile_image IS NOT NULL AND u.profile_image LIKE 'http%'
+             THEN u.profile_image ELSE NULL END as provider_image,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1
       ORDER BY (b.status='accepted') DESC, b.created_at DESC
