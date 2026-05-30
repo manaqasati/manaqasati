@@ -635,6 +635,12 @@ async function load(){
 }
 
 load();
+function goProject(el){
+  var slug=el.getAttribute('data-slug')||'';
+  var nums=slug.match(/\d+/g);
+  var id=nums?nums[nums.length-1]:'';
+  location.href='/project/'+slug+(id?'?id='+id:'');
+}
 function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/pro/'+slug+(id?'?id='+id:'');}
 
 loadProviders();
