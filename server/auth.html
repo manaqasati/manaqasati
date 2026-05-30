@@ -89,6 +89,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </style>
 </head>
 <body>
+<button onclick="history.length>1?history.back():location.href='/'" style="position:fixed;top:14px;right:14px;z-index:1000;background:rgba(22,33,62,.9);border:none;color:#fff;cursor:pointer;padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;backdrop-filter:blur(8px)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
 <div class="auth-page" id="auth-pg">
   <div class="auth-hero">
     <div class="hero-stripe"></div>
@@ -484,9 +485,7 @@ async function doSubmit(){
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
             location.href=_back;
           } else {
-            var _back=null;try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
-          if(_back&&_back.startsWith('/')){location.href=_back;}
-          else{location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';}
+            location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
           }
         }
       },900);
