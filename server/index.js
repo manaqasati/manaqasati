@@ -21,6 +21,9 @@ pool.connect()
   .catch(err => console.error('❌ Database error:', err));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
+if (!process.env.JWT_SECRET) {
+  console.error('🔴 تحذير أمني: JWT_SECRET غير معيّن! عيّنه في Railway env vars فوراً');
+}
 const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.railway.app';
 const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
@@ -44,6 +47,28 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static('.'));
+
+// ✅ Rate Limiting بسيط (in-memory) — حماية من brute force
+const _rateLimit = new Map();
+function rateLimiter(maxReq, windowMs){
+  return (req, res, next) => {
+    const key = (req.ip || req.headers['x-forwarded-for'] || 'unknown') + ':' + req.path;
+    const now = Date.now();
+    const rec = _rateLimit.get(key) || { count: 0, reset: now + windowMs };
+    if (now > rec.reset) { rec.count = 0; rec.reset = now + windowMs; }
+    rec.count++;
+    _rateLimit.set(key, rec);
+    if (rec.count > maxReq) {
+      return res.status(429).json({ message: 'محاولات كثيرة، حاول بعد قليل' });
+    }
+    next();
+  };
+}
+// تنظيف الذاكرة كل 10 دقائق
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
+}, 600000);
 
 // ✅ منع الكاش على ملفات HTML
 app.use(function(req, res, next){
@@ -113,7 +138,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/bids/public/:id', async (req, res) => {
@@ -373,7 +398,7 @@ async function setupDatabase() {
 setupDatabase();
 
 // ═══ AUTH ═══
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
   try {
     const { email, phone, password } = req.body;
     if ((!email && !phone) || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
@@ -390,10 +415,10 @@ app.post('/api/auth/login', async (req, res) => {
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
     delete user.password; delete user.password_hash;
     res.json({ user, token });
-  } catch(e) { console.error('❌ Login:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
   try {
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
@@ -415,18 +440,18 @@ app.post('/api/auth/register', async (req, res) => {
       if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر طلبك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
     } catch(we) { console.error('⚠️ welcome notification:', we.message); }
     res.json({ user, token });
-  } catch(e) { console.error('❌ Register:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/direct-admin', async (req, res) => {
   try {
     const { secret, email, password } = req.query;
-    if (secret !== 'manaqasa2024') return res.status(403).json({ message: 'كلمة سر خاطئة' });
+    if (secret !== (process.env.ADMIN_SECRET || 'manaqasa2024')) return res.status(403).json({ message: 'كلمة سر خاطئة' });
     if (!email || !password) return res.status(400).json({ message: 'الإيميل وكلمة المرور مطلوبة' });
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(`INSERT INTO users (name, email, password, password_hash, role, is_active, created_at) VALUES ('المدير',$1,$2,$3,'admin',true,NOW()) ON CONFLICT (email) DO UPDATE SET password=$2, password_hash=$3, role='admin', is_active=true RETURNING id, name, email, role`, [email, hash, hash]);
     res.json({ ok: true, user: result.rows[0] });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/auth/change-password', auth, async (req, res) => {
@@ -448,7 +473,7 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
       }
     } catch(e) {}
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ ACCOUNT DELETION ═══
@@ -464,7 +489,7 @@ app.get('/api/account/deletion-preview', auth, async (req, res) => {
     const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
     const r6 = await pool.query('SELECT COUNT(*)::int as c FROM notifications WHERE user_id=$1', [userId]); stats.notifications = r6.rows[0].c;
     res.json({ ok: true, stats, warning: 'سيتم حذف جميع بياناتك نهائياً ولا يمكن استعادتها.' });
-  } catch(e) { console.error('❌ deletion-preview:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ deletion-preview:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/account/delete', auth, async (req, res) => {
@@ -497,7 +522,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${userName}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
       res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
     } catch(e) { await pool.query('ROLLBACK'); console.error('❌ account delete transaction:', e); throw e; }
-  } catch(e) { console.error('❌ DELETE /api/account/delete:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PROFILES ═══
@@ -506,7 +531,7 @@ app.get('/api/profile', auth, async (req, res) => {
     const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,created_at FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/profile', auth, async (req, res) => {
@@ -527,7 +552,7 @@ app.put('/api/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ /profile PUT:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /profile PUT:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/client/profile', auth, async (req, res) => {
@@ -535,7 +560,7 @@ app.get('/api/client/profile', auth, async (req, res) => {
     const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/client/profile', auth, async (req, res) => {
@@ -562,7 +587,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,profile_image`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/provider/profile', auth, async (req, res) => {
@@ -570,7 +595,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
     const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/provider/:id/profile', async (req, res) => {
@@ -579,7 +604,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ /api/provider/:id/profile:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/ratings/provider/:id', async (req, res) => {
@@ -621,13 +646,13 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, u.phone as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, u.phone as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('❌ /provider/bids:', e); res.json([]); }
 });
@@ -641,7 +666,7 @@ app.get('/api/provider/projects', auth, async (req, res) => {
 
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image FROM reviews rv JOIN users u ON rv.reviewer_id=u.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image FROM reviews rv JOIN users u ON rv.reviewer_id=u.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('❌ /provider/reviews:', e); res.json([]); }
 });
@@ -707,7 +732,7 @@ app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
     imgs.push(image);
     await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
     res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
@@ -719,7 +744,7 @@ app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
     imgs.splice(idx, 1);
     await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
     res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
@@ -735,7 +760,7 @@ app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
     }
     await pool.query('UPDATE users SET last_bumped_at = NOW() WHERE id=$1', [req.user.id]);
     res.json({ ok: true, message: 'تم تحديث موقعك — أنت الآن في الأعلى!' });
-  } catch(e) { console.error('❌ PUT /api/provider/bump:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ PUT /api/provider/bump:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ REQUESTS ═══
@@ -761,7 +786,7 @@ app.get('/api/requests/my', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
-  } catch(e) { console.error('❌ /requests/my:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/requests/:id', async (req, res) => {
@@ -770,7 +795,7 @@ app.get('/api/requests/:id', async (req, res) => {
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json({ ...r.rows[0], status: normalizeStatus(r.rows[0].status) });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
@@ -823,7 +848,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     }
     await addTimeline(newReq.id, 'published', 'تم نشر المشروع');
     res.json(newReq);
-  } catch(e) { console.error('❌ create request:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ create request:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/requests/:id', auth, async (req, res) => {
@@ -835,7 +860,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const { title, description, category, city, address, budget_max, deadline } = req.body;
     const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title), description=COALESCE(NULLIF($2,''),description), category=$3, city=$4, address=$5, budget_max=$6, deadline=$7 WHERE id=$8 RETURNING *`, [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null, id]);
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/requests/:id', auth, async (req, res) => {
@@ -852,7 +877,7 @@ app.delete('/api/requests/:id', auth, async (req, res) => {
       await pool.query('DELETE FROM requests WHERE id=$1', [id]);
       await pool.query('COMMIT'); res.json({ ok: true });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/requests/:id/images', auth, async (req, res) => {
@@ -865,7 +890,7 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     current.push(image);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
     res.json({ ok: true, count: current.length });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/requests/:id/attachments', auth, async (req, res) => {
@@ -878,7 +903,7 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     current.push({ name, type, data, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
     res.json({ ok: true, count: current.length });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
@@ -893,7 +918,7 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
       if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, '🎉 مشروع مكتمل', emailTpl('🎉 مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${projTitle}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     }
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // Alias
@@ -902,9 +927,9 @@ app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.re
 // ═══ BIDS ═══
 app.get('/api/bids/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.*, r.title as request_title, r.project_number, r.status as request_status, u.name as client_name FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT b.*, r.title as request_title, r.project_number, r.status as request_status, u.name as client_name FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/requests/:id/bids', auth, async (req, res) => {
@@ -930,7 +955,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
       ORDER BY (b.status='accepted') DESC, b.created_at DESC
     `, [id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
@@ -978,7 +1003,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     const { price, days, note } = req.body;
     const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
@@ -990,7 +1015,7 @@ app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'لا يمكن حذف عرض مقبول' });
     await pool.query('DELETE FROM bids WHERE id=$1', [id]);
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
@@ -1023,7 +1048,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
       res.json({ ok: true });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
@@ -1037,7 +1062,7 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     await notify(bid.rows[0].provider_id, '❌ تم رفض عرضك', `تم رفض عرضك على "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
     if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${bid.rows[0].title}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p><p>تم رفض عرضك على "${bid.rows[0].title}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ DIRECT MESSAGE ═══
@@ -1066,7 +1091,7 @@ app.post('/api/direct-message', auth, async (req, res) => {
       await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`, [requestId, senderId, receiverId, msgText]);
     }
     res.json({ request_id: requestId, success: true });
-  } catch(e) { console.error('direct-message:', e.message); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('direct-message:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/users/search', auth, async (req, res) => {
@@ -1097,7 +1122,7 @@ app.post('/api/favorites/provider/:id', auth, async (req, res) => {
     const existing = await pool.query('SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]);
     if (existing.rows.length) { await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]); res.json({ saved: false }); }
     else { await pool.query('INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, pid]); res.json({ saved: true }); }
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/favorites', auth, async (req, res) => {
@@ -1140,7 +1165,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
       await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
     }
     res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/messages', auth, async (req, res) => {
@@ -1169,23 +1194,23 @@ app.post('/api/messages', auth, async (req, res) => {
     const newMsg = r.rows[0];
     wsBroadcast(receiver_id, { type:'new_message', message:{...newMsg,sender_name:senderName}, request_id, sender_id:req.user.id, sender_name:senderName });
     wsBroadcast(req.user.id, { type:'message_sent', message:{...newMsg,sender_name:senderName}, request_id });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/messages/unread-count', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE', [req.user.id]);
     res.json({ count: parseInt(r.rows[0].count)||0 });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ REVIEWS ═══
 app.get('/api/reviews/user/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC`, [id]);
+    const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 50`, [id]);
     res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/reviews', auth, async (req, res) => {
@@ -1215,7 +1240,7 @@ app.post('/api/reviews', auth, async (req, res) => {
       sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(()=>{});
     }
     res.json(row);
-  } catch(e) { console.error('❌ POST /api/reviews:', e.message); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
@@ -1225,17 +1250,17 @@ app.post('/api/reports', auth, async (req, res) => {
     if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
     const r = await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [req.user.id, reported_id||null, request_id||null, type||'other', reason, details||null]);
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/favorites/:providerId', auth, async (req, res) => {
   try { await pool.query(`INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [req.user.id, parseInt(req.params.providerId)]); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ message: e.message }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/favorites/:providerId', auth, async (req, res) => {
   try { await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, parseInt(req.params.providerId)]); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ message: e.message }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/providers', async (req, res) => {
@@ -1258,30 +1283,30 @@ app.get('/api/providers/:id', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ NOTIFICATIONS ═══
 app.get('/api/notifications', auth, async (req, res) => {
-  try { const r=await pool.query(`SELECT id, title, body, type, ref_id, is_read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,[req.user.id]); res.json(r.rows); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const r=await pool.query(`SELECT id, title, body, type, ref_id, is_read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,[req.user.id]); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.get('/api/notifications/count', auth, async (req, res) => {
   try { const r=await pool.query('SELECT COUNT(*) as count FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count) }); } catch(e) { res.json({ count: 0 }); }
 });
 app.get('/api/notifications/unread-count', auth, async (req, res) => {
-  try { const r=await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count)||0 }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const r=await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count)||0 }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.put('/api/notifications/read', auth, async (req, res) => {
-  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.put('/api/notifications/:id/read', auth, async (req, res) => {
-  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.delete('/api/notifications/:id', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM notifications WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { await pool.query('DELETE FROM notifications WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.delete('/api/notifications', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM notifications WHERE user_id=$1',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { await pool.query('DELETE FROM notifications WHERE user_id=$1',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PUSH ═══
@@ -1295,7 +1320,7 @@ app.post('/api/push/subscribe', auth, async (req, res) => {
     if (!subscription||!subscription.endpoint||!subscription.keys) return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web') ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`, [req.user.id, JSON.stringify(subscription)]);
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/subscribe:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /api/push/subscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/push/unsubscribe', auth, async (req, res) => {
   try {
@@ -1305,7 +1330,7 @@ app.post('/api/push/unsubscribe', auth, async (req, res) => {
       for (const row of r.rows) { try { const sub=JSON.parse(row.token); if(sub.endpoint===endpoint) await pool.query('DELETE FROM push_tokens WHERE id=$1',[row.id]); } catch(e){} }
     } else { await pool.query(`DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); }
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/unsubscribe:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /api/push/unsubscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/push/register-native', auth, async (req, res) => {
   try {
@@ -1316,7 +1341,7 @@ app.post('/api/push/register-native', auth, async (req, res) => {
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, plat]);
     console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/register-native:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ /api/push/register-native:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.get('/api/push/status', auth, async (req, res) => {
   try { const r=await pool.query(`SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); res.json({ subscribed: r.rows[0].cnt>0, count: r.rows[0].cnt }); } catch(e) { res.json({ subscribed:false, count:0 }); }
@@ -1325,10 +1350,10 @@ app.get('/api/push/badge', auth, async (req, res) => {
   try { const r=await pool.query(`SELECT (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false)+(SELECT COUNT(*)::int FROM messages WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL)) AS total`,[req.user.id]); res.json({ badge: r.rows[0]?.total||0 }); } catch(e) { res.json({ badge:0 }); }
 });
 app.post('/api/push-token', auth, async (req, res) => {
-  try { const { token, platform } = req.body; if (!token) return res.status(400).json({ message: 'token مطلوب' }); await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, platform||'expo']); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const { token, platform } = req.body; if (!token) return res.status(400).json({ message: 'token مطلوب' }); await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, platform||'expo']); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.delete('/api/push-token', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',[req.user.id, req.body.token]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',[req.user.id, req.body.token]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PUBLIC ═══
@@ -1346,7 +1371,7 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const [users,requests,bids,providers,pending,inProgress,completed] = await Promise.all([pool.query('SELECT COUNT(*) FROM users'),pool.query('SELECT COUNT(*) FROM requests'),pool.query('SELECT COUNT(*) FROM bids'),pool.query(`SELECT COUNT(*) FROM users WHERE role='provider'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`)]);
     res.json({ total_users:+users.rows[0].count, requests:+requests.rows[0].count, total_bids:+bids.rows[0].count, providers:+providers.rows[0].count, pending_review:+pending.rows[0].count, in_progress:+inProgress.rows[0].count, completed:+completed.rows[0].count });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
@@ -1357,7 +1382,7 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
     const r = await pool.query(q, params); res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
@@ -1367,7 +1392,7 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
     const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
@@ -1377,7 +1402,7 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
@@ -1405,14 +1430,14 @@ app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
       if (del.rowCount===0) throw new Error('فشل الحذف');
       await pool.query('COMMIT'); res.json({ ok: true, deleted_user: chk.rows[0] });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
     res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
@@ -1423,7 +1448,7 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
     if (status) { if (status==='pending_review') q+=` WHERE r.status IN ('pending_review','review')`; else { params.push(status); q+=' WHERE r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
     const r = await pool.query(q, params); res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status)})));
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
@@ -1443,7 +1468,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
       sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, 'فتح المنصة', SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
     res.json(row);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
@@ -1455,7 +1480,7 @@ app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) =>
     await notify(row.client_id, '🎉 مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
     if (row.assigned_provider_id) await notify(row.assigned_provider_id, '🎉 مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
     res.json(row);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
@@ -1464,7 +1489,7 @@ app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
     const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7 WHERE id=$8 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
@@ -1482,7 +1507,7 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
       if (del.rowCount===0) { await pool.query('ROLLBACK'); return res.status(404).json({ message: 'غير موجود' }); }
       await pool.query('COMMIT'); res.json({ ok: true });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
@@ -1506,7 +1531,7 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       if ((ch==='email'||ch==='both') && u.email) { const ok=await sendEmail(u.email, title, emailHtml); if(ok) emailCount++; }
     }
     res.json({ ok:true, sent_count:target.length, app_count:appCount, email_count:emailCount, channel:ch });
-  } catch(e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: e.message }); }
+  } catch(e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
@@ -1539,15 +1564,15 @@ app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
 });
 
 app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
-  try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC`); res.json(r.rows); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
-  try { const r=await pool.query('DELETE FROM reviews WHERE id=$1',[parseInt(req.params.id)]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const r=await pool.query('DELETE FROM reviews WHERE id=$1',[parseInt(req.params.id)]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
-  try { const r=await pool.query(`SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC`); res.json(r.rows); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const r=await pool.query(`SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
@@ -1563,7 +1588,7 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
       else if (action==='warn') await notify(reportedId,'⚠️ تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
     }
     res.json({ ok:true, status:newStatus });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
@@ -1572,11 +1597,11 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
     const p='%'+q+'%';
     const [reqs,users]=await Promise.all([pool.query(`SELECT r.id, r.title, r.status, u.name as client_name FROM requests r LEFT JOIN users u ON r.client_id=u.id WHERE r.title ILIKE $1 OR r.description ILIKE $1 OR r.project_number ILIKE $1 ORDER BY r.created_at DESC LIMIT 20`,[p]),pool.query(`SELECT id, name, email, role FROM users WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1 ORDER BY created_at DESC LIMIT 20`,[p])]);
     res.json({ requests:reqs.rows.map(r=>({...r,status:normalizeStatus(r.status)})), users:users.rows });
-  } catch(e) { res.status(500).json({ message: e.message }); }
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
-  try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'🧪 اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة! 🎉','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: e.message }); }
+  try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'🧪 اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة! 🎉','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ OG / SITEMAP / ROBOTS ═══
