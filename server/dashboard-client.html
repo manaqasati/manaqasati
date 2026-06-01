@@ -1171,6 +1171,12 @@ function openChat(reqId,providerId,providerName,reqTitle){
     +'<div class="chat-input"><input class="chat-inp" id="chatInp" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"><button class="chat-send" onclick="sendChatMsg()">إرسال</button></div></div>';
   loadChatMsgs();
   if(_chatPoll)clearInterval(_chatPoll);
+
+// ✅ إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
+var _pollPaused=false;
+document.addEventListener('visibilitychange',function(){
+  _pollPaused=document.hidden;
+});
   _chatPoll=setInterval(function(){if(_chatReqId)loadChatMsgs();else clearInterval(_chatPoll);},6000);
 }
 function loadChatMsgs(){
@@ -1210,7 +1216,7 @@ function sendChatMsg(){
 fillCitySelect(document.getElementById('n-city'));
 loadHome();
 loadNotifCount();
-setInterval(loadNotifCount,30000);
+setInterval(function(){if(!_pollPaused)loadNotifCount();},30000);
 </script>
 </body>
 </html>
