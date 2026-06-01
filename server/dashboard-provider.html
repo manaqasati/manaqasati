@@ -914,7 +914,13 @@ function _loadNotifCount(){
     ['nb-notif','mob-nb'].forEach(function(id){var el=_el(id);if(!el)return;el.style.display=u?'':'none';el.textContent=u;});
   });
 }
-setInterval(_loadNotifCount,30000);
+
+// ✅ إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
+var _pollPaused=false;
+document.addEventListener('visibilitychange',function(){
+  _pollPaused=document.hidden;
+});
+setInterval(function(){if(!_pollPaused)_loadNotifCount();},30000);
 
 // ═══ PROFILE — ✅ مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
 async function loadProfile(){
@@ -1157,7 +1163,7 @@ async function _loadChatBadge(){
     var b2=_el('bn-chat-badge');if(b2){b2.style.display=unread?'flex':'none';b2.textContent=unread;}
   }catch(e){}
 }
-setInterval(_loadChatBadge,30000);
+setInterval(function(){if(!_pollPaused)_loadChatBadge();},30000);
 
 function _openNewChatSearch(){
   var body='<div style="margin-bottom:12px"><input id="p-chat-inp" placeholder="ابحث باسم العميل..." style="width:100%;padding:11px 13px;border:1.5px solid var(--p-light);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg)"></div><div id="p-chat-res" style="max-height:240px;overflow-y:auto"></div>';
@@ -1203,7 +1209,7 @@ async function loadChat(){
   convs.sort(function(a,b){return new Date(b.last_time||0)-new Date(a.last_time||0);});
   window._lastConvs=convs; _renderProvConvList(convs,pg);_lb.done();
   clearInterval(_provConvPolling);
-  _provConvPolling=setInterval(_refreshProvConvList,30000);
+  _provConvPolling=setInterval(function(){if(!_pollPaused)_refreshProvConvList();},30000);
 }
 
 async function _refreshProvConvList(){
