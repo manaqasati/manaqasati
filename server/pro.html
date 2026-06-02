@@ -188,7 +188,7 @@ function render(p){
   var phone=ph966(p.phone||'');
   _phone=phone;
   document.title=name+' — مناقصة';
-  document.getElementById('nav-name').textContent=name;
+  var _nn=document.getElementById('nav-name');if(_nn)_nn.textContent=name;
 
   // Avatar
   var avEl=document.getElementById('av');
@@ -200,7 +200,7 @@ function render(p){
 
   // Name + verified
   var isVerified=!!(p.bio&&(p.specialties||[]).length>0);
-  document.getElementById('hero-name').innerHTML=esc(name)+(isVerified?'<span class="verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'');
+  var _hn=document.getElementById('hero-name');if(_hn)_hn.innerHTML=esc(name)+(isVerified?'<span class="verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'');
 
   // Category
   var specs=(p.specialties||[]).join(' · ');
@@ -223,9 +223,9 @@ function render(p){
   }
 
   // Stats
-  document.getElementById('st-done').textContent=p.completed_projects||'0';
-  document.getElementById('st-cnt').textContent=cnt;
-  document.getElementById('st-avg').textContent=avg>0?avg.toFixed(1):'—';
+  var stExp=document.getElementById('st-exp');if(stExp)stExp.textContent=p.experience_years?p.experience_years+'y':'—';
+  var stAvg=document.getElementById('st-avg');if(stAvg)stAvg.textContent=avg>0?avg.toFixed(1):'—';
+  var stDone=document.getElementById('st-done');if(stDone)stDone.textContent=p.completed_projects||'0';
 
   // Actions
   var acts='';
