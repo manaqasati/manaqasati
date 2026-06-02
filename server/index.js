@@ -4,6 +4,50 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const crypto = require('crypto');
+
+// ✅ Cloudflare R2 Setup
+let r2Client = null;
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+const R2_BUCKET = process.env.R2_BUCKET || 'manaqasa-images';
+if (process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY && process.env.R2_ENDPOINT) {
+  r2Client = new S3Client({
+    region: 'auto',
+    endpoint: process.env.R2_ENDPOINT,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY,
+      secretAccessKey: process.env.R2_SECRET_KEY
+    }
+  });
+  console.log('✅ R2 storage connected');
+} else {
+  console.warn('⚠️  R2 keys not set — image upload will use base64 fallback');
+}
+
+// ✅ رفع صورة base64 إلى R2، يرجع رابط عام
+async function uploadToR2(base64Data, folder) {
+  if (!r2Client || !base64Data) return base64Data; // fallback
+  if (!base64Data.startsWith('data:')) return base64Data; // already a URL
+  try {
+    const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) return base64Data;
+    const contentType = matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    const ext = contentType.split('/')[1] || 'jpg';
+    const key = (folder || 'img') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType
+    }));
+    return R2_PUBLIC_URL + '/' + key;
+  } catch (e) {
+    console.error('R2 upload failed:', e.message);
+    return base64Data; // fallback to base64
+  }
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -1656,12 +1700,18 @@ cloudinary.config({
 });
 
 async function uploadToCloud(base64Data, folder='manaqasa') {
+  if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
+  // ✅ جرّب R2 أولاً
+  if (r2Client) {
+    const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'));
+    if (url && url.startsWith('http')) { console.log('✅ R2 upload:', url); return url; }
+  }
+  // fallback: Cloudinary
   try {
-    if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
     const result = await cloudinary.uploader.upload(base64Data, { folder, transformation: [{ quality: 'auto', fetch_format: 'auto' }], resource_type: 'image' });
     console.log('✅ Cloudinary upload:', result.secure_url);
     return result.secure_url;
-  } catch(e) { console.error('❌ Cloudinary upload error:', e.message); return base64Data; }
+  } catch(e) { console.error('❌ upload error:', e.message); return base64Data; }
 }
 
 const server = http.createServer(app);
