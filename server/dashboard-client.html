@@ -999,7 +999,7 @@ function setStar(n){selRating=n;document.querySelectorAll('.sp').forEach(functio
 function submitRate(){
   if(!selRating){showToast('اختر تقييماً','error');return;}
   var comment=document.getElementById('rate-comment').value.trim();
-  fetch(API+'/api/ratings',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:comment})},hdr()))
+  fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:comment})},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){
       if(r.id){document.getElementById('rateOverlay').className='overlay';showToast('✅ شكراً على تقييمك','success');}
