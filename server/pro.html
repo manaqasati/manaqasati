@@ -199,7 +199,7 @@ function render(p){
   }
 
   // Name + verified
-  var isVerified=!!(p.bio&&(p.specialties||[]).length>0);
+  var isVerified=(p.badge==='verified'||p.badge==='موثق');
   var _hn=document.getElementById('hero-name');if(_hn)_hn.innerHTML=esc(name)+(isVerified?'<span class="verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'');
 
   // Category
