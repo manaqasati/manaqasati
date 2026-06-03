@@ -816,7 +816,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // ✅ يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE 1=1`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE r.category!='direct'`;
     const params = [];
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
@@ -832,7 +832,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 ORDER BY r.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND r.category!='direct' ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('❌ /requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -1499,9 +1499,9 @@ app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
   try {
     const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id`;
+    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.category!='direct'`;
     const params = [];
-    if (status) { if (status==='pending_review') q+=` WHERE r.status IN ('pending_review','review')`; else { params.push(status); q+=' WHERE r.status=$1'; } }
+    if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
     const r = await pool.query(q, params); res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status)})));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
