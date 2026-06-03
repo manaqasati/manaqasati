@@ -370,7 +370,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           <div class="fg">
             <label>المدينة <span style="color:var(--red)">*</span></label>
             <select id="n-city" onchange="this.style.borderColor=this.value?'var(--green)':''"></select>
-            <div id="city-err" style="display:none;color:var(--red);font-size:11px;font-weight:700;margin-top:4px">⚠️ المدينة إلزامية</div>
+            <div id="city-err" style="display:none;color:var(--red);font-size:11px;font-weight:700;margin-top:4px"> المدينة إلزامية</div>
           </div>
           <div class="fg">
             <label>الميزانية القصوى (ر.س)</label>
@@ -498,9 +498,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-body">
       <div id="rate-msg" class="alert"></div>
       <div class="stars-pick">
-        <span class="sp" onclick="setStar(1)">★</span><span class="sp" onclick="setStar(2)">★</span>
-        <span class="sp" onclick="setStar(3)">★</span><span class="sp" onclick="setStar(4)">★</span>
-        <span class="sp" onclick="setStar(5)">★</span>
+        <span class="sp" onclick="setStar(1)"></span><span class="sp" onclick="setStar(2)"></span>
+        <span class="sp" onclick="setStar(3)"></span><span class="sp" onclick="setStar(4)"></span>
+        <span class="sp" onclick="setStar(5)"></span>
       </div>
       <div class="fg"><label>تعليق (اختياري)</label><textarea id="rate-comment" placeholder="شاركنا تجربتك مع هذا المزود..."></textarea></div>
     </div>
@@ -521,9 +521,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 var API='https://manaqasati-production.up.railway.app';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
-if(!token||!user.id){location.href='auth.html';}
+if(!token||!user.id){location.href='/auth.html';}
 
-// ✅ isImg — يقبل URL وbase64
+// isImg — يقبل URL وbase64
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0';}
@@ -548,7 +548,7 @@ function stTag(s){
   return m[s]||'<span class="tag t-rev">'+s+'</span>';
 }
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function errH(){return '<div class="empty"><h4 style="color:var(--red)">⚠️ تعذر التحميل</h4></div>';}
+function errH(){return '<div class="empty"><h4 style="color:var(--red)"> تعذر التحميل</h4></div>';}
 function _skCard(){return '<div class="sk-box"><div style="display:flex;gap:8px;align-items:center"><div style="width:4px;height:50px;border-radius:4px;background:#e6e2d9;flex-shrink:0"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div></div>';}
 function _skCards(n){var h='<div class="card card-accent"><div class="ch"><div class="sk sk-line" style="width:120px;height:16px"></div></div>';for(var i=0;i<(n||4);i++)h+=_skCard();return h+'</div>';}
 
@@ -607,7 +607,7 @@ function showTab(t,el){
   if(t==='actions')loadActions(curRequestId);
   if(t==='timeline')loadTimeline(curRequestId);
 }
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='auth.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
 
 // ═══════════════════════════════════
 // REQUEST CARD
@@ -621,7 +621,7 @@ function riCard(r,actions){
     +'<div class="ri-meta">'
     +stTag(r.status)
     +(r.category?'<span class="rm">'+esc(r.category)+'</span>':'')
-    +(r.city?'<span class="rm">📍 '+esc(r.city)+'</span>':'')
+    +(r.city?'<span class="rm"> '+esc(r.city)+'</span>':'')
     +(r.budget_max?'<span class="rm">'+fmtN(r.budget_max)+' ر.س</span>':'')
     +'<span class="rm">'+timeAgo(r.created_at)+'</span>'
     +'</div>'
@@ -680,10 +680,10 @@ function openDetail(id,e){
       +'<div class="rdh-title">'+esc(req.title)+'</div>'
       +'<div class="rdh-meta">'
       +stTag(req.status)
-      +(req.category?'<span>📁 '+esc(req.category)+'</span>':'')
-      +(req.city?'<span>📍 '+esc(req.city)+'</span>':'')
-      +(req.budget_max?'<span>💰 '+fmtN(req.budget_max)+' ر.س</span>':'')
-      +(req.deadline?'<span>📅 '+fmtDate(req.deadline)+'</span>':'')
+      +(req.category?'<span>'+esc(req.category)+'</span>':'')
+      +(req.city?'<span> '+esc(req.city)+'</span>':'')
+      +(req.budget_max?'<span>'+fmtN(req.budget_max)+' ر.س</span>':'')
+      +(req.deadline?'<span> '+fmtDate(req.deadline)+'</span>':'')
       +'</div>'
       +(req.description?'<div class="rdh-desc">'+esc(req.description)+'</div>':'')
     +'</div>';
@@ -693,7 +693,7 @@ function openDetail(id,e){
 }
 
 // ═══════════════════════════════════
-// ✅ LOAD BIDS — النسخة المصلحة
+// LOAD BIDS — النسخة المصلحة
 // ═══════════════════════════════════
 function loadBids(id){
   var el=document.getElementById('bids-list');
@@ -711,9 +711,9 @@ function loadBids(id){
       el.innerHTML=bids.map(function(b){
         var isAcc=b.status==='accepted',isRej=b.status==='rejected';
         var avgR=parseFloat(b.provider_rating)||0;
-        var stars='';for(var i=1;i<=5;i++)stars+='<span style="color:'+(i<=Math.round(avgR)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:13px">★</span>';
+        var stars='';for(var i=1;i<=5;i++)stars+='<span style="color:'+(i<=Math.round(avgR)?'var(--gold)':'rgba(255,255,255,.25)')+';font-size:13px"></span>';
 
-        // ✅ safeProvId — مستحيل undefined
+        // safeProvId — مستحيل undefined
         var safeProvId=String(b.provider_id||'');
         var safeName=(b.provider_business_name||b.provider_name||'مزود');
         var safeSlug=encodeURIComponent(safeName.replace(/\s+/g,'-'))+'-'+safeProvId;
@@ -735,7 +735,7 @@ function loadBids(id){
             +'</div>';
         }
 
-        // ✅ رسالة المزود — دائماً ظاهرة
+        // رسالة المزود — دائماً ظاهرة
         var noteHtml='<div style="margin-bottom:10px">'
           +'<div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:5px">رسالة المزود</div>'
           +(b.note
@@ -751,7 +751,7 @@ function loadBids(id){
               +'<div>'
                 +'<div style="font-size:14px;font-weight:800;color:#fff">'+esc(safeName)+'</div>'
                 +'<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+stars+'<span style="font-size:10px;color:rgba(255,255,255,.45)">('+parseInt(b.provider_reviews||0)+')</span></div>'
-                +(b.provider_city?'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:1px">📍 '+esc(b.provider_city)+'</div>':'')
+                +(b.provider_city?'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:1px"> '+esc(b.provider_city)+'</div>':'')
               +'</div>'
             +'</div>'
             +'<div style="text-align:left">'
@@ -783,7 +783,7 @@ function loadBids(id){
       });
     })
     .catch(function(e){
-      el.innerHTML='<div style="padding:30px;text-align:center"><div style="color:var(--red);font-size:13px;margin-bottom:12px">⚠️ تعذر تحميل العروض</div>'
+      el.innerHTML='<div style="padding:30px;text-align:center"><div style="color:var(--red);font-size:13px;margin-bottom:12px"> تعذر تحميل العروض</div>'
         +'<button onclick="loadBids('+id+')" style="padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal;font-size:13px;font-weight:700;cursor:pointer">إعادة المحاولة</button></div>';
     });
 }
@@ -796,15 +796,15 @@ function acceptBid(bidId,reqId){
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(){showToast('✅ تم قبول العرض','success');loadBids(reqId);loadHome();})
-    .catch(function(){showToast('❌ تعذر القبول','error');});
+    .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
+    .catch(function(){showToast('تعذر القبول','error');});
 }
 function rejectBid(bidId,reqId){
   if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
   fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(){showToast('تم الرفض','success');loadBids(reqId);})
-    .catch(function(){showToast('❌ تعذر الرفض','error');});
+    .catch(function(){showToast('تعذر الرفض','error');});
 }
 
 // ═══════════════════════════════════
@@ -818,7 +818,7 @@ function loadActions(id){
     if(req.status==='in_progress'){
       h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
         +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="margin-bottom:10px;width:100%;padding:12px">✓ تم الإنجاز — أكمل الطلب</button>'
-        +'<button class="btn-sm bs-p" onclick="openRate('+id+')" style="width:100%;padding:12px">★ تقييم المزود</button></div>';
+        +'<button class="btn-sm bs-p" onclick="openRate('+id+')" style="width:100%;padding:12px"> تقييم المزود</button></div>';
     } else if(req.status==='completed'||req.status==='done'){
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--green);font-weight:700;padding:10px">الطلب مكتمل ✓</p></div>';
     } else {
@@ -857,8 +857,8 @@ function markDone(id){
       }
       return r;
     })
-    .then(function(){showToast('✅ تم تحديث حالة الطلب','success');loadBids(id);loadActions(id);loadHome();})
-    .catch(function(){showToast('❌ تعذر التحديث','error');});
+    .then(function(){showToast('تم تحديث حالة الطلب','success');loadBids(id);loadActions(id);loadHome();})
+    .catch(function(){showToast('تعذر التحديث','error');});
 }
 function openRate(reqId){
   var bids=window._currentBids||[];
@@ -946,11 +946,11 @@ function submitReq(){
         _reqImages=[];renderImgGrid();
         ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         if(msg)msg.className='alert';
-        showToast('✅ تم نشر الطلب','success');
+        showToast('تم نشر الطلب','success');
         loadHome();loadReqs();show('requests',null,'requests');
       }else{if(msg){msg.textContent=r.message||'حدث خطأ';msg.className='alert err';}}
     })
-    .catch(function(e){if(msg){msg.textContent='❌ '+e.message;msg.className='alert err';}})
+    .catch(function(e){if(msg){msg.textContent=''+e.message;msg.className='alert err';}})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر الطلب';}});
 }
 
@@ -978,16 +978,16 @@ function submitEditReq(){
   var body={title:title,description:desc,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null};
   fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();})
-    .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('✅ تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
-    .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('❌ تعذر التحديث','error');});
+    .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
+    .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذر التحديث','error');});
 }
 function deleteReq(id,e){
   if(e)e.stopPropagation();
   if(!confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟'))return;
   fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr()))
     .then(function(r){return r.json();})
-    .then(function(r){if(r.ok||r.id){showToast('✅ تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
-    .catch(function(){showToast('❌ تعذر الحذف','error');});
+    .then(function(r){if(r.ok||r.id){showToast('تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
+    .catch(function(){showToast('تعذر الحذف','error');});
 }
 function openImgFull(src){var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
 
@@ -1002,9 +1002,9 @@ function submitRate(){
   fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:comment})},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){
-      if(r.id){document.getElementById('rateOverlay').className='overlay';showToast('✅ شكراً على تقييمك','success');}
+      if(r.id){document.getElementById('rateOverlay').className='overlay';showToast('شكراً على تقييمك','success');}
       else{var e=document.getElementById('rate-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}
-    }).catch(function(){showToast('❌ تعذر إرسال التقييم','error');});
+    }).catch(function(){showToast('تعذر إرسال التقييم','error');});
 }
 
 // ═══════════════════════════════════
@@ -1030,8 +1030,8 @@ function uploadClientAvatar(input){
     localStorage.setItem('client_avatar_'+user.id,img);
     fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({profile_image:img})},hdr()))
       .then(function(r){if(!r.ok)throw new Error();return r.json();})
-      .then(function(){showToast('✅ تم تحديث الصورة','success');})
-      .catch(function(){showToast('❌ تعذر حفظ الصورة','error');});
+      .then(function(){showToast('تم تحديث الصورة','success');})
+      .catch(function(){showToast('تعذر حفظ الصورة','error');});
   };
   r.readAsDataURL(f);
 }
@@ -1043,10 +1043,10 @@ function saveClientProfile(btn){
   fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(p){
-      showToast('✅ تم الحفظ','success');
+      showToast('تم الحفظ','success');
       if(p&&p.name){user.name=p.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=p.name;document.getElementById('profNameDisp').textContent=p.name;}
     })
-    .catch(function(){showToast('❌ تعذر الحفظ','error');})
+    .catch(function(){showToast('تعذر الحفظ','error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function changeClientPw(){
@@ -1054,8 +1054,8 @@ function changeClientPw(){
   if(pw.length<8){showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل','error');return;}
   fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({password:pw})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(){showToast('✅ تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';})
-    .catch(function(){showToast('❌ تعذر التغيير','error');});
+    .then(function(){showToast('تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';})
+    .catch(function(){showToast('تعذر التغيير','error');});
 }
 
 // ═══════════════════════════════════
@@ -1072,7 +1072,7 @@ async function pushSubscribe(){
     if(!vk){showToast('الإشعارات غير مفعّلة في هذه البيئة','error');return;}
     var sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(vk)});
     await fetch(API+'/api/push/subscribe',Object.assign({method:'POST',body:JSON.stringify({subscription:sub,platform:'web'})},hdr()));
-    showToast('✅ تم تفعيل الإشعارات','success');updatePushToggleUI();
+    showToast('تم تفعيل الإشعارات','success');updatePushToggleUI();
   }catch(e){showToast('تعذر تفعيل الإشعارات','error');}
 }
 async function pushUnsubscribe(){
@@ -1100,10 +1100,10 @@ function loadNotifs(){
     var notifs=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[];
     if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات','');return;}
     var ns=notifs;
-    var icons={new_bid:'🔔',bid_accepted:'✅',message:'💬',review:'⭐'};
+    var icons={new_bid:'',bid_accepted:'',message:'',review:''};
     el.innerHTML=ns.map(function(n){
       return'<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="markRead('+n.id+',this,'+(n.ref_id||'null')+')">'
-        +'<div class="notif-ic">'+(icons[n.type]||'📣')+'</div>'
+        +'<div class="notif-ic">'+(icons[n.type]||'')+'</div>'
         +'<div style="flex:1"><div style="font-size:13px;font-weight:800;margin-bottom:2px">'+esc(n.title||'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">'+esc(n.body||'')+'</div>'
         +'<div style="font-size:10px;color:var(--hint);margin-top:3px">'+timeAgo(n.created_at)+'</div></div>'
@@ -1172,7 +1172,7 @@ function openChat(reqId,providerId,providerName,reqTitle){
   loadChatMsgs();
   if(_chatPoll)clearInterval(_chatPoll);
 
-// ✅ إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
+// إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){
   _pollPaused=document.hidden;
@@ -1207,7 +1207,7 @@ function sendChatMsg(){
   fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatWith,content:msg})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(m){_chatMsgs.push(m);renderChatMsgs();})
-    .catch(function(){showToast('❌ تعذر الإرسال','error');inp.value=msg;});
+    .catch(function(){showToast('تعذر الإرسال','error');inp.value=msg;});
 }
 
 // ═══════════════════════════════════
