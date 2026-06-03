@@ -112,7 +112,7 @@ function render(){
     '</div>'+
 
     '<div class="warning-box">'+
-      '<div class="warning-title">⚠️ تحذير مهم</div>'+
+      '<div class="warning-title">تحذير مهم</div>'+
       '<div class="warning-text">عند حذف حسابك، سيتم <strong>حذف جميع بياناتك نهائياً</strong> ولن تتمكن من استعادتها أو التراجع عن هذا الإجراء.</div>'+
     '</div>'+
 
@@ -201,7 +201,7 @@ function doDelete(){
     body:JSON.stringify({confirmation:confirmation})
   }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){
     if(r.ok){
-      showMsg('✓ تم حذف حسابك بنجاح. سيتم تسجيل خروجك خلال ثوانٍ...','ok');
+      showMsg('تم حذف حسابك بنجاح. سيتم تسجيل خروجك خلال ثوانٍ...','ok');
       setTimeout(function(){
         localStorage.clear();
         location.href='auth.html';
