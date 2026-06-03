@@ -1217,6 +1217,44 @@ fillCitySelect(document.getElementById('n-city'));
 loadHome();
 loadNotifCount();
 setInterval(function(){if(!_pollPaused)loadNotifCount();},30000);
+
+// فتح محادثة معلّقة (قادم من صفحة المزود أو بعد تسجيل الدخول)
+(function openPendingChat(){
+  var provId=null,reqId=null;
+  try{
+    provId=localStorage.getItem('pending_contact_provider');
+    reqId=localStorage.getItem('open_chat_request')||localStorage.getItem('mnq_open_chat_id');
+    localStorage.removeItem('pending_contact_provider');
+    localStorage.removeItem('open_chat_request');
+    localStorage.removeItem('mnq_open_chat_id');
+  }catch(e){}
+  if(!provId&&!reqId)return;
+  // افتح قسم الرسائل
+  setTimeout(function(){
+    if(provId){
+      // أنشئ/افتح محادثة مع المزود
+      fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:parseInt(provId)})},hdr()))
+        .then(function(r){return r.json();})
+        .then(function(d){if(d.request_id){gotoMessagesAndOpen(d.request_id);}})
+        .catch(function(){});
+    } else if(reqId){
+      gotoMessagesAndOpen(parseInt(reqId));
+    }
+  },600);
+})();
+
+function gotoMessagesAndOpen(reqId){
+  // انتقل لقسم المحادثات ثم افتح المحادثة
+  if(typeof show==='function'){try{show('chat',null,'chat');}catch(e){}}
+  fetch(API+'/api/client/conversations',hdr())
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(convs){
+      var conv=Array.isArray(convs)?convs.find(function(x){return String(x.request_id||x.id)===String(reqId);}):null;
+      if(conv){openChat(conv.request_id||conv.id,conv.provider_id||conv.other_id,conv.provider_name||conv.other_name,conv.title);}
+      else{openChat(reqId,null,'مزود','محادثة');}
+    })
+    .catch(function(){openChat(reqId,null,'مزود','محادثة');});
+}
 </script>
 </body>
 </html>
