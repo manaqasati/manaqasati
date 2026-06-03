@@ -142,7 +142,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .pv-city{font-size:11px;color:var(--muted);margin-bottom:8px;}
 .pv-specs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;}
 .pv-spec{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--p-light);color:var(--p);}
-.pv-stars{font-size:12px;color:#F0A500;letter-spacing:1px;}
+.pv-stars{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:6px;flex-wrap:wrap}
 .pv-stats{font-size:10px;color:var(--muted);margin-top:3px;}
 .pv-verified{position:absolute;top:10px;left:10px;background:#2563eb;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px;}
 @media(max-width:680px){.prov-grid{grid-template-columns:repeat(2,1fr);}}
@@ -559,9 +559,23 @@ function clearAll(){
 
 function showMore(){PAGE+=12;render(CUR);}
 
+function starRating(avg,count,size){
+  avg=parseFloat(avg)||0;count=parseInt(count)||0;size=size||13;
+  var s='<span style="display:inline-flex;align-items:center;gap:1px;direction:ltr">';
+  for(var i=1;i<=5;i++){
+    var fill;
+    if(avg>=i)fill='#F0A500';
+    else if(avg>=i-0.5)fill='url(#half'+size+')';
+    else fill='#D9DCE1';
+    s+='<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" style="display:inline-block"><defs><linearGradient id="half'+size+'"><stop offset="50%" stop-color="#F0A500"/><stop offset="50%" stop-color="#D9DCE1"/></linearGradient></defs><polygon fill="'+fill+'" points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
+  }
+  s+='</span>';
+  if(avg>0)s+='<span style="font-size:'+(size-1)+'px;font-weight:800;color:#1a1a2e;margin-right:5px">'+avg.toFixed(1)+'</span>';
+  s+='<span style="font-size:'+(size-2)+'px;color:#8896AA;margin-right:3px">('+count+')</span>';
+  return s;
+}
 function provCard(p){
   var avg=parseFloat(p.avg_rating)||0;
-  var stars='';for(var i=1;i<=5;i++){var fc=i<=Math.round(avg)?'#F0A500':'#D1D5DB';stars+='<svg width="12" height="12" fill="'+fc+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}
   var initials=(p.business_name||p.name||'م')[0];
   var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
   var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
@@ -574,7 +588,7 @@ function provCard(p){
     +'<div class="pv-name">'+(p.business_name||p.name||'—')+'</div>'
     +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+p.city+'</div>':'')
     +(specs?'<div class="pv-specs">'+specs+'</div>':'')
-    +(avg>0?'<div class="pv-stars">'+stars+' <span style="font-size:11px;color:var(--muted)">'+avg.toFixed(1)+'</span></div>':'<div style="font-size:10px;color:var(--muted)">جديد</div>')
+    +'<div class="pv-stars">'+starRating(avg,p.review_count||p.reviews_count||0,12)+'</div>'
     +(p.completed_projects>0?'<div class="pv-stats">'+p.completed_projects+' مشروع منجز</div>':'')
     +'</div>';
 }
