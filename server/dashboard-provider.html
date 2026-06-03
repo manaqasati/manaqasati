@@ -564,9 +564,9 @@ function _renderHome(data){
   var lastBump=profile.last_bumped_at;
   var hoursLeft=lastBump?Math.max(0,24-Math.floor((Date.now()-new Date(lastBump))/3600000)):0;
   if(hoursLeft>0){
-    html+='<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px">تحديث الموقع</div><div style="font-size:11px;color:var(--muted)">متاح بعد '+hoursLeft+' ساعة</div></div><div style="padding:10px 18px;background:var(--bg);color:var(--hint);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:not-allowed">تحديث ⏳</div></div>';
+    html+='<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px">تحديث الموقع</div><div style="font-size:11px;color:var(--muted)">متاح بعد '+hoursLeft+' ساعة</div></div><div style="padding:10px 18px;background:var(--bg);color:var(--hint);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:not-allowed;display:inline-flex;align-items:center;gap:5px">تحديث <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>';
   }else{
-    html+='<div style="background:linear-gradient(135deg,var(--gold-l),#fff);border:1.5px solid var(--gold-soft);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">تحديث الموقع</div><div style="font-size:11px;color:var(--gold-d);opacity:.8">اضغط لتظهر في أعلى القائمة للعملاء</div></div><button onclick="_doBump()" style="padding:10px 18px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 3px 10px rgba(201,146,10,.3)">تحديث ⬆</button></div>';
+    html+='<div style="background:linear-gradient(135deg,var(--gold-l),#fff);border:1.5px solid var(--gold-soft);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">تحديث الموقع</div><div style="font-size:11px;color:var(--gold-d);opacity:.8">اضغط لتظهر في أعلى القائمة للعملاء</div></div><button onclick="_doBump()" style="padding:10px 18px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 3px 10px rgba(201,146,10,.3);display:inline-flex;align-items:center;gap:5px">تحديث <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>';
   }
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل ←</button></div>';
   if(_myBids.length){
@@ -584,8 +584,8 @@ function _renderHome(data){
 async function _doBump(){
   var btn=document.querySelector('[onclick="_doBump()"]');if(btn){btn.disabled=true;btn.textContent='جاري التحديث...';}
   var r=await _api('/api/provider/bump',{method:'PUT'});
-  if(r&&r.ok){showToast('تم تحديث موقعك — أنت الآن في الأعلى! ⬆','success');var cached=_cacheGet('home_data');if(cached&&cached.profile)cached.profile.last_bumped_at=new Date().toISOString();loadHome();}
-  else{showToast(r&&r.message?r.message:'تعذر التحديث','error');if(btn){btn.disabled=false;btn.textContent='تحديث ⬆';}}
+  if(r&&r.ok){showToast('تم تحديث موقعك — أنت الآن في الأعلى','success');var cached=_cacheGet('home_data');if(cached&&cached.profile)cached.profile.last_bumped_at=new Date().toISOString();loadHome();}
+  else{showToast(r&&r.message?r.message:'تعذر التحديث','error');if(btn){btn.disabled=false;btn.innerHTML='تحديث <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';}}
 }
 
 async function loadHome(){
@@ -632,10 +632,10 @@ function _filterBrowse(){
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('لا يوجد مشاريع متاحة حالياً. تفقد لاحقاً!','');
   return list.map(function(r){
-    // ✅ صورة: thumbnail أو image_url أو أول صورة
+    // صورة: thumbnail أو image_url أو أول صورة
     var img = r.thumbnail || r.image_url || (r.images && r.images[0]) || null;
 
-    // ✅ الموعد النهائي
+    // الموعد النهائي
     var deadlineChip = '';
     if(r.deadline){
       var dl = new Date(r.deadline);
@@ -650,7 +650,7 @@ function _renderBrowseList(list){
 
     var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
 
-    // ✅ الصورة المصغرة
+    // الصورة المصغرة
     if(img){
       h+='<div style="height:130px;overflow:hidden;position:relative">'
         +'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover" loading="lazy">'
@@ -673,7 +673,7 @@ function _renderBrowseList(list){
     if(r.budget_max)h+='<div style="text-align:left;flex-shrink:0"><div style="font-size:14px;font-weight:900;color:var(--p)">'+fmtN(r.budget_max)+'</div><div style="font-size:9px;color:var(--muted)">ر.س</div></div>';
     h+='</div>';
 
-    // ✅ الشارات: المدينة دائماً + الموعد + العروض
+    // الشارات: المدينة دائماً + الموعد + العروض
     h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px">';
     if(r.client_name)h+='<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+_esc(r.client_name)+'</span>';
     // المدينة دائماً
@@ -814,7 +814,7 @@ async function loadWorks(){
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
   html+='<div id="wtab-projs-wrap" style="display:none">'+_renderProjs(_myProjs)+'</div>';
   pg.innerHTML=html;_lb.done();
-  // ✅ ربط أزرار المحادثة
+  // ربط أزرار المحادثة
   pg.querySelectorAll('._bchat,._pchat').forEach(function(btn){
     btn.addEventListener('click',function(){
       openChatRoom(parseInt(btn.getAttribute('data-rid')),parseInt(btn.getAttribute('data-cid')),'','');
@@ -915,14 +915,14 @@ function _loadNotifCount(){
   });
 }
 
-// ✅ إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
+// إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){
   _pollPaused=document.hidden;
 });
 setInterval(function(){if(!_pollPaused)_loadNotifCount();},30000);
 
-// ═══ PROFILE — ✅ مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
+// ═══ PROFILE — مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
 async function loadProfile(){
   var pg=_el('page-profile');if(!pg)return;
   pg.innerHTML=_skList(3);
@@ -972,7 +972,7 @@ async function loadProfile(){
     +'</a>'
     +'</div>';
   pg.appendChild(previewCard);
-  // ✅ إصلاح 2: event listener مباشرة
+  // إصلاح 2: event listener مباشرة
   document.getElementById('copy-card-btn').addEventListener('click',function(){
     if(navigator.clipboard){
       navigator.clipboard.writeText(location.origin+cardUrl).then(function(){
@@ -1043,7 +1043,7 @@ async function loadProfile(){
     });
   });
 
-  // ✅ إصلاح 1: dangerZone مُعرَّف قبل pg.appendChild
+  // إصلاح 1: dangerZone مُعرَّف قبل pg.appendChild
   var dangerZone=document.createElement('div');dangerZone.className='danger-zone';dangerZone.style.marginTop='4px';
   dangerZone.innerHTML='<div class="danger-zone-title"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>منطقة الخطر</div>'
     +'<div class="danger-zone-desc">حذف الحساب إجراء نهائي ولا يمكن التراجع عنه. سيتم حذف جميع بياناتك وعروضك وصور المعرض ورسائلك بشكل دائم. إذا كان لديك مشاريع قيد التنفيذ، يجب إكمالها أولاً.</div>'
@@ -1217,7 +1217,7 @@ async function _refreshProvConvList(){
   try{var convs=await _api('/api/provider/conversations')||[];if(!Array.isArray(convs))return;convs.sort(function(a,b){return new Date(b.last_time||0)-new Date(a.last_time||0);});_renderProvConvList(convs,pg);}catch(e){}
 }
 
-// ✅ إصلاح 3: ربط زر المحادثة الجديدة بعد innerHTML
+// إصلاح 3: ربط زر المحادثة الجديدة بعد innerHTML
 function _renderProvConvList(convs,pg){
   var html='<div class="pghd"><div class="pg-t">المحادثات</div><div class="pg-s">'+convs.length+' محادثة</div></div>';
   html+='<div style="margin-bottom:12px"><button id="prov-new-chat-btn" style="width:100%;padding:13px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>محادثة جديدة مع عميل</button></div>';
@@ -1237,7 +1237,7 @@ function _renderProvConvList(convs,pg){
   }else{html+=_empty('لا يوجد محادثات بعد','ستظهر محادثاتك مع العملاء هنا');}
   html+='</div>';
   pg.innerHTML=html;
-  // ✅ ربط الزر مباشرة بعد innerHTML
+  // ربط الزر مباشرة بعد innerHTML
   var ncb=document.getElementById('prov-new-chat-btn');
   if(ncb)ncb.addEventListener('click',function(){_openNewChatSearch();});
 }
@@ -1326,7 +1326,7 @@ window.addEventListener('ws_message', function(e) {
 
 // Helper: chat from project modal
 
-// ✅ Helpers لإصلاح onclick مع المتغيرات المعقدة
+// Helpers لإصلاح onclick مع المتغيرات المعقدة
 function _rptFromView(cid, rid){
   var r = window._currentViewReq || {};
   openReportModal(cid, r.client_name||'عميل', rid);
