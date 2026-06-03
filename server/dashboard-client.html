@@ -835,14 +835,25 @@ function loadActions(id){
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/requests/'+id,hdr()).then(function(r){return r.json();}).then(function(req){
     var h='';
+    var check='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>';
+    var star='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
     if(req.status==='in_progress'){
+      // قيد التنفيذ: زر الإكمال فقط (لا تقييم قبل الاكتمال)
       h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
-        +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="margin-bottom:10px;width:100%;padding:12px"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> تم الإنجاز — أكمل الطلب</button>'
-        +'<button class="btn-sm bs-p" onclick="openRate('+id+')" style="width:100%;padding:12px"> تقييم المزود</button></div>';
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال الطلب ثم يمكنك تقييمه.</p>'
+        +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل الطلب</button></div>';
     } else if(req.status==='completed'||req.status==='done'){
-      h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--green);font-weight:700;padding:10px">الطلب مكتمل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg></p></div>';
+      // مكتمل: أظهر زر التقييم
+      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
+        +'<div style="text-align:center;padding:10px 0 16px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:14px;font-weight:800">'+check+' الطلب مكتمل</div></div>'
+        +'<button class="btn-sm bs-p" id="rate-action-btn" onclick="openRate('+id+')" style="width:100%;padding:13px;background:var(--gold);color:#fff">'+star+' تقييم المزود</button></div>';
+      // تحقق إذا قيّم مسبقاً
+      fetch(API+'/api/requests/'+id+'/my-review',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(rv){
+        var btn=document.getElementById('rate-action-btn');
+        if(rv&&rv.id&&btn){btn.outerHTML='<div style="text-align:center;padding:12px;background:var(--green-l);border-radius:10px;color:var(--green);font-size:13px;font-weight:700">'+check+' تم تقييم المزود</div>';}
+      }).catch(function(){});
     } else {
-      h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل المناسب</p></div>';
+      h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
   }).catch(function(){if(el)el.innerHTML=errH();});
