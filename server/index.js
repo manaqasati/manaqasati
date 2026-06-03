@@ -1419,6 +1419,56 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ═══ ADMIN ═══
+app.post('/api/admin/users/:id/notify', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const { title, message, channels } = req.body;
+    if (!title || !message) return res.status(400).json({ message: 'مطلوب' });
+    const u = await pool.query('SELECT id,name,email FROM users WHERE id=$1', [uid]);
+    if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const ch = channels || { app: true, email: true };
+    let sent = { app: false, email: false };
+    if (ch.app) { await notify(uid, title, message, 'admin', null); sent.app = true; }
+    if (ch.email && u.rows[0].email) { sent.email = await sendEmail(u.rows[0].email, title, emailTpl(title, '<p>' + message.replace(/\n/g,'<br>') + '</p>', 'فتح المنصة', SITE_URL)); }
+    res.json({ ok: true, sent });
+  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
+});
+
+app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
+  try {
+    const { title, message, target, channels } = req.body;
+    if (!title || !message) return res.status(400).json({ message: 'مطلوب' });
+    let q = "SELECT id,email FROM users WHERE role!='admin'";
+    if (target === 'client') q = "SELECT id,email FROM users WHERE role='client'";
+    else if (target === 'provider') q = "SELECT id,email FROM users WHERE role='provider'";
+    const users = await pool.query(q);
+    const ch = channels || { app: true, email: false };
+    let count = { app: 0, email: 0 };
+    for (const u of users.rows) {
+      if (ch.app) { notify(u.id, title, message, 'admin', null).catch(()=>{}); count.app++; }
+      if (ch.email && u.email) { sendEmail(u.email, title, emailTpl(title, '<p>' + message.replace(/\n/g,'<br>') + '</p>', 'فتح المنصة', SITE_URL)).catch(()=>{}); count.email++; }
+    }
+    res.json({ ok: true, total: users.rows.length, count });
+  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
+});
+
+app.get('/api/admin/export/users', auth, adminOnly, async (req, res) => {
+  try {
+    const { role } = req.query;
+    let q = "SELECT id,name,email,phone,role,city,business_name,created_at,COALESCE(is_active,true) as is_active FROM users WHERE role!='admin'";
+    if (role === 'client' || role === 'provider') q += ` AND role='${role}'`;
+    q += ' ORDER BY created_at DESC';
+    const r = await pool.query(q);
+    const headers = ['ID','الاسم','البريد','الجوال','الدور','المدينة','النشاط','التسجيل','الحالة'];
+    const rows = r.rows.map(u => [u.id, u.name||'', u.email||'', u.phone||'', u.role==='client'?'عميل':'مزود', u.city||'', u.business_name||'', u.created_at?new Date(u.created_at).toISOString().split('T')[0]:'', u.is_active?'نشط':'محظور']);
+    let csv = '\uFEFF' + headers.join(',') + '\n';
+    csv += rows.map(row => row.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(',')).join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="manaqasa-users.csv"');
+    res.send(csv);
+  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
+});
+
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const [users,requests,bids,providers,pending,inProgress,completed] = await Promise.all([pool.query('SELECT COUNT(*) FROM users'),pool.query('SELECT COUNT(*) FROM requests'),pool.query('SELECT COUNT(*) FROM bids'),pool.query(`SELECT COUNT(*) FROM users WHERE role='provider'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`)]);
