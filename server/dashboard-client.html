@@ -604,6 +604,12 @@ function show(pg,el,key){
   if(pg==='profile')loadProfile();
   if(pg==='chat')loadChatPage();
   if(pg==='new'){fillCitySelect(document.getElementById('n-city'));loadNotifCount();}
+  // احفظ الحالة في URL ليبقى المكان بعد التحديث
+  if(!window._skipHash){
+    var hash='#'+pg;
+    if(pg==='detail'&&curRequestId)hash='#detail/'+curRequestId;
+    if(location.hash!==hash){history.replaceState(null,'',hash);}
+  }
   window.scrollTo(0,0);
 }
 function showTab(t,el){
@@ -682,6 +688,7 @@ function openDetail(id,e){
   if(e)e.stopPropagation();
   curRequestId=id;
   show('detail',null,'detail');
+  if(!window._skipHash&&location.hash!=='#detail/'+id){history.replaceState(null,'','#detail/'+id);}
   jFetch('/api/requests/'+id).then(function(req){
     var pin='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
     var money='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
@@ -1293,7 +1300,24 @@ function sendChatMsg(){
 // INIT
 // ═══════════════════════════════════
 fillCitySelect(document.getElementById('n-city'));
-loadHome();
+// استرجع القسم من الـ URL عند التحميل/التحديث
+function restoreFromHash(){
+  // إذا فيه محادثة معلّقة، اتركها لـ openPendingChat
+  try{if(localStorage.getItem('pending_contact_provider')||localStorage.getItem('open_chat_request')){return;}}catch(e){}
+  var h=(location.hash||'').replace('#','');
+  if(!h){show('home',null,'home');return;}
+  if(h.indexOf('detail/')===0){
+    var rid=parseInt(h.split('/')[1]);
+    if(rid){window._skipHash=true;openDetail(rid);window._skipHash=false;return;}
+  }
+  var valid=['home','requests','new','notifs','profile','chat'];
+  var pg=valid.indexOf(h)>=0?h:'home';
+  window._skipHash=true;
+  show(pg,null,pg);
+  window._skipHash=false;
+}
+restoreFromHash();
+window.addEventListener('hashchange',restoreFromHash);
 loadNotifCount();
 setInterval(function(){if(!_pollPaused)loadNotifCount();},30000);
 
