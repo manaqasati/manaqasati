@@ -327,7 +327,7 @@ if('serviceWorker' in navigator){
 
 var _token=localStorage.getItem('token')||'';
 var _me=JSON.parse(localStorage.getItem('user')||'{}');
-if(!_token||_me.role!=='provider'){location.href='auth.html';}
+if(!_token||_me.role!=='provider'){location.href='/auth.html';}
 _myId=_me.id||null;
 
 (function(){
@@ -421,7 +421,7 @@ function _fdt(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en
 function _ago(d){if(!d)return'';var diff=(Date.now()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
 function _stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:13px">&#9733;</span>';return s;}
 function _empty(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='auth.html';}
+function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
 
 function _api(path,opts){
   var headers={'Authorization':'Bearer '+(localStorage.getItem('token')||_token||''),'Content-Type':'application/json'};
@@ -1150,7 +1150,7 @@ function confirmDeleteAccount(){
   fetch(API+'/api/account/delete',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},body:JSON.stringify({confirmation:confirmation})})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(r){
       if(r.ok){var e=_el('delete-msg');e.textContent='تم حذف حسابك بنجاح. سيتم تسجيل خروجك...';e.className='alert ok';
-        setTimeout(function(){localStorage.removeItem('token');localStorage.removeItem('user');Object.keys(localStorage).forEach(function(k){if(k.indexOf('pav_')===0)localStorage.removeItem(k);});location.href='auth.html';},2000);}
+        setTimeout(function(){localStorage.removeItem('token');localStorage.removeItem('user');Object.keys(localStorage).forEach(function(k){if(k.indexOf('pav_')===0)localStorage.removeItem(k);});location.href='/auth.html';},2000);}
       else{var e=_el('delete-msg');e.textContent=(r.d&&r.d.message)||'حدث خطأ';e.className='alert err';btn.disabled=false;btn.textContent='حذف الحساب نهائياً';}
     }).catch(function(){var e=_el('delete-msg');e.textContent='تعذر الاتصال';e.className='alert err';btn.disabled=false;btn.textContent='حذف الحساب نهائياً';});
 }
