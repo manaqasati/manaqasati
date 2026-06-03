@@ -265,7 +265,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
 
     <div class="lm-wrap" id="lm" style="display:none">
-      <button class="btn-more" onclick="showMore()">عرض المزيد ↓</button>
+      <button class="btn-more" onclick="showMore()">عرض المزيد <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="6 9 12 15 18 9"/></svg></button>
     </div>
   </div>
 
@@ -433,7 +433,7 @@ function card(p){
 
   var clientPrem = p.client_premium===true||p.client_premium==='t'||p.client_badge==='premium';
   var isDone = p.status==='completed'||p.status==='in_progress'||p.status==='done';
-  var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : isDone ? '✓ تم الترسية' : '● مغلق') + '</span>';
+  var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : isDone ? '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> تم الترسية' : '● مغلق') + '</span>';
 
   var hdr = img
     ? ('<div class="pc-img-wrap"><img class="pc-img" src="' + img + '" loading="lazy"><div class="pc-overlay"></div>' + badge + '</div>')
