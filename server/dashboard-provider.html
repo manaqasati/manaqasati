@@ -441,7 +441,7 @@ var _lb={t:null,v:0,
 var _tTimer;
 function showToast(msg,type){
   var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');if(!el)return;
-  ic.textContent=type==='success'?'✓':type==='error'?'✕':'i';
+  ic.textContent=type==='success'?'':type==='error'?'':'i';
   ic.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--p)';
   tm.textContent=msg;
   el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';
@@ -568,7 +568,7 @@ function _renderHome(data){
   }else{
     html+='<div style="background:linear-gradient(135deg,var(--gold-l),#fff);border:1.5px solid var(--gold-soft);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">تحديث الموقع</div><div style="font-size:11px;color:var(--gold-d);opacity:.8">اضغط لتظهر في أعلى القائمة للعملاء</div></div><button onclick="_doBump()" style="padding:10px 18px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 3px 10px rgba(201,146,10,.3);display:inline-flex;align-items:center;gap:5px">تحديث <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>';
   }
-  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل ←</button></div>';
+  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   if(_myBids.length){
     _myBids.slice(0,5).forEach(function(b){
       var barColor=b.status==='accepted'?'#16A34A':b.status==='rejected'?'#CBD5E1':'var(--gold)';
@@ -645,7 +645,7 @@ function _renderBrowseList(list){
       var dlBg = diffDays<=3?'var(--red-l)':diffDays<=7?'#fef3c7':'var(--bg)';
       var dlBorder = diffDays<=3?'#fca5a5':diffDays<=7?'#fde68a':'var(--border)';
       var dlText = diffDays<0?'انتهى':diffDays===0?'اليوم':diffDays===1?'غداً':diffDays+' يوم';
-      deadlineChip='<span style="font-size:10px;font-weight:700;color:'+dlColor+';background:'+dlBg+';border:1px solid '+dlBorder+';padding:2px 8px;border-radius:20px">⏰ '+dlText+'</span>';
+      deadlineChip='<span style="font-size:10px;font-weight:700;color:'+dlColor+';background:'+dlBg+';border:1px solid '+dlBorder+';padding:2px 8px;border-radius:20px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> '+dlText+'</span>';
     }
 
     var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
@@ -976,7 +976,7 @@ async function loadProfile(){
   document.getElementById('copy-card-btn').addEventListener('click',function(){
     if(navigator.clipboard){
       navigator.clipboard.writeText(location.origin+cardUrl).then(function(){
-        var cb=document.getElementById('copy-card-btn');if(cb){cb.textContent='تم النسخ ✓';setTimeout(function(){cb.textContent='نسخ الرابط';},2000);}
+        var cb=document.getElementById('copy-card-btn');if(cb){cb.textContent='تم النسخ';setTimeout(function(){cb.textContent='نسخ الرابط';},2000);}
       });
     }
   });
