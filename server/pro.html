@@ -314,11 +314,15 @@ async function loadReviews(id){
 
 function goMsg(){
   var token=localStorage.getItem('token');
-  if(!token){localStorage.setItem('_after_login',location.href);location.href='/auth.html';return;}
+  if(!token){
+    // غير مسجّل → بعد الدخول يفتح المحادثة مع هذا المزود
+    location.href='/auth.html?redirect=msg&provider_id='+_provId;
+    return;
+  }
   fetch(API+'/api/direct-message',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({provider_id:_provId})})
     .then(function(r){return r.json();})
-    .then(function(d){if(d.request_id){localStorage.setItem('mnq_open_chat_id',d.request_id);location.href='/dashboard-client.html';}})
-    .catch(function(){location.href='/auth.html';});
+    .then(function(d){if(d.request_id){localStorage.setItem('open_chat_request',d.request_id);location.href='/dashboard-client.html';}})
+    .catch(function(){location.href='/dashboard-client.html';});
 }
 
 function doShare(){
