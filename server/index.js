@@ -177,7 +177,11 @@ app.get('/api/requests/public/:id', async (req, res) => {
       SELECT r.id, r.title, r.description, r.category, r.city,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
-        json_build_object('id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone) as client
+        json_build_object('id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone,
+          'badge', u.badge,
+          'completed_count', (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed'),
+          'is_premium', (u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3)
+        ) as client
       FROM requests r LEFT JOIN users u ON u.id=r.client_id WHERE r.id=$1
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -812,7 +816,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // ✅ يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE 1=1`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE 1=1`;
     const params = [];
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
@@ -1419,56 +1423,6 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ═══ ADMIN ═══
-app.post('/api/admin/users/:id/notify', auth, adminOnly, async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id);
-    const { title, message, channels } = req.body;
-    if (!title || !message) return res.status(400).json({ message: 'مطلوب' });
-    const u = await pool.query('SELECT id,name,email FROM users WHERE id=$1', [uid]);
-    if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const ch = channels || { app: true, email: true };
-    let sent = { app: false, email: false };
-    if (ch.app) { await notify(uid, title, message, 'admin', null); sent.app = true; }
-    if (ch.email && u.rows[0].email) { sent.email = await sendEmail(u.rows[0].email, title, emailTpl(title, '<p>' + message.replace(/\n/g,'<br>') + '</p>', 'فتح المنصة', SITE_URL)); }
-    res.json({ ok: true, sent });
-  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
-});
-
-app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
-  try {
-    const { title, message, target, channels } = req.body;
-    if (!title || !message) return res.status(400).json({ message: 'مطلوب' });
-    let q = "SELECT id,email FROM users WHERE role!='admin'";
-    if (target === 'client') q = "SELECT id,email FROM users WHERE role='client'";
-    else if (target === 'provider') q = "SELECT id,email FROM users WHERE role='provider'";
-    const users = await pool.query(q);
-    const ch = channels || { app: true, email: false };
-    let count = { app: 0, email: 0 };
-    for (const u of users.rows) {
-      if (ch.app) { notify(u.id, title, message, 'admin', null).catch(()=>{}); count.app++; }
-      if (ch.email && u.email) { sendEmail(u.email, title, emailTpl(title, '<p>' + message.replace(/\n/g,'<br>') + '</p>', 'فتح المنصة', SITE_URL)).catch(()=>{}); count.email++; }
-    }
-    res.json({ ok: true, total: users.rows.length, count });
-  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
-});
-
-app.get('/api/admin/export/users', auth, adminOnly, async (req, res) => {
-  try {
-    const { role } = req.query;
-    let q = "SELECT id,name,email,phone,role,city,business_name,created_at,COALESCE(is_active,true) as is_active FROM users WHERE role!='admin'";
-    if (role === 'client' || role === 'provider') q += ` AND role='${role}'`;
-    q += ' ORDER BY created_at DESC';
-    const r = await pool.query(q);
-    const headers = ['ID','الاسم','البريد','الجوال','الدور','المدينة','النشاط','التسجيل','الحالة'];
-    const rows = r.rows.map(u => [u.id, u.name||'', u.email||'', u.phone||'', u.role==='client'?'عميل':'مزود', u.city||'', u.business_name||'', u.created_at?new Date(u.created_at).toISOString().split('T')[0]:'', u.is_active?'نشط':'محظور']);
-    let csv = '\uFEFF' + headers.join(',') + '\n';
-    csv += rows.map(row => row.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(',')).join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="manaqasa-users.csv"');
-    res.send(csv);
-  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
-});
-
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const [users,requests,bids,providers,pending,inProgress,completed] = await Promise.all([pool.query('SELECT COUNT(*) FROM users'),pool.query('SELECT COUNT(*) FROM requests'),pool.query('SELECT COUNT(*) FROM bids'),pool.query(`SELECT COUNT(*) FROM users WHERE role='provider'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`)]);
