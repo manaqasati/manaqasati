@@ -1147,7 +1147,7 @@ app.get('/api/users/search', auth, async (req, res) => {
     const q = (req.query.q||'').trim();
     if (!q) return res.json([]);
     const role = req.user.role === 'client' ? 'provider' : 'client';
-    const r = await pool.query(`SELECT id, name, business_name, phone, city, profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
+    const r = await pool.query(`SELECT id, name, business_name, phone, city, CASE WHEN profile_image LIKE 'http%' THEN profile_image ELSE NULL END as profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
     res.json(r.rows);
   } catch(e) { res.json([]); }
 });
