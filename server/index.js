@@ -1447,6 +1447,18 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// تحويل دور المستخدم (client <-> provider)
+app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const { role } = req.body;
+    if (!['client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صحيح' });
+    const r = await pool.query(`UPDATE users SET role=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,role`, [role, uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ ok: true, user: r.rows[0] });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
 app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   try {
     const uid = parseInt(req.params.id); const { badge } = req.body;
