@@ -1135,10 +1135,11 @@ function loadChatPage(){
   fetch(API+'/api/client/conversations',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(convs){
     var convs=Array.isArray(convs)?convs:(convs&&convs.data)?convs.data:[];
     if(!convs.length){
-      el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+emptyH('لا توجد محادثات','ستظهر محادثاتك مع المزودين هنا')+'</div>';
+      el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+emptyH('لا توجد محادثات','ستظهر محادثاتك مع المزودين هنا')+'</div>';
+      bindNewChatBtn();
       return;
     }
-    var h='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div><div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
+    var h='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
     convs.forEach(function(cv){
       var name=cv.provider_name||'مزود';
       var avHtml=isImg(cv.provider_image)?'<img src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
@@ -1157,7 +1158,59 @@ function loadChatPage(){
     });
     h+='</div></div>';
     el.innerHTML=h;
+    bindNewChatBtn();
   }).catch(function(){if(el)el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+errH()+'</div>';});
+}
+
+function newChatBtnHtml(){
+  return '<button id="cl-new-chat" style="width:100%;padding:13px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>محادثة جديدة مع مزود</button>';
+}
+
+function bindNewChatBtn(){
+  var btn=document.getElementById('cl-new-chat');
+  if(btn)btn.onclick=openClientChatSearch;
+}
+
+function openClientChatSearch(){
+  var ov=document.createElement('div');
+  ov.id='clChatSearchOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:440px;overflow:hidden;max-height:80vh;display:flex;flex-direction:column">'
+    +'<div style="background:linear-gradient(135deg,#0D1829,#16213E);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)"><span style="font-size:15px;font-weight:900;color:#fff">محادثة جديدة</span><button onclick="document.getElementById(\'clChatSearchOv\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:16px">\u2715</button></div>'
+    +'<div style="padding:16px"><input id="cl-chat-inp" placeholder="ابحث باسم المزود..." style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;outline:none;background:var(--bg)"><div id="cl-chat-res" style="max-height:300px;overflow-y:auto;margin-top:12px"></div></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  var inp=document.getElementById('cl-chat-inp');var res=document.getElementById('cl-chat-res');
+  inp.focus();var timer=null;
+  inp.addEventListener('input',function(){
+    clearTimeout(timer);timer=setTimeout(function(){
+      var q=inp.value.trim();if(!q){res.innerHTML='';return;}
+      res.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">جاري البحث...</div>';
+      jFetch('/api/users/search?q='+encodeURIComponent(q)).then(function(users){
+        if(!users||!users.length){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>';return;}
+        var h='';
+        users.forEach(function(u){
+          var av=isImg(u.profile_image)?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'م')[0];
+          h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">'
+            +'<div style="width:38px;height:38px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;overflow:hidden">'+av+'</div>'
+            +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800">'+esc(u.business_name||u.name||'مزود')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.city||'')+'</div></div>'
+            +'<button data-uid="'+u.id+'" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>'
+            +'</div>';
+        });
+        res.innerHTML=h;
+        res.querySelectorAll('button[data-uid]').forEach(function(btn){
+          btn.onclick=function(){
+            var uid=btn.getAttribute('data-uid');
+            jFetch('/api/direct-message',{method:'POST',body:JSON.stringify({provider_id:parseInt(uid)})}).then(function(d){
+              document.getElementById('clChatSearchOv').remove();
+              if(d&&d.request_id){showToast('تم فتح المحادثة','success');loadChatPage();}
+            }).catch(function(){showToast('تعذر فتح المحادثة','error');});
+          };
+        });
+      }).catch(function(){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--red);font-size:12px">تعذر البحث</div>';});
+    },400);
+  });
 }
 function openChat(reqId,providerId,providerName,reqTitle){
   _chatReqId=reqId;_chatWith=providerId;
