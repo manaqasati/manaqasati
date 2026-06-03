@@ -211,7 +211,7 @@ tbody tr:hover{background:var(--bg)}
 
     <div class="page" id="page-users">
       <div class="card">
-        <div class="card-head"><h3>إدارة المستخدمين</h3><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث بالاسم أو البريد..." oninput="filterUsers()"></div></div>
+        <div class="card-head"><h3>إدارة المستخدمين</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث..." oninput="filterUsers()"></div><button class="act-btn ab-default" onclick="openBroadcast()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>رسالة جماعية</button><button class="act-btn ab-default" onclick="exportUsers()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير CSV</button></div></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterRole('all',this)">الكل</button><button class="ftab" onclick="filterRole('client',this)">العملاء</button><button class="ftab" onclick="filterRole('provider',this)">المزودون</button></div>
         <div class="card-body flush"><div class="tbl-wrap" id="users-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
@@ -251,6 +251,40 @@ tbody tr:hover{background:var(--bg)}
       <div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
     </div>
     <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- Notify Single Modal -->
+<div class="overlay" id="notifyModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="nm-title">إرسال رسالة</h3><button class="modal-x" onclick="closeModal('notifyModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="fld"><label>العنوان</label><input id="nm-subject" placeholder="عنوان الرسالة"></div>
+      <div class="fld"><label>الرسالة</label><textarea id="nm-message" placeholder="اكتب رسالتك..."></textarea></div>
+      <div class="sec-label">قنوات الإرسال</div>
+      <label class="opt-row" style="cursor:pointer"><div class="opt-row-label">داخل التطبيق (إشعار + Push)</div><input type="checkbox" id="nm-app" checked style="width:18px;height:18px;accent-color:var(--p)"></label>
+      <label class="opt-row" style="cursor:pointer"><div class="opt-row-label">البريد الإلكتروني</div><input type="checkbox" id="nm-email" checked style="width:18px;height:18px;accent-color:var(--p)"></label>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="nm-send" onclick="sendNotify()">إرسال</button><button class="btn-s" onclick="closeModal('notifyModal')">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- Broadcast Modal -->
+<div class="overlay" id="broadcastModal">
+  <div class="modal">
+    <div class="modal-head"><h3>رسالة جماعية</h3><button class="modal-x" onclick="closeModal('broadcastModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="sec-label">المستلمون</div>
+      <div class="opt-row sel" id="bc-target-all" onclick="setBcTarget('all')"><div class="opt-row-label">جميع المستخدمين</div><svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24" id="bc-check-all"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="opt-row" id="bc-target-client" onclick="setBcTarget('client')"><div class="opt-row-label">العملاء فقط</div><svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24" id="bc-check-client" style="display:none"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="opt-row" id="bc-target-provider" onclick="setBcTarget('provider')"><div class="opt-row-label">المزودون فقط</div><svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24" id="bc-check-provider" style="display:none"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="fld" style="margin-top:16px"><label>العنوان</label><input id="bc-subject" placeholder="عنوان الرسالة"></div>
+      <div class="fld"><label>الرسالة</label><textarea id="bc-message" placeholder="اكتب رسالتك..."></textarea></div>
+      <div class="sec-label">قنوات الإرسال</div>
+      <label class="opt-row" style="cursor:pointer"><div class="opt-row-label">داخل التطبيق (إشعار + Push)</div><input type="checkbox" id="bc-app" checked style="width:18px;height:18px;accent-color:var(--p)"></label>
+      <label class="opt-row" style="cursor:pointer"><div class="opt-row-label">البريد الإلكتروني</div><input type="checkbox" id="bc-email" style="width:18px;height:18px;accent-color:var(--p)"></label>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="bc-send" onclick="sendBroadcast()">إرسال للجميع</button><button class="btn-s" onclick="closeModal('broadcastModal')">إلغاء</button></div>
   </div>
 </div>
 
@@ -369,6 +403,8 @@ function openUserModal(uid){
     +'<div class="opt-row'+(u.role==='provider'?' sel':'')+'" onclick="changeRole('+u.id+',\'provider\')"><div><div class="opt-row-label">مزود</div><div class="opt-row-desc">يقدّم عروض على المشاريع</div></div>'+(u.role==='provider'?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
     +'<div class="sec-label">التوثيق</div>'
     +'<div class="opt-row'+(verified?' sel':'')+'" onclick="toggleVerified('+u.id+','+(!verified)+')"><div class="opt-row-label"><svg width="15" height="15" fill="none" stroke="var(--blue)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(verified?'موثّق — اضغط للإلغاء':'منح شارة موثّق')+'</div>'+(verified?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
+    +'<div class="sec-label">المراسلة</div>'
+    +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+',\''+esc(u.name).replace(/\x27/g,"")+'\')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
     +'<div class="sec-label">إجراءات الحساب</div>'
     +'<div style="display:flex;gap:8px">'
       +'<button class="act-btn '+(u.is_active?'ab-default':'ab-primary')+'" style="flex:1;justify-content:center;padding:11px" onclick="toggleActive('+u.id+')">'+(u.is_active?'حظر المستخدم':'إلغاء الحظر')+'</button>'
@@ -388,6 +424,80 @@ function toggleActive(uid){
 function deleteUser(uid){
   if(!confirm('حذف نهائي لهذا المستخدم وكل بياناته؟'))return;
   fetch(API+'/api/admin/users/'+uid,Object.assign({method:'DELETE'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم الحذف','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر الحذف','error');});
+}
+
+// ═══ رسالة فردية ═══
+var _notifyUid=null;
+function openNotify(uid,name){
+  _notifyUid=uid;
+  document.getElementById('nm-title').textContent='رسالة إلى '+name;
+  document.getElementById('nm-subject').value='';
+  document.getElementById('nm-message').value='';
+  document.getElementById('nm-app').checked=true;
+  document.getElementById('nm-email').checked=true;
+  closeModal('userModal');
+  document.getElementById('notifyModal').classList.add('show');
+}
+function sendNotify(){
+  if(!_notifyUid)return;
+  var title=document.getElementById('nm-subject').value.trim();
+  var message=document.getElementById('nm-message').value.trim();
+  if(!title||!message){toast('العنوان والرسالة مطلوبان','error');return;}
+  var channels={app:document.getElementById('nm-app').checked,email:document.getElementById('nm-email').checked};
+  if(!channels.app&&!channels.email){toast('اختر قناة واحدة على الأقل','error');return;}
+  var btn=document.getElementById('nm-send');btn.disabled=true;btn.textContent='جاري الإرسال...';
+  fetch(API+'/api/admin/users/'+_notifyUid+'/notify',Object.assign({method:'POST',body:JSON.stringify({title:title,message:message,channels:channels})},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(d){var msg='تم الإرسال';if(d.sent){var parts=[];if(d.sent.app)parts.push('إشعار');if(d.sent.email)parts.push('إيميل');if(parts.length)msg='تم الإرسال ('+parts.join(' + ')+')';}toast(msg,'success');closeModal('notifyModal');})
+    .catch(function(){toast('تعذر الإرسال','error');})
+    .finally(function(){btn.disabled=false;btn.textContent='إرسال';});
+}
+
+// ═══ رسالة جماعية ═══
+var _bcTarget='all';
+function openBroadcast(){
+  document.getElementById('bc-subject').value='';
+  document.getElementById('bc-message').value='';
+  setBcTarget('all');
+  document.getElementById('broadcastModal').classList.add('show');
+}
+function setBcTarget(t){
+  _bcTarget=t;
+  ['all','client','provider'].forEach(function(x){
+    document.getElementById('bc-target-'+x).classList.toggle('sel',x===t);
+    document.getElementById('bc-check-'+x).style.display=(x===t)?'block':'none';
+  });
+  var labels={all:'إرسال للجميع',client:'إرسال للعملاء',provider:'إرسال للمزودين'};
+  document.getElementById('bc-send').textContent=labels[t];
+}
+function sendBroadcast(){
+  var title=document.getElementById('bc-subject').value.trim();
+  var message=document.getElementById('bc-message').value.trim();
+  if(!title||!message){toast('العنوان والرسالة مطلوبان','error');return;}
+  var channels={app:document.getElementById('bc-app').checked,email:document.getElementById('bc-email').checked};
+  if(!channels.app&&!channels.email){toast('اختر قناة واحدة على الأقل','error');return;}
+  if(!confirm('إرسال الرسالة إلى '+(_bcTarget==='all'?'جميع المستخدمين':_bcTarget==='client'?'كل العملاء':'كل المزودين')+'؟'))return;
+  var btn=document.getElementById('bc-send');btn.disabled=true;btn.textContent='جاري الإرسال...';
+  fetch(API+'/api/admin/broadcast',Object.assign({method:'POST',body:JSON.stringify({title:title,message:message,target:_bcTarget,channels:channels})},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(d){toast('تم الإرسال إلى '+(d.total||0)+' مستخدم','success');closeModal('broadcastModal');})
+    .catch(function(){toast('تعذر الإرسال','error');})
+    .finally(function(){btn.disabled=false;setBcTarget(_bcTarget);});
+}
+
+// ═══ تصدير CSV ═══
+function exportUsers(){
+  var url=API+'/api/admin/export/users'+(_roleFilter!=='all'?'?role='+_roleFilter:'');
+  fetch(url,hdr())
+    .then(function(r){if(!r.ok)throw new Error();return r.blob();})
+    .then(function(blob){
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='manaqasa-users-'+new Date().toISOString().split('T')[0]+'.csv';
+      document.body.appendChild(a);a.click();a.remove();
+      toast('تم تصدير الملف','success');
+    })
+    .catch(function(){toast('تعذر التصدير','error');});
 }
 
 function loadRequests(){
