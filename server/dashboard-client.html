@@ -1130,7 +1130,18 @@ function markAllRead(){
 var _chatReqId=null,_chatWith=null,_chatMsgs=[],_chatPoll=null;
 function loadChatPage(){
   var el=document.getElementById('chat-container');if(!el)return;
-  if(window._openChatReqId){openChat(window._openChatReqId,window._openChatPid,null,null);window._openChatReqId=null;window._openChatPid=null;return;}
+  if(window._openChatReqId){
+    var _rid=window._openChatReqId,_pid=window._openChatPid,_nm=window._openChatName;
+    window._openChatReqId=null;window._openChatPid=null;window._openChatName=null;
+    // اجلب بيانات المحادثة لمعرفة اسم المزود
+    fetch(API+'/api/client/conversations',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(convs){
+      convs=Array.isArray(convs)?convs:(convs&&convs.data)?convs.data:[];
+      var cv=convs.find(function(x){return String(x.request_id||x.id)===String(_rid);});
+      if(cv){openChat(cv.request_id||cv.id,cv.provider_id,cv.provider_name||_nm,cv.request_title||'محادثة');}
+      else{openChat(_rid,_pid,_nm||'مزود','محادثة');}
+    }).catch(function(){openChat(_rid,_pid,_nm||'مزود','محادثة');});
+    return;
+  }
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/client/conversations',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(convs){
     var convs=Array.isArray(convs)?convs:(convs&&convs.data)?convs.data:[];
@@ -1202,9 +1213,11 @@ function openClientChatSearch(){
         res.querySelectorAll('button[data-uid]').forEach(function(btn){
           btn.onclick=function(){
             var uid=btn.getAttribute('data-uid');
+            var pname=btn.parentNode.querySelector('div div').textContent||'مزود';
             jFetch('/api/direct-message',{method:'POST',body:JSON.stringify({provider_id:parseInt(uid)})}).then(function(d){
-              document.getElementById('clChatSearchOv').remove();
-              if(d&&d.request_id){showToast('تم فتح المحادثة','success');loadChatPage();}
+              var ovEl=document.getElementById('clChatSearchOv');if(ovEl)ovEl.remove();
+              if(d&&d.request_id){showToast('تم فتح المحادثة','success');gotoMessagesAndOpen(d.request_id,parseInt(uid),pname);}
+              else{showToast('تعذر فتح المحادثة','error');}
             }).catch(function(){showToast('تعذر فتح المحادثة','error');});
           };
         });
@@ -1288,25 +1301,22 @@ setInterval(function(){if(!_pollPaused)loadNotifCount();},30000);
       // أنشئ/افتح محادثة مع المزود
       fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:parseInt(provId)})},hdr()))
         .then(function(r){return r.json();})
-        .then(function(d){if(d.request_id){gotoMessagesAndOpen(d.request_id);}})
+        .then(function(d){if(d.request_id){gotoMessagesAndOpen(d.request_id,parseInt(provId),null);}})
         .catch(function(){});
     } else if(reqId){
-      gotoMessagesAndOpen(parseInt(reqId));
+      gotoMessagesAndOpen(parseInt(reqId),null,null);
     }
   },600);
 })();
 
-function gotoMessagesAndOpen(reqId){
-  // انتقل لقسم المحادثات ثم افتح المحادثة
+function gotoMessagesAndOpen(reqId,provId,provName){
+  // احفظ المحادثة المطلوبة ثم انتقل لقسم المحادثات
+  window._openChatReqId=reqId;
+  window._openChatPid=provId||null;
+  window._openChatName=provName||null;
+  // انتقل لتبويب المحادثات (سيقرأ loadChatPage القيم ويفتح المحادثة)
+  var chatNav=document.getElementById('bn-chat')||document.querySelector('[onclick*="\'chat\'"]');
   if(typeof show==='function'){try{show('chat',null,'chat');}catch(e){}}
-  fetch(API+'/api/client/conversations',hdr())
-    .then(function(r){return r.ok?r.json():[];})
-    .then(function(convs){
-      var conv=Array.isArray(convs)?convs.find(function(x){return String(x.request_id||x.id)===String(reqId);}):null;
-      if(conv){openChat(conv.request_id||conv.id,conv.provider_id||conv.other_id,conv.provider_name||conv.other_name,conv.title);}
-      else{openChat(reqId,null,'مزود','محادثة');}
-    })
-    .catch(function(){openChat(reqId,null,'مزود','محادثة');});
 }
 </script>
 </body>
