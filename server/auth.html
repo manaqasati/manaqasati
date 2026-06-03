@@ -317,7 +317,7 @@ async function doReset(){
   if(!p1||p1.length<6){setAl(al,'كلمة المرور 6 أحرف على الأقل','err');return;}
   if(p1!==p2){setAl(al,'كلمتا المرور غير متطابقتين','err');return;}
   var r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})});
-  if(r.ok){setAl(al,'تم التعيين! جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}
+  if(r.ok){setAl(al,'تم التعيين، جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}
   else setAl(al,r.message||'حدث خطأ','err');
 }
 
@@ -458,7 +458,7 @@ async function doSubmit(){
       setAl(null,'تم بنجاح! جاري التحويل...','ok');
       setTimeout(function(){
         var rl=d.user.role;
-        // ✅ تحقق من redirect بعد تسجيل الدخول
+        // تحقق من redirect بعد تسجيل الدخول
         var params=new URLSearchParams(location.search);
         var redir=params.get('redirect');
         var provId=params.get('provider_id');
@@ -479,7 +479,7 @@ async function doSubmit(){
           if(rl==='provider')    location.href='dashboard-provider.html';
           else                   location.href='dashboard-client.html';
         } else {
-          // ✅ ارجع للصفحة السابقة إذا موجودة
+          // ارجع للصفحة السابقة إذا موجودة
           var _back=null;
           try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
