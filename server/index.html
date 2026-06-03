@@ -412,6 +412,7 @@ function card(p){
   var bidLabel = bidN === 0 ? 'لا عروض' : bidN + ' ' + (bidN === 1 ? 'عرض' : 'عروض');
   var projSlug = encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40)) + '-' + p.id;
 
+  var clientPrem = p.client_premium===true||p.client_premium==='t'||p.client_badge==='premium';
   var isDone = p.status==='completed'||p.status==='in_progress'||p.status==='done';
   var badge = '<span class="pc-st ' + (isOpen ? 'pc-open' : 'pc-done-st') + '">' + (isOpen ? '● مفتوح' : isDone ? '✓ تم الترسية' : '● مغلق') + '</span>';
 
@@ -435,6 +436,7 @@ function card(p){
     + (p.budget_max ? '<span class="chip chip-y">' + Number(p.budget_max).toLocaleString('en-US') + ' ر.س</span>' : '')
     + '<span class="chip chip-d"><bdi>' + bidN + '</bdi> ' + (bidN===1?'عرض':'عروض') + '</span>'
     + (img && p.category ? '<span class="chip chip-b">' + p.category + '</span>' : '')
+    + (clientPrem ? '<span class="chip" style="background:#FBF5E6;color:#A87000;border:1px solid #FFE5A0;display:inline-flex;align-items:center;gap:3px"><svg width="9" height="9" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21l2.3-7.4-6-4.6h7.6z"/></svg>عميل مميز</span>' : '')
     + '</div>'
     + '<div class="pc-footer">'
     + '<div><div class="pc-price">' + (p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : 'مفتوح') + '</div><div class="pc-time">' + ago(p.created_at) + '</div></div>'
