@@ -403,6 +403,7 @@ function openUserModal(uid){
     +'<div class="opt-row'+(u.role==='provider'?' sel':'')+'" onclick="changeRole('+u.id+',\'provider\')"><div><div class="opt-row-label">مزود</div><div class="opt-row-desc">يقدّم عروض على المشاريع</div></div>'+(u.role==='provider'?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
     +'<div class="sec-label">التوثيق</div>'
     +'<div class="opt-row'+(verified?' sel':'')+'" onclick="toggleVerified('+u.id+','+(!verified)+')"><div class="opt-row-label"><svg width="15" height="15" fill="none" stroke="var(--blue)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(verified?'موثّق — اضغط للإلغاء':'منح شارة موثّق')+'</div>'+(verified?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
+    +(u.role==='client'?'<div class="sec-label">التمييز</div><div class="opt-row'+((u.badge==='premium')?' sel':'')+'" onclick="toggleBadge('+u.id+',\''+((u.badge==='premium')?'none':'premium')+'\')"><div class="opt-row-label"><svg width="15" height="15" fill="var(--gold)" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21l2.3-7.4-6-4.6h7.6z"/></svg>'+((u.badge==='premium')?'عميل مميز — اضغط للإلغاء':'منح شارة عميل مميز')+'</div>'+((u.badge==='premium')?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>':'')
     +'<div class="sec-label">المراسلة</div>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+',\''+esc(u.name).replace(/\x27/g,"")+'\')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
     +'<div class="sec-label">إجراءات الحساب</div>'
@@ -414,6 +415,9 @@ function openUserModal(uid){
 }
 function changeRole(uid,role){
   fetch(API+'/api/admin/users/'+uid+'/role',Object.assign({method:'PUT',body:JSON.stringify({role:role})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم تحويل الدور إلى '+(role==='client'?'عميل':'مزود'),'success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر تحويل الدور','error');});
+}
+function toggleBadge(uid,badge){
+  fetch(API+'/api/admin/users/'+uid+'/badge',Object.assign({method:'PUT',body:JSON.stringify({badge:badge})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast(badge==='premium'?'تم منح شارة عميل مميز':'تم إلغاء التمييز','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر التحديث','error');});
 }
 function toggleVerified(uid,mk){
   fetch(API+'/api/admin/users/'+uid+'/badge',Object.assign({method:'PUT',body:JSON.stringify({badge:mk?'verified':'none'})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast(mk?'تم منح شارة موثّق':'تم إلغاء التوثيق','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر التحديث','error');});
