@@ -1261,6 +1261,15 @@ app.get('/api/reviews/user/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// هل قيّم المستخدم هذا الطلب؟
+app.get('/api/requests/:id/my-review', auth, async (req, res) => {
+  try {
+    const rid = parseInt(req.params.id);
+    const r = await pool.query('SELECT id, rating, comment FROM reviews WHERE request_id=$1 AND reviewer_id=$2 LIMIT 1', [rid, req.user.id]);
+    res.json(r.rows[0] || null);
+  } catch(e) { res.json(null); }
+});
+
 app.post('/api/reviews', auth, async (req, res) => {
   try {
     const { request_id, reviewed_id, rating, comment } = req.body;
