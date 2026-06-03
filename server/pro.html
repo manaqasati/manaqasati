@@ -151,7 +151,7 @@ var _provId = null, _phone = null;
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function ago(d){if(!d)return'';var s=(Date.now()-new Date(d))/1000;if(s<3600)return Math.floor(s/60)+' دقيقة';if(s<86400)return Math.floor(s/3600)+' ساعة';if(s<2592000)return Math.floor(s/86400)+' يوم';return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short'});}
-function mkStars(n){var s='';for(var i=1;i<=5;i++){var f=i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)';s+='<svg width="15" height="15" fill="'+f+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}return s;}
+function mkStars(n){n=parseFloat(n)||0;var s='<span style="display:inline-flex;gap:2px;direction:ltr">';for(var i=1;i<=5;i++){var fill;if(n>=i)fill='#F0A500';else if(n>=i-0.5)fill='url(#proHalf)';else fill='rgba(255,255,255,.2)';s+='<svg width="16" height="16" viewBox="0 0 24 24" style="display:inline-block"><defs><linearGradient id="proHalf"><stop offset="50%" stop-color="#F0A500"/><stop offset="50%" stop-color="rgba(255,255,255,.2)"/></linearGradient></defs><polygon fill="'+fill+'" points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}s+='</span>';return s;}
 
 function slug2id(){
   var p=new URLSearchParams(location.search);
