@@ -268,7 +268,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div></div>
 
 <!-- PUSH BANNER -->
-<div class="push-banner" id="pushBanner">
+<div class="push-banner" id="pushBanner" style="display:none">
   <div class="push-banner-head"><div class="push-banner-icon"><svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div><div><div class="push-banner-title">فعّل الإشعارات الفورية</div><div class="push-banner-sub">لا تفوت أي مشروع جديد</div></div></div>
   <ul class="push-banner-list"><li>مشاريع جديدة في تخصصك</li><li>قبول/رفض عروضك</li><li>رسائل من العملاء</li></ul>
   <div class="push-banner-actions"><button class="push-banner-yes" onclick="enablePushFromBanner()">السماح بالإشعارات</button><button class="push-banner-no" onclick="dismissPushBanner()">لاحقاً</button></div>
@@ -392,11 +392,15 @@ async function enablePushFromBanner(){
   else{if(btn){btn.disabled=false;btn.textContent='السماح بالإشعارات';}}
 }
 async function maybeShowPushBanner(){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;if(Notification.permission==='denied')return;
-  var active=await isPushActive();if(active){localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');return;}
-  var dismissed=localStorage.getItem('manaqasa_push_dismissed_'+_me.id);
-  if(dismissed&&Date.now()-parseInt(dismissed)<7*24*60*60*1000)return;
-  setTimeout(showPushBanner,3000);
+  // طلب إذن الإشعارات تلقائياً بصمت — الإشعارات مفعّلة افتراضياً
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+    if(!('Notification' in window))return;
+    var active=await isPushActive();
+    if(active){localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');return;}
+    if(Notification.permission==='granted'){await pushSubscribe();return;}
+    if(Notification.permission==='default'){var p=await Notification.requestPermission();if(p==='granted')await pushSubscribe();}
+  }catch(e){}
 }
 
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','أبواب','جبس وطباشير','مكافحة حشرات','أخرى'];
