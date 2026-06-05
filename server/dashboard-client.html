@@ -560,6 +560,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 // INIT
 // ═══════════════════════════════════
 var API='https://manaqasati-production.up.railway.app';
+var _pollPaused=false;
+document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 if(!token||!user.id){location.href='/auth.html';}
@@ -1365,12 +1367,6 @@ function openChat(reqId,providerId,providerName,reqTitle){
     +'<div class="chat-input"><input class="chat-inp" id="chatInp" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"><button class="chat-send" onclick="sendChatMsg()">إرسال</button></div></div>';
   loadChatMsgs();
   if(_chatPoll)clearInterval(_chatPoll);
-
-// إيقاف التحديث عند إخفاء الصفحة (توفير بطارية وشبكة)
-var _pollPaused=false;
-document.addEventListener('visibilitychange',function(){
-  _pollPaused=document.hidden;
-});
   _chatPoll=setInterval(function(){if(_chatReqId)loadChatMsgs();else clearInterval(_chatPoll);},6000);
 }
 function loadChatMsgs(){
