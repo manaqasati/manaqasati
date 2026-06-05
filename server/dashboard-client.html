@@ -229,6 +229,35 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .btn-p,.btn-s,.btn-sm{width:100%;text-align:center;justify-content:center;padding:11px}
   
 }
+
+.agree-modal{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:slideUp .3s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.agree-hd{background:linear-gradient(135deg,#142d54,#1B3A6B,#2C5282);padding:24px 22px 20px;position:relative;text-align:center;overflow:hidden}
+.agree-hd h2{color:#fff;font-size:20px;font-weight:900;margin-bottom:5px;position:relative}
+.agree-hd p{color:rgba(255,255,255,.7);font-size:12px;position:relative}
+.agree-body{padding:20px;overflow-y:auto;flex:1}
+.quran-box{background:linear-gradient(135deg,#FBF5E6,#fff8e6);border:1.5px solid #F0D080;border-radius:14px;padding:18px;text-align:center;margin-bottom:18px}
+.quran-title{font-size:14px;font-weight:800;color:var(--gold-d);margin-bottom:10px}
+.quran-text{font-size:15px;line-height:2;color:#5a4a1a;font-weight:600;margin-bottom:8px}
+.quran-src{font-size:11px;color:var(--gold-d);font-weight:700}
+.agree-sec{margin-bottom:16px}
+.agree-sec-t{font-size:14px;font-weight:800;color:var(--p);margin-bottom:6px}
+.agree-sec p{font-size:13px;line-height:1.8;color:var(--text2)}
+.note-sec{background:var(--red-l);border-radius:11px;padding:13px 15px;margin-bottom:16px}
+.note-sec .agree-sec-t{color:var(--red)}
+.note-sec p{font-size:12.5px;line-height:1.7;color:var(--text2)}
+.agree-summary{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px}
+.agree-sum-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);padding:4px 0}
+.agree-sum-ic{display:inline-flex;width:24px;justify-content:center}
+.agree-check{display:flex;gap:10px;align-items:flex-start;background:var(--p-light);border-radius:12px;padding:14px;cursor:pointer}
+.agree-check input{width:20px;height:20px;margin-top:1px;accent-color:var(--p);flex-shrink:0;cursor:pointer}
+.agree-check label{font-size:12.5px;line-height:1.6;color:var(--text2);cursor:pointer}
+.agree-foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.btn-agree{padding:14px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.15s}
+.btn-agree:disabled{opacity:.45;cursor:not-allowed}
+.btn-agree:not(:disabled):hover{background:var(--gold-d)}
+.btn-back{padding:12px;background:none;color:var(--muted);border:none;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -980,6 +1009,26 @@ function submitReq(){
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';
+  // افتح اتفاقية الرسوم قبل النشر
+  var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;}
+  var ab=document.getElementById('agreeBtn');if(ab){ab.disabled=true;}
+  document.getElementById('agreeOverlay').className='overlay show';
+}
+
+function closeAgree(){
+  document.getElementById('agreeOverlay').className='overlay';
+}
+
+function acceptAgree(){
+  closeAgree();
+  var cat=document.getElementById('n-cat').value;
+  if(cat==='أخرى')cat=document.getElementById('n-cat-other').value.trim()||'أخرى';
+  var title=(document.getElementById('n-title').value||'').trim();
+  var desc=(document.getElementById('n-desc').value||'').trim();
+  var city=document.getElementById('n-city').value;
+  var budget=document.getElementById('n-budget').value;
+  var deadline=document.getElementById('n-deadline').value;
+  var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
   var body={title:title,description:desc,category:cat,city:city};
   if(budget)body.budget_max=Number(budget);
@@ -1415,5 +1464,48 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   if(typeof show==='function'){try{show('chat',null,'chat');}catch(e){}}
 }
 </script>
+
+<!-- AGREEMENT OVERLAY -->
+<div class="overlay" id="agreeOverlay" style="align-items:flex-end">
+  <div class="agree-modal">
+    <div class="agree-hd">
+      <svg style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:.15;pointer-events:none" viewBox="0 0 540 90" preserveAspectRatio="none"><line x1="60" y1="30" x2="200" y2="50" stroke="#fff" stroke-width="1"/><line x1="200" y1="50" x2="350" y2="25" stroke="#fff" stroke-width="1"/><line x1="350" y1="25" x2="480" y2="45" stroke="#fff" stroke-width="1"/><circle cx="60" cy="30" r="3" fill="#fff"/><circle cx="200" cy="50" r="5" fill="#fff"/><circle cx="350" cy="25" r="3.5" fill="#F0A500"/><circle cx="480" cy="45" r="3" fill="#fff"/></svg>
+      <h2>اتفاقية الرسوم</h2>
+      <p>يرجى قراءة الاتفاقية كاملةً قبل النشر</p>
+    </div>
+    <div class="agree-body">
+      <div class="quran-box">
+        <div class="quran-title">بسم الله الرحمن الرحيم</div>
+        <div class="quran-text">﴿ وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا ﴾</div>
+        <div class="quran-src">سورة النحل — صدق الله العظيم</div>
+      </div>
+      <div class="agree-sec">
+        <div class="agree-sec-t">أولًا: التعهد والالتزام</div>
+        <p>أُقرّ وأتعهد بدفع رسوم الموقع البالغة <strong>(1%) واحد بالمائة</strong> من إجمالي قيمة العقد المتفق عليه، ويشمل أي اتفاق تم عبر الموقع أو بسببه، سواء كان مكتوبًا أو شفهيًا.</p>
+      </div>
+      <div class="agree-sec">
+        <div class="agree-sec-t">ثانيًا: استحقاق الرسوم وآلية السداد</div>
+        <p>تستحق الرسوم بمجرد اكتمال الاتفاق النهائي، ويلتزم طالب الخدمة بسدادها خلال <strong>(10) عشرة أيام</strong> من تاريخ الاكتمال.</p>
+      </div>
+      <div class="note-sec">
+        <div class="agree-sec-t">ثالثًا: مسؤولية السداد</div>
+        <p>هذه الرسوم التزام مالي واجب السداد، ولا تبرأ ذمتك إلا بعد السداد الكامل.</p>
+      </div>
+      <div class="agree-summary">
+        <div class="agree-sum-row"><span class="agree-sum-ic"><svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span>نسبة الرسوم: <strong>1%</strong> من قيمة الاتفاق</span></div>
+        <div class="agree-sum-row"><span class="agree-sum-ic"><svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span>مهلة السداد: <strong>10 أيام</strong> من الإكمال</span></div>
+      </div>
+      <label class="agree-check">
+        <input type="checkbox" id="agreeCheck" onchange="document.getElementById('agreeBtn').disabled=!this.checked">
+        <span>أُقرّ بأنني اطلعت على اتفاقية الرسوم وأتعهد بسداد رسوم المنصة <strong>(1%)</strong> خلال عشرة أيام من اكتمال الاتفاق</span>
+      </label>
+    </div>
+    <div class="agree-foot">
+      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر طلبي</button>
+      <button class="btn-back" onclick="closeAgree()">رجوع</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
