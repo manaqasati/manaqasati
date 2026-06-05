@@ -7,7 +7,7 @@ const webpush = require('web-push');
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 
-// ✅ Cloudflare R2 Setup
+// Cloudflare R2 Setup
 let r2Client = null;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
 const R2_BUCKET = process.env.R2_BUCKET || 'manaqasa-images';
@@ -22,10 +22,10 @@ if (process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY && process.env.R2_END
   });
   console.log('✅ R2 storage connected');
 } else {
-  console.warn('⚠️  R2 keys not set — image upload will use base64 fallback');
+  console.warn(' R2 keys not set — image upload will use base64 fallback');
 }
 
-// ✅ رفع صورة base64 إلى R2، يرجع رابط عام
+// رفع صورة base64 إلى R2، يرجع رابط عام
 async function uploadToR2(base64Data, folder) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
@@ -62,7 +62,7 @@ const pool = new Pool({
 
 pool.connect()
   .then(() => console.log('✅ Database connected'))
-  .catch(err => console.error('❌ Database error:', err));
+  .catch(err => console.error('Database error:', err));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
 if (!process.env.JWT_SECRET) {
@@ -82,17 +82,17 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
     console.log('✅ Web Push (VAPID) configured');
   } catch (e) {
-    console.error('❌ VAPID setup error:', e.message);
+    console.error('VAPID setup error:', e.message);
   }
 } else {
-  console.warn('⚠️  VAPID keys not set — push notifications disabled');
+  console.warn(' VAPID keys not set — push notifications disabled');
 }
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static('.'));
 
-// ✅ Rate Limiting بسيط (in-memory) — حماية من brute force
+// Rate Limiting بسيط (in-memory) — حماية من brute force
 const _rateLimit = new Map();
 function rateLimiter(maxReq, windowMs){
   return (req, res, next) => {
@@ -114,7 +114,7 @@ setInterval(() => {
   for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
 }, 600000);
 
-// ✅ منع الكاش على ملفات HTML
+// منع الكاش على ملفات HTML
 app.use(function(req, res, next){
   if(req.path.endsWith('.html') || req.path === '/'){
     res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
@@ -214,7 +214,7 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
   try {
     const raw = req.path.replace(/^\/pro\//, '');
     const slug = decodeURIComponent(raw);
-    // ✅ يقبل ID في النهاية (وليد-49) أو البداية (49-وليد) أو ?id=
+    // يقبل ID في النهاية (وليد-49) أو البداية (49-وليد) أو ?id=
     const params = new URLSearchParams(req.query);
     let id = null;
     if (params.get('id') && /^\d+$/.test(params.get('id'))) {
@@ -269,12 +269,12 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
   <link rel="canonical" href="${pageUrl}">
 </head>`);
     res.send(html);
-  } catch(e) { console.error('❌ /pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
+  } catch(e) { console.error('/pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
 });
 
 // ═══ EMAIL ═══
 async function sendEmail(to, subject, html) {
-  if (!RESEND_KEY) { console.warn('⚠️  RESEND_KEY not set — skipping email to', to); return false; }
+  if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
   if (!to) return false;
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -282,30 +282,53 @@ async function sendEmail(to, subject, html) {
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html })
     });
-    if (!r.ok) { console.error('❌ Resend error:', await r.text()); return false; }
+    if (!r.ok) { console.error('Resend error:', await r.text()); return false; }
     console.log(`📧 Email sent → ${to} — "${subject}"`);
     return true;
-  } catch(e) { console.error('❌ sendEmail:', e.message); return false; }
+  } catch(e) { console.error('sendEmail:', e.message); return false; }
 }
 
 function emailTpl(title, body, btnText, btnUrl) {
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:Tahoma,Arial,sans-serif;direction:rtl">
-  <div style="max-width:580px;margin:0 auto;padding:24px 16px">
-    <div style="background:#16213E;border-radius:16px 16px 0 0;padding:32px 28px 24px;text-align:center">
-      <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:8px">
-        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:6px"></span>مناقصة
-      </div><div style="height:3px;background:#C9920A;margin-top:12px"></div>
-    </div>
-    <div style="background:#fff;padding:32px 28px 24px;border:1px solid #E6E2D9;border-top:none">
-      <div style="font-size:17px;font-weight:700;color:#0F172A;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #E6E2D9">${title}</div>
-      <div style="font-size:14px;color:#374151;line-height:2">${body}</div>
-      ${btnText && btnUrl ? `<div style="text-align:center;margin:28px 0 8px"><a href="${btnUrl}" style="display:inline-block;background:#C9920A;color:#fff;padding:14px 40px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700">${btnText}</a></div>` : ''}
-    </div>
-    <div style="background:#f4f7fb;border-radius:0 0 16px 16px;padding:18px 28px;text-align:center;border:1px solid #E6E2D9;border-top:none">
-      <div style="font-size:11px;color:#94a3b8">© ${new Date().getFullYear()} منصة مناقصة — manaqasa.com</div>
-    </div>
-  </div>
+  const year = new Date().getFullYear();
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:Tahoma,Arial,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">${title} — منصة مناقصة</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;padding:28px 14px">
+    <tr><td align="center">
+      <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(22,33,62,.10)">
+        <!-- Header -->
+        <tr><td style="background:#16213E;background:linear-gradient(135deg,#0D1829 0%,#16213E 55%,#1B3A6B 100%);padding:0;position:relative">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:34px 28px 28px;text-align:center">
+            <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:.5px">
+              <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:8px;box-shadow:0 0 0 4px rgba(201,146,10,.25)"></span>مناقصة
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:7px;font-weight:600">سوق المشاريع والخدمات</div>
+          </td></tr></table>
+          <div style="height:4px;background:linear-gradient(90deg,#A87000,#C9920A,#F0A500,#C9920A,#A87000)"></div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:34px 30px 26px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td>
+            <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
+            <div style="width:46px;height:3px;background:#C9920A;border-radius:2px;margin-bottom:20px"></div>
+            <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
+            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#C9920A,#A87000)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
+          </td></tr></table>
+        </td></tr>
+        <!-- Divider -->
+        <tr><td style="padding:0 30px"><div style="height:1px;background:#E8EAED"></div></td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:22px 30px 26px;text-align:center">
+          <div style="font-size:13px;font-weight:800;color:#16213E;margin-bottom:6px">منصة مناقصة</div>
+          <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
+            <a href="https://manaqasa.com" style="color:#C9920A;text-decoration:none;font-weight:700">manaqasa.com</a>
+          </div>
+          <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
+        </td></tr>
+      </table>
+      <div style="font-size:10.5px;color:#a0aab8;margin-top:16px;line-height:1.7">وصلتك هذه الرسالة لأنك مسجّل في منصة مناقصة</div>
+    </td></tr>
+  </table>
 </body></html>`;
 }
 
@@ -336,7 +359,7 @@ async function sendPush(userId, title, body, url, refType, refId) {
         } catch(err) {
           if (err.statusCode === 410 || err.statusCode === 404) {
             try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [userId, row.token]); } catch(e) {}
-          } else { console.error('❌ sendPush web error:', err.statusCode, err.message); }
+          } else { console.error('sendPush web error:', err.statusCode, err.message); }
         }
       } else if (platform === 'ios' || platform === 'android' || platform === 'expo') {
         if (row.token && row.token.startsWith('ExponentPushToken')) {
@@ -355,13 +378,13 @@ async function sendPush(userId, title, body, url, refType, refId) {
               const errCode = ticket.details && ticket.details.error;
               if (errCode === 'DeviceNotRegistered') {
                 try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [userId, expoMessages[i].to]); console.log(`🗑️  Removed invalid Expo token for user ${userId}`); } catch(e) {}
-              } else { console.error('❌ Expo push error:', errCode, ticket.message); }
+              } else { console.error('Expo push error:', errCode, ticket.message); }
             }
           }
         }
-      } catch(expoErr) { console.error('❌ Expo push API error:', expoErr.message); }
+      } catch(expoErr) { console.error('Expo push API error:', expoErr.message); }
     }
-  } catch(e) { console.error('❌ sendPush helper error:', e.message); }
+  } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
 async function notify(userId, title, body, type, refId) {
@@ -387,7 +410,7 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
     if (u.rows.length && u.rows[0].email) {
       sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL)).catch(() => {});
     }
-  } catch(e) { console.error('❌ notifyWithEmail email part:', e.message); }
+  } catch(e) { console.error('notifyWithEmail email part:', e.message); }
 }
 
 function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
@@ -438,10 +461,10 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error('⚠️  bids unique constraint:', e.message); }
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error('⚠️  reviews unique constraint:', e.message); }
+    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
+    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
     console.log('✅ Database setup complete');
-  } catch(error) { console.error('❌ Database setup error:', error); }
+  } catch(error) { console.error('Database setup error:', error); }
 }
 setupDatabase();
 
@@ -463,7 +486,7 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
     delete user.password; delete user.password_hash;
     res.json({ user, token });
-  } catch(e) { console.error('❌ Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
@@ -482,13 +505,13 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
       const welcomeBody = isProvider
-        ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>📋 تصفح المشاريع المتاحة</li><li>💼 تقديم عروضك للعملاء</li><li>💬 التواصل المباشر مع العملاء</li></ul><p>💡 أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
-        : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>📝 نشر مشاريعك</li><li>💰 استقبال عروض من المزودين</li><li>💬 التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
+        ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
+        : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
       await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! نحن سعداء بانضمامك إلينا.`, 'welcome', null);
       if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر طلبك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
-    } catch(we) { console.error('⚠️ welcome notification:', we.message); }
+    } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
-  } catch(e) { console.error('❌ Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/direct-admin', async (req, res) => {
@@ -537,7 +560,7 @@ app.get('/api/account/deletion-preview', auth, async (req, res) => {
     const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
     const r6 = await pool.query('SELECT COUNT(*)::int as c FROM notifications WHERE user_id=$1', [userId]); stats.notifications = r6.rows[0].c;
     res.json({ ok: true, stats, warning: 'سيتم حذف جميع بياناتك نهائياً ولا يمكن استعادتها.' });
-  } catch(e) { console.error('❌ deletion-preview:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('deletion-preview:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/account/delete', auth, async (req, res) => {
@@ -569,8 +592,8 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
       if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${userName}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
       res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
-    } catch(e) { await pool.query('ROLLBACK'); console.error('❌ account delete transaction:', e); throw e; }
-  } catch(e) { console.error('❌ DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+    } catch(e) { await pool.query('ROLLBACK'); console.error('account delete transaction:', e); throw e; }
+  } catch(e) { console.error('DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PROFILES ═══
@@ -600,7 +623,7 @@ app.put('/api/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ /profile PUT:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/profile PUT:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/client/profile', auth, async (req, res) => {
@@ -635,7 +658,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,profile_image`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/provider/profile', auth, async (req, res) => {
@@ -652,7 +675,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ /api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/ratings/provider/:id', async (req, res) => {
@@ -661,7 +684,7 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
     const agg = await pool.query(`SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count FROM reviews WHERE reviewed_id=$1`, [id]);
     const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
     res.json({ average: parseFloat(agg.rows[0].average)||0, count: agg.rows[0].count||0, reviews: rv.rows });
-  } catch(e) { console.error('❌ /api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
+  } catch(e) { console.error('/api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
 });
 
 app.put('/api/provider/profile', auth, async (req, res) => {
@@ -694,7 +717,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`, params);
     res.json(r.rows[0]);
-  } catch(e) { console.error('❌ provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ PROVIDER ENDPOINTS ═══
@@ -702,21 +725,21 @@ app.get('/api/provider/bids', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, u.phone as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ /provider/bids:', e); res.json([]); }
+  } catch(e) { console.error('/provider/bids:', e); res.json([]); }
 });
 
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ /provider/projects:', e); res.json([]); }
+  } catch(e) { console.error('/provider/projects:', e); res.json([]); }
 });
 
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image FROM reviews rv JOIN users u ON rv.reviewer_id=u.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ /provider/reviews:', e); res.json([]); }
+  } catch(e) { console.error('/provider/reviews:', e); res.json([]); }
 });
 
 app.get('/api/provider/conversations', auth, async (req, res) => {
@@ -734,10 +757,10 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
       ORDER BY r.id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ /provider/conversations:', e); res.json([]); }
+  } catch(e) { console.error('/provider/conversations:', e); res.json([]); }
 });
 
-// ✅ إصلاح المشكلة: رسائل المزود لا تظهر عند العميل
+// إصلاح المشكلة: رسائل المزود لا تظهر عند العميل
 // السبب: الكود القديم كان يشترط r.assigned_provider_id IS NOT NULL
 // مما يمنع ظهور المحادثات عندما يرسل المزود قبل قبول عرضه
 app.get('/api/client/conversations', auth, async (req, res) => {
@@ -767,7 +790,7 @@ app.get('/api/client/conversations', auth, async (req, res) => {
       ORDER BY last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ /client/conversations:', e); res.json([]); }
+  } catch(e) { console.error('/client/conversations:', e); res.json([]); }
 });
 
 app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
@@ -780,7 +803,7 @@ app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
     imgs.push(image);
     await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
     res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('❌ portfolio POST:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('portfolio POST:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
@@ -792,7 +815,7 @@ app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
     imgs.splice(idx, 1);
     await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
     res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('❌ portfolio DELETE:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('portfolio DELETE:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
@@ -808,14 +831,14 @@ app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
     }
     await pool.query('UPDATE users SET last_bumped_at = NOW() WHERE id=$1', [req.user.id]);
     res.json({ ok: true, message: 'تم تحديث موقعك — أنت الآن في الأعلى!' });
-  } catch(e) { console.error('❌ PUT /api/provider/bump:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('PUT /api/provider/bump:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ REQUESTS ═══
 app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
-    // ✅ يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
+    // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
     let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
     if (status && status !== 'all') {
@@ -827,14 +850,14 @@ app.get('/api/requests', async (req, res) => {
     query += ' ORDER BY r.created_at DESC LIMIT 100';
     const result = await pool.query(query, params);
     res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
-  } catch(e) { console.error('❌ /requests:', e); res.json([]); }
+  } catch(e) { console.error('/requests:', e); res.json([]); }
 });
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
-  } catch(e) { console.error('❌ /requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/requests/:id', async (req, res) => {
@@ -868,7 +891,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         sendEmail(clientInfo.rows[0].email, ctitle, emailTpl(ctitle, cBody, 'متابعة المشروع', SITE_URL+'/dashboard-client.html')).catch(()=>{});
         await notify(req.user.id, ctitle, `تم نشر "${newReq.title}" بنجاح`, 'request_published', newReq.id);
       }
-    } catch(e) { console.error('⚠️ client confirmation email:', e.message); }
+    } catch(e) { console.error('client confirmation email:', e.message); }
     if (newReq.category) {
       try {
         const cat = String(newReq.category).trim();
@@ -892,11 +915,11 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
           if (p.email) sendEmail(p.email, nTitle, emailTpl(nTitle, emailBody, 'فتح المشروع الآن', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
         }
         console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
-      } catch(nerr) { console.error('❌ notify providers:', nerr); }
+      } catch(nerr) { console.error('notify providers:', nerr); }
     }
     await addTimeline(newReq.id, 'published', 'تم نشر المشروع');
     res.json(newReq);
-  } catch(e) { console.error('❌ create request:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('create request:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/requests/:id', auth, async (req, res) => {
@@ -963,7 +986,7 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
       const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
       const projTitle = r.rows[0].title;
       await notify(r.rows[0].assigned_provider_id, '🎉 مشروع مكتمل', `العميل أنهى مشروع "${projTitle}".`, 'request', id);
-      if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, '🎉 مشروع مكتمل', emailTpl('🎉 مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${projTitle}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+      if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, 'مشروع مكتمل', emailTpl('مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${projTitle}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1003,7 +1026,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
       ORDER BY (b.status='accepted') DESC, b.created_at DESC
     `, [id]);
     res.json(r.rows);
-  } catch(e) { console.error('❌ GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
@@ -1038,7 +1061,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
     res.json(row);
-  } catch(e) { console.error('❌ POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: e.message, code: e.code }); }
+  } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: e.message, code: e.code }); }
 });
 
 app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
@@ -1082,9 +1105,9 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
-      await notify(acceptedBid.provider_id, '🎉 تم قبول عرضك!', `تهانينا! تم قبول عرضك على "${acceptedBid.title}".`, 'bid_accepted', acceptedBid.request_id);
+      await notify(acceptedBid.provider_id, 'تم قبول عرضك!', `تهانينا! تم قبول عرضك على "${acceptedBid.title}".`, 'bid_accepted', acceptedBid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
-        const subject = `🎉 تم قبول عرضك على "${acceptedBid.title}"`;
+        const subject = `تم قبول عرضك على "${acceptedBid.title}"`;
         const body = `<p>تهانينا <strong>${acceptedProv.rows[0].name}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${cName}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
         sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
@@ -1107,7 +1130,7 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
     await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
     const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
-    await notify(bid.rows[0].provider_id, '❌ تم رفض عرضك', `تم رفض عرضك على "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
+    await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
     if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${bid.rows[0].title}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p><p>تم رفض عرضك على "${bid.rows[0].title}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1223,7 +1246,7 @@ app.post('/api/messages', auth, async (req, res) => {
     const r = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [request_id, req.user.id, receiver_id, content]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
-    await notify(receiver_id, '💬 رسالة جديدة', `${senderName}: ${content.slice(0,50)}${content.length>50?'...':''}`, 'message', request_id);
+    await notify(receiver_id, 'رسالة جديدة', `${senderName}: ${content.slice(0,50)}${content.length>50?'...':''}`, 'message', request_id);
     const cacheKey = `${receiver_id}-${request_id}`;
     const now = Date.now(); const lastEmailTime = _msgEmailCache[cacheKey] || 0;
     if (now - lastEmailTime > 18*60*1000) {
@@ -1232,11 +1255,11 @@ app.post('/api/messages', auth, async (req, res) => {
         const recvInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [receiver_id]);
         const reqInfo = await pool.query('SELECT title FROM requests WHERE id=$1', [request_id]);
         if (recvInfo.rows.length && recvInfo.rows[0].email) {
-          const subject = `💬 رسالة جديدة من ${senderName}`;
+          const subject = `رسالة جديدة من ${senderName}`;
           const body = `<p>عزيزي <strong>${recvInfo.rows[0].name}</strong>،</p><p>وصلتك رسالة من <strong>${senderName}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${reqInfo.rows[0]?.title||'مشروع'}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${content.slice(0,200).replace(/</g,'&lt;')}${content.length>200?'...':''}"</div></div>`;
           sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(()=>{});
         }
-      } catch(e) { console.error('⚠️ message email:', e.message); }
+      } catch(e) { console.error('message email:', e.message); }
     }
     res.json(r.rows[0]);
     const newMsg = r.rows[0];
@@ -1297,7 +1320,7 @@ app.post('/api/reviews', auth, async (req, res) => {
       sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(()=>{});
     }
     res.json(row);
-  } catch(e) { console.error('❌ POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
@@ -1331,7 +1354,7 @@ app.get('/api/providers', async (req, res) => {
     q += ` ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 100`;
     const r = await pool.query(q, params);
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
-  } catch(e) { console.error('❌ GET /api/providers:', e); res.json([]); }
+  } catch(e) { console.error('GET /api/providers:', e); res.json([]); }
 });
 
 app.get('/api/providers/:id', async (req, res) => {
@@ -1340,7 +1363,7 @@ app.get('/api/providers/:id', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const prov = r.rows[0];
-    // ✅ استبعد صور base64 الضخمة — http فقط (R2/Cloudinary)
+    // استبعد صور base64 الضخمة — http فقط (R2/Cloudinary)
     if (Array.isArray(prov.portfolio_images)) {
       prov.portfolio_images = prov.portfolio_images.filter(img => img && img.startsWith('http'));
     }
@@ -1385,7 +1408,7 @@ app.post('/api/push/subscribe', auth, async (req, res) => {
     if (!subscription||!subscription.endpoint||!subscription.keys) return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web') ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`, [req.user.id, JSON.stringify(subscription)]);
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/subscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/api/push/subscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/push/unsubscribe', auth, async (req, res) => {
   try {
@@ -1395,7 +1418,7 @@ app.post('/api/push/unsubscribe', auth, async (req, res) => {
       for (const row of r.rows) { try { const sub=JSON.parse(row.token); if(sub.endpoint===endpoint) await pool.query('DELETE FROM push_tokens WHERE id=$1',[row.id]); } catch(e){} }
     } else { await pool.query(`DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); }
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/unsubscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/api/push/unsubscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/push/register-native', auth, async (req, res) => {
   try {
@@ -1406,7 +1429,7 @@ app.post('/api/push/register-native', auth, async (req, res) => {
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, plat]);
     console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
     res.json({ ok: true });
-  } catch(e) { console.error('❌ /api/push/register-native:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/api/push/register-native:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.get('/api/push/status', auth, async (req, res) => {
   try { const r=await pool.query(`SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); res.json({ subscribed: r.rows[0].cnt>0, count: r.rows[0].cnt }); } catch(e) { res.json({ subscribed:false, count:0 }); }
@@ -1542,8 +1565,8 @@ app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) =>
     const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 RETURNING id, client_id, assigned_provider_id, title`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    await notify(row.client_id, '🎉 مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
-    if (row.assigned_provider_id) await notify(row.assigned_provider_id, '🎉 مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
+    await notify(row.client_id, 'مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
+    if (row.assigned_provider_id) await notify(row.assigned_provider_id, 'مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -1596,7 +1619,7 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
       if ((ch==='email'||ch==='both') && u.email) { const ok=await sendEmail(u.email, title, emailHtml); if(ok) emailCount++; }
     }
     res.json({ ok:true, sent_count:target.length, app_count:appCount, email_count:emailCount, channel:ch });
-  } catch(e) { console.error('❌ admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
@@ -1607,7 +1630,7 @@ app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
     if (q) { params.push('%'+q+'%'); sql+=` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`; }
     sql+=' ORDER BY name ASC LIMIT 50';
     const r=await pool.query(sql, params); res.json(r.rows);
-  } catch(e) { console.error('❌ /admin/users/search:', e); res.json([]); }
+  } catch(e) { console.error('/admin/users/search:', e); res.json([]); }
 });
 
 app.get('/api/admin/email-status', auth, adminOnly, async (req, res) => {
@@ -1621,7 +1644,7 @@ app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
   if (!to) return res.status(400).json({ ok:false, error: 'البريد الإلكتروني مطلوب' });
   if (!RESEND_KEY) return res.json({ ok:false, stage:'config', error:'RESEND_KEY غير موجود في متغيرات البيئة' });
   try {
-    const r=await fetch('https://api.resend.com/emails', { method:'POST', headers:{ 'Authorization':`Bearer ${RESEND_KEY}`, 'Content-Type':'application/json' }, body:JSON.stringify({ from:`${FROM_NAME} <${FROM_EMAIL}>`, to:[to], subject:'🧪 اختبار الإيميل — مناقصة', html:emailTpl('اختبار الإيميل يعمل ✓','<p>هذا إيميل تجريبي.</p>','فتح المنصة',SITE_URL) }) });
+    const r=await fetch('https://api.resend.com/emails', { method:'POST', headers:{ 'Authorization':`Bearer ${RESEND_KEY}`, 'Content-Type':'application/json' }, body:JSON.stringify({ from:`${FROM_NAME} <${FROM_EMAIL}>`, to:[to], subject:'اختبار الإيميل — مناقصة', html:emailTpl('اختبار الإيميل يعمل','<p>هذا إيميل تجريبي.</p>','فتح المنصة',SITE_URL) }) });
     const text=await r.text(); let parsed=null; try { parsed=JSON.parse(text); } catch(e){}
     if (r.ok) return res.json({ ok:true, stage:'sent', message:`تم الإرسال إلى ${to}`, resend_id:parsed&&parsed.id });
     return res.json({ ok:false, stage:'resend_api', error:(parsed&&(parsed.message||parsed.name))||text||'Unknown error', status_code:r.status });
@@ -1649,8 +1672,8 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
     const reportedId=r.rows[0].reported_id;
     await pool.query('UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3',[newStatus, admin_note||null, id]);
     if (reportedId) {
-      if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); await notify(reportedId,'⚠️ تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
-      else if (action==='warn') await notify(reportedId,'⚠️ تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
+      if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); await notify(reportedId,'تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
+      else if (action==='warn') await notify(reportedId,'تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
     }
     res.json({ ok:true, status:newStatus });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1666,7 +1689,7 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
 });
 
 app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
-  try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'🧪 اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة! 🎉','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة!','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ OG / SITEMAP / ROBOTS ═══
@@ -1677,8 +1700,8 @@ app.get('/og/pro/:id', async (req, res) => {
     if (!r.rows.length) return res.status(404).send('Not found');
     const p=r.rows[0]; const name=p.business_name||p.name||'مزود'; const city=p.city||'السعودية';
     const specs=(p.specialties||[]).slice(0,2).join(' · '); const avg=parseFloat(p.avg_rating)||0;
-    const stars='★'.repeat(Math.round(avg))+'☆'.repeat(5-Math.round(avg));
-    const svg=`<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text><text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text><text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">📍 ${city}</text>${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}<text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
+    const stars=rating+' من 5';
+    const svg=`<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text><text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text><text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">${city}</text>${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}<text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
     res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
   } catch(e) { res.status(500).send('error'); }
 });
@@ -1701,7 +1724,7 @@ app.get('/sitemap.xml', async (req, res) => {
     }
     xml+='\n</urlset>';
     res.header('Content-Type','application/xml'); res.send(xml);
-  } catch(e) { console.error('❌ sitemap:', e.message); res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'); }
+  } catch(e) { console.error('sitemap:', e.message); res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'); }
 });
 
 app.get('/robots.txt', (req, res) => {
@@ -1722,7 +1745,7 @@ cloudinary.config({
 
 async function uploadToCloud(base64Data, folder='manaqasa') {
   if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
-  // ✅ جرّب R2 أولاً
+  // جرّب R2 أولاً
   if (r2Client) {
     const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'));
     if (url && url.startsWith('http')) { console.log('✅ R2 upload:', url); return url; }
@@ -1732,7 +1755,7 @@ async function uploadToCloud(base64Data, folder='manaqasa') {
     const result = await cloudinary.uploader.upload(base64Data, { folder, transformation: [{ quality: 'auto', fetch_format: 'auto' }], resource_type: 'image' });
     console.log('✅ Cloudinary upload:', result.secure_url);
     return result.secure_url;
-  } catch(e) { console.error('❌ upload error:', e.message); return base64Data; }
+  } catch(e) { console.error('upload error:', e.message); return base64Data; }
 }
 
 const server = http.createServer(app);
