@@ -491,11 +491,29 @@ function initNav(){
     var t=localStorage.getItem('token');
     var u=JSON.parse(localStorage.getItem('user')||'null');
     if(!t||!u) return;
-    var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';
-    // فقط ابدّل نص الزر
-    document.querySelectorAll('.idx-nav-btns button').forEach(function(btn,i){
-      if(i===0) btn.textContent='لوحة التحكم';
-      btn.onclick=function(){location.href=dash;};
+    var dash='/'+(u.role==='provider'?'dashboard-provider.html':'dashboard-client.html');
+    // بدّل كل أزرار تسجيل الدخول/التسجيل إلى لوحة التحكم
+    document.querySelectorAll('button, a').forEach(function(el){
+      var oc=(el.getAttribute('onclick')||'')+(el.getAttribute('href')||'');
+      if(oc.indexOf('auth.html')>=0){
+        var txt=(el.textContent||'').trim();
+        // أزرار الدخول الرئيسية → لوحة التحكم
+        if(txt.indexOf('تسجيل الدخول')>=0||txt.indexOf('لوحة')>=0){
+          el.textContent='لوحة التحكم';
+          el.onclick=function(e){if(e)e.preventDefault();location.href=dash;};
+          if(el.tagName==='A')el.setAttribute('href',dash);
+        }
+        // أزرار "أنشئ مشروع/سجّل" → تروح للوحة مباشرة (مسجّل أصلاً)
+        else if(txt.indexOf('مشروع')>=0||txt.indexOf('ابدأ')>=0||txt.indexOf('سجّل')>=0||txt.indexOf('انشر')>=0){
+          el.onclick=function(e){if(e)e.preventDefault();location.href=dash;};
+          if(el.tagName==='A')el.setAttribute('href',dash);
+        }
+        // إخفاء "إنشاء حساب" في الفوتر (مسجّل أصلاً)
+        else if(txt==='إنشاء حساب'){el.style.display='none';}
+        else{
+          el.onclick=function(e){if(e)e.preventDefault();location.href=dash;};
+        }
+      }
     });
   }catch(e){}
 }
