@@ -139,7 +139,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .req-detail-head::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
 .rdh-title{font-size:20px;font-weight:900;margin-bottom:10px}
 .rdh-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px}.rdh-meta span{background:rgba(255,255,255,.1);padding:5px 11px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-weight:600}
-.rdh-desc{margin-top:12px;font-size:13px;line-height:1.8;opacity:.85}
+.rdh-desc{margin-top:12px;font-size:13px;line-height:1.8;opacity:.85;white-space:pre-wrap;word-wrap:break-word}
 .tab-btns{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border-radius:12px;padding:5px;border:1px solid var(--border)}
 .tab-btn{flex:1;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .tab-btn:hover{color:var(--text)}
@@ -406,7 +406,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
           </div>
           <div class="fg ff">
             <label>التفاصيل <span style="color:var(--red)">*</span></label>
-            <textarea id="n-desc" placeholder="اشرح الطلب بالتفصيل..."></textarea>
+            <textarea id="n-desc" placeholder="اشرح الطلب بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر طلبك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
           </div>
           <div class="fg">
             <label>المدينة <span style="color:var(--red)">*</span></label>
