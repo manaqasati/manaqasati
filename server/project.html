@@ -276,9 +276,9 @@ function getReqId(){
   var u=getUser();
   var btn=document.getElementById('navBtn');
   if(u&&btn){
-    var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';
+    var dash=u.role==='provider'?'/dashboard-provider.html':'/dashboard-client.html';
     btn.textContent='لوحة التحكم';
-    btn.onclick=function(){location.href=dash;};
+    btn.onclick=function(){location.href=dash;};  // مسار نظيف بدون hash
     btn.style.background='var(--p2)';
   }
 })();
