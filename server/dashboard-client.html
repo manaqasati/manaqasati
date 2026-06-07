@@ -260,9 +260,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 
 @media (max-width:768px){
-  #page-chat.on{position:fixed;inset:0;z-index:50;background:var(--white);padding:12px;overflow:hidden}
+  #page-chat.on{position:fixed;inset:0;z-index:200;background:var(--white);padding:12px;overflow:hidden}
   #page-chat .chat-wrap{flex:1 1 auto;height:auto;max-height:none;min-height:0}
   #page-chat #chat-container{height:100%;display:flex;flex-direction:column}
+  /* أخفِ الشريط السفلي وقت المحادثة (مثل واتساب) */
+  body.in-chat .bnav{display:none!important}
+  .chat-home-back{display:inline-flex!important}
 }
 </style>
 </head>
@@ -645,6 +648,8 @@ function show(pg,el,key){
   if(pg==='profile')loadProfile();
   if(pg==='chat')loadChatPage();
   if(pg==='new'){fillCitySelect(document.getElementById('n-city'));loadNotifCount();}
+  // أخفِ الشريط السفلي داخل المحادثة فقط
+  if(pg==='chat'){document.body.classList.add('in-chat');}else{document.body.classList.remove('in-chat');}
   // احفظ الحالة في URL ليبقى المكان بعد التحديث
   if(!window._skipHash){
     var hash='#'+pg;
@@ -1269,6 +1274,7 @@ function markAllRead(){
 // CHAT
 // ═══════════════════════════════════
 var _chatReqId=null,_chatWith=null,_chatMsgs=[],_chatPoll=null;
+function goChatHome(){show('home',null,'home');}
 function loadChatPage(){
   var el=document.getElementById('chat-container');if(!el)return;
   if(window._openChatReqId){
@@ -1287,11 +1293,11 @@ function loadChatPage(){
   fetch(API+'/api/client/conversations',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(convs){
     var convs=Array.isArray(convs)?convs:(convs&&convs.data)?convs.data:[];
     if(!convs.length){
-      el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+emptyH('لا توجد محادثات','ستظهر محادثاتك مع المزودين هنا')+'</div>';
+      el.innerHTML='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+emptyH('لا توجد محادثات','ستظهر محادثاتك مع المزودين هنا')+'</div>';
       bindNewChatBtn();
       return;
     }
-    var h='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
+    var h='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
     convs.forEach(function(cv){
       var name=cv.provider_name||'مزود';
       var avHtml=isImg(cv.provider_image)?'<img src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
