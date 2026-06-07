@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="منصة مناقصة السعودية — تربط أصحاب المشاريع بأفضل المزودين والمقاولين. انشر مشروعك، استقبل العروض، واختر الأنسب بكل سهولة وثقة.">
+  <meta name="keywords" content="مناقصة, مشاريع, مقاولين, مزودي خدمات, السعودية, عروض, مقاولات, خدمات منزلية, تبريد, كهرباء, سباكة">
+  <meta name="author" content="منصة مناقصة">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="مناقصة — سوق المشاريع والخدمات">
+  <meta property="og:description" content="انشر مشروعك واستقبل عروض المزودين المعتمدين، واختر الأنسب بكل سهولة وثقة.">
+  <meta property="og:url" content="https://manaqasa.com">
+  <meta property="og:site_name" content="مناقصة">
+  <meta property="og:locale" content="ar_SA">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="مناقصة — سوق المشاريع والخدمات">
+  <meta name="twitter:description" content="انشر مشروعك واستقبل عروض المزودين المعتمدين بكل سهولة وثقة.">
+
 <title>مناقصة — منصة المشاريع والخدمات في السعودية</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -497,13 +510,13 @@ function initNav(){
       var oc=(el.getAttribute('onclick')||'')+(el.getAttribute('href')||'');
       if(oc.indexOf('auth.html')>=0){
         var txt=(el.textContent||'').trim();
-        // أزرار الدخول الرئيسية → لوحة التحكم
+        // أزرار الدخول الرئيسية - لوحة التحكم
         if(txt.indexOf('تسجيل الدخول')>=0||txt.indexOf('لوحة')>=0){
           el.textContent='لوحة التحكم';
           el.onclick=function(e){if(e)e.preventDefault();location.href=dash;};
           if(el.tagName==='A')el.setAttribute('href',dash);
         }
-        // أزرار "أنشئ مشروع/سجّل" → تروح للوحة مباشرة (مسجّل أصلاً)
+        // أزرار "أنشئ مشروع/سجل - تروح للوحة مباشرة (مسجّل أصلاً)
         else if(txt.indexOf('مشروع')>=0||txt.indexOf('ابدأ')>=0||txt.indexOf('سجّل')>=0||txt.indexOf('انشر')>=0){
           el.onclick=function(e){if(e)e.preventDefault();location.href=dash;};
           if(el.tagName==='A')el.setAttribute('href',dash);
