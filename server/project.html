@@ -105,7 +105,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .cta-btn{display:inline-flex;align-items:center;gap:7px;padding:13px 28px;background:var(--gold);color:#fff;border:none;border-radius:22px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;text-decoration:none;box-shadow:0 4px 14px rgba(201,146,10,.4);transition:.15s}
 .cta-btn:hover{background:var(--gold-d);transform:translateY(-2px)}
 /* OWNER BAR */
-.owner-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.08)}
 /* MODAL */
 .bid-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
 .bid-overlay.on{display:flex}
@@ -503,15 +502,7 @@ function render(){
   document.getElementById('main-content').innerHTML=h;
 
   // Owner bar
-  if(isOwner){
-    var bar=document.createElement('div');
-    bar.className='owner-bar';
-    bar.innerHTML=
-      '<button onclick="location.href=\'/dashboard-client.html\'" style="padding:11px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg> الداشبورد</button>'
-      +'<button onclick="editProject()" style="flex:1;padding:11px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">تعديل المشروع</button>'
-      +'<button onclick="deleteProject()" style="padding:11px 16px;background:#FEF2F2;color:var(--red);border:1px solid #FECACA;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">حذف</button>';
-    document.body.appendChild(bar);
-  }
+  // شريط المالك أُزيل — زر لوحة التحكم يظهر بالأعلى، والتعديل/الحذف في اللوحة
 
   // Bid button
   var bidBtn=document.getElementById('bidBtn');
@@ -647,19 +638,6 @@ async function sendChatMsg(){
     var m=await r.json();
     if(m&&m.id){_chatMsgs.push(m);renderMsgs(document.getElementById('chat-msgs-wrap'));}
   }catch(e){inp.value=msg;alert('تعذر الإرسال');}
-}
-
-function editProject(){
-  localStorage.setItem('mnq_edit_req',_rid);
-  location.href='/dashboard-client.html';
-}
-
-function deleteProject(){
-  if(!confirm('هل تريد حذف هذا المشروع نهائياً؟'))return;
-  fetch(API+'/api/requests/'+_rid,{method:'DELETE',headers:{'Authorization':'Bearer '+getToken()}})
-    .then(function(r){return r.json();})
-    .then(function(){location.href='/dashboard-client.html';})
-    .catch(function(){alert('تعذر الحذف');});
 }
 
 function openViewer(src){
