@@ -492,12 +492,13 @@ function sendNotify(){
   var title=document.getElementById('nm-subject').value.trim();
   var message=document.getElementById('nm-message').value.trim();
   if(!title||!message){toast('العنوان والرسالة مطلوبان','error');return;}
-  var channels={app:document.getElementById('nm-app').checked,email:document.getElementById('nm-email').checked};
-  if(!channels.app&&!channels.email){toast('اختر قناة واحدة على الأقل','error');return;}
+  var app=document.getElementById('nm-app').checked,email=document.getElementById('nm-email').checked;
+  if(!app&&!email){toast('اختر قناة واحدة على الأقل','error');return;}
+  var channel=app&&email?'both':(email?'email':'app');
   var btn=document.getElementById('nm-send');btn.disabled=true;btn.textContent='جاري الإرسال...';
-  fetch(API+'/api/admin/users/'+_notifyUid+'/notify',Object.assign({method:'POST',body:JSON.stringify({title:title,message:message,channels:channels})},hdr()))
+  fetch(API+'/api/admin/notify',Object.assign({method:'POST',body:JSON.stringify({user_id:_notifyUid,title:title,body:message,channel:channel})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(d){var msg='تم الإرسال';if(d.sent){var parts=[];if(d.sent.app)parts.push('إشعار');if(d.sent.email)parts.push('إيميل');if(parts.length)msg='تم الإرسال ('+parts.join(' + ')+')';}toast(msg,'success');closeModal('notifyModal');})
+    .then(function(d){var parts=[];if(d.app_count)parts.push('إشعار');if(d.email_count)parts.push('إيميل');var msg=parts.length?'تم الإرسال ('+parts.join(' + ')+')':'تم الإرسال';toast(msg,'success');closeModal('notifyModal');})
     .catch(function(){toast('تعذر الإرسال','error');})
     .finally(function(){btn.disabled=false;btn.textContent='إرسال';});
 }
