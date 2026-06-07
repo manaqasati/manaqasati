@@ -117,15 +117,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bid-item:hover{border-color:var(--p-mid)}
 .bid-item.accepted{border-color:var(--green);border-right:3px solid var(--green)}
 .bid-item.rejected{opacity:.5}
-.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 220px);min-height:400px}
-.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:12px;margin-bottom:10px}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:380px;max-height:calc(100vh - 160px)}
+.chat-msgs{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:12px;margin-bottom:10px}
 .chat-msgs::-webkit-scrollbar{width:3px}
 .chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .msg-bubble{max-width:72%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6}
 .msg-me{background:var(--p3);color:#fff;align-self:flex-end;border-radius:16px 16px 4px 16px}
 .msg-other{background:var(--white);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
 .msg-time{font-size:10px;opacity:.5;margin-top:3px}
-.chat-input{display:flex;gap:8px}
+.chat-input{display:flex;gap:8px;flex:0 0 auto;background:var(--white);padding-top:4px}
 .chat-inp{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;transition:.18s}
 .chat-inp:focus{border-color:var(--p)}
 .chat-send{padding:11px 18px;background:var(--p);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
@@ -258,6 +258,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-agree:not(:disabled):hover{background:var(--gold-d)}
 .btn-back{padding:12px;background:none;color:var(--muted);border:none;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
 
+
+@media (max-width:768px){
+  #page-chat.on{position:fixed;inset:0;z-index:50;background:var(--white);padding:12px;overflow:hidden}
+  #page-chat .chat-wrap{flex:1 1 auto;height:auto;max-height:none;min-height:0}
+  #page-chat #chat-container{height:100%;display:flex;flex-direction:column}
+}
 </style>
 </head>
 <body>
@@ -1359,7 +1365,7 @@ function openChat(reqId,providerId,providerName,reqTitle){
   _chatReqId=reqId;_chatWith=providerId;
   var el=document.getElementById('chat-container');if(!el)return;
   var name=providerName||'مزود';
-  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex:0 0 auto">'
     +'<button onclick="_chatReqId=null;_chatWith=null;loadChatPage()" style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--text)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>'
     +'<div style="font-size:14px;font-weight:800">'+esc(name)+(reqTitle?'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-right:6px">— '+esc(reqTitle)+'</span>':'')+'</div>'
     +'</div>'
