@@ -1457,9 +1457,108 @@ app.get('/api/stats', async (req, res) => {
 // ═══ ADMIN ═══
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
-    const [users,requests,bids,providers,pending,inProgress,completed] = await Promise.all([pool.query('SELECT COUNT(*) FROM users'),pool.query('SELECT COUNT(*) FROM requests'),pool.query('SELECT COUNT(*) FROM bids'),pool.query(`SELECT COUNT(*) FROM users WHERE role='provider'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),pool.query(`SELECT COUNT(*) FROM requests WHERE status='completed'`)]);
-    res.json({ total_users:+users.rows[0].count, requests:+requests.rows[0].count, total_bids:+bids.rows[0].count, providers:+providers.rows[0].count, pending_review:+pending.rows[0].count, in_progress:+inProgress.rows[0].count, completed:+completed.rows[0].count });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+    const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
+    const [
+      users, requests, bids, providers, clients, pending, inProgress, completed,
+      todayUsers, todayProviders, todayClients, todayRequests, todayBids,
+      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders
+    ] = await Promise.all([
+      q('SELECT COUNT(*) FROM users'),
+      q('SELECT COUNT(*) FROM requests'),
+      q('SELECT COUNT(*) FROM bids'),
+      q(`SELECT COUNT(*) FROM users WHERE role='provider'`),
+      q(`SELECT COUNT(*) FROM users WHERE role='client'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
+      q(`SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
+      q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
+      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`)
+    ]);
+    // آخر 7 أيام (تسجيلات يومية)
+    const daily = await pool.query(`
+      SELECT created_at::date as day, COUNT(*)::int as n
+      FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY created_at::date ORDER BY day`);
+    // أكثر التخصصات
+    const topSpecs = await pool.query(`
+      SELECT unnest(specialties) as spec, COUNT(*)::int as n
+      FROM users WHERE role='provider' AND specialties IS NOT NULL
+      GROUP BY spec ORDER BY n DESC LIMIT 5`);
+    // أكثر المدن
+    const topCities = await pool.query(`
+      SELECT city, COUNT(*)::int as n FROM users WHERE city IS NOT NULL AND city<>''
+      GROUP BY city ORDER BY n DESC LIMIT 5`);
+    res.json({
+      total_users:users, requests, total_bids:bids, providers, clients,
+      pending_review:pending, in_progress:inProgress, completed, verified, active_providers:activeProviders,
+      today:{ users:todayUsers, providers:todayProviders, clients:todayClients, requests:todayRequests, bids:todayBids },
+      week:{ users:weekUsers, requests:weekRequests },
+      month:{ users:monthUsers, requests:monthRequests },
+      daily_signups: daily.rows,
+      top_specialties: topSpecs.rows,
+      top_cities: topCities.rows
+    });
+  } catch(e) { console.error('stats:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ كل العروض (للأدمن) مع فلترة ═══
+app.get('/api/admin/bids', auth, adminOnly, async (req, res) => {
+  try {
+    const { status, provider_id, request_id } = req.query;
+    const conds = []; const params = []; let i = 1;
+    if (status) { params.push(status); conds.push(`b.status=$${i}`); i++; }
+    if (provider_id) { params.push(parseInt(provider_id)); conds.push(`b.provider_id=$${i}`); i++; }
+    if (request_id) { params.push(parseInt(request_id)); conds.push(`b.request_id=$${i}`); i++; }
+    const where = conds.length ? 'WHERE '+conds.join(' AND ') : '';
+    const r = await pool.query(`
+      SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
+        u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
+        rq.title as request_title, rq.client_id,
+        cu.name as client_name
+      FROM bids b
+      JOIN users u ON b.provider_id=u.id
+      JOIN requests rq ON b.request_id=rq.id
+      LEFT JOIN users cu ON rq.client_id=cu.id
+      ${where} ORDER BY b.created_at DESC LIMIT 200`, params);
+    res.json(r.rows);
+  } catch(e) { console.error('admin bids:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// ═══ تعديل عرض (أدمن) ═══
+app.put('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { price, days, note, status } = req.body;
+    const sets = []; const params = []; let i = 1;
+    if (price !== undefined) { params.push(Number(price)); sets.push(`price=$${i}`); i++; }
+    if (days !== undefined) { params.push(parseInt(days)); sets.push(`days=$${i}`); i++; }
+    if (note !== undefined) { params.push(note); sets.push(`note=$${i}`); i++; }
+    if (status !== undefined) { params.push(status); sets.push(`status=$${i}`); i++; }
+    if (!sets.length) return res.status(400).json({ message: 'لا يوجد تعديل' });
+    params.push(id);
+    const r = await pool.query(`UPDATE bids SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, params);
+    if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    res.json(r.rows[0]);
+  } catch(e) { console.error('edit bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// ═══ حذف عرض (أدمن) ═══
+app.delete('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    res.json({ ok: true });
+  } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
@@ -1691,6 +1790,62 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
 app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
   try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة!','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+
+// ═══ بناء استعلام الفلاتر للرسائل الجماعية ═══
+function buildBroadcastQuery(filters) {
+  const conds = ['is_active = TRUE'];
+  const params = [];
+  let i = 1;
+  // الفئة: client / provider / all
+  if (filters.target === 'client') conds.push(`role = 'client'`);
+  else if (filters.target === 'provider') conds.push(`role = 'provider'`);
+  else conds.push(`role IN ('client','provider')`);
+  // التخصص (للمزودين)
+  if (filters.specialty) {
+    params.push(filters.specialty);
+    conds.push(`$${i} = ANY(specialties)`); i++;
+  }
+  // المدينة
+  if (filters.city) {
+    params.push(filters.city);
+    conds.push(`city = $${i}`); i++;
+  }
+  // الموثّقون فقط
+  if (filters.verifiedOnly) conds.push(`badge = 'verified'`);
+  return { where: conds.join(' AND '), params };
+}
+
+// ═══ معاينة عدد المستلمين ═══
+app.post('/api/admin/broadcast/count', auth, adminOnly, async (req, res) => {
+  try {
+    const { where, params } = buildBroadcastQuery(req.body || {});
+    const r = await pool.query(`SELECT COUNT(*)::int as n FROM users WHERE ${where}`, params);
+    res.json({ count: r.rows[0].n });
+  } catch(e) { console.error('broadcast count:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// ═══ إرسال رسالة جماعية مع فلاتر (تخصص + مدينة + موثّق) ═══
+app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
+  try {
+    const { title, message, channels } = req.body;
+    if (!title || !message) return res.status(400).json({ message: 'العنوان والرسالة مطلوبان' });
+    const { where, params } = buildBroadcastQuery(req.body || {});
+    const users = await pool.query(`SELECT id, email, name FROM users WHERE ${where}`, params);
+    const ch = channels || { app: true, email: false };
+    let sent = 0;
+    for (const u of users.rows) {
+      try {
+        if (ch.app) await notify(u.id, title, message, 'admin', null);
+        if (ch.email && u.email) {
+          await sendEmail(u.email, title, emailTpl(title, '<p>'+message.replace(/\n/g,'<br>')+'</p>', 'فتح التطبيق', 'https://manaqasa.com'));
+        }
+        sent++;
+      } catch(e) {}
+    }
+    res.json({ ok: true, total: sent });
+  } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 
 // ═══ OG / SITEMAP / ROBOTS ═══
 app.get('/og/pro/:id', async (req, res) => {
