@@ -1254,13 +1254,13 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   var overlay=document.createElement('div');overlay.id='prov-chat-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:flex-end;justify-content:center';
   overlay.innerHTML=''
-    +'<div style="background:var(--bg);width:100%;max-width:500px;height:82vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">'
-    +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px">'
+    +'<div style="background:var(--bg);width:100%;max-width:500px;height:88vh;max-height:88vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">'
+    +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px;flex:0 0 auto">'
     +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">&#215;</button>'
     +'<div><div style="font-size:14px;font-weight:800;color:#fff">'+_esc(receiverName||'العميل')+'</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">'+_esc(reqTitle||'')+'</div></div>'
     +'</div>'
-    +'<div id="p-chat-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
-    +'<div style="display:flex;gap:8px;padding:12px;background:var(--white);border-top:1px solid var(--border)">'
+    +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
+    +'<div style="display:flex;gap:8px;padding:12px;background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
     +'<textarea id="p-chat-inp" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;resize:none;max-height:80px"></textarea>'
     +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700">إرسال</button>'
     +'</div></div>';
