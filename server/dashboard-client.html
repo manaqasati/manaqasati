@@ -749,7 +749,12 @@ function openDetail(id,e){
       +(req.description?'<div class="rdh-desc">'+esc(req.description)+'</div>':'')
     +'</div>';
     document.getElementById('det-head').innerHTML=h;
-  }).catch(function(){});
+  }).catch(function(){
+    // المشروع غير موجود أو ليس للعميل → ارجع للرئيسية
+    showToast('المشروع غير متاح','error');
+    if(location.hash)history.replaceState(null,'','#home');
+    show('home',null,'home');
+  });
   loadBids(id);
 }
 
@@ -1418,7 +1423,15 @@ function restoreFromHash(){
   if(!h){show('home',null,'home');return;}
   if(h.indexOf('detail/')===0){
     var rid=parseInt(h.split('/')[1]);
-    if(rid){window._skipHash=true;openDetail(rid);window._skipHash=false;return;}
+    if(rid){
+      // تحقق إن المشروع للعميل قبل فتحه
+      jFetch('/api/requests/my').then(function(list){
+        var mine=Array.isArray(list)&&list.some(function(r){return r.id===rid;});
+        if(mine){window._skipHash=true;openDetail(rid);window._skipHash=false;}
+        else{history.replaceState(null,'','#home');show('home',null,'home');}
+      }).catch(function(){history.replaceState(null,'','#home');show('home',null,'home');});
+      return;
+    }
   }
   var valid=['home','requests','new','notifs','profile','chat'];
   var pg=valid.indexOf(h)>=0?h:'home';
