@@ -1793,6 +1793,16 @@ wss.on('connection', (ws, req) => {
 });
 
 // ═══ START ═══
+// ═══ catch-all 404 ═══
+app.get('/404.html', (req, res) => res.sendFile(__dirname + '/404.html'));
+app.use((req, res) => {
+  // طلبات API ترجع JSON، الصفحات ترجع 404.html
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ message: 'المسار غير موجود' });
+  }
+  res.status(404).sendFile(__dirname + '/404.html');
+});
+
 server.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
