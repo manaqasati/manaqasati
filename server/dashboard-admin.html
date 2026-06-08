@@ -350,6 +350,7 @@ function showPage(pg,el){
   if(pg==='requests')loadRequests();
   if(pg==='reviews')loadReviews();
   if(pg==='reports')loadReports();
+  if(!window._skipHash&&location.hash!=='#'+pg){history.replaceState(null,'','#'+pg);}
 }
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
@@ -646,7 +647,18 @@ function loadReports(){
   }).catch(function(){document.getElementById('reports-table').innerHTML=emptyState('تعذر التحميل');});
 }
 
-loadDashboard();
+function restoreAdminHash(){
+  var h=(location.hash||'').replace('#','');
+  var valid=['dashboard','users','requests','bids','reviews','reports'];
+  var pg=valid.indexOf(h)>=0?h:'dashboard';
+  var btns=document.querySelectorAll('.ni');
+  var idx={dashboard:0,users:1,requests:2,bids:3,reviews:4,reports:5}[pg];
+  window._skipHash=true;
+  showPage(pg, btns[idx]||null);
+  window._skipHash=false;
+}
+restoreAdminHash();
+window.addEventListener('hashchange',restoreAdminHash);
 
 // ═══════════════════════════════════
 // إدارة العروض (الأدمن)
