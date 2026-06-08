@@ -1143,9 +1143,14 @@ app.post('/api/direct-message', auth, async (req, res) => {
     if (!provider_id) return res.status(400).json({ message: 'provider_id مطلوب' });
     const senderId = req.user.id; const senderRole = req.user.role;
     let clientId, providerId;
-    if (senderRole === 'client') { clientId = senderId; providerId = parseInt(provider_id); }
-    else if (senderRole === 'provider') { providerId = senderId; clientId = parseInt(provider_id); }
-    else return res.status(403).json({ message: 'غير مصرح' });
+    if (senderRole === 'client' || senderRole === 'admin') { clientId = senderId; providerId = parseInt(provider_id); }
+    else if (senderRole === 'provider') {
+      // مزود يراسل طرف آخر — يُعامل المرسل كعميل في هذه المحادثة
+      providerId = senderId; clientId = parseInt(provider_id);
+    }
+    else return res.status(403).json({ message: 'غير مصرح بالمراسلة' });
+    // منع مراسلة النفس
+    if (clientId === providerId) return res.status(400).json({ message: 'لا يمكنك مراسلة نفسك' });
     let reqRow = await pool.query(`SELECT id FROM requests WHERE client_id=$1 AND assigned_provider_id=$2 AND category='direct' ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
     let requestId;
     if (reqRow.rows.length) { requestId = reqRow.rows[0].id; }
