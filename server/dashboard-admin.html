@@ -169,6 +169,23 @@ tbody tr:hover{background:var(--bg)}
   .content{padding:16px}
   .stat-grid{grid-template-columns:1fr 1fr;gap:10px}
 }
+
+.cf-overlay{position:fixed;inset:0;background:rgba(10,5,30,.6);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+.cf-overlay.show{display:flex}
+.cf-box{background:#fff;border-radius:18px;max-width:380px;width:100%;overflow:hidden;animation:cfPop .2s;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+@keyframes cfPop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.cf-ic{width:60px;height:60px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:24px auto 0}
+.cf-body{padding:18px 24px 8px;text-align:center}
+.cf-title{font-size:18px;font-weight:900;color:#16213E;margin-bottom:8px}
+.cf-msg{font-size:14px;color:#6B7280;line-height:1.7}
+.cf-foot{padding:18px 24px 24px;display:flex;gap:10px}
+.cf-btn{flex:1;padding:13px;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;border:none}
+.cf-cancel{background:#F3F4F6;color:#374151}
+.cf-confirm{background:#DC2626;color:#fff}
+.cf-confirm.safe{background:#16213E}
+
+.offline-bar{position:fixed;bottom:0;left:0;right:0;background:#DC2626;color:#fff;text-align:center;padding:10px;font-size:13px;font-weight:700;z-index:99999;display:none;font-family:'Tajawal',sans-serif}
+.offline-bar.show{display:block;animation:slideUp .3s}
 </style>
 </head>
 <body>
@@ -210,6 +227,7 @@ tbody tr:hover{background:var(--bg)}
 
     <div class="page on" id="page-dashboard">
       <div class="stat-grid" id="stats-grid"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+      <div class="card" id="chart-card" style="margin-bottom:22px;display:none"><div class="card-head"><h3>التسجيلات — آخر 7 أيام</h3></div><div class="card-body"><div id="signup-chart" style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:10px 0"></div></div></div>
       <div class="stat-grid" id="stats-extra" style="grid-template-columns:1fr 1fr;margin-bottom:22px"></div>
       <div class="card"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="showPage('users',document.querySelectorAll('.ni')[1])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
     </div>
@@ -224,7 +242,7 @@ tbody tr:hover{background:var(--bg)}
 
     <div class="page" id="page-requests">
       <div class="card">
-        <div class="card-head"><h3>إدارة المشاريع</h3></div>
+        <div class="card-head"><h3>إدارة المشاريع</h3><button class="act-btn ab-default" onclick="exportRequests()" style="margin-inline-start:auto"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير</button></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button></div>
         <div class="card-body flush"><div class="tbl-wrap" id="requests-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
@@ -232,7 +250,7 @@ tbody tr:hover{background:var(--bg)}
 
     <div class="page" id="page-bids">
       <div class="card">
-        <div class="card-head"><h3>إدارة العروض</h3><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="bid-search" placeholder="ابحث بالمزود أو المشروع..." oninput="renderBids()"></div></div>
+        <div class="card-head"><h3>إدارة العروض</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="act-btn ab-default" onclick="exportBids()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير</button><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="bid-search" placeholder="ابحث بالمزود أو المشروع..." oninput="renderBids()"></div></div></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterBidStatus('all',this)">الكل</button><button class="ftab" onclick="filterBidStatus('pending',this)">معلّق</button><button class="ftab" onclick="filterBidStatus('accepted',this)">مقبول</button><button class="ftab" onclick="filterBidStatus('rejected',this)">مرفوض</button></div>
         <div class="card-body flush"><div class="tbl-wrap" id="bids-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
@@ -392,6 +410,25 @@ function loadDashboard(){
       extra.innerHTML='<div class="card"><div class="card-head"><h3>أكثر التخصصات</h3></div><div class="card-body">'+specs+'</div></div>'+
         '<div class="card"><div class="card-head"><h3>أكثر المدن</h3></div><div class="card-body">'+cities+'</div></div>';
     }
+    // الرسم البياني للتسجيلات
+    var daily=s.daily_signups||[];
+    if(daily.length){
+      var card=document.getElementById('chart-card');if(card)card.style.display='block';
+      var max=Math.max.apply(null,daily.map(function(d){return d.n;}))||1;
+      var days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+      var chart=document.getElementById('signup-chart');
+      if(chart){
+        chart.innerHTML=daily.map(function(d){
+          var h=Math.round((d.n/max)*120)+8;
+          var dt=new Date(d.day);var dayName=days[dt.getDay()];
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">'+
+            '<div style="font-size:12px;font-weight:800;color:var(--p)">'+d.n+'</div>'+
+            '<div style="width:100%;max-width:42px;height:'+h+'px;background:linear-gradient(to top,var(--p),var(--gold));border-radius:6px 6px 0 0;transition:.3s"></div>'+
+            '<div style="font-size:10px;color:var(--muted)">'+dayName+'</div>'+
+            '</div>';
+        }).join('');
+      }
+    }
   }).catch(function(){document.getElementById('stats-grid').innerHTML=emptyState('تعذر تحميل الإحصائيات');});
 
   fetch(API+'/api/admin/users',hdr()).then(function(r){return r.json();}).then(function(users){
@@ -471,8 +508,8 @@ function toggleVerified(uid,mk){
 function toggleActive(uid){
   fetch(API+'/api/admin/users/'+uid+'/toggle',Object.assign({method:'PUT'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم تحديث الحالة','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر التحديث','error');});
 }
-function deleteUser(uid){
-  if(!confirm('حذف نهائي لهذا المستخدم وكل بياناته؟'))return;
+async function deleteUser(uid){
+  if(!await askConfirm({title:'حذف المستخدم',message:'سيُحذف المستخدم وكل بياناته نهائياً. لا يمكن التراجع.',confirmText:'نعم، احذف'}))return;
   fetch(API+'/api/admin/users/'+uid,Object.assign({method:'DELETE'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم الحذف','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر الحذف','error');});
 }
 
@@ -545,7 +582,7 @@ function fillBcCity(){
   sel.innerHTML='<option value="">كل المدن</option>';
   regions.forEach(function(reg){var g=document.createElement('optgroup');g.label=reg.n;reg.c.forEach(function(ct){var o=document.createElement('option');o.value=ct;o.textContent=ct;g.appendChild(o);});sel.appendChild(g);});
 }
-function sendBroadcast(){
+async function sendBroadcast(){
   var title=document.getElementById('bc-subject').value.trim();
   var message=document.getElementById('bc-message').value.trim();
   if(!title||!message){toast('العنوان والرسالة مطلوبان','error');return;}
@@ -555,7 +592,7 @@ function sendBroadcast(){
   var desc=f.specialty?('مزودي '+f.specialty):(_bcTarget==='all'?'جميع المستخدمين':_bcTarget==='client'?'كل العملاء':'كل المزودين');
   if(f.city)desc+=' في '+f.city;
   if(f.verifiedOnly)desc+=' (الموثّقون)';
-  if(!confirm('إرسال الرسالة إلى '+desc+'؟'))return;
+  if(!await askConfirm({title:'تأكيد الإرسال',message:'إرسال الرسالة إلى '+desc+'؟',confirmText:'إرسال',safe:true}))return;
   var btn=document.getElementById('bc-send');btn.disabled=true;btn.textContent='جاري الإرسال...';
   fetch(API+'/api/admin/broadcast',Object.assign({method:'POST',body:JSON.stringify(Object.assign({title:title,message:message,channels:channels},f))},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
@@ -618,8 +655,8 @@ function saveReqEdit(){
   var body={title:document.getElementById('re-title').value.trim(),description:document.getElementById('re-desc').value.trim(),category:document.getElementById('re-cat').value.trim()||null,city:document.getElementById('re-city').value.trim()||null,budget_max:parseInt(document.getElementById('re-budget').value)||null,admin_notes:document.getElementById('re-notes').value.trim()||null};
   fetch(API+'/api/admin/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم حفظ التعديلات','success');closeModal('reqModal');loadRequests();}).catch(function(){toast('تعذر الحفظ','error');}).finally(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});
 }
-function deleteRequest(id){
-  if(!confirm('حذف هذا المشروع نهائياً؟'))return;
+async function deleteRequest(id){
+  if(!await askConfirm({title:'حذف المشروع',message:'سيُحذف المشروع نهائياً. لا يمكن التراجع.',confirmText:'نعم، احذف'}))return;
   fetch(API+'/api/admin/requests/'+id,Object.assign({method:'DELETE'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم الحذف','success');loadRequests();}).catch(function(){toast('تعذر الحذف','error');});
 }
 
@@ -632,8 +669,8 @@ function loadReviews(){
     }).join('')+'</tbody></table>';
   }).catch(function(){document.getElementById('reviews-table').innerHTML=emptyState('تعذر التحميل');});
 }
-function deleteReview(id){
-  if(!confirm('حذف هذا التقييم؟'))return;
+async function deleteReview(id){
+  if(!await askConfirm({title:'حذف التقييم',message:'سيُحذف هذا التقييم نهائياً.',confirmText:'نعم، احذف'}))return;
   fetch(API+'/api/admin/reviews/'+id,Object.assign({method:'DELETE'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم الحذف','success');loadReviews();}).catch(function(){toast('تعذر الحذف','error');});
 }
 
@@ -663,6 +700,7 @@ window.addEventListener('hashchange',restoreAdminHash);
 // ═══════════════════════════════════
 // إدارة العروض (الأدمن)
 // ═══════════════════════════════════
+function fmtN(n){if(n==null||n==='')return'';return Number(n).toLocaleString('en-US');}
 var _allBids=[],_bidStatusFilter='all';
 function loadBids(){
   fetch(API+'/api/admin/bids',hdr()).then(function(r){return r.json();}).then(function(bids){
@@ -703,14 +741,94 @@ function editBid(id){
     .then(function(){toast('تم تعديل العرض','success');loadBids();})
     .catch(function(){toast('تعذر التعديل','error');});
 }
-function delBid(id){
-  if(!confirm('حذف هذا العرض نهائياً؟'))return;
+async function delBid(id){
+  if(!await askConfirm({title:'حذف العرض',message:'سيُحذف عرض المزود نهائياً.',confirmText:'نعم، احذف'}))return;
   fetch(API+'/api/admin/bids/'+id,Object.assign({method:'DELETE'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){toast('تم حذف العرض','success');loadBids();})
     .catch(function(){toast('تعذر الحذف','error');});
 }
 
+
+// ═══ تصدير CSV عام (من بيانات المتصفح) ═══
+function downloadCSV(rows, filename){
+  if(!rows||!rows.length){toast('لا توجد بيانات للتصدير','error');return;}
+  var headers=Object.keys(rows[0]);
+  var csv=headers.join(',')+'\n';
+  rows.forEach(function(r){
+    csv+=headers.map(function(h){
+      var v=r[h]==null?'':String(r[h]);
+      v=v.replace(/"/g,'""');
+      return /[",\n]/.test(v)?'"'+v+'"':v;
+    }).join(',')+'\n';
+  });
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=filename;a.click();
+  toast('تم تصدير الملف','success');
+}
+function exportBids(){
+  var rows=_allBids.map(function(b){return {
+    'المزود':b.provider_business||b.provider_name||'',
+    'المدينة':b.provider_city||'',
+    'المشروع':b.request_title||'',
+    'العميل':b.client_name||'',
+    'السعر':b.price||'',
+    'المدة_أيام':b.days||'',
+    'الحالة':b.status||'',
+    'التاريخ':b.created_at?new Date(b.created_at).toLocaleDateString('ar'):''
+  };});
+  downloadCSV(rows,'manaqasa-bids-'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportRequests(){
+  var rows=(_allReq||[]).map(function(r){return {
+    'العنوان':r.title||'',
+    'التصنيف':r.category||'',
+    'المدينة':r.city||'',
+    'الميزانية':r.budget_max||'',
+    'الحالة':r.status||'',
+    'عدد_العروض':r.bid_count||0,
+    'التاريخ':r.created_at?new Date(r.created_at).toLocaleDateString('ar'):''
+  };});
+  downloadCSV(rows,'manaqasa-requests-'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+
+// ═══ نافذة تأكيد مخصّصة ═══
+var _cfResolve=null;
+function askConfirm(opts){
+  opts=opts||{};
+  document.getElementById('cf-title').textContent=opts.title||'تأكيد';
+  document.getElementById('cf-msg').textContent=opts.message||'هل أنت متأكد؟';
+  var ok=document.getElementById('cf-ok');
+  ok.textContent=opts.confirmText||'تأكيد';
+  ok.className='cf-btn cf-confirm'+(opts.safe?' safe':'');
+  document.getElementById('confirmOverlay').classList.add('show');
+  return new Promise(function(res){_cfResolve=res;});
+}
+function cfClose(val){
+  document.getElementById('confirmOverlay').classList.remove('show');
+  if(_cfResolve){_cfResolve(val);_cfResolve=null;}
+}
+
+
+// ═══ كشف الاتصال ═══
+function updateOnline(){
+  var bar=document.getElementById('offlineBar');if(!bar)return;
+  if(navigator.onLine)bar.classList.remove('show');else bar.classList.add('show');
+}
+window.addEventListener('online',updateOnline);
+window.addEventListener('offline',updateOnline);
+updateOnline();
+
 </script>
-</body>
+
+<div class="cf-overlay" id="confirmOverlay">
+  <div class="cf-box">
+    <div class="cf-ic" id="cf-ic"><svg width="28" height="28" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <div class="cf-body"><div class="cf-title" id="cf-title">تأكيد</div><div class="cf-msg" id="cf-msg"></div></div>
+    <div class="cf-foot"><button class="cf-btn cf-cancel" onclick="cfClose(false)">إلغاء</button><button class="cf-btn cf-confirm" id="cf-ok" onclick="cfClose(true)">تأكيد</button></div>
+  </div>
+</div>
+<div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div></body>
 </html>
