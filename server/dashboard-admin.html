@@ -195,6 +195,43 @@ tbody tr:hover{background:var(--bg)}
 .offline-bar{position:fixed;bottom:0;left:0;right:0;background:var(--red);color:#fff;text-align:center;padding:11px;font-size:13px;font-weight:600;z-index:99999;display:none;font-family:'Tajawal',sans-serif}
 .offline-bar.show{display:block;animation:slideUp .3s}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+/* DASHBOARD PRO */
+.dash-hero{background:linear-gradient(120deg,#1B2B4D,#26406E 70%,#2E4E85);border-radius:20px;padding:28px 30px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:var(--sh3)}
+.dash-hero::before{content:'';position:absolute;top:-40px;left:-30px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,146,10,.18),transparent 65%);pointer-events:none}
+.dash-hero::after{content:'';position:absolute;bottom:-60px;right:10%;width:180px;height:180px;background:radial-gradient(circle,rgba(91,108,255,.14),transparent 65%);pointer-events:none}
+.dash-hero-title{font-size:15px;color:rgba(255,255,255,.7);font-weight:600;position:relative}
+.dash-hero-row{display:flex;flex-wrap:wrap;gap:30px;margin-top:18px;position:relative}
+.dash-hero-item{position:relative}
+.dash-hero-item .v{font-size:34px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1.5px}
+.dash-hero-item .l{font-size:12.5px;color:rgba(255,255,255,.6);font-weight:600;margin-top:6px}
+.dash-hero-item .sub{font-size:11px;color:var(--gold-soft);font-weight:700;margin-top:3px}
+.dash-hero-divider{width:1px;background:rgba(255,255,255,.14)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--sh1);transition:.25s cubic-bezier(.4,0,.2,1)}
+.kpi:hover{box-shadow:var(--sh3);transform:translateY(-2px)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.kpi-ic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+.kpi-ic svg{width:20px;height:20px}
+.kpi-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:14px;background:var(--bg);color:var(--muted)}
+.kpi-v{font-size:30px;font-weight:800;color:var(--text);letter-spacing:-1.2px;line-height:1}
+.kpi-l{font-size:13px;color:var(--muted);font-weight:500;margin-top:6px}
+.dash-2col{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;margin-bottom:20px}
+@media(max-width:980px){.dash-2col{grid-template-columns:1fr}}
+.rank-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.rank-row:last-child{border-bottom:none}
+.rank-num{width:26px;height:26px;border-radius:8px;background:var(--p-light);color:var(--p);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rank-row:first-child .rank-num{background:var(--gold-l);color:var(--gold-d)}
+.rank-name{flex:1;font-size:13.5px;font-weight:600;color:var(--text)}
+.rank-bar-wrap{flex:1.4;height:8px;background:var(--bg);border-radius:6px;overflow:hidden;max-width:160px}
+.rank-bar{height:100%;background:linear-gradient(90deg,var(--p),var(--accent));border-radius:6px}
+.rank-val{font-size:13px;font-weight:800;color:var(--p);min-width:28px;text-align:left}
+.chart-bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding:8px 4px 0}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+.chart-bar{width:100%;max-width:38px;background:linear-gradient(to top,var(--p),var(--accent));border-radius:7px 7px 0 0;transition:.4s cubic-bezier(.4,0,.2,1);min-height:4px;position:relative}
+.chart-bar:hover{filter:brightness(1.1)}
+.chart-v{font-size:12px;font-weight:800;color:var(--p)}
+.chart-d{font-size:10.5px;color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
@@ -235,10 +272,16 @@ tbody tr:hover{background:var(--bg)}
   <div class="content">
 
     <div class="page on" id="page-dashboard">
-      <div class="stat-grid" id="stats-grid"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
-      <div class="card" id="chart-card" style="margin-bottom:22px;display:none"><div class="card-head"><h3>التسجيلات — آخر 7 أيام</h3></div><div class="card-body"><div id="signup-chart" style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:10px 0"></div></div></div>
-      <div class="stat-grid" id="stats-extra" style="grid-template-columns:1fr 1fr;margin-bottom:22px"></div>
-      <div class="card"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="showPage('users',document.querySelectorAll('.ni')[1])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
+      <div id="dash-hero"></div>
+      <div class="kpi-grid" id="kpi-grid"><div class="loading" style="grid-column:1/-1"><div class="spinner"></div>جاري التحميل...</div></div>
+      <div class="dash-2col">
+        <div class="card"><div class="card-head"><h3>التسجيلات — آخر 7 أيام</h3></div><div class="card-body"><div class="chart-bars" id="signup-chart"></div></div></div>
+        <div class="card"><div class="card-head"><h3>أكثر التخصصات</h3></div><div class="card-body" id="top-specs"></div></div>
+      </div>
+      <div class="dash-2col">
+        <div class="card"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="showPage('users',document.querySelectorAll('.ni')[1])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
+        <div class="card"><div class="card-head"><h3>أكثر المدن</h3></div><div class="card-body" id="top-cities"></div></div>
+      </div>
     </div>
 
     <div class="page" id="page-users">
@@ -385,60 +428,68 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 function loadDashboard(){
   fetch(API+'/api/admin/stats',hdr()).then(function(r){return r.json();}).then(function(s){
     var t=s.today||{},wk=s.week||{},mo=s.month||{};
-    // بطاقات اليوم (مميزة بالذهبي)
-    var todayCards=[
-      {ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',val:t.users,lbl:'مسجّلون اليوم',sub:(t.providers||0)+' مزود · '+(t.clients||0)+' عميل'},
-      {ic:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',val:t.requests,lbl:'مشاريع اليوم',sub:'هذا الأسبوع '+(wk.requests||0)},
-      {ic:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',val:t.bids,lbl:'عروض اليوم',sub:'هذا الشهر '+(mo.requests||0)+' مشروع'}
-    ];
-    var todayHtml='<div class="sec-title" style="grid-column:1/-1;font-size:14px;font-weight:800;color:var(--p);margin-bottom:-4px">نشاط اليوم</div>'+
-      todayCards.map(function(c){
-        return '<div class="sc" style="background:linear-gradient(135deg,#fffdf5,#fff8e6);border:1.5px solid var(--gold-soft,#f0d080)"><div class="sc-top"><div class="sc-ic" style="background:var(--gold-l)"><svg fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24">'+c.ic+'</svg></div></div><div class="sc-val">'+(c.val||0)+'</div><div class="sc-lbl">'+c.lbl+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+c.sub+'</div></div>';
-      }).join('');
-    // بطاقات الإجمالي
-    var totalCards=[
-      {ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',val:s.total_users,lbl:'إجمالي المستخدمين',c:'var(--blue)',bg:'var(--blue-l)'},
-      {ic:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/>',val:s.providers,lbl:'المزودون',c:'var(--gold-d)',bg:'var(--gold-l)'},
-      {ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',val:s.clients,lbl:'العملاء',c:'var(--blue)',bg:'var(--blue-l)'},
-      {ic:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',val:s.requests,lbl:'المشاريع',c:'var(--p)',bg:'var(--p-light)'},
-      {ic:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',val:s.total_bids,lbl:'العروض',c:'var(--green)',bg:'var(--green-l)'},
-      {ic:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',val:s.in_progress,lbl:'قيد التنفيذ',c:'var(--blue)',bg:'var(--blue-l)'},
-      {ic:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',val:s.completed,lbl:'مكتمل',c:'var(--green)',bg:'var(--green-l)'},
-      {ic:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>',val:s.verified,lbl:'موثّقون',c:'var(--gold-d)',bg:'var(--gold-l)'}
-    ];
-    var totalHtml='<div class="sec-title" style="grid-column:1/-1;font-size:14px;font-weight:800;color:var(--p);margin:8px 0 -4px">الإجمالي</div>'+
-      totalCards.map(function(c){
-        return '<div class="sc"><div class="sc-top"><div class="sc-ic" style="background:'+c.bg+'"><svg fill="none" stroke="'+c.c+'" stroke-width="2" viewBox="0 0 24 24">'+c.ic+'</svg></div></div><div class="sc-val">'+(c.val||0)+'</div><div class="sc-lbl">'+c.lbl+'</div></div>';
-      }).join('');
-    document.getElementById('stats-grid').innerHTML=todayHtml+totalHtml;
-    // أكثر التخصصات والمدن
-    var extra=document.getElementById('stats-extra');
-    if(extra){
-      var specs=(s.top_specialties||[]).map(function(x){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>'+esc(x.spec)+'</span><span style="font-weight:800;color:var(--gold-d)">'+x.n+'</span></div>';}).join('')||'<div style="color:var(--muted);font-size:12px;padding:8px">لا يوجد</div>';
-      var cities=(s.top_cities||[]).map(function(x){return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span>'+esc(x.city)+'</span><span style="font-weight:800;color:var(--p)">'+x.n+'</span></div>';}).join('')||'<div style="color:var(--muted);font-size:12px;padding:8px">لا يوجد</div>';
-      extra.innerHTML='<div class="card"><div class="card-head"><h3>أكثر التخصصات</h3></div><div class="card-body">'+specs+'</div></div>'+
-        '<div class="card"><div class="card-head"><h3>أكثر المدن</h3></div><div class="card-body">'+cities+'</div></div>';
+    // ═══ Hero — نظرة عامة ═══
+    var hero=document.getElementById('dash-hero');
+    if(hero){
+      hero.innerHTML='<div class="dash-hero">'+
+        '<div class="dash-hero-title">نظرة عامة على نشاط المنصة اليوم</div>'+
+        '<div class="dash-hero-row">'+
+          '<div class="dash-hero-item"><div class="v">'+(t.users||0)+'</div><div class="l">مسجّل جديد اليوم</div><div class="sub">'+(t.providers||0)+' مزود · '+(t.clients||0)+' عميل</div></div>'+
+          '<div class="dash-hero-divider"></div>'+
+          '<div class="dash-hero-item"><div class="v">'+(t.requests||0)+'</div><div class="l">مشروع جديد اليوم</div><div class="sub">'+(wk.requests||0)+' هذا الأسبوع</div></div>'+
+          '<div class="dash-hero-divider"></div>'+
+          '<div class="dash-hero-item"><div class="v">'+(t.bids||0)+'</div><div class="l">عرض جديد اليوم</div><div class="sub">'+(mo.requests||0)+' مشروع هذا الشهر</div></div>'+
+        '</div>'+
+      '</div>';
     }
-    // الرسم البياني للتسجيلات
+    // ═══ KPIs — الإجمالي ═══
+    var kpis=[
+      {ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',val:s.total_users,lbl:'إجمالي المستخدمين',c:'var(--accent)',bg:'var(--accent-l)',pill:(s.clients||0)+' عميل'},
+      {ic:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/>',val:s.providers,lbl:'المزودون',c:'var(--gold-d)',bg:'var(--gold-l)',pill:(s.verified||0)+' موثّق'},
+      {ic:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',val:s.requests,lbl:'إجمالي المشاريع',c:'var(--p)',bg:'var(--p-light)',pill:(s.in_progress||0)+' نشط'},
+      {ic:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',val:s.total_bids,lbl:'إجمالي العروض',c:'var(--green)',bg:'var(--green-l)',pill:''},
+      {ic:'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',val:s.completed,lbl:'مشاريع مكتملة',c:'var(--green)',bg:'var(--green-l)',pill:''},
+      {ic:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>',val:s.verified,lbl:'مزودون موثّقون',c:'var(--blue)',bg:'var(--blue-l)',pill:''}
+    ];
+    var kg=document.getElementById('kpi-grid');
+    if(kg){
+      kg.innerHTML=kpis.map(function(k){
+        return '<div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:'+k.bg+'"><svg fill="none" stroke="'+k.c+'" stroke-width="2" viewBox="0 0 24 24">'+k.ic+'</svg></div>'+(k.pill?'<span class="kpi-pill">'+k.pill+'</span>':'')+'</div><div class="kpi-v">'+(k.val||0)+'</div><div class="kpi-l">'+k.lbl+'</div></div>';
+      }).join('');
+    }
+    // ═══ أكثر التخصصات (شريط) ═══
+    var specsEl=document.getElementById('top-specs');
+    if(specsEl){
+      var sp=s.top_specialties||[];var spMax=Math.max.apply(null,sp.map(function(x){return x.n;}))||1;
+      specsEl.innerHTML=sp.length?sp.map(function(x,i){
+        return '<div class="rank-row"><div class="rank-num">'+(i+1)+'</div><div class="rank-name">'+esc(x.spec)+'</div><div class="rank-bar-wrap"><div class="rank-bar" style="width:'+Math.round((x.n/spMax)*100)+'%"></div></div><div class="rank-val">'+x.n+'</div></div>';
+      }).join(''):'<div style="color:var(--muted);font-size:13px;padding:14px 0;text-align:center">لا يوجد بيانات</div>';
+    }
+    // ═══ أكثر المدن (شريط) ═══
+    var citiesEl=document.getElementById('top-cities');
+    if(citiesEl){
+      var ct=s.top_cities||[];var ctMax=Math.max.apply(null,ct.map(function(x){return x.n;}))||1;
+      citiesEl.innerHTML=ct.length?ct.map(function(x,i){
+        return '<div class="rank-row"><div class="rank-num">'+(i+1)+'</div><div class="rank-name">'+esc(x.city)+'</div><div class="rank-bar-wrap"><div class="rank-bar" style="width:'+Math.round((x.n/ctMax)*100)+'%"></div></div><div class="rank-val">'+x.n+'</div></div>';
+      }).join(''):'<div style="color:var(--muted);font-size:13px;padding:14px 0;text-align:center">لا يوجد بيانات</div>';
+    }
+    // ═══ الرسم البياني ═══
     var daily=s.daily_signups||[];
-    if(daily.length){
-      var card=document.getElementById('chart-card');if(card)card.style.display='block';
-      var max=Math.max.apply(null,daily.map(function(d){return d.n;}))||1;
-      var days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-      var chart=document.getElementById('signup-chart');
-      if(chart){
+    var chart=document.getElementById('signup-chart');
+    if(chart){
+      if(daily.length){
+        var max=Math.max.apply(null,daily.map(function(d){return d.n;}))||1;
+        var days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
         chart.innerHTML=daily.map(function(d){
-          var h=Math.round((d.n/max)*120)+8;
+          var h=Math.round((d.n/max)*130);
           var dt=new Date(d.day);var dayName=days[dt.getDay()];
-          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">'+
-            '<div style="font-size:12px;font-weight:800;color:var(--p)">'+d.n+'</div>'+
-            '<div style="width:100%;max-width:42px;height:'+h+'px;background:linear-gradient(to top,var(--p),var(--gold));border-radius:6px 6px 0 0;transition:.3s"></div>'+
-            '<div style="font-size:10px;color:var(--muted)">'+dayName+'</div>'+
-            '</div>';
+          return '<div class="chart-col"><div class="chart-v">'+d.n+'</div><div class="chart-bar" style="height:'+h+'px"></div><div class="chart-d">'+dayName+'</div></div>';
         }).join('');
+      } else {
+        chart.innerHTML='<div style="margin:auto;color:var(--muted);font-size:13px">لا توجد تسجيلات حديثة</div>';
       }
     }
-  }).catch(function(){document.getElementById('stats-grid').innerHTML=emptyState('تعذر تحميل الإحصائيات');});
+  }).catch(function(){var kg=document.getElementById('kpi-grid');if(kg)kg.innerHTML=emptyState('تعذر تحميل الإحصائيات');});
 
   fetch(API+'/api/admin/users',hdr()).then(function(r){return r.json();}).then(function(users){
     if(!Array.isArray(users))return;_allUsers=users;
