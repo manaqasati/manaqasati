@@ -1493,15 +1493,19 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       SELECT created_at::date as day, COUNT(*)::int as n
       FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
       GROUP BY created_at::date ORDER BY day`);
-    // أكثر التخصصات
-    const topSpecs = await pool.query(`
-      SELECT unnest(specialties) as spec, COUNT(*)::int as n
-      FROM users WHERE role='provider' AND specialties IS NOT NULL
-      GROUP BY spec ORDER BY n DESC LIMIT 5`);
-    // أكثر المدن
-    const topCities = await pool.query(`
-      SELECT city, COUNT(*)::int as n FROM users WHERE city IS NOT NULL AND city<>''
-      GROUP BY city ORDER BY n DESC LIMIT 5`);
+    // أكثر التخصصات (محمي — لو فشل لا يكسر باقي الإحصائيات)
+    let topSpecs={rows:[]}, topCities={rows:[]};
+    try {
+      topSpecs = await pool.query(`
+        SELECT unnest(specialties) as spec, COUNT(*)::int as n
+        FROM users WHERE role='provider' AND specialties IS NOT NULL
+        GROUP BY spec ORDER BY n DESC LIMIT 5`);
+    } catch(e) { console.error('topSpecs:', e.message); }
+    try {
+      topCities = await pool.query(`
+        SELECT city, COUNT(*)::int as n FROM users WHERE city IS NOT NULL AND city<>''
+        GROUP BY city ORDER BY n DESC LIMIT 5`);
+    } catch(e) { console.error('topCities:', e.message); }
     res.json({
       total_users:users, requests, total_bids:bids, providers, clients,
       pending_review:pending, in_progress:inProgress, completed, verified, active_providers:activeProviders,
@@ -1585,6 +1589,19 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const { role } = req.body;
+    if (!['client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صالح' });
+    if (uid === req.user.id) return res.status(400).json({ message: 'لا يمكن تغيير دورك' });
+    // عند التحويل لمزود، ألغِ إسناده كمزود في مشاريع (تنظيف)
+    const r = await pool.query(`UPDATE users SET role=$1 WHERE id=$2 AND role!='admin' RETURNING id, name, role`, [role, uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    res.json(r.rows[0]);
+  } catch(e) { console.error('change role:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
