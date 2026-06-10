@@ -159,6 +159,23 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .pv-stats{font-size:10px;color:var(--muted);margin-top:3px;}
 .pv-verified{position:absolute;top:10px;left:10px;background:#2563eb;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px;}
 @media(max-width:680px){.prov-grid{grid-template-columns:repeat(2,1fr);}}
+
+.app-cta{background:linear-gradient(135deg,#0D1829,#16213E,#1B3A6B);padding:44px 20px;position:relative;overflow:hidden}
+.app-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(201,146,10,.12),transparent 55%);pointer-events:none}
+.app-cta-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;position:relative;z-index:1}
+.app-cta-text h2{font-size:24px;font-weight:900;color:#fff;margin-bottom:8px}
+.app-cta-text p{font-size:14px;color:rgba(255,255,255,.65);line-height:1.7;max-width:380px}
+.app-btns{display:flex;gap:12px;flex-wrap:wrap}
+.store-btn{display:flex;align-items:center;gap:11px;background:#fff;border-radius:13px;padding:11px 20px;text-decoration:none;transition:.2s;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.store-btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.3)}
+.store-btn svg{width:28px;height:28px;flex-shrink:0}
+.store-btn-txt{text-align:right;line-height:1.2}
+.store-btn-txt small{display:block;font-size:10px;color:#6B7280;font-weight:600}
+.store-btn-txt b{display:block;font-size:15px;color:#0F172A;font-weight:800}
+.wa-btn{background:#25D366}
+.wa-btn .store-btn-txt small{color:rgba(255,255,255,.85)}
+.wa-btn .store-btn-txt b{color:#fff}
+@media(max-width:640px){.app-cta-inner{flex-direction:column;text-align:center}.app-cta-text p{margin:0 auto}.app-btns{justify-content:center}}
 </style>
 </head>
 <body>
@@ -362,6 +379,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div class="sk-card" style="border-radius:14px;height:180px"></div>
         <div class="sk-card" style="border-radius:14px;height:180px"></div>
       </div>
+      <div style="text-align:center;margin-top:20px"><button class="btn-more" id="prov-more" onclick="showMoreProv()" style="display:none">عرض المزيد <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="6 9 12 15 18 9"/></svg></button></div>
+    </div>
+  </div>
+
+  <!-- APP DOWNLOAD + WHATSAPP -->
+  <div class="app-cta">
+    <div class="app-cta-inner">
+      <div class="app-cta-text">
+        <h2>حمّل تطبيق مناقصة</h2>
+        <p>أنشئ مشاريعك، استقبل العروض، وتواصل مع المزودين أينما كنت — كل ذلك من تطبيق واحد.</p>
+      </div>
+      <div class="app-btns">
+        <a href="https://apps.apple.com/sa/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611?l=ar" target="_blank" rel="noopener" class="store-btn">
+          <svg viewBox="0 0 24 24" fill="#0F172A"><path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.22-3.91-1.21-1.77-3.1-2.01-3.77-2.04-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.89-1.75.03-3.36 1.02-4.26 2.58-1.82 3.15-.47 7.81 1.3 10.37.86 1.25 1.89 2.66 3.23 2.61 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.38.81 1.4-.02 2.28-1.28 3.14-2.54.99-1.46 1.4-2.87 1.42-2.94-.03-.01-2.72-1.04-2.75-4.13zM14.53 4.42c.71-.87 1.2-2.07 1.06-3.27-1.03.04-2.27.69-3.01 1.55-.66.77-1.24 2-1.08 3.17 1.15.09 2.32-.58 3.03-1.45z"/></svg>
+          <div class="store-btn-txt"><small>حمّله من</small><b>App Store</b></div>
+        </a>
+        <a href="https://wa.me/966595055780" target="_blank" rel="noopener" class="store-btn wa-btn">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.515 5.26l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+          <div class="store-btn-txt"><small>تواصل معنا عبر</small><b>واتساب</b></div>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -374,6 +412,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <a href="auth.html" class="flink">إنشاء حساب</a>
         <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" class="flink">سياسة الخصوصية</a>
         <a href="terms.html" class="flink">الشروط والأحكام</a>
+        <a href="terms.html#fees" class="flink">رسوم المنصة</a>
         <span class="flink" onclick="location.href='mailto:cs@manaqasa.com'">تواصل معنا</span>
       </div>
       <div class="fcopy">© 2026 مناقصة — جميع الحقوق محفوظة</div>
@@ -385,6 +424,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 var API='https://manaqasati-production.up.railway.app';
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 var ALL=[],CUR=[],PAGE=12,F_ST='all',F_CAT='',F_CI='',F_Q='';
+var PROV_ALL=[],PROV_PAGE=12;
 
 var CAT_COLORS={
   'تبريد وتكييف':'135deg,#0ea5e9,#0284c7','كهرباء':'135deg,#f59e0b,#d97706',
@@ -647,10 +687,15 @@ function renderProviders(list){
     g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:13px">لا يوجد مزودون بهذه الفلاتر</div>';
     return;
   }
-  g.innerHTML=list.slice(0,12).map(provCard).join('');
+  PROV_ALL=list;
+  g.innerHTML=list.slice(0,PROV_PAGE).map(provCard).join('');
+  var pm=document.getElementById('prov-more');
+  if(pm)pm.style.display=list.length>PROV_PAGE?'block':'none';
 }
+function showMoreProv(){PROV_PAGE+=12;renderProviders(PROV_ALL);}
 
 function filterProviders(){
+  PROV_PAGE=12;
   var cat=(document.getElementById('pf-cat')||{value:''}).value;
   var city=(document.getElementById('pf-city')||{value:''}).value;
   var sort=(document.getElementById('pf-sort')||{value:'bump'}).value;
