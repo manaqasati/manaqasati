@@ -1397,7 +1397,7 @@ app.get('/api/providers', async (req, res) => {
 app.get('/api/providers/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,location_url,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const prov = r.rows[0];
     // استبعد صور base64 الضخمة — http فقط (R2/Cloudinary)
