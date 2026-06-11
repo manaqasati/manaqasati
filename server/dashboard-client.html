@@ -267,6 +267,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   body.in-chat .bnav{display:none!important}
   .chat-home-back{display:inline-flex!important}
 }
+
+.cf-overlay{position:fixed;inset:0;background:rgba(10,5,30,.6);backdrop-filter:blur(6px);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px}
+.cf-overlay.show{display:flex}
+.cf-box{background:#fff;border-radius:20px;max-width:380px;width:100%;overflow:hidden;animation:cfPop .25s;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+@keyframes cfPop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.cf-ic{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:26px auto 0}
+.cf-body{padding:18px 26px 8px;text-align:center}
+.cf-title{font-size:18px;font-weight:900;color:var(--p,#16213E);margin-bottom:9px}
+.cf-msg{font-size:14px;color:var(--text2,#475467);line-height:1.7}
+.cf-foot{padding:20px 26px 26px;display:flex;gap:11px}
+.cf-btn{flex:1;padding:13px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;border:none;transition:.2s}
+.cf-cancel{background:#F3F4F6;color:#374151}
+.cf-confirm{background:#DC2626;color:#fff}
+.cf-confirm.safe{background:var(--p,#16213E)}
 </style>
 </head>
 <body>
@@ -862,16 +876,16 @@ function loadBids(id){
 // ═══════════════════════════════════
 // BID ACTIONS
 // ═══════════════════════════════════
-function acceptBid(bidId,reqId){
-  if(!confirm('هل تؤكد قبول هذا العرض؟'))return;
+async function acceptBid(bidId,reqId){
+  if(!await askConfirm({title:'قبول العرض',message:'سيتم قبول هذا العرض وإشعار المزود.',confirmText:'نعم، اقبل',safe:true}))return;
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
     .catch(function(){showToast('تعذر القبول','error');});
 }
-function rejectBid(bidId,reqId){
-  if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
+async function rejectBid(bidId,reqId){
+  if(!await askConfirm({title:'رفض العرض',message:'سيتم رفض هذا العرض.',confirmText:'نعم، ارفض'}))return;
   fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(){showToast('تم الرفض','success');loadBids(reqId);})
@@ -929,8 +943,8 @@ function loadTimeline(id){
     })
     .catch(function(){el.innerHTML=emptyH('لا توجد أنشطة','');});
 }
-function markDone(id){
-  if(!confirm('هل تؤكد إتمام هذا الطلب؟'))return;
+async function markDone(id){
+  if(!await askConfirm({title:'إتمام الطلب',message:'سيتم تحديد الطلب كمكتمل.',confirmText:'نعم، أكمل',safe:true}))return;
   fetch(API+'/api/requests/'+id+'/complete',Object.assign({method:'PUT'},hdr()))
     .then(function(r){
       if(!r.ok){
@@ -1094,9 +1108,9 @@ function submitEditReq(){
     .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
     .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذر التحديث','error');});
 }
-function deleteReq(id,e){
+async function deleteReq(id,e){
   if(e)e.stopPropagation();
-  if(!confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟'))return;
+  if(!await askConfirm({title:'حذف الطلب',message:'سيُحذف الطلب نهائياً. لا يمكن التراجع.',confirmText:'نعم، احذف'}))return;
   fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){if(r.ok||r.id){showToast('تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
@@ -1484,6 +1498,26 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   var chatNav=document.getElementById('bn-chat')||document.querySelector('[onclick*="\'chat\'"]');
   if(typeof show==='function'){try{show('chat',null,'chat');}catch(e){}}
 }
+
+var _cfResolve=null;
+function askConfirm(opts){
+  opts=opts||{};
+  document.getElementById('cf-title').textContent=opts.title||'تأكيد';
+  document.getElementById('cf-msg').textContent=opts.message||'هل أنت متأكد؟';
+  var ok=document.getElementById('cf-ok');
+  ok.textContent=opts.confirmText||'تأكيد';
+  ok.className='cf-btn cf-confirm'+(opts.safe?' safe':'');
+  var ic=document.getElementById('cf-ic');
+  if(opts.safe){ic.style.background='var(--p-light,#EEF2FB)';ic.querySelector('svg').setAttribute('stroke','var(--p,#16213E)');}
+  else{ic.style.background='#FEE2E2';ic.querySelector('svg').setAttribute('stroke','#DC2626');}
+  document.getElementById('confirmOverlay').classList.add('show');
+  return new Promise(function(res){_cfResolve=res;});
+}
+function cfClose(val){
+  document.getElementById('confirmOverlay').classList.remove('show');
+  if(_cfResolve){_cfResolve(val);_cfResolve=null;}
+}
+
 </script>
 
 <!-- AGREEMENT OVERLAY -->
@@ -1528,5 +1562,13 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   </div>
 </div>
 
+
+<div class="cf-overlay" id="confirmOverlay">
+  <div class="cf-box">
+    <div class="cf-ic" id="cf-ic" style="background:#FEE2E2"><svg width="28" height="28" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <div class="cf-body"><div class="cf-title" id="cf-title">تأكيد</div><div class="cf-msg" id="cf-msg"></div></div>
+    <div class="cf-foot"><button class="cf-btn cf-cancel" onclick="cfClose(false)">إلغاء</button><button class="cf-btn cf-confirm" id="cf-ok" onclick="cfClose(true)">تأكيد</button></div>
+  </div>
+</div>
 </body>
 </html>
