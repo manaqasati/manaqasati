@@ -169,6 +169,14 @@ function ph966(p){if(!p)return'';var n=p.replace(/\D/g,'');if(n.startsWith('966'
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function ago(d){if(!d)return'';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<2)return'نشط الآن';if(m<60)return'منذ '+m+' د';var h=Math.floor(m/60);if(h<24)return'منذ '+h+' ساعة';return'منذ '+Math.floor(h/24)+' يوم';}
 
+function openExternal(e,url){
+  try{
+    var w=window.open(url,'_blank','noopener,noreferrer');
+    if(w){e.preventDefault();return false;}
+  }catch(err){}
+  // لو window.open فشل (WebView)، نترك السلوك الافتراضي (target=_blank)
+  return true;
+}
 function render(p,rat){
   var avg=parseFloat(p.avg_rating)||0,cnt=parseInt(p.review_count)||0;
   if(rat){if(!avg)avg=parseFloat(rat.average)||0;if(!cnt)cnt=parseInt(rat.count)||0;}
@@ -229,7 +237,7 @@ function render(p,rat){
     html+='<div class="social-card"><div class="card-title"><div class="card-title-ic"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>روابط التواصل</div>';
     socials.forEach(function(s){
       var u=s.url.startsWith('http')?s.url:'https://'+s.url;
-      html+='<a href="'+u+'" target="_blank" rel="noopener" class="social-link '+s.cls+'"><span>'+s.icon+esc(s.label)+'</span><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 3 12 9 6"/></svg></a>';
+      html+='<a href="'+u+'" target="_blank" rel="noopener noreferrer" onclick="return openExternal(event,\''+u+'\')" class="social-link '+s.cls+'"><span>'+s.icon+esc(s.label)+'</span><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 3 12 9 6"/></svg></a>';
     });
     html+='</div>';
   }
