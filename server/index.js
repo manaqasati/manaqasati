@@ -445,6 +445,9 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
@@ -682,7 +685,7 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const agg = await pool.query(`SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count FROM reviews WHERE reviewed_id=$1`, [id]);
-    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
+    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.images, r.provider_reply, r.reply_at, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
     res.json({ average: parseFloat(agg.rows[0].average)||0, count: agg.rows[0].count||0, reviews: rv.rows });
   } catch(e) { console.error('/api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
 });
@@ -737,7 +740,7 @@ app.get('/api/provider/projects', auth, async (req, res) => {
 
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image FROM reviews rv JOIN users u ON rv.reviewer_id=u.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
+    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.images, rv.provider_reply, rv.reply_at, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/reviews:', e); res.json([]); }
 });
@@ -1300,7 +1303,7 @@ app.get('/api/requests/:id/my-review', auth, async (req, res) => {
 
 app.post('/api/reviews', auth, async (req, res) => {
   try {
-    const { request_id, reviewed_id, rating, comment } = req.body;
+    const { request_id, reviewed_id, rating, comment, images } = req.body;
     if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
     const reqRow = await pool.query('SELECT status, title FROM requests WHERE id=$1', [request_id]);
@@ -1309,10 +1312,10 @@ app.post('/api/reviews', auth, async (req, res) => {
     const existing = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
     let row;
     if (existing.rows.length) {
-      const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, created_at=NOW() WHERE request_id=$3 AND reviewer_id=$4 RETURNING *`, [rating, comment||null, request_id, req.user.id]);
+      const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, images=$3, created_at=NOW() WHERE request_id=$4 AND reviewer_id=$5 RETURNING *`, [rating, comment||null, (Array.isArray(images)&&images.length)?images:null, request_id, req.user.id]);
       row = upd.rows[0];
     } else {
-      const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, created_at) VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null]);
+      const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null, (Array.isArray(images)&&images.length)?images:null]);
       row = ins.rows[0];
     }
     const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
@@ -1326,6 +1329,23 @@ app.post('/api/reviews', auth, async (req, res) => {
     }
     res.json(row);
   } catch(e) { console.error('POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ رد المزود على تقييم ═══
+app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const { reply } = req.body;
+    if (!reply || !reply.trim()) return res.status(400).json({ message: 'الرد فارغ' });
+    // تأكد أن التقييم موجّه لهذا المزود
+    const rv = await pool.query('SELECT reviewed_id, reviewer_id FROM reviews WHERE id=$1', [reviewId]);
+    if (!rv.rows.length) return res.status(404).json({ message: 'التقييم غير موجود' });
+    if (rv.rows[0].reviewed_id !== req.user.id) return res.status(403).json({ message: 'لا يمكنك الرد على هذا التقييم' });
+    const upd = await pool.query('UPDATE reviews SET provider_reply=$1, reply_at=NOW() WHERE id=$2 RETURNING *', [reply.trim(), reviewId]);
+    // أشعر العميل بالرد
+    try { await notify(rv.rows[0].reviewer_id, 'رد على تقييمك', 'ردّ المزود على تقييمك.', 'review_reply', null); } catch(e){}
+    res.json(upd.rows[0]);
+  } catch(e) { console.error('review reply:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
