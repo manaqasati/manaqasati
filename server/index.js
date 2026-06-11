@@ -463,6 +463,7 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
@@ -657,7 +658,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
     }
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -677,7 +678,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -715,7 +716,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio')); else if (img) uploaded.push(img); }
       req.body.portfolio_images = uploaded;
     }
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
