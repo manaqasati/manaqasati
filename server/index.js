@@ -387,6 +387,15 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function logAdmin(req, action, targetType, targetId, details) {
+  try {
+    await pool.query(
+      'INSERT INTO admin_logs (admin_id, admin_name, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5,$6)',
+      [req.user?.id||null, req.user?.name||'أدمن', action, targetType||null, targetId||null, details||null]
+    );
+  } catch(e) { console.error('logAdmin:', e.message); }
+}
+
 async function notify(userId, title, body, type, refId) {
   try {
     await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
@@ -442,6 +451,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
@@ -582,6 +592,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     try {
       if (role === 'provider') await pool.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
       await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+      await logAdmin(req, 'delete_user', 'user', userId, 'حذف مستخدم');
       await pool.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
       await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
       await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
@@ -1480,6 +1491,13 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ═══ ADMIN ═══
+app.get('/api/admin/logs', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 200');
+    res.json(r.rows);
+  } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
@@ -1576,6 +1594,7 @@ app.put('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
     params.push(id);
     const r = await pool.query(`UPDATE bids SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, params);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    await logAdmin(req, 'edit_bid', 'bid', id, 'تعديل عرض');
     res.json(r.rows[0]);
   } catch(e) { console.error('edit bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1586,6 +1605,7 @@ app.delete('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    await logAdmin(req, 'delete_bid', 'bid', id, 'حذف عرض');
     res.json({ ok: true });
   } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1606,6 +1626,7 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
     const uid = parseInt(req.params.id);
     if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
     const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
+    if(r.rows.length) await logAdmin(req, r.rows[0].is_active?'activate_user':'ban_user', 'user', uid, r.rows[0].is_active?'تفعيل حساب':'إيقاف حساب');
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1620,6 +1641,7 @@ app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
     // عند التحويل لمزود، ألغِ إسناده كمزود في مشاريع (تنظيف)
     const r = await pool.query(`UPDATE users SET role=$1 WHERE id=$2 AND role!='admin' RETURNING id, name, role`, [role, uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    await logAdmin(req, 'change_role', 'user', uid, 'تغيير الدور إلى '+role);
     res.json(r.rows[0]);
   } catch(e) { console.error('change role:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1628,6 +1650,7 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   try {
     const uid = parseInt(req.params.id); const { badge } = req.body;
     const r = await pool.query(`UPDATE users SET badge=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,badge`, [badge, uid]);
+    await logAdmin(req, 'set_badge', 'user', uid, 'تغيير التوثيق إلى '+(badge||'بدون'));
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
     res.json(r.rows[0]);
@@ -1733,6 +1756,7 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
       await pool.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
       await pool.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
       const del = await pool.query('DELETE FROM requests WHERE id=$1', [id]);
+      await logAdmin(req, 'delete_request', 'request', id, 'حذف مشروع');
       if (del.rowCount===0) { await pool.query('ROLLBACK'); return res.status(404).json({ message: 'غير موجود' }); }
       await pool.query('COMMIT'); res.json({ ok: true });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
@@ -1797,7 +1821,7 @@ app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
-  try { const r=await pool.query('DELETE FROM reviews WHERE id=$1',[parseInt(req.params.id)]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
@@ -1884,6 +1908,7 @@ app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
         sent++;
       } catch(e) {}
     }
+    await logAdmin(req, 'broadcast', null, null, 'رسالة جماعية: '+(title||'')+' ('+sent+' مستلم)');
     res.json({ ok: true, total: sent });
   } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
