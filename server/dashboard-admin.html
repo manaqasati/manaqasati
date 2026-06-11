@@ -312,6 +312,13 @@ tbody tr:hover{background:var(--bg)}
       <div class="card"><div class="card-head"><h3>إدارة التقييمات</h3></div><div class="card-body flush"><div class="tbl-wrap" id="reviews-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div></div>
     </div>
 
+    <div class="page" id="page-logs">
+      <div class="card">
+        <div class="card-head"><h3>سجل نشاط الأدمن</h3><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="log-search" placeholder="ابحث في السجل..." oninput="renderLogs()"></div></div>
+        <div class="card-body flush"><div class="tbl-wrap" id="logs-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      </div>
+    </div>
+
     <div class="page" id="page-reports">
       <div class="card"><div class="card-head"><h3>البلاغات</h3></div><div class="card-body flush"><div class="tbl-wrap" id="reports-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div></div>
     </div>
@@ -410,12 +417,13 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard')loadDashboard();
   if(pg==='bids')loadBids();
+  if(pg==='logs')loadLogs();
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
   if(pg==='reviews')loadReviews();
@@ -747,10 +755,10 @@ function loadReports(){
 
 function restoreAdminHash(){
   var h=(location.hash||'').replace('#','');
-  var valid=['dashboard','users','requests','bids','reviews','reports'];
+  var valid=['dashboard','users','requests','bids','reviews','reports','logs'];
   var pg=valid.indexOf(h)>=0?h:'dashboard';
   var btns=document.querySelectorAll('.ni');
-  var idx={dashboard:0,users:1,requests:2,bids:3,reviews:4,reports:5}[pg];
+  var idx={dashboard:0,users:1,requests:2,bids:3,reviews:4,reports:5,logs:6}[pg];
   window._skipHash=true;
   showPage(pg, btns[idx]||null);
   window._skipHash=false;
@@ -881,6 +889,44 @@ function updateOnline(){
 window.addEventListener('online',updateOnline);
 window.addEventListener('offline',updateOnline);
 updateOnline();
+
+
+// ═══ سجل نشاط الأدمن ═══
+var _allLogs=[];
+var _logActions={
+  delete_user:['حذف مستخدم','b-rej'],change_role:['تغيير دور','b-prog'],
+  delete_bid:['حذف عرض','b-rej'],edit_bid:['تعديل عرض','b-prog'],
+  ban_user:['إيقاف حساب','b-rej'],activate_user:['تفعيل حساب','b-done'],
+  set_badge:['تغيير توثيق','b-prog'],delete_request:['حذف مشروع','b-rej'],
+  delete_review:['حذف تقييم','b-rej'],broadcast:['رسالة جماعية','b-done']
+};
+function loadLogs(){
+  fetch(API+'/api/admin/logs',hdr()).then(function(r){return r.json();}).then(function(logs){
+    if(!Array.isArray(logs)){document.getElementById('logs-table').innerHTML=emptyState('تعذر التحميل');return;}
+    _allLogs=logs;renderLogs();
+  }).catch(function(){document.getElementById('logs-table').innerHTML=emptyState('تعذر التحميل');});
+}
+function renderLogs(){
+  var term=((document.getElementById('log-search')||{}).value||'').toLowerCase();
+  var list=_allLogs.filter(function(l){
+    if(!term)return true;
+    var hay=((l.admin_name||'')+(l.details||'')+(l.action||'')).toLowerCase();
+    return hay.indexOf(term)>=0;
+  });
+  if(!list.length){document.getElementById('logs-table').innerHTML=emptyState('لا يوجد نشاط مسجّل');return;}
+  document.getElementById('logs-table').innerHTML='<table><thead><tr><th>المدير</th><th>الإجراء</th><th>التفاصيل</th><th>التاريخ</th></tr></thead><tbody>'+
+    list.map(function(l){
+      var act=_logActions[l.action]||[l.action,'b-completed'];
+      var d=l.created_at?new Date(l.created_at):null;
+      var dateStr=d?d.toLocaleDateString('ar-SA')+' · '+d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}):'';
+      return '<tr>'+
+        '<td><div class="u-name">'+esc(l.admin_name||'أدمن')+'</div></td>'+
+        '<td><span class="badge '+act[1]+'">'+act[0]+'</span></td>'+
+        '<td style="font-size:12.5px;color:var(--text2)">'+esc(l.details||'—')+'</td>'+
+        '<td style="font-size:12px;color:var(--muted);white-space:nowrap">'+dateStr+'</td>'+
+        '</tr>';
+    }).join('')+'</tbody></table>';
+}
 
 </script>
 
