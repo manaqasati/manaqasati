@@ -193,6 +193,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
   .card{border-radius:12px;padding:14px}
 }
+
+.cf-overlay{position:fixed;inset:0;background:rgba(10,5,30,.6);backdrop-filter:blur(6px);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px}
+.cf-overlay.show{display:flex}
+.cf-box{background:#fff;border-radius:20px;max-width:380px;width:100%;overflow:hidden;animation:cfPop .25s;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+@keyframes cfPop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.cf-ic{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:26px auto 0}
+.cf-body{padding:18px 26px 8px;text-align:center}
+.cf-title{font-size:18px;font-weight:900;color:var(--p,#16213E);margin-bottom:9px}
+.cf-msg{font-size:14px;color:var(--text2,#475467);line-height:1.7}
+.cf-foot{padding:20px 26px 26px;display:flex;gap:11px}
+.cf-btn{flex:1;padding:13px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;border:none;transition:.2s}
+.cf-cancel{background:#F3F4F6;color:#374151}
+.cf-confirm{background:#DC2626;color:#fff}
+.cf-confirm.safe{background:var(--p,#16213E)}
 </style>
 </head>
 <body>
@@ -1073,7 +1087,7 @@ async function updatePushToggleUI(){
 async function togglePush(){
   var sw=document.getElementById('pushToggleSwitch');if(!sw||sw.disabled)return;sw.disabled=true;
   var active=await isPushActive();
-  if(active){if(confirm('هل تريد إيقاف الإشعارات الفورية؟')){var ok=await pushUnsubscribe();if(ok)localStorage.removeItem('manaqasa_push_enabled_'+_me.id);}}
+  if(active){if(await askConfirm({title:'إيقاف الإشعارات',message:'لن تصلك إشعارات فورية بالمشاريع الجديدة.',confirmText:'إيقاف'})){var ok=await pushUnsubscribe();if(ok)localStorage.removeItem('manaqasa_push_enabled_'+_me.id);}}
   else{var ok=await pushSubscribe();if(ok){localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');setTimeout(function(){alert('تم تفعيل الإشعارات بنجاح!');},200);}}
   sw.disabled=false;
 }
@@ -1346,6 +1360,34 @@ function _chatFromProj(reqId, clientId){
   closeModal();
   openChatRoom(reqId, clientId, '', '');
 }
+
+var _cfResolve=null;
+function askConfirm(opts){
+  opts=opts||{};
+  document.getElementById('cf-title').textContent=opts.title||'تأكيد';
+  document.getElementById('cf-msg').textContent=opts.message||'هل أنت متأكد؟';
+  var ok=document.getElementById('cf-ok');
+  ok.textContent=opts.confirmText||'تأكيد';
+  ok.className='cf-btn cf-confirm'+(opts.safe?' safe':'');
+  var ic=document.getElementById('cf-ic');
+  if(opts.safe){ic.style.background='var(--p-light,#EEF2FB)';ic.querySelector('svg').setAttribute('stroke','var(--p,#16213E)');}
+  else{ic.style.background='#FEE2E2';ic.querySelector('svg').setAttribute('stroke','#DC2626');}
+  document.getElementById('confirmOverlay').classList.add('show');
+  return new Promise(function(res){_cfResolve=res;});
+}
+function cfClose(val){
+  document.getElementById('confirmOverlay').classList.remove('show');
+  if(_cfResolve){_cfResolve(val);_cfResolve=null;}
+}
+
 </script>
+
+<div class="cf-overlay" id="confirmOverlay">
+  <div class="cf-box">
+    <div class="cf-ic" id="cf-ic" style="background:#FEE2E2"><svg width="28" height="28" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <div class="cf-body"><div class="cf-title" id="cf-title">تأكيد</div><div class="cf-msg" id="cf-msg"></div></div>
+    <div class="cf-foot"><button class="cf-btn cf-cancel" onclick="cfClose(false)">إلغاء</button><button class="cf-btn cf-confirm" id="cf-ok" onclick="cfClose(true)">تأكيد</button></div>
+  </div>
+</div>
 </body>
 </html>
