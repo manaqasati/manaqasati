@@ -567,6 +567,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div class="rate-label" id="rate-label"></div>
       <div class="fg"><label>تعليق (اختياري)</label><textarea id="rate-comment" placeholder="شاركنا تجربتك مع هذا المزود..."></textarea></div>
+      <div class="fg"><label>صور من العمل المنجز (اختياري)</label>
+        <div id="rate-imgs-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <label for="rate-img-input" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1.5px dashed var(--border2);border-radius:11px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>إضافة صور (حتى 4)</label>
+        <input type="file" id="rate-img-input" accept="image/*" multiple style="display:none" onchange="addRateImages(this)">
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-p" onclick="submitRate()">إرسال التقييم</button>
@@ -975,6 +980,7 @@ function openRate(reqId){
   document.querySelectorAll('.sp').forEach(function(s){s.className='sp';});
   var _rl=document.getElementById('rate-label');if(_rl){_rl.textContent='';}
   document.getElementById('rate-comment').value='';
+  _rateImages=[];renderRateImages();
   document.getElementById('rate-msg').className='alert';
   document.getElementById('rateOverlay').className='overlay show';
 }
@@ -983,6 +989,25 @@ function openRate(reqId){
 // NEW REQUEST
 // ═══════════════════════════════════
 var _reqImages=[];
+var _rateImages=[];
+function addRateImages(input){
+  var files=Array.from(input.files||[]);
+  files.forEach(function(f){
+    if(_rateImages.length>=4){showToast('الحد الأقصى 4 صور','error');return;}
+    if(f.size>3*1024*1024){showToast('حجم الصورة كبير (الحد 3MB)','error');return;}
+    var r=new FileReader();
+    r.onload=function(e){_rateImages.push(e.target.result);renderRateImages();};
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+function renderRateImages(){
+  var p=document.getElementById('rate-imgs-preview');if(!p)return;
+  p.innerHTML=_rateImages.map(function(img,i){
+    return '<div style="position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"><button onclick="removeRateImage('+i+')" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">×</button></div>';
+  }).join('');
+}
+function removeRateImage(i){_rateImages.splice(i,1);renderRateImages();}
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
 function fillCitySelect(sel){
   if(!sel||sel.children.length>1)return;
@@ -1129,7 +1154,7 @@ function hoverStar(n){if(n===0){paintStars(selRating);var lb=document.getElement
 function submitRate(){
   if(!selRating){showToast('اختر تقييماً','error');return;}
   var comment=document.getElementById('rate-comment').value.trim();
-  fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:comment})},hdr()))
+  fetch(API+'/api/reviews',Object.assign({method:'POST',body:JSON.stringify({request_id:selRequestId,reviewed_id:selProviderId,rating:selRating,comment:comment,images:_rateImages})},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){
       if(r.id){document.getElementById('rateOverlay').className='overlay';showToast('شكراً على تقييمك','success');}
