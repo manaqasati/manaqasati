@@ -74,10 +74,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .hero-btn{background:var(--gold);color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:all .18s;flex-shrink:0;box-shadow:0 4px 14px rgba(240,165,0,.35)}
 .hero-btn:hover{background:var(--gold-d);transform:translateY(-2px)}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
-.sc{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
+.sc{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:18px 10px;text-align:center;box-shadow:var(--sh-xs,0 1px 2px rgba(11,18,32,.04));transition:all .25s var(--ease,ease)}
+.sc:hover{box-shadow:var(--sh-md,0 4px 12px rgba(11,18,32,.08));transform:translateY(-2px)}
 .sc:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(27,58,107,.08)}
-.sn{font-size:22px;font-weight:900;line-height:1;margin-bottom:3px}
-.st{font-size:9px;color:var(--muted);font-weight:600}
+.sn{font-size:26px;font-weight:900;line-height:1;margin-bottom:5px;letter-spacing:-1px}
+.st{font-size:11px;color:var(--muted);font-weight:600}
 .card{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:16px;box-shadow:var(--shadow);transition:box-shadow .25s,transform .25s}
 .card:hover{box-shadow:var(--shadow-md)}
 .card-accent{border-top:3px solid var(--gold)}
@@ -287,6 +288,21 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .cf-cancel{background:#F3F4F6;color:#374151}
 .cf-confirm{background:#DC2626;color:#fff}
 .cf-confirm.safe{background:var(--p,#16213E)}
+
+/* أزرار البطاقات الموحّدة */
+.card-actions{display:flex;align-items:center;gap:8px;padding-top:11px;border-top:1px solid var(--border);margin-top:2px;width:100%}
+.ca-btn{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:42px;min-height:42px;max-height:42px;padding:0 8px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;border:1px solid transparent;transition:all .2s var(--ease,ease);white-space:nowrap;line-height:1;box-sizing:border-box;overflow:hidden}
+.ca-btn svg{width:14px;height:14px;flex-shrink:0}
+.ca-view{background:var(--p);color:#fff}
+.ca-view:hover{background:var(--p2);transform:translateY(-1px)}
+.ca-chat{background:var(--white);color:var(--gold-d);border-color:var(--gold-soft)}
+.ca-chat:hover{background:var(--gold-l);transform:translateY(-1px)}
+.ca-edit{background:var(--white);color:var(--p);border-color:var(--border)}
+.ca-edit:hover{background:var(--p-light)}
+.ca-del{flex:0 0 auto;background:var(--white);color:var(--red);border-color:var(--border)}
+.ca-del:hover{background:var(--red-l);border-color:var(--red)}
+.ca-done{background:var(--green);color:#fff}
+.ca-done:hover{filter:brightness(.95);transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -713,10 +729,10 @@ function riCard(r,actions){
     +'</div>'
     +'</div>'
     +'<div class="ri-bids"><div class="ri-bids-num">'+bidCount+'</div><div class="ri-bids-lbl">عرض</div></div>';
-  h+='<div class="ri-actions">';
-  h+='<button class="btn-sm bs-detail" onclick="openDetail('+r.id+',event)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل'+(bidCount>0?' ('+bidCount+' عرض)':'')+'</button>';
-  if(actions&&open)h+='<button class="btn-sm bs-edit" onclick="openEditReq('+r.id+',event)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button>';
-  if(actions&&(open||r.status==='pending_review'))h+='<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button>';
+  h+='<div class="card-actions">';
+  h+='<button class="ca-btn ca-view" onclick="openDetail('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل'+(bidCount>0?' ('+bidCount+')':'')+'</button>';
+  if(actions&&open)h+='<button class="ca-btn ca-edit" onclick="openEditReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button>';
+  if(actions&&(open||r.status==='pending_review'))h+='<button class="ca-btn ca-del" onclick="deleteReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button>';
   h+='</div>';
   h+='</div>';
   return h;
