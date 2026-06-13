@@ -211,6 +211,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .cf-cancel{background:#F3F4F6;color:#374151}
 .cf-confirm{background:#DC2626;color:#fff}
 .cf-confirm.safe{background:var(--p,#16213E)}
+
+/* أزرار البطاقات — متناسقة */
+.card-actions{display:flex;gap:8px;padding-top:11px;border-top:1px solid var(--border);margin-top:2px}
+.ca-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 12px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;border:1px solid transparent;transition:all .2s var(--ease,ease);white-space:nowrap}
+.ca-btn svg{flex-shrink:0;opacity:.9}
+.ca-view{background:var(--p);color:#fff}
+.ca-view:hover{background:var(--p2);transform:translateY(-1px)}
+.ca-chat{background:var(--white);color:var(--gold-d);border-color:var(--gold-soft)}
+.ca-chat:hover{background:var(--gold-l);transform:translateY(-1px)}
+.ca-del{flex:0 0 auto;background:var(--white);color:var(--red);border-color:var(--border)}
+.ca-del:hover{background:var(--red-l);border-color:var(--red)}
 </style>
 </head>
 <body>
@@ -873,9 +884,9 @@ function _renderBids(list){
     if(b.days)h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 9px;border-radius:20px">'+b.days+' يوم</span>';
     h+='</div>';
     if(b.note)h+='<div style="font-size:11px;color:var(--muted);font-style:italic;background:var(--bg);border-right:3px solid var(--border);padding:7px 10px;border-radius:0 8px 8px 0;margin-bottom:10px">'+_esc(b.note)+'</div>';
-    h+='<div style="display:flex;gap:7px;padding-top:9px;border-top:1px solid var(--border);flex-wrap:wrap"><button onclick="_viewProj('+b.request_id+')" class="btn-sm bs-p" style="flex:1;padding:9px">عرض</button>';
-    if(b.client_id)h+='<button class="_bchat btn-sm" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'" style="flex:1;padding:9px;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>';
-    if(!isAcc&&!isRej)h+='<button onclick="_delBid('+b.id+')" class="btn-sm bs-r" style="flex:1;padding:9px">سحب</button>';
+    h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button>';
+    if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
+    if(!isAcc&&!isRej)h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>سحب</button>';
     h+='</div></div></div>';
     return h;
   }).join('');
@@ -889,8 +900,8 @@ function _renderProjs(list){
     if(r.category)h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_esc(r.category)+'</div>';
     h+='<div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+(r.project_number||'#'+r.id)+(r.city?' · '+_esc(r.city):'')+'</div></div><span class="tag '+tagCls+'">'+tagLbl+'</span></div>';
     if(r.price)h+='<div style="margin-bottom:9px"><span style="font-size:11px;font-weight:800;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:3px 10px;border-radius:20px">'+_fpr(r.price)+'</span></div>';
-    h+='<div style="display:flex;gap:7px;padding-top:9px;border-top:1px solid var(--border);flex-wrap:wrap"><button onclick="_viewProj('+r.id+')" class="btn-sm bs-p" style="flex:1;padding:9px">عرض التفاصيل</button>';
-    if(r.client_id)h+='<button class="_pchat btn-sm" data-rid="'+r.id+'" data-cid="'+r.client_id+'" style="flex:1;padding:9px;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold-soft)">محادثة</button>';
+    h+='<div class="card-actions"><button onclick="_viewProj('+r.id+')" class="ca-btn ca-view"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل</button>';
+    if(r.client_id)h+='<button class="_pchat ca-btn ca-chat" data-rid="'+r.id+'" data-cid="'+r.client_id+'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
     h+='</div></div></div>';
     return h;
   }).join('');
