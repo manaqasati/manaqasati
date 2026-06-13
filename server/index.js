@@ -565,10 +565,10 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
 app.get('/api/account/deletion-preview', auth, async (req, res) => {
   try {
     const userId = req.user.id; const role = req.user.role; const stats = {};
-    if (role === 'client') { const r1 = await pool.query('SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1', [userId]); stats.projects = r1.rows[0].c; }
+    if (role === 'client') { const r1 = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND (category IS DISTINCT FROM 'direct')", [userId]); stats.projects = r1.rows[0].c; }
     if (role === 'provider') {
       const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]); stats.bids = r2.rows[0].c;
-      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`, [userId]); stats.active_projects = r3.rows[0].c;
+      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]); stats.active_projects = r3.rows[0].c;
     }
     const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]); stats.messages = r4.rows[0].c;
     const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
@@ -583,7 +583,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     if (confirmation !== 'حذف' && confirmation !== 'DELETE') return res.status(400).json({ message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد', code: 'CONFIRMATION_REQUIRED' });
     if (role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
     if (role === 'provider') {
-      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`, [userId]);
+      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]);
       if (active.rows[0].c > 0) return res.status(400).json({ message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أولاً.`, code: 'ACTIVE_PROJECTS' });
     }
     const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
@@ -745,7 +745,7 @@ app.get('/api/provider/bids', auth, async (req, res) => {
 
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/projects:', e); res.json([]); }
 });
@@ -1486,7 +1486,7 @@ app.get('/api/categories', (req, res) => { res.json(['برمجة وتطوير','
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
 app.get('/api/stats', async (req, res) => {
   try {
-    const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed'"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open'")]);
+    const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
     res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
   } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
 });
