@@ -238,7 +238,9 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
     const specs = (p.specialties || []).join('، ');
     const avg = parseFloat(p.avg_rating) || 0;
     const cnt = parseInt(p.review_count) || 0;
-    const pageUrl = `${SITE_URL}/pro/${slug}`;
+    // canonical دائماً بالاسم الكامل (SEO قوي) مهما كان رابط الدخول
+    const seoSlug = encodeURIComponent(pName.replace(/\s+/g, '-')) + '-' + p.id;
+    const pageUrl = `${SITE_URL}/pro/${seoSlug}`;
     const title = `${pName}${specs ? ' — ' + specs : ''}${pCity !== 'السعودية' ? ' في ' + pCity : ''} | مناقصة`;
     const desc = `${pName} مزود خدمة في ${pCity}${specs ? '، متخصص في ' + specs : ''}${avg > 0 ? '، تقييم ' + avg.toFixed(1) + ' من 5' : ''}. تواصل معه على منصة مناقصة.`;
     const keywords = [pName, pCity, ...(p.specialties||[]), ...(p.specialties||[]).map(s => s+' '+pCity), 'مزود خدمة', 'مناقصة'].join(', ');
