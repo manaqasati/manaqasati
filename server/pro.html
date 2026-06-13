@@ -272,7 +272,7 @@ function render(p,rat){
   var pid=getId();
   var mb=document.getElementById('msgbtn');
   if(mb)mb.addEventListener('click',function(){var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}var t=localStorage.getItem('token')||'';if(u&&t){try{localStorage.setItem('pending_contact_provider',pid);}catch(e){}location.href='/dashboard-client.html';}else{location.href='/auth.html?redirect=msg&provider_id='+pid;}});
-  var nm2=nm,url2=url;
+  var nm2=nm,url2='https://www.manaqasa.com/pro/'+getId();
   var sb=document.getElementById('sharebtn');
   if(sb)sb.addEventListener('click',function(){if(navigator.share){navigator.share({title:nm2+' — مناقصة',text:'تواصل مع '+nm2+' على منصة مناقصة',url:url2});}else if(navigator.clipboard){navigator.clipboard.writeText(url2).then(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم النسخ';setTimeout(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة';},2000);});}});
 }
