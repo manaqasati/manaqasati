@@ -591,9 +591,8 @@ function _renderHome(data){
   html+='<div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div>';
   html+='<div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div>';
   html+='</div>';
-  var mySlug=encodeURIComponent((_me.name||'مزود').replace(/\s+/g,'-'))+'-'+_me.id;
-  var cardUrl='/pro/'+mySlug;
-  var cardUrlDisplay='manaqasa.com/pro/'+(_me.name||'مزود').replace(/\s+/g,'-')+'-'+_me.id;
+  var cardUrl='/pro/'+_me.id;
+  var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
   html+='<div style="background:linear-gradient(135deg,rgba(201,146,10,.1),rgba(201,146,10,.05));border:1.5px solid rgba(201,146,10,.25);border-radius:14px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">';
   html+='<div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div><div style="font-size:11px;color:var(--gold-d);opacity:.7">شاركها مع عملائك</div></div>';
   html+='<a href="'+cardUrl+'" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 3px 10px rgba(201,146,10,.3)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض كما يراك العملاء</a></div>';
@@ -1016,9 +1015,8 @@ async function loadProfile(){
     +'</div>';
   pg.appendChild(hdr);
 
-  var mySlug=encodeURIComponent((_me.name||'مزود').replace(/\s+/g,'-'))+'-'+_me.id;
-  var cardUrl='/pro/'+mySlug;
-  var cardUrlDisplay='manaqasa.com/pro/'+(_me.name||'مزود').replace(/\s+/g,'-')+'-'+_me.id;
+  var cardUrl='/pro/'+_me.id;
+  var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
   var previewCard=document.createElement('div');
   previewCard.style.cssText='background:linear-gradient(135deg,rgba(201,146,10,.08),rgba(201,146,10,.03));border:1.5px solid rgba(201,146,10,.2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px';
   previewCard.innerHTML=''
