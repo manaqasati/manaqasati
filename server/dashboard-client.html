@@ -18,7 +18,9 @@
   --red:#DC2626;--red-l:#FEF2F2;
   --yellow:#D97706;--yellow-l:#FEF3C7;
   --radius:14px;--radius-sm:10px;--radius-lg:18px;
-  --shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03);
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 16px rgba(15,23,42,.08);
+  --shadow-lg:0 12px 28px rgba(15,23,42,.10);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -57,7 +59,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
 .topbar-title{font-size:15px;font-weight:800;color:#fff}
 .topbar-left{display:flex;align-items:center;gap:10px}
-.btn-new{background:var(--gold);color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:all .18s;box-shadow:0 3px 12px rgba(240,165,0,.3)}
+.btn-new{background:linear-gradient(135deg,var(--gold),var(--gold-d));color:#fff;padding:10px 20px;border-radius:12px;font-size:13.5px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:all .2s;box-shadow:0 4px 14px rgba(201,146,10,.35)}
+.btn-new:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(201,146,10,.45)}
 .btn-new:hover{background:var(--gold-d);transform:translateY(-1px)}
 .btn-new svg{flex-shrink:0}
 .content{padding:24px 28px;flex:1}
@@ -70,12 +73,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .hero-t p{font-size:13px;color:var(--muted);line-height:1.6}
 .hero-btn{background:var(--gold);color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;white-space:nowrap;transition:all .18s;flex-shrink:0;box-shadow:0 4px 14px rgba(240,165,0,.35)}
 .hero-btn:hover{background:var(--gold-d);transform:translateY(-2px)}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
 .sc{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
 .sc:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(27,58,107,.08)}
 .sn{font-size:22px;font-weight:900;line-height:1;margin-bottom:3px}
 .st{font-size:9px;color:var(--muted);font-weight:600}
-.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:16px;box-shadow:var(--shadow);transition:box-shadow .25s,transform .25s}
+.card:hover{box-shadow:var(--shadow-md)}
 .card-accent{border-top:3px solid var(--gold)}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
 .ch-l{display:flex;align-items:center;gap:8px}
@@ -102,7 +106,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bs-p{background:var(--p-light);color:var(--p)}.bs-p:hover{background:var(--p-mid)}
 .bs-g{background:var(--green-l);color:var(--green)}.bs-g:hover{background:#bbf7d0}
 .bs-r{background:var(--red-l);color:var(--red)}.bs-r:hover{background:#fecaca}
-.btn-p{padding:12px 22px;background:var(--p);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .18s}
+.btn-p{padding:13px 24px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s}
+.btn-p:hover{box-shadow:0 6px 18px rgba(22,33,62,.3)}
 .btn-p:hover{background:var(--p2);transform:translateY(-1px)}
 .btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-s{padding:12px 16px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
@@ -141,9 +146,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .rdh-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px}.rdh-meta span{background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-weight:700}
 .rdh-desc{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13.5px;line-height:1.9;color:var(--text2);white-space:pre-wrap;word-wrap:break-word}
 .tab-btns{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border-radius:12px;padding:5px;border:1px solid var(--border)}
-.tab-btn{flex:1;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .18s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.tab-btn{flex:1;padding:11px 16px;border-radius:11px;font-size:13.5px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.tab-btn:not(.on):hover{background:var(--p-light);color:var(--p)}
 .tab-btn:hover{color:var(--text)}
-.tab-btn.on{background:var(--p);color:#fff;box-shadow:0 2px 8px rgba(22,33,62,.2)}
+.tab-btn.on{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;box-shadow:0 4px 14px rgba(22,33,62,.28)}
 .tab-btn .tcount{font-size:11px;font-weight:800;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:10px;min-width:18px}
 .tab-btn:not(.on) .tcount{background:var(--p-light);color:var(--p)}
 .tab{display:none}.tab.on{display:block}
