@@ -275,6 +275,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .sc-acc::before{background:var(--green)}.sc-acc .sn{color:var(--green)}
 .sc-prog::before{background:#2E64C8}.sc-prog .sn{color:#2E64C8}
 .sc-done::before{background:var(--p)}.sc-done .sn{color:var(--p)}
+
+/* بطاقات مدمجة أنيقة (مشاركة + تحديث) */
+.mini-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-radius:13px;margin-bottom:12px;text-decoration:none;border:none;width:100%;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);box-sizing:border-box}
+.mc-txt{display:flex;flex-direction:column;text-align:right}
+.mc-t{font-size:13.5px;font-weight:900;line-height:1.3}
+.mc-s{font-size:11px;margin-top:2px}
+.mc-share{background:var(--gold-l);border:1px solid var(--gold-soft)}
+.mc-share .mc-t{color:var(--gold-d)}
+.mc-share .mc-s{color:var(--gold-d);opacity:.7}
+.mc-arrow{font-size:12px;font-weight:800;color:#fff;background:var(--gold);padding:8px 14px;border-radius:9px;white-space:nowrap;flex-shrink:0}
+.mc-share:hover{box-shadow:0 4px 12px rgba(201,146,10,.2)}
+.mc-bump{background:linear-gradient(135deg,#1B2B4D,#26406E)}
+.mc-bump-btn{font-size:12.5px;font-weight:800;color:#fff;background:var(--gold);padding:9px 15px;border-radius:9px;white-space:nowrap;flex-shrink:0;box-shadow:0 3px 10px rgba(201,146,10,.35)}
+.mc-bump:hover{box-shadow:var(--sh-lg,0 12px 28px rgba(11,18,32,.1))}
 </style>
 </head>
 <body>
@@ -643,9 +657,7 @@ function _renderHome(data){
   html+='</div>';
   var cardUrl='/pro/'+_me.id;
   var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
-  html+='<div style="background:linear-gradient(135deg,rgba(201,146,10,.1),rgba(201,146,10,.05));border:1.5px solid rgba(201,146,10,.25);border-radius:14px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">';
-  html+='<div style="flex:1"><div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:2px">بطاقتي الشخصية</div><div style="font-size:11px;color:var(--gold-d);opacity:.7">شاركها مع عملائك</div></div>';
-  html+='<a href="'+cardUrl+'" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 3px 10px rgba(201,146,10,.3)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض كما يراك العملاء</a></div>';
+  html+='<a href="'+cardUrl+'" class="mini-card mc-share"><div class="mc-txt"><span class="mc-t">بطاقتي الشخصية</span><span class="mc-s">شاركها مع عملائك</span></div><span class="mc-arrow">عرض &#8249;</span></a>';
   var lastBump=profile.last_bumped_at;
   var hoursLeft=lastBump?Math.max(0,24-Math.floor((Date.now()-new Date(lastBump))/3600000)):0;
   if(hoursLeft>0){
@@ -658,14 +670,7 @@ function _renderHome(data){
       '<div style="height:7px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:6px;transition:.5s"></div></div>'+
     '</div>';
   }else{
-    html+='<div style="background:linear-gradient(135deg,#1B2B4D,#26406E);border-radius:16px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden">'+
-      '<div style="position:absolute;top:-20px;left:-20px;width:90px;height:90px;background:radial-gradient(circle,rgba(201,146,10,.25),transparent 70%);pointer-events:none"></div>'+
-      '<div style="display:flex;align-items:center;gap:13px;position:relative">'+
-        '<div style="width:48px;height:48px;border-radius:14px;background:rgba(201,146,10,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" fill="none" stroke="var(--gold-soft)" stroke-width="2" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></div>'+
-        '<div style="flex:1"><div style="font-size:15px;font-weight:900;color:#fff">جاهز للتحديث!</div><div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:2px">اضغط لتتصدّر القائمة أمام العملاء</div></div>'+
-      '</div>'+
-      '<button onclick="_doBump()" style="width:100%;margin-top:14px;padding:13px;background:var(--gold);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;box-shadow:0 4px 14px rgba(201,146,10,.4);display:inline-flex;align-items:center;justify-content:center;gap:7px;position:relative"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>رفع ترتيبي الآن</button>'+
-    '</div>';
+    html+='<button onclick="_doBump()" class="mini-card mc-bump"><div class="mc-txt"><span class="mc-t" style="color:#fff">جاهز للتحديث</span><span class="mc-s" style="color:rgba(255,255,255,.6)">تصدّر القائمة أمام العملاء</span></div><span class="mc-bump-btn">رفع ترتيبي &#8593;</span></button>';
   }
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   if(_myBids.length){
