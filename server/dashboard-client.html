@@ -303,6 +303,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .ca-del:hover{background:var(--red-l);border-color:var(--red)}
 .ca-done{background:var(--green);color:#fff}
 .ca-done:hover{filter:brightness(.95);transform:translateY(-1px)}
+
+/* صندوق ملخّص العرض (نمط مستقل) */
+.bid-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;border:1px solid var(--border)}
+.bs-cell{background:var(--white);padding:12px 10px;text-align:center}
+.bs-label{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.bs-value{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-.3px}
+.bs-value.gold{color:var(--gold-d)}
+.bs-unit{font-size:10px;font-weight:600;color:var(--hint)}
 </style>
 </head>
 <body>
@@ -866,11 +874,13 @@ function loadBids(id){
                 +(b.provider_city?'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:1px">'+esc(b.provider_city)+'</div>':'')
               +'</div>'
             +'</div>'
-            +'<div style="text-align:left">'
-              +'<div style="font-size:20px;font-weight:900;color:var(--gold)">'+fmtN(b.price)+'</div>'
-              +'<div style="font-size:10px;color:rgba(255,255,255,.4)">ر.س</div>'
-              +(b.days?'<div style="font-size:11px;color:rgba(255,255,255,.4)">'+b.days+' يوم</div>':'')
-            +'</div>'
+            +'<div style="text-align:left"><svg width="22" height="22" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>'
+          +'</div>'
+          // ═══ صندوق ملخّص العرض البارز (نمط مستقل) ═══
+          +'<div class="bid-summary">'
+            +'<div class="bs-cell"><div class="bs-label">المبلغ</div><div class="bs-value gold">'+fmtN(b.price)+' <span class="bs-unit">ر.س</span></div></div>'
+            +(b.days?'<div class="bs-cell"><div class="bs-label">مدة التنفيذ</div><div class="bs-value">'+b.days+' <span class="bs-unit">يوم</span></div></div>':'')
+            +'<div class="bs-cell"><div class="bs-label">التقييم</div><div class="bs-value">'+(parseFloat(b.provider_rating||0)>0?parseFloat(b.provider_rating).toFixed(1):'—')+' <span class="bs-unit">من 5</span></div></div>'
           +'</div>'
           // Body
           +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
