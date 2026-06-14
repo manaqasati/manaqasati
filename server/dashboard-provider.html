@@ -244,6 +244,29 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bz-action{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .bz-bid{width:100%;padding:12px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease)}
 .bz-bid:hover{background:var(--p2);transform:translateY(-1px)}
+
+/* مشاريعي وعروضي — قائمة نظيفة + صندوق ملخّص */
+.wz-item{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px;transition:all .2s var(--ease,ease)}
+.wz-item:hover{box-shadow:var(--sh-md,0 4px 12px rgba(11,18,32,.08))}
+.wz-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.wz-title{flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--text);line-height:1.4;letter-spacing:-.2px}
+.wz-status{flex-shrink:0;font-size:11px;font-weight:800;padding:5px 12px;border-radius:30px}
+.wst-acc{background:var(--green-l);color:var(--green)}
+.wst-rej{background:#F1F5F9;color:#64748B}
+.wst-pend{background:var(--gold-l);color:var(--gold-d)}
+.wz-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.wz-cell{background:var(--white);padding:12px 8px;text-align:center}
+.wz-lbl{font-size:10px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.wz-val{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-.3px}
+.wz-val.gold{color:var(--gold-d)}
+.wz-val.sm{font-size:12px;font-weight:700;color:var(--text2)}
+.wz-u{font-size:10px;font-weight:600;color:var(--hint)}
+
+.wst-prog{background:#EFF4FF;color:#2E64C8}
+.wz-titwrap{flex:1;min-width:0}
+.wz-cat{font-size:11px;font-weight:700;color:var(--gold-d);margin-bottom:4px}
+.wz-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:4px}
+.wz-note{font-size:12.5px;color:var(--text2);line-height:1.7;background:var(--bg);border-radius:10px;padding:11px 13px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -870,35 +893,48 @@ function _renderBids(list){
   if(!list.length)return _empty('لا يوجد عروض','ابدأ بتصفح المشاريع');
   return list.map(function(b){
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    var barColor=isAcc?'#16A34A':isRej?'#CBD5E1':'var(--gold)';
-    var tagCls=isAcc?'t-open':isRej?'t-done':'t-rev';var tagLbl=isAcc?'مقبول':isRej?'مرفوض':'معلق';
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden"><div style="width:4px;flex-shrink:0;background:'+barColor+'"></div><div style="flex:1;min-width:0;padding:13px 14px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+_fdt(b.created_at)+'</div></div><span class="tag '+tagCls+'">'+tagLbl+'</span></div>';
-    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span style="font-size:11px;font-weight:800;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:3px 10px;border-radius:20px">'+_fpr(b.price)+'</span>';
-    if(b.days)h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 9px;border-radius:20px">'+b.days+' يوم</span>';
+    var stCls=isAcc?'wst-acc':isRej?'wst-rej':'wst-pend';
+    var stLbl=isAcc?'مقبول':isRej?'مرفوض':'قيد المراجعة';
+    var h='<div class="wz-item">';
+    // رأس: العنوان + الحالة
+    h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'">'+stLbl+'</span></div>';
+    // صندوق ملخّص العرض (نمط مستقل)
+    h+='<div class="wz-summary">';
+    h+='<div class="wz-cell"><div class="wz-lbl">المبلغ</div><div class="wz-val gold">'+fmtN(b.price)+' <span class="wz-u">ر.س</span></div></div>';
+    if(b.days)h+='<div class="wz-cell"><div class="wz-lbl">مدة التنفيذ</div><div class="wz-val">'+b.days+' <span class="wz-u">يوم</span></div></div>';
+    h+='<div class="wz-cell"><div class="wz-lbl">تاريخ العرض</div><div class="wz-val sm">'+_fdt(b.created_at)+'</div></div>';
     h+='</div>';
-    if(b.note)h+='<div style="font-size:11px;color:var(--muted);font-style:italic;background:var(--bg);border-right:3px solid var(--border);padding:7px 10px;border-radius:0 8px 8px 0;margin-bottom:10px">'+_esc(b.note)+'</div>';
-    h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button>';
-    if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
-    if(!isAcc&&!isRej)h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>سحب</button>';
-    h+='</div></div></div>';
+    // ملاحظة العرض
+    if(b.note)h+='<div class="wz-note">'+_esc(b.note)+'</div>';
+    // أزرار
+    h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view">عرض المشروع</button>';
+    if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
+    if(!isAcc&&!isRej)h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del">سحب</button>';
+    h+='</div></div>';
     return h;
   }).join('');
 }
+
 async function _delBid(id){if(!confirm('سحب هذا العرض؟'))return;await _api('/api/bids/'+id,{method:'DELETE'});showToast('تم سحب العرض','success');loadWorks();}
 function _renderProjs(list){
   if(!list.length)return _empty('لا يوجد مشاريع','');
   return list.map(function(r){
-    var isProg=r.status==='in_progress';var barColor=isProg?'var(--gold)':'#16A34A';var tagCls=isProg?'t-rev':'t-open';var tagLbl=isProg?'جارٍ':'مكتمل';
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);display:flex;overflow:hidden"><div style="width:4px;flex-shrink:0;background:'+barColor+'"></div><div style="flex:1;min-width:0;padding:13px 14px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="flex:1;min-width:0">';
-    if(r.category)h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_esc(r.category)+'</div>';
-    h+='<div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+(r.project_number||'#'+r.id)+(r.city?' · '+_esc(r.city):'')+'</div></div><span class="tag '+tagCls+'">'+tagLbl+'</span></div>';
-    if(r.price)h+='<div style="margin-bottom:9px"><span style="font-size:11px;font-weight:800;color:var(--p);background:var(--p-light);border:1px solid var(--p-mid);padding:3px 10px;border-radius:20px">'+_fpr(r.price)+'</span></div>';
-    h+='<div class="card-actions"><button onclick="_viewProj('+r.id+')" class="ca-btn ca-view"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل</button>';
-    if(r.client_id)h+='<button class="_pchat ca-btn ca-chat" data-rid="'+r.id+'" data-cid="'+r.client_id+'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
-    h+='</div></div></div>';
+    var isProg=r.status==='in_progress';
+    var stCls=isProg?'wst-prog':'wst-acc';var stLbl=isProg?'جارٍ':'مكتمل';
+    var h='<div class="wz-item">';
+    h+='<div class="wz-head"><div class="wz-titwrap">';
+    if(r.category)h+='<div class="wz-cat">'+_esc(r.category)+'</div>';
+    h+='<div class="wz-title">'+_esc(r.title)+'</div>';
+    h+='<div class="wz-sub">'+(r.project_number||'#'+r.id)+(r.city?' · '+_esc(r.city):'')+'</div>';
+    h+='</div><span class="wz-status '+stCls+'">'+stLbl+'</span></div>';
+    if(r.price)h+='<div class="wz-summary"><div class="wz-cell"><div class="wz-lbl">قيمة المشروع</div><div class="wz-val gold">'+fmtN(r.price)+' <span class="wz-u">ر.س</span></div></div></div>';
+    h+='<div class="card-actions"><button onclick="_viewProj('+r.id+')" class="ca-btn ca-view">عرض التفاصيل</button>';
+    if(r.client_id)h+='<button class="_pchat ca-btn ca-chat" data-rid="'+r.id+'" data-cid="'+r.client_id+'">محادثة</button>';
+    h+='</div></div>';
     return h;
   }).join('');
 }
+
 
 async function loadReviews(){
   var pg=_el('page-reviews');if(!pg)return;pg.innerHTML=_skList(4);
