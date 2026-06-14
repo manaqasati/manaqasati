@@ -243,6 +243,8 @@ html{scroll-behavior:smooth}
 .how-card h3{font-size:18px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:-.3px}
 .how-card p{font-size:13.5px;color:var(--muted);line-height:1.8}
 @media(max-width:740px){.how-grid{grid-template-columns:1fr;gap:14px}.how-head h2{font-size:25px}.how-section{padding:44px 16px}}
+
+.chip-prem{background:#FBF5E6;color:#A87000;border:1px solid #FFE5A0}
 </style>
 </head>
 <body>
@@ -634,11 +636,10 @@ function card(p){
     + (p.project_number ? '<div class="pc-num">' + p.project_number + '</div>' : '')
     + '<div class="pc-title">' + p.title + '</div>'
     + '<div class="pc-chips">'
-    + (p.city ? '<span class="chip chip-g">' + locIc() + p.city + '</span>' : '')
-    + (p.budget_max ? '<span class="chip chip-y">' + Number(p.budget_max).toLocaleString('en-US') + ' ر.س</span>' : '')
+    + (p.city ? '<span class="chip chip-g">' + p.city + '</span>' : '')
+    + (p.category ? '<span class="chip chip-b">' + p.category + '</span>' : '')
     + '<span class="chip chip-d"><bdi>' + bidN + '</bdi> ' + (bidN===1?'عرض':'عروض') + '</span>'
-    + (img && p.category ? '<span class="chip chip-b">' + p.category + '</span>' : '')
-    + (clientPrem ? '<span class="chip" style="background:#FBF5E6;color:#A87000;border:1px solid #FFE5A0;display:inline-flex;align-items:center;gap:3px"><svg width="9" height="9" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21l2.3-7.4-6-4.6h7.6z"/></svg>عميل مميز</span>' : '')
+    + (clientPrem ? '<span class="chip chip-prem">عميل مميز</span>' : '')
     + '</div>'
     + '<div class="pc-footer">'
     + '<div><div class="pc-price">' + (p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : 'مفتوح') + '</div><div class="pc-time">' + ago(p.created_at) + '</div></div>'
