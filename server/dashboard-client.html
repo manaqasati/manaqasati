@@ -311,6 +311,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bs-value{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-.3px}
 .bs-value.gold{color:var(--gold-d)}
 .bs-unit{font-size:10px;font-weight:600;color:var(--hint)}
+
+/* إحصائيات بأيقونات (وضوح) */
+.sc{position:relative;overflow:hidden}
+.sc-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.sc-all .sc-ic{background:var(--p-light);color:var(--p)}
+.sc-all .sn{color:var(--p)}
+.sc-open .sc-ic{background:var(--green-l);color:var(--green)}
+.sc-open .sn{color:var(--green)}
+.sc-prog .sc-ic{background:#EFF4FF;color:#2E64C8}
+.sc-prog .sn{color:#2E64C8}
+.sc-done .sc-ic{background:var(--gold-l);color:var(--gold-d)}
+.sc-done .sn{color:var(--gold-d)}
 </style>
 </head>
 <body>
@@ -408,10 +420,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="hero-btn" onclick="show('new',null,'new')">+ طلب جديد</button>
       </div>
       <div class="stat-grid">
-        <div class="sc"><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
-        <div class="sc"><div class="sn" id="s-open" style="color:var(--green)">0</div><div class="st">مفتوح</div></div>
-        <div class="sc"><div class="sn" id="s-prog" style="color:var(--p)">0</div><div class="st">قيد التنفيذ</div></div>
-        <div class="sc"><div class="sn" id="s-done" style="color:var(--gold)">0</div><div class="st">مكتمل</div></div>
+        <div class="sc sc-all"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
+        <div class="sc sc-open"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="sn" id="s-open">0</div><div class="st">مفتوح</div></div>
+        <div class="sc sc-prog"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
+        <div class="sc sc-done"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div><div class="sn" id="s-done">0</div><div class="st">مكتمل</div></div>
       </div>
       <div class="card card-accent">
         <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
