@@ -225,6 +225,25 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .ca-chat:hover{background:var(--gold-l);transform:translateY(-1px)}
 .ca-del{flex:0 0 auto;background:var(--white);color:var(--red);border-color:var(--border)}
 .ca-del:hover{background:var(--red-l);border-color:var(--red)}
+
+/* تصفح المشاريع — أسلوب قائمة نظيف (مستقل) */
+.bz-item{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;transition:all .2s var(--ease,ease)}
+.bz-item:hover{border-color:var(--p-mid);box-shadow:var(--sh-md,0 4px 12px rgba(11,18,32,.08));transform:translateY(-1px)}
+.bz-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.bz-titwrap{flex:1;min-width:0}
+.bz-cat{font-size:11px;font-weight:700;color:var(--gold-d);margin-bottom:4px}
+.bz-title{font-size:16px;font-weight:800;color:var(--p);line-height:1.4;letter-spacing:-.2px}
+.bz-item:hover .bz-title{text-decoration:underline}
+.bz-price{flex-shrink:0;font-size:17px;font-weight:900;color:var(--text);letter-spacing:-.3px;text-align:left}
+.bz-cur{font-size:10px;font-weight:600;color:var(--muted);margin-right:3px}
+.bz-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px}
+.bz-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11.5px;color:var(--muted);font-weight:600}
+.bz-meta span{position:relative;padding-left:8px}
+.bz-meta span:not(:last-child)::after{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;background:var(--border2);transform:translateY(-50%)}
+.bz-deadline{font-size:11.5px;color:#d97706;font-weight:700;margin-top:8px}
+.bz-action{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.bz-bid{width:100%;padding:12px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease)}
+.bz-bid:hover{background:var(--p2);transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -681,71 +700,43 @@ function _filterBrowse(){
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('لا يوجد مشاريع متاحة حالياً. تفقد لاحقاً!','');
   return list.map(function(r){
-    // صورة: thumbnail أو image_url أو أول صورة
-    var img = r.thumbnail || r.image_url || (r.images && r.images[0]) || null;
-
-    // الموعد النهائي
-    var deadlineChip = '';
+    // الموعد النهائي (نص بسيط)
+    var dlText='';
     if(r.deadline){
-      var dl = new Date(r.deadline);
-      var today = new Date();
-      var diffDays = Math.ceil((dl-today)/(1000*60*60*24));
-      var dlColor = diffDays<=3?'var(--red)':diffDays<=7?'#d97706':'var(--muted)';
-      var dlBg = diffDays<=3?'var(--red-l)':diffDays<=7?'#fef3c7':'var(--bg)';
-      var dlBorder = diffDays<=3?'#fca5a5':diffDays<=7?'#fde68a':'var(--border)';
-      var dlText = diffDays<0?'انتهى':diffDays===0?'اليوم':diffDays===1?'غداً':diffDays+' يوم';
-      deadlineChip='<span style="font-size:10px;font-weight:700;color:'+dlColor+';background:'+dlBg+';border:1px solid '+dlBorder+';padding:2px 8px;border-radius:20px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> '+dlText+'</span>';
+      var dl=new Date(r.deadline),today=new Date();
+      var diff=Math.ceil((dl-today)/(1000*60*60*24));
+      dlText=diff<0?'انتهى الموعد':diff===0?'ينتهي اليوم':diff===1?'يتبقى يوم':'يتبقى '+diff+' يوم';
     }
+    // مقتطف الوصف
+    var snippet=r.description?_esc(r.description).slice(0,120)+(r.description.length>120?'...':''):'';
+    // سطر المعلومات (نص نظيف مفصول بنقاط — نمط مستقل)
+    var meta=[];
+    if(r.client_name)meta.push(_esc(r.client_name));
+    meta.push(timeAgoP(r.created_at));
+    meta.push(parseInt(r.bid_count||0)+' عرض');
+    if(r.city)meta.push(_esc(r.city));
 
-    var h='<div style="background:var(--white);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden">';
-
-    // الصورة المصغرة
-    if(img){
-      h+='<div style="height:130px;overflow:hidden;position:relative">'
-        +'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover" loading="lazy">'
-        +'<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.5))"></div>'
-        +'<div style="position:absolute;bottom:8px;right:10px"><span class="tag t-open">نشط</span></div>'
-        +(r.city?'<div style="position:absolute;bottom:8px;left:10px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:3px"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+_esc(r.city)+'</div>':'')
-        +'</div>';
-    }
-
-    h+='<div style="display:flex;overflow:hidden">'
-      +'<div style="width:4px;flex-shrink:0;background:var(--green)"></div>'
-      +'<div style="flex:1;min-width:0;padding:13px 14px">';
-
-    // العنوان والسعر
-    h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:9px">'
-      +'<div style="flex:1;min-width:0">';
-    if(r.category)h+='<div style="font-size:9px;font-weight:700;color:var(--muted);margin-bottom:4px">'+_esc(r.category)+'</div>';
-    h+='<div style="font-size:14px;font-weight:800;color:var(--text);line-height:1.3">'+_esc(r.title)+'</div>'
-      +'</div>';
-    if(r.budget_max)h+='<div style="text-align:left;flex-shrink:0"><div style="font-size:14px;font-weight:900;color:var(--p)">'+fmtN(r.budget_max)+'</div><div style="font-size:9px;color:var(--muted)">ر.س</div></div>';
+    var h='<div class="bz-item" onclick="_viewProj('+r.id+')">';
+    // العنوان + السعر
+    h+='<div class="bz-top">';
+    h+='<div class="bz-titwrap">';
+    if(r.category)h+='<div class="bz-cat">'+_esc(r.category)+'</div>';
+    h+='<div class="bz-title">'+_esc(r.title)+'</div>';
     h+='</div>';
-
-    // الشارات: المدينة دائماً + الموعد + العروض
-    h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px">';
-    if(r.client_name)h+='<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+_esc(r.client_name)+'</span>';
-    // المدينة دائماً
-    h+='<span style="font-size:10px;font-weight:700;color:var(--green);background:var(--green-l);border:1px solid #BBF7D0;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:3px">'
-      +'<svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'
-      +(r.city?_esc(r.city):'غير محدد')
-      +'</span>';
-    // الموعد النهائي
-    h+=deadlineChip;
-    // عدد العروض
-    h+='<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:20px">'+parseInt(r.bid_count||0)+' عرض</span>';
+    if(r.budget_max)h+='<div class="bz-price">'+fmtN(r.budget_max)+'<span class="bz-cur">ر.س</span></div>';
     h+='</div>';
-
-    // الأزرار
-    h+='<div style="display:flex;gap:7px">'
-      +'<button onclick="_openBidNudge('+r.id+','+(r.bid_count||0)+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>'
-      +'<button onclick="_viewProj('+r.id+')" style="padding:10px 14px;background:var(--bg);color:var(--p);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700">تفاصيل</button>'
-      +'</div>';
-
-    h+='</div></div></div>';
+    // المقتطف
+    if(snippet)h+='<div class="bz-desc">'+snippet+'</div>';
+    // سطر المعلومات
+    h+='<div class="bz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
+    if(dlText)h+='<div class="bz-deadline">'+dlText+'</div>';
+    // زر التقديم (يوقف الانتشار عشان ما يفتح التفاصيل)
+    h+='<div class="bz-action"><button onclick="event.stopPropagation();_openBidNudge('+r.id+','+(r.bid_count||0)+')" class="bz-bid">تقديم عرض</button></div>';
+    h+='</div>';
     return h;
   }).join('');
 }
+
 
 function _openBidNudge(projId,bidCount){
   var count=bidCount||0;
@@ -1439,6 +1430,8 @@ function _viewImg(src){
   document.body.appendChild(o);
 }
 
+
+function timeAgoP(d){if(!d)return '';var s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'الآن';var m=Math.floor(s/60);if(m<60)return 'منذ '+m+' دقيقة';var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';var dy=Math.floor(h/24);if(dy<30)return 'منذ '+dy+' يوم';return 'منذ '+Math.floor(dy/30)+' شهر';}
 </script>
 
 <div class="cf-overlay" id="confirmOverlay">
