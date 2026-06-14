@@ -289,6 +289,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .mc-bump{background:linear-gradient(135deg,#1B2B4D,#26406E)}
 .mc-bump-btn{font-size:12.5px;font-weight:800;color:#fff;background:var(--gold);padding:9px 15px;border-radius:9px;white-space:nowrap;flex-shrink:0;box-shadow:0 3px 10px rgba(201,146,10,.35)}
 .mc-bump:hover{box-shadow:var(--sh-lg,0 12px 28px rgba(11,18,32,.1))}
+
+/* بطاقة معدّل التقييم */
+.rev-avg{background:linear-gradient(135deg,var(--p),var(--p2));border-radius:16px;padding:22px;margin-bottom:14px;text-align:center;position:relative;overflow:hidden}
+.rev-avg::before{content:'';position:absolute;top:-30px;left:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(201,146,10,.2),transparent 70%);pointer-events:none}
+.rev-avg-num{font-size:44px;font-weight:900;color:#fff;line-height:1;letter-spacing:-2px;position:relative}
+.rev-avg-stars{font-size:18px;margin:8px 0;letter-spacing:2px;position:relative}
+.rev-avg-lbl{font-size:12px;color:rgba(255,255,255,.6);font-weight:600;position:relative}
+
+/* زر تحديد الكل */
+.mark-all-btn{font-size:12px;font-weight:700;color:var(--p);background:var(--p-light);border:none;padding:8px 14px;border-radius:9px;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);white-space:nowrap}
+.mark-all-btn:hover{background:var(--p-mid)}
 </style>
 </head>
 <body>
@@ -954,7 +965,13 @@ async function loadReviews(){
   var list=[];try{list=await _api('/api/provider/reviews')||[];}catch(e){}
   if(!Array.isArray(list))list=[];
   var avg=list.length?(list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length).toFixed(1):'—';
-  var html='<div class="pghd"><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم · معدل '+avg+'&#9733;</div></div>';
+  var html='<div class="pghd"><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم</div></div>';
+  // بطاقة معدّل بارزة
+  if(list.length){
+    var fullStars=Math.round(parseFloat(avg)||0);
+    var starsHtml='';for(var si=1;si<=5;si++){starsHtml+='<span style="color:'+(si<=fullStars?'var(--gold)':'var(--border2)')+'">&#9733;</span>';}
+    html+='<div class="rev-avg"><div class="rev-avg-num">'+avg+'</div><div class="rev-avg-stars">'+starsHtml+'</div><div class="rev-avg-lbl">معدل التقييم من '+list.length+' تقييم</div></div>';
+  }
   html+='<div class="card card-accent">';
   if(list.length){
     list.forEach(function(r){
@@ -988,7 +1005,7 @@ async function loadNotifs(){
   if(!Array.isArray(list))list=[];
   var unseen=list.filter(function(n){return !n.is_read;}).length;
   var html='<div class="pghd" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div class="pg-t">الإشعارات</div><div class="pg-s">'+unseen+' غير مقروء</div></div>';
-  if(unseen)html+='<button class="btn-sm bs-p" onclick="_markRead()">تحديد الكل مقروء</button>';
+  if(unseen)html+='<button class="mark-all-btn" onclick="_markRead()">تحديد الكل مقروء</button>';
   html+='</div><div class="card card-accent">';
   if(list.length){
     list.forEach(function(n){
