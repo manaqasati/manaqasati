@@ -208,7 +208,9 @@ tbody tr:hover{background:var(--bg)}
 .dash-hero-item .sub{font-size:11px;color:var(--gold-soft);font-weight:700;margin-top:3px}
 .dash-hero-divider{width:1px;background:rgba(255,255,255,.14)}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.kpi{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--sh1);transition:.25s cubic-bezier(.4,0,.2,1)}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--sh1);transition:.25s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle at top right,rgba(91,108,255,.06),transparent 70%);pointer-events:none}
+.kpi:hover{box-shadow:var(--sh3);transform:translateY(-3px);border-color:var(--p-mid)}
 .kpi:hover{box-shadow:var(--sh3);transform:translateY(-2px)}
 .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .kpi-ic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center}
@@ -226,7 +228,7 @@ tbody tr:hover{background:var(--bg)}
 .rank-bar-wrap{flex:1.4;height:8px;background:var(--bg);border-radius:6px;overflow:hidden;max-width:160px}
 .rank-bar{height:100%;background:linear-gradient(90deg,var(--p),var(--accent));border-radius:6px}
 .rank-val{font-size:13px;font-weight:800;color:var(--p);min-width:28px;text-align:left}
-.chart-bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding:8px 4px 0}
+.chart-bars{display:flex;align-items:center;justify-content:center;min-height:200px;padding:12px 8px 0}
 .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
 .chart-bar{width:100%;max-width:38px;background:linear-gradient(to top,var(--p),var(--accent));border-radius:7px 7px 0 0;transition:.4s cubic-bezier(.4,0,.2,1);min-height:4px;position:relative}
 .chart-bar:hover{filter:brightness(1.1)}
@@ -486,15 +488,46 @@ function loadDashboard(){
     var chart=document.getElementById('signup-chart');
     if(chart){
       if(daily.length){
+        var days=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
         var max=Math.max.apply(null,daily.map(function(d){return d.n;}))||1;
-        var days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-        chart.innerHTML=daily.map(function(d){
-          var h=Math.round((d.n/max)*130);
-          var dt=new Date(d.day);var dayName=days[dt.getDay()];
-          return '<div class="chart-col"><div class="chart-v">'+d.n+'</div><div class="chart-bar" style="height:'+h+'px"></div><div class="chart-d">'+dayName+'</div></div>';
+        var W=520,H=180,pad=30,n=daily.length;
+        var stepX=(W-pad*2)/(Math.max(1,n-1));
+        var pts=daily.map(function(d,i){
+          var x=pad+i*stepX;
+          var y=H-pad-((d.n/max)*(H-pad*2));
+          return {x:x,y:y,n:d.n,day:days[new Date(d.day).getDay()]};
+        });
+        // منحنى ناعم (smooth path)
+        function smooth(p){
+          if(p.length<2)return '';
+          var d='M'+p[0].x+','+p[0].y;
+          for(var i=0;i<p.length-1;i++){
+            var c=(p[i].x+p[i+1].x)/2;
+            d+=' C'+c+','+p[i].y+' '+c+','+p[i+1].y+' '+p[i+1].x+','+p[i+1].y;
+          }
+          return d;
+        }
+        var line=smooth(pts);
+        var area=line+' L'+pts[n-1].x+','+(H-pad)+' L'+pts[0].x+','+(H-pad)+' Z';
+        var dots=pts.map(function(p){
+          return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#fff" stroke="var(--accent)" stroke-width="2.5"><title>'+p.day+': '+p.n+'</title></circle>';
         }).join('');
+        var labels=pts.map(function(p){
+          return '<text x="'+p.x+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Tajawal">'+p.day+'</text>';
+        }).join('');
+        var vlabels=pts.map(function(p){
+          return p.n>0?'<text x="'+p.x+'" y="'+(p.y-12)+'" text-anchor="middle" font-size="11" font-weight="800" fill="var(--p)" font-family="Tajawal">'+p.n+'</text>':'';
+        }).join('');
+        chart.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="overflow:visible">'+
+          '<defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/>'+
+          '<stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/></linearGradient></defs>'+
+          '<path d="'+area+'" fill="url(#areaG)"/>'+
+          '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+
+          dots+labels+vlabels+
+        '</svg>';
       } else {
-        chart.innerHTML='<div style="margin:auto;color:var(--muted);font-size:13px">لا توجد تسجيلات حديثة</div>';
+        chart.innerHTML='<div style="margin:auto;color:var(--muted);font-size:13px;padding:40px;text-align:center">لا توجد تسجيلات حديثة</div>';
       }
     }
   }).catch(function(){var kg=document.getElementById('kpi-grid');if(kg)kg.innerHTML=emptyState('تعذر تحميل الإحصائيات');});
