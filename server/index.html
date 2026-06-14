@@ -114,7 +114,7 @@ html{scroll-behavior:smooth}
 .res-lbl{font-size:12px;color:var(--hint);margin-bottom:10px}
 
 /* ══ CARDS GRID ══ */
-.pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.pg-grid{display:flex;flex-direction:column;gap:10px}
 .pc{background:var(--white);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--sh-sm);cursor:pointer;transition:transform .3s var(--ease-out),box-shadow .3s var(--ease-out),border-color .3s var(--ease);display:flex;flex-direction:column}
 .pc:hover{transform:translateY(-4px);box-shadow:var(--sh-lg);border-color:var(--p-mid)}
 .pc:hover .pc-img{transform:scale(1.04)}
@@ -245,6 +245,30 @@ html{scroll-behavior:smooth}
 @media(max-width:740px){.how-grid{grid-template-columns:1fr;gap:14px}.how-head h2{font-size:25px}.how-section{padding:44px 16px}}
 
 .chip-prem{background:#FBF5E6;color:#A87000;border:1px solid #FFE5A0}
+
+/* بطاقة المشروع — أسلوب حراج الأفقي */
+.hzp{display:flex;align-items:stretch;gap:14px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:12px;cursor:pointer;transition:transform .25s var(--ease-out),box-shadow .25s var(--ease-out),border-color .25s var(--ease);animation:cardIn .5s var(--ease-out) backwards}
+.hzp:hover{transform:translateY(-2px);box-shadow:var(--sh-md);border-color:var(--p-mid)}
+.hzp-img{position:relative;width:88px;height:88px;border-radius:12px;overflow:hidden;flex-shrink:0;background:var(--bg)}
+.hzp-img img{width:100%;height:100%;object-fit:cover}
+.hzp-noimg{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0A1628,var(--p));color:var(--gold)}
+.hzp-cat-ic{transform:scale(1.3)}
+.hzp-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
+.hzp-open{background:rgba(14,159,110,.9)}
+.hzp-done{background:rgba(100,116,139,.85)}
+.hzp-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.hzp-title{font-size:15px;font-weight:800;color:var(--text);line-height:1.4;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hzp:hover .hzp-title{color:var(--p)}
+.hzp-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:11px;color:var(--muted);font-weight:600}
+.hzp-meta>span{position:relative;padding-left:7px}
+.hzp-meta>span:not(:last-child)::after{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;background:var(--border2);transform:translateY(-50%)}
+.hzp-cat{color:var(--gold-d);font-weight:700}
+.hzp-side{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:8px;flex-shrink:0;padding-left:4px}
+.hzp-price{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-.3px;line-height:1;white-space:nowrap;text-align:left}
+.hzp-price span{font-size:9px;font-weight:600;color:var(--muted);margin-right:2px}
+.hzp-bid{padding:8px 16px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:'Tajawal',sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(201,146,10,.3);transition:all .2s var(--ease)}
+.hzp-bid:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(201,146,10,.4)}
+@media(max-width:560px){.hzp-img{width:72px;height:72px}.hzp-title{font-size:13.5px}.hzp-bid{padding:7px 12px;font-size:11px}.hzp-price{font-size:14px}}
 </style>
 </head>
 <body>
@@ -630,23 +654,27 @@ function card(p){
         + badge
       + '</div>');
 
-  return '<div class="pc" data-slug="' + projSlug + '" onclick="goProject(this)">'
-    + hdr
-    + '<div class="pc-body">'
-    + (p.project_number ? '<div class="pc-num">' + p.project_number + '</div>' : '')
-    + '<div class="pc-title">' + p.title + '</div>'
-    + '<div class="pc-chips">'
-    + (p.city ? '<span class="chip chip-g">' + p.city + '</span>' : '')
-    + (p.category ? '<span class="chip chip-b">' + p.category + '</span>' : '')
-    + '<span class="chip chip-d"><bdi>' + bidN + '</bdi> ' + (bidN===1?'عرض':'عروض') + '</span>'
-    + (clientPrem ? '<span class="chip chip-prem">عميل مميز</span>' : '')
+  // أسلوب حراج الأفقي: صورة مربعة يسار + محتوى يمين
+  var imgBox = img
+    ? '<div class="hzp-img"><img src="' + img + '" loading="lazy"><span class="hzp-badge ' + (isOpen?'hzp-open':'hzp-done') + '">' + (isOpen?'مفتوح':'مغلق') + '</span></div>'
+    : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">' + catIcon + '</span><span class="hzp-badge ' + (isOpen?'hzp-open':'hzp-done') + '">' + (isOpen?'مفتوح':'مغلق') + '</span></div>';
+
+  return '<div class="hzp" data-slug="' + projSlug + '" onclick="goProject(this)">'
+    + imgBox
+    + '<div class="hzp-body">'
+      + '<div class="hzp-title">' + p.title + '</div>'
+      + '<div class="hzp-meta">'
+        + (p.category ? '<span class="hzp-cat">' + p.category + '</span>' : '')
+        + (p.city ? '<span>' + p.city + '</span>' : '')
+        + '<span>' + bidN + ' ' + (bidN===1?'عرض':'عروض') + '</span>'
+        + '<span>' + ago(p.created_at) + '</span>'
+      + '</div>'
     + '</div>'
-    + '<div class="pc-footer">'
-    + '<div><div class="pc-price">' + (p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + ' ر.س' : 'مفتوح') + '</div><div class="pc-time">' + ago(p.created_at) + '</div></div>'
-    + (isOpen
-        ? '<button onclick="event.stopPropagation();handleBidClick(' + p.id + ')" style="display:inline-flex;align-items:center;padding:8px 14px;background:#C9920A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:Tajawal,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(201,146,10,.35);flex-shrink:0;white-space:nowrap">تقديم عرض</button>'
-        : '<span style="font-size:11px;color:var(--muted)">مكتمل</span>')
-    + '</div></div></div>';
+    + '<div class="hzp-side">'
+      + '<div class="hzp-price">' + (p.budget_max ? Number(p.budget_max).toLocaleString('en-US') + '<span>ر.س</span>' : '<span style="font-size:12px">مفتوح</span>') + '</div>'
+      + (isOpen ? '<button onclick="event.stopPropagation();handleBidClick(' + p.id + ')" class="hzp-bid">تقديم عرض</button>' : '')
+    + '</div>'
+  + '</div>';
 }
 
 
