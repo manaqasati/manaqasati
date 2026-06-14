@@ -300,6 +300,22 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* زر تحديد الكل */
 .mark-all-btn{font-size:12px;font-weight:700;color:var(--p);background:var(--p-light);border:none;padding:8px 14px;border-radius:9px;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);white-space:nowrap}
 .mark-all-btn:hover{background:var(--p-mid)}
+
+/* تصفح المشاريع — أسلوب أفقي مدمج (حراج) */
+.hz-item{display:flex;align-items:center;gap:13px;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s var(--ease,ease)}
+.hz-item:hover{border-color:var(--p-mid);box-shadow:var(--sh-md,0 4px 12px rgba(11,18,32,.08))}
+.hz-img{width:64px;height:64px;border-radius:11px;overflow:hidden;flex-shrink:0;background:var(--bg)}
+.hz-img img{width:100%;height:100%;object-fit:cover}
+.hz-noimg{display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--p-mid);background:var(--p-light)}
+.hz-body{flex:1;min-width:0}
+.hz-title{font-size:14px;font-weight:800;color:var(--p);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hz-item:hover .hz-title{text-decoration:underline}
+.hz-cat{font-size:11px;color:var(--gold-d);font-weight:700;margin-top:3px}
+.hz-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:11px;color:var(--muted);font-weight:600;margin-top:5px}
+.hz-meta span{position:relative;padding-left:7px}
+.hz-meta span:not(:last-child)::after{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;background:var(--border2);transform:translateY(-50%)}
+.hz-price{flex-shrink:0;font-size:15px;font-weight:900;color:var(--text);text-align:left;letter-spacing:-.3px;line-height:1.2}
+.hz-price span{display:block;font-size:9px;font-weight:600;color:var(--muted);margin-top:1px}
 </style>
 </head>
 <body>
@@ -747,42 +763,30 @@ function _filterBrowse(){
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('لا يوجد مشاريع متاحة حالياً. تفقد لاحقاً!','');
   return list.map(function(r){
-    // الموعد النهائي (نص بسيط)
-    var dlText='';
-    if(r.deadline){
-      var dl=new Date(r.deadline),today=new Date();
-      var diff=Math.ceil((dl-today)/(1000*60*60*24));
-      dlText=diff<0?'انتهى الموعد':diff===0?'ينتهي اليوم':diff===1?'يتبقى يوم':'يتبقى '+diff+' يوم';
-    }
-    // مقتطف الوصف
-    var snippet=r.description?_esc(r.description).slice(0,120)+(r.description.length>120?'...':''):'';
-    // سطر المعلومات (نص نظيف مفصول بنقاط — نمط مستقل)
+    var img=r.thumbnail||r.image_url||(r.images&&r.images[0])||null;
+    // سطر المعلومات (نمط حراج: مدينة · وقت · عروض)
     var meta=[];
-    if(r.client_name)meta.push(_esc(r.client_name));
+    if(r.city)meta.push(_esc(r.city));
     meta.push(timeAgoP(r.created_at));
     meta.push(parseInt(r.bid_count||0)+' عرض');
-    if(r.city)meta.push(_esc(r.city));
-
-    var h='<div class="bz-item" onclick="_viewProj('+r.id+')">';
-    // العنوان + السعر
-    h+='<div class="bz-top">';
-    h+='<div class="bz-titwrap">';
-    if(r.category)h+='<div class="bz-cat">'+_esc(r.category)+'</div>';
-    h+='<div class="bz-title">'+_esc(r.title)+'</div>';
+    // الصورة أو حرف أول
+    var imgHtml=img
+      ?'<div class="hz-img"><img src="'+img+'" loading="lazy"></div>'
+      :'<div class="hz-img hz-noimg">'+(r.category?_esc(r.category).charAt(0):'م')+'</div>';
+    var h='<div class="hz-item" onclick="_viewProj('+r.id+')">';
+    h+=imgHtml;
+    h+='<div class="hz-body">';
+    h+='<div class="hz-title">'+_esc(r.title)+'</div>';
+    if(r.category)h+='<div class="hz-cat">'+_esc(r.category)+'</div>';
+    h+='<div class="hz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
     h+='</div>';
-    if(r.budget_max)h+='<div class="bz-price">'+fmtN(r.budget_max)+'<span class="bz-cur">ر.س</span></div>';
-    h+='</div>';
-    // المقتطف
-    if(snippet)h+='<div class="bz-desc">'+snippet+'</div>';
-    // سطر المعلومات
-    h+='<div class="bz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
-    if(dlText)h+='<div class="bz-deadline">'+dlText+'</div>';
-    // زر التقديم (يوقف الانتشار عشان ما يفتح التفاصيل)
-    h+='<div class="bz-action"><button onclick="event.stopPropagation();_openBidNudge('+r.id+','+(r.bid_count||0)+')" class="bz-bid">تقديم عرض</button></div>';
+    // السعر يسار
+    if(r.budget_max)h+='<div class="hz-price">'+fmtN(r.budget_max)+'<span>ر.س</span></div>';
     h+='</div>';
     return h;
   }).join('');
 }
+
 
 
 function _openBidNudge(projId,bidCount){
