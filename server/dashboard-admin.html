@@ -197,13 +197,14 @@ tbody tr:hover{background:var(--bg)}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 
 /* DASHBOARD PRO */
-.dash-hero{background:linear-gradient(120deg,#1B2B4D,#26406E 70%,#2E4E85);border-radius:20px;padding:28px 30px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:var(--sh3)}
+.dash-hero{background:linear-gradient(125deg,#13203B 0%,#1B2B4D 45%,#26406E 100%);border-radius:22px;padding:30px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 20px 48px rgba(19,32,59,.3)}
+.dash-hero-net{position:absolute;inset:0;opacity:.5;pointer-events:none}
 .dash-hero::before{content:'';position:absolute;top:-40px;left:-30px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,146,10,.18),transparent 65%);pointer-events:none}
 .dash-hero::after{content:'';position:absolute;bottom:-60px;right:10%;width:180px;height:180px;background:radial-gradient(circle,rgba(91,108,255,.14),transparent 65%);pointer-events:none}
 .dash-hero-title{font-size:15px;color:rgba(255,255,255,.7);font-weight:600;position:relative}
 .dash-hero-row{display:flex;flex-wrap:wrap;gap:30px;margin-top:18px;position:relative}
 .dash-hero-item{position:relative}
-.dash-hero-item .v{font-size:34px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1.5px}
+.dash-hero-item .v{font-size:38px;font-weight:900;color:#fff;line-height:1;letter-spacing:-2px}
 .dash-hero-item .l{font-size:12.5px;color:rgba(255,255,255,.6);font-weight:600;margin-top:6px}
 .dash-hero-item .sub{font-size:11px;color:var(--gold-soft);font-weight:700;margin-top:3px}
 .dash-hero-divider{width:1px;background:rgba(255,255,255,.14)}
@@ -218,6 +219,7 @@ tbody tr:hover{background:var(--bg)}
 .kpi-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:14px;background:var(--bg);color:var(--muted)}
 .kpi-v{font-size:30px;font-weight:800;color:var(--text);letter-spacing:-1.2px;line-height:1}
 .kpi-l{font-size:13px;color:var(--muted);font-weight:500;margin-top:6px}
+.kpi-spark{width:100%;height:28px;margin-top:10px;display:block}
 .dash-2col{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;margin-bottom:20px}
 @media(max-width:980px){.dash-2col{grid-template-columns:1fr}}
 .rank-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
@@ -455,6 +457,38 @@ function showPage(pg,el){
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
+
+// شبكة الكوكبة الحيّة (هوية مناقصة)
+function heroNet(){
+  var cv=document.getElementById('heroNetCanvas');
+  if(!cv)return;
+  var ctx=cv.getContext('2d'),W,H,pts=[],raf;
+  function size(){
+    var r=cv.parentElement.getBoundingClientRect();
+    W=cv.width=r.width;H=cv.height=r.height;
+    var n=Math.min(30,Math.floor(W/40));pts=[];
+    for(var i=0;i<n;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,g:Math.random()<.2});
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<pts.length;i++){
+      var p=pts[i];p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      for(var j=i+1;j<pts.length;j++){
+        var q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<110){var o=(1-d/110)*.45;
+          ctx.strokeStyle=(p.g||q.g?'rgba(201,146,10,':'rgba(255,255,255,')+o+')';
+          ctx.lineWidth=p.g||q.g?1:.5;
+          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
+      }
+    }
+    for(var k=0;k<pts.length;k++){var pt=pts[k];
+      ctx.fillStyle=(pt.g?'rgba(201,146,10,.9)':'rgba(255,255,255,.5)');
+      ctx.beginPath();ctx.arc(pt.x,pt.y,pt.g?2.4:1.4,0,7);ctx.fill();}
+    raf=requestAnimationFrame(draw);
+  }
+  size();draw();
+}
 function loadDashboard(){
   fetch(API+'/api/admin/stats',hdr()).then(function(r){return r.json();}).then(function(s){
     var t=s.today||{},wk=s.week||{},mo=s.month||{};
@@ -462,7 +496,8 @@ function loadDashboard(){
     var hero=document.getElementById('dash-hero');
     if(hero){
       hero.innerHTML='<div class="dash-hero">'+
-        '<div class="dash-hero-title">نظرة عامة على نشاط المنصة اليوم</div>'+
+        '<canvas class="dash-hero-net" id="heroNetCanvas"></canvas>'+
+        '<div class="dash-hero-title" style="position:relative">نظرة عامة على نشاط المنصة اليوم</div>'+
         '<div class="dash-hero-row">'+
           '<div class="dash-hero-item"><div class="v">'+(t.users||0)+'</div><div class="l">مسجّل جديد اليوم</div><div class="sub">'+(t.providers||0)+' مزود · '+(t.clients||0)+' عميل</div></div>'+
           '<div class="dash-hero-divider"></div>'+
@@ -471,6 +506,7 @@ function loadDashboard(){
           '<div class="dash-hero-item"><div class="v">'+(t.bids||0)+'</div><div class="l">عرض جديد اليوم</div><div class="sub">'+(mo.requests||0)+' مشروع هذا الشهر</div></div>'+
         '</div>'+
       '</div>';
+      setTimeout(heroNet,50);
     }
     // ═══ KPIs — الإجمالي ═══
     var kpis=[
@@ -483,8 +519,17 @@ function loadDashboard(){
     ];
     var kg=document.getElementById('kpi-grid');
     if(kg){
-      kg.innerHTML=kpis.map(function(k){
-        return '<div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:'+k.bg+'"><svg fill="none" stroke="'+k.c+'" stroke-width="2" viewBox="0 0 24 24">'+k.ic+'</svg></div>'+(k.pill?'<span class="kpi-pill">'+k.pill+'</span>':'')+'</div><div class="kpi-v">'+(k.val||0)+'</div><div class="kpi-l">'+k.lbl+'</div></div>';
+      // sparkline من بيانات الأيام
+      function spark(color){
+        var dd=(s.daily_signups||[]);
+        if(dd.length<2)return '';
+        var vals=dd.map(function(x){return x.n;});
+        var mx=Math.max.apply(null,vals)||1,w=100,h=28;
+        var pts=vals.map(function(v,i){return (i/(vals.length-1)*w)+','+(h-(v/mx)*h*.85-2);});
+        return '<svg class="kpi-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/></svg>';
+      }
+      kg.innerHTML=kpis.map(function(k,i){
+        return '<div class="kpi"><div class="kpi-top"><div class="kpi-ic" style="background:'+k.bg+'"><svg fill="none" stroke="'+k.c+'" stroke-width="2" viewBox="0 0 24 24">'+k.ic+'</svg></div>'+(k.pill?'<span class="kpi-pill">'+k.pill+'</span>':'')+'</div><div class="kpi-v">'+(k.val||0)+'</div><div class="kpi-l">'+k.lbl+'</div>'+(i<2?spark(k.c):'')+'</div>';
       }).join('');
     }
     // ═══ أكثر التخصصات (شريط) ═══
