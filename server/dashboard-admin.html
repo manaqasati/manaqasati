@@ -255,6 +255,12 @@ tbody tr:hover{background:var(--bg)}
 .chart-badge{font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
 .chart-badge.up{background:var(--green-l);color:var(--green)}
 .chart-badge.down{background:var(--red-l);color:var(--red)}
+
+/* فلتر تبديل الرسم */
+.chart-switch{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px;gap:2px}
+.cs-btn{padding:6px 14px;border:none;background:none;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:'Tajawal',sans-serif;transition:.2s cubic-bezier(.4,0,.2,1)}
+.cs-btn.on{background:var(--white);color:var(--p);box-shadow:var(--sh1)}
+.cs-btn:hover:not(.on){color:var(--text)}
 </style>
 </head>
 <body>
@@ -299,7 +305,7 @@ tbody tr:hover{background:var(--bg)}
       <div class="kpi-grid" id="kpi-grid"><div class="loading" style="grid-column:1/-1"><div class="spinner"></div>جاري التحميل...</div></div>
       <div class="donut-row" id="donut-row"></div>
       <div class="dash-2col">
-        <div class="card"><div class="card-head"><h3>نمو التسجيلات — آخر 7 أيام</h3><span class="chart-badge" id="chart-trend"></span></div><div class="card-body"><div class="chart-bars" id="signup-chart"></div></div></div>
+        <div class="card"><div class="card-head"><h3>نمو التسجيلات</h3><div class="chart-switch"><button class="cs-btn on" data-range="daily" onclick="switchChart(this,'daily')">يومي</button><button class="cs-btn" data-range="monthly" onclick="switchChart(this,'monthly')">شهري</button><button class="cs-btn" data-range="yearly" onclick="switchChart(this,'yearly')">سنوي</button></div></div><div class="card-body"><div class="chart-bars" id="signup-chart"></div></div></div>
         <div class="card"><div class="card-head"><h3>أكثر التخصصات</h3></div><div class="card-body" id="top-specs"></div></div>
       </div>
       <div class="dash-2col">
@@ -587,52 +593,44 @@ function loadDashboard(){
       }).join(''):'<div style="color:var(--muted);font-size:13px;padding:14px 0;text-align:center">لا يوجد بيانات</div>';
     }
     // ═══ الرسم البياني ═══
-    var daily=s.daily_signups||[];
-    var chart=document.getElementById('signup-chart');
-    if(chart){
-      if(daily.length){
-        var days=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
-        var max=Math.max.apply(null,daily.map(function(d){return d.n;}))||1;
-        var W=520,H=180,pad=30,n=daily.length;
-        var stepX=(W-pad*2)/(Math.max(1,n-1));
-        var pts=daily.map(function(d,i){
-          var x=pad+i*stepX;
-          var y=H-pad-((d.n/max)*(H-pad*2));
-          return {x:x,y:y,n:d.n,day:days[new Date(d.day).getDay()]};
-        });
-        // منحنى ناعم (smooth path)
-        function smooth(p){
-          if(p.length<2)return '';
-          var d='M'+p[0].x+','+p[0].y;
-          for(var i=0;i<p.length-1;i++){
-            var c=(p[i].x+p[i+1].x)/2;
-            d+=' C'+c+','+p[i].y+' '+c+','+p[i+1].y+' '+p[i+1].x+','+p[i+1].y;
-          }
-          return d;
-        }
-        var line=smooth(pts);
-        var area=line+' L'+pts[n-1].x+','+(H-pad)+' L'+pts[0].x+','+(H-pad)+' Z';
-        var dots=pts.map(function(p){
-          return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#fff" stroke="var(--accent)" stroke-width="2.5"><title>'+p.day+': '+p.n+'</title></circle>';
-        }).join('');
-        var labels=pts.map(function(p){
-          return '<text x="'+p.x+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Tajawal">'+p.day+'</text>';
-        }).join('');
-        var vlabels=pts.map(function(p){
-          return p.n>0?'<text x="'+p.x+'" y="'+(p.y-12)+'" text-anchor="middle" font-size="11" font-weight="800" fill="var(--p)" font-family="Tajawal">'+p.n+'</text>':'';
-        }).join('');
-        chart.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="overflow:visible">'+
-          '<defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">'+
-          '<stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/>'+
-          '<stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/></linearGradient></defs>'+
-          '<path d="'+area+'" fill="url(#areaG)"/>'+
-          '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+
-          dots+labels+vlabels+
-        '</svg>';
-      } else {
-        chart.innerHTML='<div style="margin:auto;color:var(--muted);font-size:13px;padding:40px;text-align:center">لا توجد تسجيلات حديثة</div>';
+    // ═══ بيانات الرسوم الزمنية (يومي/شهري/سنوي) ═══
+    var days=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+    var monthsAr=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    window._chartData={
+      daily:(s.daily_signups||[]).map(function(d){return {n:d.users!=null?d.users:d.n,label:days[new Date(d.day).getDay()]};}),
+      monthly:(s.monthly_signups||[]).map(function(d){var m=parseInt(d.period.split('-')[1])-1;return {n:d.users,label:monthsAr[m]};}),
+      yearly:(s.yearly_signups||[]).map(function(d){return {n:d.users,label:d.period};})
+    };
+    window._drawChart=function(range){
+      var data=window._chartData[range]||[];
+      var chart=document.getElementById('signup-chart');
+      if(!chart)return;
+      if(!data.length){chart.innerHTML='<div style="margin:auto;color:var(--muted);font-size:13px;padding:40px;text-align:center">لا توجد بيانات لهذه الفترة</div>';return;}
+      var max=Math.max.apply(null,data.map(function(d){return d.n;}))||1;
+      var W=520,H=190,padX=24,padT=28,padB=34,n=data.length;
+      var stepX=(W-padX*2)/(Math.max(1,n-1));
+      var pts=data.map(function(d,i){
+        return {x:padX+i*stepX,y:H-padB-((d.n/max)*(H-padT-padB)),n:d.n,label:d.label};
+      });
+      function smooth(p){
+        if(p.length<2)return p.length?'M'+p[0].x+','+p[0].y:'';
+        var d='M'+p[0].x+','+p[0].y;
+        for(var i=0;i<p.length-1;i++){var c=(p[i].x+p[i+1].x)/2;d+=' C'+c+','+p[i].y+' '+c+','+p[i+1].y+' '+p[i+1].x+','+p[i+1].y;}
+        return d;
       }
-    }
+      // خطوط شبكية أفقية
+      var grid='';
+      for(var g=0;g<=3;g++){var gy=padT+(H-padT-padB)*g/3;grid+='<line x1="'+padX+'" y1="'+gy+'" x2="'+(W-padX)+'" y2="'+gy+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4" opacity="0.5"/>';}
+      var line=smooth(pts);
+      var area=line+' L'+pts[n-1].x+','+(H-padB)+' L'+pts[0].x+','+(H-padB)+' Z';
+      var dots=pts.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#fff" stroke="var(--accent)" stroke-width="2.5"><title>'+p.label+': '+p.n+'</title></circle>';}).join('');
+      var labels=pts.map(function(p){return '<text x="'+p.x+'" y="'+(H-12)+'" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="Tajawal" font-weight="600">'+p.label+'</text>';}).join('');
+      var vlabels=pts.map(function(p){return p.n>0?'<text x="'+p.x+'" y="'+(p.y-11)+'" text-anchor="middle" font-size="11" font-weight="800" fill="var(--p)" font-family="Tajawal">'+p.n+'</text>':'';}).join('');
+      chart.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="overflow:visible">'+
+        '<defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.01"/></linearGradient></defs>'+
+        grid+'<path d="'+area+'" fill="url(#areaG)"/><path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+dots+labels+vlabels+'</svg>';
+    };
+    window._drawChart('daily');
   }).catch(function(){var kg=document.getElementById('kpi-grid');if(kg)kg.innerHTML=emptyState('تعذر تحميل الإحصائيات');});
 
   fetch(API+'/api/admin/users',hdr()).then(function(r){return r.json();}).then(function(users){
@@ -1064,6 +1062,12 @@ function renderLogs(){
     }).join('')+'</tbody></table>';
 }
 
+
+function switchChart(btn,range){
+  document.querySelectorAll('.cs-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  if(window._drawChart)window._drawChart(range);
+}
 </script>
 
 <div class="cf-overlay" id="confirmOverlay">
