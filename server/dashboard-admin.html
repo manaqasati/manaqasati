@@ -364,8 +364,8 @@ tbody tr:hover{background:var(--bg)}
       <div class="fld"><label>العنوان</label><input id="re-title"></div>
       <div class="fld"><label>التفاصيل</label><textarea id="re-desc"></textarea></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="fld"><label>التصنيف</label><input id="re-cat"></div>
-        <div class="fld"><label>المدينة</label><input id="re-city"></div>
+        <div class="fld"><label>التصنيف</label><select id="re-cat"><option value="">اختر التصنيف</option><option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>جبس وطباشير</option><option>مكافحة حشرات</option><option>بناء</option><option>أخرى</option></select></div>
+        <div class="fld"><label>المدينة</label><select id="re-city"><option value="">اختر المدينة</option></select></div>
       </div>
       <div class="fld"><label>الميزانية (ر.س)</label><input id="re-budget" type="number"></div>
       <div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
@@ -847,6 +847,12 @@ function openReqEdit(id){
   document.getElementById('re-title').value=r.title||'';
   document.getElementById('re-desc').value=r.description||'';
   document.getElementById('re-cat').value=r.category||'';
+  // ملء قائمة المدن
+  var citySel=document.getElementById('re-city');
+  if(citySel&&citySel.options.length<=1){
+    var regions=[{n:'الرياض',c:['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','وادي الدواسر']},{n:'مكة المكرمة',c:['جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الليث']},{n:'المدينة المنورة',c:['المدينة المنورة','ينبع','العلا','الوجه','ضباء','أملج']},{n:'القصيم',c:['بريدة','عنيزة','الرس','البكيرية','المذنب']},{n:'الشرقية',c:['الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن']},{n:'عسير',c:['أبها','خميس مشيط','بيشة','النماص','محايل عسير']},{n:'تبوك',c:['تبوك','تيماء','حقل']},{n:'حائل',c:['حائل','بقعاء','الشنان']},{n:'الحدود الشمالية',c:['عرعر','طريف','رفحاء']},{n:'الجوف',c:['سكاكا','دومة الجندل','القريات']},{n:'الباحة',c:['الباحة','بلجرشي','المندق','العقيق']},{n:'جازان',c:['جازان','صبيا','أبو عريش','صامطة']},{n:'نجران',c:['نجران','شرورة']}];
+    regions.forEach(function(reg){var og=document.createElement('optgroup');og.label=reg.n;reg.c.forEach(function(ct){var o=document.createElement('option');o.textContent=ct;og.appendChild(o);});citySel.appendChild(og);});
+  }
   document.getElementById('re-city').value=r.city||'';
   document.getElementById('re-budget').value=r.budget_max||'';
   document.getElementById('re-notes').value=r.admin_notes||'';
