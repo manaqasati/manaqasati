@@ -227,6 +227,22 @@ html{scroll-behavior:smooth}
 @keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,20px)}}
 @keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-20px)}}
 .hero-sub{font-size:12px;color:rgba(255,255,255,.45);margin-top:14px;font-weight:500}
+
+/* ══ HOW IT WORKS ══ */
+.how-section{background:var(--bg);padding:56px 18px;border-top:1px solid var(--border)}
+.how-inner{max-width:1000px;margin:0 auto}
+.how-head{text-align:center;margin-bottom:40px}
+.how-tag{display:inline-block;background:var(--gold-l);color:var(--gold-d);font-size:12px;font-weight:700;padding:6px 16px;border-radius:30px;margin-bottom:14px;border:1px solid var(--gold-soft)}
+.how-head h2{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px;margin-bottom:10px}
+.how-head p{font-size:15px;color:var(--muted);font-weight:500}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.how-card{background:var(--white);border:1px solid var(--border);border-radius:20px;padding:32px 24px;text-align:center;position:relative;transition:transform .3s var(--ease-out),box-shadow .3s var(--ease-out)}
+.how-card:hover{transform:translateY(-5px);box-shadow:var(--sh-lg)}
+.how-num{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 20px rgba(22,33,62,.25)}
+.how-card:nth-child(2) .how-num{background:linear-gradient(135deg,var(--gold),var(--gold-d));box-shadow:var(--sh-gold)}
+.how-card h3{font-size:18px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:-.3px}
+.how-card p{font-size:13.5px;color:var(--muted);line-height:1.8}
+@media(max-width:740px){.how-grid{grid-template-columns:1fr;gap:14px}.how-head h2{font-size:25px}.how-section{padding:44px 16px}}
 </style>
 </head>
 <body>
@@ -457,6 +473,34 @@ html{scroll-behavior:smooth}
         <div class="sk-card" style="border-radius:14px;height:180px"></div>
       </div>
       <div style="text-align:center;margin-top:20px"><button class="btn-more" id="prov-more" onclick="showMoreProv()" style="display:none">عرض المزيد <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="6 9 12 15 18 9"/></svg></button></div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-section">
+    <div class="how-inner">
+      <div class="how-head">
+        <div class="how-tag">بكل سهولة</div>
+        <h2>كيف تعمل مناقصة؟</h2>
+        <p>ثلاث خطوات بسيطة تفصلك عن إنجاز مشروعك</p>
+      </div>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-num">1</div>
+          <h3>انشر مشروعك</h3>
+          <p>اكتب تفاصيل مشروعك ومتطلباتك وميزانيتك في دقائق معدودة، مجاناً.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-num">2</div>
+          <h3>استقبل العروض</h3>
+          <p>يصلك عروض من مزودين موثوقين، قارن الأسعار والمدد والتقييمات بسهولة.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-num">3</div>
+          <h3>اختر الأنسب</h3>
+          <p>اختر العرض الأفضل لك، تواصل مع المزود مباشرة، وأنجز مشروعك بثقة.</p>
+        </div>
+      </div>
     </div>
   </div>
 
