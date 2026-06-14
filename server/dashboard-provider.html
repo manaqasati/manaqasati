@@ -267,6 +267,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .wz-cat{font-size:11px;font-weight:700;color:var(--gold-d);margin-bottom:4px}
 .wz-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:4px}
 .wz-note{font-size:12.5px;color:var(--text2);line-height:1.7;background:var(--bg);border-radius:10px;padding:11px 13px;margin-bottom:12px}
+
+/* إحصائيات المزود — خط علوي ملوّن */
+.stat-grid .sc{position:relative;overflow:hidden}
+.stat-grid .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-pend::before{background:var(--gold)}.sc-pend .sn{color:var(--gold-d)}
+.sc-acc::before{background:var(--green)}.sc-acc .sn{color:var(--green)}
+.sc-prog::before{background:#2E64C8}.sc-prog .sn{color:#2E64C8}
+.sc-done::before{background:var(--p)}.sc-done .sn{color:var(--p)}
 </style>
 </head>
 <body>
@@ -628,10 +636,10 @@ function _renderHome(data){
     html+='<button onclick="gotoPage(&quot;profile&quot;)" style="background:var(--gold);color:#fff;border:none;padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">أكمل الملف</button></div>';
   }
   html+='<div class="stat-grid">';
-  html+='<div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div>';
-  html+='<div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div>';
+  html+='<div class="sc sc-pend"><div class="sn">'+pend+'</div><div class="st">معلقة</div></div>';
+  html+='<div class="sc sc-acc"><div class="sn">'+acc+'</div><div class="st">مقبولة</div></div>';
+  html+='<div class="sc sc-prog"><div class="sn">'+prog+'</div><div class="st">جارية</div></div>';
+  html+='<div class="sc sc-done"><div class="sn">'+done+'</div><div class="st">مكتملة</div></div>';
   html+='</div>';
   var cardUrl='/pro/'+_me.id;
   var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
