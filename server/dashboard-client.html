@@ -84,8 +84,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .card-accent{border-top:3px solid var(--gold)}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
 .ch-l{display:flex;align-items:center;gap:8px}
-.ch h3{font-size:14px;font-weight:800;color:var(--text)}
-.ch-link{font-size:12px;color:var(--p);font-weight:700;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif}
+.ch h3{font-size:15.5px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.ch-link{font-size:12.5px;color:var(--p);font-weight:700;background:var(--p-light);border:none;cursor:pointer;font-family:'Tajawal',sans-serif;padding:6px 12px;border-radius:8px;transition:all .2s var(--ease,ease);display:inline-flex;align-items:center;gap:4px}
+.ch-link:hover{background:var(--p-mid)}
 .ri{background:var(--white);border:1.5px solid var(--border);border-right:4px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:all .2s;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;position:relative;overflow:hidden}
 .ri:hover{border-color:var(--p-mid);border-right-color:var(--p);box-shadow:0 4px 16px rgba(27,58,107,.1);transform:translateY(-1px)}
 .ri-title{font-size:14px;font-weight:800;color:var(--text);margin-bottom:7px;line-height:1.4}
@@ -312,24 +313,23 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bs-value.gold{color:var(--gold-d)}
 .bs-unit{font-size:10px;font-weight:600;color:var(--hint)}
 
-/* إحصائيات بأيقونات (وضوح) */
+/* إحصائيات — خط علوي ملوّن (وضوح نظيف) */
 .sc{position:relative;overflow:hidden}
-.sc-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
-.sc-all .sc-ic{background:var(--p-light);color:var(--p)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-all::before{background:var(--p)}
 .sc-all .sn{color:var(--p)}
-.sc-open .sc-ic{background:var(--green-l);color:var(--green)}
+.sc-open::before{background:var(--green)}
 .sc-open .sn{color:var(--green)}
-.sc-prog .sc-ic{background:#EFF4FF;color:#2E64C8}
+.sc-prog::before{background:#2E64C8}
 .sc-prog .sn{color:#2E64C8}
-.sc-done .sc-ic{background:var(--gold-l);color:var(--gold-d)}
+.sc-done::before{background:var(--gold)}
 .sc-done .sn{color:var(--gold-d)}
 
 /* بطاقة الطلب — وضوح نمط مستقل */
-.ri-info{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:9px}
-.rinf{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;font-weight:600}
-.rinf svg{opacity:.6;flex-shrink:0}
+.ri-info{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+.rinf{font-size:11.5px;color:var(--muted);font-weight:600;position:relative;padding-left:8px}
+.rinf:not(:last-child)::after{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;background:var(--border2);transform:translateY(-50%)}
 .rinf.gold{color:var(--gold-d);font-weight:800}
-.rinf.gold svg{opacity:.9}
 .ri-bids.has-bids{background:linear-gradient(135deg,var(--green),#0c8a5f);box-shadow:0 4px 12px rgba(14,159,110,.3)}
 .ri-bids.has-bids .ri-bids-num,.ri-bids.has-bids .ri-bids-lbl{color:#fff}
 .ri-meta{margin-bottom:0}
@@ -430,10 +430,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="hero-btn" onclick="show('new',null,'new')">+ طلب جديد</button>
       </div>
       <div class="stat-grid">
-        <div class="sc sc-all"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
-        <div class="sc sc-open"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="sn" id="s-open">0</div><div class="st">مفتوح</div></div>
-        <div class="sc sc-prog"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></div><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
-        <div class="sc sc-done"><div class="sc-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div><div class="sn" id="s-done">0</div><div class="st">مكتمل</div></div>
+        <div class="sc sc-all"><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
+        <div class="sc sc-open"><div class="sn" id="s-open">0</div><div class="st">مفتوح</div></div>
+        <div class="sc sc-prog"><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
+        <div class="sc sc-done"><div class="sn" id="s-done">0</div><div class="st">مكتمل</div></div>
       </div>
       <div class="card card-accent">
         <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
@@ -752,10 +752,10 @@ function riCard(r,actions){
     +'<div class="ri-title">'+esc(r.title)+'</div>'
     +'<div class="ri-meta">'+stTag(r.status)+'</div>'
     +'<div class="ri-info">'
-    +(r.category?'<span class="rinf"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.6 7.4l-8-4.6a1 1 0 00-1 0l-8 4.6a1 1 0 00-.6.9v8.4a1 1 0 00.6.9l8 4.6a1 1 0 001 0l8-4.6a1 1 0 00.6-.9V8.3a1 1 0 00-.6-.9z"/></svg>'+esc(r.category)+'</span>':'')
-    +(r.city?'<span class="rinf"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(r.city)+'</span>':'')
-    +(r.budget_max?'<span class="rinf gold"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>'+fmtN(r.budget_max)+' ر.س</span>':'')
-    +'<span class="rinf"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'+timeAgo(r.created_at)+'</span>'
+    +(r.category?'<span class="rinf">'+esc(r.category)+'</span>':'')
+    +(r.city?'<span class="rinf">'+esc(r.city)+'</span>':'')
+    +(r.budget_max?'<span class="rinf gold">'+fmtN(r.budget_max)+' ر.س</span>':'')
+    +'<span class="rinf">'+timeAgo(r.created_at)+'</span>'
     +'</div>'
     +'</div>'
     +'<div class="ri-bids'+(bidCount>0?' has-bids':'')+'"><div class="ri-bids-num">'+bidCount+'</div><div class="ri-bids-lbl">عرض</div></div>';
