@@ -1534,6 +1534,29 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       SELECT created_at::date as day, COUNT(*)::int as n
       FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
       GROUP BY created_at::date ORDER BY day`);
+    // ═══ سلاسل زمنية: شهري (12 شهر) + سنوي (5 سنوات) ═══
+    let monthly={rows:[]}, yearly={rows:[]}, dailyReq={rows:[]};
+    try {
+      monthly = await pool.query(`
+        SELECT to_char(date_trunc('month', created_at),'YYYY-MM') as period,
+               COUNT(*)::int as users,
+               COUNT(*) FILTER (WHERE role='provider')::int as providers
+        FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
+        GROUP BY period ORDER BY period`);
+    } catch(e){ console.error('monthly:', e.message); }
+    try {
+      yearly = await pool.query(`
+        SELECT to_char(date_trunc('year', created_at),'YYYY') as period,
+               COUNT(*)::int as users
+        FROM users WHERE created_at >= date_trunc('year', CURRENT_DATE) - INTERVAL '4 years'
+        GROUP BY period ORDER BY period`);
+    } catch(e){ console.error('yearly:', e.message); }
+    try {
+      dailyReq = await pool.query(`
+        SELECT created_at::date as day, COUNT(*)::int as n
+        FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
+        GROUP BY created_at::date ORDER BY day`);
+    } catch(e){ console.error('dailyReq:', e.message); }
     // أكثر التخصصات (محمي — لو فشل لا يكسر باقي الإحصائيات)
     let topSpecs={rows:[]}, topCities={rows:[]};
     try {
@@ -1554,6 +1577,9 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       week:{ users:weekUsers, requests:weekRequests },
       month:{ users:monthUsers, requests:monthRequests },
       daily_signups: daily.rows,
+      daily_requests: dailyReq.rows,
+      monthly_signups: monthly.rows,
+      yearly_signups: yearly.rows,
       top_specialties: topSpecs.rows,
       top_cities: topCities.rows
     });
