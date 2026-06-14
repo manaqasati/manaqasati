@@ -234,6 +234,25 @@ tbody tr:hover{background:var(--bg)}
 .chart-bar:hover{filter:brightness(1.1)}
 .chart-v{font-size:12px;font-weight:800;color:var(--p)}
 .chart-d{font-size:10.5px;color:var(--muted);font-weight:600}
+
+/* DONUT CHARTS — مستوى عالمي */
+.donut-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.donut-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--sh1);display:flex;align-items:center;gap:18px;transition:.25s cubic-bezier(.4,0,.2,1)}
+.donut-card:hover{box-shadow:var(--sh3);transform:translateY(-3px);border-color:var(--p-mid)}
+.donut-svg{flex-shrink:0;position:relative}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut-center .dv{font-size:22px;font-weight:900;color:var(--text);line-height:1;letter-spacing:-.5px}
+.donut-center .dl{font-size:9px;color:var(--muted);font-weight:600;margin-top:2px}
+.donut-legend{flex:1;min-width:0}
+.donut-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px}
+.dleg{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px}
+.dleg:last-child{margin-bottom:0}
+.dleg-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.dleg-label{color:var(--text2);font-weight:600;flex:1}
+.dleg-val{color:var(--text);font-weight:800}
+.chart-badge{font-size:12px;font-weight:800;padding:4px 11px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.chart-badge.up{background:var(--green-l);color:var(--green)}
+.chart-badge.down{background:var(--red-l);color:var(--red)}
 </style>
 </head>
 <body>
@@ -276,8 +295,9 @@ tbody tr:hover{background:var(--bg)}
     <div class="page on" id="page-dashboard">
       <div id="dash-hero"></div>
       <div class="kpi-grid" id="kpi-grid"><div class="loading" style="grid-column:1/-1"><div class="spinner"></div>جاري التحميل...</div></div>
+      <div class="donut-row" id="donut-row"></div>
       <div class="dash-2col">
-        <div class="card"><div class="card-head"><h3>التسجيلات — آخر 7 أيام</h3></div><div class="card-body"><div class="chart-bars" id="signup-chart"></div></div></div>
+        <div class="card"><div class="card-head"><h3>نمو التسجيلات — آخر 7 أيام</h3><span class="chart-badge" id="chart-trend"></span></div><div class="card-body"><div class="chart-bars" id="signup-chart"></div></div></div>
         <div class="card"><div class="card-head"><h3>أكثر التخصصات</h3></div><div class="card-body" id="top-specs"></div></div>
       </div>
       <div class="dash-2col">
@@ -468,6 +488,44 @@ function loadDashboard(){
       }).join('');
     }
     // ═══ أكثر التخصصات (شريط) ═══
+    // ═══ Donut Charts — نسب احترافية ═══
+    function donut(segments,centerVal,centerLbl,title){
+      var size=88,sw=11,r=(size-sw)/2,cx=size/2,cy=size/2,circ=2*Math.PI*r;
+      var total=segments.reduce(function(a,s){return a+s.v;},0)||1;
+      var off=0,arcs='';
+      segments.forEach(function(s){
+        var frac=s.v/total,len=frac*circ;
+        arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.c+'" stroke-width="'+sw+'" stroke-dasharray="'+len+' '+(circ-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')" stroke-linecap="round"/>';
+        off+=len;
+      });
+      var leg=segments.map(function(s){
+        return '<div class="dleg"><span class="dleg-dot" style="background:'+s.c+'"></span><span class="dleg-label">'+s.l+'</span><span class="dleg-val">'+s.v+'</span></div>';
+      }).join('');
+      return '<div class="donut-card"><div class="donut-svg"><svg width="'+size+'" height="'+size+'">'+
+        '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--bg)" stroke-width="'+sw+'"/>'+arcs+'</svg>'+
+        '<div class="donut-center"><div class="dv">'+centerVal+'</div><div class="dl">'+centerLbl+'</div></div></div>'+
+        '<div class="donut-legend"><div class="donut-title">'+title+'</div>'+leg+'</div></div>';
+    }
+    var drow=document.getElementById('donut-row');
+    if(drow){
+      var clients=s.clients||0,provs=s.providers||0;
+      var inprog=s.in_progress||0,done=s.completed||0,openP=(s.requests||0)-inprog-done;
+      drow.innerHTML=
+        donut([{l:'عملاء',v:clients,c:'var(--accent)'},{l:'مزودون',v:provs,c:'var(--gold)'}],(clients+provs),'مستخدم','توزيع المستخدمين')+
+        donut([{l:'مفتوحة',v:openP>0?openP:0,c:'var(--green)'},{l:'جارية',v:inprog,c:'var(--blue)'},{l:'مكتملة',v:done,c:'var(--muted)'}],(s.requests||0),'مشروع','حالة المشاريع')+
+        donut([{l:'موثّقون',v:s.verified||0,c:'var(--gold)'},{l:'غير موثّق',v:Math.max(0,provs-(s.verified||0)),c:'var(--p-mid)'}],(s.verified||0),'موثّق','توثيق المزودين');
+    }
+    // ═══ مؤشر النمو ═══
+    var dd=s.daily_signups||[];
+    if(dd.length>=2){
+      var recent=dd.slice(-3).reduce(function(a,x){return a+x.n;},0);
+      var prev=dd.slice(0,3).reduce(function(a,x){return a+x.n;},0);
+      var tb=document.getElementById('chart-trend');
+      if(tb){
+        if(recent>=prev){tb.className='chart-badge up';tb.innerHTML='&#9650; نمو';}
+        else{tb.className='chart-badge down';tb.innerHTML='&#9660; تراجع';}
+      }
+    }
     var specsEl=document.getElementById('top-specs');
     if(specsEl){
       var sp=s.top_specialties||[];var spMax=Math.max.apply(null,sp.map(function(x){return x.n;}))||1;
