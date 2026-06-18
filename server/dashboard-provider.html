@@ -449,9 +449,10 @@ if('serviceWorker' in navigator){
 }
 
 var _token=localStorage.getItem('token')||'';
-var _me=JSON.parse(localStorage.getItem('user')||'{}');
-if(!_token||_me.role!=='provider'){location.href='/auth.html';}
-_myId=_me.id||null;
+var _me={};
+try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
+if(!_token||_me.role!=='provider'){location.replace('/auth.html');}
+var _myId=_me.id||null;
 
 (function(){
   var params=new URLSearchParams(location.search);
