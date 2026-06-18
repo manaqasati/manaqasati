@@ -451,7 +451,7 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
-if(!_token||_me.role!=='provider'){location.replace('/auth.html');}
+if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'){location.replace(_me.role==='client'?'/dashboard-client.html':_me.role==='admin'?'/dashboard-admin.html':'/auth.html');}
 var _myId=_me.id||null;
 
 (function(){
