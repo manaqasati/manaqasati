@@ -690,7 +690,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -733,7 +733,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     }
     if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,instagram,twitter,snapchat,tiktok,youtube FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
     params.push(req.user.id);
-    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`, params);
+    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,location_url,instagram,twitter,snapchat,tiktok,youtube`, params);
     res.json(r.rows[0]);
   } catch(e) { console.error('provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
