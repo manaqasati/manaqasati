@@ -200,8 +200,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         u.phone as provider_phone,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
-          THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE NULL END
-          ELSE NULL END as provider_image,
+          THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
@@ -1036,7 +1035,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         u.business_name as provider_business_name,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
-        CASE WHEN u.profile_image IS NOT NULL AND u.profile_image LIKE 'http%'
+        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
              THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
@@ -1194,7 +1193,7 @@ app.get('/api/users/search', auth, async (req, res) => {
     const q = (req.query.q||'').trim();
     if (!q) return res.json([]);
     const role = req.user.role === 'client' ? 'provider' : 'client';
-    const r = await pool.query(`SELECT id, name, business_name, phone, city, CASE WHEN profile_image LIKE 'http%' THEN profile_image ELSE NULL END as profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
+    const r = await pool.query(`SELECT id, name, business_name, phone, city, profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
     res.json(r.rows);
   } catch(e) { res.json([]); }
 });
