@@ -172,7 +172,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg" id="fg-name" style="display:none">
-        <label>الاسم الكامل <span style="color:var(--red)">*</span></label>
+        <label id="lbl-name">الاسم الكامل <span style="color:var(--red)">*</span></label>
         <input id="i-name" class="fi" type="text" placeholder="محمد أحمد العمري">
       </div>
       <div class="fg" id="fg-email">
@@ -221,9 +221,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div class="fg" id="fg-extra" style="display:none">
         <div class="extra-divider"><span>معلومات إضافية (اختياري)</span></div>
         <div class="extra-hint">إكمال ملفك يزيد ثقة العملاء ويجلب لك مشاريع أكثر</div>
-        <label>اسم النشاط التجاري</label>
-        <input id="i-bname" class="fi" placeholder="مؤسسة / شركة (اختياري)">
-        <label style="margin-top:12px">سنوات الخبرة</label>
+        <label>سنوات الخبرة</label>
         <input id="i-exp" class="fi" type="number" min="0" placeholder="مثال: 5">
         <label style="margin-top:12px">نبذة عنك</label>
         <textarea id="i-bio" class="fi" rows="3" placeholder="عرّف العملاء بخبرتك وخدماتك"></textarea>
@@ -403,6 +401,14 @@ function setMode(m){
   show('fg-reg-phone',isR);
   show('fg-city',isR);
   show('fg-avatar',isR);
+  // عنوان حقل الاسم حسب الدور
+  var lblN=document.getElementById('lbl-name');
+  if(lblN){
+    if(isR&&ROLE==='provider'){lblN.innerHTML='الاسم أو اسم النشاط التجاري <span style="color:var(--red)">*</span>';}
+    else{lblN.innerHTML='الاسم الكامل <span style="color:var(--red)">*</span>';}
+  }
+  var inpN=document.getElementById('i-name');
+  if(inpN){inpN.placeholder=(isR&&ROLE==='provider')?'محمد العمري أو مؤسسة العمري للمقاولات':'محمد أحمد العمري';}
   show('fg-extra',isR&&ROLE==='provider');
   show('forgot-w',!isR);
   document.getElementById('note-reg').style.display=isR?'block':'none';
@@ -517,9 +523,9 @@ async function doSubmit(){
       if(_regAvatarData)body.profile_image=_regAvatarData;
       if(ROLE==='provider'){
         body.specialties=selectedSpecs;
+        body.business_name=name;
         if(_regWorksData.length)body.portfolio_images=_regWorksData;
         body.notify_categories=selectedSpecs;
-        body.business_name=getV('i-bname')||null;
         body.experience_years=parseInt(getV('i-exp'))||null;
         body.bio=getV('i-bio')||null;
         body.website=getV('i-website')||null;
