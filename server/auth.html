@@ -95,6 +95,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .spec-pill.on{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 2px 8px rgba(22,33,62,.2)}
 .spec-pill:disabled{opacity:.4;cursor:not-allowed}
 @media(min-width:480px){.auth-hero{padding:40px 24px 56px}.auth-body{padding:24px}}
+
+.extra-divider{display:flex;align-items:center;gap:12px;margin:8px 0 6px;color:var(--muted)}
+.extra-divider::before,.extra-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.extra-divider span{font-size:12.5px;font-weight:700;color:var(--text2);white-space:nowrap}
+.extra-hint{font-size:11.5px;color:var(--muted);margin-bottom:14px;text-align:center;line-height:1.6}
+#fg-extra textarea.fi{resize:vertical;font-family:'Tajawal',sans-serif}
 </style>
 </head>
 <body>
@@ -191,6 +197,30 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         </div>
         <div class="specs-hint">اختر <strong>من 1 إلى 3 تخصصات</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
         <div class="specs-grid" id="specs-grid"></div>
+      </div>
+      <div class="fg" id="fg-extra" style="display:none">
+        <div class="extra-divider"><span>معلومات إضافية (اختياري)</span></div>
+        <div class="extra-hint">إكمال ملفك يزيد ثقة العملaء ويجلب لك مشاريع أكثر</div>
+        <label>اسم النشاط التجاري</label>
+        <input id="i-bname" class="fi" placeholder="مؤسسة / شركة (اختياري)">
+        <label style="margin-top:12px">سنوات الخبرة</label>
+        <input id="i-exp" class="fi" type="number" min="0" placeholder="مثال: 5">
+        <label style="margin-top:12px">نبذة عنك</label>
+        <textarea id="i-bio" class="fi" rows="3" placeholder="عرّف العملاء بخبرتك وخدماتك"></textarea>
+        <label style="margin-top:12px">الموقع الإلكتروني</label>
+        <input id="i-website" class="fi" placeholder="https://example.com">
+        <label style="margin-top:12px">الموقع الجغرافي (خرائط جوجل)</label>
+        <input id="i-location" class="fi" placeholder="https://maps.google.com/...">
+        <label style="margin-top:12px">انستقرام</label>
+        <input id="i-instagram" class="fi" placeholder="https://instagram.com/...">
+        <label style="margin-top:12px">تيك توك</label>
+        <input id="i-tiktok" class="fi" placeholder="https://tiktok.com/@...">
+        <label style="margin-top:12px">سناب شات</label>
+        <input id="i-snapchat" class="fi" placeholder="https://snapchat.com/add/...">
+        <label style="margin-top:12px">إكس (تويتر)</label>
+        <input id="i-twitter" class="fi" placeholder="https://x.com/...">
+        <label style="margin-top:12px">يوتيوب</label>
+        <input id="i-youtube" class="fi" placeholder="https://youtube.com/@...">
       </div>
       <button class="btn-submit" id="btn-s" onclick="doSubmit()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -345,6 +375,7 @@ function setMode(m){
   show('fg-pass2',isR);
   show('fg-reg-phone',isR);
   show('fg-city',isR);
+  show('fg-extra',isR&&ROLE==='provider');
   show('forgot-w',!isR);
   document.getElementById('note-reg').style.display=isR?'block':'none';
   if(isR){
@@ -457,6 +488,16 @@ async function doSubmit(){
       if(ROLE==='provider'){
         body.specialties=selectedSpecs;
         body.notify_categories=selectedSpecs;
+        body.business_name=getV('i-bname')||null;
+        body.experience_years=parseInt(getV('i-exp'))||null;
+        body.bio=getV('i-bio')||null;
+        body.website=getV('i-website')||null;
+        body.location_url=getV('i-location')||null;
+        body.instagram=getV('i-instagram')||null;
+        body.tiktok=getV('i-tiktok')||null;
+        body.snapchat=getV('i-snapchat')||null;
+        body.twitter=getV('i-twitter')||null;
+        body.youtube=getV('i-youtube')||null;
       }
       var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
     }
