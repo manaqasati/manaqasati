@@ -647,7 +647,7 @@ document.addEventListener('visibilitychange',function(){_pollPaused=document.hid
 var user={};
 try{user=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){user={};}
 var token=localStorage.getItem('token')||'';
-if(!token||!user.id){location.replace('/auth.html');}
+if(!token){location.replace('/auth.html');}else if(user.role&&user.role!=='client'){location.replace(user.role==='provider'?'/dashboard-provider.html':user.role==='admin'?'/dashboard-admin.html':'/auth.html');}
 
 // isImg — يقبل URL وbase64
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
