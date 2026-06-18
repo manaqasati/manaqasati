@@ -267,7 +267,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
-var MODE='login', ROLE='client', METHOD='email';
+var _savedMode='login',_savedRole='client';
+try{_savedMode=sessionStorage.getItem('auth_mode')||'login';_savedRole=sessionStorage.getItem('auth_role')||'client';}catch(e){}
+var MODE=_savedMode, ROLE=_savedRole, METHOD='email';
 
 function _notifyMobileApp(token, user){
   try {
@@ -367,6 +369,7 @@ function showGrid(id,v){var e=document.getElementById(id);if(e)e.style.display=v
 
 function setMode(m){
   MODE=m;
+  try{sessionStorage.setItem('auth_mode',m);}catch(e){}
   var isR=m==='register';
   document.querySelectorAll('.auth-tab').forEach(function(t,i){t.classList.toggle('on',i===(isR?1:0));});
   show('method-row',!isR);
@@ -406,6 +409,7 @@ function setMethod(m){
 
 function selRole(r){
   ROLE=r;
+  try{sessionStorage.setItem('auth_role',r);}catch(e){}
   document.getElementById('rc-c').classList.toggle('on',r==='client');
   document.getElementById('rc-p').classList.toggle('on',r==='provider');
   var sc=document.getElementById('rc-c').querySelector('svg');
@@ -563,6 +567,12 @@ async function doForgot(){
 }
 
 document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();});
+
+// تهيئة: استرجاع آخر وضع (دخول/إنشاء) ودور عند تحميل الصفحة
+(function(){
+  if(_savedRole&&_savedRole!=='client'){ selRole(_savedRole); }
+  if(_savedMode&&_savedMode!=='login'){ setMode(_savedMode); }
+})();
 </script>
 </body>
 </html>
