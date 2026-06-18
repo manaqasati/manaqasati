@@ -1106,8 +1106,8 @@ async function loadProfile(){
   var infoCard=document.createElement('div');infoCard.className='card card-accent';
   infoCard.innerHTML='<div class="ch"><div class="ch-l"><h3>معلومات المنشأة</h3></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="fg"><label>الاسم الكامل</label><input id="p-name"></div>'
-    +'<div class="fg"><label>اسم المنشأة</label><input id="p-bname" placeholder="اختياري"></div>'
+    +'<div class="fg"><label>الاسم أو اسم النشاط التجاري</label><input id="p-name" placeholder="محمد العمري أو مؤسسة العمري للمقاولات"></div>'
+    +'<input type="hidden" id="p-bname">'
     +'<div class="fg"><label>رقم الجوال</label><input id="p-phone"></div>'
     +'<div class="fg"><label>سنوات الخبرة</label><input type="number" id="p-exp"></div>'
     +'<div class="fg" style="grid-column:1/-1"><label>البريد الإلكتروني</label><input type="email" id="p-email" placeholder="example@email.com"></div>'
@@ -1210,7 +1210,7 @@ async function _saveProfile(){
   if(!email||!email.includes('@')||!email.includes('.')){showToast('يرجى إدخال بريد إلكتروني صحيح','error');return;}
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   var specs=Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
-  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-bname')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null};
+  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null};
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
   if(r&&r.id){_me.name=r.name;if(r.email)_me.email=r.email;localStorage.setItem('user',JSON.stringify(_me));var un=_el('userName');if(un)un.textContent=r.name;showToast('تم الحفظ بنجاح','success');}
