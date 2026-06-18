@@ -644,9 +644,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 var API='https://manaqasati-production.up.railway.app';
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
-var user=JSON.parse(localStorage.getItem('user')||'{}');
+var user={};
+try{user=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){user={};}
 var token=localStorage.getItem('token')||'';
-if(!token||!user.id){location.href='/auth.html';}
+if(!token||!user.id){location.replace('/auth.html');}
 
 // isImg — يقبل URL وbase64
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
