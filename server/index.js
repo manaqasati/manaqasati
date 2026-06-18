@@ -514,7 +514,9 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, bio, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, city||null, bio||null]);
+    const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
+    const isProv = role === 'provider';
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null]);
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     try {
