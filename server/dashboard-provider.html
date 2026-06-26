@@ -675,7 +675,8 @@ function _renderHome(data){
   var _bidIds={};_myBids.forEach(function(b){_bidIds[b.request_id]=1;});
   var openAll=allReq.filter(function(r){return r&&r.status==='open'&&!_bidIds[r.id];});
   var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0;}):[];
-  var pool=specs.length?matches:openAll;
+  var matchedBySpec=matches.length>0;
+  var pool=matchedBySpec?matches:openAll;
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
   var newCount=pool.length;
   var avHtml=(profile&&profile.profile_image)?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+(_me.name||'م')[0]+'</span>';
@@ -696,7 +697,7 @@ function _renderHome(data){
   html+='<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,165,0,.16);border:1px solid rgba(240,165,0,.3);padding:4px 10px;border-radius:20px;flex-shrink:0"><span style="font-size:11px;color:#F0A500">&#9733;</span><span style="font-size:12px;font-weight:800;color:#fff">'+rat+'</span></div>';
   html+='</div>';
   html+='<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">';
-  if(newCount>0)html+='<div style="font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6"><strong style="color:#fff">'+newCount+' '+(newCount===1?'طلب جديد':'طلبات جديدة')+'</strong>'+(specs.length?' في تخصصاتك':' متاحة')+' · سارع قبل غيرك ⚡</div>';
+  if(newCount>0)html+='<div style="font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6"><strong style="color:#fff">'+newCount+' '+(newCount===1?'طلب جديد':'طلبات جديدة')+'</strong>'+(matchedBySpec?' في تخصصاتك':' متاحة')+' · سارع قبل غيرك ⚡</div>';
   else html+='<div style="font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6">تصفّح الطلبات الجديدة المتاحة الآن</div>';
   html+='<button onclick="gotoPage(&quot;browse&quot;)" style="background:#fff;color:var(--p2);font-size:12px;font-weight:800;padding:9px 16px;border-radius:11px;border:none;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">تصفّح الطلبات</button>';
   html+='</div></div>';
@@ -752,7 +753,7 @@ function _renderHome(data){
     var _fbids=parseInt(featured.bid_count||0);
     var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
     html+='<div style="background:linear-gradient(135deg,#eff6ff,var(--p-light));border:1px solid var(--p-mid);border-radius:16px;padding:15px;margin-bottom:14px">';
-    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap"><span style="font-size:14px">🎯</span><div style="font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:800;color:var(--p2)">الأنسب لك الآن</div>'+(specs.length?'<span style="background:var(--green);color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px">يناسب تخصصك</span>':'')+'</div>';
+    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap"><span style="font-size:14px">🎯</span><div style="font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:800;color:var(--p2)">الأنسب لك الآن</div>'+(matchedBySpec?'<span style="background:var(--green);color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px">يناسب تخصصك</span>':'')+'</div>';
     html+='<div style="background:var(--white);border-radius:12px;padding:13px">';
     html+='<div style="font-size:13px;font-weight:800;color:var(--p);margin-bottom:5px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>';
     html+='<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:11px">'+_esc(featured.category||'خدمة')+(featured.city?' · '+_esc(featured.city):'')+' · <span style="color:var(--green);font-weight:800">'+_fprice+'</span> · <span style="color:#d97706;font-weight:800">'+_fbidTxt+'</span></div>';
@@ -761,9 +762,10 @@ function _renderHome(data){
   }
 
   // ── 🛠 طلبات في تخصصك ──
-  if(pool.length){
-    html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(specs.length?'طلبات في تخصصك':'أحدث الطلبات')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
-    pool.slice(featured?1:0,featured?5:4).forEach(function(r){
+  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(matchedBySpec?'طلبات في تخصصك':'أحدث الطلبات المتاحة')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
+  var _listPool=pool.slice(featured?1:0,featured?5:4);
+  if(_listPool.length){
+    _listPool.forEach(function(r){
       var _rb=parseInt(r.bid_count||0);
       var _rprice=(r.budget_min&&r.budget_max)?(fmtN(r.budget_min)+'–'+fmtN(r.budget_max)+' ر.س'):_fpr(r.budget_max);
       html+='<div style="border:1.5px solid var(--border);border-right:4px solid var(--p);border-radius:13px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
@@ -771,8 +773,10 @@ function _renderHome(data){
       html+='<button onclick="_openBidNudge('+r.id+','+_rb+')" style="background:var(--p);color:#fff;font-size:10px;font-weight:800;padding:8px 13px;border-radius:9px;white-space:nowrap;flex-shrink:0;border:none;cursor:pointer;font-family:Tajawal,sans-serif">قدّم عرض</button>';
       html+='</div>';
     });
-    html+='</div>';
+  }else{
+    html+='<div style="text-align:center;padding:22px 14px"><div style="width:48px;height:48px;background:var(--p-light);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px;font-size:22px">🔍</div><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">ما فيه طلبات جديدة الآن</div><div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">'+(matchedBySpec?'تابع لاحقاً، تجيك إشعارات بالطلبات الجديدة في تخصصك':'تابع لاحقاً أو وسّع تخصصاتك من ملفك')+'</div><button onclick="gotoPage(&quot;browse&quot;)" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تصفّح كل المشاريع</button></div>';
   }
+  html+='</div>';
 
   // ── بطاقتي الشخصية ──
   var cardUrl='/pro/'+_me.id;
