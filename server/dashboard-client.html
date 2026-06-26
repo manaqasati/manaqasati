@@ -398,6 +398,41 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
   .rs-line,.rs-fill{top:14px}
 }
 
+/* ══ DETAILS TAB ══ */
+.dchips{display:flex;flex-wrap:wrap;gap:8px}
+.dchip{background:var(--accent-light);color:var(--accent);border:1px solid rgba(37,99,235,.2);padding:6px 14px;border-radius:100px;font-size:13px;font-weight:700}
+.dchip.gray{background:#f1f5f9;color:var(--muted);border-color:#e2e8f0}
+.datts{display:flex;gap:10px;flex-wrap:wrap}
+.datt{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text);font-weight:600;cursor:pointer;transition:all .2s}
+.datt:hover{border-color:var(--accent);background:var(--accent-light)}
+.datt svg{flex-shrink:0}
+
+/* ══ PRICE SUMMARY (أعلى/متوسط/أقل) ══ */
+.price-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.ps-cell{border-radius:12px;padding:14px 10px;text-align:center}
+.ps-val{font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;letter-spacing:-.4px}
+.ps-u{font-size:11px;font-weight:700}
+.ps-lbl{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px}
+.ps-low{background:var(--accent-light)}.ps-low .ps-val{color:var(--accent)}
+.ps-avg{background:#dcfce7}.ps-avg .ps-val{color:var(--success)}
+.ps-high{background:#fef3c7}.ps-high .ps-val{color:var(--warning)}
+.bid-item.best{border:1.5px solid var(--success)!important;background:#f0fdf4}
+
+/* ══ QUESTIONS TAB ══ */
+.q-list{display:flex;flex-direction:column;gap:14px;margin-bottom:8px}
+.q-item{background:var(--bg);border-radius:12px;padding:16px}
+.q-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.q-av{width:34px;height:34px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:14px;flex-shrink:0}
+.q-name{font-size:14px;font-weight:700;color:var(--text)}
+.q-time{font-size:12px;color:var(--muted)}
+.q-text{font-size:14px;color:#334155;line-height:1.7}
+.q-answer{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:10px}
+.q-answer-lbl{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px}
+.q-ask{border-top:1px solid var(--border);padding-top:18px;margin-top:6px}
+.q-ask-t{font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px}
+.q-textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text2);outline:none;min-height:80px;resize:vertical;transition:border-color .2s}
+.q-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+
 </style>
 </head>
 <body>
@@ -579,13 +614,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
       <div id="req-stepper" class="req-stepper"></div>
       <div id="det-head"></div>
       <div class="tab-btns">
-        <button class="tab-btn on" onclick="showTab('bids',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض<span class="tcount" id="bids-count">0</span></button>
+        <button class="tab-btn on" onclick="showTab('details',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>تفاصيل الطلب</button>
+        <button class="tab-btn" onclick="showTab('bids',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض<span class="tcount" id="bids-count">0</span></button>
+        <button class="tab-btn" onclick="showTab('questions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="tcount" id="q-count">0</span></button>
         <button class="tab-btn" onclick="showTab('actions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>الإجراءات</button>
-        <button class="tab-btn" onclick="showTab('timeline',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>الأنشطة</button>
       </div>
-      <div class="tab on" id="tab-bids"><div id="bids-list"></div></div>
+      <div class="tab on" id="tab-details"><div id="details-wrap"></div></div>
+      <div class="tab" id="tab-bids"><div id="bids-list"></div></div>
+      <div class="tab" id="tab-questions"><div id="questions-wrap"></div></div>
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
-      <div class="tab" id="tab-timeline"><div id="timeline-list"></div></div>
+      <div class="tab" id="tab-timeline" style="display:none"><div id="timeline-list"></div></div>
     </div>
 
     <!-- CHAT -->
@@ -801,7 +839,9 @@ function showTab(t,el){
   document.querySelectorAll('.tab-btn').forEach(function(x){x.className='tab-btn';});
   document.getElementById('tab-'+t).className='tab on';
   if(el)el.className='tab-btn on';
+  if(t==='details')renderDetailsTab(window._curReq);
   if(t==='bids')loadBids(curRequestId);
+  if(t==='questions')loadQuestions(curRequestId);
   if(t==='actions')loadActions(curRequestId);
   if(t==='timeline')loadTimeline(curRequestId);
 }
@@ -889,10 +929,16 @@ function openDetail(id,e){
       +(req.budget_max?'<span>'+money+' '+fmtN(req.budget_max)+' ر.س</span>':'')
       +(req.deadline?'<span>'+cal+' '+fmtDate(req.deadline)+'</span>':'')
       +'</div>'
-      +(req.description?'<div class="rdh-desc">'+esc(req.description)+'</div>':'')
     +'</div>';
     document.getElementById('det-head').innerHTML=h;
+    window._curReq=req;
     renderStepper(req.status);
+    renderDetailsTab(req);
+    // التبويب الافتراضي: تفاصيل الطلب
+    document.querySelectorAll('#page-detail .tab').forEach(function(x){x.className='tab';});
+    document.querySelectorAll('#page-detail .tab-btn').forEach(function(x){x.className='tab-btn';});
+    var _dt=document.getElementById('tab-details');if(_dt)_dt.className='tab on';
+    var _db=document.querySelector('#page-detail .tab-btn');if(_db)_db.className='tab-btn on';
   }).catch(function(){
     showToast('المشروع غير متاح','error');
     if(location.hash)history.replaceState(null,'','#home');
@@ -917,7 +963,21 @@ function loadBids(id){
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
 
-      el.innerHTML=bids.map(function(b){
+      var prices=bids.map(function(b){return Number(b.price)||0;}).filter(function(p){return p>0;});
+      var summary='';
+      if(prices.length){
+        var mn=Math.min.apply(null,prices),mx=Math.max.apply(null,prices),av=Math.round(prices.reduce(function(a,c){return a+c;},0)/prices.length);
+        summary='<div class="price-summary">'
+          +'<div class="ps-cell ps-low"><div class="ps-val">'+fmtN(mn)+' <span class="ps-u">ر.س</span></div><div class="ps-lbl">أقل سعر</div></div>'
+          +'<div class="ps-cell ps-avg"><div class="ps-val">'+fmtN(av)+' <span class="ps-u">ر.س</span></div><div class="ps-lbl">متوسط السعر</div></div>'
+          +'<div class="ps-cell ps-high"><div class="ps-val">'+fmtN(mx)+' <span class="ps-u">ر.س</span></div><div class="ps-lbl">أعلى سعر</div></div>'
+          +'</div>';
+      }
+      var _bestBidId=null,_bestScore=-1e9;
+      bids.forEach(function(b){if(b.status==='rejected')return;var sc=(parseFloat(b.provider_rating)||0)*1000-(Number(b.price)||0);if(sc>_bestScore){_bestScore=sc;_bestBidId=b.id;}});
+      window._bestBidId=_bestBidId;
+
+      el.innerHTML=summary+bids.map(function(b){
         var isAcc=b.status==='accepted',isRej=b.status==='rejected';
         var avgR=parseFloat(b.provider_rating)||0;
         var stars='';for(var i=1;i<=5;i++){var sc=i<=Math.round(avgR)?'#F0A500':'rgba(255,255,255,.25)';stars+='<svg width="12" height="12" fill="'+sc+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}
@@ -952,13 +1012,13 @@ function loadBids(id){
             :'<div style="font-size:12px;color:var(--hint);font-style:italic">لم يُضف المزود رسالة مع العرض</div>')
           +'</div>';
 
-        return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+'">'
+        return '<div class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+(b.id===window._bestBidId?' best':'')+'">'
           // Header
           +'<div style="background:linear-gradient(135deg,#1e3a8a,#1e40af);padding:14px;margin:-15px -15px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between">'
             +'<div style="display:flex;align-items:center;gap:10px">'
               +provImgHtml
               +'<div>'
-                +'<div style="font-size:14px;font-weight:800;color:#fff">'+esc(safeName)+'</div>'
+                +'<div style="font-size:14px;font-weight:800;color:#fff">'+esc(safeName)+(b.id===window._bestBidId?' <span style="background:#16a34a;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;vertical-align:middle">الأفضل ⭐</span>':'')+'</div>'
                 +'<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+stars+'<span style="font-size:10px;color:rgba(255,255,255,.45)">('+parseInt(b.provider_reviews||0)+')</span></div>'
                 +(b.provider_city?'<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:1px">'+esc(b.provider_city)+'</div>':'')
               +'</div>'
@@ -1694,6 +1754,89 @@ function renderStepper(status){
     +'<div class="rs-line" style="right:'+inset+'%;left:'+inset+'%"></div>'
     +'<div class="rs-fill" style="right:'+inset+'%;width:'+reach+'%"></div>'
     +dots+'</div></div>';
+}
+
+// ═══════════════════════════════════
+// DETAILS TAB (وصف + تخصصات + مرفقات)
+// ═══════════════════════════════════
+function renderDetailsTab(req){
+  var el=document.getElementById('details-wrap');
+  if(!el)return;
+  req=req||window._curReq||{};
+  var h='';
+  // وصف الطلب
+  h+='<div class="card card-accent"><div class="ch"><h3>📋 وصف الطلب</h3></div>'
+    +'<div class="rdh-desc" style="border:none;margin:0;padding:0">'
+    +(req.description?esc(req.description):'<span style="color:var(--hint)">لا يوجد وصف مضاف</span>')
+    +'</div></div>';
+  // التخصصات المطلوبة
+  var specs=req.specialties||req.notify_categories||req.tags||[];
+  if(typeof specs==='string'){try{specs=JSON.parse(specs);}catch(e){specs=specs?[specs]:[];}}
+  var chips='';
+  if(req.category)chips+='<span class="dchip">'+esc(req.category)+'</span>';
+  if(Array.isArray(specs))specs.forEach(function(s){if(s)chips+='<span class="dchip">'+esc(s)+'</span>';});
+  if(req.city)chips+='<span class="dchip gray">'+esc(req.city)+'</span>';
+  if(chips)h+='<div class="card"><div class="ch"><h3>🔖 التخصصات المطلوبة</h3></div><div class="dchips">'+chips+'</div></div>';
+  // المرفقات
+  var imgs=req.images||req.attachments||req.files||[];
+  if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
+  if(Array.isArray(imgs)&&imgs.length){
+    var att=imgs.map(function(im,i){
+      var src=(typeof im==='string')?im:(im&&(im.url||im.data||im.src)||'');
+      var clk=src?' onclick="openImgFull(\''+src+'\')"':'';
+      return '<div class="datt"'+clk+'><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>مرفق '+(i+1)+'</div>';
+    }).join('');
+    h+='<div class="card"><div class="ch"><h3>📎 المرفقات</h3></div><div class="datts">'+att+'</div></div>';
+  }
+  el.innerHTML=h;
+}
+
+// ═══════════════════════════════════
+// QUESTIONS TAB (الأسئلة والتوضيحات)
+// ═══════════════════════════════════
+function loadQuestions(id){
+  var el=document.getElementById('questions-wrap');
+  if(!el)return;
+  el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  fetch(API+'/api/requests/'+id+'/questions',hdr())
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(qs){renderQuestions(Array.isArray(qs)?qs:(qs&&qs.data)?qs.data:[]);})
+    .catch(function(){renderQuestions([]);});
+}
+function renderQuestions(qs){
+  var el=document.getElementById('questions-wrap');
+  if(!el)return;
+  var cnt=document.getElementById('q-count');if(cnt)cnt.textContent=qs.length;
+  var list='';
+  if(!qs.length){
+    list='<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><h4>لا توجد أسئلة بعد</h4><p>أسئلة المزودين وردودك ستظهر هنا</p></div>';
+  } else {
+    list=qs.map(function(q){
+      var nm=q.asker_name||q.provider_name||q.name||'مزود';
+      var ans=q.answer||q.reply||'';
+      return '<div class="q-item">'
+        +'<div class="q-head"><div class="q-av">'+esc(nm.charAt(0))+'</div>'
+        +'<div><div class="q-name">'+esc(nm)+'</div><div class="q-time">'+timeAgo(q.created_at)+'</div></div></div>'
+        +'<div class="q-text">'+esc(q.question||q.body||q.text||'')+'</div>'
+        +(ans?'<div class="q-answer"><div class="q-answer-lbl">ردّ صاحب الطلب:</div>'+esc(ans)+'</div>':'')
+        +'</div>';
+    }).join('');
+  }
+  el.innerHTML='<div class="card card-accent"><div class="ch"><h3>❓ الأسئلة والتوضيحات</h3></div>'
+    +'<div class="q-list">'+list+'</div>'
+    +'<div class="q-ask"><div class="q-ask-t">🙋 ردّ أو أضف توضيحاً</div>'
+    +'<textarea id="q-input" class="q-textarea" placeholder="اكتب توضيحك هنا..."></textarea>'
+    +'<button class="btn-p" onclick="submitQuestion()" style="margin-top:8px;width:100%">إرسال</button></div>'
+    +'</div>';
+}
+function submitQuestion(){
+  var inp=document.getElementById('q-input');if(!inp)return;
+  var txt=(inp.value||'').trim();
+  if(!txt){showToast('اكتب نصاً أولاً','error');return;}
+  fetch(API+'/api/requests/'+curRequestId+'/questions',Object.assign({method:'POST',body:JSON.stringify({body:txt})},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){inp.value='';showToast('تم الإرسال','success');loadQuestions(curRequestId);})
+    .catch(function(){showToast('سيتم تفعيل الأسئلة قريباً','info');});
 }
 
 </script>
