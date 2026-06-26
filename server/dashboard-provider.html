@@ -780,7 +780,11 @@ function _renderHome(data){
 
   // ── بطاقتي الشخصية ──
   var cardUrl='/pro/'+_me.id;
-  html+='<a href="'+cardUrl+'" class="mini-card mc-share"><div class="mc-txt"><span class="mc-t">بطاقتي الشخصية</span><span class="mc-s">شاركها مع عملائك</span></div><span class="mc-arrow">عرض &#8249;</span></a>';
+  html+='<a href="'+cardUrl+'" style="display:flex;align-items:center;gap:13px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px;text-decoration:none;box-shadow:var(--shadow)">'+
+    '<div style="width:46px;height:46px;border-radius:13px;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="14.5" x2="11" y2="14.5"/></svg></div>'+
+    '<div style="flex:1;min-width:0"><div style="font-family:\'Cairo\',sans-serif;font-size:14px;font-weight:800;color:var(--p)">بطاقتي الشخصية</div><div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">شاركها مع عملائك · manaqasa.com/pro/'+_me.id+'</div></div>'+
+    '<span style="background:var(--p-light);color:var(--p);font-size:12px;font-weight:800;padding:9px 13px;border-radius:10px;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:4px">عرض <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></span>'+
+    '</a>';
 
   // ── رفع الترتيب (bump) ──
   var lastBump=profile.last_bumped_at;
@@ -795,7 +799,13 @@ function _renderHome(data){
       '<div style="height:7px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--p),var(--sky));border-radius:6px;transition:.5s"></div></div>'+
     '</div>';
   }else{
-    html+='<button onclick="_doBump()" class="mini-card mc-bump"><div class="mc-txt"><span class="mc-t" style="color:#fff">جاهز للتحديث</span><span class="mc-s" style="color:rgba(255,255,255,.6)">تصدّر القائمة أمام العملاء</span></div><span class="mc-bump-btn">رفع ترتيبي &#8593;</span></button>';
+    html+='<div style="background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px">'+
+      '<div style="display:flex;align-items:center;gap:13px;margin-bottom:13px">'+
+        '<div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--p),var(--sky));display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg></div>'+
+        '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">رفع ترتيبك في القائمة</div><div style="font-size:12px;color:var(--muted);margin-top:2px">تصدّر أمام العملاء وزد فرص وصولك</div></div>'+
+      '</div>'+
+      '<button onclick="_doBump()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 4px 14px rgba(29,78,216,.3)">رفع ترتيبي الآن <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>'+
+    '</div>';
   }
 
   // ── آخر عروضي ──
