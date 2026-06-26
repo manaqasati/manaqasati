@@ -434,6 +434,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
 .q-textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--text2);outline:none;min-height:80px;resize:vertical;transition:border-color .2s}
 .q-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
 
+/* ══ HOME: طلبات تحتاج إجراء ══ */
+.ha-card{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;border-radius:16px;padding:16px;margin-bottom:16px}
+.ha-head{display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.ha-head span{font-size:15px}
+.ha-head-t{font-family:'Cairo',sans-serif;font-size:14px;font-weight:800;color:#92400e}
+.ha-row{background:#fff;border-radius:12px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.ha-row:last-child{margin-bottom:0}
+.ha-info{min-width:0}
+.ha-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ha-sub{font-size:11px;font-weight:700}
+.ha-btn{color:#fff;border:none;font-size:11.5px;font-weight:800;padding:8px 14px;border-radius:9px;cursor:pointer;font-family:'Tajawal',sans-serif;white-space:nowrap;flex-shrink:0;transition:filter .2s}
+.ha-btn:hover{filter:brightness(.95)}
+@media(max-width:768px){.ha-row{flex-direction:column;align-items:stretch;gap:8px}.ha-btn{width:100%}.ha-title{white-space:normal}}
+
 </style>
 </head>
 <body>
@@ -525,17 +539,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
           <div class="hero-tag"><span class="hero-tag-dot"></span>لوحة العميل</div>
           <div class="hero-t">
             <h2 id="heroGreet">أهلاً</h2>
-            <p>انشر طلبك واحصل على أفضل العروض من المزودين</p>
+            <p id="heroSub">انشر طلبك واحصل على أفضل العروض من المزودين</p>
           </div>
         </div>
         <button class="hero-btn" onclick="show('new',null,'new')">+ طلب جديد</button>
       </div>
       <div class="stat-grid">
-        <div class="sc sc-all"><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
-        <div class="sc sc-open"><div class="sn" id="s-open">0</div><div class="st">مفتوح</div></div>
-        <div class="sc sc-prog"><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
-        <div class="sc sc-done"><div class="sn" id="s-done">0</div><div class="st">مكتمل</div></div>
+        <div class="sc sc-all" style="cursor:pointer" onclick="show('requests',null,'requests')"><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
+        <div class="sc sc-open" style="cursor:pointer" onclick="show('requests',null,'requests')"><div class="sn" id="s-open">0</div><div class="st">مفتوح</div></div>
+        <div class="sc sc-prog" style="cursor:pointer" onclick="show('requests',null,'requests')"><div class="sn" id="s-prog">0</div><div class="st">قيد التنفيذ</div></div>
+        <div class="sc sc-done" style="cursor:pointer" onclick="show('requests',null,'requests')"><div class="sn" id="s-done">0</div><div class="st">مكتمل</div></div>
       </div>
+      <div id="home-actions"></div>
       <div class="card card-accent">
         <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
         <div id="home-reqs"></div>
@@ -884,9 +899,45 @@ function loadHome(){
     if(so)so.textContent=all.filter(function(r){return r.status==='open';}).length;
     if(sp)sp.textContent=all.filter(function(r){return r.status==='in_progress';}).length;
     if(sd)sd.textContent=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
+    renderHomeActions(all);
     if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
+}
+
+// ═══════════════════════════════════
+// HOME: السطر الذكي + طلبات تحتاج إجراء
+// ═══════════════════════════════════
+function renderHomeActions(all){
+  // مجموع العروض على الطلبات المفتوحة
+  var newOffers=0;
+  all.forEach(function(r){if(r.status==='open')newOffers+=(parseInt(r.bid_count)||0);});
+  var hs=document.getElementById('heroSub');
+  if(hs){
+    hs.innerHTML=newOffers>0
+      ?'عندك <strong style="color:#fff">'+newOffers+' '+(newOffers===1?'عرض جديد':'عروض جديدة')+'</strong> تنتظر مراجعتك'
+      :'انشر طلبك واحصل على أفضل العروض من المزودين';
+  }
+  // طلبات تحتاج إجراء
+  var wrap=document.getElementById('home-actions');
+  if(!wrap)return;
+  var items=[];
+  all.forEach(function(r){
+    var bc=parseInt(r.bid_count)||0;
+    if(r.status==='open'&&bc>0){
+      items.push({r:r,kind:'bids',sub:'⭐ '+bc+' '+(bc===1?'عرض وصلك':'عروض وصلتك')+' — اختر الأنسب',btn:'شوف العروض',color:'#1d4ed8'});
+    } else if(r.status==='completed'||r.status==='done'){
+      items.push({r:r,kind:'rate',sub:'✓ اكتمل — قيّم المزود',btn:'قيّم الآن',color:'#16a34a'});
+    }
+  });
+  if(!items.length){wrap.innerHTML='';return;}
+  var rows=items.slice(0,4).map(function(it){
+    return '<div class="ha-row">'
+      +'<div class="ha-info"><div class="ha-title">'+esc(it.r.title)+'</div><div class="ha-sub" style="color:'+(it.kind==='rate'?'#16a34a':'#d97706')+'">'+it.sub+'</div></div>'
+      +'<button class="ha-btn" style="background:'+it.color+'" onclick="openDetail('+it.r.id+',event)">'+it.btn+'</button>'
+      +'</div>';
+  }).join('');
+  wrap.innerHTML='<div class="ha-card"><div class="ha-head"><span>⚡</span><div class="ha-head-t">طلبات تحتاج إجراء منك</div></div>'+rows+'</div>';
 }
 
 // ═══════════════════════════════════
