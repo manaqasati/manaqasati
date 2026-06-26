@@ -178,8 +178,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
 .rdh-desc{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13.5px;line-height:1.9;color:var(--text2);white-space:pre-wrap;word-wrap:break-word}
 
 /* ══ TABS ══ */
-.tab-btns{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border-radius:12px;padding:5px;border:1px solid var(--border)}
-.tab-btn{flex:1;padding:11px 16px;border-radius:11px;font-size:13.5px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.tab-btns{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border-radius:12px;padding:5px;border:1px solid var(--border);flex-wrap:wrap}
+.tab-btn{flex:1 1 auto;min-width:0;padding:11px 10px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;background:none;color:var(--muted);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab-btn svg{flex-shrink:0}
 .tab-btn:not(.on):hover{background:var(--accent-light);color:var(--accent)}
 .tab-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.28)}
 .tab-btn .tcount{font-size:11px;font-weight:800;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:10px;min-width:18px}
@@ -613,17 +614,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text2);mi
     <div class="page" id="page-detail">
       <div id="req-stepper" class="req-stepper"></div>
       <div id="det-head"></div>
-      <div class="tab-btns">
-        <button class="tab-btn on" onclick="showTab('details',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>تفاصيل الطلب</button>
-        <button class="tab-btn" onclick="showTab('bids',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض<span class="tcount" id="bids-count">0</span></button>
-        <button class="tab-btn" onclick="showTab('questions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="tcount" id="q-count">0</span></button>
-        <button class="tab-btn" onclick="showTab('actions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>الإجراءات</button>
-      </div>
-      <div class="tab on" id="tab-details"><div id="details-wrap"></div></div>
-      <div class="tab" id="tab-bids"><div id="bids-list"></div></div>
-      <div class="tab" id="tab-questions"><div id="questions-wrap"></div></div>
-      <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
-      <div class="tab" id="tab-timeline" style="display:none"><div id="timeline-list"></div></div>
+      <div id="details-wrap"></div>
+      <div class="card card-accent"><div class="ch"><h3>💰 العروض المقدمة</h3></div><div id="bids-list"></div></div>
+      <div id="questions-wrap"></div>
+      <div id="actions-wrap"></div>
+      <div id="timeline-list" style="display:none"></div>
+    </div>
     </div>
 
     <!-- CHAT -->
@@ -934,11 +930,8 @@ function openDetail(id,e){
     window._curReq=req;
     renderStepper(req.status);
     renderDetailsTab(req);
-    // التبويب الافتراضي: تفاصيل الطلب
-    document.querySelectorAll('#page-detail .tab').forEach(function(x){x.className='tab';});
-    document.querySelectorAll('#page-detail .tab-btn').forEach(function(x){x.className='tab-btn';});
-    var _dt=document.getElementById('tab-details');if(_dt)_dt.className='tab on';
-    var _db=document.querySelector('#page-detail .tab-btn');if(_db)_db.className='tab-btn on';
+    loadQuestions(req.id);
+    loadActions(req.id);
   }).catch(function(){
     showToast('المشروع غير متاح','error');
     if(location.hash)history.replaceState(null,'','#home');
@@ -959,7 +952,7 @@ function loadBids(id){
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(bids){
       if(!Array.isArray(bids)){el.innerHTML=errH();return;}
-      document.getElementById('bids-count').textContent=bids.length;
+      var _bc=document.getElementById('bids-count');if(_bc)_bc.textContent=bids.length;
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
 
