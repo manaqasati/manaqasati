@@ -662,7 +662,7 @@ function _verifiedBadge(small){var sz=small?'10px':'11px';return '<span style="d
 
 function _renderHome(data){
   var pg=_el('page-home');if(!pg)return;
-  var profile=data.profile||{},bids=data.bids||[],projs=data.projs||[];
+  var profile=data.profile||{},bids=data.bids||[],projs=data.projs||[],allReq=Array.isArray(data.requests)?data.requests:[];
   _myBids=Array.isArray(bids)?bids:[];_myProjs=Array.isArray(projs)?projs:[];
   var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
   var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
@@ -671,44 +671,114 @@ function _renderHome(data){
   var rat=(profile&&profile.avg_rating)?Number(profile.avg_rating).toFixed(1):'—';
   var verified=_isVerified(profile);
   var acceptRate=_myBids.length?Math.round((acc/_myBids.length)*100):0;
-  var avHtml=(profile&&profile.profile_image)?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:var(--p2)">'+(_me.name||'م')[0]+'</span>';
+  var specs=profile.specialties||[];
+  var _bidIds={};_myBids.forEach(function(b){_bidIds[b.request_id]=1;});
+  var openAll=allReq.filter(function(r){return r&&r.status==='open'&&!_bidIds[r.id];});
+  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0;}):[];
+  var pool=specs.length?matches:openAll;
+  var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
+  var newCount=pool.length;
+  var avHtml=(profile&&profile.profile_image)?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+(_me.name||'م')[0]+'</span>';
+  var firstName=String(_me.name||'المزود').split(' ')[0];
   var html='';
-  html+='<div style="background:var(--p3);padding:22px 20px 20px;position:relative;overflow:hidden;border-radius:16px;margin-bottom:16px">';
-  html+='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>';
-  html+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">';
-  html+='<div style="width:58px;height:58px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2.5px solid rgba(255,255,255,.15);overflow:hidden;position:relative">'+avHtml;
-  if(verified)html+='<div style="position:absolute;bottom:0;left:0;width:18px;height:18px;background:#2563eb;border-radius:50%;border:2px solid var(--p3);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
+
+  // ── هيرو ذكي ──
+  html+='<div style="background:linear-gradient(135deg,var(--p),var(--p2));padding:20px;position:relative;overflow:hidden;border-radius:18px;margin-bottom:14px">';
+  html+='<div style="position:absolute;top:-22px;left:-10px;width:140px;height:140px;background:radial-gradient(circle,rgba(14,165,233,.3),transparent 70%);pointer-events:none"></div>';
+  html+='<div style="position:relative;display:flex;align-items:center;gap:13px;margin-bottom:14px">';
+  html+='<div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--p2));display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2.5px solid rgba(255,255,255,.18);overflow:hidden;position:relative">'+avHtml;
+  if(verified)html+='<div style="position:absolute;bottom:-1px;left:-1px;width:18px;height:18px;background:var(--sky);border-radius:50%;border:2px solid var(--p);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
   html+='</div>';
-  html+='<div><div style="font-size:10px;color:rgba(255,255,255,.5);font-weight:600;margin-bottom:3px">مزود خدمة · '+_esc(profile.city||'السعودية')+'</div>';
-  html+='<div style="font-size:19px;font-weight:900;color:#fff;margin-bottom:5px;display:flex;align-items:center;gap:7px">'+_esc(_me.name||'المزود')+(verified?_verifiedBadge(false):'')+'</div>';
-  html+='<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.14);border:1px solid rgba(14,165,233,.3);padding:3px 10px;border-radius:20px"><span style="font-size:11px;color:#F0A500">&#9733;&#9733;&#9733;&#9733;&#9733;</span><span style="font-size:11px;font-weight:800;color:#fff">'+rat+'</span></div>';
+  html+='<div style="flex:1;min-width:0">';
+  html+='<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:7px"><span style="width:5px;height:5px;border-radius:50%;background:var(--sky)"></span>لوحة المزود'+(verified?' · موثّق ✓':'')+'</div>';
+  html+='<div style="font-family:\'Cairo\',sans-serif;font-size:19px;font-weight:900;color:#fff;line-height:1.2">أهلاً، '+_esc(firstName)+' 👋</div>';
+  html+='</div>';
+  html+='<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,165,0,.16);border:1px solid rgba(240,165,0,.3);padding:4px 10px;border-radius:20px;flex-shrink:0"><span style="font-size:11px;color:#F0A500">&#9733;</span><span style="font-size:12px;font-weight:800;color:#fff">'+rat+'</span></div>';
+  html+='</div>';
+  html+='<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">';
+  if(newCount>0)html+='<div style="font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6"><strong style="color:#fff">'+newCount+' '+(newCount===1?'طلب جديد':'طلبات جديدة')+'</strong>'+(specs.length?' في تخصصاتك':' متاحة')+' · سارع قبل غيرك ⚡</div>';
+  else html+='<div style="font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.6">تصفّح الطلبات الجديدة المتاحة الآن</div>';
+  html+='<button onclick="gotoPage(&quot;browse&quot;)" style="background:#fff;color:var(--p2);font-size:12px;font-weight:800;padding:9px 16px;border-radius:11px;border:none;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap">تصفّح الطلبات</button>';
   html+='</div></div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:#fff">'+_myBids.length+'</div><div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">عرض مقدّم</div></div>';
-  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--gold)">'+acceptRate+'%</div><div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">نسبة القبول</div></div>';
-  html+='<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--green)">'+done+'</div><div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px">مشروع منجز</div></div>';
-  html+='</div></div>';
-  if(!verified){
-    var missing=[];
-    if(!profile.profile_image)missing.push('صورة شخصية');if(!profile.bio)missing.push('نبذة');
-    if(!(profile.specialties||[]).length)missing.push('تخصص');if(!(parseFloat(profile.avg_rating)||0))missing.push('تقييم أول');
-    var _pcTotal=4;var _pcDone=Math.max(0,_pcTotal-missing.length);var _pcPct=Math.round(_pcDone/_pcTotal*100);
-    html+='<div class="pcompl">';
-    html+='<div class="pcompl-top"><div class="pcompl-ttl">📋 أكمل ملفك للحصول على شارة موثّق</div><div class="pcompl-pct">'+_pcPct+'%</div></div>';
-    html+='<div class="pcompl-bar"><div class="pcompl-fill" style="width:'+_pcPct+'%"></div></div>';
-    html+='<div class="pcompl-chips">'+missing.map(function(_m){return '<span class="pcompl-chip">'+_m+'</span>';}).join('')+'</div>';
-    html+='<button class="pcompl-btn" onclick="gotoPage(&quot;profile&quot;)">أكمل الآن</button>';
-    html+='</div>';
+
+  // ── 📋 شريط إكمال الملف (يختفي عند 100%) ──
+  var _pcItems=[
+    {l:'الصورة الشخصية',d:!!profile.profile_image},
+    {l:'التخصصات',d:(profile.specialties||[]).length>0},
+    {l:'نبذة عنك',d:!!profile.bio},
+    {l:'صور أعمالك',d:(profile.portfolio_images||[]).length>0},
+    {l:'سنوات الخبرة',d:!!profile.experience_years}
+  ];
+  var _pcDone=_pcItems.filter(function(x){return x.d;}).length;
+  var _pcPct=Math.round(_pcDone/_pcItems.length*100);
+  if(_pcPct<100){
+    html+='<div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;border-radius:16px;padding:15px 16px;margin-bottom:14px">';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;flex-wrap:wrap">';
+    html+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">📋</span><div><div style="font-family:\'Cairo\',sans-serif;font-size:13.5px;font-weight:800;color:#92400e">ملفك مكتمل <strong>'+_pcPct+'%</strong></div><div style="font-size:10.5px;color:#a16207;font-weight:600">أكمل ملفك لتزيد ثقة العملاء وتفوز بصفقات أكثر</div></div></div>';
+    html+='<button onclick="gotoPage(&quot;profile&quot;)" style="background:#d97706;color:#fff;font-size:11px;font-weight:800;padding:8px 16px;border-radius:9px;white-space:nowrap;border:none;cursor:pointer;font-family:Tajawal,sans-serif">أكمل الآن</button></div>';
+    html+='<div style="background:#fde68a;border-radius:100px;height:9px;overflow:hidden;margin-bottom:11px"><div style="width:'+_pcPct+'%;height:100%;background:linear-gradient(90deg,#d97706,#16a34a);border-radius:100px;transition:width .6s"></div></div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:7px">';
+    _pcItems.forEach(function(it){
+      if(it.d)html+='<span style="background:#fff;border:1px solid #16a34a;color:#16a34a;font-size:10px;font-weight:700;padding:5px 11px;border-radius:20px">✓ '+it.l+'</span>';
+      else html+='<span style="background:#fff;border:1px dashed #d97706;color:#92400e;font-size:10px;font-weight:700;padding:5px 11px;border-radius:20px">+ '+it.l+'</span>';
+    });
+    html+='</div></div>';
   }
+
+  // ── 🏆 مستواك ──
+  var _tiers=[{n:'مزود جديد',m:0},{n:'مزود نشط',m:3},{n:'مزود مميّز',m:10},{n:'خبير معتمد',m:25}];
+  var _cur=_tiers[0],_next=null;
+  for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_cur=_tiers[_ti];}
+  for(var _tj=0;_tj<_tiers.length;_tj++){if(_tiers[_tj].m>done){_next=_tiers[_tj];break;}}
+  var _lvlPct,_lvlNote;
+  if(_next){var _span=_next.m-_cur.m;_lvlPct=Math.max(6,Math.round((done-_cur.m)/_span*100));_lvlNote=(_next.m-done)+' صفقات للوصول لـ «'+_next.n+'»';}
+  else{_lvlPct=100;_lvlNote='أعلى مستوى 🏅';}
+  html+='<div style="background:var(--white);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px;border-top:3px solid var(--green)">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px"><div style="font-size:12.5px;font-weight:800;color:var(--p)">🏆 مستواك: <span style="color:var(--green)">'+_cur.n+'</span></div><div style="font-size:10.5px;color:var(--muted);font-weight:700">'+_lvlNote+'</div></div>';
+  html+='<div style="background:var(--p-light);border-radius:100px;height:9px;overflow:hidden"><div style="width:'+_lvlPct+'%;height:100%;background:linear-gradient(90deg,var(--p),var(--green));border-radius:100px;transition:width .6s"></div></div>';
+  html+='</div>';
+
+  // ── إحصائيات ──
   html+='<div class="stat-grid">';
   html+='<div class="sc sc-pend"><div class="sn">'+pend+'</div><div class="st">معلقة</div></div>';
   html+='<div class="sc sc-acc"><div class="sn">'+acc+'</div><div class="st">مقبولة</div></div>';
   html+='<div class="sc sc-prog"><div class="sn">'+prog+'</div><div class="st">جارية</div></div>';
   html+='<div class="sc sc-done"><div class="sn">'+done+'</div><div class="st">مكتملة</div></div>';
   html+='</div>';
+
+  // ── 🎯 الأنسب لك الآن ──
+  if(featured){
+    var _fprice=(featured.budget_min&&featured.budget_max)?(fmtN(featured.budget_min)+'–'+fmtN(featured.budget_max)+' ر.س'):_fpr(featured.budget_max);
+    var _fbids=parseInt(featured.bid_count||0);
+    var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
+    html+='<div style="background:linear-gradient(135deg,#eff6ff,var(--p-light));border:1px solid var(--p-mid);border-radius:16px;padding:15px;margin-bottom:14px">';
+    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap"><span style="font-size:14px">🎯</span><div style="font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:800;color:var(--p2)">الأنسب لك الآن</div>'+(specs.length?'<span style="background:var(--green);color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px">يناسب تخصصك</span>':'')+'</div>';
+    html+='<div style="background:var(--white);border-radius:12px;padding:13px">';
+    html+='<div style="font-size:13px;font-weight:800;color:var(--p);margin-bottom:5px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>';
+    html+='<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:11px">'+_esc(featured.category||'خدمة')+(featured.city?' · '+_esc(featured.city):'')+' · <span style="color:var(--green);font-weight:800">'+_fprice+'</span> · <span style="color:#d97706;font-weight:800">'+_fbidTxt+'</span></div>';
+    html+='<div style="display:flex;gap:7px"><button onclick="_openBidNudge('+featured.id+','+_fbids+')" style="flex:1;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;font-size:11.5px;font-weight:800;padding:10px;border-radius:9px;border:none;cursor:pointer;font-family:Tajawal,sans-serif">قدّم عرضك الآن 🚀</button><button onclick="_viewProj('+featured.id+')" style="background:var(--bg);color:var(--p);font-size:11.5px;font-weight:800;padding:10px 16px;border-radius:9px;border:none;cursor:pointer;font-family:Tajawal,sans-serif">التفاصيل</button></div>';
+    html+='</div></div>';
+  }
+
+  // ── 🛠 طلبات في تخصصك ──
+  if(pool.length){
+    html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(specs.length?'طلبات في تخصصك':'أحدث الطلبات')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
+    pool.slice(featured?1:0,featured?5:4).forEach(function(r){
+      var _rb=parseInt(r.bid_count||0);
+      var _rprice=(r.budget_min&&r.budget_max)?(fmtN(r.budget_min)+'–'+fmtN(r.budget_max)+' ر.س'):_fpr(r.budget_max);
+      html+='<div style="border:1.5px solid var(--border);border-right:4px solid var(--p);border-radius:13px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
+      html+='<div style="min-width:0;flex:1;cursor:pointer" onclick="_viewProj('+r.id+')"><div style="font-size:12.5px;font-weight:800;color:var(--p);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title)+'</div><div style="font-size:10px;color:var(--muted);font-weight:600">'+(r.city?_esc(r.city)+' · ':'')+'<span style="color:var(--green);font-weight:800">'+_rprice+'</span> · '+(_rb===0?'لا عروض بعد':_rb+' عروض')+'</div></div>';
+      html+='<button onclick="_openBidNudge('+r.id+','+_rb+')" style="background:var(--p);color:#fff;font-size:10px;font-weight:800;padding:8px 13px;border-radius:9px;white-space:nowrap;flex-shrink:0;border:none;cursor:pointer;font-family:Tajawal,sans-serif">قدّم عرض</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  // ── بطاقتي الشخصية ──
   var cardUrl='/pro/'+_me.id;
-  var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
   html+='<a href="'+cardUrl+'" class="mini-card mc-share"><div class="mc-txt"><span class="mc-t">بطاقتي الشخصية</span><span class="mc-s">شاركها مع عملائك</span></div><span class="mc-arrow">عرض &#8249;</span></a>';
+
+  // ── رفع الترتيب (bump) ──
   var lastBump=profile.last_bumped_at;
   var hoursLeft=lastBump?Math.max(0,24-Math.floor((Date.now()-new Date(lastBump))/3600000)):0;
   if(hoursLeft>0){
@@ -718,21 +788,24 @@ function _renderHome(data){
         '<div style="width:46px;height:46px;border-radius:13px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'+
         '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">رفع ترتيبك في القائمة</div><div style="font-size:12px;color:var(--muted);margin-top:2px">متاح بعد <strong style="color:var(--text)">'+hoursLeft+' ساعة</strong></div></div>'+
       '</div>'+
-      '<div style="height:7px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:6px;transition:.5s"></div></div>'+
+      '<div style="height:7px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--p),var(--sky));border-radius:6px;transition:.5s"></div></div>'+
     '</div>';
   }else{
     html+='<button onclick="_doBump()" class="mini-card mc-bump"><div class="mc-txt"><span class="mc-t" style="color:#fff">جاهز للتحديث</span><span class="mc-s" style="color:rgba(255,255,255,.6)">تصدّر القائمة أمام العملاء</span></div><span class="mc-bump-btn">رفع ترتيبي &#8593;</span></button>';
   }
+
+  // ── آخر عروضي ──
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   if(_myBids.length){
     _myBids.slice(0,5).forEach(function(b){
-      var barColor=b.status==='accepted'?'#16A34A':b.status==='rejected'?'#CBD5E1':'var(--gold)';
+      var barColor=b.status==='accepted'?'#16A34A':b.status==='rejected'?'#CBD5E1':'var(--sky)';
       var tagCls=b.status==='accepted'?'t-open':b.status==='rejected'?'t-done':'t-rev';
       var tagLbl=b.status==='accepted'?'مقبول':b.status==='rejected'?'مرفوض':'معلق';
       html+='<div style="background:var(--white);border-radius:12px;margin-bottom:7px;border:1px solid var(--border);display:flex;overflow:hidden"><div style="width:4px;flex-shrink:0;background:'+barColor+'"></div><div style="flex:1;padding:11px 14px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div><div style="font-size:10px;color:var(--muted)">'+(b.category||'خدمة')+' · '+_fdt(b.created_at)+'</div></div><div style="text-align:left;flex-shrink:0"><div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">'+_fpr(b.price)+'</div><span class="tag '+tagCls+'">'+tagLbl+'</span></div></div></div>';
     });
   }else{html+=_empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع');}
   html+='</div>';
+
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
 }
 
@@ -747,8 +820,8 @@ async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
-    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects')]);
-    var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[]};
+    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests')]);
+    var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[],requests:Array.isArray(r[3])?r[3]:[]};
     _cacheSet('home_data',fresh);_renderHome(fresh);
   }catch(e){}
 }
