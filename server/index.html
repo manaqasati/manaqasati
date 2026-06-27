@@ -623,8 +623,8 @@
     <a href="auth.html">تواصل معنا</a>
   </div>
   <div class="nav-btns">
-    <button class="btn-ghost" onclick="window.location='auth.html'">تسجيل الدخول</button>
-    <button class="btn-primary" onclick="window.location='auth.html'">ابدأ مجاناً</button>
+    <button class="btn-ghost" onclick="goLogin()">تسجيل الدخول</button>
+    <button class="btn-primary" onclick="goAuthRole('client')">ابدأ مجاناً</button>
   </div>
 </nav>
 
@@ -634,8 +634,8 @@
   <h1>احصل على <span class="highlight">أفضل سعر</span><br>لأي خدمة تحتاجها</h1>
   <p>انشر طلبك واستقبل عروض أسعار من عشرات المزودين، قارن واختر الأفضل لك بكل سهولة وشفافية.</p>
   <div class="hero-btns">
-    <button class="btn-primary btn-lg" onclick="window.location.href='auth.html'">انشر طلبك الآن</button>
-    <button class="btn-outline" onclick="window.location.href='auth.html'">أنا مزود خدمة</button>
+    <button class="btn-primary btn-lg" onclick="goAuthRole('client')">انشر طلبك الآن</button>
+    <button class="btn-outline" onclick="goAuthRole('provider')">أنا مزود خدمة</button>
   </div>
 </section>
 
@@ -707,34 +707,30 @@
       <p class="sub">أخبرنا ماذا تحتاج وسنجلب لك أفضل العروض</p>
 
       <div class="tabs">
-        <button class="tab active">طلب جديد</button>
-        <button class="tab">طلباتي</button>
-        <button class="tab">الرسائل</button>
+        <button class="tab active" onclick="demoTab(this,'new')">طلب جديد</button>
+        <button class="tab" onclick="demoTab(this,'mine')">طلباتي</button>
+        <button class="tab" onclick="demoTab(this,'msgs')">الرسائل</button>
       </div>
 
       <div class="form-group">
         <label>الفئة</label>
-        <select>
-          <option>تكييف وتبريد</option>
-          <option>حدادة ومعادن</option>
-          <option>كهرباء</option>
-          <option>سباكة</option>
-          <option>دهانات وديكور</option>
+        <select id="d-cat">
+          <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس وطباشير</option>
         </select>
       </div>
       <div class="form-group">
         <label>عنوان الطلب</label>
-        <input type="text" placeholder="مثال: تركيب مكيف سبليت 2 طن في غرفة النوم">
+        <input type="text" id="d-title" oninput="demoPreview()" placeholder="مثال: تركيب مكيف سبليت 2 طن في غرفة النوم">
       </div>
       <div class="form-group">
         <label>التفاصيل والمواصفات</label>
-        <textarea placeholder="اذكر كل التفاصيل... المساحة، الطابق، أي تفاصيل مهمة للحصول على سعر دقيق"></textarea>
+        <textarea id="d-desc" placeholder="اذكر كل التفاصيل... المساحة، الطابق، أي تفاصيل مهمة للحصول على سعر دقيق"></textarea>
       </div>
       <div class="form-group">
         <label>الموقع</label>
-        <input type="text" placeholder="المدينة، الحي">
+        <input type="text" id="d-loc" placeholder="المدينة، الحي">
       </div>
-      <button class="btn-primary" style="width:100%; padding:14px; font-size:16px; border-radius:10px;">
+      <button class="btn-primary" onclick="demoPublish()" style="width:100%; padding:14px; font-size:16px; border-radius:10px;">
         🚀 انشر الطلب واستقبل العروض
       </button>
     </div>
@@ -742,9 +738,9 @@
     <!-- BIDS -->
     <div class="bids-card">
       <h3>📊 العروض المستلمة</h3>
-      <p class="sub">طلب: تركيب مكيف سبليت – الرياض</p>
+      <p class="sub" id="bids-sub">طلب: تركيب مكيف سبليت – الرياض</p>
 
-      <div class="request-preview">
+      <div class="request-preview" id="demo-req-preview">
         <div class="req-title">تركيب مكيف سبليت 2 طن في غرفة النوم</div>
         <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">الرياض – حي النزهة · نُشر منذ 3 ساعات</div>
         <div class="req-tags">
@@ -755,7 +751,7 @@
         </div>
       </div>
 
-      <div class="bids-list">
+      <div class="bids-list" id="demo-bids-list">
         <div class="bid-item best">
           <div class="bid-provider">
             <div class="avatar av2">م</div>
@@ -870,9 +866,25 @@
   </div>
   <div class="lv-row">
     <input type="text" id="fq" class="lv-inp" placeholder="ابحث في المشاريع..." oninput="applyAll()">
+    <select id="fcat" class="lv-sel" onchange="applyAll()">
+      <option value="">كل التخصصات</option>
+      <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس وطباشير</option>
+    </select>
     <select id="fc" class="lv-sel" onchange="applyAll()">
       <option value="">كل المدن</option>
-      <option>الرياض</option><option>جدة</option><option>مكة المكرمة</option><option>المدينة المنورة</option><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>الطائف</option><option>بريدة</option><option>عنيزة</option><option>تبوك</option><option>أبها</option><option>خميس مشيط</option><option>حائل</option><option>نجران</option><option>جازان</option><option>الجبيل</option><option>ينبع</option><option>الخرج</option>
+      <optgroup label="منطقة الرياض"><option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option></optgroup>
+      <optgroup label="منطقة مكة المكرمة"><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option></optgroup>
+      <optgroup label="منطقة المدينة المنورة"><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option></optgroup>
+      <optgroup label="منطقة القصيم"><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option></optgroup>
+      <optgroup label="المنطقة الشرقية"><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option></optgroup>
+      <optgroup label="منطقة عسير"><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option></optgroup>
+      <optgroup label="منطقة تبوك"><option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option></optgroup>
+      <optgroup label="منطقة حائل"><option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option></optgroup>
+      <optgroup label="منطقة الحدود الشمالية"><option>عرعر</option><option>طريف</option><option>رفحاء</option></optgroup>
+      <optgroup label="منطقة الجوف"><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option></optgroup>
+      <optgroup label="منطقة الباحة"><option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option></optgroup>
+      <optgroup label="منطقة جازان"><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option></optgroup>
+      <optgroup label="منطقة نجران"><option>نجران</option><option>شرورة</option></optgroup>
     </select>
     <button class="lv-cl" onclick="clearAll()">مسح</button>
   </div>
@@ -913,8 +925,8 @@
   <h2>جاهز تبدأ؟</h2>
   <p>انشر أول طلب مجاناً واحصل على عروض خلال ساعات</p>
   <div class="hero-btns">
-    <button class="btn-primary btn-lg" onclick="window.location.href='auth.html'">ابدأ مجاناً الآن</button>
-    <button class="btn-outline" onclick="window.location.href='auth.html'">أنا مزود خدمة – سجّلني</button>
+    <button class="btn-primary btn-lg" onclick="goAuthRole('client')">ابدأ مجاناً الآن</button>
+    <button class="btn-outline" onclick="goAuthRole('provider')">أنا مزود خدمة – سجّلني</button>
   </div>
 </section>
 
@@ -933,7 +945,7 @@
 <script>
 var API='https://manaqasati-production.up.railway.app';
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
-var ALL=[],CUR=[],PAGE=8,F_ST='all',F_CI='',F_Q='';
+var ALL=[],CUR=[],PAGE=8,F_ST='all',F_CI='',F_Q='',F_CAT='';
 var PROV_ALL=[],PROV_PAGE=8,ALL_PROVS=[];
 
 function catSvg(cat,size){
@@ -1012,10 +1024,12 @@ function fStatus(s,btn){F_ST=s;document.querySelectorAll('.lv-tab').forEach(func
 function applyAll(){
   F_Q=(document.getElementById('fq')||{value:''}).value.toLowerCase();
   F_CI=(document.getElementById('fc')||{value:''}).value;
+  F_CAT=(document.getElementById('fcat')||{value:''}).value;
   PAGE=8;
   CUR=ALL.filter(function(p){
     if(F_ST==='open'&&p.status!=='open')return false;
     if(F_ST==='done'&&p.status!=='completed'&&p.status!=='in_progress'&&p.status!=='done')return false;
+    if(F_CAT&&!(p.category||'').includes(F_CAT))return false;
     if(F_CI&&p.city!==F_CI)return false;
     if(F_Q&&!p.title.toLowerCase().includes(F_Q))return false;
     return true;
@@ -1023,10 +1037,11 @@ function applyAll(){
   render(CUR);
 }
 function clearAll(){
-  F_ST='all';F_CI='';F_Q='';
+  F_ST='all';F_CI='';F_Q='';F_CAT='';
   document.querySelectorAll('.lv-tab').forEach(function(b,i){b.classList.toggle('on',i===0);});
   var fq=document.getElementById('fq');if(fq)fq.value='';
   var fc=document.getElementById('fc');if(fc)fc.value='';
+  var fcat=document.getElementById('fcat');if(fcat)fcat.value='';
   CUR=ALL;PAGE=8;render(CUR);
 }
 function showMore(){PAGE+=8;render(CUR);}
@@ -1141,6 +1156,110 @@ function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.matc
     });
   }catch(e){}
 })();
+// ===== أزرار حسب الدور =====
+function goAuthRole(role){
+  var u=getUser();
+  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
+  try{sessionStorage.setItem('auth_mode','register');sessionStorage.setItem('auth_role',role);}catch(e){}
+  location.href='auth.html';
+}
+function goLogin(){
+  var u=getUser();
+  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
+  try{sessionStorage.setItem('auth_mode','login');}catch(e){}
+  location.href='auth.html';
+}
+
+// ===== بطاقة "انشر طلبك" التفاعلية =====
+function demoPreview(){
+  var t=(document.getElementById('d-title')||{value:''}).value.trim();
+  var rt=document.querySelector('#demo-req-preview .req-title');
+  if(rt) rt.textContent=t||'تركيب مكيف سبليت 2 طن في غرفة النوم';
+}
+function demoTab(btn,which){
+  document.querySelectorAll('.form-card .tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  if(which==='new')return;
+  var u=getUser();
+  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; }
+  else { goAuthRole('client'); }
+}
+function demoPublish(){
+  var draft={
+    category:(document.getElementById('d-cat')||{value:''}).value,
+    title:(document.getElementById('d-title')||{value:''}).value.trim(),
+    description:(document.getElementById('d-desc')||{value:''}).value.trim(),
+    location:(document.getElementById('d-loc')||{value:''}).value.trim()
+  };
+  try{ localStorage.setItem('manaqasa_new_request_draft', JSON.stringify(draft)); }catch(e){}
+  var u=getUser();
+  if(u && u.role==='client'){ location.href='dashboard-client.html?new=1'; }
+  else if(u && u.role==='provider'){ location.href='dashboard-provider.html'; }
+  else { goAuthRole('client'); }
+}
+
+// ===== العروض المستلمة الحقيقية (للعميل المسجّل) =====
+function _demoStars(avg){
+  avg=Math.round(parseFloat(avg)||0);
+  var s='';for(var i=1;i<=5;i++){s+=(i<=avg?'★':'☆');}
+  return '<span style="color:#F0A500">'+s+'</span>';
+}
+function _realBidRow(b,best){
+  var name=(b.provider_business_name||b.provider_name||'مزود');
+  var rating=parseFloat(b.provider_rating||0);
+  var reviews=parseInt(b.provider_reviews||0);
+  var price=b.price?Number(b.price).toLocaleString('en-US'):'—';
+  return '<div class="bid-item'+(best?' best':'')+'">'
+    +'<div class="bid-provider">'
+      +'<div class="avatar av2">'+name.charAt(0)+'</div>'
+      +'<div><div class="bid-name">'+name+(best?' <span class="best-badge">الأفضل</span>':'')+'</div>'
+      +'<div class="bid-rating">'+_demoStars(rating)+' <span style="color:#3b82f6">('+(rating?rating.toFixed(1):'—')+') · '+reviews+' تقييم</span></div></div>'
+    +'</div>'
+    +'<div style="text-align:left"><div class="price-num">'+price+' ر.س</div>'
+    +(b.days?'<div class="price-label">خلال '+b.days+' يوم</div>':'')
+    +'</div></div>';
+}
+function initDemoBids(){
+  var u=getUser();
+  if(!u || u.role!=='client') return; // غير مسجّل أو ليس عميلاً → يبقى المثال التوضيحي
+  var tok=localStorage.getItem('token'); if(!tok) return;
+  fetch(API+'/api/requests/my',{headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      if(!Array.isArray(reqs)||!reqs.length) return;
+      // اختر أحدث طلب له عروض إن وُجد، وإلا الأحدث
+      var withBids=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
+      var req=(withBids[0]||reqs[0]);
+      var sub=document.getElementById('bids-sub');
+      if(sub) sub.textContent='طلبك: '+(req.title||'')+(req.city?' – '+req.city:'');
+      var pv=document.getElementById('demo-req-preview');
+      if(pv){
+        pv.innerHTML='<div class="req-title">'+(req.title||'')+'</div>'
+          +'<div style="color:var(--muted);font-size:13px;margin-top:4px">'+(req.city||'')+(req.created_at?' · نُشر '+ago(req.created_at):'')+'</div>'
+          +'<div class="req-tags">'+(req.category?'<span class="tag">'+req.category+'</span>':'')+'<span class="tag">'+((parseInt(req.bid_count)||0))+' عروض</span></div>';
+      }
+      var list=document.getElementById('demo-bids-list');
+      if(!list) return;
+      fetch(API+'/api/requests/'+req.id+'/bids',{headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},cache:'no-store'})
+        .then(function(r){return r.ok?r.json():[];})
+        .then(function(bids){
+          if(!Array.isArray(bids)||!bids.length){
+            list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">لا توجد عروض على هذا الطلب بعد — سيصلك إشعار عند وصول أول عرض</div>';
+            return;
+          }
+          // الأفضل = أعلى تقييم ثم الأقل سعراً
+          var sorted=bids.slice().sort(function(a,b){
+            var ra=parseFloat(a.provider_rating)||0, rb=parseFloat(b.provider_rating)||0;
+            if(rb!==ra)return rb-ra;
+            return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);
+          });
+          var bestId=sorted[0]&&sorted[0].id;
+          list.innerHTML=bids.map(function(b){return _realBidRow(b,b.id===bestId);}).join('');
+        }).catch(function(){});
+    }).catch(function(){});
+}
+initDemoBids();
+
 load();
 loadProviders();
 </script>
