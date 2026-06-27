@@ -1191,7 +1191,7 @@ function demoTab(btn,which){
   var form=document.getElementById('demo-form'), inline=document.getElementById('demo-inline');
   if(which==='new'){ if(form)form.style.display=''; if(inline)inline.style.display='none'; return; }
   var u=getUser();
-  if(!u){ goAuthRole('client'); return; }              // غير مسجّل → تسجيل عميل
+  if(!u){ goLogin(); return; }                          // غير مسجّل → تسجيل الدخول (عنده حساب أصلاً)
   if(form)form.style.display='none';
   if(inline){ inline.style.display='block'; inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">جاري التحميل...</div>'; }
   if(which==='mine') renderMyRequestsInline();
