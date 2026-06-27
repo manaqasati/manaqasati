@@ -590,8 +590,11 @@ async function doSubmit(){
           try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
             location.href=_back;
+          } else if(rl==='admin'){
+            location.href='dashboard-admin.html';
           } else {
-            location.href=rl==='admin'?'dashboard-admin.html':rl==='provider'?'dashboard-provider.html':'dashboard-client.html';
+            // العميل والمزود → الصفحة الرئيسية (تنعكس حسب الدور)
+            location.href='/';
           }
         }
       },900);
