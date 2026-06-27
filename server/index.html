@@ -609,6 +609,34 @@
   @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
   @media(max-width:768px){.live{padding:55px 20px}.prov-grid{grid-template-columns:repeat(2,1fr)}.hzp-img{width:74px;height:74px}}
 
+
+/* ===== شريط شخصي حسب الدور ===== */
+#home-personal{max-width:1180px;margin:24px auto 0;padding:0 20px}
+.ph-band{position:relative;overflow:hidden;border-radius:18px;padding:20px;background:#fff;border:1px solid #e2e8f0}
+.ph-net{position:absolute;top:0;left:0;width:55%;height:100%;opacity:.6;pointer-events:none}
+.ph-acc{position:absolute;top:18px;bottom:18px;right:0;width:5px;border-radius:0 4px 4px 0}
+.ph-greet{position:relative;z-index:1;display:flex;align-items:center;gap:13px}
+.ph-av{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;color:#fff;flex-shrink:0}
+.ph-hi{font-size:21px;font-weight:900;margin:0;color:#1e3a8a}
+.ph-sub{font-size:12.5px;color:#64748b;margin-top:2px}
+.ph-hl{display:inline-flex;align-items:center;gap:7px;margin-top:14px;background:#eff6ff;border:1px solid #dbeafe;border-radius:30px;padding:8px 15px;font-size:13px;font-weight:800;color:#1e40af;position:relative;z-index:1}
+.ph-dot{width:8px;height:8px;border-radius:50%;background:#F0A500;box-shadow:0 0 0 4px rgba(240,165,0,.18)}
+.ph-mrow{display:flex;gap:10px;margin:-24px 14px 14px;position:relative;z-index:2}
+.ph-mc{flex:1;min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:13px 12px;box-shadow:0 6px 18px rgba(30,58,138,.07)}
+.ph-mi{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.ph-mn{font-size:23px;font-weight:900;line-height:1;color:#1e3a8a}
+.ph-ml{font-size:11px;color:#64748b;font-weight:700;margin-top:3px}
+.ph-feat{background:#fff;border:2px solid #1d4ed8;border-radius:16px;padding:14px;position:relative;margin:0 0 12px}
+.ph-fb{position:absolute;top:-11px;right:14px;background:#1d4ed8;color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
+.ph-row{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.ph-tag{display:inline-block;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;margin-left:4px}
+.ph-tag.sky{background:#e0f2fe;color:#0369a1}
+.ph-tag.grn{background:#dcfce7;color:#15803d}
+.ph-cta{display:inline-flex;align-items:center;gap:6px;background:#1d4ed8;color:#fff;border:none;border-radius:11px;padding:10px 16px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap}
+.ph-cta.o{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.ph-sq{width:42px;height:42px;border-radius:50%;background:#dbeafe;color:#1e40af;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;overflow:hidden}
+.ph-sq img{width:100%;height:100%;object-fit:cover}
+@media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
 </style>
 </head>
 <body>
@@ -629,6 +657,7 @@
 </nav>
 
 <!-- HERO -->
+<section id="home-personal" style="display:none"></section>
 <section class="hero">
   <div class="hero-badge">🚀 المنصة الأولى للعطاءات في المنطقة</div>
   <h1>احصل على <span class="highlight">أفضل سعر</span><br>لأي خدمة تحتاجها</h1>
@@ -1245,7 +1274,130 @@ function demoPublish(){
       var dd=document.getElementById('d-desc'); if(dd)dd.value='';
       var ll=document.getElementById('d-loc'); if(ll)ll.value='';
       demoPreview();
-      load(); initDemoBids();
+      load(); 
+// ===== الصفحة الرئيسية كانعكاس للوحة المستخدم =====
+function _esc(t){return (t==null?'':String(t)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _stars5(avg){avg=Math.round(parseFloat(avg)||0);var o='';for(var i=1;i<=5;i++)o+=(i<=avg?'\u2605':'\u2606');return o;}
+function _initials(n){return (n||'\u0645').trim().charAt(0)||'\u0645';}
+function _reqSlug(r){return encodeURIComponent((r.title||'\u0645\u0634\u0631\u0648\u0639').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;}
+function _openReq(r){location.href='/project/'+_reqSlug(r)+'?id='+r.id;}
+
+function initPersonalHome(){
+  var u=getUser(); if(!u) return;                 // زائر → تبقى الصفحة التسويقية
+  var hero=document.querySelector('.hero');
+  var host=document.getElementById('home-personal');
+  if(!host) return;
+  if(hero) hero.style.display='none';
+  host.style.display='block';
+  host.innerHTML='<div class="ph-band"><div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">\u2026</div><div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b \u0628\u0643</h3><div class="ph-sub">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0644\u0648\u062d\u062a\u0643...</div></div></div></div>';
+  if(u.role==='provider'){ var t=document.getElementById('try'); if(t)t.style.display='none'; renderProviderHome(u); }
+  else { renderClientHome(u); }
+}
+
+// ---------- العميل ----------
+function renderClientHome(u){
+  var host=document.getElementById('home-personal');
+  var name=u.name||u.business_name||'\u0628\u0643';
+  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      reqs=Array.isArray(reqs)?reqs:[];
+      var active=reqs.filter(function(x){return x.status==='open';}).length;
+      var offers=reqs.reduce(function(a,x){return a+(parseInt(x.bid_count)||0);},0);
+      var done=reqs.filter(function(x){return x.status==='completed';}).length;
+      var band=''
+        +'<div class="ph-band"><span class="ph-acc" style="background:#1d4ed8"></span>'
+        +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>'
+        +'<div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">'+_esc(_initials(name))+'</div>'
+        +'<div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b '+_esc(name)+'</h3><div class="ph-sub">\u0625\u0644\u064a\u0643 \u0645\u0644\u062e\u0651\u0635 \u0646\u0634\u0627\u0637\u0643 \u0639\u0644\u0649 \u0627\u0644\u0645\u0646\u0635\u0629 \u0627\u0644\u064a\u0648\u0645</div></div></div>'
+        +(offers>0?'<div class="ph-hl"><span class="ph-dot"></span> \u0644\u062f\u064a\u0643 <b style="color:#b45309;margin:0 3px">'+offers+' \u0639\u0631\u0636</b> \u0639\u0644\u0649 \u0637\u0644\u0628\u0627\u062a\u0643</div>':'<div class="ph-hl"><span class="ph-dot"></span> \u0627\u0628\u062f\u0623 \u0628\u0646\u0634\u0631 \u0623\u0648\u0644 \u0637\u0644\u0628 \u0648\u0627\u0633\u062a\u0642\u0628\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</div>')
+        +'</div>'
+        +'<div class="ph-mrow">'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#dbeafe;color:#1d4ed8"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ph-mn">'+active+'</div><div class="ph-ml">\u0637\u0644\u0628\u0627\u062a \u0646\u0634\u0637\u0629</div></div>'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn">'+offers+'</div><div class="ph-ml">\u0639\u0631\u0648\u0636 \u0645\u0633\u062a\u0644\u0645\u0629</div></div>'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#dcfce7;color:#16a34a"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">\u0645\u0643\u062a\u0645\u0644\u0629</div></div>'
+        +'</div>';
+      host.innerHTML=band+'<div id="ph-feat-slot"></div>';
+      var withB=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
+      if(!withB.length) return;
+      var req=withB[0];
+      fetch(API+'/api/requests/'+req.id+'/bids',{headers:_authHdr(),cache:'no-store'})
+        .then(function(r){return r.ok?r.json():[];})
+        .then(function(bids){
+          if(!Array.isArray(bids)||!bids.length) return;
+          var best=bids.slice().sort(function(a,b){var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;if(rb!==ra)return rb-ra;return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);})[0];
+          var nm=best.provider_business_name||best.provider_name||'\u0645\u0632\u0648\u062f';
+          var price=best.price?Number(best.price).toLocaleString('en-US'):'\u2014';
+          var slot=document.getElementById('ph-feat-slot'); if(!slot)return;
+          slot.innerHTML='<div class="ph-feat"><span class="ph-fb">\u0623\u0641\u0636\u0644 \u0639\u0631\u0636 \u0639\u0644\u0649 \u0637\u0644\u0628\u0643</span>'
+            +'<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:10px">'+_esc(req.title||'')+(req.city?' \u2014 '+_esc(req.city):'')+'</div>'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+            +'<div style="display:flex;align-items:center;gap:9px"><div class="ph-sq">'+_esc(_initials(nm))+'</div>'
+            +'<div><div style="font-size:14px;font-weight:900;color:#1e3a8a">'+_esc(nm)+'</div>'
+            +'<div style="font-size:12px;color:#F0A500;margin-top:2px">'+_stars5(best.provider_rating)+' <span style="color:#3b82f6">'+(best.provider_rating?parseFloat(best.provider_rating).toFixed(1):'\u2014')+' \u00b7 '+(parseInt(best.provider_reviews)||0)+' \u062a\u0642\u064a\u064a\u0645</span></div></div></div>'
+            +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#16a34a">'+price+' <span style="font-size:12px">\u0631.\u0633</span></div>'+(best.days?'<div style="font-size:11px;color:#64748b">\u062e\u0644\u0627\u0644 '+best.days+' \u064a\u0648\u0645</div>':'')+'</div>'
+            +'</div>'
+            +'<div style="display:flex;gap:8px;margin-top:13px"><button class="ph-cta" style="flex:1;justify-content:center" onclick="_scrollTo(\'try\')">\u0639\u0631\u0636 \u0643\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</button><button class="ph-cta o" style="flex:1;justify-content:center" onclick="_openReq({id:'+req.id+',title:'+JSON.stringify(req.title||'')+'})">\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628</button></div>'
+            +'</div>';
+        }).catch(function(){});
+    }).catch(function(){});
+}
+
+// ---------- المزود ----------
+function renderProviderHome(u){
+  var host=document.getElementById('home-personal');
+  var pid=u.id||u._id||u.provider_id;
+  Promise.all([
+    fetch(API+'/api/providers',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+    fetch(API+'/api/requests',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+  ]).then(function(res){
+    var provs=Array.isArray(res[0])?res[0]:(res[0]&&res[0].providers)||[];
+    var reqs=Array.isArray(res[1])?res[1]:(res[1]&&res[1].requests)||[];
+    var me=provs.filter(function(p){return String(p.id)===String(pid);})[0]||{};
+    var name=me.business_name||u.business_name||u.name||'\u0628\u0643';
+    var specs=(me.specialties&&me.specialties.length?me.specialties:(u.specialties||[]));
+    var rating=parseFloat(me.avg_rating)||0;
+    var doneN=parseInt(me.completed_projects)||0;
+    var open=reqs.filter(function(r){return (r.status||'open')==='open';});
+    var match= specs.length ? open.filter(function(r){return specs.some(function(sp){return (r.category||'').indexOf(sp)>=0||sp.indexOf(r.category||'')>=0;});}) : open;
+    match.sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
+    var matchN=match.length;
+    var av=me.profile_image?('<img src="'+me.profile_image+'">'):_esc(_initials(name));
+    var band=''
+      +'<div class="ph-band"><span class="ph-acc" style="background:#0ea5e9"></span>'
+      +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="12" y1="32" x2="95" y2="55" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="185" y2="26" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="145" y2="96" stroke="#fde68a" stroke-width="1.2"/><circle cx="95" cy="55" r="4.5" fill="#7dd3fc"/><circle cx="185" cy="26" r="3.5" fill="#bae6fd"/><circle cx="145" cy="96" r="3.5" fill="#F0A500"/></svg>'
+      +'<div class="ph-greet"><div class="ph-av" style="background:#0ea5e9;overflow:hidden">'+av+'</div>'
+      +'<div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b '+_esc(name)+'</h3><div class="ph-sub">\u0641\u0631\u0635 \u062c\u062f\u064a\u062f\u0629 \u062a\u0646\u0627\u0633\u0628 \u062a\u062e\u0635\u0635\u0643 \u062a\u0646\u062a\u0638\u0631 \u0639\u0631\u0636\u0643</div></div></div>'
+      +(matchN>0?'<div class="ph-hl"><span class="ph-dot"></span> <b style="color:#b45309;margin:0 3px">'+matchN+' \u0637\u0644\u0628</b> \u062a\u0646\u0627\u0633\u0628 \u062a\u062e\u0635\u0635\u0643 \u0627\u0644\u0622\u0646</div>':'<div class="ph-hl"><span class="ph-dot"></span> \u062a\u0635\u0641\u0651\u062d \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0627\u0644\u0645\u062a\u0627\u062d\u0629 \u0648\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643</div>')
+      +'</div>'
+      +'<div class="ph-mrow">'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></div><div class="ph-mn">'+matchN+'</div><div class="ph-ml">\u0637\u0644\u0628\u0627\u062a \u062a\u0646\u0627\u0633\u0628\u0643</div></div>'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#fef3c7;color:#F0A500"><svg width="17" height="17" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div><div class="ph-mn" style="color:#b45309">'+(rating?rating.toFixed(1):'\u2014')+'</div><div class="ph-ml">\u062a\u0642\u064a\u064a\u0645\u0643</div></div>'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#dbeafe;color:#1d4ed8"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="ph-mn">'+doneN+'</div><div class="ph-ml">\u0645\u0634\u0627\u0631\u064a\u0639 \u0645\u0646\u062c\u0632\u0629</div></div>'
+      +'</div>';
+    var body='';
+    if(match.length){
+      var f=match[0];
+      var fb=parseInt(f.bid_count)||0;
+      body+='<div class="ph-feat"><span class="ph-fb">\u0623\u0641\u0636\u0644 \u0641\u0631\u0635\u0629 \u0644\u0643</span>'
+        +'<div style="font-size:15px;font-weight:900;color:#1e3a8a">'+_esc(f.title||'')+'</div>'
+        +'<div style="margin-top:7px"><span class="ph-tag">'+_esc(f.category||'')+'</span>'+(f.city?'<span class="ph-tag sky">'+_esc(f.city)+'</span>':'')+(f.budget_max?'<span class="ph-tag grn">\u0645\u064a\u0632\u0627\u0646\u064a\u0629 '+Number(f.budget_max).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div>'
+        +'<div style="font-size:11px;color:#94a3b8;margin-top:7px">'+(req_ago(f.created_at))+(fb?' \u00b7 '+fb+' \u0639\u0631\u0636':' \u00b7 \u0644\u0627 \u0639\u0631\u0648\u0636 \u0628\u0639\u062f \u2014 \u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0642\u062f\u0651\u0645')+'</div>'
+        +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:13px" onclick="_openReq({id:'+f.id+',title:'+JSON.stringify(f.title||'')+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643 \u0627\u0644\u0622\u0646</button>'
+        +'</div>';
+      match.slice(1,4).forEach(function(r){
+        body+='<div class="ph-row"><div style="min-width:0"><div style="font-size:13.5px;font-weight:800;color:#1e3a8a">'+_esc(r.title||'')+'</div><div style="margin-top:5px"><span class="ph-tag">'+_esc(r.category||'')+'</span>'+(r.city?'<span class="ph-tag sky">'+_esc(r.city)+'</span>':'')+'</div></div>'
+          +'<button class="ph-cta o" onclick="_openReq({id:'+r.id+',title:'+JSON.stringify(r.title||'')+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636</button></div>';
+      });
+    } else {
+      body+='<div class="ph-row" style="justify-content:center;color:var(--muted);font-size:13px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b \u2014 \u062a\u0635\u0641\u0651\u062d \u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0623\u062f\u0646\u0627\u0647</div>';
+    }
+    host.innerHTML=band+body;
+  }).catch(function(){});
+}
+function req_ago(d){ if(typeof ago==='function'){try{return '\u0645\u0646\u0630 '+ago(d);}catch(e){}} return '\u062d\u062f\u064a\u062b\u0627\u064b'; }
+
+initDemoBids();
     })
     .catch(function(){ demoMsg('تعذّر النشر، حاول مرة أخرى','err'); });
 }
@@ -1314,6 +1466,7 @@ initDemoBids();
 
 load();
 loadProviders();
+initPersonalHome();
 </script>
 
 </body>
