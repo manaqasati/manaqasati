@@ -694,7 +694,7 @@
 </section>
 
 <!-- DEMO -->
-<section class="demo">
+<section class="demo" id="try">
   <div class="section-title">
     <h2>جرّب المنصة</h2>
     <p>شاهد كيف يعمل النظام بشكل مباشر</p>
@@ -712,6 +712,7 @@
         <button class="tab" onclick="demoTab(this,'msgs')">الرسائل</button>
       </div>
 
+      <div id="demo-form">
       <div class="form-group">
         <label>الفئة</label>
         <select id="d-cat">
@@ -733,6 +734,9 @@
       <button class="btn-primary" onclick="demoPublish()" style="width:100%; padding:14px; font-size:16px; border-radius:10px;">
         🚀 انشر الطلب واستقبل العروض
       </button>
+        <div id="demo-msg" style="display:none;margin-top:12px;font-size:13px;font-weight:700;text-align:center"></div>
+      </div>
+      <div id="demo-inline" style="display:none"></div>
     </div>
 
     <!-- BIDS -->
@@ -935,9 +939,9 @@
   <div class="logo" style="margin-bottom: 16px; font-size: 20px;">مناقصة<span>.</span></div>
   <p>© 2026 مناقصة – جميع الحقوق محفوظة</p>
   <p style="margin-top: 8px;">
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">سياسة الخصوصية</a>
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">شروط الاستخدام</a>
-    <a href='auth.html' style="color: var(--muted); text-decoration: none; margin: 0 12px;">تواصل معنا</a>
+    <a href="https://manaqasati.github.io/manaqasa-privacy/" target="_blank" rel="noopener" style="color: var(--muted); text-decoration: none; margin: 0 12px;">سياسة الخصوصية</a>
+    <a href="terms.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">شروط الاستخدام</a>
+    <a href="mailto:cs@manaqasa.com" style="color: var(--muted); text-decoration: none; margin: 0 12px;">تواصل معنا</a>
   </p>
 </footer>
 
@@ -1139,27 +1143,25 @@ async function load(){
 }
 function goProject(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/project/'+slug+(id?'?id='+id:'');}
 function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/pro/'+slug+(id?'?id='+id:'');}
-// تبديل أزرار الدخول للوحة التحكم لو مسجّل
-(function(){
+// مزامنة واجهة الدخول (بدون إخراج المستخدم من الصفحة)
+function syncAuthUI(){
   try{
-    var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');
-    if(!t||!u)return;
-    var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';
-    document.querySelectorAll('button,a').forEach(function(el){
-      var oc=(el.getAttribute('onclick')||'')+(el.getAttribute('href')||'');
-      if(oc.indexOf('auth.html')>=0){
-        var txt=(el.textContent||'').trim();
-        if(txt.indexOf('تسجيل الدخول')>=0){el.textContent='لوحة التحكم';}
-        el.setAttribute('onclick',"window.location.href='"+dash+"'");
-        if(el.tagName==='A')el.setAttribute('href',dash);
-      }
-    });
+    var u=getUser();
+    var ghost=document.querySelector('nav .btn-ghost');
+    if(u && ghost){ ghost.textContent='لوحة التحكم'; ghost.setAttribute('onclick','goLogin()'); }
   }catch(e){}
-})();
+}
+syncAuthUI();
 // ===== أزرار حسب الدور =====
+function _scrollTo(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function goAuthRole(role){
   var u=getUser();
-  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
+  if(u){
+    // مسجّل أصلاً → ابقَ في الصفحة وانتقل للقسم المناسب
+    if(role==='client'){ u.role==='client' ? _scrollTo('try') : _scrollTo('providers'); }
+    else { u.role==='provider' ? _scrollTo('projects') : _scrollTo('providers'); }
+    return;
+  }
   try{sessionStorage.setItem('auth_mode','register');sessionStorage.setItem('auth_role',role);}catch(e){}
   location.href='auth.html';
 }
@@ -1176,26 +1178,76 @@ function demoPreview(){
   var rt=document.querySelector('#demo-req-preview .req-title');
   if(rt) rt.textContent=t||'تركيب مكيف سبليت 2 طن في غرفة النوم';
 }
+function _val(id){var e=document.getElementById(id);return e?(e.value||'').trim():'';}
+function _authHdr(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('token')||'')};}
+function demoMsg(t,kind){
+  var el=document.getElementById('demo-msg');if(!el)return;
+  el.style.display='block';el.textContent=t;
+  el.style.color=kind==='ok'?'#16a34a':kind==='err'?'#dc2626':'#3b82f6';
+}
 function demoTab(btn,which){
   document.querySelectorAll('.form-card .tab').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
-  if(which==='new')return;
+  var form=document.getElementById('demo-form'), inline=document.getElementById('demo-inline');
+  if(which==='new'){ if(form)form.style.display=''; if(inline)inline.style.display='none'; return; }
   var u=getUser();
-  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; }
-  else { goAuthRole('client'); }
+  if(!u){ goAuthRole('client'); return; }              // غير مسجّل → تسجيل عميل
+  if(form)form.style.display='none';
+  if(inline){ inline.style.display='block'; inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">جاري التحميل...</div>'; }
+  if(which==='mine') renderMyRequestsInline();
+  else renderMyMessagesInline();
+}
+function _myReqRow(r){
+  var n=parseInt(r.bid_count)||0;
+  var slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;
+  var st=r.status==='open'?'<span class="tag">مفتوح</span>':'<span class="tag" style="background:#e2e8f0;color:#475569;border-color:#cbd5e1">'+(r.status==='completed'?'مكتمل':'مغلق')+'</span>';
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+r.id+'\'" style="cursor:pointer">'
+    +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:6px">'+(r.title||'')+'</div>'
+    +'<div class="req-tags">'+(r.category?'<span class="tag">'+r.category+'</span>':'')+(r.city?'<span class="tag">'+r.city+'</span>':'')+st+'</div></div>'
+    +'<div style="text-align:left"><div class="price-num">'+n+'</div><div class="price-label">'+(n===1?'عرض':'عروض')+'</div></div>'
+  +'</div>';
+}
+function renderMyRequestsInline(){
+  var inline=document.getElementById('demo-inline');if(!inline)return;
+  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      if(!Array.isArray(reqs)||!reqs.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما عندك طلبات بعد — أنشئ أول طلب من تبويب «طلب جديد»</div>'; return; }
+      inline.innerHTML='<div class="bids-list">'+reqs.map(_myReqRow).join('')+'</div>';
+    }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
+}
+function renderMyMessagesInline(){
+  var inline=document.getElementById('demo-inline');if(!inline)return;
+  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      var withBids=(Array.isArray(reqs)?reqs:[]).filter(function(x){return (parseInt(x.bid_count)||0)>0;});
+      if(!withBids.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما فيه محادثات بعد — تظهر هنا عند وصول عروض على طلباتك</div>'; return; }
+      inline.innerHTML='<div class="bids-list">'+withBids.map(_myReqRow).join('')+'</div>';
+    }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
 }
 function demoPublish(){
-  var draft={
-    category:(document.getElementById('d-cat')||{value:''}).value,
-    title:(document.getElementById('d-title')||{value:''}).value.trim(),
-    description:(document.getElementById('d-desc')||{value:''}).value.trim(),
-    location:(document.getElementById('d-loc')||{value:''}).value.trim()
-  };
-  try{ localStorage.setItem('manaqasa_new_request_draft', JSON.stringify(draft)); }catch(e){}
   var u=getUser();
-  if(u && u.role==='client'){ location.href='dashboard-client.html?new=1'; }
-  else if(u && u.role==='provider'){ location.href='dashboard-provider.html'; }
-  else { goAuthRole('client'); }
+  var cat=_val('d-cat'), title=_val('d-title'), desc=_val('d-desc'), loc=_val('d-loc');
+  if(!u){
+    try{ localStorage.setItem('manaqasa_new_request_draft', JSON.stringify({category:cat,title:title,description:desc,location:loc})); }catch(e){}
+    goAuthRole('client'); return;
+  }
+  if(u.role!=='client'){ demoMsg('النشر متاح لحسابات العملاء فقط','err'); return; }
+  if(!title){ demoMsg('أدخل عنوان الطلب أولاً','err'); return; }
+  var body={title:title,description:desc,category:cat,city:loc};
+  demoMsg('جاري النشر...','info');
+  fetch(API+'/api/requests',{method:'POST',headers:_authHdr(),body:JSON.stringify(body)})
+    .then(function(r){return r.ok?r.json():Promise.reject();})
+    .then(function(){
+      demoMsg('تم نشر طلبك بنجاح ✓ تابع العروض في «طلباتي»','ok');
+      var tt=document.getElementById('d-title'); if(tt)tt.value='';
+      var dd=document.getElementById('d-desc'); if(dd)dd.value='';
+      var ll=document.getElementById('d-loc'); if(ll)ll.value='';
+      demoPreview();
+      load(); initDemoBids();
+    })
+    .catch(function(){ demoMsg('تعذّر النشر، حاول مرة أخرى','err'); });
 }
 
 // ===== العروض المستلمة الحقيقية (للعميل المسجّل) =====
