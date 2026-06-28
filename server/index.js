@@ -407,6 +407,8 @@ async function notify(userId, title, body, type, refId) {
       if (type === 'new_request') return '/dashboard-provider.html';
       if (type === 'request' || type === 'request_published') return '/dashboard-client.html';
       if (type === 'review') return '/';
+      if (type === 'new_question') return '/dashboard-client.html';
+      if (type === 'question_answered') return '/';
       return '/';
     })();
     sendPush(userId, title, body, url, type, refId).catch(() => {});
@@ -456,6 +458,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
@@ -1363,6 +1366,54 @@ app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
   } catch(e) { console.error('review reply:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
+// ═══ QUESTIONS & CLARIFICATIONS (الأسئلة والتوضيحات) ═══
+// GET: قائمة أسئلة مشروع (عامة، بدون تسجيل دخول)
+app.get('/api/requests/:id/questions', async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
+    res.json(r.rows);
+  } catch(e) { console.error('GET /questions:', e.message); res.json([]); }
+});
+
+// POST: طرح سؤال (أي مستخدم مسجّل — عادةً مزود)
+app.post('/api/requests/:id/questions', auth, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const body = (req.body.body || req.body.question || '').trim();
+    if (!body) return res.status(400).json({ message: 'نص السؤال مطلوب' });
+    const reqRow = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [requestId]);
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const ins = await pool.query(`INSERT INTO request_questions (request_id, asker_id, body, created_at) VALUES ($1,$2,$3,NOW()) RETURNING *`, [requestId, req.user.id, body]);
+    const ownerId = reqRow.rows[0].client_id;
+    if (ownerId && String(ownerId) !== String(req.user.id)) {
+      const askerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+      const askerName = askerInfo.rows[0]?.name || 'مزود';
+      await notify(ownerId, '❓ سؤال جديد على مشروعك', `${askerName} يسأل عن "${reqRow.rows[0].title}".`, 'new_question', requestId);
+    }
+    res.json(ins.rows[0]);
+  } catch(e) { console.error('POST /questions:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// POST: رد صاحب الطلب على سؤال (المالك فقط)
+app.post('/api/requests/:id/questions/:qid/answer', auth, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const qid = parseInt(req.params.qid);
+    const answer = (req.body.answer || req.body.body || '').trim();
+    if (!answer) return res.status(400).json({ message: 'نص الرد مطلوب' });
+    const reqRow = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [requestId]);
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
+    if (String(reqRow.rows[0].client_id) !== String(req.user.id)) return res.status(403).json({ message: 'صاحب الطلب فقط يمكنه الرد' });
+    const upd = await pool.query(`UPDATE request_questions SET answer=$1, answered_at=NOW() WHERE id=$2 AND request_id=$3 RETURNING *`, [answer, qid, requestId]);
+    if (!upd.rows.length) return res.status(404).json({ message: 'السؤال غير موجود' });
+    const askerId = upd.rows[0].asker_id;
+    if (askerId && String(askerId) !== String(req.user.id)) {
+      await notify(askerId, '💬 تم الرد على سؤالك', `ردّ صاحب الطلب على سؤالك في "${reqRow.rows[0].title}".`, 'question_answered', requestId);
+    }
+    res.json(upd.rows[0]);
+  } catch(e) { console.error('POST /answer:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
 app.post('/api/reports', auth, async (req, res) => {
   try {
@@ -1940,7 +1991,6 @@ app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-
 // ═══ OG / SITEMAP / ROBOTS ═══
 app.get('/og/pro/:id', async (req, res) => {
   try {
@@ -2054,11 +2104,12 @@ app.use((req, res) => {
 
 server.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
-  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, reports, favorites, providers, notifications, push, admin, account-deletion');
+  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, questions, reports, favorites, providers, notifications, push, admin, account-deletion');
   console.log('📧 Full email notifications enabled');
   console.log('🔔 Web Push: ' + (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY ? 'ENABLED ✅' : 'DISABLED'));
   console.log('📱 Native Push (iOS/Android via Expo): ENABLED ✅');
   console.log('⬆️  Bump system: ENABLED ✅');
+  console.log('❓ Questions & Clarifications: ENABLED ✅');
   console.log('✅ FIX: /api/client/conversations — messages from provider now visible to client');
 });
 
