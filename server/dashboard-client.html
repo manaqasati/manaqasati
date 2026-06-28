@@ -1576,20 +1576,30 @@ function loadNotifCount(){
     ['chatBadge','bn-chat-badge'].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=cnt;el.style.display=cnt?'flex':'none';}});
   }).catch(function(){});
 }
+function notifMeta(type){
+  var bell='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>';
+  var m={
+    new_bid:{bg:'var(--p-light)',c:'var(--p)',ic:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>'},
+    bid_accepted:{bg:'var(--green-l)',c:'var(--green)',ic:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'},
+    message:{bg:'#e0f2fe',c:'var(--sky)',ic:'<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'},
+    review:{bg:'var(--gold-l)',c:'#F0A500',ic:'<svg width="18" height="18" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>'}
+  };
+  return m[type]||{bg:'var(--p-light)',c:'var(--p)',ic:bell};
+}
 function loadNotifs(){
   var el=document.getElementById('notifs-list');if(!el)return;
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/notifications',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(ns){
     var notifs=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[];
-    if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات','');return;}
-    var ns=notifs;
-    var icons={new_bid:'',bid_accepted:'',message:'',review:''};
-    el.innerHTML=ns.map(function(n){
+    if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات بعد','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');return;}
+    el.innerHTML=notifs.map(function(n){
+      var mt=notifMeta(n.type);
       return'<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="markRead('+n.id+',this,'+(n.ref_id||'null')+')">'
-        +'<div class="notif-ic">'+(icons[n.type]||'')+'</div>'
-        +'<div style="flex:1"><div style="font-size:13px;font-weight:800;margin-bottom:2px">'+esc(n.title||'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">'+esc(n.body||'')+'</div>'
+        +'<div class="notif-ic" style="background:'+mt.bg+';color:'+mt.c+'">'+mt.ic+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--text)">'+esc(n.title||'')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--muted);line-height:1.6">'+esc(n.body||'')+'</div>'
         +'<div style="font-size:10px;color:var(--hint);margin-top:3px">'+timeAgo(n.created_at)+'</div></div>'
+        +(n.is_read?'':'<span style="width:8px;height:8px;border-radius:50%;background:var(--p);flex-shrink:0;align-self:center"></span>')
       +'</div>';
     }).join('');
   }).catch(function(){if(el)el.innerHTML=errH();});
