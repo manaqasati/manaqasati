@@ -926,7 +926,7 @@ function loadHome(){
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
 }
-// شريط النبيهات الذكية — مستنتج من حالة طلبات العميل
+// شريط النبيهات الذكية — مستنتج من حالة طلبات العميل ورسائله
 function renderNudges(all){
   var slot=document.getElementById('ph-nudges');if(!slot)return;
   all=all||[];
@@ -934,29 +934,41 @@ function renderNudges(all){
   var totalOffers=openBid.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
   var inProg=all.filter(function(r){return r.status==='in_progress';});
   var doneR=all.filter(function(r){return r.status==='completed'||r.status==='done';});
-  var items=[];
+  var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+  var reqItems=[];
   if(totalOffers>0){
-    items.push('<div class="nudge" style="border-right-color:var(--p)" onclick="show(\'requests\',null,\'requests\')">'
+    reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="show(\'requests\',null,\'requests\')">'
       +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'طلب':'طلبات')+' — راجعها واختر الأنسب</div></div>'
-      +'<div class="nudge-cta">عرض <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+      +'<div class="nudge-cta">عرض '+chev+'</div></div>');
   }
   inProg.slice(0,2).forEach(function(r){
-    items.push('<div class="nudge" style="border-right-color:var(--green)" onclick="openDetail('+r.id+',event)">'
+    reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="openDetail('+r.id+',event)">'
       +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">أكمل مشروعك</div><div class="nudge-s">'+esc(r.title)+' — اضغط عند انتهاء العمل</div></div>'
-      +'<div class="nudge-cta">إكمال <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+      +'<div class="nudge-cta">إكمال '+chev+'</div></div>');
   });
   doneR.slice(0,2).forEach(function(r){
-    items.push('<div class="nudge" style="border-right-color:#F0A500" onclick="openDetail('+r.id+',event)">'
+    reqItems.push('<div class="nudge" style="border-right-color:#F0A500" onclick="openDetail('+r.id+',event)">'
       +'<div class="nudge-ic" style="background:var(--gold-l);color:#F0A500"><svg width="18" height="18" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">قيّم المزود</div><div class="nudge-s">'+esc(r.title)+' — شاركنا تجربتك</div></div>'
-      +'<div class="nudge-cta">تقييم <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+      +'<div class="nudge-cta">تقييم '+chev+'</div></div>');
   });
-  items=items.slice(0,4);
-  slot.innerHTML=items.length
-    ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك</div>'+items.join('')
-    :'';
+  function paint(msgItem){
+    var items=(msgItem?[msgItem]:[]).concat(reqItems).slice(0,4);
+    slot.innerHTML=items.length
+      ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك</div>'+items.join('')
+      :'';
+  }
+  jFetch('/api/client/conversations').then(function(convs){
+    convs=Array.isArray(convs)?convs:[];
+    var unread=convs.reduce(function(a,c){return a+(parseInt(c.unread)||0);},0);
+    var msgItem=unread>0?('<div class="nudge" style="border-right-color:var(--sky)" onclick="show(\'chat\',null,\'chat\')">'
+      +'<div class="nudge-ic" style="background:#e0f2fe;color:var(--sky)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">لديك '+unread+' '+(unread===1?'رسالة غير مقروءة':'رسائل غير مقروءة')+'</div><div class="nudge-s">من المزودين — افتح المحادثات للرد</div></div>'
+      +'<div class="nudge-cta">المحادثات '+chev+'</div></div>'):null;
+    paint(msgItem);
+  }).catch(function(){paint(null);});
 }
 // بطاقة "أفضل عرض على طلبك" — تُستنتج من أحدث طلب له عروض
 function renderBestOffer(all){
