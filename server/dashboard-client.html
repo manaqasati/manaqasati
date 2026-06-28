@@ -332,6 +332,30 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ملمس ضغط الأزرار (خفيف، يعمل دائماً) */
 .btn-p:active,.btn-new:active,.btn-agree:active,.btn-sm:active,.hero-btn:active,.btn-s:active,.chat-send:active{transform:translateY(0) scale(.97)}
+/* ===== كرت الطلب: حالة + خطوة تالية واحدة ===== */
+.ri-next{font-size:11.5px;color:var(--p);font-weight:700;margin-top:8px;display:flex;align-items:center;gap:5px;line-height:1.45}
+.ri-next.wait{color:var(--muted);font-weight:600}
+.ri-next svg{flex-shrink:0}
+.ri-cta{flex:1;min-width:150px;padding:10px 14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .18s;box-shadow:0 3px 10px rgba(29,78,216,.22)}
+.ri-cta:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(29,78,216,.3)}
+.ri-cta.ghost{background:var(--bg);color:var(--p);box-shadow:none;border:1.5px solid var(--border)}
+.ri-cta.ghost:hover{border-color:var(--p-mid);background:var(--p-light)}
+.ri-icon-btn{width:38px;height:38px;flex:0 0 auto;border-radius:10px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.ri-icon-btn:hover{border-color:var(--p-mid);color:var(--p)}
+.ri-icon-btn.danger:hover{border-color:#fecaca;color:var(--red);background:var(--red-l)}
+.ri-bids.has{background:var(--gold-l);border:1px solid var(--p-mid)}
+@media(max-width:768px){.ri-cta{min-width:0;width:100%}}
+/* ===== حالة فارغة تُعلّم بدل أن تعتذر ===== */
+.empty-teach{text-align:center;padding:34px 18px 28px}
+.et-ic{width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,var(--p),var(--sky));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 8px 20px rgba(29,78,216,.25)}
+.et-ic svg{stroke:#fff}
+.empty-teach h4{font-family:'Cairo',sans-serif;font-size:16px;font-weight:900;color:var(--text);margin-bottom:6px}
+.empty-teach p{font-size:12.5px;color:var(--muted);line-height:1.7;max-width:320px;margin:0 auto 16px}
+.et-steps{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.et-steps span{font-size:11.5px;font-weight:700;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px}
+.et-steps b{width:18px;height:18px;border-radius:50%;background:var(--p);color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}
+.et-cta{padding:12px 28px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(29,78,216,.3);transition:all .18s}
+.et-cta:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(29,78,216,.4)}
 .sc,.ri,.bid-item{will-change:transform,opacity}
 </style>
 </head>
@@ -739,10 +763,35 @@ function logout(){localStorage.removeItem('token');localStorage.removeItem('user
 // ═══════════════════════════════════
 // REQUEST CARD
 // ═══════════════════════════════════
+// حالة فارغة تعلّم بدل ما تعتذر
+function emptyReqsH(){
+  return '<div class="empty-teach">'
+    +'<div class="et-ic"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>'
+    +'<h4>ابدأ أول طلب لك</h4>'
+    +'<p>انشر طلبك، استقبل عروضاً من مزودين موثوقين، واختر الأنسب — كل شيء في مكان واحد.</p>'
+    +'<div class="et-steps"><span><b>1</b> انشر الطلب</span><span><b>2</b> قارن العروض</span><span><b>3</b> اختر ونفّذ</span></div>'
+    +'<button class="et-cta" onclick="show(\'new\',null,\'new\')">+ طلب جديد</button>'
+  +'</div>';
+}
+
 function riCard(r,actions){
-  var open=r.status==='open',prog=r.status==='in_progress',done=r.status==='completed'||r.status==='done';
+  var open=r.status==='open',prog=r.status==='in_progress',done=r.status==='completed'||r.status==='done',rev=r.status==='pending_review'||r.status==='review';
   var borderColor=open?'var(--green)':prog?'var(--p)':done?'var(--sky)':'var(--border)';
   var bidCount=r.bid_count||0;
+  // أيقونات
+  var eye='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var star='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
+  var bolt='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+  var clock='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>';
+  // الخطوة التالية حسب حالة الطلب
+  var ctaLabel,ctaIcon=eye,ctaGhost=false,nextTxt='',nextWait=false;
+  if(open&&bidCount>0){ctaLabel='استعرض العروض ('+bidCount+')';ctaIcon=bolt;nextTxt='وصلك '+bidCount+' عرض — راجعها واختر الأنسب';}
+  else if(open){ctaLabel='عرض التفاصيل';ctaGhost=true;nextTxt='ننتظر وصول أول عرض';nextWait=true;}
+  else if(prog){ctaLabel='متابعة التنفيذ';nextTxt='العمل جارٍ — تواصل مع المزود أو أكمل عند الانتهاء';}
+  else if(rev){ctaLabel='عرض التفاصيل';ctaGhost=true;nextTxt='قيد المراجعة';nextWait=true;}
+  else if(done){ctaLabel='عرض وتقييم المزود';ctaIcon=star;nextTxt='مكتمل — لا تنسَ تقييم المزود';}
+  else{ctaLabel='عرض التفاصيل';ctaGhost=true;}
+
   var h='<div class="ri" style="border-right-color:'+borderColor+'" onclick="openDetail('+r.id+',event)">'
     +'<div style="min-width:0">'
     +'<div class="ri-title">'+esc(r.title)+'</div>'
@@ -753,12 +802,17 @@ function riCard(r,actions){
     +(r.budget_max?'<span class="rm">'+fmtN(r.budget_max)+' ر.س</span>':'')
     +'<span class="rm">'+timeAgo(r.created_at)+'</span>'
     +'</div>'
+    +(nextTxt?'<div class="ri-next'+(nextWait?' wait':'')+'">'+(nextWait?clock:bolt)+'<span>'+esc(nextTxt)+'</span></div>':'')
     +'</div>'
-    +'<div class="ri-bids"><div class="ri-bids-num">'+bidCount+'</div><div class="ri-bids-lbl">عرض</div></div>';
+    +'<div class="ri-bids'+(open&&bidCount>0?' has':'')+'"><div class="ri-bids-num">'+bidCount+'</div><div class="ri-bids-lbl">عرض</div></div>';
   h+='<div class="ri-actions">';
-  h+='<button class="btn-sm bs-detail" onclick="openDetail('+r.id+',event)"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل'+(bidCount>0?' ('+bidCount+' عرض)':'')+'</button>';
-  if(actions&&open)h+='<button class="btn-sm bs-edit" onclick="openEditReq('+r.id+',event)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button>';
-  if(actions&&(open||r.status==='pending_review'))h+='<button class="btn-sm bs-r" onclick="deleteReq('+r.id+',event)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button>';
+  h+='<button class="ri-cta'+(ctaGhost?' ghost':'')+'" onclick="openDetail('+r.id+',event)">'+ctaIcon+ctaLabel+'</button>';
+  if(actions&&(open||rev)){
+    h+='<div style="display:flex;gap:6px">';
+    if(open)h+='<button class="ri-icon-btn" title="تعديل" onclick="openEditReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></button>';
+    h+='<button class="ri-icon-btn danger" title="حذف" onclick="deleteReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>';
+    h+='</div>';
+  }
   h+='</div>';
   h+='</div>';
   return h;
@@ -777,7 +831,7 @@ function loadHome(){
     if(so)so.textContent=all.filter(function(r){return r.status==='open';}).length;
     if(sp)sp.textContent=all.filter(function(r){return r.status==='in_progress';}).length;
     if(sd)sd.textContent=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
-    if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyH('لا يوجد طلبات بعد','انشر أول طلب الآن');
+    if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
 }
@@ -790,7 +844,7 @@ function loadReqs(){
   if(el)el.innerHTML=_skCards(5);
   jFetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){if(el)el.innerHTML=errH();return;}
-    if(el)el.innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyH('لا يوجد طلبات','انشر طلبك الأول');
+    if(el)el.innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyReqsH();
   }).catch(function(){if(el)el.innerHTML=errH();});
 }
 
