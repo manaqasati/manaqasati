@@ -854,6 +854,7 @@ function renderQuestions(qs){
   var el=document.getElementById('questions-wrap');
   if(!el)return;
   var u=getUser();
+  var isOwner=u&&_req&&u.role==='client'&&(String(u.id)===String(_req.client_id)||String(u.id)===String(_req.client&&_req.client.id));
   var list='';
   if(!qs.length){
     list='<div style="text-align:center;padding:24px 14px"><div style="width:48px;height:48px;background:var(--p-light,#dbeafe);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px;font-size:22px">❓</div><div style="font-size:13px;font-weight:800;color:var(--text)">لا توجد أسئلة بعد</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">اسأل صاحب المشروع عن أي تفاصيل قبل تقديم عرضك</div></div>';
@@ -865,7 +866,11 @@ function renderQuestions(qs){
         +'<div class="q-head"><div class="q-av">'+esc(nm.charAt(0))+'</div>'
         +'<div><div class="q-name">'+esc(nm)+((q.asker_role==='provider'||q.role==='provider')?'<span class="q-tag">مزود</span>':'')+'</div><div class="q-time">'+ago(q.created_at)+'</div></div></div>'
         +'<div class="q-text">'+esc(q.question||q.body||q.text||'')+'</div>'
-        +(ans?'<div class="q-answer"><div class="q-answer-lbl">ردّ صاحب الطلب:</div>'+esc(ans)+'</div>':'')
+        +(ans
+            ?'<div class="q-answer"><div class="q-answer-lbl">ردّ صاحب الطلب:</div>'+esc(ans)+'</div>'
+            :(isOwner
+                ?'<div class="q-reply" style="margin-top:9px;margin-right:14px"><textarea id="ans-input-'+q.id+'" class="q-textarea" style="min-height:54px" placeholder="اكتب ردّك على هذا السؤال..."></textarea><button class="btn-ask" style="margin-top:7px" onclick="submitAnswer('+q.id+')">إرسال الرد</button></div>'
+                :''))
         +'</div>';
     }).join('');
   }
@@ -873,7 +878,20 @@ function renderQuestions(qs){
     +'<textarea id="q-input" class="q-textarea" placeholder="'+(u?'اكتب سؤالك أو توضيحك هنا...':'سجّل الدخول لإضافة سؤال أو توضيح')+'"></textarea>'
     +'<button class="btn-ask" onclick="submitQuestion()">إرسال</button></div>';
   el.innerHTML='<div class="card"><div style="font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:900;color:var(--p);margin-bottom:13px">❓ الأسئلة والتوضيحات</div>'
-    +'<div class="q-list">'+list+'</div>'+askBox+'</div>';
+    +'<div class="q-list">'+list+'</div>'+(isOwner?'':askBox)+'</div>';
+}
+// نداء الرد على سؤال (صاحب الطلب فقط) — عدّله لو اختلف في باك-إندك
+var ANSWER_EP=function(rid,qid){return '/api/requests/'+rid+'/questions/'+qid+'/answer';};
+function submitAnswer(qid){
+  var u=getUser();
+  if(!u){goLogin();return;}
+  var inp=document.getElementById('ans-input-'+qid);if(!inp)return;
+  var txt=(inp.value||'').trim();
+  if(!txt){alert('اكتب الرد أولاً');return;}
+  fetch(API+ANSWER_EP(_rid,qid),{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},body:JSON.stringify({answer:txt})})
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){loadQuestions(_rid);})
+    .catch(function(){alert('تعذر إرسال الرد، حاول لاحقاً');});
 }
 function submitQuestion(){
   var u=getUser();
