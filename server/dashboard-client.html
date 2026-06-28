@@ -409,6 +409,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .hzp{animation:upIn .5s var(--ease-out) both}
   .hzp:nth-child(1){animation-delay:.03s}.hzp:nth-child(2){animation-delay:.08s}.hzp:nth-child(3){animation-delay:.13s}.hzp:nth-child(4){animation-delay:.18s}.hzp:nth-child(5){animation-delay:.23s}.hzp:nth-child(n+6){animation-delay:.27s}
 }
+/* ===== شريط النبيهات الذكية (يحتاج انتباهك) ===== */
+.nudges{margin-bottom:14px}
+.nudges-h{font-size:12px;font-weight:800;color:var(--muted);margin:0 2px 9px;display:flex;align-items:center;gap:6px}
+.nudge{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--border);border-right:4px solid var(--p);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:transform .15s var(--ease),box-shadow .15s}
+.nudge:hover{transform:translateX(-2px);box-shadow:var(--shadow-md)}
+.nudge-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nudge-body{flex:1;min-width:0}
+.nudge-t{font-size:13px;font-weight:800;color:var(--text)}
+.nudge-s{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nudge-cta{flex-shrink:0;font-size:12px;font-weight:800;color:var(--p);display:flex;align-items:center;gap:3px;white-space:nowrap}
+@media (prefers-reduced-motion: no-preference){.nudge{animation:upIn .45s var(--ease-out) both}}
 .sc,.ri,.bid-item{will-change:transform,opacity}
 </style>
 </head>
@@ -513,6 +524,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div class="ph-mc"><div class="ph-mi sky"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn" id="s-offers">0</div><div class="ph-ml">عروض مستلمة</div></div>
         <div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn" id="s-done">0</div><div class="ph-ml">مكتملة</div></div>
       </div>
+      <div class="nudges" id="ph-nudges"></div>
       <div id="ph-feat-slot"></div>
       <div class="card card-accent">
         <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
@@ -909,9 +921,42 @@ function loadHome(){
     var hl=document.getElementById('phHl');
     if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
     if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
+    renderNudges(all);
     renderBestOffer(all);
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
+}
+// شريط النبيهات الذكية — مستنتج من حالة طلبات العميل
+function renderNudges(all){
+  var slot=document.getElementById('ph-nudges');if(!slot)return;
+  all=all||[];
+  var openBid=all.filter(function(r){return r.status==='open'&&(parseInt(r.bid_count)||0)>0;});
+  var totalOffers=openBid.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
+  var inProg=all.filter(function(r){return r.status==='in_progress';});
+  var doneR=all.filter(function(r){return r.status==='completed'||r.status==='done';});
+  var items=[];
+  if(totalOffers>0){
+    items.push('<div class="nudge" style="border-right-color:var(--p)" onclick="show(\'requests\',null,\'requests\')">'
+      +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'طلب':'طلبات')+' — راجعها واختر الأنسب</div></div>'
+      +'<div class="nudge-cta">عرض <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+  }
+  inProg.slice(0,2).forEach(function(r){
+    items.push('<div class="nudge" style="border-right-color:var(--green)" onclick="openDetail('+r.id+',event)">'
+      +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">أكمل مشروعك</div><div class="nudge-s">'+esc(r.title)+' — اضغط عند انتهاء العمل</div></div>'
+      +'<div class="nudge-cta">إكمال <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+  });
+  doneR.slice(0,2).forEach(function(r){
+    items.push('<div class="nudge" style="border-right-color:#F0A500" onclick="openDetail('+r.id+',event)">'
+      +'<div class="nudge-ic" style="background:var(--gold-l);color:#F0A500"><svg width="18" height="18" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">قيّم المزود</div><div class="nudge-s">'+esc(r.title)+' — شاركنا تجربتك</div></div>'
+      +'<div class="nudge-cta">تقييم <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div></div>');
+  });
+  items=items.slice(0,4);
+  slot.innerHTML=items.length
+    ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك</div>'+items.join('')
+    :'';
 }
 // بطاقة "أفضل عرض على طلبك" — تُستنتج من أحدث طلب له عروض
 function renderBestOffer(all){
