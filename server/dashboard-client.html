@@ -356,6 +356,34 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .et-steps b{width:18px;height:18px;border-radius:50%;background:var(--p);color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}
 .et-cta{padding:12px 28px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(29,78,216,.3);transition:all .18s}
 .et-cta:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(29,78,216,.4)}
+/* ===== الرئيسية المستنتجة من الصفحة التسويقية ===== */
+.ph-band{position:relative;overflow:hidden;background:var(--white);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.ph-acc{position:absolute;top:18px;bottom:18px;right:0;width:5px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,var(--p),var(--sky))}
+.ph-net{position:absolute;top:0;left:0;width:52%;height:100%;opacity:.55;pointer-events:none}
+.ph-greet{position:relative;z-index:1;display:flex;align-items:center;gap:13px}
+.ph-av{width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,var(--p),var(--sky));display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-size:21px;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden}
+.ph-av img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.ph-hi{font-family:'Cairo',sans-serif;font-size:21px;font-weight:900;color:var(--text);line-height:1.2}
+.ph-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.ph-hl{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;margin-top:14px;background:var(--gold-l);border:1px solid var(--p-mid);border-radius:30px;padding:8px 15px;font-size:13px;font-weight:800;color:var(--p)}
+.ph-hl b{color:#b45309;margin:0 3px;font-weight:900}
+.ph-dot{width:8px;height:8px;border-radius:50%;background:var(--star);box-shadow:0 0 0 4px rgba(240,165,0,.18);flex-shrink:0}
+.ph-mrow{display:flex;gap:10px;margin:-22px 14px 14px;position:relative;z-index:2}
+.ph-mc{flex:1;min-width:0;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px 12px;box-shadow:var(--shadow-md)}
+.ph-mi{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.ph-mi.blue{background:var(--p-light);color:var(--p)}
+.ph-mi.sky{background:#e0f2fe;color:var(--sky)}
+.ph-mi.grn{background:var(--green-l);color:var(--green)}
+.ph-mn{font-family:'Cairo',sans-serif;font-size:23px;font-weight:900;line-height:1;color:var(--p)}
+.ph-ml{font-size:11px;color:var(--muted);font-weight:700;margin-top:3px}
+.ph-feat{position:relative;background:var(--white);border:2px solid var(--p);border-radius:16px;padding:15px;margin-bottom:14px;cursor:pointer;transition:box-shadow .2s,transform .2s}
+.ph-feat:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.ph-fb{position:absolute;top:-11px;right:14px;background:var(--p);color:#fff;font-family:'Cairo',sans-serif;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
+.ph-feat-sq{width:42px;height:42px;border-radius:50%;background:var(--gold-l);color:var(--p2);display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-weight:900;font-size:17px;flex-shrink:0;overflow:hidden}
+.ph-feat-sq img{width:100%;height:100%;object-fit:cover}
+.ph-feat-cta{width:100%;margin-top:13px;border:none;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border-radius:11px;padding:11px;font-size:13px;font-weight:800;font-family:'Tajawal',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(29,78,216,.28)}
+@media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
+@media(max-width:768px){.ph-band{border-radius:14px;padding:16px}.ph-hi{font-size:18px}}
 .sc,.ri,.bid-item{will-change:transform,opacity}
 </style>
 </head>
@@ -443,23 +471,24 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
     <!-- HOME -->
     <div class="page on" id="page-home">
-      <div class="hero">
-        <svg class="hero-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="12" y1="30" x2="92" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="92" y1="58" x2="182" y2="24" stroke="#bfdbfe" stroke-width="1.2"/><line x1="92" y1="58" x2="140" y2="98" stroke="#93c5fd" stroke-width="1.2"/><circle cx="92" cy="58" r="4.5" fill="#93c5fd"/><circle cx="182" cy="24" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#0ea5e9"/></svg>
-        <div class="hero-content">
-          <div class="hero-tag"><span class="hero-tag-dot"></span>لوحة العميل</div>
-          <div class="hero-t">
-            <h2 id="heroGreet">أهلاً</h2>
-            <p>انشر طلبك واحصل على أفضل العروض من المزودين</p>
+      <div class="ph-band">
+        <span class="ph-acc"></span>
+        <svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>
+        <div class="ph-greet">
+          <div class="ph-av" id="phAv">ع</div>
+          <div>
+            <h2 class="ph-hi" id="phHi">أهلاً</h2>
+            <div class="ph-sub">إليك ملخّص نشاطك على المنصة اليوم</div>
           </div>
         </div>
-        <button class="hero-btn" onclick="show('new',null,'new')">+ طلب جديد</button>
+        <div class="ph-hl" id="phHl"><span class="ph-dot"></span> ابدأ بنشر أول طلب واستقبل العروض</div>
       </div>
-      <div class="stat-grid">
-        <div class="sc"><div class="sn" id="s-total">0</div><div class="st">كل الطلبات</div></div>
-        <div class="sc"><div class="sn" id="s-open" style="color:var(--green)">0</div><div class="st">مفتوح</div></div>
-        <div class="sc"><div class="sn" id="s-prog" style="color:var(--p)">0</div><div class="st">قيد التنفيذ</div></div>
-        <div class="sc"><div class="sn" id="s-done" style="color:var(--sky)">0</div><div class="st">مكتمل</div></div>
+      <div class="ph-mrow">
+        <div class="ph-mc"><div class="ph-mi blue"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ph-mn" id="s-open">0</div><div class="ph-ml">طلبات نشطة</div></div>
+        <div class="ph-mc"><div class="ph-mi sky"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn" id="s-offers">0</div><div class="ph-ml">عروض مستلمة</div></div>
+        <div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn" id="s-done">0</div><div class="ph-ml">مكتملة</div></div>
       </div>
+      <div id="ph-feat-slot"></div>
       <div class="card card-accent">
         <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
         <div id="home-reqs"></div>
@@ -700,7 +729,7 @@ function _skCards(n){var h='<div class="card card-accent"><div class="ch"><div c
 // ═══════════════════════════════════
 function applyAvatar(img){
   if(!isImg(img))return;
-  ['userAv','mobAv','profileAv'].forEach(function(id){
+  ['userAv','mobAv','profileAv','phAv'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
   });
@@ -710,8 +739,8 @@ function applyAvatar(img){
 (function(){
   var n=user.name||'—';
   document.getElementById('userName').textContent=n;
-  document.getElementById('heroGreet').textContent='أهلاً، '+n.split(' ')[0];
-  ['userAv','mobAv','profileAv'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=n[0]||'ع';});
+  var _hi=document.getElementById('phHi');if(_hi)_hi.textContent='أهلاً، '+n.split(' ')[0];
+  ['userAv','mobAv','profileAv','phAv'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=n[0]||'ع';});
   var cached=localStorage.getItem('client_avatar_'+user.id);
   if(isImg(cached))applyAvatar(cached);
   jFetch('/api/client/profile').then(function(p){
@@ -826,14 +855,53 @@ function loadHome(){
   if(el)el.innerHTML=_skCards(3);
   jFetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){if(el)el.innerHTML=errH();return;}
-    var s=document.getElementById('s-total'),so=document.getElementById('s-open'),sp=document.getElementById('s-prog'),sd=document.getElementById('s-done');
-    if(s)s.textContent=all.length;
-    if(so)so.textContent=all.filter(function(r){return r.status==='open';}).length;
-    if(sp)sp.textContent=all.filter(function(r){return r.status==='in_progress';}).length;
-    if(sd)sd.textContent=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
+    var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
+    var openN=all.filter(function(r){return r.status==='open';}).length;
+    var doneN=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
+    var offers=all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
+    if(so)so.textContent=openN;
+    if(sd)sd.textContent=doneN;
+    if(sof)sof.textContent=offers;
+    var hl=document.getElementById('phHl');
+    if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
     if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
+    renderBestOffer(all);
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
+}
+// بطاقة "أفضل عرض على طلبك" — تُستنتج من أحدث طلب له عروض
+function renderBestOffer(all){
+  var slot=document.getElementById('ph-feat-slot');if(!slot)return;
+  var withB=(all||[]).filter(function(r){return (parseInt(r.bid_count)||0)>0;});
+  if(!withB.length){slot.innerHTML='';return;}
+  var req=withB[0];
+  jFetch('/api/requests/'+req.id+'/bids').then(function(bids){
+    if(!Array.isArray(bids)||!bids.length){slot.innerHTML='';return;}
+    var best=bids.slice().sort(function(a,b){
+      var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;
+      if(rb!==ra)return rb-ra;
+      return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);
+    })[0];
+    var nm=best.provider_business_name||best.provider_name||'مزود';
+    var rating=parseFloat(best.provider_rating)||0;
+    var reviews=parseInt(best.provider_reviews)||0;
+    var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
+    var price=best.price?fmtN(best.price):'—';
+    var avHtml=isImg(best.provider_image)?'<img src="'+best.provider_image+'">':esc(nm.charAt(0));
+    slot.innerHTML='<div class="ph-feat" onclick="openDetail('+req.id+',event)">'
+      +'<span class="ph-fb">أفضل عرض على طلبك</span>'
+      +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:4px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+        +'<div style="display:flex;align-items:center;gap:9px">'
+          +'<div class="ph-feat-sq">'+avHtml+'</div>'
+          +'<div><div style="font-size:14px;font-weight:800;color:var(--text)">'+esc(nm)+'</div>'
+          +'<div style="font-size:12px;margin-top:2px;color:#F0A500">'+stars+' <span style="color:var(--muted)">'+(rating?rating.toFixed(1):'—')+' · '+reviews+' تقييم</span></div></div>'
+        +'</div>'
+        +'<div style="text-align:left"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900;color:var(--green)">'+price+' <span style="font-size:12px">ر.س</span></div>'+(best.days?'<div style="font-size:11px;color:var(--muted)">خلال '+best.days+' يوم</div>':'')+'</div>'
+      +'</div>'
+      +'<button class="ph-feat-cta" onclick="openDetail('+req.id+',event)">استعرض كل العروض</button>'
+    +'</div>';
+  }).catch(function(){slot.innerHTML='';});
 }
 
 // ═══════════════════════════════════
@@ -1658,7 +1726,7 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   // عدّاد تصاعدي لأرقام الإحصاءات — يراقب تغيّر النص ويحرّكه
   (function countUp(){
     if(reduce) return;
-    ['s-total','s-open','s-prog','s-done'].forEach(function(id){
+    ['s-total','s-open','s-prog','s-done','s-offers'].forEach(function(id){
       var el=document.getElementById(id); if(!el) return;
       var last=0;
       function animate(to){
