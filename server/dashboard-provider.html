@@ -652,6 +652,7 @@ function _renderHome(data){
     +'<div class="ph-mc"><div class="ph-mi gold"><svg width="17" height="17" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div><div class="ph-mn">'+rat+'</div><div class="ph-ml">تقييمي</div></div>'
     +'<div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">منجزة</div></div>'
   +'</div>';
+  html+='<div class="nudges" id="ph-nudges"></div>';
 
   var _pcItems=[
     {l:'الصورة الشخصية',d:!!profile.profile_image},
@@ -758,6 +759,44 @@ function _renderHome(data){
   html+='</div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
+  _renderProvNudges(_myBids,pool,matchedBySpec);
+}
+
+// شريط النبيهات الذكية للمزود — مستنتج من عروضه وفرصه ورسائله
+function _renderProvNudges(bids,pool,matchedBySpec){
+  var slot=_el('ph-nudges');if(!slot)return;
+  bids=bids||[];pool=pool||[];
+  var accepted=bids.filter(function(b){return b.status==='accepted';});
+  var newMatch=pool.length;
+  var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+  var reqItems=[];
+  accepted.slice(0,2).forEach(function(b){
+    reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="_viewProj('+b.request_id+')">'
+      +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">تم قبول عرضك</div><div class="nudge-s">'+_esc(b.request_title||'مشروع')+' — تواصل مع العميل وابدأ التنفيذ</div></div>'
+      +'<div class="nudge-cta">فتح '+chev+'</div></div>');
+  });
+  if(newMatch>0){
+    reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="gotoPage(\'browse\')">'
+      +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">'+newMatch+' '+(newMatch===1?'طلب جديد':'طلبات جديدة')+(matchedBySpec?' تناسب تخصصك':' متاحة')+'</div><div class="nudge-s">قدّم عروضك قبل أن تُغلق</div></div>'
+      +'<div class="nudge-cta">تصفّح '+chev+'</div></div>');
+  }
+  function paint(msgItem){
+    var items=(msgItem?[msgItem]:[]).concat(reqItems).slice(0,4);
+    slot.innerHTML=items.length
+      ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك</div>'+items.join('')
+      :'';
+  }
+  _api('/api/provider/conversations').then(function(convs){
+    convs=Array.isArray(convs)?convs:[];
+    var unread=convs.reduce(function(a,c){return a+(parseInt(c.unread)||0);},0);
+    var msgItem=unread>0?('<div class="nudge" style="border-right-color:var(--sky)" onclick="gotoPage(\'chat\')">'
+      +'<div class="nudge-ic" style="background:#e0f2fe;color:var(--sky)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">لديك '+unread+' '+(unread===1?'رسالة غير مقروءة':'رسائل غير مقروءة')+'</div><div class="nudge-s">من العملاء — افتح المحادثات للرد</div></div>'
+      +'<div class="nudge-cta">المحادثات '+chev+'</div></div>'):null;
+    paint(msgItem);
+  }).catch(function(){paint(null);});
 }
 
 async function _doBump(){
