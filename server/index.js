@@ -200,8 +200,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         u.phone as provider_phone,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
-          THEN CASE WHEN u.profile_image LIKE 'http%' THEN u.profile_image ELSE NULL END
-          ELSE NULL END as provider_image,
+          THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
@@ -238,7 +237,9 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
     const specs = (p.specialties || []).join('، ');
     const avg = parseFloat(p.avg_rating) || 0;
     const cnt = parseInt(p.review_count) || 0;
-    const pageUrl = `${SITE_URL}/pro/${slug}`;
+    // canonical دائماً بالاسم الكامل (SEO قوي) مهما كان رابط الدخول
+    const seoSlug = encodeURIComponent(pName.replace(/\s+/g, '-')) + '-' + p.id;
+    const pageUrl = `${SITE_URL}/pro/${seoSlug}`;
     const title = `${pName}${specs ? ' — ' + specs : ''}${pCity !== 'السعودية' ? ' في ' + pCity : ''} | مناقصة`;
     const desc = `${pName} مزود خدمة في ${pCity}${specs ? '، متخصص في ' + specs : ''}${avg > 0 ? '، تقييم ' + avg.toFixed(1) + ' من 5' : ''}. تواصل معه على منصة مناقصة.`;
     const keywords = [pName, pCity, ...(p.specialties||[]), ...(p.specialties||[]).map(s => s+' '+pCity), 'مزود خدمة', 'مناقصة'].join(', ');
@@ -387,6 +388,15 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function logAdmin(req, action, targetType, targetId, details) {
+  try {
+    await pool.query(
+      'INSERT INTO admin_logs (admin_id, admin_name, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5,$6)',
+      [req.user?.id||null, req.user?.name||'أدمن', action, targetType||null, targetId||null, details||null]
+    );
+  } catch(e) { console.error('logAdmin:', e.message); }
+}
+
 async function notify(userId, title, body, type, refId) {
   try {
     await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
@@ -442,14 +452,19 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
+    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
@@ -498,7 +513,9 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, bio, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, city||null, bio||null]);
+    const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
+    const isProv = role === 'provider';
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null]);
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     try {
@@ -551,10 +568,10 @@ app.put('/api/auth/change-password', auth, async (req, res) => {
 app.get('/api/account/deletion-preview', auth, async (req, res) => {
   try {
     const userId = req.user.id; const role = req.user.role; const stats = {};
-    if (role === 'client') { const r1 = await pool.query('SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1', [userId]); stats.projects = r1.rows[0].c; }
+    if (role === 'client') { const r1 = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND (category IS DISTINCT FROM 'direct')", [userId]); stats.projects = r1.rows[0].c; }
     if (role === 'provider') {
       const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]); stats.bids = r2.rows[0].c;
-      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`, [userId]); stats.active_projects = r3.rows[0].c;
+      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]); stats.active_projects = r3.rows[0].c;
     }
     const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]); stats.messages = r4.rows[0].c;
     const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
@@ -569,7 +586,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     if (confirmation !== 'حذف' && confirmation !== 'DELETE') return res.status(400).json({ message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد', code: 'CONFIRMATION_REQUIRED' });
     if (role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
     if (role === 'provider') {
-      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress'`, [userId]);
+      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]);
       if (active.rows[0].c > 0) return res.status(400).json({ message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أولاً.`, code: 'ACTIVE_PROJECTS' });
     }
     const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
@@ -579,6 +596,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     try {
       if (role === 'provider') await pool.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
       await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+      await logAdmin(req, 'delete_user', 'user', userId, 'حذف مستخدم');
       await pool.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
       await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
       await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
@@ -643,7 +661,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
     }
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -663,7 +681,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -672,7 +690,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -682,7 +700,7 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const agg = await pool.query(`SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count FROM reviews WHERE reviewed_id=$1`, [id]);
-    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
+    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.images, r.provider_reply, r.reply_at, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
     res.json({ average: parseFloat(agg.rows[0].average)||0, count: agg.rows[0].count||0, reviews: rv.rows });
   } catch(e) { console.error('/api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
 });
@@ -701,7 +719,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio')); else if (img) uploaded.push(img); }
       req.body.portfolio_images = uploaded;
     }
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -715,7 +733,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     }
     if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,instagram,twitter,snapchat,tiktok,youtube FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
     params.push(req.user.id);
-    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,social_whatsapp,social_snap,social_tiktok,social_instagram,social_twitter`, params);
+    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,location_url,instagram,twitter,snapchat,tiktok,youtube`, params);
     res.json(r.rows[0]);
   } catch(e) { console.error('provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -730,14 +748,14 @@ app.get('/api/provider/bids', auth, async (req, res) => {
 
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/projects:', e); res.json([]); }
 });
 
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image FROM reviews rv JOIN users u ON rv.reviewer_id=u.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
+    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.images, rv.provider_reply, rv.reply_at, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/reviews:', e); res.json([]); }
 });
@@ -1017,7 +1035,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         u.business_name as provider_business_name,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
-        CASE WHEN u.profile_image IS NOT NULL AND u.profile_image LIKE 'http%'
+        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
              THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
@@ -1175,7 +1193,7 @@ app.get('/api/users/search', auth, async (req, res) => {
     const q = (req.query.q||'').trim();
     if (!q) return res.json([]);
     const role = req.user.role === 'client' ? 'provider' : 'client';
-    const r = await pool.query(`SELECT id, name, business_name, phone, city, CASE WHEN profile_image LIKE 'http%' THEN profile_image ELSE NULL END as profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
+    const r = await pool.query(`SELECT id, name, business_name, phone, city, profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
     res.json(r.rows);
   } catch(e) { res.json([]); }
 });
@@ -1300,7 +1318,7 @@ app.get('/api/requests/:id/my-review', auth, async (req, res) => {
 
 app.post('/api/reviews', auth, async (req, res) => {
   try {
-    const { request_id, reviewed_id, rating, comment } = req.body;
+    const { request_id, reviewed_id, rating, comment, images } = req.body;
     if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
     const reqRow = await pool.query('SELECT status, title FROM requests WHERE id=$1', [request_id]);
@@ -1309,10 +1327,10 @@ app.post('/api/reviews', auth, async (req, res) => {
     const existing = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
     let row;
     if (existing.rows.length) {
-      const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, created_at=NOW() WHERE request_id=$3 AND reviewer_id=$4 RETURNING *`, [rating, comment||null, request_id, req.user.id]);
+      const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, images=$3, created_at=NOW() WHERE request_id=$4 AND reviewer_id=$5 RETURNING *`, [rating, comment||null, (Array.isArray(images)&&images.length)?images:null, request_id, req.user.id]);
       row = upd.rows[0];
     } else {
-      const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, created_at) VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null]);
+      const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null, (Array.isArray(images)&&images.length)?images:null]);
       row = ins.rows[0];
     }
     const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
@@ -1326,6 +1344,23 @@ app.post('/api/reviews', auth, async (req, res) => {
     }
     res.json(row);
   } catch(e) { console.error('POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ رد المزود على تقييم ═══
+app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const { reply } = req.body;
+    if (!reply || !reply.trim()) return res.status(400).json({ message: 'الرد فارغ' });
+    // تأكد أن التقييم موجّه لهذا المزود
+    const rv = await pool.query('SELECT reviewed_id, reviewer_id FROM reviews WHERE id=$1', [reviewId]);
+    if (!rv.rows.length) return res.status(404).json({ message: 'التقييم غير موجود' });
+    if (rv.rows[0].reviewed_id !== req.user.id) return res.status(403).json({ message: 'لا يمكنك الرد على هذا التقييم' });
+    const upd = await pool.query('UPDATE reviews SET provider_reply=$1, reply_at=NOW() WHERE id=$2 RETURNING *', [reply.trim(), reviewId]);
+    // أشعر العميل بالرد
+    try { await notify(rv.rows[0].reviewer_id, 'رد على تقييمك', 'ردّ المزود على تقييمك.', 'review_reply', null); } catch(e){}
+    res.json(upd.rows[0]);
+  } catch(e) { console.error('review reply:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
@@ -1365,15 +1400,12 @@ app.get('/api/providers', async (req, res) => {
 app.get('/api/providers/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,location_url,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const prov = r.rows[0];
-    // استبعد صور base64 الضخمة — http فقط (R2/Cloudinary)
+    // اعرض كل الصور (base64 أو http)
     if (Array.isArray(prov.portfolio_images)) {
-      prov.portfolio_images = prov.portfolio_images.filter(img => img && img.startsWith('http'));
-    }
-    if (prov.profile_image && !prov.profile_image.startsWith('http')) {
-      prov.profile_image = null;
+      prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
     }
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1454,12 +1486,19 @@ app.get('/api/categories', (req, res) => { res.json(['برمجة وتطوير','
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
 app.get('/api/stats', async (req, res) => {
   try {
-    const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed'"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open'")]);
+    const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
     res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
   } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
 });
 
 // ═══ ADMIN ═══
+app.get('/api/admin/logs', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 200');
+    res.json(r.rows);
+  } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
@@ -1493,6 +1532,29 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       SELECT created_at::date as day, COUNT(*)::int as n
       FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
       GROUP BY created_at::date ORDER BY day`);
+    // ═══ سلاسل زمنية: شهري (12 شهر) + سنوي (5 سنوات) ═══
+    let monthly={rows:[]}, yearly={rows:[]}, dailyReq={rows:[]};
+    try {
+      monthly = await pool.query(`
+        SELECT to_char(date_trunc('month', created_at),'YYYY-MM') as period,
+               COUNT(*)::int as users,
+               COUNT(*) FILTER (WHERE role='provider')::int as providers
+        FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
+        GROUP BY period ORDER BY period`);
+    } catch(e){ console.error('monthly:', e.message); }
+    try {
+      yearly = await pool.query(`
+        SELECT to_char(date_trunc('year', created_at),'YYYY') as period,
+               COUNT(*)::int as users
+        FROM users WHERE created_at >= date_trunc('year', CURRENT_DATE) - INTERVAL '4 years'
+        GROUP BY period ORDER BY period`);
+    } catch(e){ console.error('yearly:', e.message); }
+    try {
+      dailyReq = await pool.query(`
+        SELECT created_at::date as day, COUNT(*)::int as n
+        FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
+        GROUP BY created_at::date ORDER BY day`);
+    } catch(e){ console.error('dailyReq:', e.message); }
     // أكثر التخصصات (محمي — لو فشل لا يكسر باقي الإحصائيات)
     let topSpecs={rows:[]}, topCities={rows:[]};
     try {
@@ -1513,6 +1575,9 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
       week:{ users:weekUsers, requests:weekRequests },
       month:{ users:monthUsers, requests:monthRequests },
       daily_signups: daily.rows,
+      daily_requests: dailyReq.rows,
+      monthly_signups: monthly.rows,
+      yearly_signups: yearly.rows,
       top_specialties: topSpecs.rows,
       top_cities: topCities.rows
     });
@@ -1556,6 +1621,7 @@ app.put('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
     params.push(id);
     const r = await pool.query(`UPDATE bids SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, params);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    await logAdmin(req, 'edit_bid', 'bid', id, 'تعديل عرض');
     res.json(r.rows[0]);
   } catch(e) { console.error('edit bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1566,6 +1632,7 @@ app.delete('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    await logAdmin(req, 'delete_bid', 'bid', id, 'حذف عرض');
     res.json({ ok: true });
   } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1586,6 +1653,7 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
     const uid = parseInt(req.params.id);
     if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
     const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
+    if(r.rows.length) await logAdmin(req, r.rows[0].is_active?'activate_user':'ban_user', 'user', uid, r.rows[0].is_active?'تفعيل حساب':'إيقاف حساب');
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1600,6 +1668,7 @@ app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
     // عند التحويل لمزود، ألغِ إسناده كمزود في مشاريع (تنظيف)
     const r = await pool.query(`UPDATE users SET role=$1 WHERE id=$2 AND role!='admin' RETURNING id, name, role`, [role, uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    await logAdmin(req, 'change_role', 'user', uid, 'تغيير الدور إلى '+role);
     res.json(r.rows[0]);
   } catch(e) { console.error('change role:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -1608,6 +1677,7 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   try {
     const uid = parseInt(req.params.id); const { badge } = req.body;
     const r = await pool.query(`UPDATE users SET badge=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,badge`, [badge, uid]);
+    await logAdmin(req, 'set_badge', 'user', uid, 'تغيير التوثيق إلى '+(badge||'بدون'));
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
     res.json(r.rows[0]);
@@ -1713,6 +1783,7 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
       await pool.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
       await pool.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
       const del = await pool.query('DELETE FROM requests WHERE id=$1', [id]);
+      await logAdmin(req, 'delete_request', 'request', id, 'حذف مشروع');
       if (del.rowCount===0) { await pool.query('ROLLBACK'); return res.status(404).json({ message: 'غير موجود' }); }
       await pool.query('COMMIT'); res.json({ ok: true });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
@@ -1777,7 +1848,7 @@ app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
-  try { const r=await pool.query('DELETE FROM reviews WHERE id=$1',[parseInt(req.params.id)]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
@@ -1864,6 +1935,7 @@ app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
         sent++;
       } catch(e) {}
     }
+    await logAdmin(req, 'broadcast', null, null, 'رسالة جماعية: '+(title||'')+' ('+sent+' مستلم)');
     res.json({ ok: true, total: sent });
   } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
