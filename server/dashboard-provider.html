@@ -259,6 +259,59 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .push-banner-no{padding:11px 14px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
 @media(min-width:769px){.push-banner{bottom:24px;left:auto;right:24px;transform:none;max-width:340px}}
 
+/* push toggle (مُعاد) */
+.push-toggle-card{background:var(--gold-l);border:1.5px solid var(--p-mid);border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.push-toggle-switch{width:48px;height:26px;background:var(--border2);border-radius:13px;position:relative;cursor:pointer;transition:.25s;flex-shrink:0;border:none;padding:0}
+.push-toggle-switch::after{content:'';position:absolute;top:2px;right:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.push-toggle-switch.on{background:var(--green)}
+.push-toggle-switch.on::after{right:24px}
+.push-status-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px}
+.push-status-badge.active{background:var(--green-l);color:var(--green)}
+.push-status-badge.inactive{background:var(--bg);color:var(--muted)}
+/* تصفح المشاريع — أسلوب قائمة نظيف (مُعاد) */
+.bz-item{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;transition:all .2s var(--ease,ease)}
+.bz-item:hover{border-color:var(--p-mid);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.bz-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.bz-titwrap{flex:1;min-width:0}
+.bz-cat{font-size:11px;font-weight:700;color:var(--p);margin-bottom:4px}
+.bz-title{font-size:16px;font-weight:800;color:var(--p);line-height:1.4;letter-spacing:-.2px}
+.bz-item:hover .bz-title{text-decoration:underline}
+.bz-price{flex-shrink:0;font-size:17px;font-weight:900;color:var(--green);letter-spacing:-.3px;text-align:left}
+.bz-cur{font-size:10px;font-weight:600;color:var(--muted);margin-right:3px}
+.bz-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px}
+.bz-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11.5px;color:var(--muted);font-weight:600}
+.bz-meta span{position:relative;padding-left:8px}
+.bz-meta span:not(:last-child)::after{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;border-radius:50%;background:var(--border2);transform:translateY(-50%)}
+.bz-deadline{font-size:11.5px;color:#d97706;font-weight:700;margin-top:8px}
+.bz-action{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.bz-bid{width:100%;padding:12px;background:var(--p);color:#fff;border:none;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease)}
+.bz-bid:hover{background:var(--p2);transform:translateY(-1px)}
+/* بطاقات مدمجة (مُعاد) */
+.mini-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-radius:13px;margin-bottom:12px;text-decoration:none;border:none;width:100%;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);box-sizing:border-box}
+.mc-txt{display:flex;flex-direction:column;text-align:right}
+.mc-t{font-size:13.5px;font-weight:900;line-height:1.3}
+.mc-s{font-size:11px;margin-top:2px}
+.mc-share{background:var(--gold-l);border:1px solid var(--p-mid)}
+.mc-share .mc-t{color:var(--p)}
+.mc-share .mc-s{color:var(--p);opacity:.7}
+.mc-arrow{font-size:12px;font-weight:800;color:#fff;background:var(--p);padding:8px 14px;border-radius:9px;white-space:nowrap;flex-shrink:0}
+.mc-share:hover{box-shadow:0 4px 12px rgba(29,78,216,.2)}
+.mc-bump{background:linear-gradient(135deg,var(--p),var(--p2))}
+.mc-bump-btn{font-size:12.5px;font-weight:800;color:var(--p);background:#fff;padding:9px 15px;border-radius:9px;white-space:nowrap;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.mc-bump:hover{box-shadow:var(--shadow-lg)}
+/* شريط اكتمال الملف (مُعاد) */
+.pcompl{background:#fff;border:1px solid var(--border);border-right:4px solid var(--p);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.pcompl-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.pcompl-ttl{font-family:'Cairo',sans-serif;font-size:14px;font-weight:900;color:var(--p);display:flex;align-items:center;gap:7px}
+.pcompl-pct{font-size:15px;font-weight:900;color:var(--p)}
+.pcompl-bar{height:9px;background:var(--p-light);border-radius:6px;overflow:hidden;margin-bottom:11px}
+.pcompl-fill{height:100%;background:linear-gradient(90deg,var(--p),var(--sky));border-radius:6px;transition:width .6s var(--ease-out)}
+.pcompl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.pcompl-chip{font-size:11px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 11px;display:inline-flex;align-items:center;gap:5px}
+.pcompl-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--sky)}
+.pcompl-btn{width:100%;padding:11px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .18s}
+.pcompl-btn:hover{background:var(--p2);transform:translateY(-1px)}
+
 /* ===== الهوية المستنتجة (شريط شخصي + أرقام + نبيهات + أفضل فرصة) ===== */
 .ph-band{position:relative;overflow:hidden;background:var(--white);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
 .ph-acc{position:absolute;top:18px;bottom:18px;right:0;width:5px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,var(--p),var(--sky))}
