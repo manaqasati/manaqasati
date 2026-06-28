@@ -280,6 +280,59 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   body.in-chat .bnav{display:none!important}
   .chat-home-back{display:inline-flex!important}
 }
+
+/* ═══════════════════════════════════
+   LIVE / MOTION LAYER — حركة خفيفة راقية
+   ═══════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference){
+  /* دخول الصفحة عند التنقّل */
+  .page.on{animation:pgIn .4s var(--ease-out) both}
+  @keyframes pgIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* دخول بطاقات الإحصاء بالتتابع */
+  .stat-grid .sc{animation:upIn .55s var(--ease-out) both}
+  .stat-grid .sc:nth-child(1){animation-delay:.04s}
+  .stat-grid .sc:nth-child(2){animation-delay:.10s}
+  .stat-grid .sc:nth-child(3){animation-delay:.16s}
+  .stat-grid .sc:nth-child(4){animation-delay:.22s}
+
+  /* دخول عناصر الطلبات والعروض بالتتابع عند كل تحميل */
+  .ri{animation:upIn .5s var(--ease-out) both}
+  .ri:nth-child(1){animation-delay:.03s}
+  .ri:nth-child(2){animation-delay:.08s}
+  .ri:nth-child(3){animation-delay:.13s}
+  .ri:nth-child(4){animation-delay:.18s}
+  .ri:nth-child(5){animation-delay:.23s}
+  .ri:nth-child(n+6){animation-delay:.27s}
+  .bid-item{animation:upIn .5s var(--ease-out) both}
+  .notif-item{animation:upIn .45s var(--ease-out) both}
+  @keyframes upIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  /* نبضة لطيفة لأيقونة العنصر النشط في القائمة */
+  .ni.on .ni-ic,.bni.on .bic{animation:pop .34s var(--ease-out)}
+  @keyframes pop{0%{transform:scale(.82)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
+
+  /* نبض شارات الإشعارات غير المقروءة */
+  .ni-badge,.mob-notif-badge,.bni-badge{animation:beat 2.2s ease-in-out infinite}
+  @keyframes beat{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}55%{box-shadow:0 0 0 6px rgba(220,38,38,0)}}
+
+  /* لمعة خفيفة تمرّ على الهيرو */
+  .hero::before{content:'';position:absolute;top:0;left:-65%;width:42%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-18deg);animation:sheen 7s ease-in-out infinite;pointer-events:none;z-index:0}
+  @keyframes sheen{0%,70%{left:-65%}86%,100%{left:130%}}
+
+  /* تنفّس مؤشر التحميل */
+  .loading{animation:breathe 1.5s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.55}50%{opacity:1}}
+
+  /* تموّج خفيف للأزرار عند الضغط */
+  .rpl-host{position:relative;overflow:hidden}
+  .rpl{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rip .6s var(--ease-out);pointer-events:none;z-index:0}
+  @keyframes rip{to{transform:scale(2.6);opacity:0}}
+}
+
+/* ملمس ضغط الأزرار (خفيف، يعمل دائماً) */
+.btn-p:active,.btn-new:active,.btn-agree:active,.btn-sm:active,.hero-btn:active,.btn-s:active,.chat-send:active{transform:translateY(0) scale(.97)}
+.sc,.ri,.bid-item{will-change:transform,opacity}
 </style>
 </head>
 <body>
@@ -1541,6 +1594,57 @@ function gotoMessagesAndOpen(reqId,provId,provName){
     </div>
   </div>
 </div>
+<script>
+// ═══════════════════════════════════
+// LIVE LAYER — تحسينات حركة إضافية (لا تمسّ أي وظيفة)
+// ═══════════════════════════════════
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // عدّاد تصاعدي لأرقام الإحصاءات — يراقب تغيّر النص ويحرّكه
+  (function countUp(){
+    if(reduce) return;
+    ['s-total','s-open','s-prog','s-done'].forEach(function(id){
+      var el=document.getElementById(id); if(!el) return;
+      var last=0;
+      function animate(to){
+        if(el._anim) return;
+        el._anim=true;
+        var from=last, dur=650, st=performance.now();
+        (function tick(now){
+          var p=Math.min(1,(now-st)/dur), e=1-Math.pow(1-p,3);
+          el.textContent=Math.round(from+(to-from)*e);
+          if(p<1){requestAnimationFrame(tick);} else {el.textContent=to; el._anim=false;}
+        })(st);
+      }
+      var obs=new MutationObserver(function(){
+        if(el._anim) return;
+        var to=parseInt((el.textContent||'').replace(/[^0-9]/g,''))||0;
+        if(to===last) return;
+        var prev=last; last=to; animate(to);
+      });
+      obs.observe(el,{childList:true,characterData:true,subtree:true});
+    });
+  })();
+
+  // تموّج عند الضغط على الأزرار الرئيسية
+  (function ripple(){
+    if(reduce) return;
+    document.addEventListener('click',function(e){
+      var b=e.target.closest && e.target.closest('.btn-p,.btn-new,.btn-agree,.hero-btn,.chat-send,.btn-sm');
+      if(!b) return;
+      var r=b.getBoundingClientRect(), size=Math.max(r.width,r.height);
+      var s=document.createElement('span');
+      s.className='rpl';
+      s.style.width=s.style.height=size+'px';
+      s.style.left=(e.clientX-r.left-size/2)+'px';
+      s.style.top=(e.clientY-r.top-size/2)+'px';
+      b.classList.add('rpl-host');
+      b.appendChild(s);
+      setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); },650);
+    },false);
+  })();
+})();
+</script>
 </body>
 </html>
