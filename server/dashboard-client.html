@@ -564,6 +564,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div class="ph-mc"><div class="ph-mi sky"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn" id="s-offers">0</div><div class="ph-ml">عروض مستلمة</div></div>
         <div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn" id="s-done">0</div><div class="ph-ml">مكتملة</div></div>
       </div>
+      <div id="ph-q-nudge"></div>
       <div class="nudges" id="ph-nudges"></div>
       <div id="ph-feat-slot"></div>
       <div class="card card-accent">
@@ -656,10 +657,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="tab-btn on" onclick="showTab('bids',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض<span class="tcount" id="bids-count">0</span></button>
         <button class="tab-btn" onclick="showTab('actions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>الإجراءات</button>
         <button class="tab-btn" onclick="showTab('timeline',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>الأنشطة</button>
+        <button class="tab-btn" onclick="showTab('cq',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="tcount" id="cq-count">0</span></button>
       </div>
       <div class="tab on" id="tab-bids"><div id="bids-list"></div></div>
       <div class="tab" id="tab-actions"><div id="actions-wrap"></div></div>
       <div class="tab" id="tab-timeline"><div id="timeline-list"></div></div>
+      <div class="tab" id="tab-cq"><div id="cq-list"></div></div>
     </div>
 
     <!-- CHAT -->
@@ -872,8 +875,94 @@ function showTab(t,el){
   if(t==='bids')loadBids(curRequestId);
   if(t==='actions')loadActions(curRequestId);
   if(t==='timeline')loadTimeline(curRequestId);
+  if(t==='cq')loadClientQuestions(curRequestId);
 }
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
+
+// ═══ الأسئلة والتوضيحات (لوحة العميل) ═══
+function loadClientQuestions(id){
+  var el=document.getElementById('cq-list'); if(!el)return;
+  el.innerHTML='<div class="loading">جارٍ تحميل الأسئلة...</div>';
+  jFetch('/api/requests/'+id+'/questions').then(function(qs){
+    if(!Array.isArray(qs))qs=[];
+    renderClientQuestions(qs,id);
+  }).catch(function(){ if(el)el.innerHTML=errH(); });
+}
+function _cqPending(q){ return !(q.answer&&String(q.answer).trim()); }
+function renderClientQuestions(qs,id){
+  var el=document.getElementById('cq-list'); if(!el)return;
+  qs=qs.slice().sort(function(a,b){
+    var ua=_cqPending(a), ub=_cqPending(b);
+    if(ua!==ub) return ua?-1:1;
+    return new Date(a.created_at)-new Date(b.created_at);
+  });
+  var pending=qs.filter(_cqPending).length;
+  var cnt=document.getElementById('cq-count');
+  if(cnt){ cnt.textContent=qs.length; cnt.style.background=pending>0?'var(--red)':''; cnt.style.color=pending>0?'#fff':''; }
+  if(!qs.length){ el.innerHTML=emptyH('لا توجد أسئلة','عندما يسأل مزوّد عن هذا الطلب سيظهر هنا'); return; }
+  var headTxt = pending>0 ? '<div style="font-size:12px;font-weight:800;color:var(--red);margin:0 2px 11px;display:flex;align-items:center;gap:5px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>لديك '+pending+' '+(pending===1?'سؤال':'أسئلة')+' بانتظار ردّك</div>' : '';
+  el.innerHTML = headTxt + qs.map(function(q){
+    var nm=q.asker_name||'مزود';
+    var ans=(q.answer&&String(q.answer).trim())?q.answer:'';
+    var av='<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--sky));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0;font-family:\'Cairo\',sans-serif">'+esc(nm.charAt(0))+'</div>';
+    var role=(q.asker_role==='provider')?' <span style="font-size:10px;font-weight:800;color:var(--p);background:var(--p-light);padding:1px 7px;border-radius:20px">مزود</span>':'';
+    var head='<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">'+av+'<div><div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(nm)+role+'</div><div style="font-size:11px;color:var(--muted)">'+timeAgo(q.created_at)+'</div></div></div>';
+    var body='<div style="font-size:13.5px;color:var(--text);line-height:1.7">'+esc(q.body||'')+'</div>';
+    var tail;
+    if(ans){
+      tail='<div style="background:var(--gold-l);border-radius:9px;padding:11px 13px;margin-top:10px"><div style="font-size:11px;font-weight:800;color:var(--gold-d);margin-bottom:3px">ردّك:</div><div style="font-size:13px;color:var(--text)">'+esc(ans)+'</div></div>';
+    } else {
+      tail='<div style="margin-top:10px"><textarea id="cq-ans-'+q.id+'" placeholder="اكتب ردّك على هذا السؤال..." style="width:100%;min-height:54px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea><button onclick="cqSubmitAnswer('+q.id+')" style="margin-top:7px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:9px;padding:8px 18px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer">إرسال الرد</button></div>';
+    }
+    var hi = ans ? '' : 'border-right:4px solid var(--star);background:#fffdf5;';
+    return '<div style="background:var(--white);border:1px solid var(--border);'+hi+'border-radius:13px;padding:14px;margin-bottom:11px">'+head+body+tail+'</div>';
+  }).join('');
+}
+function cqSubmitAnswer(qid){
+  var inp=document.getElementById('cq-ans-'+qid); if(!inp)return;
+  var txt=(inp.value||'').trim(); if(!txt){ showToast('اكتب الرد أولاً','error'); return; }
+  fetch(API+'/api/requests/'+curRequestId+'/questions/'+qid+'/answer',Object.assign({method:'POST',body:JSON.stringify({answer:txt})},hdr()))
+    .then(function(r){ if(!r.ok)throw new Error(); return r.json(); })
+    .then(function(){ showToast('تم إرسال الرد'); loadClientQuestions(curRequestId); renderQuestionNudgeRefresh(); })
+    .catch(function(){ showToast('تعذّر إرسال الرد','error'); });
+}
+function openQuestionsTab(id,ev){
+  openDetail(id,ev);
+  setTimeout(function(){
+    var btns=document.querySelectorAll('#page-detail .tab-btn'); var cqBtn=null;
+    btns.forEach(function(b){ if(/showTab\('cq'/.test(b.getAttribute('onclick')||'')) cqBtn=b; });
+    if(cqBtn) showTab('cq',cqBtn);
+  },140);
+}
+// نبيه "أسئلة بانتظار ردّك" في الرئيسية
+var _qNudgeReqs=null;
+function renderQuestionNudge(all){
+  var slot=document.getElementById('ph-q-nudge'); if(!slot)return;
+  all=all||[]; _qNudgeReqs=all;
+  var cand=all.filter(function(r){return r.status==='open'||r.status==='in_progress';}).slice(0,25);
+  if(!cand.length){ slot.innerHTML=''; return; }
+  var total=0, topReq=null, topN=0, done=0;
+  cand.forEach(function(r){
+    jFetch('/api/requests/'+r.id+'/questions').then(function(qs){
+      if(Array.isArray(qs)){
+        var pn=qs.filter(_cqPending).length;
+        if(pn>0){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
+      }
+    }).catch(function(){}).then(function(){
+      done++; if(done===cand.length) paintQNudge(total,topReq);
+    });
+  });
+}
+function renderQuestionNudgeRefresh(){ if(_qNudgeReqs) renderQuestionNudge(_qNudgeReqs); }
+function paintQNudge(total,topReq){
+  var slot=document.getElementById('ph-q-nudge'); if(!slot)return;
+  if(!total||!topReq){ slot.innerHTML=''; return; }
+  var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+  slot.innerHTML='<div class="nudge" style="border-right-color:var(--red);margin-bottom:8px" onclick="openQuestionsTab('+topReq.id+',event)">'
+    +'<div class="nudge-ic" style="background:var(--red-l);color:var(--red)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
+    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'سؤال':'أسئلة')+' بانتظار ردّك</div><div class="nudge-s">مزوّدون يسألون عن طلباتك — ردّ عليهم لتسريع العروض</div></div>'
+    +'<div class="nudge-cta" style="color:var(--red)">رد '+chev+'</div></div>';
+}
 
 // ═══════════════════════════════════
 // REQUEST CARD
@@ -971,6 +1060,7 @@ function loadHome(){
     if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
     if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
     renderNudges(all);
+    renderQuestionNudge(all);
     renderBestOffer(all);
   }).catch(function(){if(el)el.innerHTML=errH();});
   loadNotifCount();
@@ -1100,6 +1190,7 @@ function openDetail(id,e){
     show('home',null,'home');
   });
   loadBids(id);
+  loadClientQuestions(id);
 }
 
 // ═══════════════════════════════════
