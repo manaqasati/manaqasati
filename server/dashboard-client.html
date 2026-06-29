@@ -950,8 +950,8 @@ function paintQBadge(id,pn){
 }
 function scanQuestions(all,doNudge){
   all=all||[];
-  var cand=all.filter(function(r){return r.status!=='completed'&&r.status!=='done';}).slice(0,25);
-  if(!cand.length){ if(doNudge){ console.log('[نبيه الأسئلة] لا توجد طلبات نشطة للفحص'); paintQNudge(0,null); } return; }
+  var cand=all.slice(0,30);
+  if(!cand.length){ if(doNudge){ paintQNudge(0,null); } return; }
   var total=0, topReq=null, topN=0, done=0;
   cand.forEach(function(r){
     jFetch('/api/requests/'+r.id+'/questions').then(function(qs){
@@ -960,10 +960,7 @@ function scanQuestions(all,doNudge){
       if(pn>0){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
     }).catch(function(){ paintQBadge(r.id,0); }).then(function(){
       done++;
-      if(done===cand.length && doNudge){
-        console.log('[نبيه الأسئلة] فحصت '+cand.length+' طلبات → معلّق: '+total+(topReq?(' (الطلب #'+topReq.id+')'):''));
-        paintQNudge(total,topReq);
-      }
+      if(done===cand.length && doNudge){ paintQNudge(total,topReq); }
     });
   });
 }
