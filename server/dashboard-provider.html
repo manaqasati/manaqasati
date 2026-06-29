@@ -705,6 +705,7 @@ function _renderHome(data){
     +'<div class="ph-mc"><div class="ph-mi gold"><svg width="17" height="17" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div><div class="ph-mn">'+rat+'</div><div class="ph-ml">تقييمي</div></div>'
     +'<div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">منجزة</div></div>'
   +'</div>';
+  html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
 
   var _pcItems=[
@@ -810,6 +811,7 @@ function _renderHome(data){
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
   _renderProvNudges(_myBids,pool,matchedBySpec);
+  _renderProvAnswerNudge();
 }
 
 // شريط النبيهات الذكية للمزود — مستنتج من عروضه وفرصه ورسائله
@@ -986,6 +988,7 @@ async function _viewProj(id){
   if(r.description)body+='<div style="background:var(--bg);border-right:3px solid var(--border);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2);white-space:pre-wrap;word-wrap:break-word">'+_esc(r.description)+'</div>';
   body+='<div style="background:var(--bg);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div></div>';
   _el('mBd').innerHTML=body;
+  _loadProjQuestions(id);
   var cname=_esc(r.client_name||'العميل').replace(/'/g,'');var ctitle=_esc(r.title||'').replace(/'/g,'');
   var foot='<div style="display:grid;grid-template-columns:1fr'+(r.client_id?' 1fr':'')+';gap:8px;margin-bottom:8px;width:100%">';
   foot+='<button onclick="closeModal();_openBidNudge('+r.id+','+(r.bid_count||0)+')" style="padding:12px;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تقديم عرض</button>';
@@ -1661,6 +1664,97 @@ function _viewImg(src){
 
 
 function timeAgoP(d){if(!d)return '';var s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'الآن';var m=Math.floor(s/60);if(m<60)return 'منذ '+m+' دقيقة';var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';var dy=Math.floor(h/24);if(dy<30)return 'منذ '+dy+' يوم';return 'منذ '+Math.floor(dy/30)+' شهر';}
+
+// ═══ الأسئلة والتوضيحات (لوحة المزود) ═══
+function _provPending(q){ return !(q.answer&&String(q.answer).trim()); }
+function _loadProjQuestions(id){
+  var bd=_el('mBd'); if(!bd)return;
+  var slot=_el('prov-qa-slot');
+  if(!slot){ slot=document.createElement('div'); slot.id='prov-qa-slot'; slot.style.marginTop='14px'; bd.appendChild(slot); }
+  slot.innerHTML='<div style="font-size:12px;color:var(--muted)">جارٍ تحميل الأسئلة…</div>';
+  _api('/api/requests/'+id+'/questions').then(function(qs){
+    if(!Array.isArray(qs))qs=[];
+    var mine=_me&&_me.id;
+    var html='<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:9px;display:flex;align-items:center;gap:6px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة والتوضيحات</div>';
+    if(qs.length){
+      qs.forEach(function(q){
+        var nm=q.asker_name||'مزود'; var ans=(q.answer&&String(q.answer).trim())?q.answer:'';
+        var isMine=mine&&String(q.asker_id)===String(mine);
+        html+='<div style="background:var(--bg);border:1px solid var(--border);'+(isMine?'border-right:3px solid var(--p);':'')+'border-radius:10px;padding:11px 13px;margin-bottom:9px">';
+        html+='<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px">'+_esc(nm)+(isMine?' <span style="font-size:9px;color:var(--p);background:var(--p-light);padding:1px 6px;border-radius:10px">سؤالك</span>':'')+' <span style="font-size:10px;color:var(--muted);font-weight:600">'+timeAgoP(q.created_at)+'</span></div>';
+        html+='<div style="font-size:12.5px;color:var(--text);line-height:1.6">'+_esc(q.body||'')+'</div>';
+        if(ans){ html+='<div style="background:var(--gold-l);border-radius:8px;padding:9px 11px;margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold-d);margin-bottom:2px">رد صاحب الطلب:</div><div style="font-size:12.5px;color:var(--text)">'+_esc(ans)+'</div></div>'; }
+        else { html+='<div style="font-size:11px;color:var(--muted);margin-top:6px">بانتظار رد صاحب الطلب…</div>'; }
+        html+='</div>';
+      });
+    } else {
+      html+='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">لا توجد أسئلة بعد — كن أول من يسأل.</div>';
+    }
+    // صندوق طرح سؤال
+    html+='<textarea id="prov-q-input-'+id+'" placeholder="اطرح سؤالاً لصاحب الطلب..." style="width:100%;min-height:48px;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>';
+    html+='<button onclick="_provAskQuestion('+id+')" style="margin-top:6px;background:var(--p);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer">إرسال السؤال</button>';
+    if(slot) slot.innerHTML=html;
+    // عند فتح المشروع، علّم ردوده كمقروءة
+    var mineSeen=[]; qs.forEach(function(q){ if(mine&&String(q.asker_id)===String(mine)&&(q.answer&&String(q.answer).trim())) mineSeen.push(q.id); });
+    if(mineSeen.length) _seenAnsAdd(mineSeen);
+  }).catch(function(){ if(slot)slot.innerHTML=''; });
+}
+function _provAskQuestion(id){
+  var inp=_el('prov-q-input-'+id); if(!inp)return; var txt=(inp.value||'').trim();
+  if(!txt){ showToast('اكتب سؤالك أولاً','error'); return; }
+  _api('/api/requests/'+id+'/questions',{method:'POST',body:JSON.stringify({body:txt})}).then(function(r){
+    if(r&&!r.message){ showToast('تم إرسال سؤالك'); _loadProjQuestions(id); }
+    else { showToast((r&&r.message)||'تعذّر إرسال السؤال','error'); }
+  }).catch(function(){ showToast('تعذّر إرسال السؤال','error'); });
+}
+
+// تتبّع الردود المقروءة (localStorage)
+function _seenAnsGet(){ try{ return JSON.parse(localStorage.getItem('_seenAns')||'[]'); }catch(e){ return []; } }
+function _seenAnsAdd(ids){ try{ var st=_seenAnsGet(); ids.forEach(function(i){ if(st.indexOf(i)<0)st.push(i); }); localStorage.setItem('_seenAns',JSON.stringify(st.slice(-500))); }catch(e){} }
+
+// نبيه "ردود جديدة على أسئلتك" في الرئيسية
+var _provAnsState=null;
+function _renderProvAnswerNudge(){
+  var slot=_el('ph-qa-nudge'); if(!slot)return; slot.innerHTML='';
+  var mine=_me&&_me.id; if(!mine)return;
+  var reqs=[]; (_myBids||[]).forEach(function(b){ if(b.request_id&&reqs.indexOf(b.request_id)<0)reqs.push(b.request_id); });
+  reqs=reqs.slice(0,25); if(!reqs.length)return;
+  var seen=_seenAnsGet();
+  var total=0, topReq=null, topTs=-1, allQids=[], done=0;
+  reqs.forEach(function(rid){
+    _api('/api/requests/'+rid+'/questions').then(function(qs){
+      if(Array.isArray(qs)){
+        qs.forEach(function(q){
+          var ans=(q.answer&&String(q.answer).trim());
+          if(ans && String(q.asker_id)===String(mine) && seen.indexOf(q.id)<0){
+            total++; allQids.push(q.id);
+            var ts=new Date(q.answered_at||q.created_at).getTime()||0;
+            if(ts>=topTs){ topTs=ts; topReq=rid; }
+          }
+        });
+      }
+    }).catch(function(){}).then(function(){
+      done++; if(done===reqs.length) _paintProvAnsNudge(total,topReq,allQids);
+    });
+  });
+}
+function _paintProvAnsNudge(total,topReq,qids){
+  var slot=_el('ph-qa-nudge'); if(!slot)return;
+  if(!total||!topReq){ slot.innerHTML=''; return; }
+  _provAnsState={req:topReq,qids:qids};
+  var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+  slot.innerHTML='<div class="nudge" style="border-right-color:var(--green);margin-bottom:8px" onclick="_provOpenAnswers()">'
+    +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
+    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'رد جديد على سؤالك':'ردود جديدة على أسئلتك')+'</div><div class="nudge-s">صاحب الطلب ردّ — اضغط لقراءة الرد</div></div>'
+    +'<div class="nudge-cta" style="color:var(--green)">قراءة '+chev+'</div></div>';
+}
+function _provOpenAnswers(){
+  if(!_provAnsState)return;
+  _seenAnsAdd(_provAnsState.qids||[]);
+  var rid=_provAnsState.req;
+  var slot=_el('ph-qa-nudge'); if(slot)slot.innerHTML='';
+  _viewProj(rid);
+}
 
 </script>
 <div class="cf-overlay" id="confirmOverlay">
