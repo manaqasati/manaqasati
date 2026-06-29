@@ -2030,5 +2030,43 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   })();
 })();
 </script>
+
+<script>
+/* ═══ WebSocket: إشعارات لحظية (لوحة العميل) ═══ */
+(function(){
+  function _wsHandle(msg){
+    if(!msg||!msg.type) return;
+    if(msg.type==='connected') return;
+    if(msg.type==='notification'){
+      var n=msg.notif||{};
+      if(n.title && typeof showToast==='function') showToast(n.title);
+      if(typeof loadNotifCount==='function') loadNotifCount();
+      if(typeof renderQuestionNudgeRefresh==='function') renderQuestionNudgeRefresh();
+    } else if(msg.type==='new_message'){
+      if(typeof loadNotifCount==='function') loadNotifCount();
+      var sn=msg.sender_name?('رسالة من '+msg.sender_name):'رسالة جديدة';
+      if(typeof showToast==='function') showToast('💬 '+sn);
+    } else if(msg.type==='message_sent'){
+      if(typeof loadNotifCount==='function') loadNotifCount();
+    }
+  }
+  var _ws=null,_alive=false,_t=null,_RC=3000;
+  function _wsUrl(){ return (location.protocol==='https:'?'wss://':'ws://')+location.host; }
+  function _wsTok(){ try{ return localStorage.getItem('token')||''; }catch(e){ return ''; } }
+  function _wsConnect(){
+    if(!_wsTok()) return;
+    try{ _ws=new WebSocket(_wsUrl()); }catch(e){ _wsRetry(); return; }
+    _ws.onopen=function(){ _alive=true; try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
+    _ws.onmessage=function(ev){ try{ _wsHandle(JSON.parse(ev.data)); }catch(e){} };
+    _ws.onclose=function(){ _alive=false; _wsRetry(); };
+    _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
+  }
+  function _wsRetry(){ clearTimeout(_t); _t=setTimeout(_wsConnect,_RC); }
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _wsConnect(); });
+  window.addEventListener('online',function(){ if(!_alive) _wsConnect(); });
+  setTimeout(_wsConnect, 800);
+})();
+</script>
+
 </body>
 </html>
