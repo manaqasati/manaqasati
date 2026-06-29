@@ -114,6 +114,21 @@ setInterval(() => {
   for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
 }, 600000);
 
+// نشر الطلبات قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
+setInterval(async () => {
+  try {
+    const mins = Math.max(0, parseInt(await getSetting('review_minutes', '5')) || 0);
+    const r = await pool.query(
+      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND created_at <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title`,
+      [String(mins)]
+    );
+    for (const row of r.rows) {
+      try { await notify(row.client_id, 'تم نشر مشروعك', `مشروعك "${row.title}" تمت مراجعته ونُشر للعروض الآن`, 'request', row.id); } catch(e) {}
+    }
+    if (r.rows.length) console.log(`[auto-publish] نُشر ${r.rows.length} مشروع تلقائياً`);
+  } catch(e) { console.error('auto-publish:', e.message); }
+}, 60000);
+
 // منع الكاش على ملفات HTML
 app.use(function(req, res, next){
   if(req.path.endsWith('.html') || req.path === '/'){
@@ -397,6 +412,14 @@ async function logAdmin(req, action, targetType, targetId, details) {
   } catch(e) { console.error('logAdmin:', e.message); }
 }
 
+async function getSetting(key, def) {
+  try { const r = await pool.query('SELECT value FROM platform_settings WHERE key=$1', [key]); return r.rows.length ? r.rows[0].value : def; }
+  catch(e) { return def; }
+}
+async function setSetting(key, value) {
+  await pool.query(`INSERT INTO platform_settings (key, value, updated_at) VALUES ($1,$2,NOW()) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`, [key, String(value)]);
+}
+
 async function notify(userId, title, body, type, refId) {
   try {
     await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
@@ -456,6 +479,8 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','5') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
@@ -903,7 +928,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       else if (img && img.startsWith('http')) uploadedImages.push(img);
     }
     const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'open',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, attachments?JSON.stringify(attachments):null, pn]);
+    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, attachments?JSON.stringify(attachments):null, pn]);
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
@@ -1901,6 +1926,88 @@ app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
 
 app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
   try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.get('/api/admin/questions', auth, adminOnly, async (req, res) => {
+  try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.delete('/api/admin/questions/:id', auth, adminOnly, async (req, res) => {
+  try { const qid=parseInt(req.params.id); const r=await pool.query('DELETE FROM request_questions WHERE id=$1',[qid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_question','question',qid,'حذف سؤال'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.get('/api/admin/settings', auth, adminOnly, async (req, res) => {
+  try { const r = await pool.query('SELECT key, value FROM platform_settings'); const o={}; r.rows.forEach(function(x){ o[x.key]=x.value; }); res.json(o); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.put('/api/admin/settings', auth, adminOnly, async (req, res) => {
+  try {
+    const allowed = ['review_minutes'];
+    const updates = req.body || {};
+    const done = [];
+    for (const k of Object.keys(updates)) {
+      if (!allowed.includes(k)) continue;
+      let v = updates[k];
+      if (k === 'review_minutes') v = String(Math.max(0, Math.min(1440, parseInt(v) || 0)));
+      await setSetting(k, v); done.push(k + '=' + v);
+    }
+    if (done.length) await logAdmin(req, 'update_settings', 'settings', null, 'تعديل الإعدادات: ' + done.join(', '));
+    res.json({ ok: true, updated: done });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.get('/api/admin/analytics', auth, adminOnly, async (req, res) => {
+  try {
+    const q = (sql) => pool.query(sql).then(r => +r.rows[0].count).catch(() => 0);
+    const one = (sql, def) => pool.query(sql).then(r => r.rows[0] || def).catch(() => def);
+    const many = (sql) => pool.query(sql).then(r => r.rows).catch(() => []);
+
+    const [totalReq, totalBids, completedDeals, acceptedBids, needReview, needReports, needVerify, needQ] = await Promise.all([
+      q('SELECT COUNT(*) FROM requests'),
+      q('SELECT COUNT(*) FROM bids'),
+      q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
+      q(`SELECT COUNT(*) FROM bids WHERE status='accepted'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
+      q(`SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL`),
+      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق'))`),
+      q(`SELECT COUNT(*) FROM request_questions WHERE answer IS NULL OR answer=''`)
+    ]);
+
+    const rev = await one(`SELECT COALESCE(SUM(price),0)::float as total, COALESCE(AVG(price),0)::float as avg, COUNT(*)::int as deals FROM bids WHERE status='accepted'`, { total: 0, avg: 0, deals: 0 });
+    const thisMonth = await one(`SELECT
+        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as users,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as requests,
+        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as bids,
+        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)) as revenue`, {});
+    const lastMonth = await one(`SELECT
+        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as users,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as requests,
+        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as bids,
+        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE)) as revenue`, {});
+
+    const topEarners = await many(`SELECT u.id, u.name, COALESCE(SUM(b.price),0)::float as earnings, COUNT(b.id)::int as deals
+      FROM users u JOIN bids b ON b.provider_id=u.id AND b.status='accepted'
+      WHERE u.role='provider' GROUP BY u.id, u.name ORDER BY earnings DESC LIMIT 6`);
+    const topActive = await many(`SELECT u.id, u.name, COUNT(b.id)::int as bids
+      FROM users u JOIN bids b ON b.provider_id=u.id WHERE u.role='provider'
+      GROUP BY u.id, u.name ORDER BY bids DESC LIMIT 6`);
+    const byCity = await many(`SELECT COALESCE(NULLIF(city,''),'غير محدد') as city, COUNT(*)::int as n FROM requests GROUP BY city ORDER BY n DESC LIMIT 8`);
+    const byCat = await many(`SELECT COALESCE(NULLIF(category,''),'غير محدد') as category, COUNT(*)::int as n FROM requests GROUP BY category ORDER BY n DESC LIMIT 8`);
+    const revMonthly = await many(`SELECT to_char(date_trunc('month',created_at),'YYYY-MM') as period, COALESCE(SUM(price),0)::float as revenue, COUNT(*)::int as deals
+      FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '5 months'
+      GROUP BY period ORDER BY period`);
+
+    res.json({
+      revenue: { total: rev.total, avg: rev.avg, deals: rev.deals },
+      funnel: { requests: totalReq, bids: totalBids, accepted: acceptedBids, completed: completedDeals },
+      this_month: thisMonth, last_month: lastMonth,
+      top_earners: topEarners, top_active: topActive,
+      by_city: byCity, by_category: byCat,
+      revenue_monthly: revMonthly,
+      needs_action: { review: needReview, reports: needReports, verify: needVerify, questions: needQ }
+    });
+  } catch(e) { console.error('analytics:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
