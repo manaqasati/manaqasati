@@ -2040,25 +2040,37 @@ function gotoMessagesAndOpen(reqId,provId,provName){
     if(msg.type==='notification'){
       var n=msg.notif||{};
       if(n.title && typeof showToast==='function') showToast(n.title);
+      _notifyFx();
       if(typeof loadNotifCount==='function') loadNotifCount();
       if(typeof renderQuestionNudgeRefresh==='function') renderQuestionNudgeRefresh();
     } else if(msg.type==='new_message'){
       if(typeof loadNotifCount==='function') loadNotifCount();
       var sn=msg.sender_name?('رسالة من '+msg.sender_name):'رسالة جديدة';
       if(typeof showToast==='function') showToast('💬 '+sn);
+      _notifyFx();
     } else if(msg.type==='message_sent'){
       if(typeof loadNotifCount==='function') loadNotifCount();
     }
   }
   var _ws=null,_alive=false,_t=null,_RC=3000;
+  var _wsActx=null,_wsAudioReady=false;
+  function _wsInitAudio(){ if(_wsAudioReady)return; try{ _wsActx=new (window.AudioContext||window.webkitAudioContext)(); _wsAudioReady=true; }catch(e){} }
+  document.addEventListener('click',_wsInitAudio,{once:true});
+  document.addEventListener('touchstart',_wsInitAudio,{once:true});
+  function _wsBeep(){ try{ if(!_wsActx)return; if(_wsActx.state==='suspended')_wsActx.resume(); var o=_wsActx.createOscillator(),g=_wsActx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.0001,_wsActx.currentTime); g.gain.exponentialRampToValueAtTime(0.13,_wsActx.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,_wsActx.currentTime+0.25); o.connect(g); g.connect(_wsActx.destination); o.start(); o.stop(_wsActx.currentTime+0.26); }catch(e){} }
+  function _wsVibe(){ try{ if(navigator.vibrate)navigator.vibrate(80); }catch(e){} }
+  function _notifyFx(){ _wsBeep(); _wsVibe(); }
+  function _wsDot(state){ var d=document.getElementById('_wsDot'); if(!d){ d=document.createElement('div'); d.id='_wsDot'; d.style.cssText='position:fixed;top:8px;left:8px;width:9px;height:9px;border-radius:50%;z-index:99998;transition:background .3s,box-shadow .3s;pointer-events:none'; document.body.appendChild(d); } if(state==='on'){ d.style.background='#16a34a'; d.style.boxShadow='0 0 0 3px rgba(22,163,74,.18)'; d.title='متصل لحظياً'; } else { d.style.background='#cbd5e1'; d.style.boxShadow='0 0 0 3px rgba(148,163,184,.15)'; d.title='إعادة الاتصال…'; } }
+  _wsDot('off');
+
   function _wsUrl(){ return (location.protocol==='https:'?'wss://':'ws://')+location.host; }
   function _wsTok(){ try{ return localStorage.getItem('token')||''; }catch(e){ return ''; } }
   function _wsConnect(){
     if(!_wsTok()) return;
     try{ _ws=new WebSocket(_wsUrl()); }catch(e){ _wsRetry(); return; }
-    _ws.onopen=function(){ _alive=true; try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
+    _ws.onopen=function(){ _alive=true; _wsDot('on'); try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
     _ws.onmessage=function(ev){ try{ _wsHandle(JSON.parse(ev.data)); }catch(e){} };
-    _ws.onclose=function(){ _alive=false; _wsRetry(); };
+    _ws.onclose=function(){ _alive=false; _wsDot('off'); _wsRetry(); };
     _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
   }
   function _wsRetry(){ clearTimeout(_t); _t=setTimeout(_wsConnect,_RC); }
