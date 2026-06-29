@@ -909,5 +909,39 @@ function submitQuestion(){
 load();
 
 </script>
+
+<script>
+/* ═══ WebSocket: تحديث الأسئلة لحظياً (صفحة المشروع) — للمسجّل فقط ═══ */
+(function(){
+  function _pdTok(){ try{ return (typeof getToken==='function'?getToken():localStorage.getItem('token'))||''; }catch(e){ return ''; } }
+  function _pdToast(t){ try{ var d=document.createElement('div'); d.textContent=t; d.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:11px 20px;border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.2)'; document.body.appendChild(d); setTimeout(function(){ d.style.transition='opacity .4s'; d.style.opacity='0'; setTimeout(function(){ if(d.parentNode)d.parentNode.removeChild(d); },400); },2600); }catch(e){} }
+  function _pdHandle(msg){
+    if(!msg||!msg.type) return;
+    if(msg.type==='notification'){
+      var n=msg.notif||{};
+      if(n.ntype==='new_question' || n.ntype==='question_answered'){
+        if(typeof loadQuestions==='function' && typeof _rid!=='undefined' && _rid){
+          loadQuestions(_rid);
+          _pdToast(n.ntype==='new_question'?'سؤال جديد على المشروع':'تم الرد على سؤال');
+        }
+      }
+    }
+  }
+  var _ws=null,_alive=false,_t=null,_RC=4000;
+  function _u(){ return (location.protocol==='https:'?'wss://':'ws://')+location.host; }
+  function _c(){
+    if(!_pdTok()) return;
+    try{ _ws=new WebSocket(_u()); }catch(e){ _r(); return; }
+    _ws.onopen=function(){ _alive=true; try{ _ws.send(JSON.stringify({type:'auth',token:_pdTok()})); }catch(e){} };
+    _ws.onmessage=function(ev){ try{ _pdHandle(JSON.parse(ev.data)); }catch(e){} };
+    _ws.onclose=function(){ _alive=false; _r(); };
+    _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
+  }
+  function _r(){ clearTimeout(_t); _t=setTimeout(_c,_RC); }
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _c(); });
+  setTimeout(_c, 1000);
+})();
+</script>
+
 </body>
 </html>
