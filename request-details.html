@@ -534,18 +534,17 @@
     .review-banner { padding: 12px 20px; flex-direction: column; gap: 10px; }
   }
 </style>
-</head>
-<body>
+</head><body>
 
 <!-- NAV -->
 <nav>
   <div class="logo">مناقصة<span>.</span></div>
   <div class="nav-links">
     <a href="index.html">الرئيسية</a>
-    <a href="#">تصفح الطلبات</a>
-    <a href="#">كيف تعمل؟</a>
+    <a href="index.html">تصفح الطلبات</a>
+    <a href="index.html">كيف تعمل؟</a>
   </div>
-  <div class="nav-btns">
+  <div class="nav-btns" id="rd-nav-btns">
     <button class="btn-ghost" onclick="window.location='auth.html'">تسجيل الدخول</button>
     <button class="btn-primary" onclick="window.location='auth.html'">ابدأ مجاناً</button>
   </div>
@@ -554,45 +553,29 @@
 <!-- BREADCRUMB -->
 <div class="breadcrumb">
   <a href="index.html">الرئيسية</a> ›
-  <a href="#">الطلبات</a> ›
-  <a href="#">تكييف وتبريد</a> ›
-  <span>تركيب مكيف سبليت 2 طن في غرفة النوم</span>
+  <a href="index.html">الطلبات</a> ›
+  <span id="bc-cat">—</span> ›
+  <span id="bc-title">…</span>
 </div>
 
-<!-- REVIEW BANNER -->
-<div class="review-banner" id="reviewBanner">
+<!-- REVIEW BANNER (يظهر لصاحب الطلب عند المراجعة فقط) -->
+<div class="review-banner" id="reviewBanner" style="display:none;">
   <div class="review-banner-text">
     <div class="review-icon">🔍</div>
     <div>
       <strong>هذا الطلب قيد المراجعة</strong> – يتم مراجعته من فريقنا قبل النشر للمزودين. سيصلك إشعار عند الموافقة.
     </div>
   </div>
-  <button class="btn-ghost" style="font-size:13px; padding:6px 14px; white-space:nowrap;">تعديل الطلب ✏️</button>
 </div>
 
 <!-- PROGRESS STEPS -->
 <div style="background:white; border-bottom:1px solid var(--border); padding:16px 40px;">
   <div class="progress-steps" style="max-width:600px; margin:0 auto;">
-    <div class="step step-done">
-      <div class="step-dot">✓</div>
-      <div class="step-label">نشر الطلب</div>
-    </div>
-    <div class="step step-active">
-      <div class="step-dot">2</div>
-      <div class="step-label">مراجعة الفريق</div>
-    </div>
-    <div class="step">
-      <div class="step-dot">3</div>
-      <div class="step-label">استقبال العروض</div>
-    </div>
-    <div class="step">
-      <div class="step-dot">4</div>
-      <div class="step-label">اختيار المزود</div>
-    </div>
-    <div class="step">
-      <div class="step-dot">5</div>
-      <div class="step-label">إتمام الصفقة</div>
-    </div>
+    <div class="step" id="step-1"><div class="step-dot">1</div><div class="step-label">نشر الطلب</div></div>
+    <div class="step" id="step-2"><div class="step-dot">2</div><div class="step-label">مراجعة الفريق</div></div>
+    <div class="step" id="step-3"><div class="step-dot">3</div><div class="step-label">استقبال العروض</div></div>
+    <div class="step" id="step-4"><div class="step-dot">4</div><div class="step-label">اختيار المزود</div></div>
+    <div class="step" id="step-5"><div class="step-dot">5</div><div class="step-label">إتمام الصفقة</div></div>
   </div>
 </div>
 
@@ -605,247 +588,74 @@
     <!-- REQUEST HEADER -->
     <div class="req-header">
       <div class="req-status-row">
-        <span class="status-badge status-review">
-          <span class="status-dot"></span> قيد المراجعة
-        </span>
-        <span style="font-size:12px; color:var(--muted);">🌡️ تكييف وتبريد</span>
-        <span style="font-size:12px; color:var(--muted);">📅 نُشر منذ دقيقتين</span>
+        <span class="status-badge status-review" id="rd-status"><span class="status-dot"></span> …</span>
+        <span style="font-size:12px; color:var(--muted);" id="rd-cat-line">—</span>
+        <span style="font-size:12px; color:var(--muted);" id="rd-time">—</span>
       </div>
 
-      <h1 class="req-title">تركيب مكيف سبليت 2 طن في غرفة النوم</h1>
+      <h1 class="req-title" id="rd-title">جارٍ التحميل…</h1>
 
       <div class="req-meta-row">
-        <span>📍 الرياض – حي النزهة</span>
-        <span>💰 الميزانية: <strong style="color:var(--success)">300 – 600 ر.س</strong></span>
-        <span>⏱ مدة التنفيذ: <strong>1-3 أيام</strong></span>
-        <span>💬 <strong>5</strong> عروض</span>
-        <span>👁 <strong>124</strong> مشاهدة</span>
+        <span id="rd-city">📍 —</span>
+        <span id="rd-budget">💰 —</span>
+        <span id="rd-deadline">⏱ —</span>
+        <span id="rd-bidcount">💬 0 عروض</span>
       </div>
 
       <div class="client-row">
-        <div class="client-avatar">أ</div>
+        <div class="client-avatar" id="rd-client-av">؟</div>
         <div>
-          <div class="client-name">أحمد العمري</div>
-          <div class="client-stats">⭐ 4.8 · عميل منذ 2024 · 7 طلبات سابقة · معدل قبول 85%</div>
+          <div class="client-name" id="rd-client-name">—</div>
+          <div class="client-stats" id="rd-client-stats">—</div>
         </div>
-        <button class="btn-ghost" style="margin-right:auto; font-size:13px; padding:6px 14px;">💬 مراسلة العميل</button>
+        <button class="btn-ghost" id="rd-msg-client" style="margin-right:auto; font-size:13px; padding:6px 14px; display:none;" onclick="rdMessageClient()">💬 مراسلة العميل</button>
       </div>
     </div>
 
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('details', this)">تفاصيل الطلب</button>
-      <button class="tab-btn" onclick="switchTab('bids', this)">العروض المقدمة (5)</button>
-      <button class="tab-btn" onclick="switchTab('questions', this)">الأسئلة والتوضيحات (2)</button>
+      <button class="tab-btn" onclick="switchTab('bids', this)">العروض المقدمة (0)</button>
+      <button class="tab-btn" onclick="switchTab('questions', this)">الأسئلة والتوضيحات (0)</button>
     </div>
 
     <!-- TAB: تفاصيل -->
     <div class="tab-content active" id="tab-details">
-
       <div class="section-card">
         <div class="section-title">📋 وصف الطلب</div>
-        <div class="req-description">
-          السلام عليكم،<br><br>
-          أحتاج تركيب مكيف سبليت بقدرة 2 طن في غرفة النوم الرئيسية بالدور الثاني. المساحة تقريباً 25 متر مربع.
-          <br><br>
-          <strong>المتطلبات:</strong><br>
-          • التركيب يشمل الوحدة الداخلية والخارجية<br>
-          • توصيل الأنابيب (النحاسية) بطول لا يتجاوز 5 أمتار<br>
-          • توصيل الكهرباء من لوحة التوزيع<br>
-          • اختبار التشغيل والتأكد من سلامة العمل<br><br>
-          <strong>ملاحظات:</strong><br>
-          الوحدة الخارجية ستوضع على السطح، يوجد وصول سهل. أفضل مزود يملك ضماناً على العمل لمدة سنة على الأقل.
-        </div>
+        <div class="req-description" id="rd-desc">…</div>
       </div>
 
-      <div class="section-card">
-        <div class="section-title">🔖 التخصصات المطلوبة</div>
-        <div class="tags">
-          <span class="tag">🌡️ تكييف سبليت</span>
-          <span class="tag">⚡ كهرباء خفيفة</span>
-          <span class="tag">🔧 تركيب وصيانة</span>
-          <span class="tag-gray">الرياض</span>
-          <span class="tag-gray">ضمان سنة</span>
-        </div>
+      <div class="section-card" id="rd-tags-sec" style="display:none;">
+        <div class="section-title">🔖 التخصصات والوسوم</div>
+        <div class="tags" id="rd-tags"></div>
       </div>
 
-      <div class="section-card">
-        <div class="section-title">📎 المرفقات</div>
-        <div class="attachments">
-          <div class="attachment">📷 صورة_الغرفة.jpg</div>
-          <div class="attachment">📷 موقع_الوحدة_الخارجية.jpg</div>
-          <div class="attachment">📄 مخطط_الطابق.pdf</div>
-        </div>
+      <div class="section-card" id="rd-images-sec" style="display:none;">
+        <div class="section-title">🖼️ صور المشروع</div>
+        <div id="rd-images" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
       </div>
-
-      <div class="section-card">
-        <div class="section-title">❓ أسئلة شائعة</div>
-        <div style="display:flex; flex-direction:column; gap:14px;">
-          <div style="background:var(--bg); border-radius:10px; padding:14px 16px;">
-            <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">هل المكيف متوفر أم تحتاج توريده؟</div>
-            <div style="font-size:14px; color:#334155;">المكيف متوفر عندي، أحتاج التركيب فقط.</div>
-          </div>
-          <div style="background:var(--bg); border-radius:10px; padding:14px 16px;">
-            <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">هل يوجد مكيف قديم يحتاج فك؟</div>
-            <div style="font-size:14px; color:#334155;">لا، الغرفة جديدة ولا يوجد مكيف قديم.</div>
-          </div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- TAB: العروض -->
+    <!-- TAB: العروض (حيّ) -->
     <div class="tab-content" id="tab-bids">
       <div class="section-card">
         <div class="section-title">💰 العروض المقدمة</div>
-
-        <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
-          <div style="background:var(--accent-light); border-radius:10px; padding:10px 16px; text-align:center; flex:1;">
-            <div style="font-family:'Cairo',sans-serif; font-size:20px; font-weight:900; color:var(--accent);">450 ر.س</div>
-            <div style="font-size:12px; color:var(--muted);">أقل سعر</div>
-          </div>
-          <div style="background:#dcfce7; border-radius:10px; padding:10px 16px; text-align:center; flex:1;">
-            <div style="font-family:'Cairo',sans-serif; font-size:20px; font-weight:900; color:var(--success);">492 ر.س</div>
-            <div style="font-size:12px; color:var(--muted);">متوسط السعر</div>
-          </div>
-          <div style="background:#fef3c7; border-radius:10px; padding:10px 16px; text-align:center; flex:1;">
-            <div style="font-family:'Cairo',sans-serif; font-size:20px; font-weight:900; color:var(--warning);">580 ر.س</div>
-            <div style="font-size:12px; color:var(--muted);">أعلى سعر</div>
-          </div>
-        </div>
-
-        <div class="bids-list">
-
-          <div class="bid-card best">
-            <div class="bid-top">
-              <div class="bid-provider">
-                <div class="bid-avatar ba2">م</div>
-                <div>
-                  <div class="bid-name">مؤسسة الرائد للتكييف <span class="best-tag">الأفضل ⭐</span></div>
-                  <div class="bid-rating">★★★★★ 4.9 · 120 تقييم</div>
-                  <div class="bid-location">📍 الرياض · 8 سنوات خبرة</div>
-                </div>
-              </div>
-              <div class="bid-price-box">
-                <div class="bid-price">450 ر.س</div>
-                <div class="bid-days">⏱ يومان</div>
-              </div>
-            </div>
-            <div class="bid-note">شامل القطع والعمالة والاختبار. ضمان كامل على العمل لمدة سنة. لدينا خبرة في تركيب أكثر من 500 وحدة تكييف.</div>
-            <div class="bid-bottom">
-              <div class="bid-provider-stats">
-                <span>✅ 120 صفقة مكتملة</span>
-                <span>🔄 معدل إنجاز 98%</span>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="btn-msg" onclick="showToast('سيتم فتح نافذة المحادثة')">💬 مراسلة</button>
-                <button class="btn-accept" onclick="acceptBid('مؤسسة الرائد', 450)">قبول العرض ✓</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="bid-card">
-            <div class="bid-top">
-              <div class="bid-provider">
-                <div class="bid-avatar ba1">أ</div>
-                <div>
-                  <div class="bid-name">أحمد للصيانة والتكييف</div>
-                  <div class="bid-rating">★★★★☆ 4.5 · 87 تقييم</div>
-                  <div class="bid-location">📍 الرياض · 5 سنوات خبرة</div>
-                </div>
-              </div>
-              <div class="bid-price-box">
-                <div class="bid-price">520 ر.س</div>
-                <div class="bid-days">⏱ 3 أيام</div>
-              </div>
-            </div>
-            <div class="bid-note">التركيب شامل ضمان على الشغل لمدة سنة. متوفر في أي وقت يناسبك.</div>
-            <div class="bid-bottom">
-              <div class="bid-provider-stats">
-                <span>✅ 87 صفقة</span>
-                <span>🔄 95%</span>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="btn-msg" onclick="showToast('سيتم فتح نافذة المحادثة')">💬 مراسلة</button>
-                <button class="btn-accept" onclick="acceptBid('أحمد للصيانة', 520)">قبول العرض ✓</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="bid-card">
-            <div class="bid-top">
-              <div class="bid-provider">
-                <div class="bid-avatar ba3">ب</div>
-                <div>
-                  <div class="bid-name">برودة للتكييف والتبريد</div>
-                  <div class="bid-rating">★★★★☆ 4.3 · 54 تقييم</div>
-                  <div class="bid-location">📍 الرياض · 4 سنوات خبرة</div>
-                </div>
-              </div>
-              <div class="bid-price-box">
-                <div class="bid-price">480 ر.س</div>
-                <div class="bid-days">⏱ يومان</div>
-              </div>
-            </div>
-            <div class="bid-note">العمالة فقط، القطع تحتاج توفيرها. سعر مناسب وجودة عالية.</div>
-            <div class="bid-bottom">
-              <div class="bid-provider-stats">
-                <span>✅ 54 صفقة</span>
-                <span>🔄 91%</span>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="btn-msg" onclick="showToast('سيتم فتح نافذة المحادثة')">💬 مراسلة</button>
-                <button class="btn-accept" onclick="acceptBid('برودة للتكييف', 480)">قبول العرض ✓</button>
-              </div>
-            </div>
-          </div>
-
+        <div id="rd-bid-stats" style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;"></div>
+        <div class="bids-list" id="rd-bids-list">
+          <div style="color:var(--muted); font-size:14px;">جارٍ التحميل…</div>
         </div>
       </div>
     </div>
 
-    <!-- TAB: أسئلة -->
+    <!-- TAB: أسئلة (حيّ) -->
     <div class="tab-content" id="tab-questions">
       <div class="section-card">
         <div class="section-title">❓ الأسئلة والتوضيحات</div>
-
-        <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
-          <div style="background:var(--bg); border-radius:12px; padding:16px;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-              <div style="width:34px;height:34px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);">م</div>
-              <div>
-                <div style="font-size:14px;font-weight:700;">مؤسسة الرائد</div>
-                <div style="font-size:12px;color:var(--muted);">منذ ساعة</div>
-              </div>
-            </div>
-            <div style="font-size:14px;color:#334155;">هل المكيف من نوع إنفرتر أم عادي؟ وما ماركته؟</div>
-            <div style="background:white; border-radius:8px; padding:12px; margin-top:10px; border: 1px solid var(--border);">
-              <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px;">رد صاحب الطلب:</div>
-              <div style="font-size:14px;color:#334155;">سامسونج إنفرتر</div>
-            </div>
-          </div>
-
-          <div style="background:var(--bg); border-radius:12px; padding:16px;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-              <div style="width:34px;height:34px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--success);">أ</div>
-              <div>
-                <div style="font-size:14px;font-weight:700;">أحمد للصيانة</div>
-                <div style="font-size:12px;color:var(--muted);">منذ 3 ساعات</div>
-              </div>
-            </div>
-            <div style="font-size:14px;color:#334155;">هل توجد نقطة كهرباء مخصصة للمكيف؟</div>
-            <div style="background:white; border-radius:8px; padding:12px; margin-top:10px; border: 1px solid var(--border);">
-              <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px;">رد صاحب الطلب:</div>
-              <div style="font-size:14px;color:#334155;">لا، يحتاج تمديد من اللوحة الرئيسية.</div>
-            </div>
-          </div>
+        <div id="rd-q-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:8px;">
+          <div style="color:var(--muted); font-size:14px;">جارٍ التحميل…</div>
         </div>
-
-        <div style="border-top:1px solid var(--border); padding-top:20px;">
-          <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:10px;">🙋 اطرح سؤالاً</div>
-          <textarea class="form-textarea" placeholder="اكتب سؤالك هنا..." style="width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px; font-family:'Tajawal',sans-serif; font-size:14px; outline:none; margin-bottom:10px;"></textarea>
-          <button class="btn-primary" style="padding:9px 20px;">إرسال السؤال</button>
-        </div>
+        <div id="rd-ask-box"></div>
       </div>
     </div>
 
@@ -854,10 +664,10 @@
   <!-- RIGHT SIDEBAR -->
   <div>
 
-    <!-- تقديم عرض -->
-    <div class="submit-card">
+    <!-- تقديم عرض (يظهر للمزودين عندما يكون الطلب مفتوحاً) -->
+    <div class="submit-card" id="rd-submit-card" style="display:none;">
       <div class="submit-title">💰 قدّم عرضك الآن</div>
-      <div class="submit-sub">5 مزودين قدّموا عروضهم بالفعل</div>
+      <div class="submit-sub" id="rd-submit-sub">كن أول من يقدّم عرضاً</div>
       <input type="number" class="submit-input" placeholder="سعرك المقترح (ر.س)" id="sidePrice">
       <input type="number" class="submit-input" placeholder="مدة التنفيذ (أيام)" id="sideDays">
       <button class="btn-submit-white" onclick="openBidModal()">تقديم عرض سعر 🚀</button>
@@ -866,94 +676,33 @@
     <!-- بطاقة الطلب -->
     <div class="sidebar-card">
       <div class="sidebar-title">📋 بطاقة الطلب</div>
-      <div class="info-row">
-        <span class="info-label">📊 حالة الطلب</span>
-        <span class="status-badge status-review" style="font-size:11px;">قيد المراجعة</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">💰 الميزانية</span>
-        <span class="price-range">300–600 ر.س</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">⏱ مدة التنفيذ</span>
-        <span class="info-value">1–3 أيام</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">📍 الموقع</span>
-        <span class="info-value">الرياض</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">📂 الفئة</span>
-        <span class="info-value">🌡️ تكييف وتبريد</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">💬 عدد العروض</span>
-        <span class="info-value" style="color:var(--accent);">5 عروض</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">👁 المشاهدات</span>
-        <span class="info-value">124</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">📅 تاريخ النشر</span>
-        <span class="info-value">22 فبراير 2026</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">⏰ ينتهي بعد</span>
-        <span class="info-value" style="color:var(--danger);">5 أيام</span>
-      </div>
+      <div class="info-row"><span class="info-label">📊 حالة الطلب</span><span class="status-badge status-review" id="rd-side-status" style="font-size:11px;">…</span></div>
+      <div class="info-row"><span class="info-label">💰 الميزانية</span><span class="price-range" id="rd-side-budget">—</span></div>
+      <div class="info-row"><span class="info-label">⏱ آخر موعد</span><span class="info-value" id="rd-side-deadline">—</span></div>
+      <div class="info-row"><span class="info-label">📍 الموقع</span><span class="info-value" id="rd-side-city">—</span></div>
+      <div class="info-row"><span class="info-label">📂 الفئة</span><span class="info-value" id="rd-side-cat">—</span></div>
+      <div class="info-row"><span class="info-label">💬 عدد العروض</span><span class="info-value" id="rd-side-bidcount" style="color:var(--accent);">0</span></div>
+      <div class="info-row"><span class="info-label">📅 تاريخ النشر</span><span class="info-value" id="rd-side-date">—</span></div>
     </div>
 
-    <!-- عن العميل -->
+    <!-- عن صاحب الطلب -->
     <div class="sidebar-card">
       <div class="sidebar-title">👤 عن صاحب الطلب</div>
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;">أ</div>
+        <div id="rd-about-av" style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;">؟</div>
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--text);">أحمد العمري</div>
-          <div style="font-size:12px;color:var(--muted);">عضو منذ يناير 2024</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);" id="rd-about-name">—</div>
+          <div style="font-size:12px;color:var(--muted);" id="rd-about-city">—</div>
         </div>
       </div>
-      <div class="info-row">
-        <span class="info-label">⭐ التقييم</span>
-        <span class="info-value" style="color:var(--warning);">4.8 / 5</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">📝 إجمالي الطلبات</span>
-        <span class="info-value">7 طلبات</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">✅ معدل الإتمام</span>
-        <span class="info-value" style="color:var(--success);">85%</span>
-      </div>
+      <div class="info-row"><span class="info-label">✅ مشاريع مكتملة</span><span class="info-value" id="rd-about-completed">—</span></div>
+      <div class="info-row"><span class="info-label">🏅 الحالة</span><span class="info-value" id="rd-about-premium">—</span></div>
     </div>
 
     <!-- طلبات مشابهة -->
-    <div class="sidebar-card">
+    <div class="sidebar-card" id="rd-similar-card" style="display:none;">
       <div class="sidebar-title">🔍 طلبات مشابهة</div>
-      <div>
-        <div class="similar-item">
-          <div class="similar-cat">🌡️</div>
-          <div>
-            <div class="similar-title">صيانة مكيف مركزي للمكتب</div>
-            <div class="similar-meta">الرياض · 3 عروض · منذ ساعتين</div>
-          </div>
-        </div>
-        <div class="similar-item">
-          <div class="similar-cat">🌡️</div>
-          <div>
-            <div class="similar-title">تركيب 3 مكيفات لشقة جديدة</div>
-            <div class="similar-meta">الدمام · 6 عروض · منذ يوم</div>
-          </div>
-        </div>
-        <div class="similar-item">
-          <div class="similar-cat">🌡️</div>
-          <div>
-            <div class="similar-title">فحص وغاز مكيف سبليت</div>
-            <div class="similar-meta">جدة · 4 عروض · منذ 3 ساعات</div>
-          </div>
-        </div>
-      </div>
+      <div id="rd-similar"></div>
     </div>
 
   </div>
@@ -966,33 +715,24 @@
       <div class="modal-title">💰 تقديم عرض سعر</div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-
     <div style="background:var(--bg); border-radius:12px; padding:14px 16px; margin-bottom:20px; border:1px solid var(--border);">
-      <div style="font-size:15px;font-weight:700;color:var(--text);">🌡️ تركيب مكيف سبليت 2 طن في غرفة النوم</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px;">الرياض · الميزانية: 300–600 ر.س</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);" id="rd-modal-title">—</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="rd-modal-sub">—</div>
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">سعرك المقترح (ر.س) *</label>
         <input type="number" class="form-input" id="modalPrice" placeholder="مثال: 450">
       </div>
       <div class="form-group">
-        <label class="form-label">مدة التنفيذ (أيام)</label>
-        <input type="number" class="form-input" id="modalDays" placeholder="1">
+        <label class="form-label">مدة التنفيذ (أيام) *</label>
+        <input type="number" class="form-input" id="modalDays" placeholder="مثال: 2">
       </div>
     </div>
-
     <div class="form-group">
       <label class="form-label">ملاحظات على عرضك</label>
       <textarea class="form-textarea" id="modalNote" placeholder="اشرح ما يشمله عرضك، خبرتك، الضمان..."></textarea>
     </div>
-
-    <div class="form-group">
-      <label class="form-label">أسئلة للعميل (اختياري)</label>
-      <textarea class="form-textarea" id="modalQ" placeholder="هل تحتاج توريد قطع؟ ما ماركة المكيف؟..." style="min-height:60px;"></textarea>
-    </div>
-
     <button class="btn-full" onclick="submitBid()">🚀 إرسال العرض الآن</button>
   </div>
 </div>
@@ -1018,78 +758,327 @@
 <script>
   const API_URL = "https://manaqasati-production.up.railway.app";
 
-  // TABS
-  function switchTab(tab, el) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
+  /* ===== Helpers ===== */
+  function rdUser(){ try{ var t=localStorage.getItem('token'); var u=JSON.parse(localStorage.getItem('user')||'null'); return (t&&u)?u:null; }catch(e){ return null; } }
+  function rdToken(){ return localStorage.getItem('token')||''; }
+  function rdEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function rdAgo(ts){ if(!ts) return ''; var d=new Date(ts); var s=(Date.now()-d.getTime())/1000; if(isNaN(s)) return ''; if(s<60) return 'الآن'; if(s<3600) return 'منذ '+Math.floor(s/60)+' دقيقة'; if(s<86400) return 'منذ '+Math.floor(s/3600)+' ساعة'; return 'منذ '+Math.floor(s/86400)+' يوم'; }
+  function rdMoney(n){ if(n==null||n==='') return null; var v=Number(n); return isNaN(v)?null:v.toLocaleString('en-US'); }
+  function rdDate(ts){ if(!ts) return '—'; try{ return new Date(ts).toLocaleDateString('ar-EG-u-nu-latn',{year:'numeric',month:'long',day:'numeric'}); }catch(e){ return '—'; } }
+  function rdNorm(s){ return s==='review'?'pending_review':s; }
+  function $(id){ return document.getElementById(id); }
+  function setText(id,v){ var e=$(id); if(e) e.textContent=v; }
+  function setHTML(id,v){ var e=$(id); if(e) e.innerHTML=v; }
+  function showToast(msg){ var t=$('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 3500); }
+  function rdLoginRedirect(){ try{ localStorage.setItem('_after_login', location.href); }catch(e){} window.location='auth.html'; }
+
+  function rdStatusMeta(s){
+    s=rdNorm(s);
+    if(s==='open') return {label:'مفتوح للعروض', cls:'status-open', step:3};
+    if(s==='in_progress') return {label:'قيد التنفيذ', cls:'status-open', step:4};
+    if(s==='completed'||s==='done') return {label:'مكتمل', cls:'status-open', step:5};
+    if(s==='rejected') return {label:'مرفوض', cls:'status-closed', step:2};
+    if(s==='pending_review') return {label:'قيد المراجعة', cls:'status-review', step:2};
+    return {label:(s||'—'), cls:'status-review', step:2};
   }
 
-  // MODAL
-  function openBidModal() {
-    const price = document.getElementById('sidePrice').value;
-    const days = document.getElementById('sideDays').value;
-    if (price) document.getElementById('modalPrice').value = price;
-    if (days) document.getElementById('modalDays').value = days;
-    document.getElementById('modalOverlay').classList.add('open');
+  /* ===== State ===== */
+  var RD_ID = (function(){ try{ var q=new URLSearchParams(location.search).get('id'); if(q&&/^\d+$/.test(q)) return parseInt(q); var m=location.pathname.match(/(\d+)(?:\D*)$/); return m?parseInt(m[1]):null; }catch(e){ return null; } })();
+  var RD_user = rdUser();
+  var RD_isProvider = !!(RD_user && RD_user.role==='provider');
+  var RD_req = null, RD_isOwner = false, RD_bids = [], RD_qLoaded = false, RD_pendingBidId = null, RD_pendingProvider = '', RD_pendingPrice = 0;
+
+  /* ===== Tabs ===== */
+  function switchTab(tab, el){
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c){ c.classList.remove('active'); });
+    if(el) el.classList.add('active');
+    var c=$('tab-'+tab); if(c) c.classList.add('active');
+    if(tab==='questions') loadRDQuestions();
+  }
+  function setTabCount(idx, label, n){ var tb=document.querySelectorAll('.tab-btn')[idx]; if(tb) tb.textContent=label+' ('+n+')'; }
+
+  /* ===== Init ===== */
+  function rdInit(){
+    if(!RD_ID){
+      setText('rd-title','افتح الصفحة برقم الطلب');
+      setHTML('rd-desc','<div style="color:var(--muted);">لعرض البيانات الحقيقية افتح الصفحة هكذا:<br><code style="background:var(--bg);padding:2px 8px;border-radius:6px;">request-details.html?id=رقم_الطلب</code></div>');
+      return;
+    }
+    loadRequest();
   }
 
-  function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
-  function closeModalOut(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
-
-  function submitBid() {
-    const price = document.getElementById('modalPrice').value;
-    if (!price) { showToast('⚠️ يرجى إدخال السعر'); return; }
-    closeModal();
-    showToast(`✅ تم إرسال عرضك بسعر ${price} ر.س بنجاح!`);
-    // Switch to bids tab
-    setTimeout(() => {
-      switchTab('bids', document.querySelectorAll('.tab-btn')[1]);
-    }, 1000);
+  function loadRequest(){
+    fetch(API_URL+'/api/requests/public/'+RD_ID)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(req){
+        if(!req){ setText('rd-title','الطلب غير موجود'); setHTML('rd-desc','<div style="color:var(--danger);">تعذّر العثور على هذا الطلب.</div>'); return; }
+        RD_req = req;
+        var cl = req.client || {};
+        RD_isOwner = !!(RD_user && RD_user.role==='client' && cl.id!=null && String(RD_user.id)===String(cl.id));
+        fillRequest(req);
+        loadBids();
+        loadSimilar(req.category);
+        if(RD_qLoaded) fetchRDQs();
+      })
+      .catch(function(){ setText('rd-title','حدث خطأ'); setHTML('rd-desc','<div style="color:var(--danger);">تعذّر تحميل الطلب، حاول لاحقاً.</div>'); });
   }
 
-  // ACCEPT BID
-  let pendingProvider = '';
-  let pendingPrice = 0;
-
-  function acceptBid(provider, price) {
-    pendingProvider = provider;
-    pendingPrice = price;
-    document.getElementById('acceptContent').innerHTML = `
-      <div style="text-align:center; padding:10px 0 20px;">
-        <div style="font-size:48px; margin-bottom:12px;">🤝</div>
-        <div style="font-size:16px; color:#334155; line-height:1.6;">
-          هل تريد قبول عرض <strong>${provider}</strong><br>
-          بسعر <strong style="color:var(--success); font-size:20px;">${price} ر.س</strong>؟
-        </div>
-        <div style="font-size:13px; color:var(--muted); margin-top:12px;">
-          سيتم إشعار المزود وإنشاء الصفقة تلقائياً
-        </div>
-      </div>
-    `;
-    document.getElementById('acceptModal').classList.add('open');
+  function fillRequest(req){
+    var cl = req.client || {};
+    var meta = rdStatusMeta(req.status);
+    // breadcrumb + title
+    setText('bc-cat', req.category || 'الطلبات');
+    setText('bc-title', req.title || '—');
+    document.title = (req.title||'تفاصيل الطلب')+' – مناقصة';
+    // status
+    setHTML('rd-status', '<span class="status-dot"></span> '+meta.label);
+    $('rd-status').className = 'status-badge '+meta.cls;
+    setHTML('rd-side-status', meta.label);
+    $('rd-side-status').className = 'status-badge '+meta.cls;
+    setText('rd-cat-line', (req.category?('📂 '+req.category):'—'));
+    setText('rd-time', req.created_at ? ('📅 '+rdAgo(req.created_at)) : '');
+    setText('rd-title', req.title || '—');
+    // meta row
+    setText('rd-city', '📍 '+(req.city||'—'));
+    var bmax=rdMoney(req.budget), bmin=rdMoney(req.budget_min);
+    var budgetTxt = bmax ? (bmin && bmin!==bmax ? (bmin+'–'+bmax+' ر.س') : (bmax+' ر.س')) : 'غير محدد';
+    setHTML('rd-budget', '💰 الميزانية: <strong style="color:var(--success)">'+budgetTxt+'</strong>');
+    setHTML('rd-deadline', '⏱ آخر موعد: <strong>'+(req.deadline?rdDate(req.deadline):'مفتوح')+'</strong>');
+    // description
+    setHTML('rd-desc', rdEsc(req.description||'').replace(/\n/g,'<br>') || '<span style="color:var(--muted)">لا يوجد وصف.</span>');
+    // tags
+    var tags=[]; if(req.category) tags.push('<span class="tag">'+rdEsc(req.category)+'</span>'); if(req.city) tags.push('<span class="tag-gray">'+rdEsc(req.city)+'</span>');
+    if(tags.length){ setHTML('rd-tags', tags.join('')); $('rd-tags-sec').style.display=''; }
+    // images
+    var imgs = Array.isArray(req.images)?req.images.filter(function(x){return x && /^https?:/.test(x);}):[];
+    if(imgs.length){
+      setHTML('rd-images', imgs.map(function(u){ return '<a href="'+rdEsc(u)+'" target="_blank" rel="noopener"><img src="'+rdEsc(u)+'" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--border);"></a>'; }).join(''));
+      $('rd-images-sec').style.display='';
+    }
+    // client
+    var nm = cl.name || 'صاحب الطلب';
+    setText('rd-client-av', nm.charAt(0));
+    setText('rd-about-av', nm.charAt(0));
+    setText('rd-client-name', nm);
+    setText('rd-about-name', nm);
+    setText('rd-about-city', cl.city ? ('📍 '+cl.city) : '—');
+    var cstats=[]; if(cl.completed_count!=null) cstats.push(cl.completed_count+' مشاريع مكتملة'); cstats.push(cl.is_premium?'عميل مميز ⭐':'عضو');
+    setText('rd-client-stats', cstats.join(' · '));
+    setText('rd-about-completed', (cl.completed_count!=null?cl.completed_count:'—'));
+    setText('rd-about-premium', cl.is_premium?'مميز ⭐':'عادي');
+    // sidebar card
+    setText('rd-side-budget', bmax?budgetTxt:'غير محدد');
+    setText('rd-side-deadline', req.deadline?rdDate(req.deadline):'مفتوح');
+    setText('rd-side-city', req.city||'—');
+    setText('rd-side-cat', req.category||'—');
+    setText('rd-side-date', req.created_at?rdDate(req.created_at):'—');
+    // progress steps
+    for(var i=1;i<=5;i++){ var st=$('step-'+i); if(!st) continue; st.className='step'; if(i<meta.step) st.className='step step-done'; else if(i===meta.step) st.className='step step-active'; var dot=st.querySelector('.step-dot'); if(dot) dot.textContent = (i<meta.step?'✓':String(i)); }
+    // review banner (owner + pending)
+    if(RD_isOwner && rdNorm(req.status)==='pending_review'){ $('reviewBanner').style.display=''; }
+    // submit card (provider + open)
+    if(RD_isProvider && rdNorm(req.status)==='open'){ $('rd-submit-card').style.display=''; }
+    // header message-client button (provider only)
+    if(RD_isProvider && cl.id!=null){ $('rd-msg-client').style.display=''; }
+    // nav buttons for logged-in users
+    if(RD_user){ setHTML('rd-nav-btns', '<button class="btn-primary" onclick="window.location='+"'"+(RD_isProvider?'dashboard-provider.html':'dashboard-client.html')+"'"+'">لوحتي</button>'); }
   }
 
-  function closeAccept() { document.getElementById('acceptModal').classList.remove('open'); }
-  function closeAcceptOut(e) { if (e.target === document.getElementById('acceptModal')) closeAccept(); }
-
-  function confirmAccept() {
-    closeAccept();
-    showToast(`🎉 تم قبول عرض ${pendingProvider} بسعر ${pendingPrice} ر.س!`);
-    // Update status
-    document.querySelector('.status-badge').className = 'status-badge status-open';
-    document.querySelector('.status-badge').innerHTML = '<span class="status-dot"></span> تم الاختيار';
-    document.getElementById('reviewBanner').style.display = 'none';
+  /* ===== Bids ===== */
+  function loadBids(){
+    fetch(API_URL+'/api/bids/public/'+RD_ID)
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(bids){ RD_bids = bids||[]; renderBids(); })
+      .catch(function(){ RD_bids=[]; renderBids(); });
   }
 
-  // TOAST
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3500);
+  function renderBids(){
+    var list=$('rd-bids-list'); if(!list) return;
+    var n=RD_bids.length;
+    setTabCount(1,'العروض المقدمة',n);
+    setText('rd-side-bidcount', n);
+    setHTML('rd-bidcount', '💬 <strong>'+n+'</strong> عروض');
+    if(!n){ setHTML('rd-bid-stats',''); list.innerHTML='<div style="color:var(--muted); font-size:14px;">لا توجد عروض بعد.</div>'; return; }
+    // stats
+    var prices=RD_bids.map(function(b){ return Number(b.price)||0; }).filter(function(x){return x>0;});
+    if(prices.length){
+      var mn=Math.min.apply(null,prices), mx=Math.max.apply(null,prices), av=Math.round(prices.reduce(function(a,b){return a+b;},0)/prices.length);
+      setHTML('rd-bid-stats',
+        '<div style="background:var(--accent-light); border-radius:10px; padding:10px 16px; text-align:center; flex:1;"><div style="font-family:\'Cairo\',sans-serif; font-size:20px; font-weight:900; color:var(--accent);">'+mn.toLocaleString('en-US')+' ر.س</div><div style="font-size:12px; color:var(--muted);">أقل سعر</div></div>'+
+        '<div style="background:#dcfce7; border-radius:10px; padding:10px 16px; text-align:center; flex:1;"><div style="font-family:\'Cairo\',sans-serif; font-size:20px; font-weight:900; color:var(--success);">'+av.toLocaleString('en-US')+' ر.س</div><div style="font-size:12px; color:var(--muted);">متوسط السعر</div></div>'+
+        '<div style="background:#fef3c7; border-radius:10px; padding:10px 16px; text-align:center; flex:1;"><div style="font-family:\'Cairo\',sans-serif; font-size:20px; font-weight:900; color:var(--warning);">'+mx.toLocaleString('en-US')+' ر.س</div><div style="font-size:12px; color:var(--muted);">أعلى سعر</div></div>');
+    } else setHTML('rd-bid-stats','');
+    // best = accepted else cheapest
+    var acceptedId=null, cheapest=null, cheapestPrice=Infinity;
+    RD_bids.forEach(function(b){ if(b.status==='accepted') acceptedId=b.id; var p=Number(b.price)||0; if(p>0&&p<cheapestPrice){ cheapestPrice=p; cheapest=b.id; } });
+    var bestId = acceptedId || cheapest;
+    var avclr=['ba1','ba2','ba3','ba4'];
+    var open = rdNorm(RD_req&&RD_req.status)==='open';
+    list.innerHTML = RD_bids.map(function(b,ix){
+      var nm=b.provider_business_name||b.provider_name||'مزود';
+      var rating=(Number(b.avg_rating)||0); var rc=(Number(b.review_count)||0);
+      var stars='★★★★★'.slice(0, Math.round(rating))+'☆☆☆☆☆'.slice(0, 5-Math.round(rating));
+      var isBest=(b.id===bestId); var isAcc=(b.status==='accepted'); var isRej=(b.status==='rejected');
+      var av='<div class="bid-avatar '+avclr[ix%4]+'">'+rdEsc(nm.charAt(0))+'</div>';
+      var nameLine='<div class="bid-name">'+rdEsc(nm)+(isBest?' <span class="best-tag">'+(isAcc?'مقبول ✓':'الأفضل ⭐')+'</span>':'')+'</div>';
+      var ratingLine='<div class="bid-rating">'+stars+' '+(rating?rating.toFixed(1):'جديد')+(rc?(' · '+rc+' تقييم'):'')+'</div>';
+      var locLine='<div class="bid-location">📍 '+rdEsc(b.provider_city||'—')+'</div>';
+      var price='<div class="bid-price-box"><div class="bid-price">'+(rdMoney(b.price)||'—')+' ر.س</div><div class="bid-days">⏱ '+(b.days!=null?(b.days+' يوم'):'—')+'</div></div>';
+      var note=b.proposal?('<div class="bid-note">'+rdEsc(b.proposal)+'</div>'):'';
+      // actions
+      var actions='';
+      var msgBtn='<button class="btn-msg" onclick="rdMessageProvider('+ (b.provider_id||0) +')">💬 مراسلة</button>';
+      if(RD_isOwner && open && !isAcc){
+        actions='<div style="display:flex; gap:8px;">'+msgBtn+'<button class="btn-accept" onclick="acceptBid('+b.id+',\''+rdEsc(nm).replace(/'/g,"\\'")+'\','+(Number(b.price)||0)+')">قبول العرض ✓</button><button class="btn-msg" style="background:#fee2e2;color:var(--danger);" onclick="rdRejectBid('+b.id+')">رفض</button></div>';
+      } else if(RD_isOwner){
+        actions='<div style="display:flex; gap:8px;">'+msgBtn+(isAcc?'<span class="best-tag" style="background:#16a34a;">مقبول</span>':(isRej?'<span class="best-tag" style="background:#94a3b8;">مرفوض</span>':''))+'</div>';
+      } else {
+        actions='<div style="display:flex; gap:8px;">'+(isAcc?'<span class="best-tag" style="background:#16a34a;">تم اختياره</span>':'')+'</div>';
+      }
+      var bottom='<div class="bid-bottom"><div class="bid-provider-stats"><span>'+(rc?('✅ '+rc+' تقييم'):'مزود جديد')+'</span></div>'+actions+'</div>';
+      return '<div class="bid-card'+(isBest&&open?' best':'')+'"><div class="bid-top"><div class="bid-provider">'+av+'<div>'+nameLine+ratingLine+locLine+'</div></div>'+price+'</div>'+note+bottom+'</div>';
+    }).join('');
+    // submit sub
+    setText('rd-submit-sub', n? (n+' مزودين قدّموا عروضهم بالفعل') : 'كن أول من يقدّم عرضاً');
   }
+
+  /* ===== Accept / Reject ===== */
+  function acceptBid(bidId, provider, price){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    RD_pendingBidId=bidId; RD_pendingProvider=provider; RD_pendingPrice=price;
+    setHTML('acceptContent','<div style="text-align:center; padding:10px 0 20px;"><div style="font-size:48px; margin-bottom:12px;">🤝</div><div style="font-size:16px; color:#334155; line-height:1.6;">هل تريد قبول عرض <strong>'+rdEsc(provider)+'</strong><br>بسعر <strong style="color:var(--success); font-size:20px;">'+(price?Number(price).toLocaleString("en-US"):"—")+' ر.س</strong>؟</div><div style="font-size:13px; color:var(--muted); margin-top:12px;">سيتم إشعار المزود ورفض بقية العروض تلقائياً</div></div>');
+    $('acceptModal').classList.add('open');
+  }
+  function closeAccept(){ $('acceptModal').classList.remove('open'); }
+  function closeAcceptOut(e){ if(e.target===$('acceptModal')) closeAccept(); }
+  function confirmAccept(){
+    if(!RD_pendingBidId) return;
+    fetch(API_URL+'/api/bids/'+RD_pendingBidId+'/accept', { method:'PUT', headers:{ 'Authorization':'Bearer '+rdToken() } })
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){ closeAccept(); if(res.ok){ showToast('🎉 تم قبول العرض'); loadRequest(); } else { showToast('⚠️ '+((res.d&&res.d.message)||'تعذّر قبول العرض')); } })
+      .catch(function(){ closeAccept(); showToast('⚠️ تعذّر قبول العرض'); });
+  }
+  function rdRejectBid(bidId){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    fetch(API_URL+'/api/bids/'+bidId+'/reject', { method:'PUT', headers:{ 'Authorization':'Bearer '+rdToken() } })
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){ if(res.ok){ showToast('تم رفض العرض'); loadBids(); } else { showToast('⚠️ '+((res.d&&res.d.message)||'تعذّر الرفض')); } })
+      .catch(function(){ showToast('⚠️ تعذّر الرفض'); });
+  }
+
+  /* ===== Submit bid (provider) ===== */
+  function openBidModal(){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    if(!RD_isProvider){ showToast('تقديم العروض متاح لمزودي الخدمة فقط'); return; }
+    var p=$('sidePrice').value, d=$('sideDays').value;
+    if(p) $('modalPrice').value=p; if(d) $('modalDays').value=d;
+    setText('rd-modal-title', (RD_req&&RD_req.title)||'—');
+    setText('rd-modal-sub', ((RD_req&&RD_req.city)||'')+' · الميزانية: '+($('rd-side-budget').textContent||'—'));
+    $('modalOverlay').classList.add('open');
+  }
+  function closeModal(){ $('modalOverlay').classList.remove('open'); }
+  function closeModalOut(e){ if(e.target===$('modalOverlay')) closeModal(); }
+  function submitBid(){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    var price=parseInt($('modalPrice').value), days=parseInt($('modalDays').value), note=$('modalNote').value;
+    if(!price||price<=0){ showToast('⚠️ أدخل سعراً صحيحاً'); return; }
+    if(!days||days<=0){ showToast('⚠️ أدخل مدة صحيحة'); return; }
+    fetch(API_URL+'/api/requests/'+RD_ID+'/bids', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+rdToken() }, body: JSON.stringify({ price:price, days:days, note:note||null }) })
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){ if(res.ok){ closeModal(); showToast('✅ تم إرسال عرضك بنجاح'); loadBids(); switchTab('bids', document.querySelectorAll('.tab-btn')[1]); } else { showToast('⚠️ '+((res.d&&res.d.message)||'تعذّر إرسال العرض')); } })
+      .catch(function(){ showToast('⚠️ تعذّر إرسال العرض'); });
+  }
+
+  /* ===== Messaging ===== */
+  function rdMessageProvider(pid){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    if(!pid){ showToast('لا يمكن بدء المحادثة'); return; }
+    fetch(API_URL+'/api/direct-message', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+rdToken() }, body: JSON.stringify({ provider_id: pid }) })
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ showToast('💬 تم فتح المحادثة'); setTimeout(function(){ window.location = (RD_isProvider?'dashboard-provider.html':'dashboard-client.html')+'#messages'; }, 700); })
+      .catch(function(){ showToast('⚠️ تعذّر بدء المحادثة'); });
+  }
+  function rdMessageClient(){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    var cid = RD_req && RD_req.client && RD_req.client.id;
+    if(!cid){ showToast('لا يمكن بدء المحادثة'); return; }
+    fetch(API_URL+'/api/direct-message', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+rdToken() }, body: JSON.stringify({ provider_id: cid }) })
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ showToast('💬 تم فتح المحادثة'); setTimeout(function(){ window.location='dashboard-provider.html#messages'; }, 700); })
+      .catch(function(){ showToast('⚠️ تعذّر بدء المحادثة'); });
+  }
+
+  /* ===== Similar ===== */
+  function loadSimilar(cat){
+    if(!cat) return;
+    fetch(API_URL+'/api/requests?status=open&category='+encodeURIComponent(cat))
+      .then(function(r){ return r.ok?r.json():[]; })
+      .then(function(rows){
+        var items=(rows||[]).filter(function(x){ return String(x.id)!==String(RD_ID); }).slice(0,4);
+        if(!items.length) return;
+        setHTML('rd-similar', items.map(function(x){
+          return '<a href="request-details.html?id='+x.id+'" style="text-decoration:none;"><div class="similar-item"><div class="similar-cat">📌</div><div><div class="similar-title">'+rdEsc(x.title||'مشروع')+'</div><div class="similar-meta">'+rdEsc(x.city||'')+' · '+(x.bid_count||0)+' عروض · '+rdAgo(x.created_at)+'</div></div></div></a>';
+        }).join(''));
+        $('rd-similar-card').style.display='';
+      })
+      .catch(function(){});
+  }
+
+  /* ===== Questions (live) ===== */
+  function loadRDQuestions(){
+    var list=$('rd-q-list'); if(!list) return;
+    if(RD_qLoaded) return;
+    if(!RD_ID){ list.innerHTML='<div style="color:var(--muted); font-size:14px;">افتح الصفحة برقم الطلب لعرض الأسئلة.</div>'; var a=$('rd-ask-box'); if(a)a.innerHTML=''; return; }
+    RD_qLoaded=true; fetchRDQs();
+  }
+  function fetchRDQs(){
+    var list=$('rd-q-list');
+    fetch(API_URL+'/api/requests/'+RD_ID+'/questions')
+      .then(function(r){ return r.ok?r.json():[]; })
+      .then(function(qs){ renderRDQs(qs||[]); })
+      .catch(function(){ if(list) list.innerHTML='<div style="color:var(--danger); font-size:14px;">تعذّر تحميل الأسئلة.</div>'; });
+  }
+  function renderRDQs(qs){
+    var list=$('rd-q-list'), ask=$('rd-ask-box'), u=RD_user;
+    setTabCount(2,'الأسئلة والتوضيحات',qs.length);
+    if(!qs.length){ list.innerHTML='<div style="color:var(--muted); font-size:14px;">لا توجد أسئلة بعد.</div>'; }
+    else {
+      list.innerHTML=qs.map(function(q){
+        var nm=q.asker_name||'مزود'; var ans=q.answer||'';
+        var av='<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#0ea5e9);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;">'+rdEsc(nm.charAt(0))+'</div>';
+        var head='<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">'+av+'<div><div style="font-size:14px;font-weight:700;">'+rdEsc(nm)+(q.asker_role==='provider'?' <span style="font-size:11px;color:var(--accent);background:var(--accent-light);padding:1px 8px;border-radius:20px;">مزود</span>':'')+'</div><div style="font-size:12px;color:var(--muted);">'+rdAgo(q.created_at)+'</div></div></div>';
+        var body='<div style="font-size:14px; color:#334155;">'+rdEsc(q.body||'')+'</div>';
+        var tail='';
+        if(ans){ tail='<div style="background:#fff; border-radius:8px; padding:12px; margin-top:10px; border:1px solid var(--border);"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px;">رد صاحب الطلب:</div><div style="font-size:14px;color:#334155;">'+rdEsc(ans)+'</div></div>'; }
+        else if(RD_isOwner){ tail='<div style="margin-top:10px;"><textarea id="rd-ans-'+q.id+'" class="form-textarea" placeholder="اكتب ردّك على هذا السؤال..." style="min-height:54px; width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px; font-family:\'Tajawal\',sans-serif; font-size:14px; outline:none;"></textarea><button class="btn-primary" style="padding:8px 18px; margin-top:7px;" onclick="rdSubmitAnswer('+q.id+')">إرسال الرد</button></div>'; }
+        return '<div style="background:var(--bg); border-radius:12px; padding:16px;">'+head+body+tail+'</div>';
+      }).join('');
+    }
+    if(ask){
+      if(RD_isOwner){ ask.innerHTML=''; }
+      else { ask.innerHTML='<div style="border-top:1px solid var(--border); padding-top:20px; margin-top:8px;"><div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:10px;">🙋 اطرح سؤالاً</div><textarea id="rd-q-input" class="form-textarea" placeholder="'+(u?'اكتب سؤالك هنا...':'سجّل الدخول لطرح سؤال')+'" style="width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px; font-family:\'Tajawal\',sans-serif; font-size:14px; outline:none; margin-bottom:10px;"></textarea><button class="btn-primary" style="padding:9px 20px;" onclick="rdSubmitQuestion()">إرسال السؤال</button></div>'; }
+    }
+  }
+  function rdSubmitAnswer(qid){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    var inp=$('rd-ans-'+qid); if(!inp) return; var txt=(inp.value||'').trim(); if(!txt){ showToast('اكتب الرد أولاً'); return; }
+    fetch(API_URL+'/api/requests/'+RD_ID+'/questions/'+qid+'/answer', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+rdToken() }, body: JSON.stringify({ answer: txt }) })
+      .then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
+      .then(function(){ showToast('✅ تم إرسال الرد'); fetchRDQs(); })
+      .catch(function(){ showToast('⚠️ تعذّر إرسال الرد'); });
+  }
+  function rdSubmitQuestion(){
+    if(!RD_user){ rdLoginRedirect(); return; }
+    var inp=$('rd-q-input'); if(!inp) return; var txt=(inp.value||'').trim(); if(!txt){ showToast('اكتب سؤالك أولاً'); return; }
+    fetch(API_URL+'/api/requests/'+RD_ID+'/questions', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+rdToken() }, body: JSON.stringify({ body: txt }) })
+      .then(function(r){ if(!r.ok) throw new Error(); return r.json(); })
+      .then(function(){ showToast('✅ تم إرسال سؤالك'); fetchRDQs(); })
+      .catch(function(){ showToast('⚠️ تعذّر إرسال السؤال'); });
+  }
+
+  /* ===== Go ===== */
+  rdInit();
 </script>
 
 </body>
