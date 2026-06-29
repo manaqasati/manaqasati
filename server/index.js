@@ -412,6 +412,7 @@ async function notify(userId, title, body, type, refId) {
       return '/';
     })();
     sendPush(userId, title, body, url, type, refId).catch(() => {});
+    wsBroadcast(userId, { type: 'notification', notif: { title, body, ntype: type, ref_id: refId, url, created_at: new Date().toISOString() } });
   } catch(e) { console.error('Notification error:', e); }
 }
 
