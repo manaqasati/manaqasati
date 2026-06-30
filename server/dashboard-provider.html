@@ -472,6 +472,13 @@ function fmtN(n){ return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(
 'use strict';
 var API='https://manaqasati-production.up.railway.app';
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function _pubBadge(key){
+  if(!key||key==='none')return '';
+  var M={verified:{l:'موثّق',c:'#2E90FA',bg:'#EFF8FF'},premium:{l:'مميز',c:'#B8780A',bg:'#FFF7E6'},gold_partner:{l:'شريك ذهبي',c:'#B8780A',bg:'#FFF7E6'},top_rated:{l:'الأعلى تقييماً',c:'#15803d',bg:'#dcfce7'},fast_response:{l:'سريع الاستجابة',c:'#0369a1',bg:'#e0f2fe'},trusted_client:{l:'عميل موثوق',c:'#1e3a8a',bg:'#dbeafe'}};
+  var m=M[key];if(!m)return '';
+  return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.l+'</span>';
+}
+
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(function(reg){console.log('SW registered:',reg.scope);}).catch(function(err){console.log('SW register error:',err);});
@@ -694,7 +701,7 @@ function _renderHome(data){
     +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>'
     +'<div class="ph-greet">'
       +'<div class="ph-av">'+avHtml+'</div>'
-      +'<div style="min-width:0"><div class="ph-hi">أهلاً، '+_esc(firstName)+'</div><div class="ph-sub">فرص جديدة تناسب تخصصك تنتظر عرضك</div></div>'
+      +'<div style="min-width:0"><div class="ph-hi">أهلاً، '+_esc(firstName)+' '+_pubBadge(profile.badge)+'</div><div class="ph-sub">فرص جديدة تناسب تخصصك تنتظر عرضك</div></div>'
       +'<span class="ph-rate"><span style="color:#F0A500">★</span>'+rat+'</span>'
     +'</div>'
     +'<div class="ph-hl"><span class="ph-dot"></span> '+(newCount>0?('<b>'+newCount+(newCount===1?' طلب':' طلبات')+'</b>'+(matchedBySpec?' تناسب تخصصك الآن':' متاحة الآن')):'تصفّح الطلبات الجديدة المتاحة الآن')+'</div>'
@@ -1226,7 +1233,7 @@ async function loadProfile(){
   hdr.innerHTML='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'
     +'<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">'
     +'<div id="av-preview" style="width:80px;height:80px;border-radius:50%;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid rgba(255,255,255,.25);cursor:pointer" onclick="document.getElementById(&quot;av-inp&quot;).click()">'+avHtml+'</div>'
-    +'<div style="flex:1"><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+'</div>'
+    +'<div style="flex:1"><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+' '+_pubBadge(p.badge)+'</div>'
     +'<div style="font-size:12px;color:rgba(255,255,255,.55)">مزود خدمة · '+_esc(p.city||'')+'</div>'
     +'<div style="margin-top:10px"><input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)">'
     +'<button onclick="document.getElementById(&quot;av-inp&quot;).click()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer">تغيير الصورة</button>'
