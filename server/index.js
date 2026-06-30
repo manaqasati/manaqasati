@@ -507,9 +507,8 @@ const TIER_RANK = { new:0, active:1, distinguished:2, expert:3 };
 async function recomputeProviderTier(providerId){
   try{
     if(!providerId) return;
-    const cur = await pool.query("SELECT tier, tier_locked FROM users WHERE id=$1 AND role='provider'", [providerId]);
+    const cur = await pool.query("SELECT tier FROM users WHERE id=$1 AND role='provider'", [providerId]);
     if(!cur.rows.length) return;
-    if(cur.rows[0].tier_locked) return; // مستوى مثبّت يدوياً — لا يُعاد حسابه
     const oldTier = cur.rows[0].tier || 'new';
     const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [providerId]);
     const newTier = tierFromCompleted(c.rows[0] && c.rows[0].n);
@@ -581,14 +580,13 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
     try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'new'"); } catch(e){}
-    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_locked BOOLEAN DEFAULT FALSE"); } catch(e){}
     // حشو/تحديث مستوى كل المزودين تلقائياً من عدد الصفقات المكتملة (مرة عند الإقلاع)
     try { await pool.query(`UPDATE users SET tier = CASE
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 25 THEN 'expert'
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 10 THEN 'distinguished'
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 3 THEN 'active'
         ELSE 'new' END
-      WHERE role='provider' AND COALESCE(tier_locked,FALSE)=FALSE`); } catch(e){ console.error('tier backfill:', e.message); }
+      WHERE role='provider'`); } catch(e){ console.error('tier backfill:', e.message); }
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
@@ -1807,7 +1805,7 @@ app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, 
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
@@ -1869,33 +1867,15 @@ app.put('/api/admin/users/:id/badge', requirePermission('users.badge'), async (r
 
 app.put('/api/admin/users/:id/tier', requirePermission('users.badge'), async (req, res) => {
   try {
-    const uid = parseInt(req.params.id); let { tier, locked, lock_only, auto } = req.body;
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const cur = await pool.query("SELECT tier, tier_locked FROM users WHERE id=$1 AND role='provider'", [uid]);
-    if (!cur.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
-    const oldTier = cur.rows[0].tier || 'new';
-
-    // فكّ التثبيت → رجوع تلقائي فوري حسب الصفقات
-    if (auto === true) {
-      const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [uid]);
-      const autoTier = tierFromCompleted(c.rows[0] && c.rows[0].n);
-      const r = await pool.query(`UPDATE users SET tier=$1, tier_locked=FALSE WHERE id=$2 AND role='provider' RETURNING id,name,tier,tier_locked`, [autoTier, uid]);
-      await logAdmin(req, 'set_tier', 'user', uid, 'إلغاء تثبيت المستوى (تلقائي: '+(TIER_LABELS[autoTier]||autoTier)+')');
-      return res.json(r.rows[0]);
-    }
-    // تثبيت المستوى الحالي فقط دون تغييره
-    if (lock_only === true) {
-      const r = await pool.query(`UPDATE users SET tier_locked=TRUE WHERE id=$2 AND role='provider' RETURNING id,name,tier,tier_locked`, [null, uid]);
-      await logAdmin(req, 'set_tier', 'user', uid, 'تثبيت المستوى الحالي ('+(TIER_LABELS[oldTier]||oldTier)+')');
-      return res.json(r.rows[0]);
-    }
-
+    const uid = parseInt(req.params.id); let { tier } = req.body;
     const VALID = ['new','active','distinguished','expert'];
     if (!VALID.includes(tier)) return res.status(400).json({ message: 'مستوى غير صالح' });
-    // ضبط يدوي للمستوى = يثبّته افتراضياً (إلا لو طُلب غير ذلك)
-    const willLock = (locked === false) ? false : true;
-    const r = await pool.query(`UPDATE users SET tier=$1, tier_locked=$2 WHERE id=$3 AND role='provider' RETURNING id,name,tier,tier_locked`, [tier, willLock, uid]);
-    await logAdmin(req, 'set_tier', 'user', uid, 'ضبط المستوى إلى '+(TIER_LABELS[tier]||tier)+(willLock?' (مثبّت)':''));
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    const cur = await pool.query("SELECT tier FROM users WHERE id=$1 AND role='provider'", [uid]);
+    if (!cur.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
+    const oldTier = cur.rows[0].tier || 'new';
+    const r = await pool.query(`UPDATE users SET tier=$1 WHERE id=$2 AND role='provider' RETURNING id,name,tier`, [tier, uid]);
+    await logAdmin(req, 'set_tier', 'user', uid, 'تغيير المستوى إلى '+(TIER_LABELS[tier]||tier));
     if ((TIER_RANK[tier]||0) > (TIER_RANK[oldTier]||0)) {
       try { await notify(uid, 'تم ترقيتك لمستوى جديد', 'تمت ترقيتك إلى مستوى «'+(TIER_LABELS[tier]||tier)+'» — يظهر الآن للعملاء على عروضك.', 'tier_up', null); } catch(e){}
     }
@@ -2241,15 +2221,6 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
     const revMonthly = await many(`SELECT to_char(date_trunc('month',created_at),'YYYY-MM') as period, COALESCE(SUM(price),0)::float as revenue, COUNT(*)::int as deals
       FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '5 months'
       GROUP BY period ORDER BY period`);
-    const tierRows = await many(`SELECT COALESCE(NULLIF(tier,''),'new') as tier, COUNT(*)::int as n FROM users WHERE role='provider' GROUP BY tier`);
-    const tierMap = { new:0, active:0, distinguished:0, expert:0 };
-    tierRows.forEach(function(r){ if(tierMap[r.tier]!=null) tierMap[r.tier]=r.n; });
-    const byTier = [
-      { key:'new', label:'مزود جديد', n:tierMap.new },
-      { key:'active', label:'مزود نشط', n:tierMap.active },
-      { key:'distinguished', label:'مزود مميّز', n:tierMap.distinguished },
-      { key:'expert', label:'خبير معتمد', n:tierMap.expert }
-    ];
 
     res.json({
       revenue: { total: rev.total, avg: rev.avg, deals: rev.deals },
@@ -2257,7 +2228,6 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
       this_month: thisMonth, last_month: lastMonth,
       top_earners: topEarners, top_active: topActive,
       by_city: byCity, by_category: byCat,
-      by_tier: byTier,
       revenue_monthly: revMonthly,
       needs_action: { review: needReview, reports: needReports, verify: needVerify, questions: needQ }
     });
