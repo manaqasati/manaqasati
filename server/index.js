@@ -502,12 +502,22 @@ function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
 
 // ═══ مستوى المزود (tier) — مستنتج من الصفقات المكتملة، منفصل عن badge اليدوي ═══
 function tierFromCompleted(n){ n=parseInt(n)||0; if(n>=25) return 'expert'; if(n>=10) return 'distinguished'; if(n>=3) return 'active'; return 'new'; }
+const TIER_LABELS = { new:'مزود جديد', active:'مزود نشط', distinguished:'مزود مميّز', expert:'خبير معتمد' };
+const TIER_RANK = { new:0, active:1, distinguished:2, expert:3 };
 async function recomputeProviderTier(providerId){
   try{
     if(!providerId) return;
+    const cur = await pool.query("SELECT tier FROM users WHERE id=$1 AND role='provider'", [providerId]);
+    if(!cur.rows.length) return;
+    const oldTier = cur.rows[0].tier || 'new';
     const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [providerId]);
-    const t = tierFromCompleted(c.rows[0] && c.rows[0].n);
-    await pool.query("UPDATE users SET tier=$1 WHERE id=$2 AND role='provider'", [t, providerId]);
+    const newTier = tierFromCompleted(c.rows[0] && c.rows[0].n);
+    if(newTier === oldTier) return;
+    await pool.query("UPDATE users SET tier=$1 WHERE id=$2 AND role='provider'", [newTier, providerId]);
+    // إشعار ترقية فقط عند ارتقاء فعلي لأعلى
+    if((TIER_RANK[newTier]||0) > (TIER_RANK[oldTier]||0)){
+      try{ await notify(providerId, 'مبروك! ارتقيت لمستوى جديد', 'وصلت إلى مستوى «'+(TIER_LABELS[newTier]||newTier)+'» — يظهر الآن للعملاء على عروضك ويرفع ترتيبك.', 'tier_up', null); }catch(e){}
+    }
   }catch(e){ console.error('recomputeProviderTier:', e.message); }
 }
 
@@ -1795,7 +1805,7 @@ app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, 
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
@@ -1851,6 +1861,24 @@ app.put('/api/admin/users/:id/badge', requirePermission('users.badge'), async (r
     await logAdmin(req, 'set_badge', 'user', uid, 'تغيير التوثيق إلى '+(badge||'بدون'));
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.put('/api/admin/users/:id/tier', requirePermission('users.badge'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id); let { tier } = req.body;
+    const VALID = ['new','active','distinguished','expert'];
+    if (!VALID.includes(tier)) return res.status(400).json({ message: 'مستوى غير صالح' });
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    const cur = await pool.query("SELECT tier FROM users WHERE id=$1 AND role='provider'", [uid]);
+    if (!cur.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
+    const oldTier = cur.rows[0].tier || 'new';
+    const r = await pool.query(`UPDATE users SET tier=$1 WHERE id=$2 AND role='provider' RETURNING id,name,tier`, [tier, uid]);
+    await logAdmin(req, 'set_tier', 'user', uid, 'تغيير المستوى إلى '+(TIER_LABELS[tier]||tier));
+    if ((TIER_RANK[tier]||0) > (TIER_RANK[oldTier]||0)) {
+      try { await notify(uid, 'تم ترقيتك لمستوى جديد', 'تمت ترقيتك إلى مستوى «'+(TIER_LABELS[tier]||tier)+'» — يظهر الآن للعملاء على عروضك.', 'tier_up', null); } catch(e){}
+    }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
