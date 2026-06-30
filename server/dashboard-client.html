@@ -788,6 +788,13 @@ if(!token||!user.id){location.href='/auth.html';}
 
 // isImg — يقبل URL وbase64
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function _pubBadge(key){
+  if(!key||key==='none')return '';
+  var M={verified:{l:'موثّق',c:'#2E90FA',bg:'#EFF8FF'},premium:{l:'مميز',c:'#B8780A',bg:'#FFF7E6'},gold_partner:{l:'شريك ذهبي',c:'#B8780A',bg:'#FFF7E6'},top_rated:{l:'الأعلى تقييماً',c:'#15803d',bg:'#dcfce7'},fast_response:{l:'سريع الاستجابة',c:'#0369a1',bg:'#e0f2fe'},trusted_client:{l:'عميل موثوق',c:'#1e3a8a',bg:'#dbeafe'}};
+  var m=M[key];if(!m)return '';
+  return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.l+'</span>';
+}
+
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0';}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
@@ -1265,7 +1272,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_pubBadge(b.provider_badge)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
               +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
             +'</div>'
