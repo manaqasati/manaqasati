@@ -500,6 +500,17 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
 
 function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
 
+// ═══ مستوى المزود (tier) — مستنتج من الصفقات المكتملة، منفصل عن badge اليدوي ═══
+function tierFromCompleted(n){ n=parseInt(n)||0; if(n>=25) return 'expert'; if(n>=10) return 'distinguished'; if(n>=3) return 'active'; return 'new'; }
+async function recomputeProviderTier(providerId){
+  try{
+    if(!providerId) return;
+    const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [providerId]);
+    const t = tierFromCompleted(c.rows[0] && c.rows[0].n);
+    await pool.query("UPDATE users SET tier=$1 WHERE id=$2 AND role='provider'", [t, providerId]);
+  }catch(e){ console.error('recomputeProviderTier:', e.message); }
+}
+
 function generateProjectNumber() {
   const d = new Date();
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
@@ -558,6 +569,14 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tiktok VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
+    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'new'"); } catch(e){}
+    // حشو/تحديث مستوى كل المزودين تلقائياً من عدد الصفقات المكتملة (مرة عند الإقلاع)
+    try { await pool.query(`UPDATE users SET tier = CASE
+        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 25 THEN 'expert'
+        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 10 THEN 'distinguished'
+        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 3 THEN 'active'
+        ELSE 'new' END
+      WHERE role='provider'`); } catch(e){ console.error('tier backfill:', e.message); }
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
@@ -768,7 +787,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -777,7 +796,7 @@ app.get('/api/provider/profile', auth, async (req, res) => {
 app.get('/api/provider/:id/profile', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1087,6 +1106,7 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 RETURNING id, assigned_provider_id, title`, [id, req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس طلبك' });
+    if (r.rows[0].assigned_provider_id) { recomputeProviderTier(r.rows[0].assigned_provider_id); }
     if (r.rows[0].assigned_provider_id) {
       const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
       const projTitle = r.rows[0].title;
@@ -1118,7 +1138,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at,
         u.name as provider_name, u.phone as provider_phone,
-        u.city as provider_city, u.badge as provider_badge,
+        u.city as provider_city, u.badge as provider_badge, u.tier as provider_tier,
         u.business_name as provider_business_name,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
@@ -1128,7 +1148,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1
-      ORDER BY (b.status='accepted') DESC, b.created_at DESC
+      ORDER BY (b.status='accepted') DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
     `, [id]);
     res.json(r.rows);
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1521,12 +1541,12 @@ app.delete('/api/favorites/:providerId', auth, async (req, res) => {
 app.get('/api/providers', async (req, res) => {
   try {
     const { category, city, specialty } = req.query;
-    let q = `SELECT id, name, city, specialties, badge, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects FROM users WHERE role='provider' AND is_active=TRUE`;
+    let q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects FROM users WHERE role='provider' AND is_active=TRUE`;
     const params = [];
     if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
     if (specialty){ params.push(specialty); q += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
     if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
-    q += ` ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 100`;
+    q += ` ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 100`;
     const r = await pool.query(q, params);
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
   } catch(e) { console.error('GET /api/providers:', e); res.json([]); }
