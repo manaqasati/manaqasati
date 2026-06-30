@@ -599,36 +599,6 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 
 
 // شبكة الكوكبة الحيّة (هوية مناقصة)
-function heroNet(){
-  var cv=document.getElementById('heroNetCanvas');
-  if(!cv)return;
-  var ctx=cv.getContext('2d'),W,H,pts=[],raf;
-  function size(){
-    var r=cv.parentElement.getBoundingClientRect();
-    W=cv.width=r.width;H=cv.height=r.height;
-    var n=Math.min(30,Math.floor(W/40));pts=[];
-    for(var i=0;i<n;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,g:Math.random()<.2});
-  }
-  function draw(){
-    ctx.clearRect(0,0,W,H);
-    for(var i=0;i<pts.length;i++){
-      var p=pts[i];p.x+=p.vx;p.y+=p.vy;
-      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
-      for(var j=i+1;j<pts.length;j++){
-        var q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
-        if(d<110){var o=(1-d/110)*.45;
-          ctx.strokeStyle=(p.g||q.g?'rgba(240,165,0,':'rgba(255,255,255,')+o+')';
-          ctx.lineWidth=p.g||q.g?1:.5;
-          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
-      }
-    }
-    for(var k=0;k<pts.length;k++){var pt=pts[k];
-      ctx.fillStyle=(pt.g?'rgba(240,165,0,.9)':'rgba(255,255,255,.5)');
-      ctx.beginPath();ctx.arc(pt.x,pt.y,pt.g?2.4:1.4,0,7);ctx.fill();}
-    raf=requestAnimationFrame(draw);
-  }
-  size();draw();
-}
 function _phmc(v,icon,num,label){
   return '<div class="ph-mc"><div class="ph-mi '+v+'"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">'+icon+'</svg></div><div class="ph-mn">'+(num||0)+'</div><div class="ph-ml">'+label+'</div></div>';
 }
@@ -1094,7 +1064,7 @@ function exportUsersCSV(list){
 function loadRequests(){
   fetch(API+'/api/admin/requests',hdr()).then(function(r){return r.json();}).then(function(reqs){
     if(!Array.isArray(reqs)){document.getElementById('requests-table').innerHTML=emptyState('تعذر التحميل');return;}
-    _allReq=reqs;fillReqFilters();renderRequests();
+    _allReq=reqs;fillReqFilters();applyReqFiltersFromHash();renderRequests();
   }).catch(function(){document.getElementById('requests-table').innerHTML=emptyState('تعذر التحميل');});
 }
 function filterReq(st,el){_reqFilter=st;document.querySelectorAll('#page-requests .ftab').forEach(function(t){t.classList.remove('on');});if(el)el.classList.add('on');renderRequests();}
@@ -1118,8 +1088,26 @@ function fillReqFilters(){
   var kSel=document.getElementById('rf-cat');
   if(kSel&&kSel.options.length<=1){Object.keys(cats).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;kSel.appendChild(o);});}
 }
-function resetReqFilters(){['rf-city','rf-cat'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var sr=document.getElementById('req-search');if(sr)sr.value='';renderRequests();}
+function resetReqFilters(){['rf-city','rf-cat'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var sr=document.getElementById('req-search');if(sr)sr.value='';syncReqFiltersToHash();renderRequests();}
+function applyReqFiltersFromHash(){
+  var ps=_parseHashParams();
+  [['city','rf-city'],['cat','rf-cat']].forEach(function(m){var e=document.getElementById(m[1]);if(e&&ps[m[0]]!=null)e.value=ps[m[0]];});
+  var sr=document.getElementById('req-search');if(sr&&ps.q!=null)sr.value=ps.q;
+  if(ps.status){_reqFilter=ps.status;document.querySelectorAll('#page-requests .ftab').forEach(function(t){t.classList.remove('on');var oc=t.getAttribute('onclick')||'';if(oc.indexOf("'"+ps.status+"'")>=0)t.classList.add('on');});}
+}
+function syncReqFiltersToHash(){
+  if(window._skipHash)return;
+  var v=function(id){return (document.getElementById(id)||{}).value||'';};
+  var parts=[];
+  if(_reqFilter&&_reqFilter!=='all')parts.push('status='+encodeURIComponent(_reqFilter));
+  if(v('rf-city'))parts.push('city='+encodeURIComponent(v('rf-city')));
+  if(v('rf-cat'))parts.push('cat='+encodeURIComponent(v('rf-cat')));
+  var q=(v('req-search')||'').trim();if(q)parts.push('q='+encodeURIComponent(q));
+  var hash='#requests'+(parts.length?'?'+parts.join('&'):'');
+  if(location.hash!==hash){window._skipHash=true;history.replaceState(null,'',hash);window._skipHash=false;}
+}
 function renderRequests(){
+  syncReqFiltersToHash();
   var filtered=getFilteredRequests();
   var cnt=document.getElementById('rf-count');if(cnt)cnt.textContent=filtered.length+' نتيجة';
   if(!filtered.length){document.getElementById('requests-table').innerHTML=emptyState('لا يوجد مشاريع مطابقة');return;}
@@ -1254,7 +1242,7 @@ var _allBids=[],_bidStatusFilter='all';
 function loadBids(){
   fetch(API+'/api/admin/bids',hdr()).then(function(r){return r.json();}).then(function(bids){
     if(!Array.isArray(bids)){document.getElementById('bids-table').innerHTML=emptyState('تعذر التحميل');return;}
-    _allBids=bids;fillBidFilters();renderBids();
+    _allBids=bids;fillBidFilters();applyBidFiltersFromHash();renderBids();
   }).catch(function(){document.getElementById('bids-table').innerHTML=emptyState('تعذر التحميل');});
 }
 function filterBidStatus(s,el){_bidStatusFilter=s;document.querySelectorAll('#page-bids .ftab').forEach(function(t){t.classList.remove('on');});if(el)el.classList.add('on');renderBids();}
@@ -1274,8 +1262,25 @@ function fillBidFilters(){
   var cSel=document.getElementById('bf-city');
   if(cSel&&cSel.options.length<=1){Object.keys(cities).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cSel.appendChild(o);});}
 }
-function resetBidFilters(){var e=document.getElementById('bf-city');if(e)e.value='';var sr=document.getElementById('bid-search');if(sr)sr.value='';renderBids();}
+function resetBidFilters(){var e=document.getElementById('bf-city');if(e)e.value='';var sr=document.getElementById('bid-search');if(sr)sr.value='';syncBidFiltersToHash();renderBids();}
+function applyBidFiltersFromHash(){
+  var ps=_parseHashParams();
+  var e=document.getElementById('bf-city');if(e&&ps.city!=null)e.value=ps.city;
+  var sr=document.getElementById('bid-search');if(sr&&ps.q!=null)sr.value=ps.q;
+  if(ps.status){_bidStatusFilter=ps.status;document.querySelectorAll('#page-bids .ftab').forEach(function(t){t.classList.remove('on');var oc=t.getAttribute('onclick')||'';if(oc.indexOf("'"+ps.status+"'")>=0)t.classList.add('on');});}
+}
+function syncBidFiltersToHash(){
+  if(window._skipHash)return;
+  var v=function(id){return (document.getElementById(id)||{}).value||'';};
+  var parts=[];
+  if(_bidStatusFilter&&_bidStatusFilter!=='all')parts.push('status='+encodeURIComponent(_bidStatusFilter));
+  if(v('bf-city'))parts.push('city='+encodeURIComponent(v('bf-city')));
+  var q=(v('bid-search')||'').trim();if(q)parts.push('q='+encodeURIComponent(q));
+  var hash='#bids'+(parts.length?'?'+parts.join('&'):'');
+  if(location.hash!==hash){window._skipHash=true;history.replaceState(null,'',hash);window._skipHash=false;}
+}
 function renderBids(){
+  syncBidFiltersToHash();
   var list=getFilteredBids();
   var cnt=document.getElementById('bf-count');if(cnt)cnt.textContent=list.length+' نتيجة';
   if(!list.length){document.getElementById('bids-table').innerHTML=emptyState('لا توجد عروض مطابقة');return;}
@@ -1415,11 +1420,6 @@ function renderLogs(){
     }).join('')+'</tbody></table>';
 }
 
-function switchChart(btn,range){
-  document.querySelectorAll('.cs-btn').forEach(function(b){b.classList.remove('on');});
-  btn.classList.add('on');
-  if(window._drawChart)window._drawChart(range);
-}
 
 // ═══ يحتاج إجراء (لوحة المعلومات) ═══
 function loadNeedsAction(){
@@ -1550,6 +1550,24 @@ function loadAnalytics(){
     window._analytics=res[0];renderAnalytics(res[0],res[1]||{});
   }).catch(function(){if(box)box.innerHTML=emptyState('تعذر تحميل التحليلات');});
 }
+function _tierDistroCard(rows){
+  rows=rows||[];
+  if(!rows.length)return '';
+  var total=rows.reduce(function(s,r){return s+(r.n||0);},0)||1;
+  var COL={new:['#64748b','#f1f5f9'],active:['#0369a1','#e0f2fe'],distinguished:['#7c3aed','#f3e8ff'],expert:['#b45309','#fff7e6']};
+  var star='<svg width="15" height="15" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>';
+  var cells=rows.map(function(r){
+    var c=COL[r.key]||['#64748b','#f1f5f9'];
+    var pct=Math.round((r.n||0)/total*100);
+    return '<div style="flex:1;min-width:0;background:var(--white);border:1px solid var(--border);border-radius:13px;padding:14px 10px;text-align:center">'
+      +'<div style="width:34px;height:34px;border-radius:9px;background:'+c[1]+';color:'+c[0]+';display:flex;align-items:center;justify-content:center;margin:0 auto 8px">'+star+'</div>'
+      +'<div style="font-family:\'Cairo\',sans-serif;font-size:22px;font-weight:900;color:'+c[0]+';line-height:1">'+(r.n||0)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:3px">'+r.label+'</div>'
+      +'<div style="font-size:10px;color:var(--hint);margin-top:1px">'+pct+'%</div>'
+    +'</div>';
+  }).join('');
+  return '<div class="card"><div class="card-head"><h3>توزيع مستويات المزودين</h3><span style="font-size:12px;color:var(--muted)">'+total+' مزوّد</span></div><div class="card-body"><div style="display:flex;gap:10px;flex-wrap:wrap">'+cells+'</div></div></div>';
+}
 function renderAnalytics(a,statsData){
   var box=document.getElementById('analytics-body');if(!box)return;
   var rev=a.revenue||{},f=a.funnel||{},tm=a.this_month||{},lm=a.last_month||{};
@@ -1569,6 +1587,7 @@ function renderAnalytics(a,statsData){
     _rankCard('توزيع المشاريع حسب المدينة',(a.by_city||[]).map(function(x){return {name:x.city,val:x.n,raw:x.n};}),'')+
     _rankCard('توزيع المشاريع حسب الفئة',(a.by_category||[]).map(function(x){return {name:x.category,val:x.n,raw:x.n};}),'')+
   '</div>';
+  html+=_tierDistroCard(a.by_tier||[]);
   html+=_statsVisuals(statsData||{});
   box.innerHTML=html;
 }
