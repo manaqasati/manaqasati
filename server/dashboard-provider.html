@@ -478,6 +478,12 @@ function _pubBadge(key){
   var m=M[key];if(!m)return '';
   return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.l+'</span>';
 }
+function _tierBadge(t){
+  if(!t||t==='new')return '';
+  var M={active:{l:'مزود نشط',c:'#0369a1',bg:'#e0f2fe'},distinguished:{l:'مزود مميّز',c:'#7c3aed',bg:'#f3e8ff'},expert:{l:'خبير معتمد',c:'#b45309',bg:'#fff7e6'}};
+  var m=M[t];if(!m)return '';
+  return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>'+m.l+'</span>';
+}
 
 
 if('serviceWorker' in navigator){
@@ -701,7 +707,7 @@ function _renderHome(data){
     +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>'
     +'<div class="ph-greet">'
       +'<div class="ph-av">'+avHtml+'</div>'
-      +'<div style="min-width:0"><div class="ph-hi">أهلاً، '+_esc(firstName)+' '+_pubBadge(profile.badge)+'</div><div class="ph-sub">فرص جديدة تناسب تخصصك تنتظر عرضك</div></div>'
+      +'<div style="min-width:0"><div class="ph-hi">أهلاً، '+_esc(firstName)+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</div><div class="ph-sub">فرص جديدة تناسب تخصصك تنتظر عرضك</div></div>'
       +'<span class="ph-rate"><span style="color:#F0A500">★</span>'+rat+'</span>'
     +'</div>'
     +'<div class="ph-hl"><span class="ph-dot"></span> '+(newCount>0?('<b>'+newCount+(newCount===1?' طلب':' طلبات')+'</b>'+(matchedBySpec?' تناسب تخصصك الآن':' متاحة الآن')):'تصفّح الطلبات الجديدة المتاحة الآن')+'</div>'
@@ -743,7 +749,7 @@ function _renderHome(data){
   for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_cur=_tiers[_ti];}
   for(var _tj=0;_tj<_tiers.length;_tj++){if(_tiers[_tj].m>done){_next=_tiers[_tj];break;}}
   var _lvlPct,_lvlNote;
-  if(_next){var _span=_next.m-_cur.m;_lvlPct=Math.max(6,Math.round((done-_cur.m)/_span*100));_lvlNote=(_next.m-done)+' صفقات للوصول لـ «'+_next.n+'»';}
+  if(_next){var _span=_next.m-_cur.m;_lvlPct=Math.max(6,Math.round((done-_cur.m)/_span*100));var _rem=_next.m-done; var _remTxt=_rem===1?'صفقة واحدة':_rem===2?'صفقتان':(_rem+' صفقات'); _lvlNote=_remTxt+' للوصول لـ «'+_next.n+'»';}
   else{_lvlPct=100;_lvlNote='أعلى مستوى 🏅';}
   html+='<div style="background:var(--white);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px;border-top:3px solid var(--green)">';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px"><div style="font-size:12.5px;font-weight:800;color:var(--p)">🏆 مستواك: <span style="color:var(--green)">'+_cur.n+'</span></div><div style="font-size:10.5px;color:var(--muted);font-weight:700">'+_lvlNote+'</div></div>';
@@ -1233,7 +1239,7 @@ async function loadProfile(){
   hdr.innerHTML='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'
     +'<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">'
     +'<div id="av-preview" style="width:80px;height:80px;border-radius:50%;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid rgba(255,255,255,.25);cursor:pointer" onclick="document.getElementById(&quot;av-inp&quot;).click()">'+avHtml+'</div>'
-    +'<div style="flex:1"><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+' '+_pubBadge(p.badge)+'</div>'
+    +'<div style="flex:1"><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+' '+_tierBadge(p.tier)+_pubBadge(p.badge)+'</div>'
     +'<div style="font-size:12px;color:rgba(255,255,255,.55)">مزود خدمة · '+_esc(p.city||'')+'</div>'
     +'<div style="margin-top:10px"><input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)">'
     +'<button onclick="document.getElementById(&quot;av-inp&quot;).click()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer">تغيير الصورة</button>'
