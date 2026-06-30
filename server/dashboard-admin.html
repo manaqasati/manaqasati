@@ -730,7 +730,7 @@ function renderUsers(){
     var activity=u.role==='provider'?(u.bid_count||0)+' عرض':(u.request_count||0)+' طلب';
     return '<tr>'
       +'<td><input type="checkbox" class="uchk" '+(_selUsers[u.id]?'checked':'')+' onclick="toggleUserSel('+u.id+',this.checked)"></td>'
-      +'<td><div class="u-cell"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div class="u-name">'+esc(u.name)+(u.tier&&u.tier!=='new'?' '+tierChip(u.tier):'')+(u.badge&&u.badge!=='none'?' '+badgeChip(u.badge):'')+'</div><div class="u-email">'+esc(u.email)+'</div></div></div></td>'
+      +'<td><div class="u-cell"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div class="u-name">'+esc(u.name)+(u.tier&&u.tier!=='new'?' '+tierChip(u.tier)+(u.tier_locked?'<span title="مثبّت" style="color:var(--p);margin-right:2px"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" style="vertical-align:middle"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>':''):'')+(u.badge&&u.badge!=='none'?' '+badgeChip(u.badge):'')+'</div><div class="u-email">'+esc(u.email)+'</div></div></div></td>'
       +'<td><span class="badge b-'+u.role+'">'+(u.role==='client'?'عميل':'مزود')+'</span></td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+esc(u.city||'—')+'</td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+activity+'</td>'
@@ -882,20 +882,27 @@ function tierMeta(key){ for(var i=0;i<TIER_CATALOG.length;i++){ if(TIER_CATALOG[
 function tierChip(key){ var m=tierMeta(key||'new'); if(m.key==='new')return ''; return '<span class="badge" style="background:'+m.bg+';color:'+m.color+'"><svg width="10" height="10" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>'+m.label+'</span>'; }
 function _tierPicker(u){
   var cur=u.tier||'new';
+  var locked=!!u.tier_locked;
   var done=parseInt(u.completed_projects)||0;
   var rows=TIER_CATALOG.map(function(t){
     var sel=cur===t.key;
     var auto=done>=t.min;
     return '<div class="opt-row'+(sel?' sel':'')+'" onclick="setUserTier('+u.id+',\''+t.key+'\')"><div class="opt-row-label"><span style="width:18px;height:18px;border-radius:5px;background:'+t.bg+';display:inline-flex;align-items:center;justify-content:center"><svg width="11" height="11" fill="'+t.color+'" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg></span>'+t.label+' <span style="font-size:10.5px;color:var(--hint)">('+t.min+'+ صفقة'+(auto?' ✓':'')+')</span></div>'+(sel?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>';
   }).join('');
-  return rows+'<div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.7">الصفقات المكتملة لهذا المزود: <b>'+done+'</b>. المستوى يُحدَّث تلقائياً، والتعديل اليدوي يبقى حتى إكمال صفقة جديدة تتجاوزه.</div>';
+  var lockBanner = locked
+    ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--gold-l);border:1px solid var(--p-mid);border-radius:10px;padding:9px 12px;margin-top:8px"><span style="font-size:12px;font-weight:800;color:var(--p);display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>المستوى مثبّت يدوياً — لا يتغيّر تلقائياً</span><button class="act-btn ab-default" style="padding:6px 12px;font-size:11.5px" onclick="unlockUserTier('+u.id+')">فكّ التثبيت</button></div>'
+    : '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px"><span style="font-size:11.5px;color:var(--muted)">تلقائي حسب الصفقات</span><button class="act-btn ab-default" style="padding:6px 12px;font-size:11.5px" onclick="lockUserTier('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>تثبيت الحالي</button></div>';
+  return rows+lockBanner+'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.7">الصفقات المكتملة: <b>'+done+'</b>. '+(locked?'المستوى مثبّت ولن يتغيّر مهما أكمل من صفقات حتى تفكّ التثبيت.':'اختيار مستوى يدوياً يثبّته تلقائياً. وبدون تثبيت، يُحدَّث حسب الصفقات.')+'</div>';
 }
-function setUserTier(uid,key){
-  fetch(API+'/api/admin/users/'+uid+'/tier',Object.assign({method:'PUT',body:JSON.stringify({tier:key})},hdr()))
+function _tierApi(uid,payload,okMsg){
+  fetch(API+'/api/admin/users/'+uid+'/tier',Object.assign({method:'PUT',body:JSON.stringify(payload)},hdr()))
     .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
-    .then(function(){var m=tierMeta(key);toast('تم ضبط المستوى إلى «'+m.label+'»','success');closeModal('userModal');loadUsers();})
+    .then(function(){toast(okMsg,'success');closeModal('userModal');loadUsers();})
     .catch(function(e){toast(e.message||'تعذر التحديث','error');});
 }
+function setUserTier(uid,key){ var m=tierMeta(key); _tierApi(uid,{tier:key},'تم ضبط المستوى إلى «'+m.label+'» (مثبّت)'); }
+function lockUserTier(uid){ _tierApi(uid,{lock_only:true},'تم تثبيت المستوى'); }
+function unlockUserTier(uid){ _tierApi(uid,{auto:true},'تم فكّ التثبيت — رجع تلقائياً'); }
 function toggleBadge(uid,badge){
   fetch(API+'/api/admin/users/'+uid+'/badge',Object.assign({method:'PUT',body:JSON.stringify({badge:badge})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast(badge==='premium'?'تم منح شارة عميل مميز':'تم إلغاء التمييز','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر التحديث','error');});
 }
