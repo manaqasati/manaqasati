@@ -794,6 +794,12 @@ function _pubBadge(key){
   var m=M[key];if(!m)return '';
   return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.l+'</span>';
 }
+function _tierBadge(t){
+  if(!t||t==='new')return '';
+  var M={active:{l:'مزود نشط',c:'#0369a1',bg:'#e0f2fe'},distinguished:{l:'مزود مميّز',c:'#7c3aed',bg:'#f3e8ff'},expert:{l:'خبير معتمد',c:'#b45309',bg:'#fff7e6'}};
+  var m=M[t];if(!m)return '';
+  return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>'+m.l+'</span>';
+}
 
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
 function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0';}
@@ -1272,7 +1278,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+_pubBadge(b.provider_badge)+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
               +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
             +'</div>'
