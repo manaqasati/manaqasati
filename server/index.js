@@ -420,6 +420,55 @@ async function setSetting(key, value) {
   await pool.query(`INSERT INTO platform_settings (key, value, updated_at) VALUES ($1,$2,NOW()) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`, [key, String(value)]);
 }
 
+// ═══════════ نظام الصلاحيات (RBAC) ═══════════
+const OWNER_EMAIL = 'wled-111@hotmail.com';
+const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage'];
+const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين'};
+const ROLE_LABELS = {super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
+const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20};
+const ROLE_PERMISSIONS = {
+  super_admin: ['*'],
+  content_manager: ['dashboard.view','analytics.view','users.view','users.edit','users.badge','users.role','users.delete','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send'],
+  support: ['dashboard.view','users.view','requests.view','questions.view','questions.answer','reports.view','reports.resolve'],
+  analyst: ['dashboard.view','analytics.view','users.view','requests.view','bids.view']
+};
+function effectivePermissions(row){
+  if(!row || row.role!=='admin') return [];
+  if(Array.isArray(row.permissions) && row.permissions.length) return row.permissions;
+  if(row.admin_role && ROLE_PERMISSIONS[row.admin_role]) return ROLE_PERMISSIONS[row.admin_role];
+  return ['*'];
+}
+function hasPerm(perms, perm){ return perms.includes('*') || perms.includes(perm); }
+async function loadAdmin(req, res, next){
+  try{
+    const r = await pool.query('SELECT id,name,email,role,admin_role,admin_level,permissions,is_active FROM users WHERE id=$1',[req.user.id]);
+    if(!r.rows.length || r.rows[0].role!=='admin') return res.status(403).json({ message:'للمدير فقط' });
+    if(r.rows[0].is_active===false) return res.status(403).json({ message:'الحساب معطّل' });
+    req.adminUser = r.rows[0];
+    req.adminPerms = effectivePermissions(r.rows[0]);
+    next();
+  }catch(e){ res.status(500).json({ message:'حدث خطأ، حاول مرة أخرى' }); }
+}
+function requirePermission(perm){
+  return [auth, adminOnly, loadAdmin, function(req,res,next){
+    if(!hasPerm(req.adminPerms, perm)) return res.status(403).json({ message:'ليس لديك صلاحية لهذا الإجراء' });
+    next();
+  }];
+}
+// يمنع التصرّف على من هو أعلى أو مساوٍ في الرتبة (إلا المالك)
+function canActOn(actor, targetLevel){
+  if(actor.email===OWNER_EMAIL) return true;
+  return (actor.admin_level||0) > (targetLevel||0);
+}
+async function guardUserTarget(req, targetId){
+  const t = await pool.query('SELECT email, role, admin_level FROM users WHERE id=$1', [targetId]);
+  if(!t.rows.length) return { code:404, message:'غير موجود' };
+  const tg = t.rows[0];
+  if(tg.email===OWNER_EMAIL && req.adminUser.email!==OWNER_EMAIL) return { code:403, message:'لا يمكن المساس بالمالك' };
+  if(tg.role==='admin' && !canActOn(req.adminUser, tg.admin_level)) return { code:403, message:'لا يمكنك التصرّف على مشرف برتبتك أو أعلى' };
+  return null;
+}
+
 async function notify(userId, title, body, type, refId) {
   try {
     await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
@@ -489,6 +538,15 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level INTEGER DEFAULT 0'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_role VARCHAR(40)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
+    try {
+      // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
+      await pool.query(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
+      // المالك المحمي — أعلى رتبة لا تُمَس
+      await pool.query(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
+    } catch(e){ console.error('seed owner:', e.message); }
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
@@ -1569,14 +1627,14 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ═══ ADMIN ═══
-app.get('/api/admin/logs', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/logs', requirePermission('logs.view'), async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 200');
     res.json(r.rows);
   } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
     const [
@@ -1662,7 +1720,7 @@ app.get('/api/admin/stats', auth, adminOnly, async (req, res) => {
 });
 
 // ═══ كل العروض (للأدمن) مع فلترة ═══
-app.get('/api/admin/bids', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
   try {
     const { status, provider_id, request_id } = req.query;
     const conds = []; const params = []; let i = 1;
@@ -1685,7 +1743,7 @@ app.get('/api/admin/bids', auth, adminOnly, async (req, res) => {
 });
 
 // ═══ تعديل عرض (أدمن) ═══
-app.put('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { price, days, note, status } = req.body;
@@ -1704,7 +1762,7 @@ app.put('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
 });
 
 // ═══ حذف عرض (أدمن) ═══
-app.delete('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
@@ -1714,7 +1772,7 @@ app.delete('/api/admin/bids/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
     let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
@@ -1725,10 +1783,24 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    const { name, email, phone, city, bio, business_name } = req.body || {};
+    if (email) { const dup = await pool.query('SELECT id FROM users WHERE email=$1 AND id<>$2', [email, uid]); if (dup.rows.length) return res.status(409).json({ message: 'الإيميل مستخدم لحساب آخر' }); }
+    const r = await pool.query(`UPDATE users SET name=COALESCE(NULLIF($1,''),name), email=COALESCE(NULLIF($2,''),email), phone=$3, city=$4, bio=$5, business_name=$6 WHERE id=$7 RETURNING id, name, email`, [name||'', email||'', phone||null, city||null, bio||null, business_name||null, uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, 'edit_user', 'user', uid, 'تعديل بيانات: ' + (r.rows[0].name||''));
+    res.json(r.rows[0]);
+  } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
     if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
     const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
     if(r.rows.length) await logAdmin(req, r.rows[0].is_active?'activate_user':'ban_user', 'user', uid, r.rows[0].is_active?'تفعيل حساب':'إيقاف حساب');
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -1736,10 +1808,11 @@ app.put('/api/admin/users/:id/toggle', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/users/:id/role', requirePermission('users.role'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
     const { role } = req.body;
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
     if (!['client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صالح' });
     if (uid === req.user.id) return res.status(400).json({ message: 'لا يمكن تغيير دورك' });
     // عند التحويل لمزود، ألغِ إسناده كمزود في مشاريع (تنظيف)
@@ -1750,9 +1823,10 @@ app.put('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('change role:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/users/:id/badge', requirePermission('users.badge'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id); const { badge } = req.body;
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
     const r = await pool.query(`UPDATE users SET badge=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,badge`, [badge, uid]);
     await logAdmin(req, 'set_badge', 'user', uid, 'تغيير التوثيق إلى '+(badge||'بدون'));
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -1761,10 +1835,12 @@ app.put('/api/admin/users/:id/badge', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req, res) => {
   const uid = parseInt(req.params.id);
   try {
     if (!uid) return res.status(400).json({ message: 'معرف غير صحيح' });
+    if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكنك حذف حسابك' });
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
     if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن حذف حسابك' });
     const chk = await pool.query('SELECT id, name, email, role FROM users WHERE id=$1', [uid]);
     if (!chk.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -1789,14 +1865,14 @@ app.delete('/api/admin/users/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/providers', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/providers', requirePermission('users.view'), async (req, res) => {
   try {
     const r = await pool.query(`SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
   try {
     const { status } = req.query;
     let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
@@ -1807,7 +1883,7 @@ app.get('/api/admin/requests', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
     if (!['approve','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
@@ -1818,6 +1894,7 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
     const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك';
     const inAppBody = action==='approve' ? `مشروعك "${row.title}" متاح للعروض الآن` : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
+    await logAdmin(req, 'review_request', 'request', id, action==='approve'?'الموافقة على مشروع':'رفض مشروع');
     await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
       const body = action==='approve' ? `<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>` : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
@@ -1827,28 +1904,30 @@ app.put('/api/admin/requests/:id/review', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/requests/:id/complete', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 RETURNING id, client_id, assigned_provider_id, title`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+    await logAdmin(req, 'complete_request', 'request', id, 'إنهاء مشروع: ' + (row.title||''));
     await notify(row.client_id, 'مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
     if (row.assigned_provider_id) await notify(row.assigned_provider_id, 'مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes } = req.body;
     const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7 WHERE id=$8 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (!id) return res.status(400).json({ message: 'معرف غير صحيح' });
@@ -1867,7 +1946,7 @@ app.delete('/api/admin/requests/:id', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/notify', requirePermission('broadcast.send'), async (req, res) => {
   try {
     const { user_id, user_ids, role, title, body, type, specialty, channel } = req.body;
     if (!title||!body) return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
@@ -1891,7 +1970,7 @@ app.post('/api/admin/notify', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/users/search', requirePermission('users.view'), async (req, res) => {
   try {
     const q=(req.query.q||'').trim(); const role=req.query.role; const VALID=['client','provider','admin'];
     let sql=`SELECT id, name, email, phone, role, city, profile_image, is_active FROM users WHERE is_active=TRUE`; const params=[];
@@ -1902,13 +1981,13 @@ app.get('/api/admin/users/search', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('/admin/users/search:', e); res.json([]); }
 });
 
-app.get('/api/admin/email-status', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/email-status', requirePermission('settings.manage'), async (req, res) => {
   const providersWithEmail=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email!=''`);
   const providersTotal=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE`);
   res.json({ resend_key_set:!!RESEND_KEY, resend_key_preview:RESEND_KEY?(RESEND_KEY.slice(0,6)+'…'+RESEND_KEY.slice(-4)):null, from_email:FROM_EMAIL, from_name:FROM_NAME, site_url:SITE_URL, providers_active:providersTotal.rows[0].cnt, providers_with_email:providersWithEmail.rows[0].cnt });
 });
 
-app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/email-test', requirePermission('settings.manage'), async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ ok:false, error: 'البريد الإلكتروني مطلوب' });
   if (!RESEND_KEY) return res.json({ ok:false, stage:'config', error:'RESEND_KEY غير موجود في متغيرات البيئة' });
@@ -1920,28 +1999,125 @@ app.post('/api/admin/email-test', auth, adminOnly, async (req, res) => {
   } catch(e) { return res.json({ ok:false, stage:'network', error:e.message }); }
 });
 
-app.get('/api/admin/reviews', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/reviews', requirePermission('reviews.view'), async (req, res) => {
   try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.delete('/api/admin/reviews/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/admin/reviews/:id', requirePermission('reviews.delete'), async (req, res) => {
   try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/questions', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/questions', requirePermission('questions.view'), async (req, res) => {
   try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.delete('/api/admin/questions/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/admin/questions/:id', requirePermission('questions.delete'), async (req, res) => {
   try { const qid=parseInt(req.params.id); const r=await pool.query('DELETE FROM request_questions WHERE id=$1',[qid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_question','question',qid,'حذف سؤال'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/settings', auth, adminOnly, async (req, res) => {
+// ═══════════ هوية الأدمن الحالي + إدارة المشرفين ═══════════
+app.get('/api/admin/me', auth, adminOnly, loadAdmin, async (req, res) => {
+  res.json({
+    id: req.adminUser.id, name: req.adminUser.name, email: req.adminUser.email,
+    admin_role: req.adminUser.admin_role || 'super_admin',
+    admin_level: req.adminUser.admin_level || 0,
+    is_owner: req.adminUser.email === OWNER_EMAIL,
+    permissions: req.adminPerms
+  });
+});
+
+app.get('/api/admin/permissions-catalog', requirePermission('admins.manage'), async (req, res) => {
+  res.json({ all: ALL_PERMISSIONS, labels: PERM_LABELS, roles: ROLE_PERMISSIONS, role_labels: ROLE_LABELS, role_levels: ROLE_BASE_LEVEL });
+});
+
+app.get('/api/admin/admins', requirePermission('admins.manage'), async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT id, name, email, admin_role, admin_level, permissions, is_active, created_at FROM users WHERE role='admin' ORDER BY admin_level DESC, created_at ASC`);
+    res.json(r.rows.map(function(u){ return Object.assign(u, { is_owner: u.email===OWNER_EMAIL, role_label: ROLE_LABELS[u.admin_role]||u.admin_role||'أدمن', perms: effectivePermissions(Object.assign({role:'admin'},u)) }); }));
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.post('/api/admin/admins', requirePermission('admins.manage'), async (req, res) => {
+  try {
+    const { mode, name, email, password, user_id, admin_role } = req.body || {};
+    const role = ROLE_PERMISSIONS[admin_role] ? admin_role : 'support';
+    let perms = Array.isArray(req.body.permissions) ? req.body.permissions.filter(function(x){ return ALL_PERMISSIONS.indexOf(x)>=0; }) : ROLE_PERMISSIONS[role];
+    if (role==='super_admin') perms = ['*'];
+    // مستوى العضو الجديد أقل من الفاعل دائماً (إلا المالك)
+    let lvl = ROLE_BASE_LEVEL[role] || 20;
+    const actorLvl = req.adminUser.admin_level || 0;
+    if (req.adminUser.email !== OWNER_EMAIL && lvl >= actorLvl) lvl = Math.max(1, actorLvl - 1);
+
+    if (mode === 'promote') {
+      let uid = parseInt(user_id) || 0;
+      if (!uid && email) { const f = await pool.query('SELECT id FROM users WHERE email=$1', [email]); if (f.rows.length) uid = f.rows[0].id; }
+      const ex = await pool.query('SELECT id, email, role FROM users WHERE id=$1', [uid]);
+      if (!ex.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود (تأكد من الإيميل)' });
+      if (ex.rows[0].email === OWNER_EMAIL) return res.status(403).json({ message: 'هذا المالك بالفعل' });
+      await pool.query(`UPDATE users SET role='admin', admin_role=$1, admin_level=$2, permissions=$3::jsonb WHERE id=$4`, [role, lvl, JSON.stringify(perms), uid]);
+      await logAdmin(req, 'add_admin', 'user', uid, 'ترقية مستخدم إلى ' + (ROLE_LABELS[role]||role));
+      return res.json({ ok: true, id: uid });
+    }
+    // إنشاء حساب إدارة جديد
+    if (!name || !email || !password) return res.status(400).json({ message: 'الاسم والإيميل وكلمة المرور مطلوبة' });
+    if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
+    const dup = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    if (dup.rows.length) return res.status(409).json({ message: 'الإيميل مستخدم مسبقاً' });
+    const hash = await bcrypt.hash(password, 10);
+    const ins = await pool.query(`INSERT INTO users (name, email, password, password_hash, role, admin_role, admin_level, permissions, is_active, created_at) VALUES ($1,$2,$3,$3,'admin',$4,$5,$6::jsonb,true,NOW()) RETURNING id`, [name, email, hash, role, lvl, JSON.stringify(perms)]);
+    await logAdmin(req, 'add_admin', 'user', ins.rows[0].id, 'إنشاء مشرف ' + (ROLE_LABELS[role]||role) + ' (' + email + ')');
+    res.json({ ok: true, id: ins.rows[0].id });
+  } catch(e) { console.error('add admin:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.put('/api/admin/admins/:id', requirePermission('admins.manage'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const t = await pool.query('SELECT id, email, admin_level FROM users WHERE id=$1', [id]);
+    if (!t.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const target = t.rows[0];
+    if (target.email === OWNER_EMAIL) return res.status(403).json({ message: 'لا يمكن تعديل المالك' });
+    if (!canActOn(req.adminUser, target.admin_level)) return res.status(403).json({ message: 'لا يمكنك تعديل من هو برتبتك أو أعلى' });
+    const { admin_role } = req.body || {};
+    const role = ROLE_PERMISSIONS[admin_role] ? admin_role : null;
+    let perms = Array.isArray(req.body.permissions) ? req.body.permissions.filter(function(x){ return ALL_PERMISSIONS.indexOf(x)>=0; }) : null;
+    if (role === 'super_admin') perms = ['*'];
+    let lvl = role ? (ROLE_BASE_LEVEL[role] || 20) : target.admin_level;
+    const actorLvl = req.adminUser.admin_level || 0;
+    if (req.adminUser.email !== OWNER_EMAIL && lvl >= actorLvl) lvl = Math.max(1, actorLvl - 1);
+    const sets = [], vals = []; let i = 1;
+    if (role) { sets.push('admin_role=$'+i); vals.push(role); i++; sets.push('admin_level=$'+i); vals.push(lvl); i++; }
+    if (perms) { sets.push('permissions=$'+i+'::jsonb'); vals.push(JSON.stringify(perms)); i++; }
+    if (!sets.length) return res.json({ ok: true });
+    vals.push(id);
+    await pool.query('UPDATE users SET '+sets.join(', ')+' WHERE id=$'+i, vals);
+    await logAdmin(req, 'edit_admin', 'user', id, 'تعديل صلاحيات مشرف' + (role?(' إلى '+(ROLE_LABELS[role]||role)):''));
+    res.json({ ok: true });
+  } catch(e) { console.error('edit admin:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.delete('/api/admin/admins/:id', requirePermission('admins.manage'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (id === req.adminUser.id) return res.status(400).json({ message: 'لا يمكنك إزالة نفسك' });
+    const t = await pool.query('SELECT id, email, admin_level FROM users WHERE id=$1', [id]);
+    if (!t.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const target = t.rows[0];
+    if (target.email === OWNER_EMAIL) return res.status(403).json({ message: 'لا يمكن إزالة المالك' });
+    if (!canActOn(req.adminUser, target.admin_level)) return res.status(403).json({ message: 'لا يمكنك إزالة من هو برتبتك أو أعلى' });
+    // إزالة من الإدارة: تحويل إلى عميل عادي (الحساب يبقى)
+    await pool.query(`UPDATE users SET role='client', admin_role=NULL, admin_level=0, permissions=NULL WHERE id=$1`, [id]);
+    await logAdmin(req, 'remove_admin', 'user', id, 'إزالة مشرف من الإدارة');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.get('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
   try { const r = await pool.query('SELECT key, value FROM platform_settings'); const o={}; r.rows.forEach(function(x){ o[x.key]=x.value; }); res.json(o); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/settings', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
     const allowed = ['review_minutes'];
     const updates = req.body || {};
@@ -1957,7 +2133,7 @@ app.put('/api/admin/settings', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/analytics', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count).catch(() => 0);
     const one = (sql, def) => pool.query(sql).then(r => r.rows[0] || def).catch(() => def);
@@ -2010,11 +2186,11 @@ app.get('/api/admin/analytics', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('analytics:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/reports', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/reports', requirePermission('reports.view'), async (req, res) => {
   try { const r=await pool.query(`SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/admin/reports/:id', requirePermission('reports.resolve'), async (req, res) => {
   try {
     const id=parseInt(req.params.id); const { action, admin_note } = req.body;
     const map = { warn:'warned', ban:'resolved', ignore:'ignored', resolve:'resolved' };
@@ -2026,11 +2202,12 @@ app.put('/api/admin/reports/:id', auth, adminOnly, async (req, res) => {
       if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); await notify(reportedId,'تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
       else if (action==='warn') await notify(reportedId,'تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
     }
+    await logAdmin(req, 'resolve_report', 'report', id, 'معالجة بلاغ: ' + action);
     res.json({ ok:true, status:newStatus });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/search', requirePermission('users.view'), async (req, res) => {
   try {
     const { q } = req.query; if (!q||q.length<2) return res.json({ requests:[], users:[] });
     const p='%'+q+'%';
@@ -2039,7 +2216,7 @@ app.get('/api/admin/search', auth, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.post('/api/admin/push-test', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/push-test', requirePermission('settings.manage'), async (req, res) => {
   try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة!','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -2068,7 +2245,7 @@ function buildBroadcastQuery(filters) {
 }
 
 // ═══ معاينة عدد المستلمين ═══
-app.post('/api/admin/broadcast/count', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/broadcast/count', requirePermission('broadcast.send'), async (req, res) => {
   try {
     const { where, params } = buildBroadcastQuery(req.body || {});
     const r = await pool.query(`SELECT COUNT(*)::int as n FROM users WHERE ${where}`, params);
@@ -2077,7 +2254,7 @@ app.post('/api/admin/broadcast/count', auth, adminOnly, async (req, res) => {
 });
 
 // ═══ إرسال رسالة جماعية مع فلاتر (تخصص + مدينة + موثّق) ═══
-app.post('/api/admin/broadcast', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req, res) => {
   try {
     const { title, message, channels } = req.body;
     if (!title || !message) return res.status(400).json({ message: 'العنوان والرسالة مطلوبان' });
