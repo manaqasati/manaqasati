@@ -285,6 +285,7 @@ tbody tr:hover{background:var(--bg)}
     <button class="ni" onclick="showPage('reports',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>البلاغات<span class="ni-badge" id="reports-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('logs',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>سجل النشاط</button>
     <div class="nav-label">النظام</div>
+    <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
     <button class="ni" onclick="showPage('settings',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>الإعدادات</button>
   </nav>
   <div class="side-foot">
@@ -301,7 +302,8 @@ tbody tr:hover{background:var(--bg)}
 <main class="main">
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:12px"><button onclick="history.length>1?history.back():location.href='/'" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);cursor:pointer;padding:8px 12px;border-radius:9px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button><div><div class="tb-title" id="pageTitle">لوحة المعلومات</div><div class="tb-sub" id="pageSub">نظرة عامة على المنصة</div></div></div>
-    <div class="admin-chip"><div class="admin-chip-name" id="adminName">المدير</div><div class="admin-chip-av" id="adminAv">م</div></div>
+    <div style="position:relative;flex:1;max-width:430px;margin:0 22px"><div class="search-box" style="width:100%"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="global-search" placeholder="بحث شامل: مستخدم، إيميل، مشروع..." autocomplete="off" oninput="globalSearch(this.value)" onfocus="if(this.value)globalSearch(this.value)" onblur="setTimeout(function(){var d=document.getElementById('gs-results');if(d)d.style.display='none';},220)"></div><div id="gs-results" style="display:none;position:absolute;top:48px;right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh4);z-index:60;max-height:400px;overflow:auto"></div></div>
+    <div class="admin-chip"><div style="text-align:left"><div class="admin-chip-name" id="adminName">المدير</div><div id="adminRole" style="font-size:10.5px;color:var(--muted);font-weight:600"></div></div><div class="admin-chip-av" id="adminAv">م</div></div>
   </div>
   <div class="content">
 
@@ -371,6 +373,13 @@ tbody tr:hover{background:var(--bg)}
       <div id="analytics-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
+    <div class="page" id="page-admins">
+      <div class="card">
+        <div class="card-head"><h3>المشرفون والصلاحيات</h3><button class="act-btn ab-primary" onclick="openAddAdmin()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>إضافة مشرف</button></div>
+        <div class="card-body flush"><div class="tbl-wrap" id="admins-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="card" style="max-width:580px"><div class="card-head"><h3>إعدادات المنصة</h3></div><div class="card-body" id="settings-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
     </div>
@@ -437,6 +446,28 @@ tbody tr:hover{background:var(--bg)}
   </div>
 </div>
 
+<div class="overlay" id="uEditModal">
+  <div class="modal">
+    <div class="modal-head"><h3>تعديل بيانات المستخدم</h3><button class="modal-x" onclick="closeModal('uEditModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="fld"><label>الاسم</label><input id="ue-name"></div>
+      <div class="fld"><label>الإيميل</label><input id="ue-email" type="email"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="fld"><label>الجوال</label><input id="ue-phone"></div><div class="fld"><label>المدينة</label><input id="ue-city"></div></div>
+      <div class="fld" id="ue-biz-wrap"><label>اسم النشاط (للمزود)</label><input id="ue-biz"></div>
+      <div class="fld" style="margin-bottom:0"><label>نبذة</label><textarea id="ue-bio"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="ue-save" onclick="saveUserEdit()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('uEditModal')">إلغاء</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="adminModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="am2-title">إضافة مشرف</h3><button class="modal-x" onclick="closeModal('adminModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="am2-body"></div>
+    <div class="modal-foot"><button class="btn-p" id="am2-save" onclick="saveAdmin()">حفظ</button><button class="btn-s" onclick="closeModal('adminModal')">إلغاء</button></div>
+  </div>
+</div>
+
 <!-- User Modal -->
 <div class="overlay" id="userModal">
   <div class="modal">
@@ -469,13 +500,14 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();loadNeedsAction();}
   if(pg==='analytics')loadAnalytics();
   if(pg==='settings')loadSettings();
+  if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
   if(pg==='users')loadUsers();
@@ -682,7 +714,7 @@ function renderUsers(){
     var verified=u.badge==='verified'||u.badge==='موثق';
     var activity=u.role==='provider'?(u.bid_count||0)+' عرض':(u.request_count||0)+' طلب';
     return '<tr>'
-      +'<td><div class="u-cell"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div class="u-name">'+esc(u.name)+(verified?'<span class="badge b-verified"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>':'')+'</div><div class="u-email">'+esc(u.email)+'</div></div></div></td>'
+      +'<td><div class="u-cell"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div class="u-name">'+esc(u.name)+(u.badge&&u.badge!=='none'?' '+badgeChip(u.badge):'')+'</div><div class="u-email">'+esc(u.email)+'</div></div></div></td>'
       +'<td><span class="badge b-'+u.role+'">'+(u.role==='client'?'عميل':'مزود')+'</span></td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+esc(u.city||'—')+'</td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+activity+'</td>'
@@ -698,12 +730,12 @@ function openUserModal(uid){
   document.getElementById('um-title').textContent='إدارة المستخدم';
   document.getElementById('um-body').innerHTML=''
     +'<div class="usr-header"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div style="font-size:16px;font-weight:900">'+esc(u.name)+'</div><div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(u.email)+'</div><div style="font-size:11.5px;color:var(--hint);margin-top:2px">'+esc(u.phone||'لا يوجد رقم')+'</div></div></div>'
+    +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="openUserEdit('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل البيانات</button>'
     +'<div class="sec-label">الدور</div>'
     +'<div class="opt-row'+(u.role==='client'?' sel':'')+'" onclick="changeRole('+u.id+',\'client\')"><div><div class="opt-row-label">عميل</div><div class="opt-row-desc">ينشر مشاريع ويستقبل عروض</div></div>'+(u.role==='client'?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
     +'<div class="opt-row'+(u.role==='provider'?' sel':'')+'" onclick="changeRole('+u.id+',\'provider\')"><div><div class="opt-row-label">مزود</div><div class="opt-row-desc">يقدّم عروض على المشاريع</div></div>'+(u.role==='provider'?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
-    +'<div class="sec-label">التوثيق</div>'
-    +'<div class="opt-row'+(verified?' sel':'')+'" onclick="toggleVerified('+u.id+','+(!verified)+')"><div class="opt-row-label"><svg width="15" height="15" fill="none" stroke="var(--blue)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(verified?'موثّق — اضغط للإلغاء':'منح شارة موثّق')+'</div>'+(verified?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>'
-    +(u.role==='client'?'<div class="sec-label">التمييز</div><div class="opt-row'+((u.badge==='premium')?' sel':'')+'" onclick="toggleBadge('+u.id+',\''+((u.badge==='premium')?'none':'premium')+'\')"><div class="opt-row-label"><svg width="15" height="15" fill="var(--gold)" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21l2.3-7.4-6-4.6h7.6z"/></svg>'+((u.badge==='premium')?'عميل مميز — اضغط للإلغاء':'منح شارة عميل مميز')+'</div>'+((u.badge==='premium')?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>':'')
+    +'<div class="sec-label">الألقاب</div>'
+    +_badgePicker(u)
     +'<div class="sec-label">المراسلة</div>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+',\''+esc(u.name).replace(/\x27/g,"")+'\')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
     +'<div class="sec-label">إجراءات الحساب</div>'
@@ -715,6 +747,34 @@ function openUserModal(uid){
 }
 function changeRole(uid,role){
   fetch(API+'/api/admin/users/'+uid+'/role',Object.assign({method:'PUT',body:JSON.stringify({role:role})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم تحويل الدور إلى '+(role==='client'?'عميل':'مزود'),'success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر تحويل الدور','error');});
+}
+var BADGE_CATALOG=[
+  {key:'verified',label:'موثّق',color:'#2E90FA',bg:'#EFF8FF',scope:'all'},
+  {key:'premium',label:'مميز',color:'#B8780A',bg:'#FFF7E6',scope:'all'},
+  {key:'gold_partner',label:'شريك ذهبي',color:'#B8780A',bg:'#FFF7E6',scope:'provider'},
+  {key:'top_rated',label:'الأعلى تقييماً',color:'#12B76A',bg:'#ECFDF3',scope:'provider'},
+  {key:'fast_response',label:'سريع الاستجابة',color:'#0EA5E9',bg:'#E0F2FE',scope:'provider'},
+  {key:'trusted_client',label:'عميل موثوق',color:'#1e3a8a',bg:'#eef2fb',scope:'client'}
+];
+function badgeMeta(key){ for(var i=0;i<BADGE_CATALOG.length;i++){ if(BADGE_CATALOG[i].key===key) return BADGE_CATALOG[i]; } return null; }
+function badgeChip(key){
+  var m=badgeMeta(key); if(!m) return '';
+  return '<span class="badge" style="background:'+m.bg+';color:'+m.color+'"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.label+'</span>';
+}
+function _badgePicker(u){
+  var cur=u.badge||'none';
+  var list=BADGE_CATALOG.filter(function(b){ return b.scope==='all'||b.scope===u.role; });
+  var rows=list.map(function(b){
+    var sel=cur===b.key;
+    return '<div class="opt-row'+(sel?' sel':'')+'" onclick="setUserBadge('+u.id+',\''+(sel?'none':b.key)+'\')"><div class="opt-row-label"><span style="width:18px;height:18px;border-radius:5px;background:'+b.bg+';display:inline-flex;align-items:center;justify-content:center"><svg width="11" height="11" fill="none" stroke="'+b.color+'" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>'+b.label+(sel?' — اضغط للإلغاء':'')+'</div>'+(sel?'<svg class="check" fill="none" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div>';
+  }).join('');
+  return rows+'<div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.7">لقب واحد أساسي لكل مستخدم. الألقاب الخاصة بالمزودين لا تظهر للعملاء والعكس.</div>';
+}
+function setUserBadge(uid,key){
+  fetch(API+'/api/admin/users/'+uid+'/badge',Object.assign({method:'PUT',body:JSON.stringify({badge:key})},hdr()))
+    .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
+    .then(function(){var m=badgeMeta(key);toast(key==='none'?'تم إزالة اللقب':'تم منح لقب «'+(m?m.label:key)+'»','success');closeModal('userModal');loadUsers();})
+    .catch(function(e){toast(e.message||'تعذر التحديث','error');});
 }
 function toggleBadge(uid,badge){
   fetch(API+'/api/admin/users/'+uid+'/badge',Object.assign({method:'PUT',body:JSON.stringify({badge:badge})},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast(badge==='premium'?'تم منح شارة عميل مميز':'تم إلغاء التمييز','success');closeModal('userModal');loadUsers();}).catch(function(){toast('تعذر التحديث','error');});
@@ -943,14 +1003,15 @@ function updateQBadge(){
 
 function restoreAdminHash(){
   var h=(location.hash||'').replace('#','');
-  var valid=['dashboard','analytics','users','requests','bids','reviews','questions','reports','logs','settings'];
+  var valid=['dashboard','analytics','users','requests','bids','reviews','questions','reports','logs','admins','settings'];
   var pg=valid.indexOf(h)>=0?h:'dashboard';
   var btns=document.querySelectorAll('.ni');
-  var idx={dashboard:0,analytics:1,users:2,requests:3,bids:4,reviews:5,questions:6,reports:7,logs:8,settings:9}[pg];
+  var idx={dashboard:0,analytics:1,users:2,requests:3,bids:4,reviews:5,questions:6,reports:7,logs:8,admins:9,settings:10}[pg];
   window._skipHash=true;
   showPage(pg, btns[idx]||null);
   window._skipHash=false;
 }
+loadMe();
 restoreAdminHash();
 window.addEventListener('hashchange',restoreAdminHash);
 
@@ -1069,7 +1130,7 @@ var _logActions={
   delete_bid:['حذف عرض','b-rej'],edit_bid:['تعديل عرض','b-prog'],
   ban_user:['إيقاف حساب','b-rej'],activate_user:['تفعيل حساب','b-done'],
   set_badge:['تغيير توثيق','b-prog'],delete_request:['حذف مشروع','b-rej'],
-  delete_review:['حذف تقييم','b-rej'],delete_question:['حذف سؤال','b-rej'],update_settings:['تعديل الإعدادات','b-prog'],broadcast:['رسالة جماعية','b-done']
+  delete_review:['حذف تقييم','b-rej'],delete_question:['حذف سؤال','b-rej'],update_settings:['تعديل الإعدادات','b-prog'],add_admin:['إضافة مشرف','b-done'],edit_admin:['تعديل مشرف','b-prog'],remove_admin:['إزالة مشرف','b-rej'],edit_user:['تعديل مستخدم','b-prog'],edit_request:['تعديل مشروع','b-prog'],review_request:['مراجعة مشروع','b-done'],complete_request:['إنهاء مشروع','b-done'],resolve_report:['معالجة بلاغ','b-done'],broadcast:['رسالة جماعية','b-done']
 };
 function loadLogs(){
   fetch(API+'/api/admin/logs',hdr()).then(function(r){return r.json();}).then(function(logs){
@@ -1233,6 +1294,210 @@ function saveSettings(){
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){toast('تم حفظ الإعدادات','success');})
     .catch(function(){toast('تعذر الحفظ','error');});
+}
+
+// ═══ تعديل بيانات المستخدم ═══
+var _editUserId=null;
+function openUserEdit(uid){
+  var u=_allUsers.find(function(x){return x.id===uid;});if(!u)return;
+  _editUserId=uid;
+  document.getElementById('ue-name').value=u.name||'';
+  document.getElementById('ue-email').value=u.email||'';
+  document.getElementById('ue-phone').value=u.phone||'';
+  document.getElementById('ue-city').value=u.city||'';
+  document.getElementById('ue-biz').value=u.business_name||'';
+  document.getElementById('ue-bio').value=u.bio||'';
+  document.getElementById('ue-biz-wrap').style.display=(u.role==='provider')?'block':'none';
+  closeModal('userModal');
+  document.getElementById('uEditModal').classList.add('show');
+}
+function saveUserEdit(){
+  if(!_editUserId)return;
+  var body={name:document.getElementById('ue-name').value.trim(),email:document.getElementById('ue-email').value.trim(),phone:document.getElementById('ue-phone').value.trim()||null,city:document.getElementById('ue-city').value.trim()||null,business_name:document.getElementById('ue-biz').value.trim()||null,bio:document.getElementById('ue-bio').value.trim()||null};
+  var btn=document.getElementById('ue-save');btn.disabled=true;btn.textContent='جاري الحفظ...';
+  fetch(API+'/api/admin/users/'+_editUserId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
+    .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
+    .then(function(){toast('تم حفظ البيانات','success');closeModal('uEditModal');loadUsers();})
+    .catch(function(e){toast(e.message||'تعذر الحفظ','error');})
+    .finally(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});
+}
+
+// ═══ البحث الشامل (الشريط العلوي) ═══
+var _gsT=null;
+function globalSearch(q){
+  clearTimeout(_gsT);
+  var box=document.getElementById('gs-results');
+  if(!q||q.trim().length<2){if(box)box.style.display='none';return;}
+  _gsT=setTimeout(function(){
+    fetch(API+'/api/admin/search?q='+encodeURIComponent(q.trim()),hdr()).then(function(r){return r.json();}).then(function(d){
+      var us=d.users||[],rs=d.requests||[],html='';
+      if(us.length){
+        html+='<div style="font-size:11px;font-weight:700;color:var(--hint);padding:10px 14px 4px">مستخدمون</div>';
+        html+=us.slice(0,6).map(function(u){return '<div onmousedown="gsOpenUser(\''+esc(u.email)+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'"><div class="u-av" style="width:30px;height:30px;font-size:12px">'+esc((u.name||'?')[0])+'</div><div style="min-width:0"><div style="font-size:13px;font-weight:700">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.email)+' · '+(u.role==='client'?'عميل':u.role==='provider'?'مزود':'أدمن')+'</div></div></div>';}).join('');
+      }
+      if(rs.length){
+        html+='<div style="font-size:11px;font-weight:700;color:var(--hint);padding:10px 14px 4px;border-top:1px solid var(--border)">مشاريع</div>';
+        html+=rs.slice(0,6).map(function(r){return '<div onmousedown="gsOpenReq('+r.id+')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'"><div style="width:30px;height:30px;border-radius:8px;background:var(--p-light);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="min-width:0"><div style="font-size:13px;font-weight:700">'+esc(r.title)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(r.client_name||'')+'</div></div></div>';}).join('');
+      }
+      if(!html)html='<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px">لا توجد نتائج</div>';
+      box.innerHTML=html;box.style.display='block';
+    }).catch(function(){if(box)box.style.display='none';});
+  },280);
+}
+function gsOpenUser(email){
+  var d=document.getElementById('gs-results');if(d)d.style.display='none';
+  var gi=document.getElementById('global-search');if(gi)gi.value='';
+  showPage('users',document.querySelectorAll('.ni')[2]);
+  setTimeout(function(){var inp=document.getElementById('user-search');if(inp){inp.value=email;filterUsers();}},350);
+}
+function gsOpenReq(id){
+  var d=document.getElementById('gs-results');if(d)d.style.display='none';
+  var gi=document.getElementById('global-search');if(gi)gi.value='';
+  showPage('requests',document.querySelectorAll('.ni')[3]);
+  setTimeout(function(){ if(typeof openReqEdit==='function') openReqEdit(id); },400);
+}
+
+// ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
+var _me=null,_myPerms=[];
+var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage'};
+function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
+function gateUI(){
+  document.querySelectorAll('.ni').forEach(function(btn){
+    var m=(btn.getAttribute('onclick')||'').match(/showPage\('([a-z]+)'/);
+    if(!m)return; var perm=NAV_PERM[m[1]];
+    btn.style.display=(perm&&!permOK(perm))?'none':'';
+  });
+}
+function loadMe(){
+  return fetch(API+'/api/admin/me',hdr()).then(function(r){return r.json();}).then(function(me){
+    _me=me; _myPerms=me.permissions||[];
+    gateUI();
+    var RL={super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
+    var sub=document.getElementById('adminRole'); if(sub)sub.textContent=me.is_owner?'المالك':(RL[me.admin_role]||'مشرف');
+    // لو الصفحة الحالية غير مصرّح بها، ارجع للوحة المعلومات
+    var cur=document.querySelector('.page.on'); 
+    if(cur){var id=cur.id.replace('page-','');var perm=NAV_PERM[id];if(perm&&!permOK(perm)){var b=document.querySelector('.ni');showPage('dashboard',b);}}
+  }).catch(function(){});
+}
+
+// ═══ المشرفون والصلاحيات ═══
+var _admins=[],_permCatalog=null,_adminMode='create',_editAdminId=null;
+function loadAdmins(){
+  fetch(API+'/api/admin/admins',hdr()).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(list){
+    if(!Array.isArray(list)){document.getElementById('admins-table').innerHTML=emptyState('تعذر التحميل');return;}
+    _admins=list;renderAdmins();
+  }).catch(function(){document.getElementById('admins-table').innerHTML=emptyState('لا تملك صلاحية عرض المشرفين');});
+  if(!_permCatalog){fetch(API+'/api/admin/permissions-catalog',hdr()).then(function(r){return r.json();}).then(function(c){_permCatalog=c;}).catch(function(){});}
+}
+function renderAdmins(){
+  if(!_admins.length){document.getElementById('admins-table').innerHTML=emptyState('لا يوجد مشرفون');return;}
+  document.getElementById('admins-table').innerHTML='<table><thead><tr><th>المشرف</th><th>الدور</th><th>الصلاحيات</th><th>الحالة</th><th></th></tr></thead><tbody>'+
+   _admins.map(function(a){
+     var pc=(a.perms&&a.perms.indexOf('*')>=0)?'كل الصلاحيات':((a.perms||[]).length+' صلاحية');
+     return '<tr>'+
+      '<td><div class="u-cell"><div class="u-av">'+esc((a.name||'?')[0])+'</div><div><div class="u-name">'+esc(a.name)+(a.is_owner?' <span class="badge b-admin">المالك</span>':'')+'</div><div class="u-email">'+esc(a.email)+'</div></div></div></td>'+
+      '<td><span class="badge b-admin">'+esc(a.role_label||'أدمن')+'</span></td>'+
+      '<td style="font-size:12.5px;color:var(--muted)">'+pc+'</td>'+
+      '<td><span class="status '+(a.is_active!==false?'s-on':'s-off')+'">'+(a.is_active!==false?'نشط':'معطّل')+'</span></td>'+
+      '<td>'+(a.is_owner?'<span style="font-size:12px;color:var(--hint);font-weight:700">محمي</span>':'<div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="openEditAdmin('+a.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>صلاحيات</button><button class="act-btn ab-danger" onclick="removeAdmin('+a.id+',\''+esc(a.name).replace(/\x27/g,"")+'\')">إزالة</button></div>')+'</td>'+
+     '</tr>';
+   }).join('')+'</tbody></table>';
+}
+function _roleOptions(sel){
+  var roles=(_permCatalog&&_permCatalog.role_labels)||{super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
+  return Object.keys(roles).map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+roles[k]+'</option>';}).join('');
+}
+function _permChecks(selected){
+  var cat=_permCatalog||{all:[],labels:{}};
+  var sel=selected||[]; var allSel=sel.indexOf('*')>=0;
+  if(!cat.all.length)return '<div style="font-size:12px;color:var(--muted)">جاري تحميل الصلاحيات...</div>';
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
+   cat.all.map(function(pm){
+     var ck=allSel||sel.indexOf(pm)>=0;
+     return '<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;cursor:pointer"><input type="checkbox" class="perm-cb" value="'+pm+'" '+(ck?'checked':'')+' style="accent-color:var(--p);flex-shrink:0">'+esc((cat.labels&&cat.labels[pm])||pm)+'</label>';
+   }).join('')+'</div>';
+}
+function _applyRolePerms(){
+  var role=document.getElementById('am2-role').value;
+  var rp=(_permCatalog&&_permCatalog.roles&&_permCatalog.roles[role])||[];
+  var allSel=rp.indexOf('*')>=0;
+  document.querySelectorAll('#am2-body .perm-cb').forEach(function(cb){ cb.checked=allSel||rp.indexOf(cb.value)>=0; });
+}
+function openAddAdmin(){
+  _adminMode='create';_editAdminId=null;
+  document.getElementById('am2-title').textContent='إضافة مشرف';
+  document.getElementById('am2-save').textContent='إنشاء';
+  document.getElementById('am2-body').innerHTML=''+
+   '<div style="display:flex;gap:8px;margin-bottom:16px">'+
+     '<button type="button" id="mode-create" class="ftab on" onclick="_setAdminMode(\'create\')" style="flex:1;text-align:center">حساب جديد</button>'+
+     '<button type="button" id="mode-promote" class="ftab" onclick="_setAdminMode(\'promote\')" style="flex:1;text-align:center">ترقية مستخدم</button>'+
+   '</div>'+
+   '<div id="am2-create">'+
+     '<div class="fld"><label>الاسم</label><input id="am2-name" placeholder="اسم المشرف"></div>'+
+     '<div class="fld"><label>الإيميل</label><input id="am2-email" type="email" placeholder="admin@example.com"></div>'+
+     '<div class="fld"><label>كلمة المرور المؤقتة</label><input id="am2-pass" type="text" placeholder="6 أحرف على الأقل"></div>'+
+   '</div>'+
+   '<div id="am2-promote" style="display:none">'+
+     '<div class="fld"><label>إيميل المستخدم الموجود</label><input id="am2-promote-email" type="email" placeholder="user@example.com"><div style="font-size:11.5px;color:var(--muted);margin-top:6px">سيُحوّل هذا المستخدم إلى عضو إدارة بالدور والصلاحيات المختارة.</div></div>'+
+   '</div>'+
+   '<div class="fld"><label>الدور</label><select id="am2-role" onchange="_applyRolePerms()">'+_roleOptions('support')+'</select></div>'+
+   '<div class="sec-label">الصلاحيات</div><div id="am2-perms">'+_permChecks((_permCatalog&&_permCatalog.roles&&_permCatalog.roles.support)||[])+'</div>';
+  if(!_permCatalog){ setTimeout(function(){ document.getElementById('am2-perms').innerHTML=_permChecks((_permCatalog&&_permCatalog.roles&&_permCatalog.roles.support)||[]); },400); }
+  document.getElementById('adminModal').classList.add('show');
+}
+function _setAdminMode(m){
+  _adminMode=m;
+  document.getElementById('mode-create').classList.toggle('on',m==='create');
+  document.getElementById('mode-promote').classList.toggle('on',m==='promote');
+  document.getElementById('am2-create').style.display=m==='create'?'block':'none';
+  document.getElementById('am2-promote').style.display=m==='promote'?'block':'none';
+}
+function openEditAdmin(id){
+  var a=_admins.find(function(x){return x.id===id;});if(!a)return;
+  _adminMode='edit';_editAdminId=id;
+  document.getElementById('am2-title').textContent='صلاحيات: '+esc(a.name);
+  document.getElementById('am2-save').textContent='حفظ التعديلات';
+  document.getElementById('am2-body').innerHTML=''+
+   '<div class="fld"><label>الدور</label><select id="am2-role" onchange="_applyRolePerms()">'+_roleOptions(a.admin_role)+'</select></div>'+
+   '<div class="sec-label">الصلاحيات</div><div id="am2-perms">'+_permChecks(a.perms||[])+'</div>';
+  document.getElementById('adminModal').classList.add('show');
+}
+function _collectPerms(){
+  var arr=[];document.querySelectorAll('#am2-body .perm-cb:checked').forEach(function(cb){arr.push(cb.value);});return arr;
+}
+function saveAdmin(){
+  var role=document.getElementById('am2-role').value;
+  var perms=_collectPerms();
+  var btn=document.getElementById('am2-save');btn.disabled=true;
+  var done=function(){btn.disabled=false;};
+  if(_adminMode==='edit'){
+    fetch(API+'/api/admin/admins/'+_editAdminId,Object.assign({method:'PUT',body:JSON.stringify({admin_role:role,permissions:perms})},hdr()))
+      .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
+      .then(function(){toast('تم حفظ الصلاحيات','success');closeModal('adminModal');loadAdmins();})
+      .catch(function(e){toast(e.message||'تعذر الحفظ','error');}).finally(done);
+    return;
+  }
+  var body={mode:_adminMode,admin_role:role,permissions:perms};
+  if(_adminMode==='create'){
+    body.name=(document.getElementById('am2-name').value||'').trim();
+    body.email=(document.getElementById('am2-email').value||'').trim();
+    body.password=(document.getElementById('am2-pass').value||'').trim();
+    if(!body.name||!body.email||!body.password){toast('الاسم والإيميل وكلمة المرور مطلوبة','error');done();return;}
+  } else {
+    body.email=(document.getElementById('am2-promote-email').value||'').trim();
+    if(!body.email){toast('أدخل إيميل المستخدم','error');done();return;}
+  }
+  fetch(API+'/api/admin/admins',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
+    .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
+    .then(function(){toast(_adminMode==='create'?'تم إنشاء المشرف':'تمت ترقية المستخدم','success');closeModal('adminModal');loadAdmins();})
+    .catch(function(e){toast(e.message||'تعذر الحفظ','error');}).finally(done);
+}
+async function removeAdmin(id,name){
+  if(!await askConfirm({title:'إزالة مشرف',message:'سيُزال «'+name+'» من الإدارة ويعود مستخدماً عادياً (لا يُحذف حسابه).',confirmText:'نعم، أزل'}))return;
+  fetch(API+'/api/admin/admins/'+id,Object.assign({method:'DELETE'},hdr()))
+    .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
+    .then(function(){toast('تمت الإزالة','success');loadAdmins();})
+    .catch(function(e){toast(e.message||'تعذر الإزالة','error');});
 }
 
 // ═══ تحديث الشارات تلقائياً (بلاغات + أسئلة) — كل 25 ثانية وعند العودة للصفحة ═══
