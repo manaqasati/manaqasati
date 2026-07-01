@@ -480,7 +480,7 @@ function _pubBadge(key){
 }
 function _tierBadge(t){
   if(!t||t==='new')return '';
-  var M={active:{l:'مزود نشط',c:'#0369a1',bg:'#e0f2fe'},distinguished:{l:'مزود مميّز',c:'#7c3aed',bg:'#f3e8ff'},expert:{l:'خبير معتمد',c:'#b45309',bg:'#fff7e6'}};
+  var M={active:{l:'مزود نشط',c:'#9a6a2e',bg:'#f6ead9'},distinguished:{l:'مزود مميّز',c:'#5b6b7d',bg:'#eceff3'},expert:{l:'خبير معتمد',c:'#97710d',bg:'#fdf1cf'}};
   var m=M[t];if(!m)return '';
   return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>'+m.l+'</span>';
 }
