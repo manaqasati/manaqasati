@@ -61,10 +61,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .pbadges .ver-badge{margin-bottom:0}
 .tier-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;line-height:1}
 .tier-badge svg{flex-shrink:0}
-.tb-expert{background:linear-gradient(135deg,#fff3d1,#ffe4a3);color:#8a5a06;border:1px solid #f0cf7a}
-.tb-distinguished{background:var(--gold-l);color:var(--p);border:1px solid var(--gold-soft)}
-.tb-active{background:var(--green-l);color:var(--green);border:1px solid #bbf7d0}
-.tb-new{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.tb-expert{background:#fdf1cf;color:#97710d;border:1px solid #ecd58a}
+.tb-distinguished{background:#eceff3;color:#5b6b7d;border:1px solid #cfd6df}
+.tb-active{background:#f6ead9;color:#9a6a2e;border:1px solid #e6cfae}
+.tb-new{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
 .vchk{display:inline-flex;vertical-align:middle;margin:0 3px 4px 0}
 .vchk svg{display:block}
 .apill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800}
@@ -195,8 +195,9 @@ function openExternal(e,url){
   return true;
 }
 function tierBadge(t){
-  var map={expert:{l:'خبير معتمد',c:'tb-expert'},distinguished:{l:'مزود مميّز',c:'tb-distinguished'},active:{l:'مزود نشط',c:'tb-active'},'new':{l:'مزود جديد',c:'tb-new'}};
-  var d=map[t]||map['new'];
+  if(!t||t==='new')return '';
+  var map={expert:{l:'خبير معتمد',c:'tb-expert'},distinguished:{l:'مزود مميّز',c:'tb-distinguished'},active:{l:'مزود نشط',c:'tb-active'}};
+  var d=map[t];if(!d)return '';
   var ic='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>';
   return '<span class="tier-badge '+d.c+'">'+ic+esc(d.l)+'</span>';
 }
@@ -233,7 +234,8 @@ function render(p,rat){
   var vchk=vrf?' <span class="vchk" title="موثّق"><svg width="19" height="19" viewBox="0 0 24 24" aria-label="موثّق"><circle cx="12" cy="12" r="11" fill="#0ea5e9"/><path d="M16.6 9.2l-5.7 6.1L7.4 12" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
   html+='<h1 class="pname">'+esc(p.name)+vchk+'</h1>';
   if(sp.length)html+='<div class="phead">'+esc(sp.join(' · '))+'</div>';
-  html+='<div class="pbadges">'+tierBadge(p.tier)+'</div>';
+  var _tb=tierBadge(p.tier);
+  if(_tb)html+='<div class="pbadges">'+_tb+'</div>';
   html+='<div class="pinfo-row"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</div>';
   html+=pill(last);
   if(avg>0)html+='<div class="rat-row">'+mkStars(avg,'#F0A500','18px')+'<span class="rat-n">'+avg.toFixed(1)+'</span><span class="rat-c">('+cnt+' تقييم)</span></div>';
