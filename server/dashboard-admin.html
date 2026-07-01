@@ -825,7 +825,10 @@ var BADGE_CATALOG=[
 function badgeMeta(key){ for(var i=0;i<BADGE_CATALOG.length;i++){ if(BADGE_CATALOG[i].key===key) return BADGE_CATALOG[i]; } return null; }
 function badgeChip(key){
   var m=badgeMeta(key); if(!m) return '';
-  return '<span class="badge" style="background:'+m.bg+';color:'+m.color+'"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+m.label+'</span>';
+  var ic=(key==='verified')
+    ? '<svg width="12" height="12" viewBox="-2 -2 28 28"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  return '<span class="badge" style="background:'+m.bg+';color:'+m.color+'">'+ic+m.label+'</span>';
 }
 function _badgePicker(u){
   var cur=u.badge||'none';
