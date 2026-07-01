@@ -655,6 +655,8 @@
 .ph-chk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:20px}
 .ph-chk.ok{background:#dcfce7;color:#15803d}
 .ph-chk.no{background:#f1f5f9;color:#64748b}
+.ph-bidsum{flex:1;background:var(--b);color:var(--c);border-radius:11px;padding:9px;text-align:center;font-size:20px;font-weight:900;line-height:1}
+.ph-bidsum span{display:block;font-size:10.5px;font-weight:700;margin-top:3px;opacity:.85}
 @media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
 
 /* ===== تحميل التطبيق ===== */
@@ -1396,7 +1398,7 @@ function renderClientHome(u){
         +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn">'+offers+'</div><div class="ph-ml">\u0639\u0631\u0648\u0636 \u0645\u0633\u062a\u0644\u0645\u0629</div></div>'
         +'<div class="ph-mc"><div class="ph-mi" style="background:#dcfce7;color:#16a34a"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">\u0645\u0643\u062a\u0645\u0644\u0629</div></div>'
         +'</div>';
-      host.innerHTML=band+'<div id="ph-feat-slot"></div>'+_phQuick('client');
+      host.innerHTML=band+'<div id="ph-feat-slot"></div>'+_phProjects(reqs)+_phQuick('client');
       var withB=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
       if(!withB.length) return;
       var req=withB[0];
@@ -1428,10 +1430,12 @@ function renderProviderHome(u){
   var pid=u.id||u._id||u.provider_id;
   Promise.all([
     fetch(API+'/api/providers',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
-    fetch(API+'/api/requests',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+    fetch(API+'/api/requests',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+    fetch(API+'/api/provider/bids',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
   ]).then(function(res){
     var provs=Array.isArray(res[0])?res[0]:(res[0]&&res[0].providers)||[];
     var reqs=Array.isArray(res[1])?res[1]:(res[1]&&res[1].requests)||[];
+    var myBids=Array.isArray(res[2])?res[2]:[];
     var me=provs.filter(function(p){return String(p.id)===String(pid);})[0]||{};
     var name=me.business_name||u.business_name||u.name||'\u0628\u0643';
     var specs=(me.specialties&&me.specialties.length?me.specialties:(u.specialties||[]));
@@ -1471,8 +1475,43 @@ function renderProviderHome(u){
     } else {
       body+='<div class="ph-row" style="justify-content:center;color:var(--muted);font-size:13px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b \u2014 \u062a\u0635\u0641\u0651\u062d \u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0623\u062f\u0646\u0627\u0647</div>';
     }
-    host.innerHTML=band+_phNudge(me,specs)+body+_phQuick('provider');
+    host.innerHTML=band+_phNudge(me,specs)+_phBids(myBids)+body+_phQuick('provider');
   }).catch(function(){});
+}
+function _phBids(bids){
+  bids=Array.isArray(bids)?bids:[];
+  if(!bids.length) return '';
+  var acc=bids.filter(function(b){return b.status==='accepted';}).length;
+  var pen=bids.filter(function(b){return !b.status||b.status==='pending';}).length;
+  var rej=bids.filter(function(b){return b.status==='rejected';}).length;
+  var M={accepted:['\u0645\u0642\u0628\u0648\u0644','#dcfce7','#15803d'],pending:['\u0642\u064a\u062f \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629','#fef3c7','#b45309'],rejected:['\u0645\u0631\u0641\u0648\u0636','#f1f5f9','#64748b']};
+  var rows=bids.slice(0,3).map(function(b){
+    var m=M[b.status]||M.pending;
+    return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
+      +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+(b.price?'<span style="font-size:11px;color:#64748b">'+Number(b.price).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div></div>'
+      +'<button class="ph-cta o" onclick="_openReq({id:'+b.request_id+',title:'+JSON.stringify(b.request_title||'')+'})">\u0627\u0644\u0645\u0634\u0631\u0648\u0639</button></div>';
+  }).join('');
+  return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0639\u0631\u0648\u0636\u064a</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:9px">'
+    +'<div class="ph-bidsum" style="--c:#15803d;--b:#dcfce7">'+acc+'<span>\u0645\u0642\u0628\u0648\u0644</span></div>'
+    +'<div class="ph-bidsum" style="--c:#b45309;--b:#fef3c7">'+pen+'<span>\u0642\u064a\u062f \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629</span></div>'
+    +'<div class="ph-bidsum" style="--c:#64748b;--b:#f1f5f9">'+rej+'<span>\u0645\u0631\u0641\u0648\u0636</span></div>'
+    +'</div>'+rows+'</div>';
+}
+function _phProjects(reqs){
+  reqs=Array.isArray(reqs)?reqs:[];
+  var dead=['completed','cancelled','canceled','closed','rejected','deleted'];
+  var act=reqs.filter(function(x){return dead.indexOf(x.status)<0;});
+  if(!act.length) return '';
+  var M={open:['\u0645\u0641\u062a\u0648\u062d','#e0f2fe','#0369a1'],in_progress:['\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630','#fef3c7','#b45309'],assigned:['\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630','#fef3c7','#b45309']};
+  var rows=act.slice(0,3).map(function(r){
+    var bc=parseInt(r.bid_count)||0;
+    var m=M[r.status]||['\u0646\u0634\u0637','#e0f2fe','#0369a1'];
+    return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
+      +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span><span style="font-size:11px;color:#64748b">'+bc+' \u0639\u0631\u0636</span></div></div>'
+      +'<button class="ph-cta'+(bc>0?'':' o')+'" onclick="_openReq({id:'+r.id+',title:'+JSON.stringify(r.title||'')+'})">'+(bc>0?'\u0631\u0627\u062c\u0639 \u0627\u0644\u0639\u0631\u0648\u0636':'\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644')+'</button></div>';
+  }).join('');
+  return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0645\u0634\u0627\u0631\u064a\u0639\u064a \u0627\u0644\u0646\u0634\u0637\u0629</div>'+rows+'</div>';
 }
 function _phQuick(role){
   if(role==='client'){
