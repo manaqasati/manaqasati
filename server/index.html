@@ -600,6 +600,8 @@
   .pv-stars{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:6px;flex-wrap:wrap;font-size:13px}
   .pv-stats{font-size:10px;color:var(--muted);margin-top:3px}
   .pv-verified{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px}
+  .pv-tier{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+  .pv-seal{display:inline-flex;vertical-align:middle;margin:0 3px 2px 0}
 
   .lv-more{text-align:center;margin-top:22px}
   .btn-more{padding:12px 32px;background:var(--card);color:var(--accent);border:1px solid var(--border);border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.2s}
@@ -1142,18 +1144,24 @@ function starRating(avg,count,size){
   s+='<span style="font-size:'+(size-2)+'px;color:#64748b;margin-right:3px">('+count+')</span>';
   return s;
 }
+function provTierPill(t){
+  if(!t||t==='new')return '';
+  var M={active:['مزود نشط','#9a6a2e','#f6ead9','#e6cfae'],distinguished:['مزود مميّز','#5b6b7d','#eceff3','#cfd6df'],expert:['خبير معتمد','#97710d','#fdf1cf','#ecd58a']};
+  var m=M[t];if(!m)return '';
+  return '<span class="pv-tier" style="background:'+m[2]+';color:'+m[1]+';border:1px solid '+m[3]+'"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>'+m[0]+'</span>';
+}
 function provCard(p){
   var avg=parseFloat(p.avg_rating)||0;
   var initials=(p.business_name||p.name||'م')[0];
   var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
-  var isVerified=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
-  var verified=isVerified?'<div class="pv-verified"><svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</div>':'';
+  var isVerified=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseInt(p.review_count||p.reviews_count)||0)>=3);
+  var vseal=isVerified?'<span class="pv-seal" title="موثّق"><svg width="15" height="15" viewBox="-2 -2 28 28" aria-label="موثّق"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
   var avHtml=isImg(p.profile_image)?'<img src="'+p.profile_image+'" loading="lazy">':initials;
   var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
   return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
-    +verified
     +'<div class="pv-av">'+avHtml+'</div>'
-    +'<div class="pv-name">'+(p.business_name||p.name||'—')+'</div>'
+    +'<div class="pv-name">'+(p.business_name||p.name||'—')+vseal+'</div>'
+    +provTierPill(p.tier)
     +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+p.city+'</div>':'')
     +(specs?'<div class="pv-specs">'+specs+'</div>':'')
     +'<div class="pv-stars">'+starRating(avg,p.review_count||p.reviews_count||0,12)+'</div>'
@@ -1193,8 +1201,8 @@ function filterProviders(){
     if(sort==='rating')return (parseFloat(b.avg_rating)||0)-(parseFloat(a.avg_rating)||0);
     if(sort==='projects')return (parseInt(b.completed_projects)||0)-(parseInt(a.completed_projects)||0);
     if(sort==='verified'){
-      var av=!!(a.profile_image&&a.bio&&(a.specialties||[]).length>0&&(parseFloat(a.avg_rating)||0)>0);
-      var bv=!!(b.profile_image&&b.bio&&(b.specialties||[]).length>0&&(parseFloat(b.avg_rating)||0)>0);
+      var av=(a.badge==='verified'||a.badge==='موثق')||!!(a.profile_image&&a.bio&&(a.specialties||[]).length>0&&(parseInt(a.review_count||a.reviews_count)||0)>=3);
+      var bv=(b.badge==='verified'||b.badge==='موثق')||!!(b.profile_image&&b.bio&&(b.specialties||[]).length>0&&(parseInt(b.review_count||b.reviews_count)||0)>=3);
       return (bv?1:0)-(av?1:0);
     }
     return 0;
