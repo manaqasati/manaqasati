@@ -4,47 +4,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>سياسة الخصوصية — مناقصة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#16213E;--gold:#C9920A;--bg:#F5F5F0;--border:#E6E2D9;--text:#0F172A;--muted:#64748B}
+:root{
+  --p:#1e3a8a;--p2:#1e40af;--p3:#172554;
+  --accent:#1d4ed8;--accent-l:#eff4ff;--accent-soft:#bfdbfe;
+  --bg:#f0f5ff;--white:#fff;--border:#e6eefb;--border2:#cdd9ef;
+  --text:#1e293b;--muted:#64748b;
+  --green:#16a34a;--wa:#25d366;--star:#F0A500;--sky:#0ea5e9;
+  --shadow:0 4px 16px rgba(37,99,235,.08);--radius:18px;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);line-height:1.8}
-.header{background:var(--p);padding:24px 20px;text-align:center}
-.logo{font-size:22px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px}
-.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
-.container{max-width:760px;margin:0 auto;padding:40px 20px}
-h1{font-size:24px;font-weight:900;color:var(--p);margin-bottom:8px}
-.date{font-size:13px;color:var(--muted);margin-bottom:32px;padding-bottom:16px;border-bottom:2px solid var(--gold)}
-h2{font-size:17px;font-weight:800;color:var(--p);margin:28px 0 12px;padding-right:12px;border-right:3px solid var(--gold)}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);line-height:1.8;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:100;background:var(--p);display:flex;align-items:center;justify-content:space-between;padding:12px 18px;box-shadow:0 2px 12px rgba(23,37,84,.18)}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;padding:8px 14px;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;transition:.15s}
+.back-btn:hover{background:rgba(255,255,255,.22)}
+.logo{font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--sky);box-shadow:0 0 0 4px rgba(14,165,233,.25)}
+.container{max-width:760px;margin:0 auto;padding:26px 16px 40px}
+.tabs{display:flex;gap:10px;margin-bottom:22px}
+.tab{flex:1;text-align:center;padding:11px 16px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;text-decoration:none;border:1.5px solid var(--border2);color:var(--muted);background:#fff;transition:.15s}
+.tab:hover{border-color:var(--accent);color:var(--accent)}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 4px 14px rgba(37,99,235,.25)}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px 26px}
+h1{font-family:'Cairo',sans-serif;font-size:25px;font-weight:900;color:var(--p);margin-bottom:8px}
+.date{font-size:13px;color:var(--muted);margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--accent-soft)}
+h2{font-size:17px;font-weight:800;color:var(--p);margin:26px 0 12px;padding-right:12px;border-right:3px solid var(--accent)}
 p,li{font-size:14px;color:#374151;line-height:2;margin-bottom:8px}
 ul{padding-right:20px;margin-bottom:12px}
 li{margin-bottom:4px}
-strong{color:var(--p)}
-a{color:var(--gold);text-decoration:none}
-.footer{text-align:center;padding:24px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:40px}
-.tabs{display:flex;gap:12px;margin-bottom:32px}
-.tab{padding:10px 20px;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;border:2px solid var(--border);color:var(--muted);background:#fff}
-.tab.active{background:var(--p);color:#fff;border-color:var(--p)}
+strong{color:var(--p);font-weight:800}
+a{color:var(--accent);text-decoration:none;font-weight:700}
+.contact-box{background:var(--accent-l);border:1px solid var(--accent-soft);border-radius:14px;padding:18px;margin-top:14px}
+.contact-box .ct-title{font-size:14px;font-weight:900;color:var(--p);margin-bottom:12px}
+.ct-btns{display:flex;flex-wrap:wrap;gap:10px}
+.ct-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;font-size:13px;font-weight:800;text-decoration:none;font-family:'Tajawal',sans-serif;transition:.15s}
+.ct-wa{background:var(--wa);color:#fff}
+.ct-wa:hover{filter:brightness(.95)}
+.ct-mail{background:#fff;color:var(--p);border:1.5px solid var(--border2)}
+.ct-mail:hover{border-color:var(--accent);color:var(--accent)}
+.ct-site{background:#fff;color:var(--p);border:1.5px solid var(--border2)}
+.ct-site:hover{border-color:var(--accent);color:var(--accent)}
+.footer{text-align:center;padding:24px;font-size:12px;color:var(--muted);margin-top:28px}
 </style>
 </head>
 <body>
-<button onclick="history.length>1?history.back():location.href='/'" style="position:fixed;top:14px;right:14px;z-index:1000;background:rgba(22,33,62,.92);border:none;color:#fff;cursor:pointer;padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;backdrop-filter:blur(8px)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
-<div class="header">
+<div class="topbar">
+  <button class="back-btn" onclick="history.length>1?history.back():location.href='/'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
   <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+  <span style="width:76px"></span>
 </div>
-  <!-- Back Button -->
-  <div style="background:var(--p);padding:10px 20px;">
-    <a href="/" style="display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;text-decoration:none;font-family:Tajawal,sans-serif;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      العودة للصفحة الرئيسية
-    </a>
-  </div>
+
 <div class="container">
   <div class="tabs">
     <a href="privacy.html" class="tab active">سياسة الخصوصية</a>
     <a href="terms.html" class="tab">الشروط والأحكام</a>
   </div>
 
+  <div class="card">
   <h1>سياسة الخصوصية</h1>
   <div class="date">آخر تحديث: 19 أبريل 2026</div>
 
@@ -115,7 +132,7 @@ a{color:var(--gold);text-decoration:none}
   </ul>
 
   <h2>7. حذف الحساب</h2>
-  <p>لحذف حسابك وجميع بياناتك، تواصل معنا عبر البريد: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
+  <p>لحذف حسابك وجميع بياناتك، تواصل معنا عبر واتساب <a href="https://wa.me/966595055780" target="_blank" rel="noopener">wa.me/966595055780</a> أو البريد <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
   <p>سنحذف بياناتك خلال <strong>30 يوم عمل</strong> من استلام الطلب.</p>
 
   <h2>8. الأطفال</h2>
@@ -125,8 +142,15 @@ a{color:var(--gold);text-decoration:none}
   <p>قد نحدّث هذه السياسة من وقت لآخر. سننشر أي تعديلات على هذه الصفحة مع تاريخ التحديث في الأعلى.</p>
 
   <h2>10. تواصل معنا</h2>
-  <p>البريد الإلكتروني: <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a></p>
-  <p>المنصة: <a href="https://manaqasa.com">manaqasa.com</a></p>
+  <div class="contact-box">
+    <div class="ct-title">للاستفسارات والدعم</div>
+    <div class="ct-btns">
+      <a class="ct-btn ct-wa" href="https://wa.me/966595055780" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49 0 1.47 1.07 2.89 1.22 3.09.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35zM12.05 2C6.5 2 2 6.5 2 12.05c0 1.77.46 3.5 1.35 5.02L2 22l5.05-1.32c1.47.8 3.12 1.22 4.78 1.22h.01c5.55 0 10.05-4.5 10.05-10.05C21.9 6.5 17.4 2 12.05 2z"/></svg>مراسلة عبر واتساب</a>
+      <a class="ct-btn ct-mail" href="mailto:cs@manaqasa.com">البريد: cs@manaqasa.com</a>
+      <a class="ct-btn ct-site" href="https://www.manaqasa.com" target="_blank" rel="noopener">www.manaqasa.com</a>
+    </div>
+  </div>
+  </div>
 
   <div class="footer">© 2026 منصة مناقصة — جميع الحقوق محفوظة</div>
 </div>
