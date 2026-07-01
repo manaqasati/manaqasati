@@ -65,6 +65,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .tb-distinguished{background:var(--gold-l);color:var(--p);border:1px solid var(--gold-soft)}
 .tb-active{background:var(--green-l);color:var(--green);border:1px solid #bbf7d0}
 .tb-new{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.vchk{display:inline-flex;vertical-align:middle;margin:0 3px 4px 0}
+.vchk svg{display:block}
 .apill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800}
 .a-now{background:var(--green-l);color:var(--green)}
 .a-rec{background:var(--gold-l);color:var(--p)}
@@ -201,7 +203,8 @@ function tierBadge(t){
 function render(p,rat){
   var avg=parseFloat(p.avg_rating)||0,cnt=parseInt(p.review_count)||0;
   if(rat){if(!avg)avg=parseFloat(rat.average)||0;if(!cnt)cnt=parseInt(rat.count)||0;}
-  var vrf=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
+  // موثّق = وسام الأدمن اليدوي، أو ملف مكتمل مع 3 تقييمات فأكثر
+  var vrf=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&cnt>=3);
   var last=p.last_active||p.last_bumped_at||p.created_at,ph=p.phone||'';
   var revs=(rat&&rat.reviews)||[],ports=p.portfolio_images||[],sp=p.specialties||[];
   var nm=p.business_name||p.name||'مزود',city=p.city||'السعودية',url=location.href;
@@ -227,11 +230,10 @@ function render(p,rat){
   var html='';
   html+='<div class="profile-card">';
   if(p.business_name&&p.business_name!==p.name)html+='<div class="pbiz">'+esc(p.business_name)+'</div>';
-  html+='<h1 class="pname">'+esc(p.name)+'</h1>';
+  var vchk=vrf?' <span class="vchk" title="موثّق"><svg width="19" height="19" viewBox="0 0 24 24" aria-label="موثّق"><circle cx="12" cy="12" r="11" fill="#0ea5e9"/><path d="M16.6 9.2l-5.7 6.1L7.4 12" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
+  html+='<h1 class="pname">'+esc(p.name)+vchk+'</h1>';
   if(sp.length)html+='<div class="phead">'+esc(sp.join(' · '))+'</div>';
-  var badgesHtml=tierBadge(p.tier);
-  if(vrf)badgesHtml+='<span class="ver-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>';
-  html+='<div class="pbadges">'+badgesHtml+'</div>';
+  html+='<div class="pbadges">'+tierBadge(p.tier)+'</div>';
   html+='<div class="pinfo-row"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</div>';
   html+=pill(last);
   if(avg>0)html+='<div class="rat-row">'+mkStars(avg,'#F0A500','18px')+'<span class="rat-n">'+avg.toFixed(1)+'</span><span class="rat-c">('+cnt+' تقييم)</span></div>';
