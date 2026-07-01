@@ -57,6 +57,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .pinfo-row{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .pinfo-row svg{flex-shrink:0}
 .ver-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.25);color:var(--sky);font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+.pbadges{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.pbadges .ver-badge{margin-bottom:0}
+.tier-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;line-height:1}
+.tier-badge svg{flex-shrink:0}
+.tb-expert{background:linear-gradient(135deg,#fff3d1,#ffe4a3);color:#8a5a06;border:1px solid #f0cf7a}
+.tb-distinguished{background:var(--gold-l);color:var(--p);border:1px solid var(--gold-soft)}
+.tb-active{background:var(--green-l);color:var(--green);border:1px solid #bbf7d0}
+.tb-new{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
 .apill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800}
 .a-now{background:var(--green-l);color:var(--green)}
 .a-rec{background:var(--gold-l);color:var(--p)}
@@ -184,10 +192,16 @@ function openExternal(e,url){
   // لو window.open فشل (WebView)، نترك السلوك الافتراضي (target=_blank)
   return true;
 }
+function tierBadge(t){
+  var map={expert:{l:'خبير معتمد',c:'tb-expert'},distinguished:{l:'مزود مميّز',c:'tb-distinguished'},active:{l:'مزود نشط',c:'tb-active'},'new':{l:'مزود جديد',c:'tb-new'}};
+  var d=map[t]||map['new'];
+  var ic='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>';
+  return '<span class="tier-badge '+d.c+'">'+ic+esc(d.l)+'</span>';
+}
 function render(p,rat){
   var avg=parseFloat(p.avg_rating)||0,cnt=parseInt(p.review_count)||0;
   if(rat){if(!avg)avg=parseFloat(rat.average)||0;if(!cnt)cnt=parseInt(rat.count)||0;}
-  var vrf=!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
+  var vrf=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&avg>0);
   var last=p.last_active||p.last_bumped_at||p.created_at,ph=p.phone||'';
   var revs=(rat&&rat.reviews)||[],ports=p.portfolio_images||[],sp=p.specialties||[];
   var nm=p.business_name||p.name||'مزود',city=p.city||'السعودية',url=location.href;
@@ -215,7 +229,9 @@ function render(p,rat){
   if(p.business_name&&p.business_name!==p.name)html+='<div class="pbiz">'+esc(p.business_name)+'</div>';
   html+='<h1 class="pname">'+esc(p.name)+'</h1>';
   if(sp.length)html+='<div class="phead">'+esc(sp.join(' · '))+'</div>';
-  if(vrf)html+='<div class="ver-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مزود موثّق على مناقصة</div>';
+  var badgesHtml=tierBadge(p.tier);
+  if(vrf)badgesHtml+='<span class="ver-badge"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>موثّق</span>';
+  html+='<div class="pbadges">'+badgesHtml+'</div>';
   html+='<div class="pinfo-row"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(city)+'</div>';
   html+=pill(last);
   if(avg>0)html+='<div class="rat-row">'+mkStars(avg,'#F0A500','18px')+'<span class="rat-n">'+avg.toFixed(1)+'</span><span class="rat-c">('+cnt+' تقييم)</span></div>';
