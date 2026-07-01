@@ -637,6 +637,19 @@
 .ph-sq{width:42px;height:42px;border-radius:50%;background:#dbeafe;color:#1e40af;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;overflow:hidden}
 .ph-sq img{width:100%;height:100%;object-fit:cover}
 @media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
+
+/* ===== تحميل التطبيق ===== */
+.app-cta{margin:0 0 30px;padding:26px 20px;border-radius:18px;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);text-align:center}
+.app-cta-title{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:6px}
+.app-cta-sub{font-size:14px;color:#bfdbfe;margin-bottom:18px}
+.app-badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.store-badge{display:inline-flex;align-items:center;gap:11px;background:#0b1220;border:1px solid rgba(255,255,255,.18);border-radius:13px;padding:9px 18px;text-decoration:none;transition:transform .2s,box-shadow .2s;min-width:180px}
+.store-badge:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.28)}
+.store-badge svg{flex-shrink:0}
+.store-badge .sb-txt{text-align:right;line-height:1.15}
+.store-badge .sb-small{display:block;font-size:10.5px;color:#cbd5e1;font-weight:500}
+.store-badge .sb-big{display:block;font-size:16px;color:#fff;font-weight:800;font-family:'Cairo',sans-serif}
+@media(max-width:560px){.app-badges{flex-direction:column;align-items:center}.store-badge{width:100%;max-width:260px;justify-content:center}}
 </style>
 </head>
 <body>
@@ -965,6 +978,20 @@
 
 <!-- FOOTER -->
 <footer>
+  <div class="app-cta">
+    <div class="app-cta-title">حمّل تطبيق مناقصة</div>
+    <div class="app-cta-sub">تابع طلباتك وعروضك أينما كنت — على آيفون وأندرويد</div>
+    <div class="app-badges">
+      <a href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611" target="_blank" rel="noopener" class="store-badge" aria-label="حمّله من App Store">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M17.05 12.04c-.03-2.9 2.37-4.29 2.48-4.36-1.35-1.98-3.46-2.25-4.21-2.28-1.79-.18-3.5 1.05-4.41 1.05-.91 0-2.31-1.03-3.8-1-1.95.03-3.76 1.14-4.76 2.89-2.03 3.52-.52 8.73 1.45 11.59.96 1.4 2.11 2.97 3.61 2.91 1.45-.06 2-.94 3.75-.94 1.74 0 2.24.94 3.77.91 1.56-.03 2.55-1.42 3.5-2.83 1.1-1.62 1.56-3.2 1.58-3.28-.03-.02-3.03-1.17-3.06-4.62zM14.13 3.63c.8-.98 1.34-2.32 1.19-3.63-1.15.05-2.55.77-3.38 1.73-.74.85-1.39 2.23-1.22 3.51 1.29.1 2.6-.65 3.41-1.61z"/></svg>
+        <span class="sb-txt"><span class="sb-small">حمّله من</span><span class="sb-big">App Store</span></span>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=bs" target="_blank" rel="noopener" class="store-badge" aria-label="احصل عليه من Google Play">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l.1.1L13 12.6v-.2L3.7 2.2l-.1.1z" fill="#00d0ff"/><path d="M16.4 15.7l-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 2.1-.1-.1z" fill="#ffce00"/><path d="M16.5 15.6L13.3 12.4 3.6 22.1c.4.4 1 .4 1.7.1l11.2-6.6z" fill="#ff3b30"/><path d="M16.5 8.4L5.3 1.8C4.6 1.5 4 1.5 3.6 1.9l9.7 9.7 3.2-3.2z" fill="#00f076"/></svg>
+        <span class="sb-txt"><span class="sb-small">احصل عليه من</span><span class="sb-big">Google Play</span></span>
+      </a>
+    </div>
+  </div>
   <div class="logo" style="margin-bottom: 16px; font-size: 20px;">مناقصة<span>.</span></div>
   <p>© 2026 مناقصة – جميع الحقوق محفوظة</p>
   <p style="margin-top: 8px;">
@@ -983,25 +1010,47 @@ var PROV_ALL=[],PROV_PAGE=8,ALL_PROVS=[];
 
 function catSvg(cat,size){
   size=size||16;
-  var p={
-    'تبريد وتكييف':'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
-    'كهرباء':'<path d="M13 2L3 14h7v8l10-12h-7z"/>',
-    'سباكة':'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/>',
-    'نجارة':'<path d="M3 21l3-3m0 0l9-9 3 3-9 9zm12-12l3-3-3-3-3 3"/>',
-    'تنظيف':'<path d="M3 21l6-6m2-7l4 4M14 4l6 6-9 9H5v-6z"/>',
-    'نقل عفش':'<rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7M5.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM18.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>',
-    'بناء':'<path d="M2 20h20M4 20V8l8-5 8 5v12M9 20v-6h6v6"/>',
-    'كاميرات مراقبة':'<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
-    'مسابح':'<path d="M2 12h20M2 17h20M5 7l3 3M12 6l3 3M2 7c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2"/>',
-    'مكافحة حشرات':'<circle cx="12" cy="12" r="4"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
-    'عزل حراري':'<path d="M14 4v10.5a4 4 0 11-4 0V4a2 2 0 014 0z"/>',
-    'مظلات وسواتر':'<path d="M3 18h18M5 18l7-12 7 12M12 6V3"/>',
-    'حدادة':'<circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.2 4.2l4.3 4.3M15.5 15.5l4.3 4.3M1 12h6M17 12h6"/>',
-    'شبكات وإنترنت':'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/>',
-    'ألمنيوم':'<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18M12 3v18"/>',
-    'جبس وطباشير':'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/>'
+  // نفس أيقونات قسم "الفئات المتاحة" — مطابقة ذكية بالكلمة المفتاحية لتغطية كل صيغ التخصص
+  var IC={
+    ac:'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
+    power:'<path d="M13 2L3 14h7v8l10-12h-7z"/>',
+    plumb:'<path d="M12 2.7l5.7 5.6a8 8 0 11-11.4 0z"/>',
+    carp:'<path d="M3 21l3-3m0 0l9-9 3 3-9 9zm12-12l3-3-3-3-3 3"/>',
+    clean:'<path d="M3 21l6-6m2-7l4 4M14 4l6 6-9 9H5v-6z"/>',
+    move:'<rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7M5.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM18.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>',
+    metal:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/>',
+    alum:'<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18M12 3v18"/>',
+    pool:'<path d="M2 12h20M2 17h20M5 7l3 3M12 6l3 3M2 7c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2"/>',
+    cam:'<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
+    net:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/>',
+    shade:'<path d="M3 18h18M5 18l7-12 7 12M12 6V3"/>',
+    insul:'<path d="M14 4v10.5a4 4 0 11-4 0V4a2 2 0 014 0z"/>',
+    pest:'<circle cx="12" cy="12" r="4"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
+    build:'<path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 7h2M9 11h2M9 15h2M13 7h2M13 11h2M13 15h2"/>',
+    gypsum:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/>',
+    paint:'<rect x="3" y="3" width="13" height="7" rx="1"/><path d="M16 6h3a1 1 0 011 1v3a1 1 0 01-1 1h-7v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
+    furniture:'<path d="M5 11V7a2 2 0 012-2h10a2 2 0 012 2v4"/><path d="M3 13a2 2 0 012-2h14a2 2 0 012 2v4H3z"/><path d="M5 17v2M19 17v2"/>'
   };
-  var d=p[cat]||'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>';
+  var c=cat||'', d;
+  if(/تكييف|تبريد|مكيف/.test(c)) d=IC.ac;
+  else if(/كهرب/.test(c)) d=IC.power;
+  else if(/سباك|صحي/.test(c)) d=IC.plumb;
+  else if(/نجار|خشب/.test(c)) d=IC.carp;
+  else if(/تنظيف|نظاف/.test(c)) d=IC.clean;
+  else if(/نقل|عفش/.test(c)) d=IC.move;
+  else if(/حداد|معادن|لحام/.test(c)) d=IC.metal;
+  else if(/ألمنيوم|المنيوم|زجاج/.test(c)) d=IC.alum;
+  else if(/مسبح|مسابح/.test(c)) d=IC.pool;
+  else if(/كامير|مراقب/.test(c)) d=IC.cam;
+  else if(/شبك|إنترنت|انترنت/.test(c)) d=IC.net;
+  else if(/مظل|ساتر|سواتر/.test(c)) d=IC.shade;
+  else if(/عزل/.test(c)) d=IC.insul;
+  else if(/مكافح|حشر/.test(c)) d=IC.pest;
+  else if(/جبس|طباشير/.test(c)) d=IC.gypsum;
+  else if(/دهان|صبغ|بويه/.test(c)) d=IC.paint;
+  else if(/أثاث|اثاث|ديكور|موبيليا/.test(c)) d=IC.furniture;
+  else if(/مقاول|بناء|إنشاء|انشاء|ترميم/.test(c)) d=IC.build;
+  else d='<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>';
   return '<svg width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle">'+d+'</svg>';
 }
 function ago(d){
@@ -1275,6 +1324,11 @@ function demoPublish(){
       var ll=document.getElementById('d-loc'); if(ll)ll.value='';
       demoPreview();
       load(); 
+      initDemoBids();
+    })
+    .catch(function(){ demoMsg('تعذّر النشر، حاول مرة أخرى','err'); });
+}
+
 // ===== الصفحة الرئيسية كانعكاس للوحة المستخدم =====
 function _esc(t){return (t==null?'':String(t)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function _stars5(avg){avg=Math.round(parseFloat(avg)||0);var o='';for(var i=1;i<=5;i++)o+=(i<=avg?'\u2605':'\u2606');return o;}
@@ -1396,11 +1450,6 @@ function renderProviderHome(u){
   }).catch(function(){});
 }
 function req_ago(d){ if(typeof ago==='function'){try{return '\u0645\u0646\u0630 '+ago(d);}catch(e){}} return '\u062d\u062f\u064a\u062b\u0627\u064b'; }
-
-initDemoBids();
-    })
-    .catch(function(){ demoMsg('تعذّر النشر، حاول مرة أخرى','err'); });
-}
 
 // ===== العروض المستلمة الحقيقية (للعميل المسجّل) =====
 function _demoStars(avg){
