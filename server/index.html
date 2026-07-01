@@ -657,6 +657,13 @@
 .ph-chk.no{background:#f1f5f9;color:#64748b}
 .ph-bidsum{flex:1;background:var(--b);color:var(--c);border-radius:11px;padding:9px;text-align:center;font-size:20px;font-weight:900;line-height:1}
 .ph-bidsum span{display:block;font-size:10.5px;font-weight:700;margin-top:3px;opacity:.85}
+.ph-inbox{display:flex;gap:8px;margin-bottom:10px}
+.ph-inbox-c{flex:1;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:11px 12px;font-family:inherit;font-size:12.5px;font-weight:800;color:#1e3a8a;cursor:pointer}
+.ph-inbox-c:hover{border-color:#93c5fd}
+.ph-inbox-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-inbox-t{flex:1;text-align:right}
+.ph-inbox-b{background:#ef4444;color:#fff;font-size:11px;font-weight:900;min-width:20px;height:20px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+@media(max-width:560px){.ph-inbox{flex-direction:column}}
 @media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
 
 /* ===== تحميل التطبيق ===== */
@@ -1398,7 +1405,8 @@ function renderClientHome(u){
         +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn">'+offers+'</div><div class="ph-ml">\u0639\u0631\u0648\u0636 \u0645\u0633\u062a\u0644\u0645\u0629</div></div>'
         +'<div class="ph-mc"><div class="ph-mi" style="background:#dcfce7;color:#16a34a"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">\u0645\u0643\u062a\u0645\u0644\u0629</div></div>'
         +'</div>';
-      host.innerHTML=band+'<div id="ph-feat-slot"></div>'+_phProjects(reqs)+_phQuick('client');
+      host.innerHTML=band+'<div id="ph-inbox"></div>'+'<div id="ph-feat-slot"></div>'+_phProjects(reqs)+_phQuick('client');
+      _phInbox();
       var withB=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
       if(!withB.length) return;
       var req=withB[0];
@@ -1475,7 +1483,8 @@ function renderProviderHome(u){
     } else {
       body+='<div class="ph-row" style="justify-content:center;color:var(--muted);font-size:13px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b \u2014 \u062a\u0635\u0641\u0651\u062d \u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0623\u062f\u0646\u0627\u0647</div>';
     }
-    host.innerHTML=band+_phNudge(me,specs)+_phBids(myBids)+body+_phQuick('provider');
+    host.innerHTML=band+'<div id="ph-inbox"></div>'+_phNudge(me,specs)+_phBids(myBids)+body+_phQuick('provider');
+    _phInbox();
   }).catch(function(){});
 }
 function _phBids(bids){
@@ -1513,6 +1522,33 @@ function _phProjects(reqs){
   }).join('');
   return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0645\u0634\u0627\u0631\u064a\u0639\u064a \u0627\u0644\u0646\u0634\u0637\u0629</div>'+rows+'</div>';
 }
+function _phInbox(){
+  var host=document.getElementById('ph-inbox'); if(!host) return;
+  Promise.all([
+    fetch(API+'/api/messages/unread-count',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():{count:0};}).catch(function(){return {count:0};}),
+    fetch(API+'/api/notifications/unread-count',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():{count:0};}).catch(function(){return {count:0};})
+  ]).then(function(res){
+    var m=parseInt(res[0]&&res[0].count)||0, n=parseInt(res[1]&&res[1].count)||0;
+    if(!m&&!n){host.innerHTML='';return;}
+    host.innerHTML='<div class="ph-inbox">'
+      +'<button class="ph-inbox-c" onclick="goLogin()"><span class="ph-inbox-ic" style="background:#dbeafe;color:#1d4ed8"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><span class="ph-inbox-t">\u0631\u0633\u0627\u0626\u0644 \u063a\u064a\u0631 \u0645\u0642\u0631\u0648\u0621\u0629</span>'+(m?'<span class="ph-inbox-b">'+m+'</span>':'')+'</button>'
+      +'<button class="ph-inbox-c" onclick="goLogin()"><span class="ph-inbox-ic" style="background:#fef3c7;color:#b45309"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg></span><span class="ph-inbox-t">\u0625\u0634\u0639\u0627\u0631\u0627\u062a \u062c\u062f\u064a\u062f\u0629</span>'+(n?'<span class="ph-inbox-b">'+n+'</span>':'')+'</button>'
+      +'</div>';
+  }).catch(function(){});
+}
+function _phBump(btn){
+  if(!btn||btn.disabled) return;
+  var orig=btn.innerHTML; btn.disabled=true; btn.style.opacity='.7';
+  fetch(API+'/api/provider/bump',{method:'PUT',headers:_authHdr()})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};},function(){return {ok:r.ok,d:{}};});})
+    .then(function(x){
+      var msg=(x.d&&x.d.message)?x.d.message:(x.ok?'\u062a\u0645 \u0627\u0644\u062a\u062d\u062f\u064a\u062b':'\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b');
+      btn.textContent=msg;
+      if(x.ok){btn.style.background='#dcfce7';btn.style.color='#15803d';btn.style.borderColor='#bbf7d0';}
+      else{btn.style.background='#fef3c7';btn.style.color='#b45309';btn.style.borderColor='#fde68a';}
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='';btn.style.background='';btn.style.color='';btn.style.borderColor='';},4500);
+    }).catch(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='';});
+}
 function _phQuick(role){
   if(role==='client'){
     return '<div class="ph-qa">'
@@ -1524,6 +1560,7 @@ function _phQuick(role){
   return '<div class="ph-qa">'
     +'<button class="ph-qa-btn pri" onclick="_scrollTo(\'projects\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>\u062a\u0635\u0641\u0651\u062d \u0627\u0644\u0641\u0631\u0635</button>'
     +'<button class="ph-qa-btn" onclick="goLogin()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>\u0644\u0648\u062d\u062a\u064a</button>'
+    +'<button class="ph-qa-btn" onclick="_phBump(this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg>\u062d\u062f\u0651\u062b \u0638\u0647\u0648\u0631\u064a</button>'
     +'</div>';
 }
 function _phNudge(me,specs){
