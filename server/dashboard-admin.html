@@ -844,9 +844,9 @@ function setUserBadge(uid,key){
 }
 var TIER_CATALOG=[
   {key:'new',label:'مزود جديد',color:'#64748b',bg:'#f1f5f9',min:0},
-  {key:'active',label:'مزود نشط',color:'#0369a1',bg:'#e0f2fe',min:3},
-  {key:'distinguished',label:'مزود مميّز',color:'#7c3aed',bg:'#f3e8ff',min:10},
-  {key:'expert',label:'خبير معتمد',color:'#b45309',bg:'#fff7e6',min:25}
+  {key:'active',label:'مزود نشط',color:'#9a6a2e',bg:'#f6ead9',min:3},
+  {key:'distinguished',label:'مزود مميّز',color:'#5b6b7d',bg:'#eceff3',min:10},
+  {key:'expert',label:'خبير معتمد',color:'#97710d',bg:'#fdf1cf',min:25}
 ];
 function tierMeta(key){ for(var i=0;i<TIER_CATALOG.length;i++){ if(TIER_CATALOG[i].key===key) return TIER_CATALOG[i]; } return TIER_CATALOG[0]; }
 function tierChip(key){ var m=tierMeta(key||'new'); if(m.key==='new')return ''; return '<span class="badge" style="background:'+m.bg+';color:'+m.color+'"><svg width="10" height="10" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>'+m.label+'</span>'; }
@@ -1554,7 +1554,7 @@ function _tierDistroCard(rows){
   rows=rows||[];
   if(!rows.length)return '';
   var total=rows.reduce(function(s,r){return s+(r.n||0);},0)||1;
-  var COL={new:['#64748b','#f1f5f9'],active:['#0369a1','#e0f2fe'],distinguished:['#7c3aed','#f3e8ff'],expert:['#b45309','#fff7e6']};
+  var COL={new:['#64748b','#f1f5f9'],active:['#9a6a2e','#f6ead9'],distinguished:['#5b6b7d','#eceff3'],expert:['#97710d','#fdf1cf']};
   var star='<svg width="15" height="15" fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>';
   var cells=rows.map(function(r){
     var c=COL[r.key]||['#64748b','#f1f5f9'];
