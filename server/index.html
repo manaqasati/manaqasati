@@ -1338,14 +1338,35 @@ function renderMyRequestsInline(){
       inline.innerHTML='<div class="bids-list">'+reqs.map(_myReqRow).join('')+'</div>';
     }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
 }
+function _convRow(c){
+  var other=(c.provider_name||c.client_name||'مستخدم');
+  var last=c.last_message||'ابدأ المحادثة';
+  var unread=parseInt(c.unread)||0;
+  var slug=encodeURIComponent((c.request_title||'محادثة').replace(/\s+/g,'-').substring(0,40))+'-'+c.request_id;
+  var initials=(String(other).trim().charAt(0)||'?');
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+c.request_id+'\'" style="cursor:pointer">'
+    +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:var(--card2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">'+_esc(initials)+'</div>'
+      +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:3px">'+_esc(other)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px">'+_esc(last)+'</div></div>'
+    +'</div>'
+    +'<div style="text-align:left;flex-shrink:0">'
+      +(unread>0
+        ?'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:20px;background:#ef4444;color:#fff;font-size:12px;font-weight:800">'+unread+'</span>'
+        :'<span style="font-size:11px;color:var(--muted)">'+(c.last_time?req_ago(c.last_time):'')+'</span>')
+    +'</div>'
+  +'</div>';
+}
 function renderMyMessagesInline(){
   var inline=document.getElementById('demo-inline');if(!inline)return;
-  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+  var u=getUser(); if(!u){ inline.innerHTML=''; return; }
+  var ep=(u.role==='provider')?'/api/provider/conversations':'/api/client/conversations';
+  fetch(API+ep,{headers:_authHdr(),cache:'no-store'})
     .then(function(r){return r.ok?r.json():[];})
-    .then(function(reqs){
-      var withBids=(Array.isArray(reqs)?reqs:[]).filter(function(x){return (parseInt(x.bid_count)||0)>0;});
-      if(!withBids.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما فيه محادثات بعد — تظهر هنا عند وصول عروض على طلباتك</div>'; return; }
-      inline.innerHTML='<div class="bids-list">'+withBids.map(_myReqRow).join('')+'</div>';
+    .then(function(list){
+      list=Array.isArray(list)?list:[];
+      if(!list.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما فيه محادثات بعد — تبدأ عند التواصل حول طلب</div>'; return; }
+      inline.innerHTML='<div class="bids-list">'+list.map(_convRow).join('')+'</div>';
     }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
 }
 function demoPublish(){
