@@ -1428,7 +1428,7 @@ function renderClientHome(u){
             +'<div style="font-size:12px;color:#F0A500;margin-top:2px">'+_stars5(best.provider_rating)+' <span style="color:#3b82f6">'+(best.provider_rating?parseFloat(best.provider_rating).toFixed(1):'\u2014')+' \u00b7 '+(parseInt(best.provider_reviews)||0)+' \u062a\u0642\u064a\u064a\u0645</span></div></div></div>'
             +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#16a34a">'+price+' <span style="font-size:12px">\u0631.\u0633</span></div>'+(best.days?'<div style="font-size:11px;color:#64748b">\u062e\u0644\u0627\u0644 '+best.days+' \u064a\u0648\u0645</div>':'')+'</div>'
             +'</div>'
-            +'<div style="display:flex;gap:8px;margin-top:13px"><button class="ph-cta" style="flex:1;justify-content:center" onclick="_scrollTo(\'try\')">\u0639\u0631\u0636 \u0643\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</button><button class="ph-cta o" style="flex:1;justify-content:center" onclick="_openReq({id:'+req.id+',title:'+JSON.stringify(req.title||'')+'})">\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628</button></div>'
+            +'<div style="display:flex;gap:8px;margin-top:13px"><button class="ph-cta" style="flex:1;justify-content:center" onclick="_scrollTo(\'try\')">\u0639\u0631\u0636 \u0643\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</button><button class="ph-cta o" style="flex:1;justify-content:center" onclick="_openReq({id:'+req.id+'})">\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628</button></div>'
             +'</div>';
         }).catch(function(){});
     }).catch(function(){});
@@ -1476,11 +1476,11 @@ function renderProviderHome(u){
         +'<div style="font-size:15px;font-weight:900;color:#1e3a8a">'+_esc(f.title||'')+'</div>'
         +'<div style="margin-top:7px"><span class="ph-tag">'+_esc(f.category||'')+'</span>'+(f.city?'<span class="ph-tag sky">'+_esc(f.city)+'</span>':'')+(f.budget_max?'<span class="ph-tag grn">\u0645\u064a\u0632\u0627\u0646\u064a\u0629 '+Number(f.budget_max).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div>'
         +'<div style="font-size:11px;color:#94a3b8;margin-top:7px">'+(req_ago(f.created_at))+(fb?' \u00b7 '+fb+' \u0639\u0631\u0636':' \u00b7 \u0644\u0627 \u0639\u0631\u0648\u0636 \u0628\u0639\u062f \u2014 \u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0642\u062f\u0651\u0645')+'</div>'
-        +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:13px" onclick="_openReq({id:'+f.id+',title:'+JSON.stringify(f.title||'')+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643 \u0627\u0644\u0622\u0646</button>'
+        +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:13px" onclick="_openReq({id:'+f.id+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643 \u0627\u0644\u0622\u0646</button>'
         +'</div>';
       match.slice(1,4).forEach(function(r){
         body+='<div class="ph-row"><div style="min-width:0"><div style="font-size:13.5px;font-weight:800;color:#1e3a8a">'+_esc(r.title||'')+'</div><div style="margin-top:5px"><span class="ph-tag">'+_esc(r.category||'')+'</span>'+(r.city?'<span class="ph-tag sky">'+_esc(r.city)+'</span>':'')+'</div></div>'
-          +'<button class="ph-cta o" onclick="_openReq({id:'+r.id+',title:'+JSON.stringify(r.title||'')+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636</button></div>';
+          +'<button class="ph-cta o" onclick="_openReq({id:'+r.id+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636</button></div>';
       });
     } else {
       body+='<div class="ph-row" style="justify-content:center;color:var(--muted);font-size:13px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b \u2014 \u062a\u0635\u0641\u0651\u062d \u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0623\u062f\u0646\u0627\u0647</div>';
@@ -1500,7 +1500,7 @@ function _phBids(bids){
     var m=M[b.status]||M.pending;
     return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
       +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+(b.price?'<span style="font-size:11px;color:#64748b">'+Number(b.price).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div></div>'
-      +'<button class="ph-cta o" onclick="_openReq({id:'+b.request_id+',title:'+JSON.stringify(b.request_title||'')+'})">\u0627\u0644\u0645\u0634\u0631\u0648\u0639</button></div>';
+      +'<button class="ph-cta o" onclick="_openReq({id:'+b.request_id+'})">\u0627\u0644\u0645\u0634\u0631\u0648\u0639</button></div>';
   }).join('');
   return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0639\u0631\u0648\u0636\u064a</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:9px">'
@@ -1520,7 +1520,7 @@ function _phProjects(reqs){
     var m=M[r.status]||['\u0646\u0634\u0637','#e0f2fe','#0369a1'];
     return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
       +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span><span style="font-size:11px;color:#64748b">'+bc+' \u0639\u0631\u0636</span></div></div>'
-      +'<button class="ph-cta'+(bc>0?'':' o')+'" onclick="_openReq({id:'+r.id+',title:'+JSON.stringify(r.title||'')+'})">'+(bc>0?'\u0631\u0627\u062c\u0639 \u0627\u0644\u0639\u0631\u0648\u0636':'\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644')+'</button></div>';
+      +'<button class="ph-cta'+(bc>0?'':' o')+'" onclick="_openReq({id:'+r.id+'})">'+(bc>0?'\u0631\u0627\u062c\u0639 \u0627\u0644\u0639\u0631\u0648\u0636':'\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644')+'</button></div>';
   }).join('');
   return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0645\u0634\u0627\u0631\u064a\u0639\u064a \u0627\u0644\u0646\u0634\u0637\u0629</div>'+rows+'</div>';
 }
