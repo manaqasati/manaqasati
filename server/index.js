@@ -1414,7 +1414,7 @@ app.get('/api/messages/unread-count', auth, async (req, res) => {
   try {
     const r = await pool.query('SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE', [req.user.id]);
     res.json({ count: parseInt(r.rows[0].count)||0 });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('/messages/unread-count:', e); res.json({ count: 0 }); }
 });
 
 // ═══ REVIEWS ═══
@@ -1586,7 +1586,7 @@ app.get('/api/notifications/count', auth, async (req, res) => {
   try { const r=await pool.query('SELECT COUNT(*) as count FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count) }); } catch(e) { res.json({ count: 0 }); }
 });
 app.get('/api/notifications/unread-count', auth, async (req, res) => {
-  try { const r=await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count)||0 }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const r=await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count)||0 }); } catch(e) { console.error('/notifications/unread-count:', e); res.json({ count: 0 }); }
 });
 app.put('/api/notifications/read', auth, async (req, res) => {
   try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
