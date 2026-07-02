@@ -696,6 +696,13 @@ function render(){
   // load questions & clarifications
   loadQuestions(_rid);
 
+  // deep-link: افتح تبويب الأسئلة إذا وصل الرابط لها (#qa / #questions)
+  var _dh=(location.hash||'').replace('#','').toLowerCase();
+  if(_dh==='qa'||_dh==='questions'||_dh==='questions-wrap'){
+    projTab('qa');
+    setTimeout(function(){var qw=document.getElementById('questions-wrap');if(qw)qw.scrollIntoView({behavior:'smooth',block:'start'});},250);
+  }
+
   // Owner bar
   // شريط المالك أُزيل — زر لوحة التحكم يظهر بالأعلى، والتعديل/الحذف في اللوحة
 
