@@ -134,6 +134,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .works-add:hover{background:var(--p-mid)}
 
 </style>
+<script src="/track.js"></script>
 </head>
 <body>
 <button onclick="history.length>1?history.back():location.href='/'" style="position:fixed;top:14px;right:14px;z-index:1000;background:rgba(30,58,138,.92);border:none;color:#fff;cursor:pointer;padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;backdrop-filter:blur(8px)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
@@ -561,6 +562,9 @@ async function doSubmit(){
       localStorage.setItem('token',d.token);
       localStorage.setItem('user',JSON.stringify(d.user));
       _notifyMobileApp(d.token, d.user);
+      if(window.track && /\/register/.test(url)){
+        track(((d.user&&d.user.role)==='provider') ? 'RegisterProvider' : 'RegisterClient');
+      }
       setAl(null,'تم بنجاح! جاري التحويل...','ok');
       setTimeout(function(){
         var rl=d.user.role;
