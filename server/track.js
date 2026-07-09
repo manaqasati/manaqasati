@@ -19,6 +19,12 @@
     Register:      { meta:'CompleteRegistration',  tt:'CompleteRegistration', snap:'SIGN_UP',    g:'sign_up' },
     Lead:          { meta:'Lead',                   tt:'SubmitForm',      snap:'SUBMIT',           g:'generate_lead' },
     StartPost:     { meta:'InitiateCheckout',        tt:'InitiateCheckout',snap:'START_CHECKOUT',   g:'begin_post' },
+    /* نيّة الزائر قبل التسجيل (لبناء جمهور مخصّص لكل نوع) */
+    IntentClient:    { meta:'ViewContent',  tt:'ViewContent',          snap:'CUSTOM_EVENT_6',  g:'intent_client' },
+    IntentProvider:  { meta:'ViewContent',  tt:'ViewContent',          snap:'CUSTOM_EVENT_7',  g:'intent_provider' },
+    /* تأكيد التسجيل حسب الدور */
+    RegisterClient:  { meta:'CompleteRegistration', tt:'CompleteRegistration', snap:'SIGN_UP', g:'sign_up_client' },
+    RegisterProvider:{ meta:'CompleteRegistration', tt:'CompleteRegistration', snap:'SIGN_UP', g:'sign_up_provider' },
     Bid:           { meta:'SubmitApplication',      tt:'SubmitForm',      snap:'CUSTOM_EVENT_1',   g:'submit_application' },
     Search:        { meta:'Search',                 tt:'Search',          snap:'SEARCH',           g:'search' },
     ViewContent:   { meta:'ViewContent',            tt:'ViewContent',     snap:'VIEW_CONTENT',     g:'view_item' },
@@ -105,12 +111,31 @@
     if (scrolled >= 0.75) { scrollFired = true; window.track('ScrollDeep'); }
   }, { passive: true });
 
-  // (ج) نيّة التصفّح: أي رابط/زر فيه data-track-browse أو يشير لأقسام المزودين/المشاريع
-  var browseFired = false;
+  // (ج) نيّة التصفّح + كشف نوع الزائر (عميل/مزود) قبل التسجيل
+  var browseFired = false, intentClientFired = false, intentProviderFired = false;
+  function fireIntent(role) {
+    if (role === 'client' && !intentClientFired) { intentClientFired = true; window.track('IntentClient'); }
+    if (role === 'provider' && !intentProviderFired) { intentProviderFired = true; window.track('IntentProvider'); }
+  }
+  // من رابط الإعلان: ?role=client أو ?role=provider
+  try {
+    var rp = new URLSearchParams(location.search).get('role');
+    if (rp === 'client') fireIntent('client');
+    if (rp === 'provider') fireIntent('provider');
+  } catch (e) {}
+  // من النقر: تصفّح المزودين = عميل · تصفّح المشاريع = مزود · أو data-intent
   document.addEventListener('click', function (ev) {
-    if (browseFired) return;
-    var el = ev.target.closest('[data-track-browse], a[href*="providers"], a[href*="projects"], a[href="#providers"], a[href="#projects"]');
-    if (el) { browseFired = true; window.track('BrowseIntent'); }
+    var el = ev.target.closest('[data-intent], [data-track-browse], a[href*="providers"], a[href*="projects"], a[href="#providers"], a[href="#projects"]');
+    if (!el) return;
+    var di = el.getAttribute && el.getAttribute('data-intent');
+    if (di === 'client') fireIntent('client');
+    else if (di === 'provider') fireIntent('provider');
+    else {
+      var h = el.getAttribute('href') || '';
+      if (h.indexOf('providers') > -1) fireIntent('client');
+      else if (h.indexOf('projects') > -1) fireIntent('provider');
+    }
+    if (!browseFired) { browseFired = true; window.track('BrowseIntent'); }
   }, true);
 
 })();
