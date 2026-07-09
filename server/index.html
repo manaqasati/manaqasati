@@ -1290,7 +1290,7 @@ syncAuthUI();
 // ===== أزرار حسب الدور =====
 function _scrollTo(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function goAuthRole(role){
-  if(role==='client'&&window.track)track('StartPost');
+  if(window.track){ track(role==='provider'?'IntentProvider':'IntentClient'); if(role==='client')track('StartPost'); }
   var u=getUser();
   if(u){
     // مسجّل أصلاً → ابقَ في الصفحة وانتقل للقسم المناسب
