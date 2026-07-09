@@ -464,6 +464,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bid-reject{padding:11px 16px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif}
 .sc,.ri,.bid-item{will-change:transform,opacity}
 </style>
+<script src="/track.js"></script>
 </head>
 <body>
 <!-- SIDEBAR -->
@@ -866,6 +867,7 @@ function show(pg,el,key){
   if(el)el.className='ni on';
   if(key){var b=document.getElementById('bn-'+key);if(b)b.className='bni on';}
   document.getElementById('pageTitle').textContent=_pageTitles[pg]||'';
+  if(pg==='new'&&window.track)track('StartPost');
   if(pg==='home')loadHome();
   if(pg==='requests')loadReqs();
   if(pg==='notifs')loadNotifs();
@@ -1514,6 +1516,7 @@ function acceptAgree(){
         ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         if(msg)msg.className='alert';
         showToast('تم نشر الطلب','success');
+        if(window.track)track('Lead');
         loadHome();loadReqs();show('requests',null,'requests');
       }else{if(msg){msg.textContent=r.message||'حدث خطأ';msg.className='alert err';}}
     })
