@@ -15,6 +15,7 @@
 <meta property="og:url" content="https://www.manaqasa.com">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://www.manaqasa.com/og-image.png">
+<script src="/track.js"></script>
 <meta name="description" content="منصة مناقصة السعودية — انشر طلبك واستقبل عروض المزودين، قارن واختر الأنسب.">
 <title>مناقصة – منصة العطاءات</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -1289,6 +1290,7 @@ syncAuthUI();
 // ===== أزرار حسب الدور =====
 function _scrollTo(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function goAuthRole(role){
+  if(role==='client'&&window.track)track('StartPost');
   var u=getUser();
   if(u){
     // مسجّل أصلاً → ابقَ في الصفحة وانتقل للقسم المناسب
