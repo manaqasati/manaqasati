@@ -1322,8 +1322,18 @@ function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.matc
 function syncAuthUI(){
   try{
     var u=getUser();
-    var ghost=document.querySelector('nav .btn-ghost');
-    if(u && ghost){ ghost.textContent='لوحة التحكم'; ghost.setAttribute('onclick','goLogin()'); }
+    if(!u) return;
+    var btns=document.querySelectorAll('nav .nav-btns button');
+    btns.forEach(function(b){
+      var t=(b.textContent||'').trim();
+      var oc=(b.getAttribute('onclick')||'');
+      if(oc.indexOf('goLogin')>-1){ // زر تسجيل الدخول → لوحة التحكم
+        b.textContent='لوحة التحكم';
+        b.setAttribute('onclick', "location.href='"+(u.role==='provider'?'dashboard-provider.html':'dashboard-client.html')+"'");
+      } else if(oc.indexOf("goAuthRole('client')")>-1 && t.indexOf('ابدأ')>-1){ // ابدأ مجاناً → إخفاء للمسجّل
+        b.style.display='none';
+      }
+    });
   }catch(e){}
 }
 syncAuthUI();
