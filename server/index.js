@@ -498,6 +498,82 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
   } catch(e) { console.error('notifyWithEmail email part:', e.message); }
 }
 
+/* ═══════════ محرّك التذكيرات المجدولة (Push + Email، مرّة واحدة لكل حالة) ═══════════ */
+async function _remindOnce(userId, kind, refId, title, body, emailSubject, emailBody, btnText, btnUrl){
+  try{
+    const ins = await pool.query(
+      `INSERT INTO reminders_log(user_id, kind, ref_id) VALUES($1,$2,$3) ON CONFLICT (user_id, kind, ref_id) DO NOTHING RETURNING id`,
+      [userId, kind, refId||0]
+    );
+    if(!ins.rows.length) return false; // أُرسل سابقاً
+    await notifyWithEmail(userId, title, body, 'reminder', refId, emailSubject, emailBody, btnText, btnUrl);
+    return true;
+  }catch(e){ console.error('_remindOnce '+kind+':', e.message); return false; }
+}
+async function runReminders(){
+  try{
+    const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
+    const dDeal   = Math.max(0, parseInt(await getSetting('rem_deal_days','5'))||5);
+    const dReview = Math.max(0, parseInt(await getSetting('rem_review_days','1'))||1);
+    const dProfile= Math.max(0, parseInt(await getSetting('rem_profile_days','1'))||1);
+    const on = async (k)=> (await getSetting('rem_'+k+'_on','1'))!=='0';
+    // 1) عميل عنده عروض ولم يختر
+    if(await on('offers')){
+    const r1 = await pool.query(
+      `SELECT r.id, r.client_id, r.title, COUNT(b.id) AS bids
+       FROM requests r JOIN bids b ON b.request_id=r.id
+       WHERE r.status='open' AND r.assigned_provider_id IS NULL
+         AND r.created_at <= NOW() - ($1 || ' days')::interval
+       GROUP BY r.id, r.client_id, r.title HAVING COUNT(b.id) > 0`, [String(dOffers)]);
+    for(const x of r1.rows){
+      await _remindOnce(x.client_id, 'offers_waiting', x.id,
+        'عندك عروض بانتظارك 🎯', `وصلك ${x.bids} عرض على "${x.title}" — قارن واختر الأنسب`,
+        'عروض بانتظار اختيارك', `<p>وصلك <strong>${x.bids}</strong> عرض على مشروعك "<strong>${x.title}</strong>".</p><p>ادخل الآن، قارن العروض، واختر الأنسب لك.</p>`,
+        'استعراض العروض', SITE_URL+'/dashboard-client.html');
+    }}
+    // 2) اختار مزوّداً ولم تُتمّ الصفقة
+    if(await on('deal')){
+    const r2 = await pool.query(
+      `SELECT id, client_id, title FROM requests
+       WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
+         AND assigned_at <= NOW() - ($1 || ' days')::interval AND status NOT IN ('completed','cancelled')`, [String(dDeal)]);
+    for(const x of r2.rows){
+      await _remindOnce(x.client_id, 'complete_deal', x.id,
+        'أتمم صفقتك ✅', `مشروعك "${x.title}" ما زال قيد التنفيذ — تابع مع المزوّد لإتمامه`,
+        'أتمم صفقتك', `<p>مشروعك "<strong>${x.title}</strong>" ما زال مفتوحاً.</p><p>تابع مع المزوّد، أكمل الصفقة، ثم قيّمه ليستفيد غيرك.</p>`,
+        'متابعة المشروع', SITE_URL+'/dashboard-client.html');
+    }}
+    // 3) صفقة تمّت ولم يقيّم العميل
+    if(await on('review')){
+    const r3 = await pool.query(
+      `SELECT r.id, r.client_id, r.title FROM requests r
+       WHERE r.completed_at IS NOT NULL AND r.completed_at <= NOW() - ($1 || ' days')::interval
+         AND NOT EXISTS (SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)`, [String(dReview)]);
+    for(const x of r3.rows){
+      await _remindOnce(x.client_id, 'review_reminder', x.id,
+        'قيّم المزوّد ⭐', `كيف كانت تجربتك في "${x.title}"؟ أضف تقييمك الآن`,
+        'رأيك يهمّنا', `<p>أنهيت مشروع "<strong>${x.title}</strong>".</p><p>قيّم المزوّد ليساعد غيرك على الاختيار الصحيح — دقيقة واحدة تكفي.</p>`,
+        'أضف تقييمك', SITE_URL+'/dashboard-client.html');
+    }}
+    // 4) مزوّد ملفه ناقص
+    if(await on('profile')){
+    const r4 = await pool.query(
+      `SELECT id FROM users WHERE role='provider' AND created_at <= NOW() - ($1 || ' days')::interval
+        AND (bio IS NULL OR bio='' OR profile_image IS NULL
+             OR specialties IS NULL OR array_length(specialties,1) IS NULL
+             OR portfolio_images IS NULL OR array_length(portfolio_images,1) IS NULL)`, [String(dProfile)]);
+    for(const x of r4.rows){
+      await _remindOnce(x.id, 'complete_profile', 0,
+        'أكمل ملفك التعريفي 🚀', 'الملف المكتمل يجذب فرصاً أكثر — أضف نبذتك وأعمالك وتخصصاتك',
+        'أكمل ملفك لتحصل على فرص أكثر', `<p>المزوّدون بملفات مكتملة يحصلون على <strong>عروض وفرص أكثر بكثير</strong>.</p><p>أضف صورتك، نبذتك، تخصصاتك، ومعرض أعمالك الآن لتبرز أمام العملاء.</p>`,
+        'أكمل ملفي', SITE_URL+'/dashboard-provider.html');
+    }}
+  }catch(e){ console.error('runReminders:', e.message); }
+}
+setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
+setTimeout(runReminders, 60000);          // مرّة بعد دقيقة من الإقلاع
+
+
 function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
 
 // ═══ مستوى المزود (tier) — مستنتج من الصفقات المكتملة، منفصل عن badge اليدوي ═══
@@ -555,6 +631,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
@@ -2228,6 +2305,57 @@ app.get('/api/pixels/public', async (req, res) => {
       googleId: p.googleOn ? p.googleId : ''
     });
   } catch(e){ res.json({ metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'' }); }
+});
+
+// إعدادات التذكيرات والبطاقة (أدمن) — قراءة
+const REMINDER_DEFAULTS = { offersDays:2, dealDays:5, reviewDays:1, profileDays:1,
+  offersOn:true, dealOn:true, reviewOn:true, profileOn:true,
+  nudgeDelaySec:20, nudgeSnoozeDays:3 };
+async function getReminderCfg(){
+  const g = async (k,d)=> { const v = await getSetting(k, null); return v==null? d : v; };
+  return {
+    offersDays: parseInt(await g('rem_offers_days','2'))||2,
+    dealDays: parseInt(await g('rem_deal_days','5'))||5,
+    reviewDays: parseInt(await g('rem_review_days','1'))||1,
+    profileDays: parseInt(await g('rem_profile_days','1'))||1,
+    offersOn: (await g('rem_offers_on','1'))!=='0',
+    dealOn: (await g('rem_deal_on','1'))!=='0',
+    reviewOn: (await g('rem_review_on','1'))!=='0',
+    profileOn: (await g('rem_profile_on','1'))!=='0',
+    nudgeDelaySec: parseInt(await g('nudge_delay_sec','20'))||20,
+    nudgeSnoozeDays: parseInt(await g('nudge_snooze_days','3'))||3
+  };
+}
+app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
+  try { res.json(await getReminderCfg()); } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
+});
+app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
+  try {
+    const b = req.body||{};
+    const num=(v,d)=>{ v=parseInt(v); return isNaN(v)||v<0? d : Math.min(v,3650); };
+    await setSetting('rem_offers_days', String(num(b.offersDays,2)));
+    await setSetting('rem_deal_days', String(num(b.dealDays,5)));
+    await setSetting('rem_review_days', String(num(b.reviewDays,1)));
+    await setSetting('rem_profile_days', String(num(b.profileDays,1)));
+    await setSetting('rem_offers_on', b.offersOn===false?'0':'1');
+    await setSetting('rem_deal_on', b.dealOn===false?'0':'1');
+    await setSetting('rem_review_on', b.reviewOn===false?'0':'1');
+    await setSetting('rem_profile_on', b.profileOn===false?'0':'1');
+    await setSetting('nudge_delay_sec', String(num(b.nudgeDelaySec,20)));
+    await setSetting('nudge_snooze_days', String(num(b.nudgeSnoozeDays,3)));
+    await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
+    res.json({ ok:true });
+  } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
+});
+// عام: تقرأه لوحة المزوّد لإعداد البطاقة العائمة
+app.get('/api/nudge-config', async (req,res)=>{
+  try {
+    res.set('Cache-Control','public, max-age=120');
+    res.json({
+      delaySec: parseInt(await getSetting('nudge_delay_sec','20'))||20,
+      snoozeDays: parseInt(await getSetting('nudge_snooze_days','3'))||3
+    });
+  } catch(e){ res.json({ delaySec:20, snoozeDays:3 }); }
 });
 
 // إحصائيات تسويقية داخلية (من قاعدة البيانات — دقيقة)
