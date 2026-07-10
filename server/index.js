@@ -2358,6 +2358,25 @@ app.get('/api/nudge-config', async (req,res)=>{
   } catch(e){ res.json({ delaySec:20, snoozeDays:3 }); }
 });
 
+// إحصائيات بفلاتر زمنية (يوم/أسبوع/شهر/سنة/الكل)
+app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const map = { day:'1 day', week:'7 days', month:'30 days', year:'365 days' };
+    const period = String(req.query.period||'week');
+    const intv = map[period]; // undefined => all
+    const cond = intv ? ` AND created_at > NOW() - INTERVAL '${intv}'` : '';
+    const q = (sql)=>pool.query(sql);
+    const [projects, providers, clients, bids] = await Promise.all([
+      q(`SELECT COUNT(*) c FROM requests WHERE 1=1${cond}`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='provider'${cond}`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='client'${cond}`),
+      q(`SELECT COUNT(*) c FROM bids WHERE 1=1${cond}`)
+    ]);
+    const n = r => parseInt(r.rows[0].c)||0;
+    res.json({ period, projects:n(projects), providers:n(providers), clients:n(clients), bids:n(bids) });
+  } catch(e){ console.error('/stats-range:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
+});
+
 // إحصائيات تسويقية داخلية (من قاعدة البيانات — دقيقة)
 app.get('/api/admin/marketing-stats', requirePermission('analytics.view'), async (req, res) => {
   try {
