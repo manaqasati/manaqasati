@@ -2185,6 +2185,79 @@ app.get('/api/admin/settings', requirePermission('settings.manage'), async (req,
   catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+/* ═══════════ التسويق والبكسلات ═══════════ */
+const PIXEL_DEFAULTS = { metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'', metaOn:true, tiktokOn:true, snapOn:true, googleOn:true };
+async function getPixels(){
+  try { const raw = await getSetting('pixels', null); const p = raw ? JSON.parse(raw) : {}; return Object.assign({}, PIXEL_DEFAULTS, p); }
+  catch(e){ return Object.assign({}, PIXEL_DEFAULTS); }
+}
+
+// قراءة إعداد البكسلات (أدمن)
+app.get('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
+  try { res.json(await getPixels()); }
+  catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
+});
+
+// حفظ إعداد البكسلات (أدمن)
+app.put('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const clean = {
+      metaPixelId: String(b.metaPixelId||'').trim().slice(0,64),
+      tiktokPixelId: String(b.tiktokPixelId||'').trim().slice(0,64),
+      snapPixelId: String(b.snapPixelId||'').trim().slice(0,64),
+      googleId: String(b.googleId||'').trim().slice(0,64),
+      metaOn: b.metaOn!==false, tiktokOn: b.tiktokOn!==false,
+      snapOn: b.snapOn!==false, googleOn: b.googleOn!==false
+    };
+    await setSetting('pixels', JSON.stringify(clean));
+    await logAdmin(req, 'update_pixels', 'settings', null, 'تحديث بكسلات التتبّع');
+    res.json({ ok:true, pixels:clean });
+  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
+});
+
+// عام: يقرأه track.js (المُعرّفات المفعّلة فقط)
+app.get('/api/pixels/public', async (req, res) => {
+  try {
+    const p = await getPixels();
+    res.set('Cache-Control','public, max-age=120');
+    res.json({
+      metaPixelId: p.metaOn ? p.metaPixelId : '',
+      tiktokPixelId: p.tiktokOn ? p.tiktokPixelId : '',
+      snapPixelId: p.snapOn ? p.snapPixelId : '',
+      googleId: p.googleOn ? p.googleId : ''
+    });
+  } catch(e){ res.json({ metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'' }); }
+});
+
+// إحصائيات تسويقية داخلية (من قاعدة البيانات — دقيقة)
+app.get('/api/admin/marketing-stats', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const q = (sql)=>pool.query(sql);
+    const [regTotal, regClient, regProvider, reg7Client, reg7Provider, reg1, projTotal, proj7, bidsTotal, cities] = await Promise.all([
+      q(`SELECT COUNT(*) c FROM users WHERE role IN ('client','provider')`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='client'`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='provider'`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) c FROM users WHERE role IN ('client','provider') AND created_at > NOW() - INTERVAL '1 day'`),
+      q(`SELECT COUNT(*) c FROM requests`),
+      q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) c FROM bids`),
+      q(`SELECT city, COUNT(*) c FROM users WHERE city IS NOT NULL AND city<>'' GROUP BY city ORDER BY c DESC LIMIT 6`)
+    ]);
+    const n = r => parseInt(r.rows[0].c)||0;
+    const clients = n(regClient), providers = n(regProvider), projects = n(projTotal), bids = n(bidsTotal);
+    res.json({
+      registrations:{ total:n(regTotal), clients, providers, last24h:n(reg1), last7Clients:n(reg7Client), last7Providers:n(reg7Provider) },
+      projects:{ total:projects, last7:n(proj7) },
+      bids:{ total:bids },
+      conversion:{ projectsPerClient: clients? +(projects/clients).toFixed(2):0, bidsPerProject: projects? +(bids/projects).toFixed(2):0 },
+      topCities: cities.rows.map(x=>({ city:x.city, count:parseInt(x.c)||0 }))
+    });
+  } catch(e){ console.error('/marketing-stats:', e); res.status(500).json({ message:'حدث خطأ' }); }
+});
+
 app.put('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
     const allowed = ['review_minutes'];
