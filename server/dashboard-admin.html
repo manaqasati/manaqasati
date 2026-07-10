@@ -327,6 +327,7 @@ tbody tr:hover{background:var(--bg)}
     <div class="nav-label">النظام</div>
     <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
     <button class="ni" onclick="showPage('settings',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>الإعدادات</button>
+    <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
   </nav>
   <div class="side-foot">
     <button class="logoutbtn" onclick="logout()"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
@@ -444,6 +445,21 @@ tbody tr:hover{background:var(--bg)}
 
     <div class="page" id="page-settings">
       <div class="card" style="max-width:580px"><div class="card-head"><h3>إعدادات المنصة</h3></div><div class="card-body" id="settings-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+    </div>
+
+    <div class="page" id="page-marketing">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+        <div class="card"><div class="card-head"><h3>بكسلات التتبّع</h3></div><div class="card-body" id="pixels-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+        <div class="card"><div class="card-head"><h3>إحصائيات التسويق</h3></div><div class="card-body" id="mkstats-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>لوحات المنصّات الإعلانية</h3></div><div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <a href="https://business.facebook.com/events_manager" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Meta Events Manager</a>
+          <a href="https://ads.tiktok.com/i18n/events" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">TikTok Events</a>
+          <a href="https://ads.snapchat.com" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Snapchat Ads</a>
+          <a href="https://analytics.google.com" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Google Analytics</a>
+        </div>
+      </div></div>
     </div>
 
   </div>
@@ -577,13 +593,14 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();loadNeedsAction();}
   if(pg==='analytics')loadAnalytics();
   if(pg==='settings')loadSettings();
+  if(pg==='marketing')loadMarketing();
   if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
@@ -1596,6 +1613,68 @@ function renderAnalytics(a,statsData){
 }
 
 // ═══ إعدادات المنصة ═══
+function loadMarketing(){ loadPixels(); loadMkStats(); }
+function loadPixels(){
+  var box=document.getElementById('pixels-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/pixels',hdr()).then(function(r){return r.json();}).then(renderPixels).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
+}
+function _pxRow(id,label,val,on,ph){
+  return '<div style="margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      +'<label style="font-size:13px;font-weight:700;color:var(--text2)">'+label+'</label>'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="px-'+id+'-on" '+(on?'checked':'')+'> مفعّل</label>'
+    +'</div>'
+    +'<input id="px-'+id+'" value="'+String(val||'').replace(/"/g,'&quot;')+'" placeholder="'+ph+'" style="width:100%">'
+  +'</div>';
+}
+function renderPixels(p){
+  p=p||{};var box=document.getElementById('pixels-body');if(!box)return;
+  box.innerHTML=
+    _pxRow('meta','Meta / فيسبوك وإنستغرام',p.metaPixelId,p.metaOn!==false,'123456789012345')
+   +_pxRow('tiktok','TikTok',p.tiktokPixelId,p.tiktokOn!==false,'CXXXXXXXXXXXXXXXXXXX')
+   +_pxRow('snap','Snapchat',p.snapPixelId,p.snapOn!==false,'xxxxxxxx-xxxx-xxxx')
+   +_pxRow('google','Google GA4',p.googleId,p.googleOn!==false,'G-XXXXXXXXXX')
+   +'<button class="btn-p" style="max-width:200px" onclick="savePixels()">حفظ البكسلات</button>';
+}
+function savePixels(){
+  var body={
+    metaPixelId:document.getElementById('px-meta').value.trim(),
+    tiktokPixelId:document.getElementById('px-tiktok').value.trim(),
+    snapPixelId:document.getElementById('px-snap').value.trim(),
+    googleId:document.getElementById('px-google').value.trim(),
+    metaOn:document.getElementById('px-meta-on').checked,
+    tiktokOn:document.getElementById('px-tiktok-on').checked,
+    snapOn:document.getElementById('px-snap-on').checked,
+    googleOn:document.getElementById('px-google-on').checked
+  };
+  fetch(API+'/api/admin/pixels',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
+    .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ البكسلات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
+    .catch(function(){ toast('تعذر الاتصال','error'); });
+}
+function loadMkStats(){
+  var box=document.getElementById('mkstats-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/marketing-stats',hdr()).then(function(r){return r.json();}).then(renderMkStats).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
+}
+function _mkStat(v,l,c){return '<div style="background:var(--p-light);border-radius:12px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:'+(c||'var(--accent)')+'">'+v+'</div><div style="font-size:11px;color:var(--muted);margin-top:3px">'+l+'</div></div>';}
+function renderMkStats(s){
+  s=s||{};var r=s.registrations||{},p=s.projects||{},b=s.bids||{},cv=s.conversion||{};
+  var box=document.getElementById('mkstats-body');if(!box)return;
+  var cities=(s.topCities||[]).map(function(x){return '<span style="display:inline-block;background:var(--p-light);border-radius:20px;padding:4px 12px;font-size:12px;margin:3px">'+x.city+' ('+x.count+')</span>';}).join('');
+  box.innerHTML=
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">'
+    +_mkStat(r.total||0,'إجمالي التسجيلات')
+    +_mkStat(r.clients||0,'عملاء','#16a34a')
+    +_mkStat(r.providers||0,'مزودون','#d97706')
+    +_mkStat(r.last24h||0,'تسجيل (24 ساعة)')
+    +_mkStat(p.total||0,'مشاريع منشورة')
+    +_mkStat(b.total||0,'عروض مقدّمة')
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    +_mkStat(cv.projectsPerClient||0,'مشاريع لكل عميل')
+    +_mkStat(cv.bidsPerProject||0,'عروض لكل مشروع')
+    +'</div>'
+    +(cities?'<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">المدن الأكثر نشاطاً</div>'+cities+'</div>':'');
+}
 function loadSettings(){
   var box=document.getElementById('settings-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/settings',hdr()).then(function(r){return r.json();}).then(function(st){renderSettings(st||{});}).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
