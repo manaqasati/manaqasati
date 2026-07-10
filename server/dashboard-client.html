@@ -1413,9 +1413,12 @@ function loadActions(id){
         var btn=document.getElementById('rate-action-btn');
         if(rv&&rv.id&&btn){btn.outerHTML='<div style="text-align:center;padding:12px;background:var(--green-l);border-radius:10px;color:var(--green);font-size:13px;font-weight:700">'+check+' تم تقييم المزود</div>';}
       }).catch(function(){});
+    } else if(req.status==='closed_auto'||req.status==='cancelled'||req.status==='expired'){
+      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
+        +'<div style="text-align:center;padding:8px 0 14px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:700">هذا الطلب مُغلق</div></div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;text-align:center">تقدر تعيد نشره ليظهر للمزوّدين من جديد وتستقبل عروضاً.</p>'
+        +'<button class="btn-sm bs-p" onclick="repostReq('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>إعادة نشر الطلب</button></div>';
     } else {
-      h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
-    }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
   }).catch(function(){if(el)el.innerHTML=errH();});
 }
@@ -1438,6 +1441,13 @@ function loadTimeline(id){
         +'</div>';
     })
     .catch(function(){el.innerHTML=emptyH('لا توجد أنشطة','');});
+}
+function repostReq(id){
+  if(!confirm('إعادة نشر هذا الطلب ليستقبل عروضاً جديدة؟'))return;
+  fetch(API+'/api/requests/'+id+'/repost',Object.assign({method:'PUT'},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.ok){showToast('تم إعادة نشر الطلب','success');loadActions(id);loadHome();if(window.track)track('StartPost');} else showToast((d&&d.message)||'تعذر إعادة النشر','error'); })
+    .catch(function(){showToast('تعذر الاتصال','error');});
 }
 function markNotDone(id){
   fetch(API+'/api/requests/'+id+'/not-done',Object.assign({method:'PUT'},hdr()))
