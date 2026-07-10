@@ -301,6 +301,8 @@ tbody tr:hover{background:var(--bg)}
 .sel-info{font-size:13px;font-weight:700;color:var(--p)}
 .sel-info b{font-size:16px;font-family:'Cairo',sans-serif}
 .uchk{width:16px;height:16px;cursor:pointer;accent-color:var(--p);vertical-align:middle}
+.rtab{border:none;background:transparent;color:var(--muted);font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer}
+.rtab.on{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 </style>
 </head>
 <body>
@@ -452,6 +454,15 @@ tbody tr:hover{background:var(--bg)}
         <div class="card"><div class="card-head"><h3>بكسلات التتبّع</h3></div><div class="card-body" id="pixels-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
         <div class="card"><div class="card-head"><h3>إحصائيات التسويق</h3></div><div class="card-body" id="mkstats-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>إحصائيات بالفترة</h3>
+        <div id="range-tabs" style="display:flex;gap:6px;background:var(--p-light);border-radius:10px;padding:4px;flex-wrap:wrap">
+          <button class="rtab on" data-p="day" onclick="setRange(this,'day')">اليوم</button>
+          <button class="rtab" data-p="week" onclick="setRange(this,'week')">أسبوع</button>
+          <button class="rtab" data-p="month" onclick="setRange(this,'month')">شهر</button>
+          <button class="rtab" data-p="year" onclick="setRange(this,'year')">سنة</button>
+          <button class="rtab" data-p="all" onclick="setRange(this,'all')">الكل</button>
+        </div>
+      </div><div class="card-body" id="range-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>إعدادات التذكيرات والبطاقة</h3></div><div class="card-body" id="reminders-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>لوحات المنصّات الإعلانية</h3></div><div class="card-body">
         <div style="display:flex;flex-wrap:wrap;gap:10px">
@@ -1614,7 +1625,25 @@ function renderAnalytics(a,statsData){
 }
 
 // ═══ إعدادات المنصة ═══
-function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); }
+function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); loadRange('day'); }
+function setRange(btn,p){
+  var tabs=document.querySelectorAll('#range-tabs .rtab'); for(var i=0;i<tabs.length;i++)tabs[i].className='rtab';
+  if(btn)btn.className='rtab on';
+  loadRange(p);
+}
+function loadRange(p){
+  var box=document.getElementById('range-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/stats-range?period='+encodeURIComponent(p),hdr()).then(function(r){return r.json();}).then(renderRange).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
+}
+function renderRange(s){
+  s=s||{};var box=document.getElementById('range-body');if(!box)return;
+  box.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+    +_mkStat(s.projects||0,'مشاريع منشورة')
+    +_mkStat(s.clients||0,'تسجيل عملاء','#16a34a')
+    +_mkStat(s.providers||0,'تسجيل مزودين','#d97706')
+    +_mkStat(s.bids||0,'عروض مقدّمة','#0ea5e9')
+    +'</div>';
+}
 function loadReminders(){
   var box=document.getElementById('reminders-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/reminders',hdr()).then(function(r){return r.json();}).then(renderReminders).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
