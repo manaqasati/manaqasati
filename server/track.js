@@ -8,7 +8,7 @@
   /* ── ١) ضع مُعرّفات البكسل هنا (اترك الفارغ كما هو لتعطيل منصّة) ── */
   var CONFIG = {
     metaPixelId:  '',   // مثال: '123456789012345'      (Meta / فيسبوك)
-    tiktokPixelId:'',   // مثال: 'CXXXXXXXXXXXXXXXXXXX'  (TikTok)
+    tiktokPixelId:'D9809HJC77U79CKESO0G',   // TikTok (افتراضي — يمكن تغييره من لوحة الأدمن)
     snapPixelId:  '',   // مثال: 'xxxxxxxx-xxxx-xxxx'    (Snapchat)
     googleId:     ''    // مثال: 'G-XXXXXXXXXX'          (Google GA4)
   };
@@ -75,10 +75,22 @@
     window.gtag('js',new Date());window.gtag('config',id);
   }
 
-  loadMeta(CONFIG.metaPixelId);
-  loadTikTok(CONFIG.tiktokPixelId);
-  loadSnap(CONFIG.snapPixelId);
-  loadGoogle(CONFIG.googleId);
+  var PIXELS_API = 'https://manaqasati-production.up.railway.app/api/pixels/public';
+  function initPlatforms(cfg){
+    cfg = cfg || {};
+    ['metaPixelId','tiktokPixelId','snapPixelId','googleId'].forEach(function(k){ if (cfg[k]) CONFIG[k] = cfg[k]; });
+    loadMeta(CONFIG.metaPixelId);
+    loadTikTok(CONFIG.tiktokPixelId);
+    loadSnap(CONFIG.snapPixelId);
+    loadGoogle(CONFIG.googleId);
+  }
+  // يقرأ المُعرّفات من لوحة الأدمن (إن وُجدت) ثم يبدأ — وإلا يستخدم الافتراضي
+  try {
+    fetch(PIXELS_API, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (cfg) { initPlatforms(cfg); })
+      .catch(function () { initPlatforms(); });
+  } catch (e) { initPlatforms(); }
 
   /* ── ٤) الدالة الموحّدة ── */
   window.track = function (eventName, params) {
