@@ -568,6 +568,71 @@ async function runReminders(){
         'أكمل ملفك لتحصل على فرص أكثر', `<p>المزوّدون بملفات مكتملة يحصلون على <strong>عروض وفرص أكثر بكثير</strong>.</p><p>أضف صورتك، نبذتك، تخصصاتك، ومعرض أعمالك الآن لتبرز أمام العملاء.</p>`,
         'أكمل ملفي', SITE_URL+'/dashboard-provider.html');
     }}
+
+    /* ═══ دورة حياة المشروع (أتمتة) ═══ */
+    // أ) مشروع بعروض ولم يُختر: تنبيه قبل الإغلاق ثم إغلاق تلقائي
+    if((await getSetting('lc_close_on','1'))!=='0'){
+      const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+      const warnBefore = Math.max(0, parseInt(await getSetting('lc_close_warn','2'))||2);
+      // تنبيه قبل الإغلاق
+      if(warnBefore>0){
+        const w = await pool.query(
+          `SELECT id, client_id, title FROM requests
+           WHERE status='open' AND assigned_provider_id IS NULL
+             AND created_at <= NOW() - (($1-$2) || ' days')::interval
+             AND created_at >  NOW() - ($1 || ' days')::interval`, [String(closeDays), String(warnBefore)]);
+        for(const x of w.rows){
+          await _remindOnce(x.client_id, 'close_warn', x.id,
+            'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${x.title}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
+            'بادر قبل إغلاق مشروعك', `<p>مشروعك "<strong>${x.title}</strong>" سيُغلق تلقائياً خلال <strong>${warnBefore} يوم</strong> لعدم اختيار عرض.</p><p>ادخل الآن واختر الأنسب قبل فوات الفرصة.</p>`,
+            'اختر عرضاً الآن', SITE_URL+'/dashboard-client.html');
+        }
+      }
+      // الإغلاق الفعلي
+      const cl = await pool.query(
+        `UPDATE requests SET status='closed_auto'
+         WHERE status='open' AND assigned_provider_id IS NULL
+           AND created_at <= NOW() - ($1 || ' days')::interval
+         RETURNING id, client_id, title`, [String(closeDays)]);
+      for(const x of cl.rows){
+        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${x.title}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
+      }
+      if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
+    }
+
+    // ب) مشروع اختير مزوّده ولم يُتمّ: طلب تأكيد (موافقة ضمنية)
+    if((await getSetting('lc_confirm_on','1'))!=='0'){
+      const confirmDays = Math.max(1, parseInt(await getSetting('lc_confirm_days','20'))||20);
+      const graceDays   = Math.max(1, parseInt(await getSetting('lc_confirm_grace','3'))||3);
+      // 1) اطلب التأكيد (مرّة)، وسجّل وقت الطلب
+      const ask = await pool.query(
+        `SELECT id, client_id, title FROM requests
+         WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
+           AND status NOT IN ('completed','cancelled','closed_auto','archived_auto')
+           AND (confirm_requested_at IS NULL)
+           AND assigned_at <= NOW() - ($1 || ' days')::interval`, [String(confirmDays)]);
+      for(const x of ask.rows){
+        try{
+          await pool.query(`UPDATE requests SET confirm_requested_at=NOW() WHERE id=$1`, [x.id]);
+          await notifyWithEmail(x.client_id, 'هل تمّ تنفيذ مشروعك؟', `أكّد إن كان "${x.title}" قد نُفّذ`, 'request', x.id,
+            'أكّد إتمام مشروعك ✅', `<p>مشروعك "<strong>${x.title}</strong>" مع المزوّد المختار.</p><p>هل تمّ التنفيذ؟ ادخل وأكّد — وإن لم ترد خلال ${graceDays} أيام سنعتبره منتهياً تلقائياً.</p>`,
+            'تأكيد الإتمام', SITE_URL+'/dashboard-client.html');
+        }catch(e){}
+      }
+      // 2) بعد مهلة السماح بلا رد → منتهٍ بموافقة ضمنية
+      const done = await pool.query(
+        `UPDATE requests SET status='completed', completed_at=NOW(), auto_completed=TRUE
+         WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
+           AND confirm_requested_at IS NOT NULL
+           AND confirm_requested_at <= NOW() - ($1 || ' days')::interval
+           AND status NOT IN ('completed','cancelled','closed_auto','archived_auto')
+         RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
+      for(const x of done.rows){
+        try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${x.title}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
+        try{ if(x.assigned_provider_id){ await notify(x.assigned_provider_id, 'اكتمل المشروع', `اكتمل "${x.title}"`, 'request', x.id); await recomputeProviderTier(x.assigned_provider_id); } }catch(e){}
+      }
+      if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
+    }
   }catch(e){ console.error('runReminders:', e.message); }
 }
 setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
@@ -634,6 +699,8 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
+    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS confirm_requested_at TIMESTAMP'); } catch(e){}
+    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
@@ -1208,6 +1275,21 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
 
 // Alias
 app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.redirect(307, req.path.replace('/done','/complete')); });
+
+// «لم يتم بعد» — يوقف التأكيد التلقائي ويعيد ضبط المؤقّت
+app.put('/api/requests/:id/not-done', auth, clientOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `UPDATE requests SET confirm_requested_at=NULL, assigned_at=NOW()
+       WHERE id=$1 AND client_id=$2 AND completed_at IS NULL
+       RETURNING id`, [id, req.user.id]);
+    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو ليس طلبك' });
+    // امسح سجل التذكير حتى يُعاد لاحقاً
+    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('complete_deal')`, [id]); }catch(e){}
+    res.json({ ok:true });
+  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
+});
 
 // ═══ BIDS ═══
 app.get('/api/bids/my', auth, async (req, res) => {
@@ -2323,7 +2405,13 @@ async function getReminderCfg(){
     reviewOn: (await g('rem_review_on','1'))!=='0',
     profileOn: (await g('rem_profile_on','1'))!=='0',
     nudgeDelaySec: parseInt(await g('nudge_delay_sec','20'))||20,
-    nudgeSnoozeDays: parseInt(await g('nudge_snooze_days','3'))||3
+    nudgeSnoozeDays: parseInt(await g('nudge_snooze_days','3'))||3,
+    lcCloseOn: (await g('lc_close_on','1'))!=='0',
+    lcCloseDays: parseInt(await g('lc_close_days','20'))||20,
+    lcCloseWarn: parseInt(await g('lc_close_warn','2'))||2,
+    lcConfirmOn: (await g('lc_confirm_on','1'))!=='0',
+    lcConfirmDays: parseInt(await g('lc_confirm_days','20'))||20,
+    lcConfirmGrace: parseInt(await g('lc_confirm_grace','3'))||3
   };
 }
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
@@ -2343,6 +2431,12 @@ app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req
     await setSetting('rem_profile_on', b.profileOn===false?'0':'1');
     await setSetting('nudge_delay_sec', String(num(b.nudgeDelaySec,20)));
     await setSetting('nudge_snooze_days', String(num(b.nudgeSnoozeDays,3)));
+    await setSetting('lc_close_on', b.lcCloseOn===false?'0':'1');
+    await setSetting('lc_close_days', String(num(b.lcCloseDays,20)));
+    await setSetting('lc_close_warn', String(num(b.lcCloseWarn,2)));
+    await setSetting('lc_confirm_on', b.lcConfirmOn===false?'0':'1');
+    await setSetting('lc_confirm_days', String(num(b.lcConfirmDays,20)));
+    await setSetting('lc_confirm_grace', String(num(b.lcConfirmGrace,3)));
     await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
     res.json({ ok:true });
   } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
