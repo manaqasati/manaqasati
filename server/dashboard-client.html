@@ -1338,10 +1338,18 @@ function loadActions(id){
     var check='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>';
     var star='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
     if(req.status==='in_progress'){
-      // قيد التنفيذ: زر الإكمال فقط (لا تقييم قبل الاكتمال)
-      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
-        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال الطلب ثم يمكنك تقييمه.</p>'
-        +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل الطلب</button></div>';
+      var _asked=!!req.confirm_requested_at;
+      if(_asked){
+        // النظام طلب التأكيد — بطاقة واضحة بزرّين
+        h='<div class="card" style="border:2px solid var(--p);background:var(--p-l)"><div class="ch"><h3>هل تمّ تنفيذ مشروعك؟</h3></div>'
+          +'<p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.7">أكّد حالة مشروعك. إن لم ترد، سيُعتبر منتهياً تلقائياً — وتقدر تعترض باختيار «لم يتم بعد».</p>'
+          +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:14px;margin-bottom:9px">'+check+' نعم، تم التنفيذ</button>'
+          +'<button class="btn-sm" onclick="markNotDone('+id+')" style="width:100%;padding:12px;background:#fff;border:1px solid var(--border);color:var(--muted)">لم يتم بعد</button></div>';
+      } else {
+        h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
+          +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال الطلب ثم يمكنك تقييمه.</p>'
+          +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل الطلب</button></div>';
+      }
     } else if(req.status==='completed'||req.status==='done'){
       // مكتمل: أظهر زر التقييم
       h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
@@ -1377,6 +1385,12 @@ function loadTimeline(id){
         +'</div>';
     })
     .catch(function(){el.innerHTML=emptyH('لا توجد أنشطة','');});
+}
+function markNotDone(id){
+  fetch(API+'/api/requests/'+id+'/not-done',Object.assign({method:'PUT'},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.ok){showToast('تم — سنذكّرك لاحقاً','success');loadActions(id);loadHome();} else showToast((d&&d.message)||'تعذر التحديث','error'); })
+    .catch(function(){showToast('تعذر التحديث','error');});
 }
 function markDone(id){
   if(!confirm('هل تؤكد إتمام هذا الطلب؟'))return;
