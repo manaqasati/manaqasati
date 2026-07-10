@@ -452,6 +452,7 @@ tbody tr:hover{background:var(--bg)}
         <div class="card"><div class="card-head"><h3>بكسلات التتبّع</h3></div><div class="card-body" id="pixels-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
         <div class="card"><div class="card-head"><h3>إحصائيات التسويق</h3></div><div class="card-body" id="mkstats-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>إعدادات التذكيرات والبطاقة</h3></div><div class="card-body" id="reminders-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>لوحات المنصّات الإعلانية</h3></div><div class="card-body">
         <div style="display:flex;flex-wrap:wrap;gap:10px">
           <a href="https://business.facebook.com/events_manager" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Meta Events Manager</a>
@@ -1613,7 +1614,45 @@ function renderAnalytics(a,statsData){
 }
 
 // ═══ إعدادات المنصة ═══
-function loadMarketing(){ loadPixels(); loadMkStats(); }
+function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); }
+function loadReminders(){
+  var box=document.getElementById('reminders-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/reminders',hdr()).then(function(r){return r.json();}).then(renderReminders).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
+}
+function _remRow(id,label,days,on){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:150px">'+label+'</div>'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="0" id="rem-'+id+'-d" value="'+days+'" style="width:64px"> يوم</label>'
+      +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="rem-'+id+'-on" '+(on?'checked':'')+'> مفعّل</label>'
+    +'</div></div>';
+}
+function renderReminders(c){
+  c=c||{};var box=document.getElementById('reminders-body');if(!box)return;
+  box.innerHTML=
+    _remRow('offers','تذكير: عندك عروض ولم تختر (عميل)',c.offersDays!=null?c.offersDays:2,c.offersOn!==false)
+   +_remRow('deal','تذكير: أتمم صفقتك (عميل)',c.dealDays!=null?c.dealDays:5,c.dealOn!==false)
+   +_remRow('review','تذكير: قيّم المزوّد (عميل)',c.reviewDays!=null?c.reviewDays:1,c.reviewOn!==false)
+   +_remRow('profile','تذكير: أكمل ملفك (مزوّد)',c.profileDays!=null?c.profileDays:1,c.profileOn!==false)
+   +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+     +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:150px">بطاقة «أكمل ملفك» العائمة</div>'
+     +'<div style="display:flex;align-items:center;gap:10px">'
+       +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">تظهر بعد <input type="number" min="0" id="rem-delay" value="'+(c.nudgeDelaySec!=null?c.nudgeDelaySec:20)+'" style="width:64px"> ثانية</label>'
+       +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">كتم <input type="number" min="0" id="rem-snooze" value="'+(c.nudgeSnoozeDays!=null?c.nudgeSnoozeDays:3)+'" style="width:56px"> يوم</label>'
+     +'</div></div>'
+   +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ الإعدادات</button>';
+}
+function saveReminders(){
+  var v=function(id){return document.getElementById(id);};
+  var body={
+    offersDays:+v('rem-offers-d').value, dealDays:+v('rem-deal-d').value, reviewDays:+v('rem-review-d').value, profileDays:+v('rem-profile-d').value,
+    offersOn:v('rem-offers-on').checked, dealOn:v('rem-deal-on').checked, reviewOn:v('rem-review-on').checked, profileOn:v('rem-profile-on').checked,
+    nudgeDelaySec:+v('rem-delay').value, nudgeSnoozeDays:+v('rem-snooze').value
+  };
+  fetch(API+'/api/admin/reminders',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
+    .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ الإعدادات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
+    .catch(function(){ toast('تعذر الاتصال','error'); });
+}
 function loadPixels(){
   var box=document.getElementById('pixels-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/pixels',hdr()).then(function(r){return r.json();}).then(renderPixels).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
