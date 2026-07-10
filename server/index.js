@@ -633,6 +633,122 @@ async function runReminders(){
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
+
+    /* ═══ المرحلة ٢: تنشيط المزوّد الخامل ═══ */
+    // ج) مزوّد لم يدخل منذ مدة (اعتماداً على آخر ظهور)
+    if((await getSetting('react_inactive_on','1'))!=='0'){
+      const inDays = Math.max(1, parseInt(await getSetting('react_inactive_days','30'))||30);
+      const col = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name IN ('last_seen_at','last_login_at','updated_at')`);
+      const names = col.rows.map(r=>r.column_name);
+      const seenCol = names.includes('last_seen_at')?'last_seen_at':(names.includes('last_login_at')?'last_login_at':(names.includes('updated_at')?'updated_at':null));
+      if(seenCol){
+        const inactive = await pool.query(
+          `SELECT id FROM users WHERE role='provider'
+             AND ${seenCol} IS NOT NULL AND ${seenCol} <= NOW() - ($1 || ' days')::interval
+             AND ${seenCol} > NOW() - (($1::int + 14) || ' days')::interval`, [String(inDays)]);
+        for(const x of inactive.rows){
+          await _remindOnce(x.id, 'react_inactive_'+Math.floor(Date.now()/(14*86400000)), x.id,
+            'اشتقنا لك 👋', 'فيه فرص ومشاريع جديدة تناسب تخصصك — ادخل وقدّم عروضك',
+            'فرص جديدة بانتظارك', `<p>مضى وقت منذ آخر زيارة لك.</p><p>ظهرت مشاريع جديدة تناسب تخصصك — ادخل الآن وقدّم عروضك قبل أن تفوتك.</p>`,
+            'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html');
+        }
+      }
+    }
+    // د) مزوّد لم يقدّم أي عرض منذ مدة رغم وجود فرص
+    if((await getSetting('react_nobids_on','1'))!=='0'){
+      const nbDays = Math.max(1, parseInt(await getSetting('react_nobids_days','21'))||21);
+      const nobids = await pool.query(
+        `SELECT u.id FROM users u
+         WHERE u.role='provider' AND u.created_at <= NOW() - ($1 || ' days')::interval
+           AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.provider_id=u.id AND b.created_at > NOW() - ($1 || ' days')::interval)
+           AND EXISTS (SELECT 1 FROM requests r WHERE r.status='open' AND r.created_at > NOW() - INTERVAL '14 days')`, [String(nbDays)]);
+      for(const x of nobids.rows){
+        await _remindOnce(x.id, 'react_nobids_'+Math.floor(Date.now()/(21*86400000)), x.id,
+          'لا تفوّت الفرص 🎯', 'مشاريع مفتوحة تنتظر عروضك — كل عرض فرصة لعميل جديد',
+          'مشاريع تنتظر عروضك', `<p>يوجد مشاريع مفتوحة تناسب مجالك ولم تقدّم عليها عروضاً.</p><p>كلّما قدّمت أكثر، زادت فرصك في الفوز بعملاء جدد.</p>`,
+          'قدّم عرضك الآن', SITE_URL+'/dashboard-provider.html');
+      }
+    }
+
+    /* ═══ المرحلة ٣: جودة وثقة ═══ */
+    // هـ) طلب لم يصله أي عرض بعد مدة → نصيحة تحسين الوصف للعميل
+    if((await getSetting('q_nooffers_on','1'))!=='0'){
+      const noDays = Math.max(1, parseInt(await getSetting('q_nooffers_days','3'))||3);
+      const noOffers = await pool.query(
+        `SELECT r.id, r.client_id, r.title FROM requests r
+         WHERE r.status='open' AND r.assigned_provider_id IS NULL
+           AND r.created_at <= NOW() - ($1 || ' days')::interval
+           AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id)`, [String(noDays)]);
+      for(const x of noOffers.rows){
+        await _remindOnce(x.client_id, 'no_offers', x.id,
+          'لم تصلك عروض بعد 💡', `حسّن وصف "${x.title}" (تفاصيل، ميزانية، صور) لجذب عروض أفضل`,
+          'اجعل طلبك يجذب العروض', `<p>مشروعك "<strong>${x.title}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — الطلبات الواضحة تحصل على عروض أسرع وأفضل.</p>`,
+          'تحسين الطلب', SITE_URL+'/dashboard-client.html');
+      }
+    }
+    // و) مزوّد تقييمه منخفض → تنبيه لطيف لتحسين الخدمة
+    if((await getSetting('q_lowrating_on','1'))!=='0'){
+      const thr = parseFloat(await getSetting('q_lowrating_threshold','3.0'))||3.0;
+      const minR = Math.max(1, parseInt(await getSetting('q_lowrating_min','3'))||3);
+      const low = await pool.query(
+        `SELECT u.id FROM users u
+         WHERE u.role='provider' AND COALESCE(u.review_count,0) >= $2
+           AND COALESCE(u.avg_rating,0) > 0 AND COALESCE(u.avg_rating,0) < $1`, [String(thr), minR]);
+      for(const x of low.rows){
+        await _remindOnce(x.id, 'low_rating_'+Math.floor(Date.now()/(30*86400000)), x.id,
+          'لنرتقِ بخدمتك ⭐', 'تقييمك الحالي أقل من المتوسط — تحسين التواصل والالتزام يرفع تقييمك وفرصك',
+          'نصائح لرفع تقييمك', `<p>تقييمك الحالي أقل من المتوسط. لا تقلق — يمكن تحسينه بسرعة:</p><p>التزم بالمواعيد، تواصل بوضوح، واحرص على جودة التنفيذ. تقييم أعلى = عملاء أكثر.</p>`,
+          'تحسين ملفي', SITE_URL+'/dashboard-provider.html');
+      }
+    }
+
+    /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
+    // ز) ملخّص يومي للأدمن (مرّة كل يوم)
+    if((await getSetting('admin_summary_on','1'))!=='0'){
+      const dayKey = String(Math.floor(Date.now()/86400000));
+      if(await getSetting('admin_summary_lastday','') !== dayKey){
+        await setSetting('admin_summary_lastday', dayKey);
+        const q=(s)=>pool.query(s);
+        const [np, nc, npr, nb, nComp, cAuto] = await Promise.all([
+          q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM bids WHERE created_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM requests WHERE completed_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM requests WHERE status='closed_auto' AND created_at > NOW() - INTERVAL '2 days'`)
+        ]);
+        const n=r=>parseInt(r.rows[0].c)||0;
+        const html = emailTpl('ملخّص مناقصة اليومي',
+          `<p>ملخّص آخر ٢٤ ساعة:</p>
+           <ul style="line-height:2;font-size:15px">
+             <li>مشاريع جديدة: <strong>${n(np)}</strong></li>
+             <li>تسجيل عملاء: <strong>${n(nc)}</strong></li>
+             <li>تسجيل مزوّدين: <strong>${n(npr)}</strong></li>
+             <li>عروض مقدّمة: <strong>${n(nb)}</strong></li>
+             <li>مشاريع مكتملة: <strong>${n(nComp)}</strong></li>
+             <li>مشاريع أُغلقت تلقائياً: <strong>${n(cAuto)}</strong></li>
+           </ul>`, 'فتح لوحة الأدمن', SITE_URL+'/dashboard-admin.html');
+        const admins = await pool.query(`SELECT email FROM users WHERE role='admin' AND email IS NOT NULL`);
+        for(const a of admins.rows){ if(a.email) sendEmail(a.email, '📊 ملخّص مناقصة اليومي', html).catch(()=>{}); }
+      }
+    }
+    // ح) كشف شذوذ: طفرة تسجيلات في ساعة (احتمال حسابات وهمية)
+    if((await getSetting('admin_anomaly_on','1'))!=='0'){
+      const thr = Math.max(3, parseInt(await getSetting('admin_anomaly_threshold','15'))||15);
+      const spike = await pool.query(`SELECT COUNT(*) c FROM users WHERE created_at > NOW() - INTERVAL '1 hour'`);
+      const cnt = parseInt(spike.rows[0].c)||0;
+      if(cnt >= thr){
+        const hourKey = String(Math.floor(Date.now()/3600000));
+        if(await getSetting('admin_anomaly_lasthour','') !== hourKey){
+          await setSetting('admin_anomaly_lasthour', hourKey);
+          const admins = await pool.query(`SELECT id, email FROM users WHERE role='admin'`);
+          for(const a of admins.rows){
+            try{ await notify(a.id, '⚠️ تنبيه: طفرة تسجيلات', `تم تسجيل ${cnt} حساب خلال ساعة — يُنصح بالمراجعة`, 'system', 0); }catch(e){}
+            if(a.email) sendEmail(a.email, '⚠️ تنبيه شذوذ في التسجيلات', emailTpl('طفرة تسجيلات غير معتادة', `<p>تم تسجيل <strong>${cnt}</strong> حساب خلال الساعة الماضية.</p><p>قد تكون حسابات وهمية — يُنصح بمراجعة المستخدمين الجدد.</p>`, 'مراجعة المستخدمين', SITE_URL+'/dashboard-admin.html')).catch(()=>{});
+          }
+        }
+      }
+    }
   }catch(e){ console.error('runReminders:', e.message); }
 }
 setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
@@ -2411,7 +2527,19 @@ async function getReminderCfg(){
     lcCloseWarn: parseInt(await g('lc_close_warn','2'))||2,
     lcConfirmOn: (await g('lc_confirm_on','1'))!=='0',
     lcConfirmDays: parseInt(await g('lc_confirm_days','20'))||20,
-    lcConfirmGrace: parseInt(await g('lc_confirm_grace','3'))||3
+    lcConfirmGrace: parseInt(await g('lc_confirm_grace','3'))||3,
+    reactInactiveOn: (await g('react_inactive_on','1'))!=='0',
+    reactInactiveDays: parseInt(await g('react_inactive_days','30'))||30,
+    reactNobidsOn: (await g('react_nobids_on','1'))!=='0',
+    reactNobidsDays: parseInt(await g('react_nobids_days','21'))||21,
+    qNooffersOn: (await g('q_nooffers_on','1'))!=='0',
+    qNooffersDays: parseInt(await g('q_nooffers_days','3'))||3,
+    qLowRatingOn: (await g('q_lowrating_on','1'))!=='0',
+    qLowRatingThreshold: parseFloat(await g('q_lowrating_threshold','3.0'))||3.0,
+    qLowRatingMin: parseInt(await g('q_lowrating_min','3'))||3,
+    adminSummaryOn: (await g('admin_summary_on','1'))!=='0',
+    adminAnomalyOn: (await g('admin_anomaly_on','1'))!=='0',
+    adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15
   };
 }
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
@@ -2437,6 +2565,18 @@ app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req
     await setSetting('lc_confirm_on', b.lcConfirmOn===false?'0':'1');
     await setSetting('lc_confirm_days', String(num(b.lcConfirmDays,20)));
     await setSetting('lc_confirm_grace', String(num(b.lcConfirmGrace,3)));
+    await setSetting('react_inactive_on', b.reactInactiveOn===false?'0':'1');
+    await setSetting('react_inactive_days', String(num(b.reactInactiveDays,30)));
+    await setSetting('react_nobids_on', b.reactNobidsOn===false?'0':'1');
+    await setSetting('react_nobids_days', String(num(b.reactNobidsDays,21)));
+    await setSetting('q_nooffers_on', b.qNooffersOn===false?'0':'1');
+    await setSetting('q_nooffers_days', String(num(b.qNooffersDays,3)));
+    await setSetting('q_lowrating_on', b.qLowRatingOn===false?'0':'1');
+    { let t=parseFloat(b.qLowRatingThreshold); if(isNaN(t)||t<0)t=3.0; if(t>5)t=5; await setSetting('q_lowrating_threshold', String(t)); }
+    await setSetting('q_lowrating_min', String(num(b.qLowRatingMin,3)));
+    await setSetting('admin_summary_on', b.adminSummaryOn===false?'0':'1');
+    await setSetting('admin_anomaly_on', b.adminAnomalyOn===false?'0':'1');
+    await setSetting('admin_anomaly_threshold', String(num(b.adminAnomalyThreshold,15)));
     await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
     res.json({ ok:true });
   } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
