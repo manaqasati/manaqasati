@@ -726,6 +726,31 @@ async function runReminders(){
       }
     }
 
+    // ط) ملخّص أسبوعي للمزوّد (فرص مطابقة + عروضه)
+    if((await getSetting('provider_weekly_on','1'))!=='0'){
+      const weekKey = Math.floor(Date.now()/(7*86400000));
+      const provs = await pool.query(
+        `SELECT id, COALESCE(notify_categories, specialties) AS cats, city FROM users WHERE role='provider' AND is_active=TRUE`);
+      for(const p of provs.rows){
+        try{
+          const cats = Array.isArray(p.cats)?p.cats:[];
+          const opp = await pool.query(
+            `SELECT COUNT(*) c FROM requests r
+             WHERE r.status='open' AND r.assigned_provider_id IS NULL
+               AND r.created_at > NOW() - INTERVAL '7 days'
+               AND ($1::text[] IS NULL OR array_length($1::text[],1) IS NULL OR r.category = ANY($1::text[]))
+               AND ($2::text IS NULL OR r.city IS NULL OR r.city = $2)`,
+            [cats.length?cats:null, p.city||null]);
+          const cnt = parseInt(opp.rows[0].c)||0;
+          if(cnt<=0) continue;
+          await _remindOnce(p.id, 'weekly_'+weekKey, p.id,
+            '📊 ملخّصك الأسبوعي', `${cnt} مشروع جديد يناسب تخصصك هذا الأسبوع — بادر بتقديم عروضك`,
+            'فرص هذا الأسبوع تناسبك', `<p>هذا الأسبوع ظهر <strong>${cnt}</strong> مشروع جديد يناسب تخصصك${p.city?(' في '+p.city):''}.</p><p>سارع بتقديم عروضك — المبادرة المبكرة ترفع فرص الفوز.</p>`,
+            'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html');
+        }catch(e){}
+      }
+    }
+
     /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
     // ز) ملخّص يومي للأدمن (مرّة كل يوم)
     if((await getSetting('admin_summary_on','1'))!=='0'){
@@ -1957,6 +1982,21 @@ app.get('/api/stats', async (req, res) => {
     const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
     res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
   } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
+});
+
+// عام: أحدث المشاريع المنجزة (دليل اجتماعي — بيانات مجهّلة)
+app.get('/api/showcase', async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT r.title, r.category, r.city, r.completed_at,
+              (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
+       FROM requests r
+       WHERE r.status='completed' AND r.completed_at IS NOT NULL
+         AND (r.category IS DISTINCT FROM 'direct')
+       ORDER BY r.completed_at DESC LIMIT 8`);
+    res.set('Cache-Control','public, max-age=300');
+    res.json(r.rows.map(x=>({ title:x.title, category:x.category||'', city:x.city||'', offers:x.offers||0 })));
+  } catch(e){ res.json([]); }
 });
 
 // ═══ ADMIN ═══
