@@ -465,6 +465,9 @@ tbody tr:hover{background:var(--bg)}
       </div><div class="card-body" id="range-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>إعدادات التذكيرات والبطاقة</h3></div><div class="card-body" id="reminders-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>أتمتة دورة حياة المشروع</h3></div><div class="card-body" id="lifecycle-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>تنشيط المزوّدين الخاملين</h3></div><div class="card-body" id="react-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>الجودة والثقة</h3></div><div class="card-body" id="quality-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>تنبيهات الأدمن</h3></div><div class="card-body" id="adminalerts-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>لوحات المنصّات الإعلانية</h3></div><div class="card-body">
         <div style="display:flex;flex-wrap:wrap;gap:10px">
           <a href="https://business.facebook.com/events_manager" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Meta Events Manager</a>
@@ -1692,6 +1695,61 @@ function renderLifecycle(c){
       +'</div></div>'
     +'<div style="font-size:11px;color:var(--muted);background:var(--p-light);border-radius:10px;padding:10px;margin-top:8px;line-height:1.7">إن لم يرد العميل خلال مهلة الرد، يُعتبر المشروع منتهياً تلقائياً (موافقة ضمنية) — لا يُغلق قسراً، والعميل يقدر يعترض.</div>'
     +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ إعدادات الأتمتة</button>';
+  renderReact(c);
+}
+function renderReact(c){
+  c=c||{};var box=document.getElementById('react-body');if(!box)return;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">مزوّد لم يدخل «اشتقنا لك»</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="react-in-d" value="'+(c.reactInactiveDays!=null?c.reactInactiveDays:30)+'" style="width:60px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="react-in-on" '+(c.reactInactiveOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">مزوّد لم يقدّم عروضاً «لا تفوّت الفرص»</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="react-nb-d" value="'+(c.reactNobidsDays!=null?c.reactNobidsDays:21)+'" style="width:60px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="react-nb-on" '+(c.reactNobidsOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="font-size:11px;color:var(--muted);background:var(--p-light);border-radius:10px;padding:10px;margin-top:8px;line-height:1.7">تُرسل بشكل دوري (لا تتكرر يومياً) لإعادة تنشيط المزوّد بلطف.</div>'
+    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ إعدادات التنشيط</button>';
+  renderQuality(c);
+}
+function renderQuality(c){
+  c=c||{};var box=document.getElementById('quality-body');if(!box)return;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">طلب بلا عروض «حسّن وصفك» (عميل)</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="q-no-d" value="'+(c.qNooffersDays!=null?c.qNooffersDays:3)+'" style="width:60px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="q-no-on" '+(c.qNooffersOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">تقييم منخفض «لنرتقِ بخدمتك» (مزوّد)</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">أقل من <input type="number" min="1" max="5" step="0.5" id="q-lr-t" value="'+(c.qLowRatingThreshold!=null?c.qLowRatingThreshold:3)+'" style="width:56px"> نجوم</label>'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="q-lr-m" value="'+(c.qLowRatingMin!=null?c.qLowRatingMin:3)+'" style="width:52px"> تقييم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="q-lr-on" '+(c.qLowRatingOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ إعدادات الجودة</button>';
+  renderAdminAlerts(c);
+}
+function renderAdminAlerts(c){
+  c=c||{};var box=document.getElementById('adminalerts-body');if(!box)return;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">ملخّص يومي بالإيميل</div>'
+      +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="adm-sum-on" '+(c.adminSummaryOn!==false?'checked':'')+'> مفعّل</label>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">تنبيه طفرة تسجيلات</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">إذا تجاوز <input type="number" min="3" id="adm-an-t" value="'+(c.adminAnomalyThreshold!=null?c.adminAnomalyThreshold:15)+'" style="width:56px"> حساب/ساعة</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="adm-an-on" '+(c.adminAnomalyOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="font-size:11px;color:var(--muted);background:var(--p-light);border-radius:10px;padding:10px;margin-top:8px;line-height:1.7">تُرسل التنبيهات لبريد كل مشرف (admin). الملخّص مرّة يومياً، والشذوذ فوري عند تجاوز الحد.</div>'
+    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ تنبيهات الأدمن</button>';
 }
 function saveReminders(){
   var v=function(id){return document.getElementById(id);};
@@ -1702,7 +1760,12 @@ function saveReminders(){
     offersOn:chk('rem-offers-on',true), dealOn:chk('rem-deal-on',true), reviewOn:chk('rem-review-on',true), profileOn:chk('rem-profile-on',true),
     nudgeDelaySec:+val('rem-delay',20), nudgeSnoozeDays:+val('rem-snooze',3),
     lcCloseOn:chk('lc-close-on',true), lcCloseDays:+val('lc-close-d',20), lcCloseWarn:+val('lc-close-w',2),
-    lcConfirmOn:chk('lc-conf-on',true), lcConfirmDays:+val('lc-conf-d',20), lcConfirmGrace:+val('lc-conf-g',3)
+    lcConfirmOn:chk('lc-conf-on',true), lcConfirmDays:+val('lc-conf-d',20), lcConfirmGrace:+val('lc-conf-g',3),
+    reactInactiveOn:chk('react-in-on',true), reactInactiveDays:+val('react-in-d',30),
+    reactNobidsOn:chk('react-nb-on',true), reactNobidsDays:+val('react-nb-d',21),
+    qNooffersOn:chk('q-no-on',true), qNooffersDays:+val('q-no-d',3),
+    qLowRatingOn:chk('q-lr-on',true), qLowRatingThreshold:+val('q-lr-t',3), qLowRatingMin:+val('q-lr-m',3),
+    adminSummaryOn:chk('adm-sum-on',true), adminAnomalyOn:chk('adm-an-on',true), adminAnomalyThreshold:+val('adm-an-t',15)
   };
   fetch(API+'/api/admin/reminders',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ الإعدادات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
