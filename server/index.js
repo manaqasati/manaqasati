@@ -751,6 +751,39 @@ async function runReminders(){
       }
     }
 
+    /* ═══ تذكيرات إضافية ═══ */
+    // ي) تذكير العميل بالرد على أسئلة المزودين
+    if((await getSetting('qa_answer_on','1'))!=='0'){
+      const qDays = Math.max(1, parseInt(await getSetting('qa_answer_days','2'))||2);
+      const qs = await pool.query(
+        `SELECT DISTINCT r.client_id, r.id AS rid, r.title, COUNT(q.id) AS cnt
+         FROM request_questions q JOIN requests r ON r.id=q.request_id
+         WHERE q.answer IS NULL AND q.created_at <= NOW() - ($1 || ' days')::interval
+           AND r.status NOT IN ('completed','cancelled','closed_auto')
+         GROUP BY r.client_id, r.id, r.title`, [String(qDays)]);
+      for(const x of qs.rows){
+        await _remindOnce(x.client_id, 'answer_q', x.rid,
+          'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${x.title}" — ردّك يساعدك تحصل على عروض أدق`,
+          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${x.title}</strong>".</p><p>الرد السريع يوضّح طلبك ويجذب عروضاً أفضل.</p>`,
+          'الرد على الأسئلة', SITE_URL+'/dashboard-client.html');
+      }
+    }
+    // ك) تذكير المزوّد بعرضه المعلّق منذ مدة (متابعة)
+    if((await getSetting('bid_followup_on','1'))!=='0'){
+      const bDays = Math.max(1, parseInt(await getSetting('bid_followup_days','7'))||7);
+      const pend = await pool.query(
+        `SELECT b.id AS bid_id, b.provider_id, r.title
+         FROM bids b JOIN requests r ON r.id=b.request_id
+         WHERE b.status='pending' AND r.status='open' AND r.assigned_provider_id IS NULL
+           AND b.created_at <= NOW() - ($1 || ' days')::interval`, [String(bDays)]);
+      for(const x of pend.rows){
+        await _remindOnce(x.provider_id, 'bid_followup', x.bid_id,
+          'تابع عرضك 💬', `عرضك على "${x.title}" لا يزال قيد المراجعة — تواصل مع العميل لتحسين فرصك`,
+          'تابع عرضك المعلّق', `<p>عرضك على "<strong>${x.title}</strong>" لم يُبتّ فيه بعد.</p><p>بادر بالتواصل مع العميل عبر المحادثة أو حسّن عرضك — المتابعة ترفع فرص القبول.</p>`,
+          'فتح المحادثة', SITE_URL+'/dashboard-provider.html');
+      }
+    }
+
     /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
     // ز) ملخّص يومي للأدمن (مرّة كل يوم)
     if((await getSetting('admin_summary_on','1'))!=='0'){
@@ -1440,6 +1473,21 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
 
 // Alias
 app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.redirect(307, req.path.replace('/done','/complete')); });
+
+// إعادة نشر مشروع مُغلق (بطلب العميل)
+app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL
+       WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
+       RETURNING id, title, category, city, client_id`, [id, req.user.id]);
+    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
+    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); }catch(e){}
+    try{ await notifyMatchingProviders(r.rows[0]); }catch(e){}
+    res.json({ ok:true });
+  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
+});
 
 // «لم يتم بعد» — يوقف التأكيد التلقائي ويعيد ضبط المؤقّت
 app.put('/api/requests/:id/not-done', auth, clientOnly, async (req, res) => {
@@ -2606,7 +2654,11 @@ async function getReminderCfg(){
     adminSummaryOn: (await g('admin_summary_on','1'))!=='0',
     adminAnomalyOn: (await g('admin_anomaly_on','1'))!=='0',
     adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15,
-    matchNotifyOn: (await g('match_notify_on','1'))!=='0'
+    matchNotifyOn: (await g('match_notify_on','1'))!=='0',
+    qaAnswerOn: (await g('qa_answer_on','1'))!=='0',
+    qaAnswerDays: parseInt(await g('qa_answer_days','2'))||2,
+    bidFollowupOn: (await g('bid_followup_on','1'))!=='0',
+    bidFollowupDays: parseInt(await g('bid_followup_days','7'))||7
   };
 }
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
@@ -2645,6 +2697,10 @@ app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req
     await setSetting('admin_anomaly_on', b.adminAnomalyOn===false?'0':'1');
     await setSetting('admin_anomaly_threshold', String(num(b.adminAnomalyThreshold,15)));
     await setSetting('match_notify_on', b.matchNotifyOn===false?'0':'1');
+    await setSetting('qa_answer_on', b.qaAnswerOn===false?'0':'1');
+    await setSetting('qa_answer_days', String(num(b.qaAnswerDays,2)));
+    await setSetting('bid_followup_on', b.bidFollowupOn===false?'0':'1');
+    await setSetting('bid_followup_days', String(num(b.bidFollowupDays,7)));
     await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
     res.json({ ok:true });
   } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
@@ -2677,6 +2733,41 @@ app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (re
     const n = r => parseInt(r.rows[0].c)||0;
     res.json({ period, projects:n(projects), providers:n(providers), clients:n(clients), bids:n(bids) });
   } catch(e){ console.error('/stats-range:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
+});
+
+// سلاسل زمنية للأدمن (نمو يومي عبر مدة)
+app.get('/api/admin/analytics-series', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    let days = parseInt(req.query.days) || 30;
+    days = Math.min(Math.max(days, 7), 90);
+    const series = async (table, where) => {
+      const r = await pool.query(
+        `SELECT to_char(d::date,'YYYY-MM-DD') AS day,
+                COALESCE(cnt,0)::int AS c
+         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
+         LEFT JOIN (
+           SELECT created_at::date AS cd, COUNT(*) cnt FROM ${table}
+           WHERE created_at > NOW()::date - $1::int ${where||''}
+           GROUP BY created_at::date
+         ) t ON t.cd = d::date
+         ORDER BY d`, [days]);
+      return r.rows;
+    };
+    const [projects, clients, providers, bids, completed] = await Promise.all([
+      series('requests', "AND (category IS DISTINCT FROM 'direct')"),
+      series('users', "AND role='client'"),
+      series('users', "AND role='provider'"),
+      series('bids', ''),
+      pool.query(
+        `SELECT to_char(d::date,'YYYY-MM-DD') AS day, COALESCE(cnt,0)::int AS c
+         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
+         LEFT JOIN (SELECT completed_at::date cd, COUNT(*) cnt FROM requests WHERE completed_at > NOW()::date - $1::int GROUP BY completed_at::date) t ON t.cd=d::date
+         ORDER BY d`, [days]).then(r=>r.rows)
+    ]);
+    res.json({ days, labels: projects.map(x=>x.day),
+      projects: projects.map(x=>x.c), clients: clients.map(x=>x.c),
+      providers: providers.map(x=>x.c), bids: bids.map(x=>x.c), completed: completed.map(x=>x.c) });
+  } catch(e){ console.error('/analytics-series:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
 
 // إحصائيات تسويقية داخلية (من قاعدة البيانات — دقيقة)
