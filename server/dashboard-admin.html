@@ -1739,6 +1739,10 @@ function renderAdminAlerts(c){
   c=c||{};var box=document.getElementById('adminalerts-body');if(!box)return;
   box.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">إشعار المزودين بالمشاريع المطابقة</div>'
+      +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="match-on" '+(c.matchNotifyOn!==false?'checked':'')+'> مفعّل</label>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
       +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">ملخّص يومي بالإيميل</div>'
       +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="adm-sum-on" '+(c.adminSummaryOn!==false?'checked':'')+'> مفعّل</label>'
     +'</div>'
@@ -1765,7 +1769,8 @@ function saveReminders(){
     reactNobidsOn:chk('react-nb-on',true), reactNobidsDays:+val('react-nb-d',21),
     qNooffersOn:chk('q-no-on',true), qNooffersDays:+val('q-no-d',3),
     qLowRatingOn:chk('q-lr-on',true), qLowRatingThreshold:+val('q-lr-t',3), qLowRatingMin:+val('q-lr-m',3),
-    adminSummaryOn:chk('adm-sum-on',true), adminAnomalyOn:chk('adm-an-on',true), adminAnomalyThreshold:+val('adm-an-t',15)
+    adminSummaryOn:chk('adm-sum-on',true), adminAnomalyOn:chk('adm-an-on',true), adminAnomalyThreshold:+val('adm-an-t',15),
+    matchNotifyOn:chk('match-on',true)
   };
   fetch(API+'/api/admin/reminders',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ الإعدادات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
