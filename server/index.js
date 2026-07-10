@@ -70,6 +70,7 @@ if (!process.env.JWT_SECRET) {
 }
 const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.railway.app';
 const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
+const SERVER_START = Date.now();
 const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
 const FROM_NAME  = process.env.FROM_NAME  || 'مناقصة';
 
@@ -2438,6 +2439,36 @@ app.get('/api/admin/users/search', requirePermission('users.view'), async (req, 
   } catch(e) { console.error('/admin/users/search:', e); res.json([]); }
 });
 
+// صحة النظام (فحص شامل للأدمن)
+app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
+  const out = { db:{}, email:{}, push:{}, server:{}, data:{} };
+  // قاعدة البيانات + زمن الاستجابة
+  try { const t=Date.now(); await pool.query('SELECT 1'); out.db={ ok:true, latencyMs: Date.now()-t }; }
+  catch(e){ out.db={ ok:false, error:'تعذّر الاتصال بقاعدة البيانات' }; }
+  // الإيميل
+  out.email = { ok: !!RESEND_KEY, configured: !!RESEND_KEY, from: FROM_EMAIL||null };
+  // الإشعارات
+  try { const pt=await pool.query('SELECT COUNT(*)::int c, COUNT(DISTINCT user_id)::int u FROM push_tokens'); out.push={ ok: pt.rows[0].c>0, tokens: pt.rows[0].c, users: pt.rows[0].u }; }
+  catch(e){ out.push={ ok:false, tokens:0, users:0 }; }
+  // الخادم
+  const upMs = Date.now()-SERVER_START; const mem=process.memoryUsage();
+  out.server = { ok:true, uptimeSec: Math.floor(upMs/1000), node: process.version, memMB: Math.round(mem.rss/1048576) };
+  // بيانات سريعة
+  try {
+    const d=await Promise.all([
+      pool.query("SELECT COUNT(*)::int c FROM users"),
+      pool.query("SELECT COUNT(*)::int c FROM users WHERE role='provider'"),
+      pool.query("SELECT COUNT(*)::int c FROM requests"),
+      pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='open'"),
+      pool.query("SELECT COUNT(*)::int c FROM reports WHERE status='pending'").catch(()=>({rows:[{c:0}]}))
+    ]);
+    out.data = { users:d[0].rows[0].c, providers:d[1].rows[0].c, requests:d[2].rows[0].c, openRequests:d[3].rows[0].c, pendingReports:d[4].rows[0].c };
+  } catch(e){ out.data={}; }
+  out.allOk = out.db.ok && out.email.ok && out.server.ok;
+  res.json(out);
+});
+
+// صحة النظام (فحص شامل للأدمن) — نهاية
 app.get('/api/admin/email-status', requirePermission('settings.manage'), async (req, res) => {
   const providersWithEmail=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email!=''`);
   const providersTotal=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE`);
