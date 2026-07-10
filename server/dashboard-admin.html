@@ -464,6 +464,7 @@ tbody tr:hover{background:var(--bg)}
         </div>
       </div><div class="card-body" id="range-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>إعدادات التذكيرات والبطاقة</h3></div><div class="card-body" id="reminders-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>أتمتة دورة حياة المشروع</h3></div><div class="card-body" id="lifecycle-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>لوحات المنصّات الإعلانية</h3></div><div class="card-body">
         <div style="display:flex;flex-wrap:wrap;gap:10px">
           <a href="https://business.facebook.com/events_manager" target="_blank" rel="noopener" style="flex:1;min-width:150px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:11px;text-decoration:none;color:var(--accent);font-weight:700;font-size:13px">Meta Events Manager</a>
@@ -1670,13 +1671,38 @@ function renderReminders(c){
        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">كتم <input type="number" min="0" id="rem-snooze" value="'+(c.nudgeSnoozeDays!=null?c.nudgeSnoozeDays:3)+'" style="width:56px"> يوم</label>'
      +'</div></div>'
    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ الإعدادات</button>';
+  renderLifecycle(c);
+}
+function renderLifecycle(c){
+  c=c||{};var box=document.getElementById('lifecycle-body');if(!box)return;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">إغلاق مشروع بعروض لم يُختر</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="lc-close-d" value="'+(c.lcCloseDays!=null?c.lcCloseDays:20)+'" style="width:60px"> يوم</label>'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">تنبيه قبل <input type="number" min="0" id="lc-close-w" value="'+(c.lcCloseWarn!=null?c.lcCloseWarn:2)+'" style="width:52px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="lc-close-on" '+(c.lcCloseOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">تأكيد إتمام (موافقة ضمنية)</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">يُسأل بعد <input type="number" min="1" id="lc-conf-d" value="'+(c.lcConfirmDays!=null?c.lcConfirmDays:20)+'" style="width:60px"> يوم</label>'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">مهلة الرد <input type="number" min="1" id="lc-conf-g" value="'+(c.lcConfirmGrace!=null?c.lcConfirmGrace:3)+'" style="width:52px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="lc-conf-on" '+(c.lcConfirmOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="font-size:11px;color:var(--muted);background:var(--p-light);border-radius:10px;padding:10px;margin-top:8px;line-height:1.7">إن لم يرد العميل خلال مهلة الرد، يُعتبر المشروع منتهياً تلقائياً (موافقة ضمنية) — لا يُغلق قسراً، والعميل يقدر يعترض.</div>'
+    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ إعدادات الأتمتة</button>';
 }
 function saveReminders(){
   var v=function(id){return document.getElementById(id);};
+  var val=function(id,d){var e=v(id);return e?e.value:d;};
+  var chk=function(id,d){var e=v(id);return e?e.checked:d;};
   var body={
-    offersDays:+v('rem-offers-d').value, dealDays:+v('rem-deal-d').value, reviewDays:+v('rem-review-d').value, profileDays:+v('rem-profile-d').value,
-    offersOn:v('rem-offers-on').checked, dealOn:v('rem-deal-on').checked, reviewOn:v('rem-review-on').checked, profileOn:v('rem-profile-on').checked,
-    nudgeDelaySec:+v('rem-delay').value, nudgeSnoozeDays:+v('rem-snooze').value
+    offersDays:+val('rem-offers-d',2), dealDays:+val('rem-deal-d',5), reviewDays:+val('rem-review-d',1), profileDays:+val('rem-profile-d',1),
+    offersOn:chk('rem-offers-on',true), dealOn:chk('rem-deal-on',true), reviewOn:chk('rem-review-on',true), profileOn:chk('rem-profile-on',true),
+    nudgeDelaySec:+val('rem-delay',20), nudgeSnoozeDays:+val('rem-snooze',3),
+    lcCloseOn:chk('lc-close-on',true), lcCloseDays:+val('lc-close-d',20), lcCloseWarn:+val('lc-close-w',2),
+    lcConfirmOn:chk('lc-conf-on',true), lcConfirmDays:+val('lc-conf-d',20), lcConfirmGrace:+val('lc-conf-g',3)
   };
   fetch(API+'/api/admin/reminders',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ الإعدادات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
