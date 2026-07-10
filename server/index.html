@@ -33,11 +33,13 @@
     --muted: #3b82f6;
     --border: rgba(37,99,235,0.15);
     --glow: rgba(37,99,235,0.06);
+    --nav-bg: rgba(255,255,255,0.95);
   }
   [data-theme="dark"]{
     --bg:#0f172a; --bg2:#1e293b; --card:#1e293b; --card2:#334155;
     --accent:#3b82f6; --accent2:#60a5fa; --blue:#60a5fa; --teal:#38bdf8;
     --text:#e2e8f0; --muted:#94a3b8; --border:rgba(148,163,184,0.22); --glow:rgba(59,130,246,0.10);
+    --nav-bg: rgba(15,23,42,0.95);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,7 +68,7 @@
   /* NAV */
   nav {
     position: sticky; top: 0; z-index: 100;
-    background: rgba(255,255,255,0.95);
+    background: var(--nav-bg, rgba(255,255,255,0.95));
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
     padding: 0 40px;
@@ -97,14 +99,15 @@
   .nav-btns { display: flex; gap: 12px; align-items: center; }
 
   .btn-ghost {
-    background: none; border: 1px solid var(--border);
-    color: var(--text); padding: 8px 20px;
+    background: none; border: 1.5px solid rgba(37,99,235,0.35);
+    color: var(--accent); padding: 8px 20px;
     border-radius: 8px; cursor: pointer;
     font-family: 'Tajawal', sans-serif;
-    font-size: 14px; font-weight: 500;
+    font-size: 14px; font-weight: 700;
     transition: all 0.2s;
   }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-ghost:hover { border-color: var(--accent); background: var(--glow); }
+  [data-theme="dark"] .btn-ghost { border-color: rgba(96,165,250,0.45); color: var(--accent2); }
 
   .btn-primary {
     background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -710,7 +713,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <a href="https://wa.me/966595055780" target="_blank" rel="noopener">تواصل معنا</a>
   </div>
   <div class="nav-btns">
-    <button class="btn-ghost" onclick="toggleTheme()" aria-label="الوضع الليلي" style="padding:8px 10px"><span class="theme-ic" style="display:flex"></span></button>
+    <button class="btn-ghost" onclick="toggleTheme()" aria-label="الوضع الليلي" style="padding:8px 11px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
     <button class="btn-ghost" onclick="goLogin()">تسجيل الدخول</button>
     <button class="btn-primary" onclick="goAuthRole('client')">ابدأ مجاناً</button>
   </div>
