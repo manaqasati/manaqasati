@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>لوحة الإدارة — مناقصة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://manaqasati-production.up.railway.app">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -341,6 +344,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
     <button class="ni" onclick="showPage('settings',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>الإعدادات</button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
+    <button class="ni" onclick="showPage('health',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>صحة النظام</button>
   </nav>
   <div class="side-foot">
     <button class="logoutbtn" onclick="logout()"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
@@ -459,6 +463,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-settings">
       <div class="card" style="max-width:580px"><div class="card-head"><h3>إعدادات المنصة</h3></div><div class="card-body" id="settings-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+    </div>
+
+    <div class="page" id="page-health">
+      <div id="health-body"><div class="loading"><div class="spinner"></div>جاري الفحص...</div></div>
     </div>
 
     <div class="page" id="page-marketing">
@@ -628,7 +636,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -636,6 +644,7 @@ function showPage(pg,el){
   if(pg==='analytics')loadAnalytics();
   if(pg==='settings')loadSettings();
   if(pg==='marketing')loadMarketing();
+  if(pg==='health')loadHealth();
   if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
@@ -1649,6 +1658,34 @@ function renderAnalytics(a,statsData){
 
 // ═══ إعدادات المنصة ═══
 function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); loadRange('day'); loadChart(30); }
+function loadHealth(){
+  var box=document.getElementById('health-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري الفحص...</div>';
+  fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(renderHealth).catch(function(){if(box)box.innerHTML=emptyState('تعذر الفحص');});
+}
+function _hDot(ok){return '<span style="width:11px;height:11px;border-radius:50%;background:'+(ok?'#16a34a':'#dc2626')+';display:inline-block;box-shadow:0 0 0 3px '+(ok?'rgba(22,163,74,.15)':'rgba(220,38,38,.15)')+'"></span>';}
+function _hCard(title,ok,rows){
+  return '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+_hDot(ok)+'<h3 style="margin:0;font-size:15px;color:var(--text2)">'+title+'</h3>'
+    +'<span style="margin-inline-start:auto;font-size:12px;font-weight:800;color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'يعمل':'تحقّق')+'</span></div>'
+    +'<div style="display:grid;gap:6px">'+rows.map(function(r){return '<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)"><span>'+r[0]+'</span><span style="font-weight:700;color:var(--text2)">'+r[1]+'</span></div>';}).join('')+'</div></div>';
+}
+function _fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'ي ':'')+(h?h+'س ':'')+m+'د';}
+function renderHealth(d){
+  d=d||{};var box=document.getElementById('health-body');if(!box)return;
+  var db=d.db||{},em=d.email||{},pu=d.push||{},sv=d.server||{},dt=d.data||{};
+  var banner='<div style="background:'+(d.allOk?'linear-gradient(135deg,#e8f7ee,#d1f0dd)':'linear-gradient(135deg,#fdeaea,#fbd5d5)')+';border-radius:14px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">'
+    +'<div style="font-size:26px">'+(d.allOk?'✅':'⚠️')+'</div><div><div style="font-weight:900;font-size:16px;color:'+(d.allOk?'#16a34a':'#dc2626')+'">'+(d.allOk?'كل الأنظمة تعمل':'يوجد ما يحتاج انتباه')+'</div>'
+    +'<div style="font-size:12px;color:#64748b">آخر فحص: الآن</div></div>'
+    +'<button onclick="loadHealth()" style="margin-inline-start:auto;background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:Tajawal">تحديث</button></div>';
+  box.innerHTML=banner
+    +_hCard('قاعدة البيانات', db.ok, [['الحالة', db.ok?'متصلة':'غير متصلة'],['زمن الاستجابة', (db.latencyMs!=null?db.latencyMs+' ms':'—')]])
+    +_hCard('الإيميل (Resend)', em.ok, [['الإعداد', em.configured?'مضبوط':'غير مضبوط'],['المُرسِل', em.from||'—']])
+    +_hCard('الإشعارات (Push)', pu.ok, [['أجهزة مسجّلة', (pu.tokens||0)],['مستخدمون', (pu.users||0)]])
+    +_hCard('الخادم', sv.ok, [['مدة التشغيل', _fmtUp(sv.uptimeSec||0)],['إصدار Node', sv.node||'—'],['الذاكرة', (sv.memMB||0)+' MB']])
+    +'<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><h3 style="margin:0;font-size:15px;color:var(--text2)">لمحة سريعة</h3></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'
+    +_mkStat(dt.users||0,'مستخدمون')+_mkStat(dt.providers||0,'مزودون','#d97706')+_mkStat(dt.openRequests||0,'مشاريع مفتوحة','#0ea5e9')+_mkStat(dt.pendingReports||0,'بلاغات معلّقة',(dt.pendingReports>0?'#dc2626':'#16a34a'))
+    +'</div></div>';
+}
 function setChart(btn,days){
   var tabs=document.querySelectorAll('#chart-tabs .rtab');for(var i=0;i<tabs.length;i++)tabs[i].className='rtab';
   if(btn)btn.className='rtab on';loadChart(days);
