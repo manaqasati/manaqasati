@@ -23,6 +23,16 @@
   --ease:cubic-bezier(.4,0,.2,1);--ease-out:cubic-bezier(.16,1,.3,1);--radius:16px;--radius-sm:10px;--radius-lg:18px;
   --sky:#0ea5e9;--star:#F0A500;
 }
+[data-theme="dark"]{
+  --p:#3b82f6;--p2:#60a5fa;--p3:#1e293b;
+  --p-light:#1e293b;--p-mid:#334155;
+  --gold:#60a5fa;--gold-d:#3b82f6;--gold-l:#1e293b;--gold-soft:#334155;
+  --text:#e2e8f0;--text2:#e2e8f0;--muted:#94a3b8;--hint:#64748b;
+  --border:#334155;--border2:#475569;
+  --bg:#0f172a;--white:#1e293b;
+  --green-l:#14251c;--red-l:#2a1616;
+  --shadow:0 2px 8px rgba(0,0,0,.3);--shadow-md:0 4px 16px rgba(0,0,0,.35);--shadow-lg:0 12px 28px rgba(0,0,0,.45);
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .side{width:260px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(37,99,235,.07)}
@@ -350,6 +360,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}
+function toggleTheme(){var on=document.documentElement.getAttribute('data-theme')==='dark';if(on){document.documentElement.removeAttribute('data-theme');}else{document.documentElement.setAttribute('data-theme','dark');}try{localStorage.setItem('theme',on?'light':'dark');}catch(e){}var b=document.getElementById('themeLbl');if(b)b.textContent=on?'الوضع الليلي':'الوضع النهاري';}</script>
 <div class="side">
   <div class="side-brand">
     <div class="logo"><span class="logo-dot"></span>مناقصة</div>
@@ -949,6 +961,7 @@ function _renderBrowse(){
     html+='<div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px"><svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div>';
     html+='<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option></select>';
     html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
+    html+='<select id="bSort" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="new">الأحدث</option><option value="old">الأقدم</option><option value="budget">الأعلى ميزانية</option></select>';
     html+='</div><div id="bList">'+_renderBrowseList(open)+'</div></div>';
     pg.innerHTML=html;
     var catSel=_el('bCat');CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
@@ -957,8 +970,13 @@ function _renderBrowse(){
   }catch(e){console.error('_renderBrowse error:',e);_lb.done();}
 }
 function _filterBrowse(){
-  var q=(_el('bQ')||{value:''}).value.toLowerCase();var cat=(_el('bCat')||{value:''}).value;var cit=(_el('bCit')||{value:''}).value;
-  var f=_allProjs.filter(function(p){return p.status==='open'&&(!q||(p.title||'').toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!cit||p.city===cit);});
+  var q=(_el('bQ')||{value:''}).value.toLowerCase();var cat=(_el('bCat')||{value:''}).value;var cit=(_el('bCit')||{value:''}).value;var srt=(_el('bSort')||{value:'new'}).value;
+  var f=_allProjs.filter(function(p){return p.status==='open'&&(!q||(p.title||'').toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!cit||p.city===cit);});
+  f.sort(function(a,b){
+    if(srt==='budget')return (parseFloat(b.budget_max)||0)-(parseFloat(a.budget_max)||0);
+    var ta=new Date(a.created_at||0).getTime(),tb=new Date(b.created_at||0).getTime();
+    return srt==='old'?(ta-tb):(tb-ta);
+  });
   var el=_el('bList');if(el)el.innerHTML=_renderBrowseList(f);
 }
 function catSvg(cat,size){
@@ -1406,7 +1424,8 @@ async function loadProfile(){
 
   var acctWrap=document.createElement('div');acctWrap.style.cssText='padding:0 0 26px';
   acctWrap.innerHTML=
-    '<button onclick="location.href=\'/\'" style="width:100%;margin-bottom:10px;padding:13px;background:var(--p-light);color:var(--p2);border:1px solid #bfdbfe;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>الصفحة الرئيسية</button>'
+    '<button onclick="toggleTheme()" style="width:100%;margin-bottom:10px;padding:13px;background:var(--white);color:var(--text2);border:1px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><span id="themeLbl">الوضع الليلي</span></button>'
+    +'<button onclick="location.href=\'/\'" style="width:100%;margin-bottom:10px;padding:13px;background:var(--p-light);color:var(--p2);border:1px solid #bfdbfe;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>الصفحة الرئيسية</button>'
     +'<button onclick="doLogout()" style="width:100%;padding:13px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>';
   pg.appendChild(acctWrap);
   _lb.done();
