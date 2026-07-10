@@ -466,6 +466,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="card"><div class="card-head"><h3>بكسلات التتبّع</h3></div><div class="card-body" id="pixels-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
         <div class="card"><div class="card-head"><h3>إحصائيات التسويق</h3></div><div class="card-body" id="mkstats-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><div class="card-head"><h3>نمو المنصّة</h3>
+        <div id="chart-tabs" style="display:flex;gap:6px;background:var(--p-light);border-radius:10px;padding:4px;flex-wrap:wrap">
+          <button class="rtab on" onclick="setChart(this,7)">7 أيام</button>
+          <button class="rtab" onclick="setChart(this,30)">30 يوم</button>
+          <button class="rtab" onclick="setChart(this,90)">90 يوم</button>
+        </div>
+      </div><div class="card-body" id="chart-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       <div class="card" style="margin-top:16px"><div class="card-head"><h3>إحصائيات بالفترة</h3>
         <div id="range-tabs" style="display:flex;gap:6px;background:var(--p-light);border-radius:10px;padding:4px;flex-wrap:wrap">
           <button class="rtab on" data-p="day" onclick="setRange(this,'day')">اليوم</button>
@@ -1641,7 +1648,45 @@ function renderAnalytics(a,statsData){
 }
 
 // ═══ إعدادات المنصة ═══
-function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); loadRange('day'); }
+function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); loadRange('day'); loadChart(30); }
+function setChart(btn,days){
+  var tabs=document.querySelectorAll('#chart-tabs .rtab');for(var i=0;i<tabs.length;i++)tabs[i].className='rtab';
+  if(btn)btn.className='rtab on';loadChart(days);
+}
+function loadChart(days){
+  var box=document.getElementById('chart-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/analytics-series?days='+days,hdr()).then(function(r){return r.json();}).then(renderChart).catch(function(){if(box)box.innerHTML=emptyState('تعذر التحميل');});
+}
+function _linePath(vals,W,H,pad,maxV){
+  if(!vals.length)return '';
+  var n=vals.length,iw=W-pad*2,ih=H-pad*2;
+  return vals.map(function(v,i){
+    var x=pad+(n===1?iw/2:iw*i/(n-1));
+    var y=pad+ih-(maxV?ih*v/maxV:0);
+    return (i===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1);
+  }).join(' ');
+}
+function renderChart(d){
+  var box=document.getElementById('chart-body');if(!box)return;
+  if(!d||!d.labels||!d.labels.length){box.innerHTML=emptyState('لا توجد بيانات');return;}
+  var W=680,H=240,pad=28;
+  var series=[
+    {name:'مشاريع',vals:d.projects||[],color:'#2563eb'},
+    {name:'عملاء',vals:d.clients||[],color:'#16a34a'},
+    {name:'مزودون',vals:d.providers||[],color:'#d97706'},
+    {name:'عروض',vals:d.bids||[],color:'#0ea5e9'},
+    {name:'مكتملة',vals:d.completed||[],color:'#7c3aed'}
+  ];
+  var maxV=1;series.forEach(function(s){s.vals.forEach(function(v){if(v>maxV)maxV=v;});});
+  var grid='';for(var g=0;g<=4;g++){var gy=pad+(H-pad*2)*g/4;grid+='<line x1="'+pad+'" y1="'+gy+'" x2="'+(W-pad)+'" y2="'+gy+'" stroke="var(--border)" stroke-width="1"/>';grid+='<text x="'+(W-pad+4)+'" y="'+(gy+4)+'" font-size="10" fill="var(--muted)">'+Math.round(maxV*(4-g)/4)+'</text>';}
+  var lines=series.map(function(s){return '<path d="'+_linePath(s.vals,W,H,pad,maxV)+'" fill="none" stroke="'+s.color+'" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';}).join('');
+  var legend=series.map(function(s){return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);margin:0 8px 6px 0"><span style="width:11px;height:11px;border-radius:3px;background:'+s.color+'"></span>'+s.name+'</span>';}).join('');
+  var first=d.labels[0],last=d.labels[d.labels.length-1];
+  box.innerHTML='<div style="margin-bottom:10px">'+legend+'</div>'
+    +'<div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;min-width:520px;height:auto;font-family:Tajawal,sans-serif">'+grid+lines+'</svg></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:0 '+pad+'px">'
+    +'<span>'+last+'</span><span>'+first+'</span></div>';
+}
 function setRange(btn,p){
   var tabs=document.querySelectorAll('#range-tabs .rtab'); for(var i=0;i<tabs.length;i++)tabs[i].className='rtab';
   if(btn)btn.className='rtab on';
@@ -1751,6 +1796,18 @@ function renderAdminAlerts(c){
   c=c||{};var box=document.getElementById('adminalerts-body');if(!box)return;
   box.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">تذكير العميل بالرد على الأسئلة</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="qa-d" value="'+(c.qaAnswerDays!=null?c.qaAnswerDays:2)+'" style="width:56px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="qa-on" '+(c.qaAnswerOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">تذكير المزوّد بعرضه المعلّق</div>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px">بعد <input type="number" min="1" id="bf-d" value="'+(c.bidFollowupDays!=null?c.bidFollowupDays:7)+'" style="width:56px"> يوم</label>'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="bf-on" '+(c.bidFollowupOn!==false?'checked':'')+'> مفعّل</label>'
+      +'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
       +'<div style="font-size:13px;font-weight:700;color:var(--text2);min-width:180px">إشعار المزودين بالمشاريع المطابقة</div>'
       +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="match-on" '+(c.matchNotifyOn!==false?'checked':'')+'> مفعّل</label>'
     +'</div>'
@@ -1782,7 +1839,9 @@ function saveReminders(){
     qNooffersOn:chk('q-no-on',true), qNooffersDays:+val('q-no-d',3),
     qLowRatingOn:chk('q-lr-on',true), qLowRatingThreshold:+val('q-lr-t',3), qLowRatingMin:+val('q-lr-m',3),
     adminSummaryOn:chk('adm-sum-on',true), adminAnomalyOn:chk('adm-an-on',true), adminAnomalyThreshold:+val('adm-an-t',15),
-    matchNotifyOn:chk('match-on',true)
+    matchNotifyOn:chk('match-on',true),
+    qaAnswerOn:chk('qa-on',true), qaAnswerDays:+val('qa-d',2),
+    bidFollowupOn:chk('bf-on',true), bidFollowupDays:+val('bf-d',7)
   };
   fetch(API+'/api/admin/reminders',Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();}).then(function(d){ toast(d.ok?'تم حفظ الإعدادات':(d.message||'تعذر الحفظ'), d.ok?'success':'error'); })
