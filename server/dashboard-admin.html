@@ -314,7 +314,9 @@ tbody tr:hover{background:var(--bg)}
 </head>
 <body>
 <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}
-function toggleTheme(){var on=document.documentElement.getAttribute('data-theme')==='dark';if(on){document.documentElement.removeAttribute('data-theme');}else{document.documentElement.setAttribute('data-theme','dark');}try{localStorage.setItem('theme',on?'light':'dark');}catch(e){}}</script>
+function _themeIcon(){var dark=document.documentElement.getAttribute('data-theme')==='dark';var m='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';var s='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';var els=document.querySelectorAll('.theme-ic');for(var i=0;i<els.length;i++)els[i].innerHTML=dark?s:m;}
+function toggleTheme(){var on=document.documentElement.getAttribute('data-theme')==='dark';if(on){document.documentElement.removeAttribute('data-theme');}else{document.documentElement.setAttribute('data-theme','dark');}try{localStorage.setItem('theme',on?'light':'dark');}catch(e){}_themeIcon();}
+document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
 <div class="backdrop" id="backdrop" onclick="toggleSide()"></div>
 
@@ -339,7 +341,6 @@ function toggleTheme(){var on=document.documentElement.getAttribute('data-theme'
     <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
     <button class="ni" onclick="showPage('settings',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>الإعدادات</button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
-    <button class="ni" onclick="toggleTheme()"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>الوضع الليلي</button>
   </nav>
   <div class="side-foot">
     <button class="logoutbtn" onclick="logout()"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
@@ -349,13 +350,14 @@ function toggleTheme(){var on=document.documentElement.getAttribute('data-theme'
 <div class="mob-head">
   <button onclick="toggleSide()" style="background:var(--bg);border:none;padding:9px;border-radius:8px;cursor:pointer"><svg width="20" height="20" fill="none" stroke="var(--text)" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <div class="logo" style="font-size:16px"><span class="logo-dot"></span>الإدارة</div>
-  <div style="width:38px"></div>
+  <button onclick="toggleTheme()" aria-label="الوضع الليلي" style="background:var(--bg);border:none;padding:9px;border-radius:8px;cursor:pointer;color:var(--text);display:flex"><span class="theme-ic" style="display:flex"></span></button>
 </div>
 
 <main class="main">
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:12px"><button onclick="history.length>1?history.back():location.href='/'" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);cursor:pointer;padding:8px 12px;border-radius:9px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button><div><div class="tb-title" id="pageTitle">لوحة المعلومات</div><div class="tb-sub" id="pageSub">نظرة عامة على المنصة</div></div></div>
     <div style="position:relative;flex:1;max-width:430px;margin:0 22px"><div class="search-box" style="width:100%"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="global-search" placeholder="بحث شامل: مستخدم، إيميل، مشروع..." autocomplete="off" oninput="globalSearch(this.value)" onfocus="if(this.value)globalSearch(this.value)" onblur="setTimeout(function(){var d=document.getElementById('gs-results');if(d)d.style.display='none';},220)"></div><div id="gs-results" style="display:none;position:absolute;top:48px;right:0;left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh4);z-index:60;max-height:400px;overflow:auto"></div></div>
+    <button onclick="toggleTheme()" aria-label="الوضع الليلي" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);cursor:pointer;padding:9px;border-radius:9px;display:flex;align-items:center;margin-left:10px"><span class="theme-ic" style="display:flex"></span></button>
     <div class="admin-chip"><div style="text-align:left"><div class="admin-chip-name" id="adminName">المدير</div><div id="adminRole" style="font-size:10.5px;color:var(--muted);font-weight:600"></div></div><div class="admin-chip-av" id="adminAv">م</div></div>
   </div>
   <div class="content">
