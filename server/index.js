@@ -115,15 +115,39 @@ setInterval(() => {
 }, 600000);
 
 // نشر الطلبات قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
+async function notifyMatchingProviders(request){
+  try{
+    if(!request || !request.id) return;
+    if((await getSetting('match_notify_on','1'))==='0') return;
+    const cat = request.category || null;
+    const city = request.city || null;
+    // مزوّد يطابق الفئة (ضمن تخصصاته أو فئات إشعاره) ونفس المدينة إن توفّرت
+    const r = await pool.query(
+      `SELECT DISTINCT id FROM users
+        WHERE role='provider' AND is_active=TRUE
+          AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
+          AND ($2::text IS NULL OR city IS NULL OR city = $2)`,
+      [cat, city]);
+    let sent=0;
+    for(const p of r.rows){
+      try{
+        await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id);
+        sent++;
+      }catch(e){}
+    }
+    if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
+  }catch(e){ console.error('notifyMatchingProviders:', e.message); }
+}
 setInterval(async () => {
   try {
     const mins = Math.max(0, parseInt(await getSetting('review_minutes', '5')) || 0);
     const r = await pool.query(
-      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND created_at <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title`,
+      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND created_at <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title, category, city`,
       [String(mins)]
     );
     for (const row of r.rows) {
       try { await notify(row.client_id, 'تم نشر مشروعك', `مشروعك "${row.title}" تمت مراجعته ونُشر للعروض الآن`, 'request', row.id); } catch(e) {}
+      try { await notifyMatchingProviders(row); } catch(e) {}
     }
     if (r.rows.length) console.log(`[auto-publish] نُشر ${r.rows.length} مشروع تلقائياً`);
   } catch(e) { console.error('auto-publish:', e.message); }
@@ -1464,8 +1488,10 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
-    const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : '💼 عرض جديد';
-    const inAppBody = isUpdate ? `قام ${provName} بتحديث عرضه على "${projTitle}"` : `تلقيت عرضاً من ${provName} على "${projTitle}"`;
+    let isFirst = false;
+    if (!isUpdate) { try{ const cnt = await pool.query('SELECT COUNT(*) c FROM bids WHERE request_id=$1', [requestId]); isFirst = (parseInt(cnt.rows[0].c)||0) === 1; }catch(e){} }
+    const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : (isFirst ? '🎉 وصلك أول عرض!' : '💼 عرض جديد');
+    const inAppBody = isUpdate ? `قام ${provName} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${provName} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${provName} على "${projTitle}"`);
     await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
     if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate) {
       const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
@@ -2539,7 +2565,8 @@ async function getReminderCfg(){
     qLowRatingMin: parseInt(await g('q_lowrating_min','3'))||3,
     adminSummaryOn: (await g('admin_summary_on','1'))!=='0',
     adminAnomalyOn: (await g('admin_anomaly_on','1'))!=='0',
-    adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15
+    adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15,
+    matchNotifyOn: (await g('match_notify_on','1'))!=='0'
   };
 }
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
@@ -2577,6 +2604,7 @@ app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req
     await setSetting('admin_summary_on', b.adminSummaryOn===false?'0':'1');
     await setSetting('admin_anomaly_on', b.adminAnomalyOn===false?'0':'1');
     await setSetting('admin_anomaly_threshold', String(num(b.adminAnomalyThreshold,15)));
+    await setSetting('match_notify_on', b.matchNotifyOn===false?'0':'1');
     await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
     res.json({ ok:true });
   } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
