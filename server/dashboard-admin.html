@@ -1664,9 +1664,10 @@ function loadHealth(){
 }
 function _hDot(ok){return '<span style="width:11px;height:11px;border-radius:50%;background:'+(ok?'#16a34a':'#dc2626')+';display:inline-block;box-shadow:0 0 0 3px '+(ok?'rgba(22,163,74,.15)':'rgba(220,38,38,.15)')+'"></span>';}
 function _hCard(title,ok,rows){
-  return '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+_hDot(ok)+'<h3 style="margin:0;font-size:15px;color:var(--text2)">'+title+'</h3>'
-    +'<span style="margin-inline-start:auto;font-size:12px;font-weight:800;color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'يعمل':'تحقّق')+'</span></div>'
-    +'<div style="display:grid;gap:8px">'+rows.map(function(r){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12.5px;color:var(--muted)"><span style="flex-shrink:0">'+r[0]+'</span><span dir="ltr" style="font-weight:800;color:var(--text2);direction:ltr;unicode-bidi:isolate;text-align:left;white-space:nowrap">'+r[1]+'</span></div>';}).join('')+'</div></div>';
+  return '<div class="card" style="margin-bottom:14px;border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">'+_hDot(ok)+'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">'+title+'</h3>'
+    +'<span style="margin-inline-start:auto;font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:20px;background:'+(ok?'rgba(22,163,74,.12)':'rgba(220,38,38,.12)')+';color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'يعمل':'تحقّق')+'</span></div>'
+    +'<div style="display:grid;gap:10px;max-width:420px">'+rows.map(function(r){return '<div style="display:flex;align-items:center;gap:14px;font-size:13px"><span style="color:var(--muted);min-width:110px">'+r[0]+'</span><span dir="ltr" style="font-weight:800;color:var(--text2);direction:ltr;unicode-bidi:isolate;text-align:right;white-space:nowrap">'+r[1]+'</span></div>';}).join('')+'</div></div>';
 }
 function _fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'ي ':'')+(h?h+'س ':'')+m+'د';}
 function renderHealth(d){
