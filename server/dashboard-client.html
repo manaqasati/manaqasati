@@ -1423,6 +1423,8 @@ function loadActions(id){
         +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;text-align:center">تقدر تعيد نشره ليظهر للمزوّدين من جديد وتستقبل عروضاً.</p>'
         +'<button class="btn-sm bs-p" onclick="repostReq('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>إعادة نشر الطلب</button></div>';
     } else {
+      h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
+    }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
   }).catch(function(){if(el)el.innerHTML=errH();});
 }
