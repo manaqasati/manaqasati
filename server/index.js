@@ -900,6 +900,9 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
     try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS confirm_requested_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
@@ -976,7 +979,13 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
     const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
     const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null]);
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null)]);
+    // احتساب الإحالة لصاحب صفحة المزوّد
+    try{
+      const ref = typeof req.body.ref==='string'?req.body.ref:'';
+      const m = ref.match(/^pro(\d+)$/);
+      if(m){ await pool.query('UPDATE users SET referral_count = COALESCE(referral_count,0)+1 WHERE id=$1', [parseInt(m[1])]); }
+    }catch(e){}
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     try {
@@ -2031,6 +2040,24 @@ app.get('/api/stats', async (req, res) => {
     const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
     res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
   } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
+});
+
+// عام: تسجيل مشاهدة صفحة مزوّد (لا يحسب صاحبها)
+app.post('/api/pro/:id/view', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if(!id) return res.json({ ok:false });
+    await pool.query('UPDATE users SET profile_views = COALESCE(profile_views,0)+1 WHERE id=$1 AND role=$2', [id, 'provider']);
+    res.json({ ok:true });
+  } catch(e){ res.json({ ok:false }); }
+});
+// للمزوّد: إحصائيات التسويق الخاصة به (مشاهدات + إحالات)
+app.get('/api/me/marketing', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT COALESCE(profile_views,0)::int views, COALESCE(referral_count,0)::int refs FROM users WHERE id=$1', [req.user.id]);
+    const row = r.rows[0]||{views:0,refs:0};
+    res.json({ views: row.views, referrals: row.refs, shareUrl: SITE_URL+'/pro/'+req.user.id });
+  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
 });
 
 // عام: أحدث المشاريع المنجزة (دليل اجتماعي — بيانات مجهّلة)
