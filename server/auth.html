@@ -543,6 +543,7 @@ async function doSubmit(){
       }
       url='/api/auth/register';
       body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};
+      try{var _ref=localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
       if(_regAvatarData)body.profile_image=_regAvatarData;
       if(ROLE==='provider'){
         body.specialties=selectedSpecs;
