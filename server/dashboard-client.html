@@ -1410,7 +1410,8 @@ function loadActions(id){
       // مكتمل: أظهر زر التقييم
       h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
         +'<div style="text-align:center;padding:10px 0 16px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:14px;font-weight:800">'+check+' الطلب مكتمل</div></div>'
-        +'<button class="btn-sm bs-p" id="rate-action-btn" onclick="openRate('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff">'+star+' تقييم المزود</button></div>';
+        +'<button class="btn-sm bs-p" id="rate-action-btn" onclick="openRate('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff;margin-bottom:9px">'+star+' تقييم المزود</button>'
+        +'<button class="btn-sm" onclick="shareAchievement('+id+')" style="width:100%;padding:12px;background:var(--white);border:1px solid var(--border);color:var(--text2);font-weight:800"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>شارك تجربتك</button></div>';
       // تحقق إذا قيّم مسبقاً
       fetch(API+'/api/requests/'+id+'/my-review',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(rv){
         var btn=document.getElementById('rate-action-btn');
@@ -1444,6 +1445,11 @@ function loadTimeline(id){
         +'</div>';
     })
     .catch(function(){el.innerHTML=emptyH('لا توجد أنشطة','');});
+}
+function shareAchievement(id){
+  var msg='✅ أنجزت مشروعي عبر منصة مناقصة بأفضل سعر!\nانشر طلبك واستقبل عروضاً من عدة مزودين واختر الأنسب:\nhttps://www.manaqasa.com';
+  if(navigator.share){navigator.share({title:'مناقصة',text:msg,url:'https://www.manaqasa.com'}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){showToast('تم نسخ رسالة المشاركة','success');});}
 }
 function repostReq(id){
   if(!confirm('إعادة نشر هذا الطلب ليستقبل عروضاً جديدة؟'))return;
