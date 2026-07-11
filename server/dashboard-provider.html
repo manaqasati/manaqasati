@@ -860,7 +860,7 @@ function _renderShareCard(profile){
 }
 function _shareMyPage(url){
   var ref=url+(url.indexOf('?')>-1?'&':'?')+'ref=pro'+url.split('/pro/')[1];
-  var msg='✨ ملفي على منصة مناقصة\nشوف أعمالي وتواصل معي مباشرة، أو انشر طلبك واستقبل عروضاً بأفضل الأسعار:\n'+ref;
+  var msg='✨ صفحتي على منصة مناقصة\nشوف أعمالي وتقييماتي وتواصل معي مباشرة:\n'+ref;
   if(navigator.share){navigator.share({title:'مناقصة',text:msg,url:ref}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){showToast&&showToast('تم نسخ رابط المشاركة','success');});}
 }
