@@ -633,6 +633,7 @@ function emptyState(msg){return '<div class="empty"><div class="empty-ic"><svg f
 
 function showPage(pg,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  if(pg!=='health' && typeof _healthTimer!=='undefined' && _healthTimer){clearInterval(_healthTimer);_healthTimer=null;}
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
@@ -1658,9 +1659,16 @@ function renderAnalytics(a,statsData){
 
 // ═══ إعدادات المنصة ═══
 function loadMarketing(){ loadPixels(); loadMkStats(); loadReminders(); loadRange('day'); loadChart(30); }
+var _healthTimer=null;
 function loadHealth(){
-  var box=document.getElementById('health-body');if(box)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري الفحص...</div>';
-  fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(renderHealth).catch(function(){if(box)box.innerHTML=emptyState('تعذر الفحص');});
+  var box=document.getElementById('health-body');if(box&&!box.querySelector('.card'))box.innerHTML='<div class="loading"><div class="spinner"></div>جاري الفحص...</div>';
+  fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(renderHealth).catch(function(){if(box&&!box.querySelector('.card'))box.innerHTML=emptyState('تعذر الفحص');});
+  if(_healthTimer)clearInterval(_healthTimer);
+  _healthTimer=setInterval(function(){
+    var ph=document.getElementById('page-health');
+    if(!ph||!ph.classList.contains('on')){clearInterval(_healthTimer);_healthTimer=null;return;}
+    fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(renderHealth).catch(function(){});
+  },60000);
 }
 function _hDot(ok){return '<span style="width:11px;height:11px;border-radius:50%;background:'+(ok?'#16a34a':'#dc2626')+';display:inline-block;box-shadow:0 0 0 3px '+(ok?'rgba(22,163,74,.15)':'rgba(220,38,38,.15)')+'"></span>';}
 function _hCard(title,ok,rows){
