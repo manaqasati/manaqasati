@@ -294,6 +294,17 @@ function render(p,rat){
   html+='<div class="cta-card"><div class="cta-logo"><span class="logo-dot"></span>مناقصة</div><p class="cta-text">منصة المشاريع والخدمات الأولى في المملكة العربية السعودية — انشر مشروعك مجاناً واستقبل العروض</p><a href="/auth.html" class="cta-btn">أنشر مشروعك الآن &#8592;</a></div>';
   html+='<div class="foot">&#169; مناقصة — جميع الحقوق محفوظة</div>';
   document.getElementById('wrap').innerHTML=html;
+  try{
+    var _pid=getId();
+    if(_pid){try{fetch('https://manaqasati-production.up.railway.app/api/pro/'+_pid+'/view',{method:'POST'}).catch(function(){});}catch(e){}}
+    var cta=document.createElement('div');
+    cta.style.cssText='max-width:760px;margin:22px auto 0;background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:20px;padding:26px 24px;text-align:center;color:#fff;box-shadow:0 12px 30px rgba(30,58,138,.25)';
+    cta.innerHTML='<div style="font-family:Cairo,sans-serif;font-weight:900;font-size:20px;margin-bottom:8px">تبحث عن أفضل سعر لخدمتك؟</div>'
+      +'<div style="font-size:14px;opacity:.92;line-height:1.7;margin-bottom:18px;max-width:460px;margin-inline:auto">انشر طلبك مجاناً على مناقصة، واستقبل عروضاً من عدة مزودين، واختر الأنسب لك بأفضل سعر.</div>'
+      +'<button onclick="location.href=\'/?ref=pro'+_pid+'\'" style="background:#fff;color:#1e3a8a;border:none;padding:13px 30px;border-radius:12px;font-family:Tajawal,sans-serif;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15)">انشر طلبك الآن مجاناً</button>'
+      +'<div style="margin-top:12px"><a href="/?ref=pro'+_pid+'" style="color:#dbeafe;font-size:12.5px;font-weight:700;text-decoration:none">أو تصفّح مزودين آخرين ←</a></div>';
+    document.getElementById('wrap').appendChild(cta);
+  }catch(e){}
   document.querySelectorAll('.port-img').forEach(function(el){el.addEventListener('click',function(){oImg(el.getAttribute('data-s'));});});
   document.querySelectorAll('.rev-img').forEach(function(el){el.addEventListener('click',function(){oImg(el.getAttribute('data-s'));});});
   var pid=getId();
@@ -301,7 +312,12 @@ function render(p,rat){
   if(mb)mb.addEventListener('click',function(){var u=null;try{u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}var t=localStorage.getItem('token')||'';if(u&&t){try{localStorage.setItem('pending_contact_provider',pid);}catch(e){}location.href='/dashboard-client.html';}else{location.href='/auth.html?redirect=msg&provider_id='+pid;}});
   var nm2=nm,url2='https://www.manaqasa.com/pro/'+getId();
   var sb=document.getElementById('sharebtn');
-  if(sb)sb.addEventListener('click',function(){if(navigator.share){navigator.share({title:nm2+' — مناقصة',text:'تواصل مع '+nm2+' على منصة مناقصة',url:url2});}else if(navigator.clipboard){navigator.clipboard.writeText(url2).then(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم النسخ';setTimeout(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة';},2000);});}});
+  if(sb)sb.addEventListener('click',function(){
+    var refUrl=url2+(url2.indexOf('?')>-1?'&':'?')+'ref=pro'+(typeof pid!=='undefined'?pid:'');
+    var msg='✨ ملفي على منصة مناقصة\n'+nm2+'\n\nشوف أعمالي وتواصل معي مباشرة، أو انشر طلبك واستقبل عروضاً بأفضل الأسعار:\n'+refUrl;
+    if(navigator.share){navigator.share({title:nm2+' — مناقصة',text:msg,url:refUrl}).catch(function(){});}
+    else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم النسخ';setTimeout(function(){sb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة';},2000);});}
+  });
 }
 (function(){
   var id=getId();
