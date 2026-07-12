@@ -739,7 +739,6 @@ function _renderHome(data){
   +'</div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
-  html+='<div id="ph-sharecard"></div>';
 
   var _pcItems=[
     {l:'الصورة الشخصية',d:!!profile.profile_image},
@@ -815,6 +814,8 @@ function _renderHome(data){
     });
   }else{html+=_empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع');}
   html+='</div>';
+
+  html+='<div id="ph-sharecard"></div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
   _renderProvNudges(_myBids,pool,matchedBySpec);
