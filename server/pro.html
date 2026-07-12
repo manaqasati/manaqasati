@@ -23,6 +23,17 @@
   --shadow:0 2px 8px rgba(37,99,235,.05);
   --shadow-md:0 4px 16px rgba(37,99,235,.1);
 }
+[data-theme="dark"]{
+  --p:#3b82f6;--p2:#60a5fa;--p3:#1e3a8a;
+  --gold:#3b82f6;--gold-d:#2563eb;--gold-l:#172136;--gold-soft:#1e40af;
+  --text:#e2e8f0;--text2:#cbd5e1;--muted:#94a3b8;--hint:#64748b;
+  --border:rgba(148,163,184,0.2);--bg:#0f172a;--white:#1e293b;
+  --green:#22c55e;--green-l:#14251c;
+  --sky:#38bdf8;--star:#fbbf24;
+  --shadow:0 2px 8px rgba(0,0,0,.25);
+  --shadow-md:0 4px 16px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .tb-distinguished{background:#172136;color:#94a3b8;border-color:rgba(148,163,184,0.2)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 .nav{background:var(--p3);height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--sky)}
@@ -166,6 +177,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <nav class="nav">
   <button class="back" onclick="location.href='/'"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>الرئيسية</button>
   <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
