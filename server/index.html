@@ -1482,11 +1482,19 @@ function initPersonalHome(){
   ['.stats','.how','.categories','.cta','.showcase','.demo','#try','#projects','#showcase'].forEach(function(sel){
     document.querySelectorAll(sel).forEach(function(el){el.style.display='none';});
   });
-  var _prov=document.getElementById('providers'); if(_prov){_prov.style.display='block'; if(typeof loadProviders==='function'){try{loadProviders();}catch(e){}}}
   host.style.display='block';
   host.innerHTML='<div class="ph-band"><div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">\u2026</div><div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b \u0628\u0643</h3><div class="ph-sub">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0644\u0648\u062d\u062a\u0643...</div></div></div></div>';
-  if(u.role==='provider'){ var t=document.getElementById('try'); if(t)t.style.display='none'; renderProviderHome(u); }
-  else { renderClientHome(u); }
+  var _prov=document.getElementById('providers');
+  if(u.role==='provider'){
+    // المزوّد: يشوف لوحته فقط — لا حاجة لعرض مزودين آخرين (منافسين)
+    if(_prov)_prov.style.display='none';
+    var t=document.getElementById('try'); if(t)t.style.display='none';
+    renderProviderHome(u);
+  } else {
+    // العميل: نُبقي «مزودو الخدمات» ليتصفّحهم
+    if(_prov){_prov.style.display='block'; if(typeof loadProviders==='function'){try{loadProviders();}catch(e){}}}
+    renderClientHome(u);
+  }
 }
 
 // ---------- العميل ----------
