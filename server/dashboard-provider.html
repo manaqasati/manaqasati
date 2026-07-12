@@ -786,11 +786,12 @@ function _renderHome(data){
     html+='<div class="ph-feat">'
       +'<span class="ph-fb">أفضل فرصة لك'+(matchedBySpec?' · تناسب تخصصك':'')+'</span>'
       +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>'
-      +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">'
+      +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
         +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
         +(featured.city?'<span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:20px">'+_esc(featured.city)+'</span>':'')
         +'<span style="font-size:11px;font-weight:700;background:var(--green-l);color:#15803d;padding:3px 10px;border-radius:20px">'+_fprice+'</span>'
       +'</div>'
+      +(featured.description?'<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_esc(featured.description)+'</div>':'')
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+timeAgoP(featured.created_at)+' · '+_fbidTxt+'</div>'
       +'<button class="ph-feat-cta" onclick="_openBidNudge('+featured.id+','+_fbids+')">قدّم عرضك الآن</button>'
     +'</div>';
