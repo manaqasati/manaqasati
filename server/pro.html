@@ -140,6 +140,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .qr-title{font-family:'Cairo',sans-serif;font-size:17px;font-weight:900;color:var(--p);margin-bottom:7px}
 .qr-sub{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:14px}
 .qr-brand{display:inline-flex;align-items:center;gap:6px;font-family:'Cairo',sans-serif;font-weight:900;font-size:14px;color:var(--text)}
+.qr-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+.qr-share-btn{margin-top:0}
 .qr-share-btn{display:inline-flex;align-items:center;justify-content:center;margin-top:14px;width:42px;height:42px;background:var(--p);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:.18s;box-shadow:0 4px 12px rgba(29,78,216,.25)}
 .qr-share-btn:hover{background:var(--p2,#2563eb);transform:translateY(-1px)}
 .qr-share-btn:active{transform:translateY(0)}
@@ -309,8 +311,8 @@ function render(p,rat){
     +'<div class="qr-side">'
       +'<div class="qr-title">امسح للوصول لصفحتي</div>'
       +'<div class="qr-sub">شارك هذا الرمز مع عملائك للوصول السريع إلى أعمالي وتقييماتي والتواصل معي مباشرة.</div>'
-      +'<div class="qr-brand"><span class="logo-dot"></span> مناقصة</div>'
-      +'<button class="qr-share-btn" id="qrShareBtn" aria-label="مشاركة صفحتي" title="مشاركة صفحتي"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>'
+      +'<div class="qr-foot"><div class="qr-brand"><span class="logo-dot"></span> مناقصة</div>'
+      +'<button class="qr-share-btn" id="qrShareBtn" aria-label="مشاركة صفحتي" title="مشاركة صفحتي"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button></div>'
     +'</div>'
     +'<div class="qr-box"><img src="'+_qrImg+'" alt="رمز QR لصفحة '+esc(p.business_name||p.name||'المزود')+'" loading="lazy"></div>'
   +'</div>';
