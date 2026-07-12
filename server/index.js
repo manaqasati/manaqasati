@@ -903,6 +903,8 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
+    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
