@@ -391,7 +391,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .ph-mi.grn{background:var(--green-l);color:var(--green)}
 .ph-mn{font-family:'Cairo',sans-serif;font-size:23px;font-weight:900;line-height:1;color:var(--p)}
 .ph-ml{font-size:11px;color:var(--muted);font-weight:700;margin-top:3px}
-.ph-feat{position:relative;background:var(--white);border:2px solid var(--p);border-radius:16px;padding:15px;margin-bottom:14px;cursor:pointer;transition:box-shadow .2s,transform .2s}
+.ph-feat{position:relative;background:var(--white);border:1.5px solid var(--p);border-radius:15px;padding:14px;margin-bottom:20px;cursor:pointer;transition:box-shadow .2s,transform .2s}
 .ph-feat:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
 .ph-fb{position:absolute;top:-11px;right:14px;background:var(--p);color:#fff;font-family:'Cairo',sans-serif;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
 .ph-feat-sq{width:42px;height:42px;border-radius:50%;background:var(--gold-l);color:var(--p2);display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-weight:900;font-size:17px;flex-shrink:0;overflow:hidden}
@@ -425,15 +425,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .hzp:nth-child(1){animation-delay:.03s}.hzp:nth-child(2){animation-delay:.08s}.hzp:nth-child(3){animation-delay:.13s}.hzp:nth-child(4){animation-delay:.18s}.hzp:nth-child(5){animation-delay:.23s}.hzp:nth-child(n+6){animation-delay:.27s}
 }
 /* ===== شريط النبيهات الذكية (يحتاج انتباهك) ===== */
-.nudges{margin-bottom:14px}
+.nudges{margin-bottom:20px}
 .nudges-h{font-size:12px;font-weight:800;color:var(--muted);margin:0 2px 9px;display:flex;align-items:center;gap:6px}
-.nudge{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--border);border-right:4px solid var(--p);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:transform .15s var(--ease),box-shadow .15s}
+.nudge{display:flex;align-items:center;gap:11px;background:var(--white);border:1px solid var(--border);border-right:3px solid var(--p);border-radius:11px;padding:10px 13px;margin-bottom:7px;cursor:pointer;transition:transform .15s var(--ease),box-shadow .15s}
 .nudge:hover{transform:translateX(-2px);box-shadow:var(--shadow-md)}
-.nudge-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nudge-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nudge-ic svg{width:15px;height:15px}
 .nudge-body{flex:1;min-width:0}
-.nudge-t{font-size:13px;font-weight:800;color:var(--text)}
-.nudge-s{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nudge-cta{flex-shrink:0;font-size:12px;font-weight:800;color:var(--p);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.nudge-t{font-size:12.5px;font-weight:800;color:var(--text)}
+.nudge-s{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nudge-cta{flex-shrink:0;font-size:11.5px;font-weight:800;color:var(--p);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.card{margin-bottom:20px}
 @media (prefers-reduced-motion: no-preference){.nudge{animation:upIn .45s var(--ease-out) both}}
 /* ===== الإخفاء التدريجي في "طلب جديد" ===== */
 .extra-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;color:var(--p);cursor:pointer;margin-top:2px;transition:all .15s}
