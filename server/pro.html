@@ -140,7 +140,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .qr-title{font-family:'Cairo',sans-serif;font-size:17px;font-weight:900;color:var(--p);margin-bottom:7px}
 .qr-sub{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:14px}
 .qr-brand{display:inline-flex;align-items:center;gap:6px;font-family:'Cairo',sans-serif;font-weight:900;font-size:14px;color:var(--text)}
-.qr-share-btn{display:inline-flex;align-items:center;gap:7px;margin-top:14px;background:var(--p);color:#fff;border:none;padding:10px 18px;border-radius:11px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;cursor:pointer;transition:.18s;box-shadow:0 4px 12px rgba(29,78,216,.25)}
+.qr-share-btn{display:inline-flex;align-items:center;justify-content:center;margin-top:14px;width:42px;height:42px;background:var(--p);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:.18s;box-shadow:0 4px 12px rgba(29,78,216,.25)}
 .qr-share-btn:hover{background:var(--p2,#2563eb);transform:translateY(-1px)}
 .qr-share-btn:active{transform:translateY(0)}
 .qr-box{flex-shrink:0;background:#fff;padding:12px;border-radius:14px;border:1px solid var(--border);box-shadow:0 6px 18px rgba(29,78,216,.12)}
@@ -310,11 +310,10 @@ function render(p,rat){
       +'<div class="qr-title">امسح للوصول لصفحتي</div>'
       +'<div class="qr-sub">شارك هذا الرمز مع عملائك للوصول السريع إلى أعمالي وتقييماتي والتواصل معي مباشرة.</div>'
       +'<div class="qr-brand"><span class="logo-dot"></span> مناقصة</div>'
-      +'<button class="qr-share-btn" id="qrShareBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة صفحتي</button>'
+      +'<button class="qr-share-btn" id="qrShareBtn" aria-label="مشاركة صفحتي" title="مشاركة صفحتي"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>'
     +'</div>'
     +'<div class="qr-box"><img src="'+_qrImg+'" alt="رمز QR لصفحة '+esc(p.business_name||p.name||'المزود')+'" loading="lazy"></div>'
   +'</div>';
-  html+='<div class="cta-card"><div class="cta-logo"><span class="logo-dot"></span>مناقصة</div><p class="cta-text">منصة المشاريع والخدمات الأولى في المملكة العربية السعودية — انشر مشروعك مجاناً واستقبل العروض</p><a href="/auth.html" class="cta-btn">أنشر مشروعك الآن &#8592;</a></div>';
   html+='<div class="foot">&#169; مناقصة — جميع الحقوق محفوظة</div>';
   document.getElementById('wrap').innerHTML=html;
   try{
@@ -348,7 +347,7 @@ function render(p,rat){
     var msgText='✨ '+nm2+' على منصة مناقصة\n\nشوف الأعمال والتقييمات وتواصل مباشرة:';
     var msg=msgText+'\n'+refUrl;
     if(navigator.share){navigator.share({title:nm2+' — مناقصة',text:msgText,url:refUrl}).catch(function(){});}
-    else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){var _o=qsb.innerHTML;qsb.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>تم نسخ الرابط';setTimeout(function(){qsb.innerHTML=_o;},2000);});}
+    else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){var _o=qsb.innerHTML;qsb.innerHTML='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(function(){qsb.innerHTML=_o;},1600);});}
   });
 }
 (function(){
