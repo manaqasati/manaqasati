@@ -1479,7 +1479,7 @@ function initPersonalHome(){
   if(!host) return;
   if(hero) hero.style.display='none';
   // إخفاء الأقسام التسويقية للمستخدم المسجّل (تظهر للزوّار فقط)
-  ['.stats','.how','.categories','.cta'].forEach(function(sel){
+  ['.stats','.how','.categories','.cta','.showcase','.demo','.live','#try','#projects','#providers','#showcase'].forEach(function(sel){
     document.querySelectorAll(sel).forEach(function(el){el.style.display='none';});
   });
   host.style.display='block';
