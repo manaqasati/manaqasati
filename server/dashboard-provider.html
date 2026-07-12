@@ -773,7 +773,7 @@ function _renderHome(data){
   var _lvlPct,_lvlNote;
   if(_next){var _span=_next.m-_cur.m;_lvlPct=Math.max(6,Math.round((done-_cur.m)/_span*100));var _rem=_next.m-done; var _remTxt=_rem===1?'صفقة واحدة':_rem===2?'صفقتان':(_rem+' صفقات'); _lvlNote=_remTxt+' للوصول لـ «'+_next.n+'»';}
   else{_lvlPct=100;_lvlNote='أعلى مستوى 🏅';}
-  html+='<div style="background:var(--white);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px;border-top:3px solid var(--green)">';
+  html+='<div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px 15px;margin-bottom:20px;border-top:2px solid var(--green)">';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px"><div style="font-size:12.5px;font-weight:800;color:var(--p)">🏆 مستواك: <span style="color:var(--green)">'+_cur.n+'</span></div><div style="font-size:10.5px;color:var(--muted);font-weight:700">'+_lvlNote+'</div></div>';
   html+='<div style="background:var(--p-light);border-radius:100px;height:9px;overflow:hidden"><div style="width:'+_lvlPct+'%;height:100%;background:linear-gradient(90deg,var(--p),var(--green));border-radius:100px;transition:width .6s"></div></div>';
   html+='</div>';
