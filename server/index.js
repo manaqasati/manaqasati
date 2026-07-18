@@ -2265,8 +2265,21 @@ app.get('/api/admin/leads/queue', requirePermission('outreach.manage'), async (r
 app.put('/api/admin/leads/:id', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { status, notes, followup_days, category, city } = req.body;
+    const { status, notes, followup_days, category, city, name, phone } = req.body;
     const sets = [], v = [];
+    if(name){ v.push(name); sets.push(`name=$${v.length}`); }
+    if(phone !== undefined){
+      const ph = (phone||'').trim();
+      const pn = normPhone(ph);
+      if(ph && !pn) return res.status(400).json({ message:'رقم جوال غير صالح' });
+      // منع التكرار: نفس الرقم عند مستهدف آخر
+      if(pn){
+        const dup = await pool.query('SELECT id FROM leads WHERE phone_norm=$1 AND id<>$2 LIMIT 1', [pn, id]);
+        if(dup.rows.length) return res.status(400).json({ message:'هذا الجوال مسجّل عند مستهدف آخر' });
+      }
+      v.push(ph||null); sets.push(`phone=$${v.length}`);
+      v.push(pn); sets.push(`phone_norm=$${v.length}`);
+    }
     if(status){
       v.push(status); sets.push(`status=$${v.length}`);
       if(status==='contacted'){ sets.push('contacted_at=NOW()'); sets.push('contact_count=COALESCE(contact_count,0)+1'); }
