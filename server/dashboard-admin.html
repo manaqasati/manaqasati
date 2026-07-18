@@ -1692,7 +1692,15 @@ function _renderOutreach(st, cov){
   var b=document.getElementById('outreach-body');if(!b)return;
   var gaps=(cov.gaps||[]);
   var h='';
-  // إحصائيات — بطاقات احترافية
+  // شريط التبويبات
+  h+='<div style="display:flex;gap:6px;background:var(--bg);padding:5px;border-radius:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="o-tab on" data-tab="overview" onclick="_oTab(\'overview\',this)" style="flex:1;min-width:110px;border:none;background:var(--white);color:var(--p);padding:10px;border-radius:9px;font-family:Cairo,sans-serif;font-weight:800;font-size:13px;cursor:pointer;box-shadow:var(--sh1);transition:.18s">📊 نظرة عامة</button>'
+    +'<button class="o-tab" data-tab="hunt" onclick="_oTab(\'hunt\',this)" style="flex:1;min-width:110px;border:none;background:transparent;color:var(--muted);padding:10px;border-radius:9px;font-family:Cairo,sans-serif;font-weight:800;font-size:13px;cursor:pointer;transition:.18s">🎯 الصيد</button>'
+    +'<button class="o-tab" data-tab="follow" onclick="_oTab(\'follow\',this)" style="flex:1;min-width:110px;border:none;background:transparent;color:var(--muted);padding:10px;border-radius:9px;font-family:Cairo,sans-serif;font-weight:800;font-size:13px;cursor:pointer;transition:.18s">📋 المتابعة</button>'
+    +'</div>';
+
+  // ═══ تبويب: نظرة عامة ═══
+  h+='<div class="o-pane" id="o-pane-overview">';
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:16px">'
     +_oStat('👥 المستهدفين', st.total||0, 'var(--p)', 'var(--p-light)')
     +_oStat('📤 أُرسلت', st.sent||0, '#0284c7', '#e0f2fe')
@@ -1702,11 +1710,9 @@ function _renderOutreach(st, cov){
     +_oStat('🎯 نسبة التحويل', (st.convert_rate||0)+'%', '#16a34a', '#dcfce7')
     +_oStat('⏰ متابعات', st.due||0, '#dc2626', '#fee2e2')
     +'</div>';
-
-  // فجوات التغطية
   if(gaps.length){
-    h+='<div class="card" style="border-right:3px solid #dc2626;margin-bottom:16px"><div class="card-head"><h3>🚨 طلبات بلا تغطية كافية</h3></div><div class="card-body" style="display:grid;gap:8px">';
-    gaps.slice(0,5).forEach(function(g){
+    h+='<div class="card" style="border-right:3px solid #dc2626"><div class="card-head"><h3>🚨 طلبات بلا تغطية كافية</h3></div><div class="card-body" style="display:grid;gap:8px">';
+    gaps.slice(0,8).forEach(function(g){
       h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:10px;flex-wrap:wrap">'
         +'<div style="flex:1;min-width:180px"><div style="font-weight:800;font-size:13px">'+esc(g.title||'طلب')+'</div>'
         +'<div style="font-size:11.5px;color:var(--muted)">'+esc(g.category||'—')+' · '+esc(g.city||'—')+' · <span style="color:#dc2626;font-weight:800">'+(g.providers||0)+' مزوّد فقط</span></div></div>'
@@ -1714,31 +1720,44 @@ function _renderOutreach(st, cov){
         +'</div>';
     });
     h+='</div></div>';
+  } else {
+    h+='<div class="card"><div class="card-body" style="text-align:center;padding:30px;color:var(--muted);font-size:13px">✅ كل الطلبات المفتوحة لها تغطية كافية</div></div>';
   }
+  h+='</div>';
 
-  // البحث
+  // ═══ تبويب: الصيد ═══
+  h+='<div class="o-pane" id="o-pane-hunt" style="display:none">';
   h+='<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>🔍 صيد جديد (Google Maps)</h3></div><div class="card-body">'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
       +'<select id="o-type" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-weight:700;background:var(--white);color:var(--text)"><option value="provider">مزوّد خدمة</option><option value="client">عميل B2B</option></select>'
       +'<input id="o-q" placeholder="مثال: تكييف الرياض · شركات إدارة أملاك جدة" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)" onkeydown="if(event.key===\'Enter\')_oSearch()">'
       +'<button onclick="_oSearch()" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-family:Tajawal;font-weight:800;cursor:pointer">بحث</button>'
     +'</div><div id="o-results"></div></div></div>';
-
-  // طابور الصيد
-  h+='<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>🎯 طابور الصيد</h3>'
+  h+='<div class="card"><div class="card-head"><h3>🎯 طابور الصيد</h3>'
     +'<button class="ftab" onclick="_oLoadQueue()">تحديث</button></div>'
-    +'<div class="card-body"><div id="o-queue"><div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">اضغط «تحديث» لبدء الطابور</div></div></div></div>';
+    +'<div class="card-body"><div id="o-queue"></div></div></div>';
+  h+='</div>';
 
-  // جدول المتابعة
-  h+='<div class="card"><div class="card-head"><h3>📋 المتابعة</h3>'
+  // ═══ تبويب: المتابعة ═══
+  h+='<div class="o-pane" id="o-pane-follow" style="display:none">';
+  h+='<div class="card"><div class="card-head"><h3>📋 كل المستهدفين</h3>'
     +'<select id="o-filter" onchange="_oLoadList()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:12px;font-weight:700;background:var(--white);color:var(--text)">'
     +'<option value="">كل الحالات</option>';
   Object.keys(_OSTAT).forEach(function(k){ h+='<option value="'+k+'">'+_OSTAT[k]+'</option>'; });
   h+='</select></div><div class="card-body"><div id="o-list"></div></div></div>';
+  h+='</div>';
 
   b.innerHTML=h;
   _oLoadList();
   _oLoadQueue();
+}
+function _oTab(tab,btn){
+  document.querySelectorAll('.o-pane').forEach(function(p){p.style.display='none';});
+  var pane=document.getElementById('o-pane-'+tab); if(pane)pane.style.display='block';
+  document.querySelectorAll('.o-tab').forEach(function(t){
+    t.style.background='transparent'; t.style.color='var(--muted)'; t.style.boxShadow='none'; t.classList.remove('on');
+  });
+  if(btn){ btn.style.background='var(--white)'; btn.style.color='var(--p)'; btn.style.boxShadow='var(--sh1)'; btn.classList.add('on'); }
 }
 function _oStat(l,v,c,bg){
   return '<div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--sh1);position:relative;overflow:hidden">'
@@ -1747,8 +1766,17 @@ function _oStat(l,v,c,bg){
     +'<div style="font-family:Cairo,sans-serif;font-size:24px;font-weight:900;color:'+c+';letter-spacing:-.5px;position:relative">'+v+'</div></div>';
 }
 function _oHunt(q){
-  showPage('outreach');
-  setTimeout(function(){ var el=document.getElementById('o-q'); if(el){ el.value=decodeURIComponent(q); _oSearch(); el.scrollIntoView({behavior:'smooth',block:'center'}); } },300);
+  var query=decodeURIComponent(q).trim();
+  // انتقل لتبويب الصيد
+  var huntTab=document.querySelector('.o-tab[data-tab="hunt"]');
+  if(huntTab)_oTab('hunt',huntTab);
+  var typeSel=document.getElementById('o-type');
+  var el=document.getElementById('o-q');
+  if(!el){ showPage('outreach'); setTimeout(function(){ _oHunt(q); }, 600); return; }
+  if(typeSel)typeSel.value='provider';
+  el.value=query;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  _oSearch();
 }
 function _oSearch(){
   var q=(document.getElementById('o-q')||{}).value||'';
