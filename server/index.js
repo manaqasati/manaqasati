@@ -2300,6 +2300,72 @@ app.get('/api/admin/leads/stats', requirePermission('settings.manage'), async (r
 });
 
 // خريطة الفجوات: طلبات مفتوحة بلا تغطية مزودين كافية
+// ═══ محرّك الاستقطاب: ذكاء Claude ═══
+async function callClaude(system, user, maxTokens){
+  const key = process.env.ANTHROPIC_API_KEY;
+  if(!key) return null;
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens: maxTokens||400,
+        system: system,
+        messages:[{ role:'user', content:user }]
+      })
+    });
+    const data = await r.json();
+    if(data && data.content && data.content[0] && data.content[0].text) return data.content[0].text.trim();
+    return null;
+  }catch(e){ console.error('claude:', e.message); return null; }
+}
+
+// توليد رسالة أولى مخصّصة
+app.post('/api/admin/leads/:id/gen-message', requirePermission('settings.manage'), async (req, res) => {
+  try{
+    const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
+    const l = r.rows[0];
+    if(!l) return res.status(404).json({ message:'غير موجود' });
+    let matched = null;
+    if(l.lead_type==='provider'){
+      const m = await pool.query(`SELECT title,category,city,budget_max FROM requests WHERE status='open' AND ($1::text IS NULL OR city=$1) AND ($2::text IS NULL OR category=$2) ORDER BY created_at DESC LIMIT 1`, [l.city||null, l.category||null]);
+      matched = m.rows[0] || null;
+    }
+    const sys = 'أنت خبير تسويق سعودي لمنصة «مناقصة» (منصة تربط العملاء بمزودي الخدمات). اكتب رسالة واتساب قصيرة (٣-٤ أسطر) بلهجة سعودية مهذبة واحترافية لدعوة منشأة للانضمام. الرسالة تعطي قيمة قبل الطلب، شخصية، وتنتهي بسؤال بسيط. لا تكتب أي شيء غير الرسالة نفسها. ضمّن الرابط https://www.manaqasa.com';
+    let usr = 'نوع المستهدف: '+(l.lead_type==='client'?'عميل محتمل (شركة تحتاج خدمات)':'مزوّد خدمة')+'\nالاسم: '+l.name+'\nالتخصص: '+(l.category||'غير محدد')+'\nالمدينة: '+(l.city||'غير محدد')+'\nالتقييم: '+(l.rating||'—');
+    if(matched) usr += '\n\nيوجد طلب حقيقي مطابق يمكن ذكره كطُعم: «'+matched.title+'»'+(matched.budget_max?' بميزانية '+matched.budget_max+' ريال':'')+' في '+(matched.city||'')+'. اذكره لجذبه.';
+    const msg = await callClaude(sys, usr, 300);
+    if(!msg) return res.json({ message:null, fallback:true });
+    res.json({ message: msg });
+  }catch(e){ console.error('gen-message:', e); res.status(500).json({ message:'تعذّر التوليد' }); }
+});
+
+// تحليل رد المزوّد + صياغة الرد المناسب
+app.post('/api/admin/leads/:id/analyze-reply', requirePermission('settings.manage'), async (req, res) => {
+  try{
+    const reply = (req.body.reply||'').trim();
+    if(!reply) return res.status(400).json({ message:'الصق رد المزوّد' });
+    const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
+    const l = r.rows[0] || {};
+    const sys = 'أنت مساعد مبيعات لمنصة «مناقصة» السعودية. حلّل رد المستهدف وصنّفه، ثم اكتب رداً مقترحاً بلهجة سعودية مهذبة. أجب حصراً بصيغة JSON صالحة بدون أي نص إضافي، بهذا الشكل: {"intent":"interested|price_question|hesitant|rejected|later|unclear","summary":"ملخص قصير","suggested_reply":"الرد المقترح للإرسال","followup_days":عدد}. القيم الممكنة لـ intent: interested (مهتم)، price_question (يسأل عن السعر/العمولة)، hesitant (متردد)، rejected (رفض)، later (لاحقاً)، unclear (غير واضح). followup_days: عدد أيام المتابعة المقترح (0 لو لا حاجة).';
+    const usr = 'المستهدف: '+(l.name||'')+' ('+(l.category||'')+' - '+(l.city||'')+')\n\nرده على رسالتنا:\n"'+reply+'"';
+    const raw = await callClaude(sys, usr, 500);
+    if(!raw) return res.json({ fallback:true });
+    let parsed = null;
+    try{ parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ parsed = { intent:'unclear', summary:raw.slice(0,120), suggested_reply:'', followup_days:3 }; }
+    // حدّث حالة المستهدف حسب التصنيف
+    const map = { interested:'interested', price_question:'interested', hesitant:'replied', rejected:'rejected', later:'followup', unclear:'replied' };
+    const newStatus = map[parsed.intent] || 'replied';
+    try{
+      const fd = parseInt(parsed.followup_days)||0;
+      await pool.query(`UPDATE leads SET status=$1, replied_at=NOW(), updated_at=NOW(), notes=COALESCE(notes,'')||$2 ${fd>0?", followup_at=NOW() + ($3 || ' days')::interval":''} WHERE id=$4`,
+        fd>0 ? [newStatus, '\n[رد]: '+(parsed.summary||''), fd, l.id] : [newStatus, '\n[رد]: '+(parsed.summary||''), l.id]);
+    }catch(e){}
+    res.json({ analysis: parsed });
+  }catch(e){ console.error('analyze-reply:', e); res.status(500).json({ message:'تعذّر التحليل' }); }
+});
+
 app.get('/api/admin/coverage-gaps', requirePermission('settings.manage'), async (req, res) => {
   try {
     const r = await pool.query(`
