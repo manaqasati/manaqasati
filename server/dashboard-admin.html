@@ -1775,6 +1775,7 @@ function _renderOutreach(st, cov){
       +'<select id="o-f-tag" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل التصنيفات</option><option value="serious">جاد</option><option value="interested">مهتم</option><option value="potential">محتمل</option></select>'
       +'<select id="o-f-prio" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل الأولويات</option><option value="high">عالية (70+)</option><option value="mid">متوسطة (45–69)</option><option value="low">منخفضة (&lt;45)</option></select>'
       +'<select id="o-f-city" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل المدن</option></select>'
+      +'<button id="o-f-maybe" data-on="0" onclick="_oToggleMaybe()" title="عرض المحتمل تسجيلهم فقط" style="'+_fsel+';border-color:#fde68a;color:#b45309">⚠️ محتمل سجّل</button>'
       +'<button class="ftab" onclick="_oClearFilters()" title="مسح كل الفلاتر" style="font-size:12px">✕ مسح</button>'
     +'</div>'
     +'<div id="o-list"></div></div></div>';
@@ -2218,7 +2219,16 @@ function _oQueryStr(){
   var p=[], m={status:'o-f-status',type:'o-f-type',tag:'o-f-tag',prio:'o-f-prio',city:'o-f-city'};
   Object.keys(m).forEach(function(k){ var val=g(m[k]); if(val)p.push(k+'='+encodeURIComponent(val)); });
   var q=g('o-f-q').trim(); if(q)p.push('q='+encodeURIComponent(q));
+  var mb=document.getElementById('o-f-maybe'); if(mb&&mb.getAttribute('data-on')==='1')p.push('maybe=1');
   return p.length ? '?'+p.join('&') : '';
+}
+function _oToggleMaybe(){
+  var b=document.getElementById('o-f-maybe'); if(!b)return;
+  var on=b.getAttribute('data-on')==='1'?'0':'1';
+  b.setAttribute('data-on',on);
+  b.style.background=on==='1'?'#fef3c7':'var(--white)';
+  b.style.fontWeight=on==='1'?'900':'700';
+  _oLoadList();
 }
 // تأخير بسيط لحقل البحث (لتفادي طلب مع كل حرف)
 var _oDebT=null;
@@ -2226,6 +2236,7 @@ function _oDeb(fn){ clearTimeout(_oDebT); _oDebT=setTimeout(fn,350); }
 // مسح كل الفلاتر
 function _oClearFilters(){
   ['o-f-q','o-f-status','o-f-type','o-f-tag','o-f-prio','o-f-city'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
+  var mb=document.getElementById('o-f-maybe'); if(mb){ mb.setAttribute('data-on','0'); mb.style.background='var(--white)'; mb.style.fontWeight='700'; }
   _oLoadList();
 }
 // تعبئة قائمة المدن (مرّة واحدة، مع تخزين مؤقّت)
@@ -2277,6 +2288,20 @@ function _oDelete(id){
     .then(function(){ toast('تم الحذف','success'); _oLoadList(); })
     .catch(function(){ toast('تعذّر الحذف','error'); });
 }
+function _oConfirmMatch(id){
+  var l=(_oLeads||[]).find(function(x){return x.id===id;});
+  if(!confirm('تأكيد أن «'+((l&&l.name)||'')+'» سجّل فعلاً؟ سيُحوَّل إلى «سجّل ✅».'))return;
+  fetch(API+'/api/admin/leads/'+id+'/confirm-match',{method:'POST',headers:hdr().headers})
+    .then(function(r){return r.json();})
+    .then(function(){ toast('تم التأكيد — سجّل ✅','success'); loadOutreach(); })
+    .catch(function(){ toast('تعذّر التأكيد','error'); });
+}
+function _oDismissMatch(id){
+  fetch(API+'/api/admin/leads/'+id+'/dismiss-match',{method:'POST',headers:hdr().headers})
+    .then(function(r){return r.json();})
+    .then(function(){ toast('أُزيلت الإشارة','success'); _oLoadList(); })
+    .catch(function(){ toast('تعذّر','error'); });
+}
 function _oLoadList(){
   var box=document.getElementById('o-list');if(!box)return;
   box.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">جاري التحميل...</div>';
@@ -2292,6 +2317,7 @@ function _oLoadList(){
       var scCol=sc>=70?'#16a34a':sc>=45?'#d97706':'var(--muted)';
       var scBg=sc>=70?'#dcfce7':sc>=45?'#fef3c7':'var(--bg)';
       var initial=esc((l.name||'?').trim()[0]||'?');
+      var isMaybe = l.maybe_user_id && l.status!=='converted';
       h+='<tr>'
         +'<td><div class="u-cell"><div class="u-av" style="background:linear-gradient(135deg,'+(l.lead_type==='client'?'#0284c7,#38bdf8':'var(--p),var(--p2)')+')">'+initial+'</div>'
           +'<div><div class="u-name">'+esc(l.name)+'</div><div class="u-email" dir="ltr" style="text-align:right">'+esc(l.phone||'—')+'</div></div></div></td>'
@@ -2299,8 +2325,9 @@ function _oLoadList(){
         +'<td><div style="font-size:12.5px;font-weight:600">'+esc(l.category||'—')+'</div><div style="font-size:11.5px;color:var(--muted)">'+esc(l.city||'—')+'</div></td>'
         +'<td><span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:4px 8px;border-radius:20px;background:'+scBg+';color:'+scCol+';font-weight:900;font-size:13px;font-family:Cairo,sans-serif">'+sc+'</span></td>'
         +'<td>'+_oTagCell(l)+'</td>'
-        +'<td><span class="badge '+stCol+'">'+(_OSTAT[l.status]||l.status)+'</span></td>'
+        +'<td><span class="badge '+stCol+'">'+(_OSTAT[l.status]||l.status)+'</span>'+(isMaybe?'<div style="margin-top:5px"><span style="display:inline-block;padding:2px 7px;border-radius:20px;background:#fef3c7;color:#b45309;font-size:10.5px;font-weight:800;border:1px solid #fde68a">⚠️ محتمل سجّل</span></div>':'')+'</td>'
         +'<td><div style="display:flex;gap:6px;align-items:center">'
+          +(isMaybe?'<button onclick="_oConfirmMatch('+l.id+')" title="أكّد أنه سجّل فعلاً" style="background:#16a34a;color:#fff;border:none;padding:0 10px;height:30px;border-radius:8px;cursor:pointer;font-size:11.5px;font-weight:800">✅ أكّد</button><button onclick="_oDismissMatch('+l.id+')" title="ليس هو — أزل الإشارة" style="background:#f1f5f9;color:#64748b;border:1px solid var(--border);padding:0 9px;height:30px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800">✗</button>':'')
           +(l.phone_norm?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
           +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✨</button>'
           +'<button onclick="_oEdit('+l.id+')" title="تعديل البيانات" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✏️</button>'
