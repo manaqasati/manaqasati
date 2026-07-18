@@ -317,20 +317,46 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
 // ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
 function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
 
-// صفحة الكرت — لو تحوّل المستهدف لمزوّد مسجّل، حوّل لصفحته الرسمية؛ وإلا اعرض الكرت
+// صفحة الكرت — لو تحوّل المستهدف لمزوّد مسجّل، حوّل لصفحته الرسمية؛ وإلا اعرض الكرت (مع وسوم معاينة)
+let _cardTpl = null;
 app.get('/card/:token', async (req, res) => {
   try{
-    const r = await pool.query('SELECT converted_user_id FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
-    const uid = r.rows[0] && r.rows[0].converted_user_id;
-    if(uid){
-      const u = await pool.query("SELECT id, COALESCE(business_name,name) AS nm FROM users WHERE id=$1 AND role='provider'", [uid]);
+    const r = await pool.query('SELECT converted_user_id, name, category, city, rating, card_published FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
+    const lead = r.rows[0];
+    if(lead && lead.converted_user_id){
+      const u = await pool.query("SELECT id, COALESCE(business_name,name) AS nm FROM users WHERE id=$1 AND role='provider'", [lead.converted_user_id]);
       if(u.rows[0]){
         const seoSlug = encodeURIComponent(String(u.rows[0].nm||'مزود').replace(/\s+/g,'-')) + '-' + u.rows[0].id;
         return res.redirect(302, '/pro/' + seoSlug);
       }
     }
-    res.sendFile(__dirname + '/card.html');
+    if(_cardTpl === null){ try{ _cardTpl = require('fs').readFileSync(__dirname + '/card.html','utf8'); }catch(e){ _cardTpl = ''; } }
+    if(!_cardTpl || !lead || lead.card_published === false) return res.sendFile(__dirname + '/card.html');
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const nm = esc(lead.name||'بطاقة رقمية');
+    const desc = esc([lead.category, lead.city].filter(Boolean).join(' · ') + (lead.rating?` · ⭐ ${(+lead.rating).toFixed(1)}`:''));
+    const url = `${SITE_URL}/card/${req.params.token}`;
+    const img = `${SITE_URL}/og/card/${req.params.token}`;
+    const og = `\n<meta property="og:type" content="profile">\n<meta property="og:title" content="${nm} — بطاقة رقمية | مناقصة">\n<meta property="og:description" content="${desc}">\n<meta property="og:url" content="${url}">\n<meta property="og:image" content="${img}">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="${nm} — بطاقة رقمية">\n<meta name="twitter:description" content="${desc}">\n<meta name="twitter:image" content="${img}">\n`;
+    res.header('Content-Type','text/html; charset=utf-8');
+    res.send(_cardTpl.replace('</head>', og + '</head>'));
   }catch(e){ res.sendFile(__dirname + '/card.html'); }
+});
+
+// صورة معاينة الكرت (OG) — بهوية مناقصة الزرقاء
+app.get('/og/card/:token', async (req, res) => {
+  try{
+    const r = await pool.query('SELECT name, category, city, rating FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
+    if(!r.rows.length) return res.status(404).send('Not found');
+    const p = r.rows[0];
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const name = esc(p.name||'بطاقة رقمية');
+    const specs = esc([p.category, p.city].filter(Boolean).join('  ·  ') || 'مزوّد خدمة');
+    const avg = parseFloat(p.rating)||0;
+    const initial = esc((String(p.name||'?').trim()[0])||'م');
+    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#0ea5e9"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.55)" text-anchor="middle">بطاقة رقمية · مناقصة</text><circle cx="600" cy="235" r="72" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" stroke-width="4"/><text x="600" y="235" font-family="Arial" font-size="70" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">${initial}</text><text x="600" y="380" font-family="Arial" font-size="64" font-weight="bold" fill="#fff" text-anchor="middle">${name}</text><text x="600" y="450" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.85)" text-anchor="middle">${specs}</text>${avg>0?`<text x="600" y="520" font-family="Arial" font-size="34" fill="#7dd3fc" text-anchor="middle">★ ${avg.toFixed(1)}</text>`:''}<text x="600" y="585" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.4)" text-anchor="middle">manaqasa.com</text></svg>`;
+    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+  }catch(e){ res.status(500).send('error'); }
 });
 
 // بيانات الكرت العامة (حقول آمنة فقط)
