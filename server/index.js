@@ -2146,20 +2146,34 @@ app.post('/api/admin/leads/search', requirePermission('outreach.manage'), async 
     if(!key) return res.status(400).json({ message:'مفتاح Google Places غير مضبوط (GOOGLE_PLACES_KEY)' });
     const q = (req.body.query||'').trim();
     if(!q) return res.status(400).json({ message:'اكتب عبارة البحث' });
+    // عدد الصفحات (كل صفحة حتى 20 نتيجة) — بحث مفرد حتى 3، الكنس عادةً 2
+    const maxPages = Math.min(Math.max(parseInt(req.body.pages)||1, 1), 3);
 
-    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.primaryTypeDisplayName'
-      },
-      body: JSON.stringify({ textQuery: q, languageCode:'ar', regionCode:'SA', maxResultCount: 20 })
-    });
-    const data = await r.json();
-    if(data.error) return res.status(400).json({ message: data.error.message || 'فشل البحث' });
+    // ملاحظة: لازم nextPageToken في FieldMask وإلا ما يرجع رمز الصفحة التالية
+    const fieldMask = 'nextPageToken,places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.primaryTypeDisplayName';
+    let raw = [], token = null, pages = 0;
+    do {
+      const body = { textQuery: q, languageCode:'ar', regionCode:'SA', maxResultCount: 20 };
+      if(token) body.pageToken = token;
+      const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': fieldMask },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if(data.error){
+        // لو فشلت صفحة تالية، نرجّع اللي جمعناه بدل ما نفشل كلياً
+        if(pages === 0) return res.status(400).json({ message: data.error.message || 'فشل البحث' });
+        break;
+      }
+      raw = raw.concat(data.places || []);
+      token = data.nextPageToken || null;
+      pages++;
+      // رمز الصفحة يحتاج لحظة ليصبح صالحاً
+      if(token && pages < maxPages) await new Promise(r => setTimeout(r, 700));
+    } while(token && pages < maxPages);
 
-    const places = (data.places||[]).map(p => ({
+    const places = raw.map(p => ({
       place_id: p.id,
       name: (p.displayName && p.displayName.text) || '—',
       phone: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
