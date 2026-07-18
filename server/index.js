@@ -593,6 +593,30 @@ function nameSimilar(a, b){
   return false;
 }
 
+// نقل بيانات الكرت (نبذة/شعار/روابط) إلى ملف المزود — ملء الفارغ فقط
+async function transferCardToUser(userId, lead){
+  if(!userId || !lead) return;
+  const lk = lead.card_links || {};
+  const hasAny = lead.card_bio || lead.card_logo || (lk && Object.keys(lk).length);
+  if(!hasAny) return;
+  try{
+    await pool.query(
+      `UPDATE users SET
+         bio           = COALESCE(NULLIF(bio,''), $2),
+         profile_image = COALESCE(profile_image, $3),
+         instagram     = COALESCE(NULLIF(instagram,''), $4),
+         snapchat      = COALESCE(NULLIF(snapchat,''), $5),
+         tiktok        = COALESCE(NULLIF(tiktok,''), $6),
+         twitter       = COALESCE(NULLIF(twitter,''), $7),
+         website       = COALESCE(NULLIF(website,''), $8),
+         location_url  = COALESCE(NULLIF(location_url,''), $9)
+       WHERE id=$1`,
+      [userId, lead.card_bio||null, lead.card_logo||null, lk.instagram||null, lk.snapchat||null,
+       lk.tiktok||null, lk.twitter||null, lk.website||null, lk.maps||null]
+    );
+  }catch(e){ console.error('card→profile transfer:', e.message); }
+}
+
 // نقاط الأولوية: تقييم عالٍ + مراجعات كثيرة + بلا موقع = صيد ثمين
 function scoreLead(l){
   let s = 0;
@@ -1176,6 +1200,17 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
           [uid, pn]
         );
         convertedByPhone = up.rowCount || 0;
+        // نقل بيانات الكرت إلى ملف المزود الجديد (ملء الفارغ فقط)
+        if(convertedByPhone > 0){
+          try{
+            const cl = await pool.query(
+              `SELECT card_bio, card_logo, card_links FROM leads
+               WHERE phone_norm=$1 AND converted_user_id=$2
+                 AND (card_bio IS NOT NULL OR card_logo IS NOT NULL OR card_links IS NOT NULL)
+               ORDER BY card_updated_at DESC NULLS LAST LIMIT 1`, [pn, uid]);
+            if(cl.rows[0]) await transferCardToUser(uid, cl.rows[0]);
+          }catch(e){ console.error('card transfer (register):', e.message); }
+        }
       }
       // إذا ما تحوّل شيء بالجوال، جرّب مطابقة الاسم (إشارة يدوية فقط — لا تحويل تلقائي)
       if(convertedByPhone === 0){
@@ -2507,7 +2542,9 @@ app.post('/api/admin/leads/:id/confirm-match', requirePermission('outreach.manag
       `UPDATE leads SET status='converted', converted_user_id=maybe_user_id, converted_at=NOW(),
         maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW()
        WHERE id=$1 RETURNING *`, [id]);
-    res.json({ lead: r.rows[0] });
+    const lead = r.rows[0];
+    if(lead && lead.converted_user_id) await transferCardToUser(lead.converted_user_id, lead);
+    res.json({ lead });
   }catch(e){ res.status(500).json({ message:'تعذّر التأكيد' }); }
 });
 
