@@ -179,6 +179,7 @@ app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
 app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
+app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
 app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
 
 app.get(/^\/project\/(.+)$/, async (req, res) => {
@@ -311,6 +312,75 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
 </head>`);
     res.send(html);
   } catch(e) { console.error('/pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
+});
+
+// ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
+function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
+
+// صفحة الكرت — ترسل الملف؛ التعبئة عبر /api/card/:token
+app.get('/card/:token', (req, res) => res.sendFile(__dirname + '/card.html'));
+
+// بيانات الكرت العامة (حقول آمنة فقط)
+app.get('/api/card/:token', async (req, res) => {
+  try{
+    const r = await pool.query(
+      `SELECT name, phone, phone_norm, category, city, rating, reviews_count, website,
+              card_bio, card_links, card_published
+       FROM leads WHERE card_token=$1 LIMIT 1`, [req.params.token]);
+    if(!r.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
+    const l = r.rows[0];
+    if(l.card_published === false) return res.status(410).json({ unpublished:true, message:'الكرت غير متاح' });
+    let views = 0;
+    try{ const uv = await pool.query('UPDATE leads SET card_views=COALESCE(card_views,0)+1 WHERE card_token=$1 RETURNING card_views', [req.params.token]); views = (uv.rows[0] && uv.rows[0].card_views) || 0; }catch(e){}
+    res.json({
+      name: l.name, phone: l.phone, phone_norm: l.phone_norm, category: l.category, city: l.city,
+      rating: l.rating, reviews_count: l.reviews_count, website: l.website,
+      bio: l.card_bio || '', links: l.card_links || {}, views: views
+    });
+  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
+});
+
+// تعديل ذاتي بالرمز (من عنده الرابط يملكه) — نبذة/روابط/إخفاء
+app.post('/api/card/:token', async (req, res) => {
+  try{
+    const token = req.params.token;
+    const chk = await pool.query('SELECT id FROM leads WHERE card_token=$1 LIMIT 1', [token]);
+    if(!chk.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
+    const bio = typeof req.body.bio === 'string' ? req.body.bio.slice(0,600) : null;
+    const inLinks = (req.body.links && typeof req.body.links === 'object') ? req.body.links : {};
+    const allow = ['instagram','snapchat','tiktok','twitter','whatsapp','maps','website'];
+    const links = {};
+    allow.forEach(k => { if(typeof inLinks[k]==='string' && inLinks[k].trim()) links[k] = inLinks[k].trim().slice(0,300); });
+    const sets = ['card_updated_at=NOW()'], v = [];
+    if(bio !== null){ v.push(bio); sets.push(`card_bio=$${v.length}`); }
+    v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`);
+    if(req.body.unpublish === true) sets.push('card_published=false');
+    if(req.body.unpublish === false) sets.push('card_published=true');
+    v.push(token);
+    await pool.query(`UPDATE leads SET ${sets.join(',')} WHERE card_token=$${v.length}`, v);
+    res.json({ ok:true });
+  }catch(e){ res.status(500).json({ message:'تعذّر الحفظ' }); }
+});
+
+// (أدمن) إنشاء/جلب رابط الكرت لمستهدف
+app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    const id = parseInt(req.params.id);
+    const r = await pool.query('SELECT card_token, card_views, card_published FROM leads WHERE id=$1', [id]);
+    if(!r.rows.length) return res.status(404).json({ message:'غير موجود' });
+    let token = r.rows[0].card_token;
+    if(!token){
+      for(let i=0;i<5 && !token;i++){
+        const t = genCardToken();
+        try{
+          const up = await pool.query('UPDATE leads SET card_token=$1 WHERE id=$2 AND card_token IS NULL RETURNING card_token', [t, id]);
+          if(up.rows.length) token = up.rows[0].card_token;
+        }catch(e){}
+      }
+    }
+    if(!token) return res.status(500).json({ message:'تعذّر توليد الرمز' });
+    res.json({ token, url: `${SITE_URL}/card/${token}`, views: r.rows[0].card_views || 0, published: r.rows[0].card_published !== false });
+  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
 
 // ═══ EMAIL ═══
@@ -995,6 +1065,13 @@ async function setupDatabase() {
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_updated_at TIMESTAMP"); } catch(e){}
+      try { await pool.query("CREATE INDEX IF NOT EXISTS idx_leads_card_token ON leads(card_token)"); } catch(e){}
     } catch(e){ console.error('leads table:', e.message); }
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
