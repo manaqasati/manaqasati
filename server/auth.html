@@ -566,6 +566,7 @@ async function doSubmit(){
       url='/api/auth/register';
       body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};
       try{var _ref=localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
+      if(window._cardToken)body.card_token=window._cardToken;
       if(_regAvatarData)body.profile_image=_regAvatarData;
       if(ROLE==='provider'){
         body.specialties=selectedSpecs;
@@ -657,6 +658,32 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();})
 (function(){
   if(_savedRole&&_savedRole!=='client'){ selRole(_savedRole); }
   if(_savedMode&&_savedMode!=='login'){ setMode(_savedMode); }
+})();
+
+// ═══ قدوم من الكرت الرقمي (?ref=card&t=TOKEN) ═══
+(function(){
+  var qs=new URLSearchParams(location.search);
+  var t=qs.get('t')||qs.get('card');
+  if(!t)return;
+  window._cardToken=t;
+  try{selRole('provider');}catch(e){}
+  try{setMode('register');}catch(e){}
+  fetch(API+'/api/card/'+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d)return;
+    var set=function(id,val){var e=document.getElementById(id);if(e&&val&&!e.value)e.value=val;};
+    set('i-name',d.name);
+    var ph=d.phone_norm||'';
+    if(ph.indexOf('966')===0){ph='0'+ph.slice(3);}
+    else if(d.phone){ph=(''+d.phone).replace(/[^0-9]/g,'');if(ph.indexOf('966')===0)ph='0'+ph.slice(3);}
+    set('i-reg-phone',ph);
+    if(d.city){var cs=document.getElementById('i-city');if(cs){for(var i=0;i<cs.options.length;i++){if(cs.options[i].value===d.city){cs.value=d.city;break;}}}}
+    set('i-bio',d.bio);
+    var L=d.links||{};
+    set('i-website',L.website);set('i-location',L.maps);
+    set('i-instagram',L.instagram);set('i-tiktok',L.tiktok);
+    set('i-snapchat',L.snapchat);set('i-twitter',L.twitter);
+    var hd=document.getElementById('hd-s');if(hd)hd.textContent='فعّل بطاقتك — بياناتك جاهزة';
+  }).catch(function(){});
 })();
 
 // ═══ صور التسجيل ═══
