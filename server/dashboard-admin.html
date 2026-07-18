@@ -1692,6 +1692,8 @@ function _renderOutreach(st, cov){
   var b=document.getElementById('outreach-body');if(!b)return;
   var gaps=(cov.gaps||[]);
   var h='';
+  // عدّاد الحد اليومي (حماية من الحظر)
+  h+='<div id="o-daylimit" style="margin-bottom:16px"></div>';
   // الإحصائيات
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin-bottom:20px">'
     +_oStat('👥 المستهدفين', st.total||0, 'var(--p)', 'var(--p-light)')
@@ -1717,7 +1719,12 @@ function _renderOutreach(st, cov){
   }
 
   // الصيد (بحث + طابور معاً في بطاقة)
-  h+='<div class="card" style="margin-bottom:20px"><div class="card-head"><h3>🎯 الصيد</h3></div><div class="card-body">'
+  h+='<div class="card" style="margin-bottom:20px"><div class="card-head"><h3>🎯 الصيد</h3>'
+    +'<div style="display:flex;gap:7px">'
+    +'<button class="ftab" onclick="_oManualAdd()">➕ إضافة يدوية</button>'
+    +'<button class="ftab" onclick="document.getElementById(\'o-csv\').click()">📄 استيراد Excel</button>'
+    +'<input type="file" id="o-csv" accept=".csv,.xlsx,.xls" style="display:none" onchange="_oImportCSV(this)">'
+    +'</div></div><div class="card-body">'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
       +'<select id="o-type" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-weight:700;background:var(--white);color:var(--text)"><option value="provider">مزوّد خدمة</option><option value="client">عميل B2B</option></select>'
       +'<input id="o-q" placeholder="مثال: تكييف الرياض · شركات إدارة أملاك جدة" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)" onkeydown="if(event.key===\'Enter\')_oSearch()">'
@@ -1730,14 +1737,17 @@ function _renderOutreach(st, cov){
 
   // المتابعة
   h+='<div class="card"><div class="card-head"><h3>📊 المتابعة</h3>'
+    +'<div style="display:flex;gap:7px;align-items:center">'
+    +'<button class="ftab" onclick="_oExport()">📥 تصدير</button>'
     +'<select id="o-filter" onchange="_oLoadList()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:12px;font-weight:700;background:var(--white);color:var(--text)">'
     +'<option value="">كل الحالات</option>';
   Object.keys(_OSTAT).forEach(function(k){ h+='<option value="'+k+'">'+_OSTAT[k]+'</option>'; });
-  h+='</select></div><div class="card-body"><div id="o-list"></div></div></div>';
+  h+='</select></div></div><div class="card-body"><div id="o-list"></div></div></div>';
 
   b.innerHTML=h;
   _oLoadList();
   _oLoadQueue();
+  _oDayLimit();
 }
 function _oStat(l,v,c,bg){
   return '<div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--sh1);position:relative;overflow:hidden">'
@@ -1847,8 +1857,170 @@ function _oSend(){
   var url='https://api.whatsapp.com/send?phone='+l.phone_norm+'&text='+encodeURIComponent(msg)+'&type=phone_number&app_absent=0';
   window.open(url,'_blank');
   _oSetStatus(l.id,'contacted',3);
+  setTimeout(_oDayLimit, 800);
 }
 function _oSkip(){ _OQi++; _oRenderCard(); }
+
+// ═══ عدّاد الحد اليومي ═══
+function _oDayLimit(){
+  var box=document.getElementById('o-daylimit');if(!box)return;
+  fetch(API+'/api/admin/leads/sent-today',hdr()).then(function(r){return r.json();}).then(function(d){
+    var n=d.count||0, lim=d.limit||50, pct=Math.min(100,Math.round(n/lim*100));
+    var col=n>=lim?'#dc2626':n>=lim*0.8?'#d97706':'#16a34a';
+    var msg=n>=lim?'⛔ وصلت الحد اليومي — وقّف الإرسال لحماية رقمك':n>=lim*0.8?'⚠️ اقتربت من الحد — تبقّى '+(lim-n):'✅ آمن — أرسلت '+n+' اليوم';
+    box.innerHTML='<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 16px;box-shadow:var(--sh1)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12.5px;font-weight:800;color:'+col+'">'+msg+'</span><span style="font-size:12px;color:var(--muted);font-weight:700">'+n+' / '+lim+'</span></div>'
+      +'<div style="background:var(--bg);border-radius:100px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:100px;transition:width .5s"></div></div></div>';
+  }).catch(function(){});
+}
+
+// ═══ إضافة يدوية ═══
+function _oManualAdd(){
+  var m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML='<div style="background:var(--white);border-radius:16px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    +'<div style="font-family:Cairo,sans-serif;font-weight:900;font-size:16px;margin-bottom:16px">➕ إضافة مستهدف يدوياً</div>'
+    +'<div style="display:grid;gap:10px">'
+    +'<input id="ma-name" placeholder="اسم المنشأة *" style="padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)">'
+    +'<input id="ma-phone" placeholder="رقم الجوال * (05xxxxxxxx)" dir="ltr" style="padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text);text-align:right">'
+    +'<div style="display:flex;gap:8px"><input id="ma-cat" placeholder="التخصص" style="flex:1;padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)"><input id="ma-city" placeholder="المدينة" style="flex:1;padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)"></div>'
+    +'<select id="ma-type" style="padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-weight:700;background:var(--white);color:var(--text)"><option value="provider">مزوّد خدمة</option><option value="client">عميل B2B</option></select>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px">'
+    +'<button onclick="_oManualSave(this)" style="flex:1;background:var(--p);color:#fff;border:none;padding:11px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">إضافة</button>'
+    +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:11px 18px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">إلغاء</button>'
+    +'</div></div>';
+  m.onclick=function(e){ if(e.target===m)m.remove(); };
+  document.body.appendChild(m);
+  setTimeout(function(){ var n=document.getElementById('ma-name'); if(n)n.focus(); },100);
+}
+function _oManualSave(btn){
+  var name=(document.getElementById('ma-name')||{}).value||'';
+  var phone=(document.getElementById('ma-phone')||{}).value||'';
+  if(!name.trim()||!phone.trim()){ toast('الاسم والجوال مطلوبان','error'); return; }
+  var item={ name:name.trim(), phone:phone.trim(), category:(document.getElementById('ma-cat')||{}).value||null, city:(document.getElementById('ma-city')||{}).value||null, lead_type:(document.getElementById('ma-type')||{}).value||'provider' };
+  btn.disabled=true; btn.textContent='...';
+  fetch(API+'/api/admin/leads/manual',{method:'POST',headers:hdr().headers,body:JSON.stringify(item)})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.dup){ toast('هذا الرقم موجود مسبقاً','error'); btn.disabled=false; btn.textContent='إضافة'; return; }
+      if(d.invalid){ toast('رقم غير صالح','error'); btn.disabled=false; btn.textContent='إضافة'; return; }
+      toast('أُضيف المستهدف','success');
+      btn.closest('[style*=fixed]').remove();
+      loadOutreach();
+    }).catch(function(){ toast('تعذّر','error'); btn.disabled=false; btn.textContent='إضافة'; });
+}
+
+// ═══ استيراد CSV/Excel ═══
+function _oImportCSV(input){
+  var file=input.files[0]; if(!file)return;
+  var name=file.name.toLowerCase();
+  if(name.endsWith('.csv')){ _oReadCSV(file); }
+  else { _oReadXLSX(file); }
+  input.value='';
+}
+function _oReadCSV(file){
+  var reader=new FileReader();
+  reader.onload=function(e){ _oParseRows(_oCSVtoRows(e.target.result)); };
+  reader.readAsText(file,'utf-8');
+}
+function _oCSVtoRows(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+  return lines.map(function(l){
+    // دعم الفواصل والفاصلة المنقوطة
+    var sep = l.indexOf(';')>-1 && l.indexOf(',')===-1 ? ';' : ',';
+    return l.split(sep).map(function(c){return c.replace(/^"|"$/g,'').trim();});
+  });
+}
+function _oReadXLSX(file){
+  if(typeof XLSX==='undefined'){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){ _oReadXLSX(file); };
+    s.onerror=function(){ toast('تعذّر تحميل قارئ Excel','error'); };
+    document.head.appendChild(s);
+    return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      _oParseRows(rows);
+    }catch(err){ toast('تعذّر قراءة الملف','error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function _oParseRows(rows){
+  if(!rows||rows.length<1){ toast('الملف فارغ','error'); return; }
+  // اكتشاف الأعمدة من العناوين (اسم، جوال، تخصص، مدينة)
+  var header=rows[0].map(function(c){return String(c||'').toLowerCase();});
+  function col(names){ for(var i=0;i<header.length;i++){ for(var j=0;j<names.length;j++){ if(header[i].indexOf(names[j])>-1)return i; } } return -1; }
+  var iName=col(['اسم','name','منشأة','شركة']);
+  var iPhone=col(['جوال','هاتف','رقم','phone','tel','mobile']);
+  var iCat=col(['تخصص','خدمة','category','نوع']);
+  var iCity=col(['مدينة','city','منطقة']);
+  var hasHeader = iName>-1 || iPhone>-1;
+  var start = hasHeader ? 1 : 0;
+  if(!hasHeader){ iName=0; iPhone=1; iCat=2; iCity=3; }  // بلا عناوين: افتراض الترتيب
+  var items=[];
+  for(var r=start;r<rows.length;r++){
+    var row=rows[r]; if(!row||!row.length)continue;
+    var nm=iName>-1?String(row[iName]||'').trim():'';
+    var ph=iPhone>-1?String(row[iPhone]||'').trim():'';
+    if(!nm||!ph)continue;
+    items.push({ name:nm, phone:ph, category:iCat>-1?String(row[iCat]||'').trim()||null:null, city:iCity>-1?String(row[iCity]||'').trim()||null:null, lead_type:'provider' });
+  }
+  if(!items.length){ toast('لم أجد صفوفاً صالحة (تأكّد من عمودَي الاسم والجوال)','error'); return; }
+  toast('جاري استيراد '+items.length+' صف...','info');
+  fetch(API+'/api/admin/leads/manual',{method:'POST',headers:hdr().headers,body:JSON.stringify({items:items,lead_type:'provider'})})
+    .then(function(r){return r.json();}).then(function(d){
+      toast('أُضيف '+(d.added||0)+' · مكرر '+(d.dup||0)+' · غير صالح '+(d.invalid||0),'success');
+      loadOutreach();
+    }).catch(function(){ toast('تعذّر الاستيراد','error'); });
+}
+
+// ═══ تصدير ═══
+function _oExport(){
+  fetch(API+'/api/admin/leads/export',hdr()).then(function(r){return r.json();}).then(function(d){
+    var L=d.leads||[]; if(!L.length){ toast('لا يوجد ما يُصدّر','error'); return; }
+    var cols=['name','phone','category','city','rating','reviews_count','status','tag','score','notes'];
+    var headers=['الاسم','الجوال','التخصص','المدينة','التقييم','المراجعات','الحالة','الوسم','الأولوية','ملاحظات'];
+    var csv='\ufeff'+headers.join(',')+'\n';
+    L.forEach(function(l){
+      csv+=cols.map(function(c){ var v=l[c]==null?'':String(l[c]).replace(/"/g,'""'); return /[,"\n]/.test(v)?'"'+v+'"':v; }).join(',')+'\n';
+    });
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='مستهدفين-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+    toast('تم تصدير '+L.length+' مستهدف','success');
+  }).catch(function(){ toast('تعذّر التصدير','error'); });
+}
+
+// ═══ وسم ═══
+function _oSetTag(id,tag){
+  fetch(API+'/api/admin/leads/'+id+'/tag',{method:'PUT',headers:hdr().headers,body:JSON.stringify({tag:tag})})
+    .then(function(){ _oLoadList(); }).catch(function(){});
+}
+var _OTAGS={serious:['جاد','#16a34a','#dcfce7'],interested:['مهتم','#d97706','#fef3c7'],potential:['محتمل','#0284c7','#e0f2fe']};
+function _oTagCell(l){
+  var t=l.tag;
+  if(t&&_OTAGS[t]){
+    var m=_OTAGS[t];
+    return '<span onclick="_oTagMenu('+l.id+',this)" style="cursor:pointer;background:'+m[2]+';color:'+m[1]+';font-size:11px;font-weight:800;padding:4px 11px;border-radius:16px;white-space:nowrap">'+m[0]+'</span>';
+  }
+  return '<button onclick="_oTagMenu('+l.id+',this)" style="background:var(--bg);border:1px dashed var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:4px 10px;border-radius:16px;cursor:pointer">+ تصنيف</button>';
+}
+function _oTagMenu(id,el){
+  var ex=document.getElementById('o-tagmenu'); if(ex)ex.remove();
+  var menu=document.createElement('div'); menu.id='o-tagmenu';
+  var rect=el.getBoundingClientRect();
+  menu.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;right:'+(window.innerWidth-rect.right)+'px;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:9999;padding:5px;min-width:120px';
+  var opts=[['serious','جاد','#16a34a'],['interested','مهتم','#d97706'],['potential','محتمل','#0284c7'],['','بلا تصنيف','var(--muted)']];
+  menu.innerHTML=opts.map(function(o){ return '<div onclick="_oSetTag('+id+',\''+o[0]+'\');document.getElementById(\'o-tagmenu\').remove()" style="padding:8px 12px;font-size:12.5px;font-weight:700;color:'+o[2]+';cursor:pointer;border-radius:7px" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'">'+o[1]+'</div>'; }).join('');
+  document.body.appendChild(menu);
+  setTimeout(function(){ document.addEventListener('click',function _c(e){ if(!menu.contains(e.target)&&e.target!==el){ menu.remove(); document.removeEventListener('click',_c); } }); },50);
+}
 function _oGenMsg(id,btn){
   var ta=document.getElementById('o-msg'); if(!ta)return;
   var _o=btn.textContent; btn.textContent='⏳ يكتب...'; btn.disabled=true;
@@ -1949,7 +2121,7 @@ function _oLoadList(){
     var L=d.leads||[];
     if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد</div>'; return; }
     var h='<div class="tbl-wrap"><table><thead><tr>'
-      +'<th>المستهدف</th><th>النوع</th><th>التخصص / المدينة</th><th>الأولوية</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>';
+      +'<th>المستهدف</th><th>النوع</th><th>التخصص / المدينة</th><th>الأولوية</th><th>التصنيف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>';
     L.forEach(function(l){
       var stCol=l.status==='converted'?'b-done':l.status==='rejected'?'b-rej':l.status==='interested'||l.status==='replied'?'b-review':l.status==='followup'?'b-progress':'b-completed';
       var sc=l.score||0;
@@ -1962,6 +2134,7 @@ function _oLoadList(){
         +'<td><span class="badge '+(l.lead_type==='client'?'b-client':'b-provider')+'">'+(l.lead_type==='client'?'عميل':'مزوّد')+'</span></td>'
         +'<td><div style="font-size:12.5px;font-weight:600">'+esc(l.category||'—')+'</div><div style="font-size:11.5px;color:var(--muted)">'+esc(l.city||'—')+'</div></td>'
         +'<td><span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:4px 8px;border-radius:20px;background:'+scBg+';color:'+scCol+';font-weight:900;font-size:13px;font-family:Cairo,sans-serif">'+sc+'</span></td>'
+        +'<td>'+_oTagCell(l)+'</td>'
         +'<td><span class="badge '+stCol+'">'+(_OSTAT[l.status]||l.status)+'</span></td>'
         +'<td><div style="display:flex;gap:6px;align-items:center">'
           +(l.phone_norm?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
