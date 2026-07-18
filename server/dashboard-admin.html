@@ -1741,7 +1741,18 @@ function _renderOutreach(st, cov){
       +'<select id="o-type" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-weight:700;background:var(--white);color:var(--text)"><option value="provider">مزوّد خدمة</option><option value="client">عميل B2B</option></select>'
       +'<input id="o-q" placeholder="مثال: تكييف الرياض · شركات إدارة أملاك جدة" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)" onkeydown="if(event.key===\'Enter\')_oSearch()">'
       +'<button onclick="_oSearch()" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-family:Tajawal;font-weight:800;cursor:pointer">بحث</button>'
-    +'</div><div id="o-results" style="margin-bottom:8px"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:10px 12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #a7f3d0;border-radius:10px">'
+      +'<span style="font-size:12.5px;font-weight:800;color:#065f46">🧹 كنس مدينة كاملة</span>'
+      +'<select id="o-sweep-city" style="padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:#fff;color:var(--text);cursor:pointer">'+Object.keys(_OAREAS).map(function(c){return '<option value="'+c+'">'+c+' ('+_OAREAS[c].length+' حي)</option>';}).join('')+'</select>'
+      +'<span style="font-size:11.5px;color:#065f46;font-weight:700">الهدف:</span>'
+      +'<input id="o-sweep-target" type="number" value="300" min="20" max="1000" style="width:74px;padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;background:#fff;color:var(--text);text-align:center">'
+      +'<button id="o-sweep-btn" onclick="_oSweep()" style="background:#059669;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">🧹 ابدأ الكنس</button>'
+      +'<button id="o-sweep-stop" onclick="_oSweepStopFn()" style="display:none;background:#dc2626;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">⏹ إيقاف</button>'
+      +'<span style="font-size:11px;color:#065f46;width:100%;line-height:1.5">يستخدم التخصص المكتوب بالأعلى (مثال: <b>مكيفات</b>) ويكنس أحياء المدينة تلقائياً حتى يبلغ الهدف. كل حي = طلب مدفوع على رصيد Google.</span>'
+    +'</div>'
+    +'<div id="o-sweep-prog" style="display:none;font-size:12px;color:var(--text2);margin-bottom:10px;padding:9px 12px;background:var(--bg);border-radius:8px"></div>'
+    +'<div id="o-results" style="margin-bottom:8px"></div>'
     +'<div style="border-top:1px solid var(--border);margin:4px 0 14px"></div>'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-family:Cairo,sans-serif;font-weight:800;font-size:14px">📋 طابور الصيد</div><button class="ftab" onclick="_oLoadQueue()">تحديث</button></div>'
     +'<div id="o-queue"></div>'
@@ -1789,33 +1800,95 @@ function _oHunt(q){
   el.scrollIntoView({behavior:'smooth',block:'center'});
   if(query)_oSearch(); else { el.focus(); toast('اكتب عبارة البحث','error'); }
 }
+// ═══ قوائم أحياء المدن (للكنس التلقائي) ═══
+var _OAREAS={
+'الرياض':['العليا','الملقا','النرجس','الياسمين','الملز','النخيل','السليمانية','المروج','الورود','حطين','الربيع','الصحافة','القيروان','العارض','النفل','الغدير','الوادي','المغرزات','الرحمانية','الرائد','السويدي','العزيزية','المنصورة','الشفا','بدر','الحمراء','الروضة','النسيم','اليرموك','قرطبة','إشبيلية','المونسية','الرمال','طويق','ظهرة لبن','عرقة','ديراب','لبن','الخزامى','السفارات','المعذر','أم الحمام','الديرة','الفيصلية'],
+'جدة':['الروضة','السلامة','الشاطئ','الحمراء','النعيم','المرجان','البساتين','الصفا','المروة','النزهة','الفيصلية','الأندلس','السامر','النسيم','الربوة','الرحاب','الزهراء','بني مالك','الفيحاء','مشرفة','الخالدية','الرويس','البوادي','الواحة','أبحر الشمالية','أبحر الجنوبية','الشرفية','البلد','الكندرة','الثغر','الجامعة','الأجواد','الصواري','اللؤلؤ','الفلاح','المحمدية','البغدادية','النهضة','الحمدانية'],
+'مكة المكرمة':['العزيزية','الشوقية','النسيم','الششة','العوالي','بطحاء قريش','الزاهر','الرصيفة','الكعكية','جرول','المسفلة','الهجرة','العتيبية','ريع ذاخر','الخالدية','الروضة','النزهة','المعابدة','الهنداوية','الشرائع'],
+'المدينة المنورة':['قباء','العنابس','العزيزية','الدفاع','شظاة','الحرة الشرقية','الحرة الغربية','بني حارثة','الأزهري','الرانوناء','السيح','النخيل','سلطانة','طيبة','الخالدية','العريض','أبو كبير','بني ظفر','قربان','المطار'],
+'الدمام':['الشاطئ','الفيصلية','النور','الجلوية','البادية','الأمانة','الروضة','المزروعية','الأنوار','بدر','الفنار','الزهور','أحد','النخيل','الطبيشي','غرناطة','قرطبة','الإسكان','المنار','الجامعيين','الضباب','الواحة','الريان','طيبة','الحمراء'],
+'الخبر':['العقربية','الثقبة','الراكة','الخبر الشمالية','الخبر الجنوبية','الحزام الذهبي','الحزام الأخضر','الجسر','الأندلس','الكورنيش','اليرموك','الدوحة','الهدا','اللؤلؤ','التحلية','البندرية','الجوهرة','الخزامى','الروابي','الصواري'],
+'الظهران':['الدوحة الشمالية','الدوحة الجنوبية','القشلة','هجر','تلال','الجامعة','الحزم','السلام'],
+'الأحساء':['النايفية','الصالحية','الراشدية','المزروع','الحزم','محاسن','السلمانية','البصيرة','الخالدية','الرقيقة','السنيدية','العزيزية'],
+'الطائف':['الشهار','الحوية','السلامة','الفيصلية','الوسام','القيم','معشي','الردف','نخب','السداد','الشرقية','قروى','الملص','السليمانية'],
+'تبوك':['العزيزية','المروج','الورود','سلطانة','الفيصلية','الروضة','المصيف','الأخضر','السلام','الريان','الخالدية','النخيل'],
+'بريدة':['الصفراء','الأخضر','الريان','الرحاب','الفايزية','النهضة','الروضة','الإسكان','الشماس','الصالحية','الوسيطاء','الرمال'],
+'عنيزة':['المطار','الشرقية','الروضة','النهضة','الفايزية','السالمية','الخبيب','المروج'],
+'حائل':['النقرة','السمراء','البدنة','المطار','الوسيطى','الزبارة','لبدة','صبابة','المنتزه','بقعاء'],
+'أبها':['المنسك','المفتاحة','الموظفين','النصب','السد','الخالدية','الأندلس','الربوة','شعف','المروج'],
+'خميس مشيط':['الراقي','شكر','الموسى','الربوة','النزهة','الواحة','تندحة','الأندلس','الخالدية','الفتح'],
+'نجران':['الفهد','الغويلاء','الفيصلية','الأمير مشعل','الملك فهد','أبا السعود','نهوقة','الحصينية'],
+'جازان':['الروضة','الصفا','المطار','الشاطئ','الرحاب','النهضة','مطلع','الملك فهد'],
+'ينبع':['الشرم','الهيئة الملكية','الصبيا','الناصفة','البلد','رضوى','الفيصلية','السميري'],
+'الجبيل':['الفناتير','الدفي','الهيئة الملكية','البلد','مطرفية','الحويلات','الجلمودة','الصناعية'],
+'القطيف':['القلعة','الشويكة','الكويكب','الناصرة','الجارودية','الملاحة','الجش','صفوى'],
+'عرعر':['المنتزه','المساعدية','البلدية','الفيصلية','الروضة','النخيل'],
+'سكاكا':['العزيزية','الشلهوب','الفيصلية','الروضة','القادسية','النسيم']
+};
+var _oSweepStop=false;
+function _oSweepStopFn(){ _oSweepStop=true; var s=document.getElementById('o-sweep-stop'); if(s)s.textContent='...جارٍ الإيقاف'; }
+async function _oSweep(){
+  var term=((document.getElementById('o-q')||{}).value||'').trim();
+  if(!term){ toast('اكتب التخصص أولاً بالأعلى (مثال: مكيفات)','error'); var qi=document.getElementById('o-q'); if(qi)qi.focus(); return; }
+  var city=(document.getElementById('o-sweep-city')||{}).value||'';
+  var areas=(_OAREAS[city]||[]).slice();
+  if(!areas.length){ toast('لا توجد قائمة أحياء لهذه المدينة','error'); return; }
+  var target=parseInt((document.getElementById('o-sweep-target')||{}).value)||300;
+  _oSweepStop=false;
+  var btn=document.getElementById('o-sweep-btn'), stop=document.getElementById('o-sweep-stop'), prog=document.getElementById('o-sweep-prog');
+  if(btn){ btn.disabled=true; btn.style.opacity='.5'; }
+  if(stop){ stop.style.display='inline-block'; stop.textContent='⏹ إيقاف'; }
+  if(prog)prog.style.display='block';
+  var seen={}, acc=[], newCnt=0;
+  var rbox=document.getElementById('o-results'); if(rbox)rbox.innerHTML='';
+  for(var i=0;i<areas.length;i++){
+    if(_oSweepStop) break;
+    if(acc.length>=target) break;
+    var area=areas[i];
+    if(prog)prog.innerHTML='⏳ يكنس: <b>'+esc(area)+'</b> ('+(i+1)+'/'+areas.length+') · جُمِع <b style="color:#059669">'+acc.length+'</b> · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b>';
+    try{
+      var d=await fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:term+' '+area+' '+city,pages:2})}).then(function(r){return r.json();});
+      (d.results||[]).forEach(function(p){
+        if(p.place_id && !seen[p.place_id]){ seen[p.place_id]=1; acc.push(p); if(!p.exists && p.phone_norm) newCnt++; }
+      });
+    }catch(e){}
+  }
+  _oRenderResults(acc);
+  if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+  if(stop)stop.style.display='none';
+  if(prog)prog.innerHTML=(_oSweepStop?'⏹ أُوقف الكنس':'✅ انتهى الكنس')+' · جُمِع <b>'+acc.length+'</b> منشأة (بعد إزالة التكرار) · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b> — راجع القائمة بالأسفل واضغط «➕ أضف الجدد».';
+}
 function _oSearch(){
   var q=(document.getElementById('o-q')||{}).value||'';
   var box=document.getElementById('o-results');
   if(!q.trim()){ if(box)box.innerHTML='<div style="color:var(--muted);font-size:12.5px">اكتب عبارة البحث</div>'; return; }
   box.innerHTML='<div class="loading"><div class="spinner"></div>جاري البحث في Google Maps...</div>';
-  fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:q})})
+  fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:q,pages:3})})
     .then(function(r){return r.json();})
     .then(function(d){
       if(d.message){ box.innerHTML='<div style="color:#dc2626;font-size:12.5px;padding:10px;background:rgba(220,38,38,.08);border-radius:8px">'+esc(d.message)+'</div>'; return; }
-      _OSearch=d.results||[];
-      if(!_OSearch.length){ box.innerHTML='<div style="color:var(--muted);font-size:12.5px">لا نتائج</div>'; return; }
-      var neu=_OSearch.filter(function(x){return !x.exists && x.phone_norm;});
-      var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
-        +'<div style="font-size:12.5px;color:var(--muted)">وُجد <b style="color:var(--text2)">'+_OSearch.length+'</b> · جديد بأرقام: <b style="color:#16a34a">'+neu.length+'</b></div>'
-        +'<button onclick="_oAddAll()" style="background:#16a34a;color:#fff;border:none;padding:9px 18px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">➕ أضف الجدد ('+neu.length+')</button></div>';
-      h+='<div style="display:grid;gap:7px;max-height:340px;overflow:auto">';
-      _OSearch.forEach(function(p){
-        h+='<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:9px;font-size:12.5px;'+(p.exists?'opacity:.5':'')+'">'
-          +'<div style="flex:1;min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name)+'</div>'
-          +'<div style="font-size:11px;color:var(--muted)">'+(p.rating?'⭐'+p.rating+' ('+p.reviews_count+')':'بلا تقييم')+(p.phone?' · '+esc(p.phone):' · <span style="color:#dc2626">بلا رقم</span>')+'</div></div>'
-          +'<span style="font-size:11px;font-weight:800;color:'+(p.score>=70?'#16a34a':p.score>=45?'#d97706':'var(--muted)')+'">'+p.score+'</span>'
-          +(p.exists?'<span style="font-size:10.5px;color:var(--muted)">موجود</span>':'')
-          +'</div>';
-      });
-      h+='</div>';
-      box.innerHTML=h;
+      _oRenderResults(d.results||[]);
     }).catch(function(){ box.innerHTML='<div style="color:#dc2626;font-size:12.5px">تعذّر البحث</div>'; });
+}
+function _oRenderResults(list){
+  var box=document.getElementById('o-results'); if(!box)return;
+  _OSearch=list||[];
+  if(!_OSearch.length){ box.innerHTML='<div style="color:var(--muted);font-size:12.5px">لا نتائج</div>'; return; }
+  var neu=_OSearch.filter(function(x){return !x.exists && x.phone_norm;});
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
+    +'<div style="font-size:12.5px;color:var(--muted)">وُجد <b style="color:var(--text2)">'+_OSearch.length+'</b> · جديد بأرقام: <b style="color:#16a34a">'+neu.length+'</b></div>'
+    +'<button onclick="_oAddAll()" style="background:#16a34a;color:#fff;border:none;padding:9px 18px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">➕ أضف الجدد ('+neu.length+')</button></div>';
+  h+='<div style="display:grid;gap:7px;max-height:340px;overflow:auto">';
+  _OSearch.forEach(function(p){
+    h+='<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:9px;font-size:12.5px;'+(p.exists?'opacity:.5':'')+'">'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted)">'+(p.rating?'⭐'+p.rating+' ('+p.reviews_count+')':'بلا تقييم')+(p.phone?' · '+esc(p.phone):' · <span style="color:#dc2626">بلا رقم</span>')+'</div></div>'
+      +'<span style="font-size:11px;font-weight:800;color:'+(p.score>=70?'#16a34a':p.score>=45?'#d97706':'var(--muted)')+'">'+p.score+'</span>'
+      +(p.exists?'<span style="font-size:10.5px;color:var(--muted)">موجود</span>':'')
+      +'</div>';
+  });
+  h+='</div>';
+  box.innerHTML=h;
 }
 function _oAddAll(){
   var type=(document.getElementById('o-type')||{}).value||'provider';
