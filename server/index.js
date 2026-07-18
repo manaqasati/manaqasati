@@ -474,6 +474,33 @@ async function loadAdmin(req, res, next){
     next();
   }catch(e){ res.status(500).json({ message:'حدث خطأ، حاول مرة أخرى' }); }
 }
+// ═══ محرّك الاستقطاب: أدوات ═══
+// توحيد صيغة الجوال السعودي → 9665XXXXXXXX
+function normPhone(p){
+  if(!p) return null;
+  let d = String(p).replace(/[^\d]/g, '');
+  if(d.startsWith('00966')) d = d.slice(2);
+  else if(d.startsWith('966')) { /* كما هو */ }
+  else if(d.startsWith('05')) d = '966' + d.slice(1);
+  else if(d.startsWith('5') && d.length === 9) d = '966' + d;
+  else if(d.startsWith('0')) d = '966' + d.slice(1);
+  if(!d.startsWith('966')) return null;
+  const rest = d.slice(3);
+  if(rest.length !== 9 || !rest.startsWith('5')) return null;
+  return d;
+}
+// نقاط الأولوية: تقييم عالٍ + مراجعات كثيرة + بلا موقع = صيد ثمين
+function scoreLead(l){
+  let s = 0;
+  const r = parseFloat(l.rating) || 0;
+  const rc = parseInt(l.reviews_count) || 0;
+  if(r >= 4.5) s += 35; else if(r >= 4.0) s += 25; else if(r >= 3.5) s += 12;
+  if(rc >= 50) s += 30; else if(rc >= 20) s += 22; else if(rc >= 5) s += 12; else if(rc > 0) s += 5;
+  if(!l.website) s += 20;           // بلا موقع → يحتاج قناة عملاء
+  if(l.phone_norm) s += 15;         // رقم صالح
+  return Math.min(100, s);
+}
+
 function requirePermission(perm){
   return [auth, adminOnly, loadAdmin, function(req,res,next){
     if(!hasPerm(req.adminPerms, perm)) return res.status(403).json({ message:'ليس لديك صلاحية لهذا الإجراء' });
@@ -903,6 +930,40 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
+
+    // ═══ محرّك الاستقطاب: جدول المستهدفين ═══
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS leads (
+        id SERIAL PRIMARY KEY,
+        lead_type VARCHAR(20) NOT NULL DEFAULT 'provider',
+        name VARCHAR(200) NOT NULL,
+        phone VARCHAR(30),
+        phone_norm VARCHAR(20),
+        category VARCHAR(100),
+        city VARCHAR(80),
+        address TEXT,
+        rating NUMERIC(2,1),
+        reviews_count INTEGER DEFAULT 0,
+        website VARCHAR(300),
+        place_id VARCHAR(200) UNIQUE,
+        score INTEGER DEFAULT 0,
+        status VARCHAR(20) NOT NULL DEFAULT 'new',
+        notes TEXT,
+        matched_request_id INTEGER,
+        contacted_at TIMESTAMP,
+        replied_at TIMESTAMP,
+        converted_user_id INTEGER,
+        converted_at TIMESTAMP,
+        followup_at TIMESTAMP,
+        contact_count INTEGER DEFAULT 0,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )`);
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
+      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
+    } catch(e){ console.error('leads table:', e.message); }
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
     try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
@@ -987,6 +1048,17 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const ref = typeof req.body.ref==='string'?req.body.ref:'';
       const m = ref.match(/^pro(\d+)$/);
       if(m){ await pool.query('UPDATE users SET referral_count = COALESCE(referral_count,0)+1 WHERE id=$1', [parseInt(m[1])]); }
+    }catch(e){}
+    // محرّك الاستقطاب: رصد التحويل تلقائياً (مطابقة الجوال)
+    try{
+      const pn = normPhone(phone);
+      if(pn){
+        await pool.query(
+          `UPDATE leads SET status='converted', converted_user_id=$1, converted_at=NOW(), updated_at=NOW()
+           WHERE phone_norm=$2 AND status <> 'converted'`,
+          [result.rows[0].id, pn]
+        );
+      }
     }catch(e){}
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -2063,6 +2135,187 @@ app.get('/api/me/marketing', auth, async (req, res) => {
 });
 
 // عام: أحدث المشاريع المنجزة (دليل اجتماعي — بيانات مجهّلة)
+// ═══════════ محرّك الاستقطاب (Outreach Engine) ═══════════
+
+// بحث Google Places → نتائج مرشّحة (لا يحفظ)
+app.post('/api/admin/leads/search', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const key = process.env.GOOGLE_PLACES_KEY;
+    if(!key) return res.status(400).json({ message:'مفتاح Google Places غير مضبوط (GOOGLE_PLACES_KEY)' });
+    const q = (req.body.query||'').trim();
+    if(!q) return res.status(400).json({ message:'اكتب عبارة البحث' });
+
+    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.primaryTypeDisplayName'
+      },
+      body: JSON.stringify({ textQuery: q, languageCode:'ar', regionCode:'SA', maxResultCount: 20 })
+    });
+    const data = await r.json();
+    if(data.error) return res.status(400).json({ message: data.error.message || 'فشل البحث' });
+
+    const places = (data.places||[]).map(p => ({
+      place_id: p.id,
+      name: (p.displayName && p.displayName.text) || '—',
+      phone: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
+      phone_norm: normPhone(p.nationalPhoneNumber || p.internationalPhoneNumber),
+      address: p.formattedAddress || null,
+      rating: p.rating || null,
+      reviews_count: p.userRatingCount || 0,
+      website: p.websiteUri || null,
+      type: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || null
+    }));
+    // تعليم الموجود مسبقاً
+    const ids = places.map(p=>p.place_id).filter(Boolean);
+    let existing = [];
+    if(ids.length){
+      const ex = await pool.query('SELECT place_id FROM leads WHERE place_id = ANY($1)', [ids]);
+      existing = ex.rows.map(x=>x.place_id);
+    }
+    places.forEach(p => { p.exists = existing.includes(p.place_id); p.score = scoreLead(p); });
+    res.json({ results: places, count: places.length });
+  } catch(e){ console.error('leads/search:', e); res.status(500).json({ message:'تعذّر البحث' }); }
+});
+
+// حفظ مستهدفين (دفعة) — يتجاهل المكرّر
+app.post('/api/admin/leads', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : [req.body];
+    const type = req.body.lead_type === 'client' ? 'client' : 'provider';
+    let added = 0, skipped = 0;
+    for(const it of items){
+      const pn = normPhone(it.phone);
+      const row = { ...it, phone_norm: pn };
+      const sc = scoreLead(row);
+      try {
+        const r = await pool.query(
+          `INSERT INTO leads (lead_type,name,phone,phone_norm,category,city,address,rating,reviews_count,website,place_id,score,created_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+           ON CONFLICT (place_id) DO NOTHING RETURNING id`,
+          [it.lead_type||type, it.name, it.phone||null, pn, it.category||null, it.city||null, it.address||null,
+           it.rating||null, it.reviews_count||0, it.website||null, it.place_id||null, sc, req.user.id]
+        );
+        if(r.rows.length) added++; else skipped++;
+      } catch(e){ skipped++; }
+    }
+    res.json({ added, skipped });
+  } catch(e){ console.error('leads add:', e); res.status(500).json({ message:'تعذّر الحفظ' }); }
+});
+
+// قائمة المستهدفين (فلترة)
+app.get('/api/admin/leads', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const { status, type, city, category, q } = req.query;
+    const w = [], v = [];
+    if(status){ v.push(status); w.push(`status=$${v.length}`); }
+    if(type){ v.push(type); w.push(`lead_type=$${v.length}`); }
+    if(city){ v.push(city); w.push(`city=$${v.length}`); }
+    if(category){ v.push(category); w.push(`category=$${v.length}`); }
+    if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length})`); }
+    const where = w.length ? 'WHERE '+w.join(' AND ') : '';
+    const r = await pool.query(`SELECT * FROM leads ${where} ORDER BY score DESC, created_at DESC LIMIT 300`, v);
+    res.json({ leads: r.rows });
+  } catch(e){ console.error('leads list:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
+});
+
+// طابور الصيد: التالي (غير متواصل معه) + مطابقة طلب حقيقي
+app.get('/api/admin/leads/queue', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const type = req.query.type === 'client' ? 'client' : 'provider';
+    const r = await pool.query(
+      `SELECT * FROM leads WHERE lead_type=$1 AND status IN ('new','followup')
+       AND phone_norm IS NOT NULL
+       AND (followup_at IS NULL OR followup_at <= NOW())
+       ORDER BY score DESC, created_at ASC LIMIT 25`, [type]);
+    const leads = r.rows;
+    // مطابقة كل مزوّد بأقرب طلب مفتوح في تخصصه/مدينته
+    if(type === 'provider' && leads.length){
+      for(const l of leads){
+        try {
+          const m = await pool.query(
+            `SELECT id, title, category, city, budget_max FROM requests
+             WHERE status='open' AND ($1::text IS NULL OR city=$1) AND ($2::text IS NULL OR category=$2)
+             ORDER BY created_at DESC LIMIT 1`, [l.city||null, l.category||null]);
+          l.matched_request = m.rows[0] || null;
+        } catch(e){ l.matched_request = null; }
+      }
+    }
+    res.json({ leads, count: leads.length });
+  } catch(e){ console.error('leads queue:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
+});
+
+// تحديث حالة مستهدف
+app.put('/api/admin/leads/:id', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status, notes, followup_days, category, city } = req.body;
+    const sets = [], v = [];
+    if(status){
+      v.push(status); sets.push(`status=$${v.length}`);
+      if(status==='contacted'){ sets.push('contacted_at=NOW()'); sets.push('contact_count=COALESCE(contact_count,0)+1'); }
+      if(status==='replied'||status==='interested'){ sets.push('replied_at=NOW()'); }
+    }
+    if(notes !== undefined){ v.push(notes); sets.push(`notes=$${v.length}`); }
+    if(category !== undefined){ v.push(category); sets.push(`category=$${v.length}`); }
+    if(city !== undefined){ v.push(city); sets.push(`city=$${v.length}`); }
+    if(followup_days){ v.push(parseInt(followup_days)); sets.push(`followup_at=NOW() + ($${v.length} || ' days')::interval`); }
+    sets.push('updated_at=NOW()');
+    if(!sets.length) return res.json({ ok:true });
+    v.push(id);
+    const r = await pool.query(`UPDATE leads SET ${sets.join(',')} WHERE id=$${v.length} RETURNING *`, v);
+    res.json({ lead: r.rows[0] });
+  } catch(e){ console.error('leads update:', e); res.status(500).json({ message:'تعذّر التحديث' }); }
+});
+
+// حذف مستهدف
+app.delete('/api/admin/leads/:id', requirePermission('settings.manage'), async (req, res) => {
+  try { await pool.query('DELETE FROM leads WHERE id=$1', [parseInt(req.params.id)]); res.json({ ok:true }); }
+  catch(e){ res.status(500).json({ message:'تعذّر الحذف' }); }
+});
+
+// إحصائيات الاستقطاب
+app.get('/api/admin/leads/stats', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const s = await pool.query(`SELECT status, lead_type, COUNT(*)::int n FROM leads GROUP BY status, lead_type`);
+    const tot = await pool.query(`SELECT COUNT(*)::int total,
+      COUNT(*) FILTER (WHERE status='contacted')::int contacted,
+      COUNT(*) FILTER (WHERE status IN ('replied','interested'))::int replied,
+      COUNT(*) FILTER (WHERE status='converted')::int converted,
+      COUNT(*) FILTER (WHERE status='rejected')::int rejected,
+      COUNT(*) FILTER (WHERE followup_at IS NOT NULL AND followup_at <= NOW() AND status NOT IN ('converted','rejected'))::int due
+      FROM leads`);
+    const t = tot.rows[0];
+    const sent = (t.contacted||0) + (t.replied||0) + (t.converted||0) + (t.rejected||0);
+    res.json({
+      ...t,
+      sent,
+      reply_rate: sent ? Math.round(((t.replied+t.converted)/sent)*100) : 0,
+      convert_rate: sent ? Math.round((t.converted/sent)*100) : 0,
+      breakdown: s.rows
+    });
+  } catch(e){ console.error('leads stats:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
+});
+
+// خريطة الفجوات: طلبات مفتوحة بلا تغطية مزودين كافية
+app.get('/api/admin/coverage-gaps', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT r.id, r.title, r.category, r.city, r.budget_max, r.created_at,
+        (SELECT COUNT(*)::int FROM users u WHERE u.role='provider' AND u.is_active=true
+          AND (u.city = r.city) AND (u.specialties IS NULL OR r.category = ANY(u.specialties))) AS providers,
+        (SELECT COUNT(*)::int FROM bids b WHERE b.request_id = r.id) AS bids
+      FROM requests r
+      WHERE r.status='open'
+      ORDER BY providers ASC, r.created_at DESC
+      LIMIT 30`);
+    const gaps = r.rows.filter(x => (x.providers||0) < 3);
+    res.json({ gaps, all: r.rows });
+  } catch(e){ console.error('coverage-gaps:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
+});
+
 app.get('/api/showcase', async (req, res) => {
   try {
     const r = await pool.query(
