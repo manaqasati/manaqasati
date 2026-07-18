@@ -609,6 +609,18 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="leadEditModal">
+  <div class="modal">
+    <div class="modal-head"><h3>تعديل مستهدف</h3><button class="modal-x" onclick="closeModal('leadEditModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="fld"><label>الاسم</label><input id="le-name" placeholder="اسم المزوّد / المنشأة"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="fld"><label>الجوال</label><input id="le-phone" dir="ltr" style="text-align:right" placeholder="05xxxxxxxx"></div><div class="fld"><label>المدينة</label><input id="le-city"></div></div>
+      <div class="fld" style="margin-bottom:0"><label>التخصص</label><input id="le-cat"></div>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="le-save" onclick="_oEditSave()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('leadEditModal')">إلغاء</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="adminModal">
   <div class="modal">
     <div class="modal-head"><h3 id="am2-title">إضافة مشرف</h3><button class="modal-x" onclick="closeModal('adminModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -2159,11 +2171,44 @@ function _oFillCities(){
     fill(_oCityCache);
   }).catch(function(){});
 }
+// تعديل / حذف مستهدف
+var _oLeads=[], _oEditId=null;
+function _oEdit(id){
+  var l=(_oLeads||[]).find(function(x){return x.id===id;}); if(!l)return;
+  _oEditId=id;
+  document.getElementById('le-name').value=l.name||'';
+  document.getElementById('le-phone').value=l.phone||'';
+  document.getElementById('le-city').value=l.city||'';
+  document.getElementById('le-cat').value=l.category||'';
+  document.getElementById('leadEditModal').classList.add('show');
+}
+function _oEditSave(){
+  if(!_oEditId)return;
+  var name=document.getElementById('le-name').value.trim();
+  if(!name){ toast('الاسم مطلوب','error'); return; }
+  var body={ name:name, phone:document.getElementById('le-phone').value.trim(),
+    city:document.getElementById('le-city').value.trim()||null,
+    category:document.getElementById('le-cat').value.trim()||null };
+  var btn=document.getElementById('le-save'); btn.disabled=true; btn.textContent='جاري الحفظ...';
+  fetch(API+'/api/admin/leads/'+_oEditId,{method:'PUT',headers:hdr().headers,body:JSON.stringify(body)})
+    .then(function(r){ if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');}); return r.json(); })
+    .then(function(){ toast('تم حفظ التعديلات','success'); closeModal('leadEditModal'); _oCityCache=null; _oFillCities(); _oLoadList(); })
+    .catch(function(e){ toast(e.message||'تعذّر الحفظ','error'); })
+    .finally(function(){ btn.disabled=false; btn.textContent='حفظ التعديلات'; });
+}
+function _oDelete(id){
+  var l=(_oLeads||[]).find(function(x){return x.id===id;});
+  if(!confirm('حذف «'+((l&&l.name)||'')+'» نهائياً؟ لا يمكن التراجع.'))return;
+  fetch(API+'/api/admin/leads/'+id,{method:'DELETE',headers:hdr().headers})
+    .then(function(r){return r.json();})
+    .then(function(){ toast('تم الحذف','success'); _oLoadList(); })
+    .catch(function(){ toast('تعذّر الحذف','error'); });
+}
 function _oLoadList(){
   var box=document.getElementById('o-list');if(!box)return;
   box.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">جاري التحميل...</div>';
   fetch(API+'/api/admin/leads'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
-    var L=d.leads||[];
+    var L=d.leads||[]; _oLeads=L;
     var cnt=document.getElementById('o-count'); if(cnt)cnt.textContent=L.length?(L.length+' نتيجة'):'';
     if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد نتائج مطابقة للفلاتر</div>'; return; }
     var h='<div class="tbl-wrap"><table><thead><tr>'
@@ -2185,6 +2230,8 @@ function _oLoadList(){
         +'<td><div style="display:flex;gap:6px;align-items:center">'
           +(l.phone_norm?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
           +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✨</button>'
+          +'<button onclick="_oEdit('+l.id+')" title="تعديل البيانات" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✏️</button>'
+          +'<button onclick="_oDelete('+l.id+')" title="حذف نهائي" style="background:#fee2e2;border:none;color:#dc2626;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">🗑️</button>'
           +'<select onchange="_oSetStatus('+l.id+',this.value);this.selectedIndex=0" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:11.5px;font-weight:700;background:var(--white);color:var(--text);cursor:pointer"><option>تغيير الحالة</option><option value="replied">ردّ</option><option value="interested">مهتم</option><option value="converted">سجّل ✅</option><option value="rejected">رفض</option></select>'
         +'</div></td></tr>';
     });
