@@ -1204,6 +1204,18 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     // محرّك الاستقطاب: رصد التحويل تلقائياً (مطابقة الجوال) + إشارة اسم للمراجعة
     try{
       const uid = result.rows[0].id;
+      // ربط مباشر عبر رمز الكرت (مضمون حتى لو سجّل بجوال مختلف)
+      const cardToken = typeof req.body.card_token==='string' ? req.body.card_token.trim() : '';
+      if(cardToken){
+        try{
+          const ct = await pool.query(
+            `UPDATE leads SET status='converted', converted_user_id=$1, converted_at=NOW(),
+               maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW()
+             WHERE card_token=$2 AND status<>'converted'
+             RETURNING card_bio, card_logo, card_links`, [uid, cardToken]);
+          if(ct.rows[0]) await transferCardToUser(uid, ct.rows[0]);
+        }catch(e){ console.error('card_token link:', e.message); }
+      }
       const pn = normPhone(phone);
       let convertedByPhone = 0;
       if(pn){
