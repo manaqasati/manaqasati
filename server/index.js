@@ -447,15 +447,16 @@ async function setSetting(key, value) {
 
 // ═══════════ نظام الصلاحيات (RBAC) ═══════════
 const OWNER_EMAIL = 'wled-111@hotmail.com';
-const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage'];
-const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين'};
-const ROLE_LABELS = {super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
-const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20};
+const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage'];
+const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
+const ROLE_LABELS = {super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
+const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20,outreach_specialist:25};
 const ROLE_PERMISSIONS = {
   super_admin: ['*'],
   content_manager: ['dashboard.view','analytics.view','users.view','users.edit','users.badge','users.role','users.delete','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send'],
   support: ['dashboard.view','users.view','requests.view','questions.view','questions.answer','reports.view','reports.resolve'],
-  analyst: ['dashboard.view','analytics.view','users.view','requests.view','bids.view']
+  analyst: ['dashboard.view','analytics.view','users.view','requests.view','bids.view'],
+  outreach_specialist: ['dashboard.view','outreach.manage']
 };
 function effectivePermissions(row){
   if(!row || row.role!=='admin') return [];
@@ -2138,7 +2139,7 @@ app.get('/api/me/marketing', auth, async (req, res) => {
 // ═══════════ محرّك الاستقطاب (Outreach Engine) ═══════════
 
 // بحث Google Places → نتائج مرشّحة (لا يحفظ)
-app.post('/api/admin/leads/search', requirePermission('settings.manage'), async (req, res) => {
+app.post('/api/admin/leads/search', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const key = process.env.GOOGLE_PLACES_KEY;
     if(!key) return res.status(400).json({ message:'مفتاح Google Places غير مضبوط (GOOGLE_PLACES_KEY)' });
@@ -2181,7 +2182,7 @@ app.post('/api/admin/leads/search', requirePermission('settings.manage'), async 
 });
 
 // حفظ مستهدفين (دفعة) — يتجاهل المكرّر
-app.post('/api/admin/leads', requirePermission('settings.manage'), async (req, res) => {
+app.post('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const items = Array.isArray(req.body.items) ? req.body.items : [req.body];
     const type = req.body.lead_type === 'client' ? 'client' : 'provider';
@@ -2206,7 +2207,7 @@ app.post('/api/admin/leads', requirePermission('settings.manage'), async (req, r
 });
 
 // قائمة المستهدفين (فلترة)
-app.get('/api/admin/leads', requirePermission('settings.manage'), async (req, res) => {
+app.get('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const { status, type, city, category, q } = req.query;
     const w = [], v = [];
@@ -2222,7 +2223,7 @@ app.get('/api/admin/leads', requirePermission('settings.manage'), async (req, re
 });
 
 // طابور الصيد: التالي (غير متواصل معه) + مطابقة طلب حقيقي
-app.get('/api/admin/leads/queue', requirePermission('settings.manage'), async (req, res) => {
+app.get('/api/admin/leads/queue', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const type = req.query.type === 'client' ? 'client' : 'provider';
     const r = await pool.query(
@@ -2248,7 +2249,7 @@ app.get('/api/admin/leads/queue', requirePermission('settings.manage'), async (r
 });
 
 // تحديث حالة مستهدف
-app.put('/api/admin/leads/:id', requirePermission('settings.manage'), async (req, res) => {
+app.put('/api/admin/leads/:id', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { status, notes, followup_days, category, city } = req.body;
@@ -2271,13 +2272,13 @@ app.put('/api/admin/leads/:id', requirePermission('settings.manage'), async (req
 });
 
 // حذف مستهدف
-app.delete('/api/admin/leads/:id', requirePermission('settings.manage'), async (req, res) => {
+app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (req, res) => {
   try { await pool.query('DELETE FROM leads WHERE id=$1', [parseInt(req.params.id)]); res.json({ ok:true }); }
   catch(e){ res.status(500).json({ message:'تعذّر الحذف' }); }
 });
 
 // إحصائيات الاستقطاب
-app.get('/api/admin/leads/stats', requirePermission('settings.manage'), async (req, res) => {
+app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const s = await pool.query(`SELECT status, lead_type, COUNT(*)::int n FROM leads GROUP BY status, lead_type`);
     const tot = await pool.query(`SELECT COUNT(*)::int total,
@@ -2322,7 +2323,7 @@ async function callClaude(system, user, maxTokens){
 }
 
 // توليد رسالة أولى مخصّصة
-app.post('/api/admin/leads/:id/gen-message', requirePermission('settings.manage'), async (req, res) => {
+app.post('/api/admin/leads/:id/gen-message', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
     const l = r.rows[0];
@@ -2342,7 +2343,7 @@ app.post('/api/admin/leads/:id/gen-message', requirePermission('settings.manage'
 });
 
 // تحليل رد المزوّد + صياغة الرد المناسب
-app.post('/api/admin/leads/:id/analyze-reply', requirePermission('settings.manage'), async (req, res) => {
+app.post('/api/admin/leads/:id/analyze-reply', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const reply = (req.body.reply||'').trim();
     if(!reply) return res.status(400).json({ message:'الصق رد المزوّد' });
@@ -2366,7 +2367,7 @@ app.post('/api/admin/leads/:id/analyze-reply', requirePermission('settings.manag
   }catch(e){ console.error('analyze-reply:', e); res.status(500).json({ message:'تعذّر التحليل' }); }
 });
 
-app.get('/api/admin/coverage-gaps', requirePermission('settings.manage'), async (req, res) => {
+app.get('/api/admin/coverage-gaps', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT r.id, r.title, r.category, r.city, r.budget_max, r.created_at,
