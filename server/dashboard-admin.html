@@ -1692,17 +1692,15 @@ function _renderOutreach(st, cov){
   var b=document.getElementById('outreach-body');if(!b)return;
   var gaps=(cov.gaps||[]);
   var h='';
-  // إحصائيات
-  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">'
-    +_oStat('إجمالي المستهدفين', st.total||0, 'var(--p)')
-    +_oStat('أُرسلت', st.sent||0, '#0284c7')
-    +_oStat('ردّوا', (st.replied||0), '#d97706')
-    +_oStat('سجّلوا ✅', st.converted||0, '#16a34a')
-    +'</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">'
-    +_oStat('نسبة الرد', (st.reply_rate||0)+'%', '#0284c7')
-    +_oStat('نسبة التحويل', (st.convert_rate||0)+'%', '#16a34a')
-    +_oStat('متابعات مستحقة', st.due||0, '#dc2626')
+  // إحصائيات — بطاقات احترافية
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:16px">'
+    +_oStat('👥 المستهدفين', st.total||0, 'var(--p)', 'var(--p-light)')
+    +_oStat('📤 أُرسلت', st.sent||0, '#0284c7', '#e0f2fe')
+    +_oStat('💬 ردّوا', (st.replied||0), '#d97706', '#fef3c7')
+    +_oStat('✅ سجّلوا', st.converted||0, '#16a34a', '#dcfce7')
+    +_oStat('📈 نسبة الرد', (st.reply_rate||0)+'%', '#0284c7', '#e0f2fe')
+    +_oStat('🎯 نسبة التحويل', (st.convert_rate||0)+'%', '#16a34a', '#dcfce7')
+    +_oStat('⏰ متابعات', st.due||0, '#dc2626', '#fee2e2')
     +'</div>';
 
   // فجوات التغطية
@@ -1740,10 +1738,13 @@ function _renderOutreach(st, cov){
 
   b.innerHTML=h;
   _oLoadList();
+  _oLoadQueue();
 }
-function _oStat(l,v,c){
-  return '<div class="card" style="padding:16px;margin-bottom:0"><div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">'+l+'</div>'
-    +'<div style="font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:'+c+'">'+v+'</div></div>';
+function _oStat(l,v,c,bg){
+  return '<div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--sh1);position:relative;overflow:hidden">'
+    +'<div style="position:absolute;top:-8px;left:-8px;width:44px;height:44px;border-radius:50%;background:'+(bg||'var(--bg)')+';opacity:.6"></div>'
+    +'<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:8px;position:relative">'+l+'</div>'
+    +'<div style="font-family:Cairo,sans-serif;font-size:24px;font-weight:900;color:'+c+';letter-spacing:-.5px;position:relative">'+v+'</div></div>';
 }
 function _oHunt(q){
   showPage('outreach');
@@ -1943,20 +1944,25 @@ function _oLoadList(){
   fetch(API+'/api/admin/leads'+(f?'?status='+f:''),hdr()).then(function(r){return r.json();}).then(function(d){
     var L=d.leads||[];
     if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد</div>'; return; }
-    var h='<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="text-align:right;color:var(--muted);font-size:11.5px">'
-      +'<th style="padding:8px">الاسم</th><th style="padding:8px">النوع</th><th style="padding:8px">التخصص/المدينة</th><th style="padding:8px">الأولوية</th><th style="padding:8px">الحالة</th><th style="padding:8px">إجراء</th></tr></thead><tbody>';
+    var h='<div class="tbl-wrap"><table><thead><tr>'
+      +'<th>المستهدف</th><th>النوع</th><th>التخصص / المدينة</th><th>الأولوية</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>';
     L.forEach(function(l){
-      var col=l.status==='converted'?'#16a34a':l.status==='rejected'?'#dc2626':l.status==='interested'||l.status==='replied'?'#d97706':'var(--muted)';
-      h+='<tr style="border-top:1px solid var(--border)">'
-        +'<td style="padding:9px 8px;font-weight:800">'+esc(l.name)+'<div style="font-size:10.5px;color:var(--muted);font-weight:600" dir="ltr">'+esc(l.phone||'')+'</div></td>'
-        +'<td style="padding:9px 8px">'+(l.lead_type==='client'?'عميل':'مزوّد')+'</td>'
-        +'<td style="padding:9px 8px;font-size:11.5px;color:var(--muted)">'+esc(l.category||'—')+'<br>'+esc(l.city||'—')+'</td>'
-        +'<td style="padding:9px 8px;font-weight:800">'+l.score+'</td>'
-        +'<td style="padding:9px 8px"><span style="color:'+col+';font-weight:800;font-size:11.5px">'+(_OSTAT[l.status]||l.status)+'</span></td>'
-        +'<td style="padding:9px 8px"><div style="display:flex;gap:5px">'
-          +(l.phone_norm?'<button onclick="window.open(\'https://wa.me/'+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px">💬</button>':'')
-          +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px">✨</button>'
-          +'<select onchange="_oSetStatus('+l.id+',this.value);this.selectedIndex=0" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:Tajawal;font-size:11px;background:var(--white);color:var(--text)"><option>تغيير</option><option value="replied">ردّ</option><option value="interested">مهتم</option><option value="converted">سجّل</option><option value="rejected">رفض</option></select>'
+      var stCol=l.status==='converted'?'b-done':l.status==='rejected'?'b-rej':l.status==='interested'||l.status==='replied'?'b-review':l.status==='followup'?'b-progress':'b-completed';
+      var sc=l.score||0;
+      var scCol=sc>=70?'#16a34a':sc>=45?'#d97706':'var(--muted)';
+      var scBg=sc>=70?'#dcfce7':sc>=45?'#fef3c7':'var(--bg)';
+      var initial=esc((l.name||'?').trim()[0]||'?');
+      h+='<tr>'
+        +'<td><div class="u-cell"><div class="u-av" style="background:linear-gradient(135deg,'+(l.lead_type==='client'?'#0284c7,#38bdf8':'var(--p),var(--p2)')+')">'+initial+'</div>'
+          +'<div><div class="u-name">'+esc(l.name)+'</div><div class="u-email" dir="ltr" style="text-align:right">'+esc(l.phone||'—')+'</div></div></div></td>'
+        +'<td><span class="badge '+(l.lead_type==='client'?'b-client':'b-provider')+'">'+(l.lead_type==='client'?'عميل':'مزوّد')+'</span></td>'
+        +'<td><div style="font-size:12.5px;font-weight:600">'+esc(l.category||'—')+'</div><div style="font-size:11.5px;color:var(--muted)">'+esc(l.city||'—')+'</div></td>'
+        +'<td><span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:4px 8px;border-radius:20px;background:'+scBg+';color:'+scCol+';font-weight:900;font-size:13px;font-family:Cairo,sans-serif">'+sc+'</span></td>'
+        +'<td><span class="badge '+stCol+'">'+(_OSTAT[l.status]||l.status)+'</span></td>'
+        +'<td><div style="display:flex;gap:6px;align-items:center">'
+          +(l.phone_norm?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
+          +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✨</button>'
+          +'<select onchange="_oSetStatus('+l.id+',this.value);this.selectedIndex=0" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:11.5px;font-weight:700;background:var(--white);color:var(--text);cursor:pointer"><option>تغيير الحالة</option><option value="replied">ردّ</option><option value="interested">مهتم</option><option value="converted">سجّل ✅</option><option value="rejected">رفض</option></select>'
         +'</div></td></tr>';
     });
     h+='</tbody></table></div>';
