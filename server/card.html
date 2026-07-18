@@ -63,6 +63,26 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-
 var TOKEN=(location.pathname.split('/').filter(Boolean).pop()||'').split('?')[0];
 var CARD_URL=location.origin+'/card/'+TOKEN;
 var _data=null;
+var _logoData='';
+function _setLogoPrev(src){ var p=document.getElementById('logoPrev'); if(p)p.innerHTML=src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">':'📷'; }
+function _clearLogo(){ _logoData=''; _setLogoPrev(''); }
+function _pickLogo(e){
+  var f=e.target.files&&e.target.files[0]; if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var max=400,w=img.width,h=img.height;
+      if(w>h){ if(w>max){h=Math.round(h*max/w);w=max;} } else { if(h>max){w=Math.round(w*max/h);h=max;} }
+      var c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      _logoData=c.toDataURL('image/jpeg',0.85);
+      _setLogoPrev(_logoData);
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
 function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},2200);}
 function normWa(p){if(!p)return'';var d=String(p).replace(/[^\d]/g,'');if(d.indexOf('966')===0)return d;if(d.indexOf('05')===0)return '966'+d.slice(1);if(d.indexOf('5')===0&&d.length===9)return '966'+d;if(d.indexOf('0')===0)return '966'+d.slice(1);return d;}
@@ -71,9 +91,11 @@ function render(d){
   _data=d;
   var wa=d.phone_norm||normWa(d.phone);
   var initial=esc((d.name||'?').trim().charAt(0)||'?');
+  _logoData=d.logo||'';
+  var avInner=d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':initial;
   var subtitle=[d.category,d.city].filter(Boolean).map(esc).join(' · ');
   var h='<div class="card"><div class="head">'
-    +'<div class="av">'+initial+'</div>'
+    +'<div class="av">'+avInner+'</div>'
     +'<div class="name">'+esc(d.name||'مزود خدمة')+'</div>'
     +(subtitle?'<div class="cat">'+subtitle+'</div>':'')
     +(d.rating?'<div class="rating">⭐ '+Number(d.rating).toFixed(1)+(d.reviews_count?' ('+d.reviews_count+')':'')+' <small>من Google</small></div>':'')
@@ -98,6 +120,12 @@ function render(d){
   if(d.views)h+='<div style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--muted)">👁 انفتحت صفحتك <b style="color:var(--p)">'+d.views+'</b> مرة</div>';
   h+='<div class="foot">هذي بياناتك؟ <a onclick="toggleEdit()">✏️ عدّل صفحتك أو أخفِها</a></div>';
   h+='<div class="edit" id="editBox">'
+    +'<label>الشعار / صورة</label>'
+    +'<div style="display:flex;align-items:center;gap:12px">'
+      +'<div id="logoPrev" style="width:60px;height:60px;border-radius:14px;background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+(d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</div>'
+      +'<input type="file" id="e-logo-file" accept="image/*" onchange="_pickLogo(event)" style="flex:1;font-size:12px">'
+      +'<button type="button" onclick="_clearLogo()" style="background:#fff;color:#dc2626;border:1px solid #fecaca;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">إزالة</button>'
+    +'</div>'
     +'<label>نبذة عنك</label><textarea id="e-bio" placeholder="مثال: متخصص في تكييف وصيانة السبليت، خبرة 10 سنوات، خدمة سريعة داخل الرياض.">'+esc(d.bio||'')+'</textarea>'
     +'<label>انستقرام (رابط)</label><input id="e-ig" dir="ltr" value="'+esc(L.instagram||'')+'" placeholder="https://instagram.com/...">'
     +'<label>سناب شات (رابط)</label><input id="e-sc" dir="ltr" value="'+esc(L.snapchat||'')+'" placeholder="https://snapchat.com/add/...">'
@@ -116,7 +144,7 @@ function shareCard(){
   else{navigator.clipboard.writeText(CARD_URL).then(function(){toast('تم نسخ الرابط');}).catch(function(){toast(CARD_URL);});}
 }
 function saveCard(){
-  var body={bio:document.getElementById('e-bio').value,links:{
+  var body={bio:document.getElementById('e-bio').value,logo:_logoData,links:{
     instagram:document.getElementById('e-ig').value,snapchat:document.getElementById('e-sc').value,
     tiktok:document.getElementById('e-tt').value,twitter:document.getElementById('e-tw').value,
     website:(_data&&_data.website)||'',maps:(_data&&_data.links&&_data.links.maps)||''}};
