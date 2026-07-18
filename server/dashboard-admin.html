@@ -1736,15 +1736,28 @@ function _renderOutreach(st, cov){
     +'</div></div>';
 
   // المتابعة
+  var _fsel='padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:var(--white);color:var(--text);cursor:pointer';
+  var _fin='padding:8px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-size:12.5px;background:var(--white);color:var(--text)';
+  var _statOpts=''; Object.keys(_OSTAT).forEach(function(k){ _statOpts+='<option value="'+k+'">'+_OSTAT[k]+'</option>'; });
   h+='<div class="card"><div class="card-head"><h3>📊 المتابعة</h3>'
-    +'<div style="display:flex;gap:7px;align-items:center">'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<span id="o-count" style="font-size:12px;color:var(--muted);font-weight:700"></span>'
     +'<button class="ftab" onclick="_oExport()">📥 تصدير</button>'
-    +'<select id="o-filter" onchange="_oLoadList()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:12px;font-weight:700;background:var(--white);color:var(--text)">'
-    +'<option value="">كل الحالات</option>';
-  Object.keys(_OSTAT).forEach(function(k){ h+='<option value="'+k+'">'+_OSTAT[k]+'</option>'; });
-  h+='</select></div></div><div class="card-body"><div id="o-list"></div></div></div>';
+    +'</div></div>'
+    +'<div class="card-body">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:12px;background:var(--bg);border-radius:12px">'
+      +'<input id="o-f-q" placeholder="🔍 بحث بالاسم أو الجوال" oninput="_oDeb(_oLoadList)" style="'+_fin+';flex:1;min-width:170px">'
+      +'<select id="o-f-status" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل الحالات</option>'+_statOpts+'</select>'
+      +'<select id="o-f-type" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل الأنواع</option><option value="provider">مزوّد</option><option value="client">عميل B2B</option></select>'
+      +'<select id="o-f-tag" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل التصنيفات</option><option value="serious">جاد</option><option value="interested">مهتم</option><option value="potential">محتمل</option></select>'
+      +'<select id="o-f-prio" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل الأولويات</option><option value="high">عالية (70+)</option><option value="mid">متوسطة (45–69)</option><option value="low">منخفضة (&lt;45)</option></select>'
+      +'<select id="o-f-city" onchange="_oLoadList()" style="'+_fsel+'"><option value="">كل المدن</option></select>'
+      +'<button class="ftab" onclick="_oClearFilters()" title="مسح كل الفلاتر" style="font-size:12px">✕ مسح</button>'
+    +'</div>'
+    +'<div id="o-list"></div></div></div>';
 
   b.innerHTML=h;
+  _oFillCities();
   _oLoadList();
   _oLoadQueue();
   _oDayLimit();
@@ -1982,7 +1995,7 @@ function _oParseRows(rows){
 
 // ═══ تصدير ═══
 function _oExport(){
-  fetch(API+'/api/admin/leads/export',hdr()).then(function(r){return r.json();}).then(function(d){
+  fetch(API+'/api/admin/leads/export'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
     var L=d.leads||[]; if(!L.length){ toast('لا يوجد ما يُصدّر','error'); return; }
     var cols=['name','phone','category','city','rating','reviews_count','status','tag','score','notes'];
     var headers=['الاسم','الجوال','التخصص','المدينة','التقييم','المراجعات','الحالة','الوسم','الأولوية','ملاحظات'];
@@ -2114,12 +2127,45 @@ function _oSetStatus(id,status,fdays){
     .then(function(){ _OQi++; _oRenderCard(); _oLoadList(); })
     .catch(function(){ toast('تعذّر التحديث','error'); });
 }
+// يبني سلسلة الاستعلام من كل الفلاتر الفعّالة (مشترك بين القائمة والتصدير)
+function _oQueryStr(){
+  var g=function(id){return (document.getElementById(id)||{}).value||'';};
+  var p=[], m={status:'o-f-status',type:'o-f-type',tag:'o-f-tag',prio:'o-f-prio',city:'o-f-city'};
+  Object.keys(m).forEach(function(k){ var val=g(m[k]); if(val)p.push(k+'='+encodeURIComponent(val)); });
+  var q=g('o-f-q').trim(); if(q)p.push('q='+encodeURIComponent(q));
+  return p.length ? '?'+p.join('&') : '';
+}
+// تأخير بسيط لحقل البحث (لتفادي طلب مع كل حرف)
+var _oDebT=null;
+function _oDeb(fn){ clearTimeout(_oDebT); _oDebT=setTimeout(fn,350); }
+// مسح كل الفلاتر
+function _oClearFilters(){
+  ['o-f-q','o-f-status','o-f-type','o-f-tag','o-f-prio','o-f-city'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
+  _oLoadList();
+}
+// تعبئة قائمة المدن (مرّة واحدة، مع تخزين مؤقّت)
+var _oCityCache=null;
+function _oFillCities(){
+  var sel=document.getElementById('o-f-city'); if(!sel)return;
+  var fill=function(arr){
+    var cur=sel.value, h='<option value="">كل المدن</option>';
+    arr.forEach(function(c){ h+='<option value="'+esc(c)+'">'+esc(c)+'</option>'; });
+    sel.innerHTML=h; sel.value=cur;
+  };
+  if(_oCityCache){ fill(_oCityCache); return; }
+  fetch(API+'/api/admin/leads',hdr()).then(function(r){return r.json();}).then(function(d){
+    var set={}; (d.leads||[]).forEach(function(l){ if(l.city)set[l.city]=1; });
+    _oCityCache=Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');});
+    fill(_oCityCache);
+  }).catch(function(){});
+}
 function _oLoadList(){
   var box=document.getElementById('o-list');if(!box)return;
-  var f=(document.getElementById('o-filter')||{}).value||'';
-  fetch(API+'/api/admin/leads'+(f?'?status='+f:''),hdr()).then(function(r){return r.json();}).then(function(d){
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">جاري التحميل...</div>';
+  fetch(API+'/api/admin/leads'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
     var L=d.leads||[];
-    if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد</div>'; return; }
+    var cnt=document.getElementById('o-count'); if(cnt)cnt.textContent=L.length?(L.length+' نتيجة'):'';
+    if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد نتائج مطابقة للفلاتر</div>'; return; }
     var h='<div class="tbl-wrap"><table><thead><tr>'
       +'<th>المستهدف</th><th>النوع</th><th>التخصص / المدينة</th><th>الأولوية</th><th>التصنيف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>';
     L.forEach(function(l){
