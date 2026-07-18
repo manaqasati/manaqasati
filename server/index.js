@@ -964,6 +964,7 @@ async function setupDatabase() {
       await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)');
       await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
       await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
     } catch(e){ console.error('leads table:', e.message); }
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
@@ -2278,6 +2279,66 @@ app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (
 });
 
 // إحصائيات الاستقطاب
+// إضافة يدوية/دفعة بكشف التكرار (بالرقم)
+app.post('/api/admin/leads/manual', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    var items = Array.isArray(req.body.items) ? req.body.items : [req.body];
+    var type = req.body.lead_type==='client'?'client':'provider';
+    var added=0, dup=0, invalid=0;
+    for(const it of items){
+      var pn = normPhone(it.phone);
+      if(!it.name || !pn){ invalid++; continue; }
+      // كشف التكرار بالرقم
+      var ex = await pool.query('SELECT id FROM leads WHERE phone_norm=$1 LIMIT 1', [pn]);
+      if(ex.rows.length){ dup++; continue; }
+      var row = { rating:it.rating||null, reviews_count:it.reviews_count||0, website:it.website||null, phone_norm:pn };
+      var sc = scoreLead(row);
+      await pool.query(
+        `INSERT INTO leads (lead_type,name,phone,phone_norm,category,city,rating,reviews_count,website,score,created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [it.lead_type||type, it.name, it.phone, pn, it.category||null, it.city||null, it.rating||null, it.reviews_count||0, it.website||null, sc, req.user.id]
+      );
+      added++;
+    }
+    res.json({ added, dup, invalid });
+  }catch(e){ console.error('leads/manual:', e); res.status(500).json({ message:'تعذّر الإضافة' }); }
+});
+
+// عدّاد الرسائل المُرسلة اليوم (حماية من الحظر)
+app.get('/api/admin/leads/sent-today', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    var r = await pool.query(`SELECT COUNT(*)::int n FROM leads WHERE contacted_at >= CURRENT_DATE`);
+    res.json({ count: r.rows[0].n, limit: 50 });
+  }catch(e){ res.json({ count:0, limit:50 }); }
+});
+
+// وسم مستهدف (جاد/مهتم/محتمل)
+app.put('/api/admin/leads/:id/tag', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    var tag = req.body.tag || null;
+    await pool.query('UPDATE leads SET tag=$1, updated_at=NOW() WHERE id=$2', [tag, parseInt(req.params.id)]);
+    res.json({ ok:true });
+  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
+});
+
+// تصدير المستهدفين (JSON للتحويل إلى CSV بالواجهة)
+app.get('/api/admin/leads/export', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    var r = await pool.query(`SELECT name,phone,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ORDER BY created_at DESC`);
+    res.json({ leads: r.rows });
+  }catch(e){ res.status(500).json({ message:'تعذّر التصدير' }); }
+});
+
+// متابعات اليوم (مستحقة)
+app.get('/api/admin/leads/due-today', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    var r = await pool.query(
+      `SELECT * FROM leads WHERE followup_at IS NOT NULL AND followup_at <= NOW()
+       AND status NOT IN ('converted','rejected') ORDER BY followup_at ASC LIMIT 50`);
+    res.json({ leads: r.rows });
+  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
+});
+
 app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const s = await pool.query(`SELECT status, lead_type, COUNT(*)::int n FROM leads GROUP BY status, lead_type`);
