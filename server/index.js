@@ -325,7 +325,7 @@ app.get('/api/card/:token', async (req, res) => {
   try{
     const r = await pool.query(
       `SELECT name, phone, phone_norm, category, city, rating, reviews_count, website,
-              card_bio, card_links, card_published
+              card_bio, card_logo, card_links, card_published
        FROM leads WHERE card_token=$1 LIMIT 1`, [req.params.token]);
     if(!r.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
     const l = r.rows[0];
@@ -335,7 +335,7 @@ app.get('/api/card/:token', async (req, res) => {
     res.json({
       name: l.name, phone: l.phone, phone_norm: l.phone_norm, category: l.category, city: l.city,
       rating: l.rating, reviews_count: l.reviews_count, website: l.website,
-      bio: l.card_bio || '', links: l.card_links || {}, views: views
+      bio: l.card_bio || '', logo: l.card_logo || '', links: l.card_links || {}, views: views
     });
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
@@ -353,6 +353,11 @@ app.post('/api/card/:token', async (req, res) => {
     allow.forEach(k => { if(typeof inLinks[k]==='string' && inLinks[k].trim()) links[k] = inLinks[k].trim().slice(0,300); });
     const sets = ['card_updated_at=NOW()'], v = [];
     if(bio !== null){ v.push(bio); sets.push(`card_bio=$${v.length}`); }
+    if(typeof req.body.logo === 'string'){
+      let logo = req.body.logo.trim();
+      if(logo.startsWith('data:')) logo = await uploadToR2(logo, 'manaqasa/cards');
+      v.push(logo || null); sets.push(`card_logo=$${v.length}`);
+    }
     v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`);
     if(req.body.unpublish === true) sets.push('card_published=false');
     if(req.body.unpublish === false) sets.push('card_published=true');
@@ -1067,6 +1072,7 @@ async function setupDatabase() {
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_logo TEXT"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
