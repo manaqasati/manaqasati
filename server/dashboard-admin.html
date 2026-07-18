@@ -2340,7 +2340,7 @@ function _oCardOpen(){ if(_oCardUrl)window.open(_oCardUrl,'_blank'); }
 function _oCardWa(){
   var l=(_oLeads||[]).find(function(x){return x.id===_oCardLeadId;});
   var wa=l&&l.phone_norm; if(!wa){ toast('لا يوجد رقم واتساب لهذا المستهدف','error'); return; }
-  var msg='أهلاً '+((l&&l.name)||'')+' 👋 جهّزنا لك كرت رقمي مجاني فيه بياناتك وطرق تواصلك ورمز QR تحطه على سيارتك أو بايو حساباتك. تفضّل رابطك:\n'+_oCardUrl+'\nتقدر تعدّله أو تخفيه وقت ما تبي.';
+  var msg='أهلاً '+((l&&l.name)||'')+' 👋\nخل عنك الورقي — بطاقتكم الرقمية جاهزة 📲\nهذا رابط المعاينة (خاص فيكم — ما يطلع بقوقل لحد ما تفعّلونه):\n'+_oCardUrl+'\n① افتحوا الرابط وشوفوا بطاقتكم\n② حالياً مسودّة — أنتم بس تشوفونها\n③ فعّلوها مجاناً ← تصير صفحتكم الرسمية وتبدأ تظهر في قوقل يلقاكم فيها العملاء\nتعدّلونها أو تخفونها وقت ما تبون.';
   window.open('https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent(msg)+'&type=phone_number&app_absent=0','_blank');
 }
 function _oLoadList(){
