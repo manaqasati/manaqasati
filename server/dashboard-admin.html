@@ -2389,7 +2389,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage'};
+var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -2402,7 +2402,7 @@ function loadMe(){
   return fetch(API+'/api/admin/me',hdr()).then(function(r){return r.json();}).then(function(me){
     _me=me; _myPerms=me.permissions||[];
     gateUI();
-    var RL={super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
+    var RL={super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
     var sub=document.getElementById('adminRole'); if(sub)sub.textContent=me.is_owner?'المالك':(RL[me.admin_role]||'مشرف');
     // لو الصفحة الحالية غير مصرّح بها، ارجع للوحة المعلومات
     var cur=document.querySelector('.page.on'); 
@@ -2434,7 +2434,7 @@ function renderAdmins(){
    }).join('')+'</tbody></table>';
 }
 function _roleOptions(sel){
-  var roles=(_permCatalog&&_permCatalog.role_labels)||{super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل'};
+  var roles=(_permCatalog&&_permCatalog.role_labels)||{super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
   return Object.keys(roles).map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+roles[k]+'</option>';}).join('');
 }
 function _permChecks(selected){
