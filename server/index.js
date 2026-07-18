@@ -2207,17 +2207,29 @@ app.post('/api/admin/leads', requirePermission('outreach.manage'), async (req, r
   } catch(e){ console.error('leads add:', e); res.status(500).json({ message:'تعذّر الحفظ' }); }
 });
 
+// بنّاء فلاتر المستهدفين (مشترك بين القائمة والتصدير)
+// يدعم: الحالة، النوع، المدينة، التخصص، الوسم/التصنيف، بحث نصّي، وشريحة الأولوية
+function buildLeadFilter(qp){
+  const { status, type, city, category, q, tag, prio } = qp || {};
+  const w = [], v = [];
+  if(status){ v.push(status); w.push(`status=$${v.length}`); }
+  if(type){ v.push(type); w.push(`lead_type=$${v.length}`); }
+  if(city){ v.push(city); w.push(`city=$${v.length}`); }
+  if(category){ v.push(category); w.push(`category=$${v.length}`); }
+  if(tag){ v.push(tag); w.push(`tag=$${v.length}`); }
+  if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length})`); }
+  // شريحة الأولوية — نفس عتبات ألوان الجدول (70 / 45)
+  if(prio==='high'){ w.push('score>=70'); }
+  else if(prio==='mid'){ w.push('score>=45 AND score<70'); }
+  else if(prio==='low'){ w.push('(score<45 OR score IS NULL)'); }
+  const where = w.length ? 'WHERE '+w.join(' AND ') : '';
+  return { where, v };
+}
+
 // قائمة المستهدفين (فلترة)
 app.get('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
   try {
-    const { status, type, city, category, q } = req.query;
-    const w = [], v = [];
-    if(status){ v.push(status); w.push(`status=$${v.length}`); }
-    if(type){ v.push(type); w.push(`lead_type=$${v.length}`); }
-    if(city){ v.push(city); w.push(`city=$${v.length}`); }
-    if(category){ v.push(category); w.push(`category=$${v.length}`); }
-    if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length})`); }
-    const where = w.length ? 'WHERE '+w.join(' AND ') : '';
+    const { where, v } = buildLeadFilter(req.query);
     const r = await pool.query(`SELECT * FROM leads ${where} ORDER BY score DESC, created_at DESC LIMIT 300`, v);
     res.json({ leads: r.rows });
   } catch(e){ console.error('leads list:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
@@ -2324,7 +2336,8 @@ app.put('/api/admin/leads/:id/tag', requirePermission('outreach.manage'), async 
 // تصدير المستهدفين (JSON للتحويل إلى CSV بالواجهة)
 app.get('/api/admin/leads/export', requirePermission('outreach.manage'), async (req, res) => {
   try{
-    var r = await pool.query(`SELECT name,phone,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ORDER BY created_at DESC`);
+    const { where, v } = buildLeadFilter(req.query);
+    var r = await pool.query(`SELECT name,phone,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ${where} ORDER BY created_at DESC`, v);
     res.json({ leads: r.rows });
   }catch(e){ res.status(500).json({ message:'تعذّر التصدير' }); }
 });
