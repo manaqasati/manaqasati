@@ -15,7 +15,11 @@
 body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 14px 40px}
 .wrap{width:100%;max-width:440px}
 .card{background:var(--card);border-radius:22px;box-shadow:0 8px 40px rgba(20,20,50,.08);overflow:hidden}
-.head{background:linear-gradient(135deg,var(--p),var(--p2));padding:30px 22px 46px;text-align:center;color:#fff;position:relative}
+.head{background:linear-gradient(135deg,var(--p),var(--p2));padding:26px 22px 46px;text-align:center;color:#fff;position:relative;overflow:hidden}
+.head::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle, rgba(255,255,255,.13) 1.4px, transparent 1.4px);background-size:20px 20px;opacity:.55;pointer-events:none}
+.head>*{position:relative;z-index:1}
+.brand-tag{font-size:11px;opacity:.9;font-weight:800;letter-spacing:.6px;margin-bottom:12px}
+.btn-vcard{background:#fff;color:var(--p);border:1.5px solid var(--border)}
 .draft{background:#fffbeb;border-bottom:1px solid #fde68a;color:#92600a;text-align:center;padding:9px 14px;font-size:12.5px;font-weight:700}
 .mkt{margin-top:16px;background:#f0f5ff;border:1px solid #cdddf9;border-radius:14px;padding:15px 16px}
 .mkt h5{font-size:13.5px;color:#1e3a8a;font-weight:800;margin-bottom:7px}
@@ -104,6 +108,7 @@ function render(d){
   var avInner=d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':initial;
   var subtitle=[d.category,d.city].filter(Boolean).map(esc).join(' · ');
   var h='<div class="card"><div class="draft">✏️ مسودّة — معاينة خاصة بك · فعّلها لتصير رسمية</div><div class="head">'
+    +'<div class="brand-tag">📇 بطاقة رقمية · مناقصة</div>'
     +'<div class="av">'+avInner+'</div>'
     +'<div class="name">'+esc(d.name||'مزود خدمة')+'</div>'
     +(subtitle?'<div class="cat">'+subtitle+'</div>':'')
@@ -114,6 +119,7 @@ function render(d){
   if(d.phone)h+='<a class="btn btn-call" href="tel:'+esc(d.phone)+'">📞 اتصال مباشر</a>';
   var maps=(d.links&&d.links.maps)||(d.website&&/google\.[^\/]+\/maps|maps\.app|goo\.gl\/maps/.test(d.website)?d.website:'')||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((d.name||'')+' '+(d.city||'')));
   h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank">📍 الموقع على الخريطة</a>';
+  h+='<button class="btn btn-vcard" onclick="saveVCard()">📇 حفظ جهة الاتصال</button>';
   h+='</div>';
   var L=d.links||{};
   var soc='';
@@ -152,6 +158,25 @@ function render(d){
   try{ new QRCode(document.getElementById('qr'),{text:CARD_URL,width:150,height:150,colorDark:'#1e3a8a',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
 }
 function toggleEdit(){document.getElementById('editBox').classList.toggle('on');}
+function saveVCard(){
+  var d=_data||{}; var L=d.links||{};
+  var v=['BEGIN:VCARD','VERSION:3.0','FN:'+(d.name||''),'ORG:'+(d.name||'')];
+  if(d.category)v.push('TITLE:'+d.category);
+  if(d.phone)v.push('TEL;TYPE=CELL:'+d.phone);
+  if(d.city)v.push('ADR;TYPE=WORK:;;;'+d.city+';;;السعودية');
+  v.push('URL:'+CARD_URL);
+  ['website','instagram','tiktok','snapchat','twitter'].forEach(function(k){ if(L[k])v.push('URL:'+L[k]); });
+  if(d.bio)v.push('NOTE:'+String(d.bio).replace(/\n/g,' '));
+  v.push('END:VCARD');
+  try{
+    var blob=new Blob([v.join('\r\n')],{type:'text/vcard;charset=utf-8'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=((d.name||'contact').replace(/\s+/g,'_'))+'.vcf';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1500);
+    toast('تم حفظ جهة الاتصال');
+  }catch(e){ toast('تعذّر الحفظ'); }
+}
 function shareCard(){
   if(navigator.share){navigator.share({title:'الكرت الرقمي',url:CARD_URL}).catch(function(){});}
   else{navigator.clipboard.writeText(CARD_URL).then(function(){toast('تم نسخ الرابط');}).catch(function(){toast(CARD_URL);});}
