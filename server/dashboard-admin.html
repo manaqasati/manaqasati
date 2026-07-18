@@ -1816,6 +1816,7 @@ function _oRenderCard(){
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(l.rating?'⭐ '+l.rating+' ('+(l.reviews_count||0)+' مراجعة) · ':'')+esc(l.category||'—')+' · '+esc(l.city||'—')+' · '+esc(l.phone||'')+'</div>'
     +(l.matched_request?'<div style="background:var(--p-light,rgba(37,99,235,.08));border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px"><b style="color:var(--p)">📋 طلب مطابق:</b> '+esc(l.matched_request.title)+(l.matched_request.budget_max?' — <b>'+Number(l.matched_request.budget_max).toLocaleString('en-US')+' ر.س</b>':'')+'</div>':'')
     +'<textarea id="o-msg" style="width:100%;min-height:110px;padding:11px;border:1px solid var(--border);border-radius:10px;font-family:Tajawal;font-size:12.5px;line-height:1.7;background:var(--white);color:var(--text);resize:vertical">'+msg+'</textarea>'
+    +'<button onclick="_oGenMsg('+l.id+',this)" style="margin-top:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:8px 14px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12px;cursor:pointer">✨ رسالة ذكية (Claude)</button>'
     +'<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">'
       +'<button onclick="_oSend()" style="flex:1;min-width:150px;background:#25D366;color:#fff;border:none;padding:12px;border-radius:10px;font-family:Tajawal;font-weight:800;font-size:13.5px;cursor:pointer">📤 إرسال واتساب</button>'
       +'<button onclick="_oSkip()" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:12px 18px;border-radius:10px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">تخطّي</button>'
@@ -1842,6 +1843,93 @@ function _oSend(){
   _oSetStatus(l.id,'contacted',3);
 }
 function _oSkip(){ _OQi++; _oRenderCard(); }
+function _oGenMsg(id,btn){
+  var ta=document.getElementById('o-msg'); if(!ta)return;
+  var _o=btn.textContent; btn.textContent='⏳ يكتب...'; btn.disabled=true;
+  fetch(API+'/api/admin/leads/'+id+'/gen-message',{method:'POST',headers:hdr().headers,body:'{}'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.textContent=_o; btn.disabled=false;
+      if(d.fallback){ toast('فعّل ANTHROPIC_API_KEY لاستخدام الرسائل الذكية','error'); return; }
+      if(d.message){ ta.value=d.message; toast('تم توليد رسالة ذكية','success'); }
+      else toast('تعذّر التوليد','error');
+    }).catch(function(){ btn.textContent=_o; btn.disabled=false; toast('تعذّر التوليد','error'); });
+}
+function _oAnalyze(id){
+  var reply=prompt('الصق رد المزوّد هنا:');
+  if(!reply||!reply.trim())return;
+  toast('جاري التحليل...','info');
+  fetch(API+'/api/admin/leads/'+id+'/analyze-reply',{method:'POST',headers:hdr().headers,body:JSON.stringify({reply:reply})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.fallback){ toast('فعّل ANTHROPIC_API_KEY للتحليل الذكي','error'); return; }
+      if(!d.analysis){ toast('تعذّر التحليل','error'); return; }
+      var a=d.analysis;
+      var labels={interested:'🟢 مهتم',price_question:'🟡 يسأل عن السعر',hesitant:'🟠 متردد',rejected:'🔴 رفض',later:'⏳ لاحقاً',unclear:'⚪ غير واضح'};
+      _oShowAnalysis(labels[a.intent]||a.intent, a.summary||'', a.suggested_reply||'', id, a.followup_days);
+      _oLoadList();
+    }).catch(function(){ toast('تعذّر التحليل','error'); });
+}
+function _oShowAnalysis(intent,summary,reply,id,fdays){
+  var m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML='<div style="background:var(--white);border-radius:16px;padding:22px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    +'<div style="font-family:Cairo,sans-serif;font-weight:900;font-size:16px;margin-bottom:6px">تحليل الرد</div>'
+    +'<div style="font-size:20px;font-weight:900;margin-bottom:10px">'+intent+'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.6">'+esc(summary)+'</div>'
+    +(reply?'<div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:6px">💬 الرد المقترح:</div>'
+      +'<textarea id="o-sugreply" style="width:100%;min-height:100px;padding:11px;border:1px solid var(--border);border-radius:10px;font-family:Tajawal;font-size:12.5px;line-height:1.7;background:var(--bg);color:var(--text);resize:vertical;margin-bottom:12px">'+esc(reply)+'</textarea>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +(reply?'<button onclick="_oSendReply('+id+')" style="flex:1;min-width:140px;background:#25D366;color:#fff;border:none;padding:11px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">📤 إرسال الرد</button>':'')
+    +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:11px 18px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">إغلاق</button>'
+    +'</div></div>';
+  m.onclick=function(e){ if(e.target===m)m.remove(); };
+  document.body.appendChild(m);
+  m._leadId=id; m._phone=null;
+  // اجلب رقم المستهدف للرد
+  var lead=(_OQ||[]).filter(function(x){return x.id===id;})[0];
+  if(lead)m._phone=lead.phone_norm;
+}
+function _oSendReply(id){
+  var ta=document.getElementById('o-sugreply'); if(!ta)return;
+  var lead=(_OQ||[]).filter(function(x){return x.id===id;})[0];
+  var phone=lead?lead.phone_norm:(window._oReplyPhone||null);
+  if(!phone){ toast('رقم غير متوفّر','error'); return; }
+  window.open('https://api.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(ta.value)+'&type=phone_number&app_absent=0','_blank');
+}
+function _oAnalyzeList(id,phone){
+  window._oReplyPhone=phone;
+  var reply=prompt('الصق رد المزوّد هنا:');
+  if(!reply||!reply.trim())return;
+  toast('جاري التحليل...','info');
+  fetch(API+'/api/admin/leads/'+id+'/analyze-reply',{method:'POST',headers:hdr().headers,body:JSON.stringify({reply:reply})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.fallback){ toast('فعّل ANTHROPIC_API_KEY للتحليل الذكي','error'); return; }
+      if(!d.analysis){ toast('تعذّر التحليل','error'); return; }
+      var a=d.analysis;
+      var labels={interested:'🟢 مهتم',price_question:'🟡 يسأل عن السعر',hesitant:'🟠 متردد',rejected:'🔴 رفض',later:'⏳ لاحقاً',unclear:'⚪ غير واضح'};
+      _oShowAnalysisPhone(labels[a.intent]||a.intent, a.summary||'', a.suggested_reply||'', phone);
+      _oLoadList();
+    }).catch(function(){ toast('تعذّر التحليل','error'); });
+}
+function _oShowAnalysisPhone(intent,summary,reply,phone){
+  window._oReplyPhone=phone;
+  var m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px';
+  m.innerHTML='<div style="background:var(--white);border-radius:16px;padding:22px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)">'
+    +'<div style="font-family:Cairo,sans-serif;font-weight:900;font-size:16px;margin-bottom:6px">تحليل الرد</div>'
+    +'<div style="font-size:20px;font-weight:900;margin-bottom:10px">'+intent+'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.6">'+esc(summary)+'</div>'
+    +(reply?'<div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:6px">💬 الرد المقترح:</div>'
+      +'<textarea id="o-sugreply2" style="width:100%;min-height:100px;padding:11px;border:1px solid var(--border);border-radius:10px;font-family:Tajawal;font-size:12.5px;line-height:1.7;background:var(--bg);color:var(--text);resize:vertical;margin-bottom:12px">'+esc(reply)+'</textarea>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +(reply&&phone?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+phone+'&text=\'+encodeURIComponent(document.getElementById(\'o-sugreply2\').value)+\'&type=phone_number&app_absent=0\',\'_blank\')" style="flex:1;min-width:140px;background:#25D366;color:#fff;border:none;padding:11px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">📤 إرسال الرد</button>':'')
+    +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:11px 18px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:13px;cursor:pointer">إغلاق</button>'
+    +'</div></div>';
+  m.onclick=function(e){ if(e.target===m)m.remove(); };
+  document.body.appendChild(m);
+}
 function _oSetStatus(id,status,fdays){
   var body={status:status}; if(fdays)body.followup_days=fdays;
   fetch(API+'/api/admin/leads/'+id,{method:'PUT',headers:hdr().headers,body:JSON.stringify(body)})
@@ -1866,6 +1954,7 @@ function _oLoadList(){
         +'<td style="padding:9px 8px"><span style="color:'+col+';font-weight:800;font-size:11.5px">'+(_OSTAT[l.status]||l.status)+'</span></td>'
         +'<td style="padding:9px 8px"><div style="display:flex;gap:5px">'
           +(l.phone_norm?'<button onclick="window.open(\'https://wa.me/'+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px">💬</button>':'')
+          +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px">✨</button>'
           +'<select onchange="_oSetStatus('+l.id+',this.value);this.selectedIndex=0" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:Tajawal;font-size:11px;background:var(--white);color:var(--text)"><option>تغيير</option><option value="replied">ردّ</option><option value="interested">مهتم</option><option value="converted">سجّل</option><option value="rejected">رفض</option></select>'
         +'</div></td></tr>';
     });
