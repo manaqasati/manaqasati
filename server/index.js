@@ -317,8 +317,21 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
 // ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
 function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
 
-// صفحة الكرت — ترسل الملف؛ التعبئة عبر /api/card/:token
-app.get('/card/:token', (req, res) => res.sendFile(__dirname + '/card.html'));
+// صفحة الكرت — لو تحوّل المستهدف لمزوّد مسجّل، حوّل لصفحته الرسمية؛ وإلا اعرض الكرت
+app.get('/card/:token', async (req, res) => {
+  try{
+    const r = await pool.query('SELECT converted_user_id FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
+    const uid = r.rows[0] && r.rows[0].converted_user_id;
+    if(uid){
+      const u = await pool.query("SELECT id, COALESCE(business_name,name) AS nm FROM users WHERE id=$1 AND role='provider'", [uid]);
+      if(u.rows[0]){
+        const seoSlug = encodeURIComponent(String(u.rows[0].nm||'مزود').replace(/\s+/g,'-')) + '-' + u.rows[0].id;
+        return res.redirect(302, '/pro/' + seoSlug);
+      }
+    }
+    res.sendFile(__dirname + '/card.html');
+  }catch(e){ res.sendFile(__dirname + '/card.html'); }
+});
 
 // بيانات الكرت العامة (حقول آمنة فقط)
 app.get('/api/card/:token', async (req, res) => {
