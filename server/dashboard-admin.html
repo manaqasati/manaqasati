@@ -1837,7 +1837,8 @@ function _oMsg(l){
 function _oSend(){
   var l=_OQ[_OQi]; if(!l) return;
   var msg=(document.getElementById('o-msg')||{}).value||_oMsg(l);
-  window.open('https://wa.me/'+l.phone_norm+'?text='+encodeURIComponent(msg),'_blank');
+  var url='https://api.whatsapp.com/send?phone='+l.phone_norm+'&text='+encodeURIComponent(msg)+'&type=phone_number&app_absent=0';
+  window.open(url,'_blank');
   _oSetStatus(l.id,'contacted',3);
 }
 function _oSkip(){ _OQi++; _oRenderCard(); }
