@@ -1316,12 +1316,16 @@ function _parseHashParams(){
 function restoreAdminHash(){
   var raw=(location.hash||'').replace('#','');
   var h=raw.split('?')[0];
-  var valid=['dashboard','analytics','users','requests','bids','reviews','questions','reports','logs','admins','settings'];
-  var pg=valid.indexOf(h)>=0?h:'dashboard';
-  var btns=document.querySelectorAll('.ni');
-  var idx={dashboard:0,analytics:1,users:2,requests:3,bids:4,reviews:5,questions:6,reports:7,logs:8,admins:9,settings:10}[pg];
+  // تحقّق بوجود الصفحة فعلياً في DOM (يشمل كل الصفحات تلقائياً)
+  var pg=(h && document.getElementById('page-'+h)) ? h : 'dashboard';
+  // زر القائمة المطابق (بحث بالـonclick بدل فهرس ثابت هشّ)
+  var btn=null;
+  document.querySelectorAll('.ni').forEach(function(n){
+    var oc=n.getAttribute('onclick')||'';
+    if(oc.indexOf("showPage('"+pg+"'")>=0) btn=n;
+  });
   window._skipHash=true;
-  showPage(pg, btns[idx]||null);
+  showPage(pg, btn);
   window._skipHash=false;
 }
 loadMe();
