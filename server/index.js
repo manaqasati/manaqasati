@@ -490,6 +490,34 @@ function normPhone(p){
   if(rest.length !== 9 || !rest.startsWith('5')) return null;
   return d;
 }
+// توحيد اسم المنشأة للمطابقة: يوحّد الحروف، يشيل التشكيل و«ال» والكلمات العامة (مؤسسة/شركة/محل...)
+function normName(s){
+  if(!s) return '';
+  let t = String(s)
+    .replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .replace(/[\u064B-\u0652\u0640]/g,'')               // تشكيل + تطويل
+    .replace(/[^\u0621-\u064A0-9a-zA-Z ]/g,' ')         // رموز/علامات
+    .toLowerCase();
+  const stop = { 'موسسه':1,'شركه':1,'مكتب':1,'محل':1,'مصنع':1,'مركز':1,'معرض':1,'ورشه':1,'مجموعه':1,'مؤسسه':1,
+    'للتجاره':1,'التجاريه':1,'للمقاولات':1,'للخدمات':1,'الخدمات':1,'and':1,'co':1,'est':1,'company':1,'trading':1 };
+  const toks = t.split(/\s+/).map(w => w.replace(/^ال/,'')).filter(w => w && !stop[w]);
+  return toks.join(' ');
+}
+// تشابه اسمين — متحفّظ لتقليل الإنذارات الكاذبة (يُستخدم فقط كإشارة مراجعة يدوية)
+function nameSimilar(a, b){
+  a = normName(a); b = normName(b);
+  if(!a || !b) return false;
+  if(a === b) return true;
+  const A = a.split(' '), B = b.split(' ');
+  const setB = {}; B.forEach(w => { setB[w] = 1; });
+  const common = A.filter(w => setB[w] && w.length >= 2).length;
+  if(common >= 2) return true;                          // كلمتان مميزتان مشتركتان
+  // اسم من كلمة واحدة مميزة (≥4 حروف) موجودة في الآخر
+  if(A.length === 1 && A[0].length >= 4 && b.indexOf(A[0]) >= 0) return true;
+  if(B.length === 1 && B[0].length >= 4 && a.indexOf(B[0]) >= 0) return true;
+  return false;
+}
+
 // نقاط الأولوية: تقييم عالٍ + مراجعات كثيرة + بلا موقع = صيد ثمين
 function scoreLead(l){
   let s = 0;
@@ -965,6 +993,8 @@ async function setupDatabase() {
       await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
       await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
     } catch(e){ console.error('leads table:', e.message); }
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
@@ -1051,17 +1081,41 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const m = ref.match(/^pro(\d+)$/);
       if(m){ await pool.query('UPDATE users SET referral_count = COALESCE(referral_count,0)+1 WHERE id=$1', [parseInt(m[1])]); }
     }catch(e){}
-    // محرّك الاستقطاب: رصد التحويل تلقائياً (مطابقة الجوال)
+    // محرّك الاستقطاب: رصد التحويل تلقائياً (مطابقة الجوال) + إشارة اسم للمراجعة
     try{
+      const uid = result.rows[0].id;
       const pn = normPhone(phone);
+      let convertedByPhone = 0;
       if(pn){
-        await pool.query(
+        const up = await pool.query(
           `UPDATE leads SET status='converted', converted_user_id=$1, converted_at=NOW(), updated_at=NOW()
            WHERE phone_norm=$2 AND status <> 'converted'`,
-          [result.rows[0].id, pn]
+          [uid, pn]
         );
+        convertedByPhone = up.rowCount || 0;
       }
-    }catch(e){}
+      // إذا ما تحوّل شيء بالجوال، جرّب مطابقة الاسم (إشارة يدوية فقط — لا تحويل تلقائي)
+      if(convertedByPhone === 0){
+        const regName = (req.body.business_name || name || '').trim();
+        if(regName){
+          const cityLike = city ? '%' + city.trim() + '%' : null;
+          const cand = await pool.query(
+            `SELECT id, name FROM leads
+             WHERE lead_type='provider' AND status NOT IN ('converted','rejected') AND maybe_user_id IS NULL
+               AND ($1::text IS NULL OR city ILIKE $1)
+             ORDER BY updated_at DESC LIMIT 500`,
+            [cityLike]
+          );
+          const hits = cand.rows.filter(r => nameSimilar(regName, r.name)).map(r => r.id);
+          if(hits.length){
+            await pool.query(
+              `UPDATE leads SET maybe_user_id=$1, maybe_at=NOW(), updated_at=NOW() WHERE id = ANY($2)`,
+              [uid, hits]
+            );
+          }
+        }
+      }
+    }catch(e){ console.error('lead match:', e.message); }
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     try {
@@ -2236,6 +2290,8 @@ function buildLeadFilter(qp){
   if(prio==='high'){ w.push('score>=70'); }
   else if(prio==='mid'){ w.push('score>=45 AND score<70'); }
   else if(prio==='low'){ w.push('(score<45 OR score IS NULL)'); }
+  // «محتمل سجّل» فقط
+  if(qp && (qp.maybe==='1' || qp.maybe==='true')){ w.push("maybe_user_id IS NOT NULL AND status<>'converted'"); }
   const where = w.length ? 'WHERE '+w.join(' AND ') : '';
   return { where, v };
 }
@@ -2356,6 +2412,27 @@ app.put('/api/admin/leads/:id/tag', requirePermission('outreach.manage'), async 
   try{
     var tag = req.body.tag || null;
     await pool.query('UPDATE leads SET tag=$1, updated_at=NOW() WHERE id=$2', [tag, parseInt(req.params.id)]);
+    res.json({ ok:true });
+  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
+});
+
+// تأكيد «محتمل سجّل» ← تحويل مؤكّد
+app.post('/api/admin/leads/:id/confirm-match', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    const id = parseInt(req.params.id);
+    const r = await pool.query(
+      `UPDATE leads SET status='converted', converted_user_id=maybe_user_id, converted_at=NOW(),
+        maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW()
+       WHERE id=$1 RETURNING *`, [id]);
+    res.json({ lead: r.rows[0] });
+  }catch(e){ res.status(500).json({ message:'تعذّر التأكيد' }); }
+});
+
+// رفض «محتمل سجّل» ← إزالة الإشارة فقط
+app.post('/api/admin/leads/:id/dismiss-match', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    const id = parseInt(req.params.id);
+    await pool.query('UPDATE leads SET maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW() WHERE id=$1', [id]);
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
