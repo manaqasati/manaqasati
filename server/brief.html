@@ -18,7 +18,8 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 .an{opacity:0;animation:fadeUp .5s cubic-bezier(.16,1,.3,1) forwards}
 .d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}
 .head{background:linear-gradient(135deg,var(--p3),var(--p) 55%,var(--p2));padding:22px 22px 26px;color:#fff;position:relative;overflow:hidden}
-.head::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.12) 1.3px,transparent 1.3px);background-size:20px 20px;opacity:.5}
+.head::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.06))}
+.headnet{position:absolute;inset:0;width:100%;height:100%;opacity:.18;z-index:0;pointer-events:none}
 .head>*{position:relative;z-index:1}
 .brand{font-size:12px;font-weight:800;opacity:.9;letter-spacing:.4px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
@@ -85,7 +86,7 @@ function render(r){
   var imgs=Array.isArray(r.images)?r.images:[];
   var cat=r.category||'خدمة', city=r.city||'', budget=r.budget||r.budget_max;
   var h='<div class="card">';
-  h+='<div class="head an d1"><div class="brand"><span class="dot"></span> مناقصة · كراسة مشروع</div>'
+  h+='<div class="head an d1"><svg class="headnet" style="z-index:0" viewBox="0 0 520 150" preserveAspectRatio="none"><line x1="40" y1="35" x2="180" y2="80" stroke="#fff" stroke-width="1.2"/><line x1="180" y1="80" x2="320" y2="38" stroke="#fff" stroke-width="1.2"/><line x1="320" y1="38" x2="470" y2="78" stroke="#fff" stroke-width="1"/><line x1="180" y1="80" x2="240" y2="48" stroke="#7dd3fc" stroke-width="1.2"/><circle cx="40" cy="35" r="4" fill="#fff" opacity=".4"/><circle cx="180" cy="80" r="7" fill="#fff" opacity=".45"/><circle cx="240" cy="48" r="5" fill="#7dd3fc" opacity=".9"/><circle cx="320" cy="38" r="4" fill="#fff" opacity=".35"/><circle cx="470" cy="78" r="4" fill="#fff" opacity=".3"/></svg><div class="brand"><span class="dot"></span> مناقصة · كراسة مشروع</div>'
     +'<span class="tag">🔓 مشروع مفتوح لاستقبال العروض</span>'
     +'<div class="ptitle">'+esc(r.title||'مشروع')+'</div>'
     +'<div class="pmeta">'
