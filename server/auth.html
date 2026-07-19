@@ -660,6 +660,15 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();})
   if(_savedMode&&_savedMode!=='login'){ setMode(_savedMode); }
 })();
 
+// ═══ قدوم من كراسة مشروع (?redirect=bid) — سجّل كمزوّد لتقديم عرض ═══
+(function(){
+  var qs=new URLSearchParams(location.search);
+  if(qs.get('redirect')!=='bid')return;
+  try{selRole('provider');}catch(e){}
+  try{setMode('register');}catch(e){}
+  var hd=document.getElementById('hd-s'); if(hd)hd.textContent='سجّل كمزوّد لتقديم عرضك';
+})();
+
 // ═══ قدوم من الكرت الرقمي (?ref=card&t=TOKEN) ═══
 (function(){
   var qs=new URLSearchParams(location.search);
