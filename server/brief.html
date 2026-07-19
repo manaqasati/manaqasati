@@ -17,7 +17,13 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .an{opacity:0;animation:fadeUp .5s cubic-bezier(.16,1,.3,1) forwards}
 .d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}
-.head{background:linear-gradient(135deg,var(--p3),var(--p) 55%,var(--p2));padding:22px 22px 26px;color:#fff;position:relative;overflow:hidden}
+.head{background:linear-gradient(135deg,var(--p3),var(--p) 55%,var(--p2));padding:20px 22px 18px;color:#fff;position:relative;overflow:hidden}
+.info.budget{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe}
+.info.budget .info-v{color:#1e40af}
+.ago{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.urgency{text-align:center;margin-top:13px;font-size:12.5px;font-weight:800;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:9px 12px}
+.views{text-align:center;font-size:12px;color:var(--muted);margin-top:10px;font-weight:700}
+.views b{color:var(--p)}
 .head::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.06))}
 .headnet{position:absolute;inset:0;width:100%;height:100%;opacity:.18;z-index:0;pointer-events:none}
 .head>*{position:relative;z-index:1}
@@ -25,7 +31,7 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .tag{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:800;margin-bottom:10px}
 .ptitle{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;line-height:1.35}
-.pmeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.pmeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:10px;font-size:12.5px;font-weight:700}
 .body{padding:20px}
 .imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:18px}
@@ -71,6 +77,7 @@ function money(n){return n?Number(n).toLocaleString('en-US')+' ر.س':'';}
 function openV(s){document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
 function closeV(){document.getElementById('viewer').classList.remove('on');}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA');}catch(e){return'';}}
+function ago(d){if(!d)return'';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<60)return'قبل '+Math.max(m,1)+' دقيقة';var h=Math.floor(m/60);if(h<24)return'قبل '+h+' ساعة';return'قبل '+Math.floor(h/24)+' يوم';}
 function _bid(){
   var tok=null,u=null;
   try{tok=localStorage.getItem('token');u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
@@ -103,10 +110,10 @@ function render(r){
   }
 
   h+='<div class="sec an d2"><div class="info-grid">'
-    +(budget?'<div class="info"><div class="info-l">الميزانية التقريبية</div><div class="info-v">'+money(budget)+'</div></div>':'')
-    +(r.deadline?'<div class="info"><div class="info-l">الموعد المطلوب</div><div class="info-v">'+fmtDate(r.deadline)+'</div></div>':'')
+    +'<div class="info budget"><div class="info-l">💰 الميزانية التقريبية</div><div class="info-v">'+(budget?money(budget):'عند التواصل')+'</div></div>'
     +'<div class="info"><div class="info-l">المدينة</div><div class="info-v">'+esc(city||'—')+'</div></div>'
-    +'<div class="info"><div class="info-l">نُشر</div><div class="info-v">'+fmtDate(r.created_at)+'</div></div>'
+    +'<div class="info"><div class="info-l">نُشر</div><div class="info-v">'+fmtDate(r.created_at)+'</div><div class="ago">'+ago(r.created_at)+'</div></div>'
+    +(r.deadline?'<div class="info"><div class="info-l">الموعد المطلوب</div><div class="info-v">'+fmtDate(r.deadline)+'</div></div>':'')
     +'</div></div>';
 
   if(r.description)h+='<div class="sec an d3"><div class="sec-t">📝 تفاصيل المشروع</div><div class="desc">'+esc(r.description)+'</div></div>';
@@ -116,6 +123,8 @@ function render(r){
   h+='<div class="cta an d4"><div class="cta-t">تقدر تنفّذ هذا المشروع؟</div>'
     +'<div class="cta-s">قدّم عرض سعرك الآن — التسجيل مجاني، وتوصلك مشاريع مثله في تخصصك ومدينتك.</div>'
     +'<a class="cta-btn" href="javascript:void(0)" onclick="_bid()">💰 قدّم عرضك</a></div>';
+  h+='<div class="urgency an d4">⚡ كن من أوائل المتقدّمين على هذا المشروع</div>';
+  if(r.brief_views)h+='<div class="views an d4">👁 <b>'+r.brief_views+'</b> شاهدوا هذا المشروع</div>';
 
   h+='<div class="foot">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>';
   h+='</div></div>';
