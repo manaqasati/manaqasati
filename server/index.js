@@ -227,7 +227,9 @@ app.get('/api/requests/public/:id', async (req, res) => {
       FROM requests r LEFT JOIN users u ON u.id=r.client_id WHERE r.id=$1
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json(r.rows[0]);
+    const row = r.rows[0];
+    try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
+    res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -1189,6 +1191,7 @@ async function setupDatabase() {
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
+      try { await pool.query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS brief_views INTEGER DEFAULT 0"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_updated_at TIMESTAMP"); } catch(e){}
       try { await pool.query("CREATE INDEX IF NOT EXISTS idx_leads_card_token ON leads(card_token)"); } catch(e){}
     } catch(e){ console.error('leads table:', e.message); }
