@@ -70,6 +70,16 @@ function money(n){return n?Number(n).toLocaleString('en-US')+' ر.س':'';}
 function openV(s){document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
 function closeV(){document.getElementById('viewer').classList.remove('on');}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA');}catch(e){return'';}}
+function _bid(){
+  var tok=null,u=null;
+  try{tok=localStorage.getItem('token');u=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
+  if(tok&&u&&u.role==='provider'){
+    try{localStorage.setItem('mnq_auto_bid',RID);}catch(e){}
+    location.href='/dashboard-provider.html';
+  } else {
+    location.href='/auth.html?redirect=bid&request_id='+encodeURIComponent(RID);
+  }
+}
 
 function render(r){
   var imgs=Array.isArray(r.images)?r.images:[];
@@ -104,7 +114,7 @@ function render(r){
 
   h+='<div class="cta an d4"><div class="cta-t">تقدر تنفّذ هذا المشروع؟</div>'
     +'<div class="cta-s">قدّم عرض سعرك الآن — التسجيل مجاني، وتوصلك مشاريع مثله في تخصصك ومدينتك.</div>'
-    +'<a class="cta-btn" href="/auth.html?redirect=bid&request_id='+encodeURIComponent(RID)+'">💰 قدّم عرضك</a></div>';
+    +'<a class="cta-btn" href="javascript:void(0)" onclick="_bid()">💰 قدّم عرضك</a></div>';
 
   h+='<div class="foot">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>';
   h+='</div></div>';
