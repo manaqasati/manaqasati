@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>كراسة مشروع — مناقصة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--p:#1e3a8a;--p2:#2563eb;--p3:#172554;--accent:#0ea5e9;--bg:#eef4ff;--card:#fff;--text:#1e293b;--text2:#3a4c6b;--muted:#64748b;--border:#e6eefb;--green:#16a34a;--star:#F0A500}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:'Tajawal',system-ui,sans-serif}
+body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 14px 60px}
+.wrap{width:100%;max-width:520px}
+.card{background:var(--card);border-radius:24px;box-shadow:0 20px 60px rgba(23,37,84,.14);overflow:hidden}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.an{opacity:0;animation:fadeUp .5s cubic-bezier(.16,1,.3,1) forwards}
+.d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}
+.head{background:linear-gradient(135deg,var(--p3),var(--p) 55%,var(--p2));padding:22px 22px 26px;color:#fff;position:relative;overflow:hidden}
+.head::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.12) 1.3px,transparent 1.3px);background-size:20px 20px;opacity:.5}
+.head>*{position:relative;z-index:1}
+.brand{font-size:12px;font-weight:800;opacity:.9;letter-spacing:.4px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.tag{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:800;margin-bottom:10px}
+.ptitle{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;line-height:1.35}
+.pmeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:10px;font-size:12.5px;font-weight:700}
+.body{padding:20px}
+.imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:18px}
+.imgs.one{grid-template-columns:1fr}
+.imgs .im{aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;background:var(--bg);border:1px solid var(--border)}
+.imgs.one .im{aspect-ratio:16/10}
+.imgs .im img{width:100%;height:100%;object-fit:cover;transition:.2s}
+.imgs .im:active img{transform:scale(.97)}
+.sec{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px 17px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.04)}
+.sec-t{font-family:'Cairo',sans-serif;font-size:14px;font-weight:900;color:var(--p);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.desc{font-size:14px;line-height:2;color:var(--text2);white-space:pre-wrap}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.info{background:var(--bg);border-radius:12px;padding:12px 14px}
+.info-l{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+.info-v{font-size:15px;font-weight:800;color:var(--p)}
+.privacy{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);background:var(--bg);border-radius:12px;padding:11px 14px;margin-bottom:14px;line-height:1.6}
+.cta{background:linear-gradient(135deg,var(--p),var(--p2));border-radius:18px;padding:22px 18px;text-align:center;color:#fff;box-shadow:0 12px 30px rgba(30,58,138,.28)}
+.cta-t{font-size:15px;font-weight:800;line-height:1.6;margin-bottom:6px}
+.cta-s{font-size:12.5px;opacity:.9;margin-bottom:16px}
+.cta-btn{display:inline-block;background:#fff;color:var(--p);padding:14px 40px;border-radius:13px;font-size:16px;font-weight:900;text-decoration:none;box-shadow:0 6px 16px rgba(0,0,0,.15)}
+.foot{text-align:center;font-size:11.5px;color:var(--muted);padding:16px 0 4px;font-weight:600}
+.foot b{color:var(--p)}
+.state{text-align:center;padding:80px 20px;color:var(--muted);font-size:15px}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 16px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99;align-items:center;justify-content:center;padding:16px}
+.viewer.on{display:flex}
+.viewer img{max-width:100%;max-height:88vh;border-radius:12px}
+.vcl{position:absolute;top:16px;left:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app"><div class="state"><div class="spin"></div>جاري تحميل الكراسة...</div></div>
+  <div class="foot" style="margin-top:16px">📋 كراسة مشروع · <b>مناقصة</b></div>
+</div>
+<div class="viewer" id="viewer" onclick="if(event.target===this)closeV()"><button class="vcl" onclick="closeV()">✕</button><img id="vimg" src="" alt=""></div>
+<script>
+var API='https://manaqasati-production.up.railway.app';
+var RID=(location.pathname.split('/').filter(Boolean).pop()||'').split('?')[0];
+function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
+function money(n){return n?Number(n).toLocaleString('en-US')+' ر.س':'';}
+function openV(s){document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
+function closeV(){document.getElementById('viewer').classList.remove('on');}
+function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA');}catch(e){return'';}}
+
+function render(r){
+  var imgs=Array.isArray(r.images)?r.images:[];
+  var cat=r.category||'خدمة', city=r.city||'', budget=r.budget||r.budget_max;
+  var h='<div class="card">';
+  h+='<div class="head an d1"><div class="brand"><span class="dot"></span> مناقصة · كراسة مشروع</div>'
+    +'<span class="tag">🔓 مشروع مفتوح لاستقبال العروض</span>'
+    +'<div class="ptitle">'+esc(r.title||'مشروع')+'</div>'
+    +'<div class="pmeta">'
+      +'<span class="chip">🧰 '+esc(cat)+'</span>'
+      +(city?'<span class="chip">📍 '+esc(city)+'</span>':'')
+      +(r.project_number?'<span class="chip">#'+esc(r.project_number)+'</span>':'')
+    +'</div></div>';
+  h+='<div class="body">';
+
+  if(imgs.length){
+    h+='<div class="imgs '+(imgs.length===1?'one':'')+' an d2">';
+    imgs.slice(0,6).forEach(function(im){ h+='<div class="im" onclick="openV(\''+esc(im)+'\')"><img src="'+esc(im)+'" loading="lazy" alt="صورة المشروع"></div>'; });
+    h+='</div>';
+  }
+
+  h+='<div class="sec an d2"><div class="info-grid">'
+    +(budget?'<div class="info"><div class="info-l">الميزانية التقريبية</div><div class="info-v">'+money(budget)+'</div></div>':'')
+    +(r.deadline?'<div class="info"><div class="info-l">الموعد المطلوب</div><div class="info-v">'+fmtDate(r.deadline)+'</div></div>':'')
+    +'<div class="info"><div class="info-l">المدينة</div><div class="info-v">'+esc(city||'—')+'</div></div>'
+    +'<div class="info"><div class="info-l">نُشر</div><div class="info-v">'+fmtDate(r.created_at)+'</div></div>'
+    +'</div></div>';
+
+  if(r.description)h+='<div class="sec an d3"><div class="sec-t">📝 تفاصيل المشروع</div><div class="desc">'+esc(r.description)+'</div></div>';
+
+  h+='<div class="privacy an d3">🔒 بيانات العميل محمية — تُكشف فقط للمزوّد الذي يُقبل عرضه.</div>';
+
+  h+='<div class="cta an d4"><div class="cta-t">تقدر تنفّذ هذا المشروع؟</div>'
+    +'<div class="cta-s">قدّم عرض سعرك الآن — التسجيل مجاني، وتوصلك مشاريع مثله في تخصصك ومدينتك.</div>'
+    +'<a class="cta-btn" href="/auth.html?redirect=bid&request_id='+encodeURIComponent(RID)+'">💰 قدّم عرضك</a></div>';
+
+  h+='<div class="foot">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>';
+  h+='</div></div>';
+  document.getElementById('app').innerHTML=h;
+}
+
+fetch(API+'/api/requests/public/'+RID).then(function(r){
+  if(!r.ok){document.getElementById('app').innerHTML='<div class="state">لم نجد هذا المشروع. تأكّد من الرابط.</div>';throw 0;}
+  return r.json();
+}).then(function(r){ render(r); }).catch(function(){});
+</script>
+</body>
+</html>
