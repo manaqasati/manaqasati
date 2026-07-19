@@ -1735,6 +1735,15 @@ function _renderOutreach(st, cov){
     +'</div>'
     +'<div style="font-size:11.5px;opacity:.85;text-align:center;margin-top:11px;border-top:1px solid rgba(255,255,255,.18);padding-top:9px">🎯 هذا هو الرقم الحقيقي — هدف الاستقطاب توليد الطلب، مو جمع الحسابات</div>'
   +'</div>';
+  // ═══ أداة كراسة المشروع ═══
+  h+='<div class="card"><div class="card-head"><h3>📋 كراسة مشروع — أرسلها لمزودين مطابقين</h3></div><div class="card-body">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+      +'<input id="o-brief-id" type="number" placeholder="رقم المشروع (id)" style="width:170px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)" onkeydown="if(event.key===\'Enter\')_oBriefLoad()">'
+      +'<button onclick="_oBriefLoad()" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-family:Tajawal;font-weight:800;cursor:pointer">🎯 جِب المطابقين</button>'
+      +'<span style="font-size:11.5px;color:var(--muted)">النظام يقترح مزودي الاستقطاب المطابقين (تخصص + مدينة) وأنت تختار وترسل.</span>'
+    +'</div>'
+    +'<div id="o-brief-out"></div>'
+  +'</div></div>';
   // عدّاد الحد اليومي (حماية من الحظر)
   h+='<div id="o-daylimit" style="margin-bottom:16px"></div>';
   // الإحصائيات
@@ -1835,6 +1844,48 @@ function _oHunt(q){
   el.value=query;
   el.scrollIntoView({behavior:'smooth',block:'center'});
   if(query)_oSearch(); else { el.focus(); toast('اكتب عبارة البحث','error'); }
+}
+// ═══ كراسة المشروع (توليد الطلب) ═══
+var _oBrief=null;
+function _oBriefLoad(){
+  var id=parseInt((document.getElementById('o-brief-id')||{}).value)||0;
+  var out=document.getElementById('o-brief-out'); if(!out)return;
+  if(!id){ toast('اكتب رقم المشروع','error'); return; }
+  out.innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">جاري الجلب...</div>';
+  fetch(API+'/api/admin/requests/'+id+'/match-leads',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(d.message||!d.project){ out.innerHTML='<div style="color:#dc2626;font-size:12.5px;padding:8px">'+esc(d.message||'المشروع غير موجود')+'</div>'; return; }
+    _oBrief=d; var p=d.project, L=d.leads||[];
+    var h='<div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:12px">'
+      +'<div style="font-weight:800;color:var(--p);margin-bottom:4px;font-size:13px">'+esc(p.title||'مشروع')+'</div>'
+      +'<div style="color:var(--muted);font-size:12px">'+[p.category,p.city].filter(Boolean).map(esc).join(' · ')+(p.budget_max?' · '+Number(p.budget_max).toLocaleString('en-US')+' ر.س':'')+'</div>'
+      +'<div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap">'
+        +'<input readonly value="'+esc(d.brief_url)+'" onclick="this.select()" style="flex:1;min-width:170px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:11.5px;direction:ltr;text-align:left;background:#fff;color:var(--text)">'
+        +'<button onclick="_oBriefCopy()" style="background:var(--p);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer">📋 نسخ</button>'
+        +'<a href="'+esc(d.brief_url)+'" target="_blank" style="background:#fff;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:800;text-decoration:none">🔗 فتح</a>'
+      +'</div></div>';
+    if(!L.length){
+      h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px">ما فيه مزودين مطابقين في الاستقطاب. اصطد مزودين في «'+esc(p.city||'')+'» أول.</div>';
+    } else {
+      h+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">'+L.length+' مزوّد مطابق — أرسل لهم الكراسة:</div><div style="display:grid;gap:7px;max-height:320px;overflow:auto">';
+      L.forEach(function(l){
+        h+='<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg);border-radius:9px;font-size:12.5px">'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(l.name||'مزود')+'</div><div style="font-size:11px;color:var(--muted)">'+[l.category,l.city].filter(Boolean).map(esc).join(' · ')+'</div></div>'
+          +'<span style="font-size:11px;font-weight:800;color:'+(l.score>=70?'#16a34a':l.score>=45?'#d97706':'var(--muted)')+'">'+(l.score||0)+'</span>'
+          +(l.phone_norm?'<button onclick="_oBriefSend('+l.id+')" style="background:#25D366;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">💬 أرسل</button>':'')
+          +'</div>';
+      });
+      h+='</div>';
+    }
+    out.innerHTML=h;
+  }).catch(function(){ out.innerHTML='<div style="color:#dc2626;font-size:12.5px;padding:8px">تعذّر الجلب</div>'; });
+}
+function _oBriefCopy(){ if(_oBrief&&_oBrief.brief_url)navigator.clipboard.writeText(_oBrief.brief_url).then(function(){toast('تم نسخ رابط الكراسة','success');}).catch(function(){}); }
+function _oBriefSend(id){
+  if(!_oBrief)return;
+  var l=(_oBrief.leads||[]).find(function(x){return x.id===id;}); if(!l||!l.phone_norm)return;
+  var p=_oBrief.project;
+  var msg='السلام عليكم '+(l.name||'')+' 👋\nفيه مشروع «'+(p.title||'')+'»'+(p.city?' في '+p.city:'')+' يدوّر عروض أسعار'+(p.budget_max?' (ميزانية تقريبية '+Number(p.budget_max).toLocaleString('en-US')+' ر.س)':'')+'.\nشوف التفاصيل والصور وقدّم عرضك 👇\n'+_oBrief.brief_url+'\nالتسجيل مجاني، وتوصلك مشاريع في تخصصك ومدينتك.';
+  window.open('https://api.whatsapp.com/send?phone='+l.phone_norm+'&text='+encodeURIComponent(msg)+'&type=phone_number&app_absent=0','_blank');
 }
 // ═══ مولّدات الطلب (B2B) — جهات تحتاج خدمات متكررة ═══
 var _OB2B={
