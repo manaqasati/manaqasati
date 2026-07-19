@@ -1720,10 +1720,21 @@ function loadOutreach(){
   ]).then(function(res){ _renderOutreach(res[0]||{}, res[1]||{}); });
 }
 
+function _oDemCell(l,v){return '<div style="text-align:center"><div style="font-family:Cairo,sans-serif;font-size:30px;font-weight:900;line-height:1">'+(v||0)+'</div><div style="font-size:11px;opacity:.92;margin-top:4px;font-weight:700">'+l+'</div></div>';}
 function _renderOutreach(st, cov){
   var b=document.getElementById('outreach-body');if(!b)return;
   var gaps=(cov.gaps||[]);
   var h='';
+  // ═══ شريط الطلب — الرقم اللي يهم فعلاً ═══
+  h+='<div style="margin-bottom:18px;padding:16px 16px 12px;background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;color:#fff;box-shadow:0 8px 24px rgba(30,58,138,.22)">'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+      +_oDemCell('📥 طلبات اليوم', st.req_today)
+      +_oDemCell('🗓️ هذا الأسبوع', st.req_week)
+      +_oDemCell('📅 هذا الشهر', st.req_month)
+      +_oDemCell('🔴 مفتوحة الآن', st.req_open)
+    +'</div>'
+    +'<div style="font-size:11.5px;opacity:.85;text-align:center;margin-top:11px;border-top:1px solid rgba(255,255,255,.18);padding-top:9px">🎯 هذا هو الرقم الحقيقي — هدف الاستقطاب توليد الطلب، مو جمع الحسابات</div>'
+  +'</div>';
   // عدّاد الحد اليومي (حماية من الحظر)
   h+='<div id="o-daylimit" style="margin-bottom:16px"></div>';
   // الإحصائيات
