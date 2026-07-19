@@ -85,6 +85,7 @@ function _bid(){
     try{localStorage.setItem('mnq_auto_bid',RID);}catch(e){}
     location.href='/dashboard-provider.html';
   } else {
+    if(tok&&u&&u.role==='client'){ alert('تقديم العروض متاح لحسابات المزوّدين فقط — سجّل بحساب مزوّد لتقديم عرضك.'); }
     location.href='/auth.html?redirect=bid&request_id='+encodeURIComponent(RID);
   }
 }
