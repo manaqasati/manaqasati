@@ -180,6 +180,7 @@ app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.
 app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
 app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
 app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
+app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
 app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
 
 app.get(/^\/project\/(.+)$/, async (req, res) => {
@@ -426,6 +427,40 @@ app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), asyn
     res.json({ token, url: `${SITE_URL}/card/${token}`, views: r.rows[0].card_views || 0, published: r.rows[0].card_published !== false });
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
+
+// ═══ كراسة المشروع (Brief) — توليد الطلب ═══
+// (أدمن) اقتراح مزودين مطابقين لمشروع من قائمة الاستقطاب
+app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manage'), async (req, res) => {
+  try{
+    const id = parseInt(req.params.id);
+    const rq = await pool.query('SELECT id, title, category, city, budget_max FROM requests WHERE id=$1', [id]);
+    if(!rq.rows.length) return res.status(404).json({ message:'المشروع غير موجود' });
+    const p = rq.rows[0];
+    const cat = p.category ? '%'+String(p.category).trim()+'%' : null;
+    const city = p.city ? '%'+String(p.city).trim()+'%' : null;
+    // مطابقة: مزوّدون غير محوّلين، لهم رقم، في نفس المدينة و/أو التخصص
+    const r = await pool.query(
+      `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
+       FROM leads
+       WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
+         AND ($1::text IS NULL OR city ILIKE $1)
+         AND ($2::text IS NULL OR category ILIKE $2)
+       ORDER BY score DESC NULLS LAST, updated_at DESC LIMIT 60`, [city, cat]);
+    // fallback: لو ما فيه مطابقة بالتخصص+المدينة، جرّب المدينة فقط
+    let leads = r.rows;
+    if(!leads.length && city){
+      const r2 = await pool.query(
+        `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
+         FROM leads WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
+           AND city ILIKE $1 ORDER BY score DESC NULLS LAST LIMIT 60`, [city]);
+      leads = r2.rows;
+    }
+    res.json({ project: { id:p.id, title:p.title, category:p.category, city:p.city, budget_max:p.budget_max }, brief_url:`${SITE_URL}/brief/${p.id}`, leads });
+  }catch(e){ console.error('match-leads:', e.message); res.status(500).json({ message:'تعذّر' }); }
+});
+
+// صفحة الكراسة العامة (noindex) — لا تكشف بيانات العميل
+app.get('/brief/:id', (req, res) => res.sendFile(__dirname + '/brief.html'));
 
 // ═══ EMAIL ═══
 async function sendEmail(to, subject, html) {
