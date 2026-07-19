@@ -7,144 +7,171 @@
 <title>الكرت الرقمي — مناقصة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-:root{--p:#1e3a8a;--p2:#2563eb;--accent:#0ea5e9;--bg:#f0f5ff;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e6eefb;--green:#25D366}
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Tajawal',system-ui,sans-serif}
-body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 14px 40px}
-.wrap{width:100%;max-width:440px}
-.card{background:var(--card);border-radius:22px;box-shadow:0 8px 40px rgba(20,20,50,.08);overflow:hidden}
-.head{background:linear-gradient(135deg,var(--p),var(--p2));padding:26px 22px 46px;text-align:center;color:#fff;position:relative;overflow:hidden}
-.head::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle, rgba(255,255,255,.13) 1.4px, transparent 1.4px);background-size:20px 20px;opacity:.55;pointer-events:none}
-.head>*{position:relative;z-index:1}
-.brand-tag{font-size:11px;opacity:.9;font-weight:800;letter-spacing:.6px;margin-bottom:12px}
-.btn-vcard{background:#fff;color:var(--p);border:1.5px solid var(--border)}
-.draft{background:#fffbeb;border-bottom:1px solid #fde68a;color:#92600a;text-align:center;padding:9px 14px;font-size:12.5px;font-weight:700}
-.mkt{margin-top:16px;background:#f0f5ff;border:1px solid #cdddf9;border-radius:14px;padding:15px 16px}
-.mkt h5{font-size:13.5px;color:#1e3a8a;font-weight:800;margin-bottom:7px}
-.mkt p{font-size:12.5px;color:#3a4c6b;line-height:1.8}
-.mkt b{color:#1e3a8a}
-.av{width:92px;height:92px;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;margin:0 auto 12px}
-.name{font-size:22px;font-weight:800;line-height:1.3}
-.cat{font-size:13.5px;opacity:.92;margin-top:5px;font-weight:500}
-.rating{display:inline-flex;align-items:center;gap:5px;margin-top:12px;background:rgba(255,255,255,.16);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:700}
-.rating small{opacity:.8;font-weight:500;font-size:10.5px}
-.body{padding:22px}
-.btns{display:grid;gap:10px;margin-top:-34px;position:relative}
-.btn{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px;border-radius:14px;font-size:15px;font-weight:800;text-decoration:none;border:none;cursor:pointer;transition:transform .12s}
+:root{--p:#1e3a8a;--p2:#2563eb;--p3:#172554;--accent:#0ea5e9;--bg:#eef4ff;--card:#fff;--text:#1e293b;--text2:#3a4c6b;--muted:#64748b;--border:#e6eefb;--green:#25D366;--star:#F0A500}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:'Tajawal',system-ui,sans-serif}
+body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 14px 44px}
+.wrap{width:100%;max-width:452px}
+.card{background:var(--card);border-radius:26px;box-shadow:0 20px 60px rgba(23,37,84,.14);overflow:hidden}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.an{opacity:0;animation:fadeUp .55s cubic-bezier(.16,1,.3,1) forwards}
+.d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}.d5{animation-delay:.37s}.d6{animation-delay:.45s}
+.draft{background:#fffbeb;color:#92600a;text-align:center;padding:9px 14px;font-size:12px;font-weight:800;border-bottom:1px solid #fde68a;letter-spacing:.2px}
+.cover{height:120px;background:linear-gradient(135deg,var(--p3) 0%,var(--p) 48%,var(--p2) 100%);position:relative;overflow:hidden}
+.cover svg{position:absolute;inset:0;width:100%;height:100%;opacity:.16}
+.cover-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.head{text-align:center;padding:0 22px 20px;margin-top:-56px;position:relative}
+.ring{width:112px;height:112px;border-radius:50%;margin:0 auto 12px;padding:4px;background:linear-gradient(135deg,var(--accent),var(--p2));box-shadow:0 10px 26px rgba(37,99,235,.32)}
+.avatar{width:100%;height:100%;border-radius:50%;background:#dbe7ff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:var(--p);overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.pname{font-family:'Cairo',sans-serif;font-size:23px;font-weight:900;color:var(--p);line-height:1.3}
+.psub{font-size:13.5px;color:var(--muted);margin-top:5px;font-weight:600}
+.prating{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:var(--bg);border:1px solid var(--border);padding:6px 14px;border-radius:22px;font-size:13px;font-weight:800;color:var(--text)}
+.prating small{color:var(--muted);font-weight:600;font-size:10px}
+.body{padding:4px 20px 22px}
+.actions{display:grid;gap:10px;margin-bottom:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:14px;font-size:14.5px;font-weight:800;text-decoration:none;border:none;cursor:pointer;transition:transform .12s,filter .12s;font-family:inherit}
 .btn:active{transform:scale(.98)}
-.btn-wa{background:var(--green);color:#fff;box-shadow:0 6px 20px rgba(37,211,102,.35)}
-.btn-call{background:var(--p);color:#fff}
-.btn-map{background:#fff;color:var(--text);border:1.5px solid var(--border)}
-.social{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
-.soc{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;text-decoration:none;color:#fff}
-.s-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366)}.s-sc{background:#FFFC00;color:#111}.s-tt{background:#111}.s-tw{background:#1DA1F2}.s-web{background:#334155}
-.bio{margin-top:18px;background:var(--bg);border-radius:14px;padding:15px;font-size:14px;line-height:1.8;color:#3a4152;white-space:pre-wrap}
-.qr-sec{margin-top:18px;text-align:center;background:var(--bg);border-radius:16px;padding:18px}
-.qr-sec h4{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:12px}
-#qr{display:inline-block;padding:10px;background:#fff;border-radius:12px}#qr img,#qr canvas{display:block}
-.share{margin-top:12px;background:var(--accent);color:#fff;border:none;padding:11px 20px;border-radius:12px;font-size:13.5px;font-weight:800;cursor:pointer}
-.cta{background:#eef4ff;border:1.5px solid #cdddf9;border-radius:16px;padding:16px;margin-top:18px;text-align:center}
-.cta b{color:#1e3a8a}
-.cta .cta-x{font-size:13.5px;color:#334155;line-height:1.7}
-.cta-btn{display:inline-block;margin-top:12px;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:12px 30px;border-radius:12px;font-size:14.5px;font-weight:800;text-decoration:none}
-.foot{margin-top:20px;text-align:center;font-size:12px;color:var(--muted)}
-.foot a{color:var(--p);font-weight:700;cursor:pointer;text-decoration:none}
-.brand{margin-top:22px;text-align:center;font-size:11.5px;color:var(--muted)}.brand b{color:var(--p)}
-.edit{margin-top:16px;border:1.5px dashed var(--border);border-radius:16px;padding:16px;display:none}
-.edit.on{display:block}
-.edit label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 5px}
-.edit input,.edit textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-size:13.5px;background:#fff;color:var(--text)}
+.btn-wa{background:var(--green);color:#fff;box-shadow:0 8px 20px rgba(37,211,102,.32)}
+.btn-call{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff}
+.btn-vcard{background:#fff;color:var(--p);border:1.5px solid var(--p)}
+.btn-map{background:#fff;color:var(--text2);border:1.5px solid var(--border)}
+.sec{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px 17px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.04)}
+.sec-t{font-family:'Cairo',sans-serif;font-size:14px;font-weight:900;color:var(--p);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.socials{display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
+.soc{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:23px;text-decoration:none;color:#fff;transition:transform .12s}
+.soc:active{transform:scale(.94)}
+.s-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366)}.s-sc{background:#FFFC00;color:#111}.s-tt{background:#111}.s-tw{background:#111}.s-web{background:var(--p)}
+.bio-txt{font-size:13.5px;line-height:1.95;color:var(--text2);white-space:pre-wrap}
+.mkt-h{font-family:'Cairo',sans-serif;font-size:15px;font-weight:900;color:var(--p);line-height:1.5;margin-bottom:9px}
+.mkt-p{font-size:12.8px;color:var(--text2);line-height:1.85}
+.mkt-p b{color:var(--p)}
+.cta{background:linear-gradient(135deg,var(--p),var(--p2));border-radius:18px;padding:20px 18px;text-align:center;color:#fff;margin-bottom:14px;box-shadow:0 12px 30px rgba(30,58,138,.28)}
+.cta-t{font-size:14px;font-weight:800;line-height:1.6;margin-bottom:14px}
+.cta-btn{display:inline-block;background:#fff;color:var(--p);padding:13px 32px;border-radius:13px;font-size:15px;font-weight:900;text-decoration:none;box-shadow:0 6px 16px rgba(0,0,0,.14)}
+.qr-sec{text-align:center}
+.qr-frame{display:inline-block;padding:14px;background:#fff;border-radius:18px;border:1px solid var(--border);box-shadow:0 10px 26px rgba(37,99,235,.12)}
+#qr img,#qr canvas{display:block;border-radius:6px}
+.qr-cap{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:13px}
+.share{margin-top:14px;background:var(--accent);color:#fff;border:none;padding:11px 24px;border-radius:12px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.views{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.views b{color:var(--p)}
+.editlink{text-align:center;font-size:12.5px;color:var(--muted);margin:6px 0 4px}
+.editlink a{color:var(--p);font-weight:800;cursor:pointer;text-decoration:none}
+.foot{text-align:center;font-size:11.5px;color:var(--muted);padding:14px 0 4px;font-weight:600}
+.foot b{color:var(--p)}
+.edit{border:1.5px dashed var(--border);border-radius:16px;padding:16px;margin-top:14px;display:none}
+.edit.on{display:block;animation:fadeUp .3s ease}
+.edit label{display:block;font-size:12.5px;font-weight:800;color:var(--muted);margin:11px 0 5px}
+.edit input,.edit textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-size:13.5px;background:#fff;color:var(--text);font-family:inherit}
 .edit textarea{min-height:80px;resize:vertical;line-height:1.7}
-.e-save{width:100%;margin-top:14px;background:var(--p);color:#fff;border:none;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer}
-.e-remove{width:100%;margin-top:8px;background:#fff;color:#dc2626;border:1.5px solid #fecaca;padding:11px;border-radius:12px;font-size:12.5px;font-weight:700;cursor:pointer}
-.state{text-align:center;padding:70px 20px;color:var(--muted);font-size:15px}
-.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 16px}
+.e-save{width:100%;margin-top:14px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;padding:13px;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit}
+.e-remove{width:100%;margin-top:8px;background:#fff;color:#dc2626;border:1.5px solid #fecaca;padding:11px;border-radius:12px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.state{text-align:center;padding:80px 20px;color:var(--muted);font-size:15px}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 16px}
 @keyframes sp{to{transform:rotate(360deg)}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:11px 22px;border-radius:12px;font-size:13.5px;font-weight:700;opacity:0;transition:.3s;z-index:99}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:12px 24px;border-radius:12px;font-size:13.5px;font-weight:800;opacity:0;transition:.3s;z-index:99}
 .toast.on{opacity:1}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div id="app"><div class="state"><div class="spin"></div>جاري التحميل...</div></div>
-  <div class="brand">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>
+  <div class="foot" style="margin-top:16px">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
 var TOKEN=(location.pathname.split('/').filter(Boolean).pop()||'').split('?')[0];
 var CARD_URL=location.origin+'/card/'+TOKEN;
-var _data=null;
-var _logoData='';
-function _setLogoPrev(src){ var p=document.getElementById('logoPrev'); if(p)p.innerHTML=src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">':'📷'; }
-function _clearLogo(){ _logoData=''; _setLogoPrev(''); }
+var _data=null, _logoData='';
+function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},2200);}
+function normWa(p){if(!p)return'';var d=String(p).replace(/[^\d]/g,'');if(d.indexOf('966')===0)return d;if(d.indexOf('05')===0)return '966'+d.slice(1);if(d.indexOf('5')===0&&d.length===9)return '966'+d;if(d.indexOf('0')===0)return '966'+d.slice(1);return d;}
+function _setLogoPrev(src){var p=document.getElementById('logoPrev');if(p)p.innerHTML=src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">':'📷';}
+function _clearLogo(){_logoData='';_setLogoPrev('');}
 function _pickLogo(e){
-  var f=e.target.files&&e.target.files[0]; if(!f)return;
+  var f=e.target.files&&e.target.files[0];if(!f)return;
   var rd=new FileReader();
   rd.onload=function(){
     var img=new Image();
     img.onload=function(){
       var max=400,w=img.width,h=img.height;
-      if(w>h){ if(w>max){h=Math.round(h*max/w);w=max;} } else { if(h>max){w=Math.round(w*max/h);h=max;} }
+      if(w>h){if(w>max){h=Math.round(h*max/w);w=max;}}else{if(h>max){w=Math.round(w*max/h);h=max;}}
       var c=document.createElement('canvas');c.width=w;c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
-      _logoData=c.toDataURL('image/jpeg',0.85);
-      _setLogoPrev(_logoData);
+      _logoData=c.toDataURL('image/jpeg',0.85);_setLogoPrev(_logoData);
     };
     img.src=rd.result;
   };
   rd.readAsDataURL(f);
 }
-function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
-function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},2200);}
-function normWa(p){if(!p)return'';var d=String(p).replace(/[^\d]/g,'');if(d.indexOf('966')===0)return d;if(d.indexOf('05')===0)return '966'+d.slice(1);if(d.indexOf('5')===0&&d.length===9)return '966'+d;if(d.indexOf('0')===0)return '966'+d.slice(1);return d;}
+var NET='<svg viewBox="0 0 452 120" preserveAspectRatio="none"><line x1="30" y1="30" x2="140" y2="70" stroke="#fff" stroke-width="1.2"/><line x1="140" y1="70" x2="250" y2="32" stroke="#fff" stroke-width="1.2"/><line x1="250" y1="32" x2="360" y2="66" stroke="#fff" stroke-width="1"/><line x1="360" y1="66" x2="430" y2="38" stroke="#fff" stroke-width="1"/><line x1="140" y1="70" x2="185" y2="42" stroke="#7dd3fc" stroke-width="1.2"/><circle cx="30" cy="30" r="3.5" fill="#fff" opacity=".4"/><circle cx="140" cy="70" r="6" fill="#fff" opacity=".45"/><circle cx="185" cy="42" r="4.5" fill="#7dd3fc" opacity=".9"/><circle cx="250" cy="32" r="3.5" fill="#fff" opacity=".35"/><circle cx="360" cy="66" r="3.5" fill="#fff" opacity=".3"/><circle cx="430" cy="38" r="3" fill="#fff" opacity=".25"/></svg>';
 
 function render(d){
-  _data=d;
-  var wa=d.phone_norm||normWa(d.phone);
+  _data=d; _logoData=d.logo||'';
   var initial=esc((d.name||'?').trim().charAt(0)||'?');
-  _logoData=d.logo||'';
-  var avInner=d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':initial;
-  var subtitle=[d.category,d.city].filter(Boolean).map(esc).join(' · ');
-  var h='<div class="card"><div class="draft">✏️ مسودّة — معاينة خاصة بك · فعّلها لتصير رسمية</div><div class="head">'
-    +'<div class="brand-tag">📇 بطاقة رقمية · مناقصة</div>'
-    +'<div class="av">'+avInner+'</div>'
-    +'<div class="name">'+esc(d.name||'مزود خدمة')+'</div>'
-    +(subtitle?'<div class="cat">'+subtitle+'</div>':'')
-    +(d.rating?'<div class="rating">⭐ '+Number(d.rating).toFixed(1)+(d.reviews_count?' ('+d.reviews_count+')':'')+' <small>من Google</small></div>':'')
-    +'</div><div class="body">';
-  h+='<div class="btns">';
-  if(wa)h+='<a class="btn btn-wa" href="https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent('السلام عليكم، شفت كرتك على مناقصة 👋')+'&type=phone_number&app_absent=0" target="_blank">💬 محادثة واتساب</a>';
-  if(d.phone)h+='<a class="btn btn-call" href="tel:'+esc(d.phone)+'">📞 اتصال مباشر</a>';
+  var av=d.logo?'<img src="'+esc(d.logo)+'">':initial;
+  var sub=[d.category,d.city].filter(Boolean).map(esc).join('  ·  ');
+  var wa=d.phone_norm||normWa(d.phone);
   var maps=(d.links&&d.links.maps)||(d.website&&/google\.[^\/]+\/maps|maps\.app|goo\.gl\/maps/.test(d.website)?d.website:'')||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((d.name||'')+' '+(d.city||'')));
-  h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank">📍 الموقع على الخريطة</a>';
-  h+='<button class="btn btn-vcard" onclick="saveVCard()">📇 حفظ جهة الاتصال</button>';
-  h+='</div>';
-  var L=d.links||{};
-  var soc='';
-  if(L.instagram)soc+='<a class="soc s-ig" href="'+esc(L.instagram)+'" target="_blank" aria-label="انستقرام">📷</a>';
-  if(L.snapchat)soc+='<a class="soc s-sc" href="'+esc(L.snapchat)+'" target="_blank" aria-label="سناب شات">👻</a>';
-  if(L.tiktok)soc+='<a class="soc s-tt" href="'+esc(L.tiktok)+'" target="_blank" aria-label="تيك توك">🎵</a>';
-  if(L.twitter)soc+='<a class="soc s-tw" href="'+esc(L.twitter)+'" target="_blank" aria-label="إكس">𝕏</a>';
-  var web=d.website&&!/google\.[^\/]+\/maps/.test(d.website)?d.website:'';
-  if(web)soc+='<a class="soc s-web" href="'+esc(web)+'" target="_blank" aria-label="الموقع">🌐</a>';
-  if(soc)h+='<div class="social">'+soc+'</div>';
   var demand=[d.category,d.city].filter(Boolean).map(esc).join(' في ');
-  h+='<div class="mkt"><h5>ليش تفعّل صفحتك؟</h5><p>اليوم العملاء يدوّرون الخدمات في <b>قوقل</b> والجوال — مو بالكرت الورقي. لمّا تفعّل صفحتك تصير <b>ظاهرة في قوقل</b>'+(demand?' لكل من يبحث عن <b>'+demand+'</b>':'')+'، فيوصلك عملاء جدد بدل ما تنتظرهم.</p></div>';
-  h+='<div class="cta"><div class="cta-x"><b>سجّل الآن</b> عشان تتفعّل صفحتك وتبدأ توصلك طلبات العملاء — <b>مجاناً</b>.</div>'
-    +'<a class="cta-btn" href="/auth.html?ref=card&t='+encodeURIComponent(TOKEN)+'">✅ سجّل وفعّل صفحتي</a></div>';
-  if(d.bio)h+='<div class="bio">'+esc(d.bio)+'</div>';
-  h+='<div class="qr-sec"><h4>امسح الرمز للوصول لهذي الصفحة</h4><div id="qr"></div><br><button class="share" onclick="shareCard()">🔗 مشاركة الرابط</button></div>';
-  if(d.views)h+='<div style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--muted)">👁 انفتحت صفحتك <b style="color:var(--p)">'+d.views+'</b> مرة</div>';
-  h+='<div class="foot">هذي بياناتك؟ <a onclick="toggleEdit()">✏️ عدّل صفحتك أو أخفِها</a></div>';
+  var L=d.links||{};
+
+  var h='<div class="card">';
+  h+='<div class="draft">✏️ مسودّة — معاينة خاصة بك · فعّلها لتصير رسمية</div>';
+  h+='<div class="cover">'+NET+'<div class="cover-bar"></div></div>';
+  h+='<div class="head an d1"><div class="ring"><div class="avatar">'+av+'</div></div>'
+    +'<div class="pname">'+esc(d.name||'مزود خدمة')+'</div>'
+    +(sub?'<div class="psub">'+sub+'</div>':'')
+    +(d.rating?'<div class="prating">⭐ '+Number(d.rating).toFixed(1)+(d.reviews_count?' ('+d.reviews_count+')':'')+' <small>من Google</small></div>':'')
+    +'</div>';
+  h+='<div class="body">';
+
+  // الأزرار
+  h+='<div class="actions an d2">';
+  if(wa)h+='<a class="btn btn-wa" href="https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent('السلام عليكم، شفت كرتك على مناقصة 👋')+'&type=phone_number&app_absent=0" target="_blank">💬 محادثة واتساب</a>';
+  h+='<div class="row2">';
+  if(d.phone)h+='<a class="btn btn-call" href="tel:'+esc(d.phone)+'">📞 اتصال</a>';
+  h+='<button class="btn btn-vcard" onclick="saveVCard()">📇 حفظ الجهة</button>';
+  h+='</div>';
+  h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank">📍 الموقع على الخريطة</a>';
+  h+='</div>';
+
+  // السوشال
+  var soc='';
+  if(L.instagram)soc+='<a class="soc s-ig" href="'+esc(L.instagram)+'" target="_blank">📷</a>';
+  if(L.snapchat)soc+='<a class="soc s-sc" href="'+esc(L.snapchat)+'" target="_blank">👻</a>';
+  if(L.tiktok)soc+='<a class="soc s-tt" href="'+esc(L.tiktok)+'" target="_blank">🎵</a>';
+  if(L.twitter)soc+='<a class="soc s-tw" href="'+esc(L.twitter)+'" target="_blank">𝕏</a>';
+  var web=d.website&&!/google\.[^\/]+\/maps/.test(d.website)?d.website:'';
+  if(web)soc+='<a class="soc s-web" href="'+esc(web)+'" target="_blank">🌐</a>';
+  if(soc)h+='<div class="sec an d3"><div class="socials">'+soc+'</div></div>';
+
+  // النبذة
+  if(d.bio)h+='<div class="sec an d3"><div class="sec-t">👤 نبذة</div><div class="bio-txt">'+esc(d.bio)+'</div></div>';
+
+  // تسويق
+  h+='<div class="sec an d4"><div class="mkt-h">🔍 كم عميل يبحث عن خدمتك اليوم... وما لقى نشاطك؟</div>'
+    +'<div class="mkt-p">أغلب العملاء يبدأون البحث من الإنترنت، ويختارون اللي يشوفون أعماله وتواصله بسهولة. فعّل صفحتك — <b>حضور رقمي احترافي</b>'+(demand?' يوصّلك عملاء يبحثون عن <b>'+demand+'</b>':'')+'، قبل ما تروح الفرصة لمنافسك.</div></div>';
+
+  // دعوة
+  h+='<div class="cta an d4"><div class="cta-t">فعّل صفحتك مجاناً وتبدأ تظهر في قوقل يلقاك فيها العملاء</div>'
+    +'<a class="cta-btn" href="/auth.html?ref=card&t='+encodeURIComponent(TOKEN)+'">✅ فعّل صفحتي الآن</a></div>';
+
+  // QR
+  h+='<div class="sec qr-sec an d5"><div class="qr-cap">امسح الرمز للوصول لهذي الصفحة</div><div class="qr-frame"><div id="qr"></div></div><br><button class="share" onclick="shareCard()">🔗 مشاركة الرابط</button></div>';
+  if(d.views)h+='<div class="views an d5">👁 انفتحت صفحتك <b>'+d.views+'</b> مرة</div>';
+
+  // تعديل ذاتي
+  h+='<div class="editlink an d6">هذي بياناتك؟ <a onclick="toggleEdit()">✏️ عدّل صفحتك أو أخفِها</a></div>';
   h+='<div class="edit" id="editBox">'
     +'<label>الشعار / صورة</label>'
-    +'<div style="display:flex;align-items:center;gap:12px">'
-      +'<div id="logoPrev" style="width:60px;height:60px;border-radius:14px;background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+(d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</div>'
+    +'<div style="display:flex;align-items:center;gap:12px"><div id="logoPrev" style="width:60px;height:60px;border-radius:14px;background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+(d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</div>'
       +'<input type="file" id="e-logo-file" accept="image/*" onchange="_pickLogo(event)" style="flex:1;font-size:12px">'
-      +'<button type="button" onclick="_clearLogo()" style="background:#fff;color:#dc2626;border:1px solid #fecaca;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">إزالة</button>'
-    +'</div>'
+      +'<button type="button" onclick="_clearLogo()" style="background:#fff;color:#dc2626;border:1px solid #fecaca;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">إزالة</button></div>'
     +'<label>نبذة عنك</label><textarea id="e-bio" placeholder="مثال: متخصص في تكييف وصيانة السبليت، خبرة 10 سنوات، خدمة سريعة داخل الرياض.">'+esc(d.bio||'')+'</textarea>'
     +'<label>انستقرام (رابط)</label><input id="e-ig" dir="ltr" value="'+esc(L.instagram||'')+'" placeholder="https://instagram.com/...">'
     +'<label>سناب شات (رابط)</label><input id="e-sc" dir="ltr" value="'+esc(L.snapchat||'')+'" placeholder="https://snapchat.com/add/...">'
@@ -153,10 +180,13 @@ function render(d){
     +'<button class="e-save" onclick="saveCard()">حفظ التعديلات</button>'
     +'<button class="e-remove" onclick="removeCard()">أخفِ صفحتي نهائياً</button>'
     +'</div>';
+
+  h+='<div class="foot">📇 بطاقة رقمية · <b>مناقصة</b></div>';
   h+='</div></div>';
   document.getElementById('app').innerHTML=h;
   try{ new QRCode(document.getElementById('qr'),{text:CARD_URL,width:150,height:150,colorDark:'#1e3a8a',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
 }
+
 function toggleEdit(){document.getElementById('editBox').classList.toggle('on');}
 function saveVCard(){
   var d=_data||{}; var L=d.links||{};
@@ -165,7 +195,7 @@ function saveVCard(){
   if(d.phone)v.push('TEL;TYPE=CELL:'+d.phone);
   if(d.city)v.push('ADR;TYPE=WORK:;;;'+d.city+';;;السعودية');
   v.push('URL:'+CARD_URL);
-  ['website','instagram','tiktok','snapchat','twitter'].forEach(function(k){ if(L[k])v.push('URL:'+L[k]); });
+  ['website','instagram','tiktok','snapchat','twitter'].forEach(function(k){if(L[k])v.push('URL:'+L[k]);});
   if(d.bio)v.push('NOTE:'+String(d.bio).replace(/\n/g,' '));
   v.push('END:VCARD');
   try{
@@ -175,7 +205,7 @@ function saveVCard(){
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(a.href);},1500);
     toast('تم حفظ جهة الاتصال');
-  }catch(e){ toast('تعذّر الحفظ'); }
+  }catch(e){toast('تعذّر الحفظ');}
 }
 function shareCard(){
   if(navigator.share){navigator.share({title:'الكرت الرقمي',url:CARD_URL}).catch(function(){});}
