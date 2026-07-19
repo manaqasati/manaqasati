@@ -1863,10 +1863,18 @@ function _oBriefLoad(){
   var id=parseInt((document.getElementById('o-brief-id')||{}).value)||0;
   var out=document.getElementById('o-brief-out'); if(!out)return;
   if(!id){ toast('اكتب رقم المشروع','error'); return; }
+  // اقرأ الفلاتر اليدوية إن كانت ظاهرة (بعد أول تحميل)
+  var g=function(k){var e=document.getElementById(k);return e?e.value:null;};
+  var qs=[], fc=g('o-bf-city'), fk=g('o-bf-cat'), fs=g('o-bf-score');
+  if(fc!==null)qs.push('city='+encodeURIComponent(fc));
+  if(fk!==null)qs.push('cat='+encodeURIComponent(fk));
+  if(fs!==null&&fs!=='')qs.push('min_score='+encodeURIComponent(fs));
   out.innerHTML='<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px">جاري الجلب...</div>';
-  fetch(API+'/api/admin/requests/'+id+'/match-leads',hdr()).then(function(r){return r.json();}).then(function(d){
+  fetch(API+'/api/admin/requests/'+id+'/match-leads'+(qs.length?'?'+qs.join('&'):''),hdr()).then(function(r){return r.json();}).then(function(d){
     if(d.message||!d.project){ out.innerHTML='<div style="color:#dc2626;font-size:12.5px;padding:8px">'+esc(d.message||'المشروع غير موجود')+'</div>'; return; }
-    _oBrief=d; var p=d.project, L=d.leads||[];
+    _oBrief=d; var p=d.project, L=d.leads||[], f=d.filters||{};
+    var ms=parseInt(f.min_score)||0;
+    var fin='padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:Tajawal;font-size:12px;background:#fff;color:var(--text)';
     var h='<div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:12px">'
       +'<div style="font-weight:800;color:var(--p);margin-bottom:4px;font-size:13px">'+esc(p.title||'مشروع')+'</div>'
       +'<div style="color:var(--muted);font-size:12px">'+[p.category,p.city].filter(Boolean).map(esc).join(' · ')+(p.budget_max?' · '+Number(p.budget_max).toLocaleString('en-US')+' ر.س':'')+'</div>'
@@ -1875,10 +1883,18 @@ function _oBriefLoad(){
         +'<button onclick="_oBriefCopy()" style="background:var(--p);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer">📋 نسخ</button>'
         +'<a href="'+esc(d.brief_url)+'" target="_blank" style="background:#fff;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:800;text-decoration:none">🔗 فتح</a>'
       +'</div></div>';
+    // شريط البحث المرن عن المزودين
+    h+='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:11px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px">'
+      +'<span style="font-size:12px;font-weight:800;color:#1e40af;width:100%;margin-bottom:2px">🔍 بحث مرن عن المزودين المناسبين:</span>'
+      +'<input id="o-bf-city" value="'+esc(f.city||'')+'" placeholder="المدينة (فارغ=الكل)" style="'+fin+';flex:1;min-width:120px">'
+      +'<input id="o-bf-cat" value="'+esc(f.cat||'')+'" placeholder="التخصص/كلمة (فارغ=الكل)" style="'+fin+';flex:1;min-width:120px">'
+      +'<select id="o-bf-score" style="'+fin+';cursor:pointer"><option value="0"'+(ms===0?' selected':'')+'>كل الأولويات</option><option value="45"'+(ms===45?' selected':'')+'>متوسطة (45+)</option><option value="70"'+(ms===70?' selected':'')+'>عالية (70+)</option></select>'
+      +'<button onclick="_oBriefLoad()" style="background:#1e40af;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-family:Tajawal;font-size:12.5px;font-weight:800;cursor:pointer">بحث</button>'
+    +'</div>';
     if(!L.length){
-      h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px">ما فيه مزودين مطابقين في الاستقطاب. اصطد مزودين في «'+esc(p.city||'')+'» أول.</div>';
+      h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px;line-height:1.8">ما فيه مزودين مطابقين لهذا البحث.<br>وسّع البحث (امسح المدينة/التخصص)، أو <b>اصطد مزودين جدد</b> من قسم الصيد بالأعلى ثم أعد البحث.</div>';
     } else {
-      h+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">'+L.length+' مزوّد مطابق — أرسل لهم الكراسة:</div><div style="display:grid;gap:7px;max-height:320px;overflow:auto">';
+      h+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">'+L.length+' مزوّد — أرسل لهم الكراسة:</div><div style="display:grid;gap:7px;max-height:320px;overflow:auto">';
       L.forEach(function(l){
         h+='<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg);border-radius:9px;font-size:12.5px">'
           +'<div style="flex:1;min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(l.name||'مزود')+'</div><div style="font-size:11px;color:var(--muted)">'+[l.category,l.city].filter(Boolean).map(esc).join(' · ')+'</div></div>'
