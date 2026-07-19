@@ -1757,6 +1757,10 @@ function _renderOutreach(st, cov){
     +'<button class="ftab" onclick="document.getElementById(\'o-csv\').click()">📄 استيراد Excel</button>'
     +'<input type="file" id="o-csv" accept=".csv,.xlsx,.xls" style="display:none" onchange="_oImportCSV(this)">'
     +'</div></div><div class="card-body">'
+    +'<div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:10px">'
+      +'<span style="font-size:12.5px;font-weight:800;color:#1e40af;width:100%;margin-bottom:2px">🎯 مولّدات الطلب (B2B) — اضغط فئة ثم اكنس مدينة:</span>'
+      +Object.keys(_OB2B).map(function(k){return '<button onclick="_oB2Bset(\''+k+'\')" style="background:#fff;border:1px solid #bfdbfe;color:#1e40af;padding:7px 13px;border-radius:20px;font-family:Tajawal;font-size:12.5px;font-weight:800;cursor:pointer">'+_OB2B[k].emoji+' '+_OB2B[k].label+'</button>';}).join('')
+    +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
       +'<select id="o-type" style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;font-weight:700;background:var(--white);color:var(--text)"><option value="provider">مزوّد خدمة</option><option value="client">عميل B2B</option></select>'
       +'<input id="o-q" placeholder="مثال: تكييف الرياض · شركات إدارة أملاك جدة" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal;background:var(--white);color:var(--text)" onkeydown="if(event.key===\'Enter\')_oSearch()">'
@@ -1820,6 +1824,21 @@ function _oHunt(q){
   el.value=query;
   el.scrollIntoView({behavior:'smooth',block:'center'});
   if(query)_oSearch(); else { el.focus(); toast('اكتب عبارة البحث','error'); }
+}
+// ═══ مولّدات الطلب (B2B) — جهات تحتاج خدمات متكررة ═══
+var _OB2B={
+  realestate:{emoji:'🏢',label:'إدارات أملاك',term:'شركات إدارة أملاك عقارية'},
+  hotels:{emoji:'🏨',label:'فنادق وشقق',term:'شقق مفروشة وفنادق'},
+  restaurants:{emoji:'🍽️',label:'مطاعم وكافيهات',term:'مطاعم وكافيهات'},
+  clinics:{emoji:'🏥',label:'عيادات ومجمعات طبية',term:'عيادات ومجمعات طبية'},
+  contractors:{emoji:'🏗️',label:'مقاولون',term:'شركات مقاولات عامة'},
+  malls:{emoji:'🏬',label:'مجمعات تجارية',term:'مجمعات ومراكز تجارية'}
+};
+function _oB2Bset(k){
+  var b=_OB2B[k]; if(!b)return;
+  var t=document.getElementById('o-type'); if(t)t.value='client';
+  var q=document.getElementById('o-q'); if(q){ q.value=b.term; q.focus(); }
+  toast('جاهز: '+b.label+' — اضغط «بحث» أو اكنس مدينة كاملة','success');
 }
 // ═══ قوائم أحياء المدن (للكنس التلقائي) ═══
 var _OAREAS={
