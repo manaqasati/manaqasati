@@ -436,26 +436,35 @@ app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manag
     const rq = await pool.query('SELECT id, title, category, city, budget_max FROM requests WHERE id=$1', [id]);
     if(!rq.rows.length) return res.status(404).json({ message:'المشروع غير موجود' });
     const p = rq.rows[0];
-    const cat = p.category ? '%'+String(p.category).trim()+'%' : null;
-    const city = p.city ? '%'+String(p.city).trim()+'%' : null;
-    // مطابقة: مزوّدون غير محوّلين، لهم رقم، في نفس المدينة و/أو التخصص
+    // تحكّم يدوي: يتجاوز مطابقة المشروع الافتراضية عند تمريره
+    const qCity = (req.query.city != null) ? String(req.query.city).trim() : (p.city || '');
+    const qCat  = (req.query.cat  != null) ? String(req.query.cat).trim()  : (p.category || '');
+    const minScore = parseInt(req.query.min_score) || 0;
+    const cityLike = qCity ? '%'+qCity+'%' : null;
+    const catLike  = qCat  ? '%'+qCat+'%'  : null;
     const r = await pool.query(
       `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
        FROM leads
        WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
          AND ($1::text IS NULL OR city ILIKE $1)
          AND ($2::text IS NULL OR category ILIKE $2)
-       ORDER BY score DESC NULLS LAST, updated_at DESC LIMIT 60`, [city, cat]);
-    // fallback: لو ما فيه مطابقة بالتخصص+المدينة، جرّب المدينة فقط
+         AND (COALESCE(score,0) >= $3)
+       ORDER BY score DESC NULLS LAST, updated_at DESC LIMIT 80`, [cityLike, catLike, minScore]);
     let leads = r.rows;
-    if(!leads.length && city){
+    // fallback: لو ما فيه مطابقة بالتخصص+المدينة، جرّب المدينة فقط (فقط عند عدم وجود تحكّم يدوي بالتخصص)
+    if(!leads.length && cityLike && req.query.cat == null){
       const r2 = await pool.query(
         `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
          FROM leads WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
-           AND city ILIKE $1 ORDER BY score DESC NULLS LAST LIMIT 60`, [city]);
+           AND city ILIKE $1 AND (COALESCE(score,0) >= $2) ORDER BY score DESC NULLS LAST LIMIT 80`, [cityLike, minScore]);
       leads = r2.rows;
     }
-    res.json({ project: { id:p.id, title:p.title, category:p.category, city:p.city, budget_max:p.budget_max }, brief_url:`${SITE_URL}/brief/${p.id}`, leads });
+    res.json({
+      project: { id:p.id, title:p.title, category:p.category, city:p.city, budget_max:p.budget_max },
+      brief_url:`${SITE_URL}/brief/${p.id}`,
+      filters: { city:qCity, cat:qCat, min_score:minScore },
+      leads
+    });
   }catch(e){ console.error('match-leads:', e.message); res.status(500).json({ message:'تعذّر' }); }
 });
 
