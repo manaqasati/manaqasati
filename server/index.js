@@ -218,7 +218,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
       SELECT r.id, r.title, r.description, r.category, r.city,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
-        json_build_object('id', u.id, 'name', u.name, 'city', u.city, 'phone', u.phone,
+        json_build_object('id', u.id, 'name', split_part(u.name,' ',1), 'city', u.city,
           'badge', u.badge,
           'completed_count', (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed'),
           'is_premium', (u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3)
@@ -1069,6 +1069,12 @@ function auth(req, res, next) {
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch { res.status(401).json({ message: 'جلسة منتهية' }); }
 }
+// مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض الطلب
+function optionalAuth(req, res, next) {
+  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
+  if (token) { try { req.user = jwt.verify(token, JWT_SECRET); } catch(e) {} }
+  next();
+}
 function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
 function clientOnly(req, res, next) { if (req.user.role !== 'client') return res.status(403).json({ message: 'للعملاء فقط' }); next(); }
 function providerOnly(req, res, next) { if (req.user.role !== 'provider') return res.status(403).json({ message: 'لمزودي الخدمة فقط' }); next(); }
@@ -1510,7 +1516,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, u.phone as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, CASE WHEN b.status='accepted' THEN u.phone ELSE NULL END as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/bids:', e); res.json([]); }
 });
@@ -1647,12 +1653,23 @@ app.get('/api/requests/my', auth, async (req, res) => {
   } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/requests/:id', async (req, res) => {
+app.get('/api/requests/:id', optionalAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json({ ...r.rows[0], status: normalizeStatus(r.rows[0].status) });
+    const row = r.rows[0];
+    // خصوصية العميل: جواله يظهر فقط لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن
+    const uid = req.user && req.user.id, role = req.user && req.user.role;
+    const isOwner = uid && uid === row.client_id;
+    const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
+    const isAdmin = role === 'admin';
+    if (!(isOwner || isAssigned || isAdmin)) {
+      row.client_phone = null;
+      if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
+      row.provider_phone = null;
+    }
+    res.json({ ...row, status: normalizeStatus(row.status) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
