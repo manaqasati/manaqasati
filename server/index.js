@@ -2639,11 +2639,23 @@ app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (r
       FROM leads`);
     const t = tot.rows[0];
     const sent = (t.contacted||0) + (t.replied||0) + (t.converted||0) + (t.rejected||0);
+    // مقاييس الطلب — الرقم اللي يهم فعلاً
+    let dem = { req_today:0, req_week:0, req_month:0, req_open:0 };
+    try{
+      const rq = await pool.query(`SELECT
+        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int req_today,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int req_week,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int req_month,
+        COUNT(*) FILTER (WHERE status NOT IN ('completed','cancelled','rejected'))::int req_open
+        FROM requests`);
+      dem = rq.rows[0] || dem;
+    }catch(e){}
     res.json({
       ...t,
       sent,
       reply_rate: sent ? Math.round(((t.replied+t.converted)/sent)*100) : 0,
       convert_rate: sent ? Math.round((t.converted/sent)*100) : 0,
+      ...dem,
       breakdown: s.rows
     });
   } catch(e){ console.error('leads stats:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
