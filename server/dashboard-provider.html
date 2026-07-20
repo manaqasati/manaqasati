@@ -524,6 +524,8 @@ var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'){location.replace(_me.role==='client'?'/dashboard-client.html':_me.role==='admin'?'/dashboard-admin.html':'/auth.html');}
+// حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
+window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
 var _myId=_me.id||null;
 
 (function(){
@@ -619,7 +621,13 @@ function _fdt(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en
 function _ago(d){if(!d)return'';var diff=(Date.now()-new Date(d))/1000;if(diff<60)return 'الآن';if(diff<3600)return Math.floor(diff/60)+' د';if(diff<86400)return Math.floor(diff/3600)+' س';return Math.floor(diff/86400)+' يوم';}
 function _stars(n){var s='';for(var i=1;i<=5;i++)s+='<span style="color:'+(i<=Math.round(n)?'#F0A500':'#e4e4e7')+';font-size:13px">&#9733;</span>';return s;}
 function _empty(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
+function doLogout(){
+  try{
+    Object.keys(localStorage).forEach(function(k){ if(k!=='theme')localStorage.removeItem(k); });
+    if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage)window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'}));
+  }catch(e){}
+  location.replace('/auth.html');
+}
 
 function _api(path,opts){
   var headers={'Authorization':'Bearer '+(localStorage.getItem('token')||_token||''),'Content-Type':'application/json'};
