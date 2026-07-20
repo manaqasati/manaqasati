@@ -658,6 +658,7 @@ var API='https://manaqasati-production.up.railway.app';
 var token=localStorage.getItem('token')||'';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 if(!token||user.role!=='admin'){location.href='/auth.html';}
+window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
 
 var _allUsers=[],_roleFilter='all',_searchTerm='',_allReq=[],_reqFilter='all',_editReqId=null;
 var _selUsers={};
@@ -699,7 +700,13 @@ function showPage(pg,el){
   if(pg==='reports')loadReports();
   if(!window._skipHash){var _cur=(location.hash||'').replace('#','').split('?')[0];if(_cur!==pg){history.replaceState(null,'','#'+pg);}}
 }
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
+function logout(){
+  try{
+    Object.keys(localStorage).forEach(function(k){ if(k!=='theme')localStorage.removeItem(k); });
+    if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage)window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'}));
+  }catch(e){}
+  location.replace('/auth.html');
+}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
 
