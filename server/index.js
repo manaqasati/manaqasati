@@ -2112,6 +2112,13 @@ app.get('/api/search', async (req, res) => {
 // ═══ MESSAGES ═══
 const _msgEmailCache = {};
 
+app.get('/api/messages/unread-count', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE', [req.user.id]);
+    res.json({ count: parseInt(r.rows[0].count)||0 });
+  } catch(e) { console.error('/messages/unread-count:', e); res.json({ count: 0 }); }
+});
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.requestId);
@@ -2155,13 +2162,6 @@ app.post('/api/messages', auth, async (req, res) => {
     wsBroadcast(receiver_id, { type:'new_message', message:{...newMsg,sender_name:senderName}, request_id, sender_id:req.user.id, sender_name:senderName });
     wsBroadcast(req.user.id, { type:'message_sent', message:{...newMsg,sender_name:senderName}, request_id });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/messages/unread-count', auth, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE', [req.user.id]);
-    res.json({ count: parseInt(r.rows[0].count)||0 });
-  } catch(e) { console.error('/messages/unread-count:', e); res.json({ count: 0 }); }
 });
 
 // ═══ REVIEWS ═══
