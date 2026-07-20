@@ -816,6 +816,7 @@ document.addEventListener('visibilitychange',function(){_pollPaused=document.hid
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 if(!token||!user.id){location.href='/auth.html';}
+window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
 
 // isImg — يقبل URL وbase64
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
@@ -924,7 +925,13 @@ function showTab(t,el){
   if(t==='timeline')loadTimeline(curRequestId);
   if(t==='cq')loadClientQuestions(curRequestId);
 }
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
+function logout(){
+  try{
+    Object.keys(localStorage).forEach(function(k){ if(k!=='theme')localStorage.removeItem(k); });
+    if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage)window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'}));
+  }catch(e){}
+  location.replace('/auth.html');
+}
 
 // ═══ الأسئلة والتوضيحات (لوحة العميل) ═══
 function loadClientQuestions(id){
