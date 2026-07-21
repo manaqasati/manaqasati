@@ -2466,7 +2466,13 @@ function _oLoadList(){
     var L=d.leads||[]; _oLeads=L;
     var cnt=document.getElementById('o-count'); if(cnt)cnt.textContent=L.length?(L.length+' نتيجة'):'';
     if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد نتائج مطابقة للفلاتر</div>'; return; }
-    var h='<div class="tbl-wrap"><table><thead><tr>'
+    var h='<div id="o-bulkbar" style="display:none;align-items:center;gap:10px;margin-bottom:10px;padding:9px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px">'
+      +'<span id="o-selcount" style="font-size:12.5px;font-weight:800;color:#b91c1c"></span>'
+      +'<button onclick="_oBulkDelete()" style="background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">🗑️ حذف المحدد</button>'
+      +'<button onclick="_oClearSel()" style="background:#fff;border:1px solid var(--border);color:var(--text2);padding:7px 12px;border-radius:8px;font-family:Tajawal;font-weight:700;font-size:12px;cursor:pointer">إلغاء التحديد</button>'
+      +'</div>'
+      +'<div class="tbl-wrap"><table><thead><tr>'
+      +'<th style="width:34px"><input type="checkbox" id="o-selall" onclick="_oToggleSelAll(this.checked)" title="تحديد الكل" style="width:17px;height:17px;accent-color:var(--p);cursor:pointer"></th>'
       +'<th>المستهدف</th><th>النوع</th><th>التخصص / المدينة</th><th>الأولوية</th><th>التصنيف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>';
     L.forEach(function(l){
       var stCol=l.status==='converted'?'b-done':l.status==='rejected'?'b-rej':l.status==='interested'||l.status==='replied'?'b-review':l.status==='followup'?'b-progress':'b-completed';
@@ -2476,6 +2482,7 @@ function _oLoadList(){
       var initial=esc((l.name||'?').trim()[0]||'?');
       var isMaybe = l.maybe_user_id && l.status!=='converted';
       h+='<tr>'
+        +'<td><input type="checkbox" class="ochk" '+(_oSel[l.id]?'checked':'')+' onclick="_oToggleSel('+l.id+',this.checked)" style="width:17px;height:17px;accent-color:var(--p);cursor:pointer"></td>'
         +'<td><div class="u-cell"><div class="u-av" style="background:linear-gradient(135deg,'+(l.lead_type==='client'?'#0284c7,#38bdf8':'var(--p),var(--p2)')+')">'+initial+'</div>'
           +'<div><div class="u-name">'+esc(l.name)+'</div><div class="u-email" dir="ltr" style="text-align:right">'+esc(l.phone||'—')+'</div></div></div></td>'
         +'<td><span class="badge '+(l.lead_type==='client'?'b-client':'b-provider')+'">'+(l.lead_type==='client'?'عميل':'مزوّد')+'</span></td>'
@@ -2485,7 +2492,7 @@ function _oLoadList(){
         +'<td><span class="badge '+stCol+'">'+(_OSTAT[l.status]||l.status)+'</span>'+(isMaybe?'<div style="margin-top:5px"><span style="display:inline-block;padding:2px 7px;border-radius:20px;background:#fef3c7;color:#b45309;font-size:10.5px;font-weight:800;border:1px solid #fde68a">⚠️ محتمل سجّل</span></div>':'')+'</td>'
         +'<td><div style="display:flex;gap:6px;align-items:center">'
           +(isMaybe?'<button onclick="_oConfirmMatch('+l.id+')" title="أكّد أنه سجّل فعلاً" style="background:#16a34a;color:#fff;border:none;padding:0 10px;height:30px;border-radius:8px;cursor:pointer;font-size:11.5px;font-weight:800">✅ أكّد</button><button onclick="_oDismissMatch('+l.id+')" title="ليس هو — أزل الإشارة" style="background:#f1f5f9;color:#64748b;border:1px solid var(--border);padding:0 9px;height:30px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800">✗</button>':'')
-          +(l.phone_norm?'<button onclick="window.open(\'https://api.whatsapp.com/send?phone='+l.phone_norm+'\',\'_blank\')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
+          +(l.phone_norm?'<button onclick="_oWaRow('+l.id+')" title="واتساب" style="background:#25D366;color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">💬</button>':'')
           +'<button onclick="_oAnalyzeList('+l.id+','+(l.phone_norm?"'"+l.phone_norm+"'":'null')+')" title="حلّل الرد بالذكاء" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✨</button>'
           +'<button onclick="_oEdit('+l.id+')" title="تعديل البيانات" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✏️</button>'
           +'<button onclick="_oDelete('+l.id+')" title="حذف نهائي" style="background:#fee2e2;border:none;color:#dc2626;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">🗑️</button>'
@@ -2495,7 +2502,50 @@ function _oLoadList(){
     });
     h+='</tbody></table></div>';
     box.innerHTML=h;
+    _oUpdateSelBar();
   }).catch(function(){ box.innerHTML='<div style="color:#dc2626;font-size:12.5px">تعذّر الجلب</div>'; });
+}
+// ═══ تحديد جماعي + حذف + واتساب بالرسالة الصحيحة ═══
+var _oSel={};
+function _oWaRow(id){
+  var l=(_oLeads||[]).find(function(x){return x.id===id;});
+  if(!l||!l.phone_norm){ toast('لا يوجد رقم واتساب','error'); return; }
+  var msg=_oMsg(l);
+  window.open('https://api.whatsapp.com/send?phone='+l.phone_norm+'&text='+encodeURIComponent(msg)+'&type=phone_number&app_absent=0','_blank');
+  _oSetStatus(id,'contacted',3);
+}
+function _oSelCount(){ return Object.keys(_oSel).filter(function(k){return _oSel[k];}).length; }
+function _oUpdateSelBar(){
+  var n=_oSelCount();
+  var bar=document.getElementById('o-bulkbar'); if(bar)bar.style.display=n?'flex':'none';
+  var c=document.getElementById('o-selcount'); if(c)c.textContent='محدّد: '+n;
+}
+function _oToggleSel(id,checked){ if(checked)_oSel[id]=true; else delete _oSel[id]; _oUpdateSelBar(); }
+function _oToggleSelAll(checked){
+  _oSel={};
+  if(checked)(_oLeads||[]).forEach(function(l){ _oSel[l.id]=true; });
+  document.querySelectorAll('.ochk').forEach(function(cb){ cb.checked=checked; });
+  _oUpdateSelBar();
+}
+function _oClearSel(){
+  _oSel={};
+  document.querySelectorAll('.ochk').forEach(function(cb){ cb.checked=false; });
+  var sa=document.getElementById('o-selall'); if(sa)sa.checked=false;
+  _oUpdateSelBar();
+}
+function _oBulkDelete(){
+  var ids=Object.keys(_oSel).filter(function(k){return _oSel[k];});
+  if(!ids.length){ toast('ما فيه محدّد','error'); return; }
+  if(!confirm('حذف '+ids.length+' مستهدف نهائياً؟ لا يمكن التراجع.')) return;
+  var done=0, fail=0;
+  var run=function(i){
+    if(i>=ids.length){ toast('تم حذف '+done+(fail?' · فشل '+fail:''), fail?'error':'success'); _oSel={}; _oLoadList(); return; }
+    fetch(API+'/api/admin/leads/'+ids[i],{method:'DELETE',headers:hdr().headers})
+      .then(function(r){ if(r.ok)done++; else fail++; })
+      .catch(function(){ fail++; })
+      .finally(function(){ run(i+1); });
+  };
+  run(0);
 }
 
 function _refreshHealth(btn){
