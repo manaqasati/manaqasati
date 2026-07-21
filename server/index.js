@@ -217,7 +217,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
       SELECT r.id, r.title, r.description, r.category, r.city,
-        r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at,
+        r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
         json_build_object('id', u.id, 'name', split_part(u.name,' ',1), 'city', u.city,
           'badge', u.badge,
@@ -1731,8 +1731,22 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       if (img && img.startsWith('data:')) uploadedImages.push(await uploadToCloud(img, 'manaqasa/projects'));
       else if (img && img.startsWith('http')) uploadedImages.push(img);
     }
+    // معالجة المرفقات (PDF/مخططات هندسية) — رفعها لـR2 مثل الصور
+    let processedAttachments = null;
+    if (Array.isArray(attachments) && attachments.length) {
+      processedAttachments = [];
+      for (const att of attachments.slice(0,3)) {
+        if (att && att.data && String(att.data).startsWith('data:')) {
+          const url = await uploadToCloud(att.data, 'manaqasa/attachments');
+          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
+        } else if (att && att.url) {
+          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: att.url });
+        }
+      }
+      if (!processedAttachments.length) processedAttachments = null;
+    }
     const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, attachments?JSON.stringify(attachments):null, pn]);
+    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn]);
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
