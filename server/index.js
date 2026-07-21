@@ -181,6 +181,8 @@ app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/proj
 app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
 app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
 app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
+app.get('/b2b',                    (req, res) => res.sendFile(__dirname + '/b2b.html'));
+app.get('/b2b.html',               (req, res) => res.sendFile(__dirname + '/b2b.html'));
 app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
 
 app.get(/^\/project\/(.+)$/, async (req, res) => {
