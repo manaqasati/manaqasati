@@ -317,6 +317,83 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
   } catch(e) { console.error('/pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// صفحات SEO — دليل الخدمات حسب التخصص والمدينة (مرسومة من الخادم)
+// ═══════════════════════════════════════════════════════════════
+const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس وطباشير'];
+const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الأحساء','الطائف','بريدة','تبوك','خميس مشيط','أبها','حائل','نجران','جازان','الجبيل','ينبع','القطيف'];
+function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
+function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
+function seoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function seoStars(n){ n=Math.round(n||0); let h=''; for(let i=1;i<=5;i++) h+= (i<=n?'★':'☆'); return h; }
+
+// دليل رئيسي (هَب للربط الداخلي)
+app.get('/dalil', (req, res) => {
+  const cards = SEO_CATS.map(cat => {
+    const links = SEO_CITIES.slice(0,8).map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(city)}</a>`).join('');
+    return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px;margin-bottom:12px"><h2 style="font-size:16px;color:#1e3a8a;margin:0 0 9px">${seoEsc(cat)}</h2><div>${links}</div></div>`;
+  }).join('');
+  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر طلبك واستقبل عروضاً مجاناً."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/">انشر طلبك مجاناً</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
+});
+
+// صفحة تخصص + مدينة
+app.get('/dalil/:cat/:city', async (req, res) => {
+  try {
+    const cat = seoUnslug(req.params.cat);
+    const city = seoUnslug(req.params.city);
+    if (!SEO_CATS.includes(cat) || !SEO_CITIES.includes(city)) return res.redirect(302, '/dalil');
+    let providers = [];
+    try {
+      const r = await pool.query(
+        `SELECT id, name, business_name, city, bio, profile_image, tier, badge,
+           COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
+           COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count
+         FROM users WHERE role='provider' AND is_active=TRUE
+           AND $1=ANY(COALESCE(specialties,'{}')) AND city ILIKE $2
+         ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL THEN 0 ELSE 1 END,
+           COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) DESC LIMIT 30`,
+        [cat, '%'+city+'%']);
+      providers = r.rows;
+    } catch(e){ providers = []; }
+
+    const title = `${cat} في ${city} — أفضل المزوّدين وعروض الأسعار | مناقصة`;
+    const desc = `تبحث عن ${cat} في ${city}؟ تصفّح مزوّدين موثوقين، أو انشر طلبك مجاناً على مناقصة واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب.`;
+    const canonical = `${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`;
+
+    const provCards = providers.length ? providers.map(p => {
+      const nm = seoEsc(p.business_name || p.name || 'مزوّد');
+      const av = p.avg_rating ? `<span style="color:#F0A500">${seoStars(p.avg_rating)}</span> <span style="color:#64748b;font-size:12px">${(+p.avg_rating).toFixed(1)} (${p.review_count})</span>` : '<span style="color:#94a3b8;font-size:12px">جديد</span>';
+      const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
+      const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
+      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a></h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
+    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b">لا يوجد مزوّدون مسجّلون بعد في ${seoEsc(cat)} بـ${seoEsc(city)}. <strong>كن أول من يستفيد:</strong> انشر طلبك وسنوصّلك بمزوّدين مناسبين.</p>`;
+
+    const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
+    const otherCats = SEO_CATS.filter(c=>c!==cat).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(c)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:12.5px">${seoEsc(c)} ${seoEsc(city)}</a>`).join('');
+
+    const schema = {
+      "@context":"https://schema.org","@type":"CollectionPage",
+      "name":title,"description":desc,"url":canonical,
+      "about":{"@type":"Service","serviceType":cat,"areaServed":{"@type":"City","name":city}},
+      "mainEntity":{"@type":"ItemList","numberOfItems":providers.length,
+        "itemListElement":providers.slice(0,10).map((p,i)=>({"@type":"ListItem","position":i+1,"name":(p.business_name||p.name||'مزوّد'),"url":`${SITE_URL}/pro/${seoSlug(p.business_name||p.name||'مزود')}-${p.id}`}))}
+    };
+
+    res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر طلبك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر طلبك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر طلبك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر طلبك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر طلبك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر طلبك الآن</a></div><h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`);
+  } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
+});
+
+// خريطة الموقع (Sitemap) — يساعد قوقل يكتشف صفحات SEO
+app.get('/sitemap.xml', (req, res) => {
+  const urls = [`${SITE_URL}/`, `${SITE_URL}/dalil`];
+  SEO_CATS.forEach(cat => SEO_CITIES.forEach(city => urls.push(`${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`)));
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urls.map(u => `  <url><loc>${u}</loc><changefreq>weekly</changefreq></url>`).join('\n') +
+    `\n</urlset>`;
+  res.set('Content-Type','application/xml; charset=utf-8').send(xml);
+});
+
+
 // ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
 function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
 
@@ -3823,7 +3900,7 @@ app.get('/sitemap.xml', async (req, res) => {
 
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
-  res.send(`User-agent: *\nAllow: /\nAllow: /pro/\nDisallow: /dashboard-admin.html\nDisallow: /dashboard-client.html\nDisallow: /dashboard-provider.html\nSitemap: ${SITE_URL}/sitemap.xml`);
+  res.send(`User-agent: *\nAllow: /\nAllow: /pro/\nAllow: /dalil\nDisallow: /dashboard-admin.html\nDisallow: /dashboard-client.html\nDisallow: /dashboard-provider.html\nSitemap: ${SITE_URL}/sitemap.xml`);
 });
 
 // ═══ WEBSOCKET + CLOUDINARY ═══
