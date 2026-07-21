@@ -68,7 +68,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
 if (!process.env.JWT_SECRET) {
   console.error('🔴 تحذير أمني: JWT_SECRET غير معيّن! عيّنه في Railway env vars فوراً');
 }
-const SITE_URL   = process.env.SITE_URL   || 'https://manaqasati-production.up.railway.app';
+const SITE_URL   = process.env.SITE_URL   || 'https://manaqasa.com';
 const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
 const SERVER_START = Date.now();
 const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
