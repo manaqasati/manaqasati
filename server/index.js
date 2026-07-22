@@ -64,9 +64,11 @@ pool.connect()
   .then(() => console.log('✅ Database connected'))
   .catch(err => console.error('Database error:', err));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'manaqasa-secret-2024';
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
 if (!process.env.JWT_SECRET) {
-  console.error('🔴 تحذير أمني: JWT_SECRET غير معيّن! عيّنه في Railway env vars فوراً');
+  console.error('🔴 تحذير أمني: JWT_SECRET غير معيّن — تم توليد مفتاح عشوائي مؤقّت.');
+  console.error('   النتيجة: تُلغى جلسات المستخدمين عند كل إعادة تشغيل (يحتاجون تسجيل دخول جديد).');
+  console.error('   الحل: عيّن JWT_SECRET في Railway → Variables بقيمة عشوائية طويلة وثابتة.');
 }
 const SITE_URL   = process.env.SITE_URL   || 'https://manaqasa.com';
 const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
@@ -462,7 +464,7 @@ app.get('/api/card/:token', async (req, res) => {
 });
 
 // تعديل ذاتي بالرمز (من عنده الرابط يملكه) — نبذة/روابط/إخفاء
-app.post('/api/card/:token', async (req, res) => {
+app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
   try{
     const token = req.params.token;
     const chk = await pool.query('SELECT id FROM leads WHERE card_token=$1 LIMIT 1', [token]);
@@ -1345,6 +1347,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
   try {
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
     if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
     const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
@@ -1432,18 +1435,11 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.get('/api/direct-admin', async (req, res) => {
-  try {
-    const { secret, email, password } = req.query;
-    if (secret !== (process.env.ADMIN_SECRET || 'manaqasa2024')) return res.status(403).json({ message: 'كلمة سر خاطئة' });
-    if (!email || !password) return res.status(400).json({ message: 'الإيميل وكلمة المرور مطلوبة' });
-    const hash = await bcrypt.hash(password, 10);
-    const result = await pool.query(`INSERT INTO users (name, email, password, password_hash, role, is_active, created_at) VALUES ('المدير',$1,$2,$3,'admin',true,NOW()) ON CONFLICT (email) DO UPDATE SET password=$2, password_hash=$3, role='admin', is_active=true RETURNING id, name, email, role`, [email, hash, hash]);
-    res.json({ ok: true, user: result.rows[0] });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+// [أُزيلت] /api/direct-admin — كانت باباً خلفياً يسمح بإنشاء/اختطاف حساب أدمن عبر رابط GET
+// بكلمة سر افتراضية مكتوبة في الكود. تُدار حسابات المشرفين الآن من لوحة الأدمن (admins.manage) فقط.
 
-app.put('/api/auth/change-password', auth, async (req, res) => {
+
+app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, res) => {
   try {
     const { old_password, new_password } = req.body;
     if (!old_password || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
@@ -1901,7 +1897,9 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (!image) return res.status(400).json({ message: 'لا توجد صورة' });
     const own = await pool.query('SELECT client_id, images FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
     const current = own.rows[0].images || [];
+    if (current.length >= 10) return res.status(400).json({ message: 'الحد الأقصى 10 صور' });
     current.push(image);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
     res.json({ ok: true, count: current.length });
@@ -1914,8 +1912,13 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     if (!data) return res.status(400).json({ message: 'لا توجد بيانات' });
     const own = await pool.query('SELECT client_id, attachments FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
     const current = own.rows[0].attachments || [];
-    current.push({ name, type, data, uploaded_at: new Date().toISOString() });
+    if (current.length >= 3) return res.status(400).json({ message: 'الحد الأقصى 3 ملفات' });
+    if (typeof data === 'string' && data.length > 14000000) return res.status(400).json({ message: 'حجم الملف كبير (الحد 10MB)' });
+    let stored = data;
+    if (typeof stored === 'string' && stored.startsWith('data:')) stored = await uploadToCloud(stored, 'manaqasa/attachments');
+    current.push({ name: String(name||'ملف').slice(0,120), type: type||null, url: stored, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
     res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -2280,9 +2283,18 @@ app.post('/api/reviews', auth, async (req, res) => {
     const { request_id, reviewed_id, rating, comment, images } = req.body;
     if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
-    const reqRow = await pool.query('SELECT status, title FROM requests WHERE id=$1', [request_id]);
+    const reqRow = await pool.query('SELECT status, title, client_id, assigned_provider_id FROM requests WHERE id=$1', [request_id]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
     if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
+    // منع التقييمات الوهمية: المُقيِّم لازم يكون طرفاً في المشروع، والمُقيَّم هو الطرف الآخر
+    {
+      const rq = reqRow.rows[0];
+      const isClient = rq.client_id === req.user.id;
+      const isProvider = rq.assigned_provider_id && rq.assigned_provider_id === req.user.id;
+      if (!isClient && !isProvider) return res.status(403).json({ message: 'لا يمكنك تقييم مشروع لست طرفاً فيه' });
+      const counterparty = isClient ? rq.assigned_provider_id : rq.client_id;
+      if (!counterparty || parseInt(reviewed_id) !== parseInt(counterparty)) return res.status(400).json({ message: 'الطرف المُقيَّم غير صحيح' });
+    }
     const existing = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
     let row;
     if (existing.rows.length) {
@@ -2499,7 +2511,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // عام: تسجيل مشاهدة صفحة مزوّد (لا يحسب صاحبها)
-app.post('/api/pro/:id/view', async (req, res) => {
+app.post('/api/pro/:id/view', rateLimiter(60, 600000), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if(!id) return res.json({ ok:false });
