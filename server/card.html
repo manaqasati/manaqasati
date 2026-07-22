@@ -132,22 +132,22 @@ function render(d){
 
   // الأزرار
   h+='<div class="actions an d2">';
-  if(wa)h+='<a class="btn btn-wa" href="https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent('السلام عليكم، شفت كرتك على مناقصة 👋')+'&type=phone_number&app_absent=0" target="_blank">💬 محادثة واتساب</a>';
+  if(wa)h+='<a class="btn btn-wa" href="https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent('السلام عليكم، شفت كرتك على مناقصة 👋')+'&type=phone_number&app_absent=0" target="_blank" rel="noopener noreferrer">💬 محادثة واتساب</a>';
   h+='<div class="row2">';
   if(d.phone)h+='<a class="btn btn-call" href="tel:'+esc(d.phone)+'">📞 اتصال</a>';
   h+='<button class="btn btn-vcard" onclick="saveVCard()">📇 حفظ الجهة</button>';
   h+='</div>';
-  h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank">📍 الموقع على الخريطة</a>';
+  h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">📍 الموقع على الخريطة</a>';
   h+='</div>';
 
   // السوشال
   var soc='';
-  if(L.instagram)soc+='<a class="soc s-ig" href="'+esc(L.instagram)+'" target="_blank">📷</a>';
-  if(L.snapchat)soc+='<a class="soc s-sc" href="'+esc(L.snapchat)+'" target="_blank">👻</a>';
-  if(L.tiktok)soc+='<a class="soc s-tt" href="'+esc(L.tiktok)+'" target="_blank">🎵</a>';
-  if(L.twitter)soc+='<a class="soc s-tw" href="'+esc(L.twitter)+'" target="_blank">𝕏</a>';
+  if(L.instagram)soc+='<a class="soc s-ig" href="'+esc(L.instagram)+'" target="_blank" rel="noopener noreferrer">📷</a>';
+  if(L.snapchat)soc+='<a class="soc s-sc" href="'+esc(L.snapchat)+'" target="_blank" rel="noopener noreferrer">👻</a>';
+  if(L.tiktok)soc+='<a class="soc s-tt" href="'+esc(L.tiktok)+'" target="_blank" rel="noopener noreferrer">🎵</a>';
+  if(L.twitter)soc+='<a class="soc s-tw" href="'+esc(L.twitter)+'" target="_blank" rel="noopener noreferrer">𝕏</a>';
   var web=d.website&&!/google\.[^\/]+\/maps/.test(d.website)?d.website:'';
-  if(web)soc+='<a class="soc s-web" href="'+esc(web)+'" target="_blank">🌐</a>';
+  if(web)soc+='<a class="soc s-web" href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">🌐</a>';
   if(soc)h+='<div class="sec an d3"><div class="socials">'+soc+'</div></div>';
 
   // النبذة
