@@ -26,26 +26,36 @@ if (process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY && process.env.R2_END
 }
 
 // رفع صورة base64 إلى R2، يرجع رابط عام
+// أنواع الملفات المسموحة فقط — يمنع رفع HTML/SVG قابل للتنفيذ (XSS مخزّن)
+const UPLOAD_TYPES = {
+  'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp',
+  'image/gif':'gif', 'image/heic':'heic', 'application/pdf':'pdf'
+};
+const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+
 async function uploadToR2(base64Data, folder) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
   try {
     const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) return base64Data;
-    const contentType = matches[1];
+    const contentType = String(matches[1]).toLowerCase().trim();
+    const ext = UPLOAD_TYPES[contentType];
+    if (!ext) { console.warn('رفض رفع نوع غير مسموح:', contentType); return null; }
     const buffer = Buffer.from(matches[2], 'base64');
-    const ext = contentType.split('/')[1] || 'jpg';
-    const key = (folder || 'img') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
+    if (!buffer.length || buffer.length > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم غير صالح:', buffer.length); return null; }
+    const key = (folder || 'img').replace(/[^a-zA-Z0-9/_-]/g,'') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
     await r2Client.send(new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
       Body: buffer,
-      ContentType: contentType
+      ContentType: contentType,
+      ContentDisposition: contentType === 'application/pdf' ? 'inline' : undefined
     }));
     return R2_PUBLIC_URL + '/' + key;
   } catch (e) {
     console.error('R2 upload failed:', e.message);
-    return base64Data; // fallback to base64
+    return null;
   }
 }
 
@@ -570,6 +580,9 @@ async function sendEmail(to, subject, html) {
   } catch(e) { console.error('sendEmail:', e.message); return false; }
 }
 
+// تهريب HTML لمنع حقن روابط/وسوم في الإيميلات (ناقل تصيّد)
+function eEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 function emailTpl(title, body, btnText, btnUrl) {
   const year = new Date().getFullYear();
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
@@ -873,8 +886,8 @@ async function runReminders(){
        GROUP BY r.id, r.client_id, r.title HAVING COUNT(b.id) > 0`, [String(dOffers)]);
     for(const x of r1.rows){
       await _remindOnce(x.client_id, 'offers_waiting', x.id,
-        'عندك عروض بانتظارك 🎯', `وصلك ${x.bids} عرض على "${x.title}" — قارن واختر الأنسب`,
-        'عروض بانتظار اختيارك', `<p>وصلك <strong>${x.bids}</strong> عرض على مشروعك "<strong>${x.title}</strong>".</p><p>ادخل الآن، قارن العروض، واختر الأنسب لك.</p>`,
+        'عندك عروض بانتظارك 🎯', `وصلك ${x.bids} عرض على "${eEsc(x.title)}" — قارن واختر الأنسب`,
+        'عروض بانتظار اختيارك', `<p>وصلك <strong>${x.bids}</strong> عرض على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>ادخل الآن، قارن العروض، واختر الأنسب لك.</p>`,
         'استعراض العروض', SITE_URL+'/dashboard-client.html');
     }}
     // 2) اختار مزوّداً ولم تُتمّ الصفقة
@@ -885,8 +898,8 @@ async function runReminders(){
          AND assigned_at <= NOW() - ($1 || ' days')::interval AND status NOT IN ('completed','cancelled')`, [String(dDeal)]);
     for(const x of r2.rows){
       await _remindOnce(x.client_id, 'complete_deal', x.id,
-        'أتمم صفقتك ✅', `مشروعك "${x.title}" ما زال قيد التنفيذ — تابع مع المزوّد لإتمامه`,
-        'أتمم صفقتك', `<p>مشروعك "<strong>${x.title}</strong>" ما زال مفتوحاً.</p><p>تابع مع المزوّد، أكمل الصفقة، ثم قيّمه ليستفيد غيرك.</p>`,
+        'أتمم صفقتك ✅', `مشروعك "${eEsc(x.title)}" ما زال قيد التنفيذ — تابع مع المزوّد لإتمامه`,
+        'أتمم صفقتك', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" ما زال مفتوحاً.</p><p>تابع مع المزوّد، أكمل الصفقة، ثم قيّمه ليستفيد غيرك.</p>`,
         'متابعة المشروع', SITE_URL+'/dashboard-client.html');
     }}
     // 3) صفقة تمّت ولم يقيّم العميل
@@ -897,8 +910,8 @@ async function runReminders(){
          AND NOT EXISTS (SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)`, [String(dReview)]);
     for(const x of r3.rows){
       await _remindOnce(x.client_id, 'review_reminder', x.id,
-        'قيّم المزوّد ⭐', `كيف كانت تجربتك في "${x.title}"؟ أضف تقييمك الآن`,
-        'رأيك يهمّنا', `<p>أنهيت مشروع "<strong>${x.title}</strong>".</p><p>قيّم المزوّد ليساعد غيرك على الاختيار الصحيح — دقيقة واحدة تكفي.</p>`,
+        'قيّم المزوّد ⭐', `كيف كانت تجربتك في "${eEsc(x.title)}"؟ أضف تقييمك الآن`,
+        'رأيك يهمّنا', `<p>أنهيت مشروع "<strong>${eEsc(x.title)}</strong>".</p><p>قيّم المزوّد ليساعد غيرك على الاختيار الصحيح — دقيقة واحدة تكفي.</p>`,
         'أضف تقييمك', SITE_URL+'/dashboard-client.html');
     }}
     // 4) مزوّد ملفه ناقص
@@ -929,8 +942,8 @@ async function runReminders(){
              AND created_at >  NOW() - ($1 || ' days')::interval`, [String(closeDays), String(warnBefore)]);
         for(const x of w.rows){
           await _remindOnce(x.client_id, 'close_warn', x.id,
-            'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${x.title}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
-            'بادر قبل إغلاق مشروعك', `<p>مشروعك "<strong>${x.title}</strong>" سيُغلق تلقائياً خلال <strong>${warnBefore} يوم</strong> لعدم اختيار عرض.</p><p>ادخل الآن واختر الأنسب قبل فوات الفرصة.</p>`,
+            'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${eEsc(x.title)}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
+            'بادر قبل إغلاق مشروعك', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" سيُغلق تلقائياً خلال <strong>${warnBefore} يوم</strong> لعدم اختيار عرض.</p><p>ادخل الآن واختر الأنسب قبل فوات الفرصة.</p>`,
             'اختر عرضاً الآن', SITE_URL+'/dashboard-client.html');
         }
       }
@@ -941,7 +954,7 @@ async function runReminders(){
            AND created_at <= NOW() - ($1 || ' days')::interval
          RETURNING id, client_id, title`, [String(closeDays)]);
       for(const x of cl.rows){
-        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${x.title}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
+        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
       }
       if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
     }
@@ -960,8 +973,8 @@ async function runReminders(){
       for(const x of ask.rows){
         try{
           await pool.query(`UPDATE requests SET confirm_requested_at=NOW() WHERE id=$1`, [x.id]);
-          await notifyWithEmail(x.client_id, 'هل تمّ تنفيذ مشروعك؟', `أكّد إن كان "${x.title}" قد نُفّذ`, 'request', x.id,
-            'أكّد إتمام مشروعك ✅', `<p>مشروعك "<strong>${x.title}</strong>" مع المزوّد المختار.</p><p>هل تمّ التنفيذ؟ ادخل وأكّد — وإن لم ترد خلال ${graceDays} أيام سنعتبره منتهياً تلقائياً.</p>`,
+          await notifyWithEmail(x.client_id, 'هل تمّ تنفيذ مشروعك؟', `أكّد إن كان "${eEsc(x.title)}" قد نُفّذ`, 'request', x.id,
+            'أكّد إتمام مشروعك ✅', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" مع المزوّد المختار.</p><p>هل تمّ التنفيذ؟ ادخل وأكّد — وإن لم ترد خلال ${graceDays} أيام سنعتبره منتهياً تلقائياً.</p>`,
             'تأكيد الإتمام', SITE_URL+'/dashboard-client.html');
         }catch(e){}
       }
@@ -974,8 +987,8 @@ async function runReminders(){
            AND status NOT IN ('completed','cancelled','closed_auto','archived_auto')
          RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
       for(const x of done.rows){
-        try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${x.title}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
-        try{ if(x.assigned_provider_id){ await notify(x.assigned_provider_id, 'اكتمل المشروع', `اكتمل "${x.title}"`, 'request', x.id); await recomputeProviderTier(x.assigned_provider_id); } }catch(e){}
+        try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
+        try{ if(x.assigned_provider_id){ await notify(x.assigned_provider_id, 'اكتمل المشروع', `اكتمل "${eEsc(x.title)}"`, 'request', x.id); await recomputeProviderTier(x.assigned_provider_id); } }catch(e){}
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
@@ -1027,8 +1040,8 @@ async function runReminders(){
            AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id)`, [String(noDays)]);
       for(const x of noOffers.rows){
         await _remindOnce(x.client_id, 'no_offers', x.id,
-          'لم تصلك عروض بعد 💡', `حسّن وصف "${x.title}" (تفاصيل، ميزانية، صور) لجذب عروض أفضل`,
-          'اجعل طلبك يجذب العروض', `<p>مشروعك "<strong>${x.title}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — الطلبات الواضحة تحصل على عروض أسرع وأفضل.</p>`,
+          'لم تصلك عروض بعد 💡', `حسّن وصف "${eEsc(x.title)}" (تفاصيل، ميزانية، صور) لجذب عروض أفضل`,
+          'اجعل طلبك يجذب العروض', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — الطلبات الواضحة تحصل على عروض أسرع وأفضل.</p>`,
           'تحسين الطلب', SITE_URL+'/dashboard-client.html');
       }
     }
@@ -1085,8 +1098,8 @@ async function runReminders(){
          GROUP BY r.client_id, r.id, r.title`, [String(qDays)]);
       for(const x of qs.rows){
         await _remindOnce(x.client_id, 'answer_q', x.rid,
-          'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${x.title}" — ردّك يساعدك تحصل على عروض أدق`,
-          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${x.title}</strong>".</p><p>الرد السريع يوضّح طلبك ويجذب عروضاً أفضل.</p>`,
+          'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${eEsc(x.title)}" — ردّك يساعدك تحصل على عروض أدق`,
+          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>الرد السريع يوضّح طلبك ويجذب عروضاً أفضل.</p>`,
           'الرد على الأسئلة', SITE_URL+'/dashboard-client.html');
       }
     }
@@ -1100,8 +1113,8 @@ async function runReminders(){
            AND b.created_at <= NOW() - ($1 || ' days')::interval`, [String(bDays)]);
       for(const x of pend.rows){
         await _remindOnce(x.provider_id, 'bid_followup', x.bid_id,
-          'تابع عرضك 💬', `عرضك على "${x.title}" لا يزال قيد المراجعة — تواصل مع العميل لتحسين فرصك`,
-          'تابع عرضك المعلّق', `<p>عرضك على "<strong>${x.title}</strong>" لم يُبتّ فيه بعد.</p><p>بادر بالتواصل مع العميل عبر المحادثة أو حسّن عرضك — المتابعة ترفع فرص القبول.</p>`,
+          'تابع عرضك 💬', `عرضك على "${eEsc(x.title)}" لا يزال قيد المراجعة — تواصل مع العميل لتحسين فرصك`,
+          'تابع عرضك المعلّق', `<p>عرضك على "<strong>${eEsc(x.title)}</strong>" لم يُبتّ فيه بعد.</p><p>بادر بالتواصل مع العميل عبر المحادثة أو حسّن عرضك — المتابعة ترفع فرص القبول.</p>`,
           'فتح المحادثة', SITE_URL+'/dashboard-provider.html');
       }
     }
@@ -1613,7 +1626,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
     if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
       const uploaded = [];
-      for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) uploaded.push(await uploadToCloud(img, 'manaqasa/portfolio')); else if (img) uploaded.push(img); }
+      for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) uploaded.push(u); } else if (img) uploaded.push(img); }
       req.body.portfolio_images = uploaded;
     }
     const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
@@ -1803,7 +1816,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const images_arr = Array.isArray(rawImages) ? rawImages : [];
     const uploadedImages = [];
     for (const img of images_arr) {
-      if (img && img.startsWith('data:')) uploadedImages.push(await uploadToCloud(img, 'manaqasa/projects'));
+      if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) uploadedImages.push(u); }
       else if (img && img.startsWith('http')) uploadedImages.push(img);
     }
     // معالجة المرفقات (PDF/مخططات هندسية) — رفعها لـR2 مثل الصور
@@ -1813,7 +1826,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       for (const att of attachments.slice(0,3)) {
         if (att && att.data && String(att.data).startsWith('data:')) {
           const url = await uploadToCloud(att.data, 'manaqasa/attachments');
-          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
+          if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
         } else if (att && att.url) {
           processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: att.url });
         }
@@ -1827,9 +1840,9 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
       if (clientInfo.rows.length && clientInfo.rows[0].email) {
         const ctitle = '✅ تم نشر مشروعك بنجاح';
-        const cBody = `<p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p><p>تم نشر مشروعك "<strong>${newReq.title}</strong>" بنجاح. رقم المشروع: ${pn}</p>`;
+        const cBody = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تم نشر مشروعك "<strong>${eEsc(newReq.title)}</strong>" بنجاح. رقم المشروع: ${pn}</p>`;
         sendEmail(clientInfo.rows[0].email, ctitle, emailTpl(ctitle, cBody, 'متابعة المشروع', SITE_URL+'/dashboard-client.html')).catch(()=>{});
-        await notify(req.user.id, ctitle, `تم نشر "${newReq.title}" بنجاح`, 'request_published', newReq.id);
+        await notify(req.user.id, ctitle, `تم نشر "${eEsc(newReq.title)}" بنجاح`, 'request_published', newReq.id);
       }
     } catch(e) { console.error('client confirmation email:', e.message); }
     if (newReq.category) {
@@ -1848,8 +1861,8 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         const provs = await pool.query(`SELECT id, name, email FROM users WHERE role='provider' AND is_active=TRUE AND ((specialties IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(specialties))))) OR (notify_categories IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(notify_categories))))))`, [cat]);
         const cityHint = newReq.city ? ` في ${newReq.city}` : '';
         const nTitle = '🆕 مشروع جديد في تخصصك';
-        const nBody = `${newReq.title}${cityHint} — اطّلع وقدّم عرضك`;
-        const emailBody = `<p>وصلنا طلب مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${newReq.title}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
+        const nBody = `${eEsc(newReq.title)}${cityHint} — اطّلع وقدّم عرضك`;
+        const emailBody = `<p>وصلنا طلب مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${eEsc(newReq.title)}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
         for (const p of provs.rows) {
           await notify(p.id, nTitle, nBody, 'new_request', newReq.id);
           if (p.email) sendEmail(p.email, nTitle, emailTpl(nTitle, emailBody, 'فتح المشروع الآن', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
@@ -1918,6 +1931,7 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     if (typeof data === 'string' && data.length > 14000000) return res.status(400).json({ message: 'حجم الملف كبير (الحد 10MB)' });
     let stored = data;
     if (typeof stored === 'string' && stored.startsWith('data:')) stored = await uploadToCloud(stored, 'manaqasa/attachments');
+    if (!stored) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة فقط)' });
     current.push({ name: String(name||'ملف').slice(0,120), type: type||null, url: stored, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
     res.json({ ok: true, count: current.length });
@@ -1927,8 +1941,8 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
 app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 RETURNING id, assigned_provider_id, title`, [id, req.user.id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس طلبك' });
+    const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 AND assigned_provider_id IS NOT NULL AND status NOT IN ('completed','cancelled') RETURNING id, assigned_provider_id, title`, [id, req.user.id]);
+    if (!r.rows.length) return res.status(400).json({ message: 'لا يمكن إنهاء المشروع (تأكد أنه قيد التنفيذ ومُسنَد لمزوّد)' });
     if (r.rows[0].assigned_provider_id) { recomputeProviderTier(r.rows[0].assigned_provider_id); }
     if (r.rows[0].assigned_provider_id) {
       const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
@@ -2033,15 +2047,15 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     let isFirst = false;
     if (!isUpdate) { try{ const cnt = await pool.query('SELECT COUNT(*) c FROM bids WHERE request_id=$1', [requestId]); isFirst = (parseInt(cnt.rows[0].c)||0) === 1; }catch(e){} }
     const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : (isFirst ? '🎉 وصلك أول عرض!' : '💼 عرض جديد');
-    const inAppBody = isUpdate ? `قام ${provName} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${provName} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${provName} على "${projTitle}"`);
+    const inAppBody = isUpdate ? `قام ${eEsc(provName)} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${eEsc(provName)} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${eEsc(provName)} على "${projTitle}"`);
     await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
     if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate) {
       const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
-      const body = `<p>عزيزي <strong>${clientInfo.rows[0].name}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${provName}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${note.replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
+      const body = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${eEsc(provName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${eEsc(note).replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
       sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
     res.json(row);
-  } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: e.message, code: e.code }); }
+  } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
@@ -2078,23 +2092,29 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     const acceptedBid = bid.rows[0];
     await pool.query('BEGIN');
     try {
+      // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
+      const lock = await pool.query(
+        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
+         WHERE id=$2 AND assigned_provider_id IS NULL
+           AND status NOT IN ('completed','cancelled','closed_auto')
+         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id]);
+      if (!lock.rows.length) { await pool.query('ROLLBACK'); return res.status(400).json({ message: 'تمت ترسية هذا المشروع مسبقاً' }); }
       await pool.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
       await pool.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
-      await pool.query(`UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW() WHERE id=$2`, [acceptedBid.provider_id, acceptedBid.request_id]);
       await pool.query('COMMIT');
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
-      await notify(acceptedBid.provider_id, 'تم قبول عرضك!', `تهانينا! تم قبول عرضك على "${acceptedBid.title}".`, 'bid_accepted', acceptedBid.request_id);
+      await notify(acceptedBid.provider_id, 'تم قبول عرضك!', `تهانينا! تم قبول عرضك على "${eEsc(acceptedBid.title)}".`, 'bid_accepted', acceptedBid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
-        const subject = `تم قبول عرضك على "${acceptedBid.title}"`;
-        const body = `<p>تهانينا <strong>${acceptedProv.rows[0].name}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${cName}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
+        const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
+        const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
         sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
       const rejected = await pool.query(`SELECT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected'`, [acceptedBid.request_id, bidId]);
       for (const rej of rejected.rows) {
-        await notify(rej.provider_id, '😔 لم يُقبل عرضك', `اختار العميل عرضاً آخر على "${acceptedBid.title}".`, 'bid_rejected', acceptedBid.request_id);
-        if (rej.email) sendEmail(rej.email, `📋 لم يُقبل عرضك على "${acceptedBid.title}"`, emailTpl('لم يُقبل عرضك', `<p>عزيزي <strong>${rej.name}</strong>،</p><p>اختار العميل عرضاً آخر. لا تيأس!</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        await notify(rej.provider_id, '😔 لم يُقبل عرضك', `اختار العميل عرضاً آخر على "${eEsc(acceptedBid.title)}".`, 'bid_rejected', acceptedBid.request_id);
+        if (rej.email) sendEmail(rej.email, `📋 لم يُقبل عرضك على "${eEsc(acceptedBid.title)}"`, emailTpl('لم يُقبل عرضك', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر. لا تيأس!</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
       await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
       res.json({ ok: true });
@@ -2110,14 +2130,14 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
     await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
     const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
-    await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${bid.rows[0].title}"`, 'bid_rejected', bid.rows[0].request_id);
-    if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${bid.rows[0].title}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${provInfo.rows[0].name}</strong>،</p><p>تم رفض عرضك على "${bid.rows[0].title}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+    await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, 'bid_rejected', bid.rows[0].request_id);
+    if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${eEsc(provInfo.rows[0].name)}</strong>،</p><p>تم رفض عرضك على "${eEsc(bid.rows[0].title)}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ DIRECT MESSAGE ═══
-app.post('/api/direct-message', auth, async (req, res) => {
+app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) => {
   try {
     const { provider_id, message } = req.body;
     if (!provider_id) return res.status(400).json({ message: 'provider_id مطلوب' });
@@ -2207,6 +2227,11 @@ app.get('/api/search', async (req, res) => {
 
 // ═══ MESSAGES ═══
 const _msgEmailCache = {};
+// تنظيف دوري: يمنع نمو الذاكرة بلا حد (كل ساعة، يحذف ما مضى عليه أكثر من ساعة)
+setInterval(() => {
+  const cutoff = Date.now() - 3600000;
+  for (const k in _msgEmailCache) { if (_msgEmailCache[k] < cutoff) delete _msgEmailCache[k]; }
+}, 3600000);
 
 app.get('/api/messages/unread-count', auth, async (req, res) => {
   try {
@@ -2231,14 +2256,14 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-app.post('/api/messages', auth, async (req, res) => {
+app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
   try {
     const { request_id, receiver_id, content } = req.body;
     if (!request_id || !receiver_id || !content) return res.status(400).json({ message: 'البيانات ناقصة' });
     const r = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [request_id, req.user.id, receiver_id, content]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
-    await notify(receiver_id, 'رسالة جديدة', `${senderName}: ${content.slice(0,50)}${content.length>50?'...':''}`, 'message', request_id);
+    await notify(receiver_id, 'رسالة جديدة', `${eEsc(senderName)}: ${content.slice(0,50)}${content.length>50?'...':''}`, 'message', request_id);
     const cacheKey = `${receiver_id}-${request_id}`;
     const now = Date.now(); const lastEmailTime = _msgEmailCache[cacheKey] || 0;
     if (now - lastEmailTime > 18*60*1000) {
@@ -2247,8 +2272,8 @@ app.post('/api/messages', auth, async (req, res) => {
         const recvInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [receiver_id]);
         const reqInfo = await pool.query('SELECT title FROM requests WHERE id=$1', [request_id]);
         if (recvInfo.rows.length && recvInfo.rows[0].email) {
-          const subject = `رسالة جديدة من ${senderName}`;
-          const body = `<p>عزيزي <strong>${recvInfo.rows[0].name}</strong>،</p><p>وصلتك رسالة من <strong>${senderName}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${reqInfo.rows[0]?.title||'مشروع'}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${content.slice(0,200).replace(/</g,'&lt;')}${content.length>200?'...':''}"</div></div>`;
+          const subject = `رسالة جديدة من ${eEsc(senderName)}`;
+          const body = `<p>عزيزي <strong>${eEsc(recvInfo.rows[0].name)}</strong>،</p><p>وصلتك رسالة من <strong>${eEsc(senderName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${eEsc(reqInfo.rows[0]?.title||'مشروع')}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${content.slice(0,200).replace(/</g,'&lt;')}${content.length>200?'...':''}"</div></div>`;
           sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(()=>{});
         }
       } catch(e) { console.error('message email:', e.message); }
@@ -2310,7 +2335,7 @@ app.post('/api/reviews', auth, async (req, res) => {
     await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على ${rating} نجوم من ${reviewerInfo.rows[0]?.name||'العميل'}`, 'review', request_id);
     if (reviewedInfo.rows.length && reviewedInfo.rows[0].email) {
       const subject = `⭐ تقييم جديد ${rating===5?'5 نجوم!':`${rating} نجوم`}`;
-      const body = `<p>عزيزي <strong>${reviewedInfo.rows[0].name}</strong>،</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:18px;margin:16px 0;text-align:center"><div style="font-size:32px;letter-spacing:6px">${stars}</div><div style="font-size:14px;font-weight:700;color:#92400e">${rating} من 5 نجوم</div>${comment?`<div style="margin-top:12px;font-size:13px;color:#374151;text-align:right">"${comment.replace(/</g,'&lt;')}"</div>`:''}</div>`;
+      const body = `<p>عزيزي <strong>${eEsc(reviewedInfo.rows[0].name)}</strong>،</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:18px;margin:16px 0;text-align:center"><div style="font-size:32px;letter-spacing:6px">${stars}</div><div style="font-size:14px;font-weight:700;color:#92400e">${rating} من 5 نجوم</div>${comment?`<div style="margin-top:12px;font-size:13px;color:#374151;text-align:right">"${eEsc(comment)}"</div>`:''}</div>`;
       sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(()=>{});
     }
     res.json(row);
@@ -2344,7 +2369,7 @@ app.get('/api/requests/:id/questions', async (req, res) => {
 });
 
 // POST: طرح سؤال (أي مستخدم مسجّل — عادةً مزود)
-app.post('/api/requests/:id/questions', auth, async (req, res) => {
+app.post('/api/requests/:id/questions', rateLimiter(20, 600000), auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     const body = (req.body.body || req.body.question || '').trim();
@@ -2383,7 +2408,7 @@ app.post('/api/requests/:id/questions/:qid/answer', auth, async (req, res) => {
 });
 
 // ═══ REPORTS, FAVORITES, PROVIDERS ═══
-app.post('/api/reports', auth, async (req, res) => {
+app.post('/api/reports', rateLimiter(10, 600000), auth, async (req, res) => {
   try {
     const { reported_id, request_id, type, reason, details } = req.body;
     if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
@@ -2875,7 +2900,7 @@ app.post('/api/admin/leads/:id/gen-message', requirePermission('outreach.manage'
 // تحليل رد المزوّد + صياغة الرد المناسب
 app.post('/api/admin/leads/:id/analyze-reply', requirePermission('outreach.manage'), async (req, res) => {
   try{
-    const reply = (req.body.reply||'').trim();
+    const reply = String(req.body.reply||'').trim().slice(0,4000);
     if(!reply) return res.status(400).json({ message:'الصق رد المزوّد' });
     const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
     const l = r.rows[0] || {};
@@ -3930,17 +3955,24 @@ cloudinary.config({
 
 async function uploadToCloud(base64Data, folder='manaqasa') {
   if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
+  // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
+  const m = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+  if (!m) return null;
+  const ctype = String(m[1]).toLowerCase().trim();
+  if (!UPLOAD_TYPES[ctype]) { console.warn('رفض رفع نوع غير مسموح:', ctype); return null; }
+  if (Buffer.byteLength(m[2], 'base64') > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم كبير'); return null; }
   // جرّب R2 أولاً
   if (r2Client) {
     const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'));
     if (url && url.startsWith('http')) { console.log('✅ R2 upload:', url); return url; }
   }
-  // fallback: Cloudinary
+  // fallback: Cloudinary (صور فقط)
+  if (ctype === 'application/pdf') return null;
   try {
     const result = await cloudinary.uploader.upload(base64Data, { folder, transformation: [{ quality: 'auto', fetch_format: 'auto' }], resource_type: 'image' });
     console.log('✅ Cloudinary upload:', result.secure_url);
     return result.secure_url;
-  } catch(e) { console.error('upload error:', e.message); return base64Data; }
+  } catch(e) { console.error('upload error:', e.message); return null; }
 }
 
 const server = http.createServer(app);
