@@ -1359,6 +1359,28 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
     try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
     try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
+    // ═══ فهارس الأداء — تمنع مسح الجداول كاملة مع نمو البيانات ═══
+    const _idx = [
+      'CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_provider ON requests(assigned_provider_id)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_created ON requests(created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_cat_city ON requests(category, city)',
+      'CREATE INDEX IF NOT EXISTS idx_bids_request ON bids(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bids_provider ON bids(provider_id)',
+      'CREATE INDEX IF NOT EXISTS idx_bids_status ON bids(status)',
+      'CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, is_read)',
+      'CREATE INDEX IF NOT EXISTS idx_messages_request ON messages(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)',
+      'CREATE INDEX IF NOT EXISTS idx_reviews_reviewed ON reviews(reviewed_id)',
+      'CREATE INDEX IF NOT EXISTS idx_reviews_request ON reviews(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)',
+      'CREATE INDEX IF NOT EXISTS idx_users_city ON users(city)',
+      'CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)',
+      'CREATE INDEX IF NOT EXISTS idx_questions_request ON request_questions(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id)'
+    ];
+    for (const q of _idx) { try { await pool.query(q); } catch(e) {} }
     console.log('✅ Database setup complete');
   } catch(error) { console.error('Database setup error:', error); }
 }
@@ -1541,26 +1563,32 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
     if (!userInfo.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
     const userName = userInfo.rows[0].name; const userEmail = userInfo.rows[0].email;
-    await pool.query('BEGIN');
+    // معاملة حقيقية على اتصال مخصّص — يضمن التراجع الكامل عند أي فشل
+    const client = await pool.connect();
     try {
-      if (role === 'provider') await pool.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
-      await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
-      await logAdmin(req, 'delete_user', 'user', userId, 'حذف مستخدم');
-      await pool.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
-      await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
-      await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
-      try { await pool.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]); } catch(e){}
-      try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]); } catch(e){}
-      if (role === 'client') { const projs = await pool.query('SELECT id FROM requests WHERE client_id=$1', [userId]); for (const p of projs.rows) await pool.query('DELETE FROM bids WHERE request_id=$1', [p.id]); await pool.query('DELETE FROM requests WHERE client_id=$1', [userId]); }
-      if (role === 'provider') await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
-      const del = await pool.query('DELETE FROM users WHERE id=$1', [userId]);
-      _userState.delete(userId);
+      await client.query('BEGIN');
+      if (role === 'provider') await client.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
+      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+      await client.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
+      await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
+      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
+      await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]);
+      await client.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]);
+      if (role === 'client') {
+        const projs = await client.query('SELECT id FROM requests WHERE client_id=$1', [userId]);
+        for (const p of projs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [p.id]);
+        await client.query('DELETE FROM requests WHERE client_id=$1', [userId]);
+      }
+      if (role === 'provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
+      const del = await client.query('DELETE FROM users WHERE id=$1', [userId]);
       if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
-      await pool.query('COMMIT');
+      await client.query('COMMIT');
+      _userState.delete(userId);
       console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
-      if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${userName}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
+      if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${eEsc(userName)}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
       res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
-    } catch(e) { await pool.query('ROLLBACK'); console.error('account delete transaction:', e); throw e; }
+    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} console.error('account delete transaction:', e); throw e; }
+    finally { client.release(); }
   } catch(e) { console.error('DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -1933,14 +1961,16 @@ app.delete('/api/requests/:id', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
-      await pool.query('DELETE FROM bids WHERE request_id=$1', [id]);
-      await pool.query('DELETE FROM messages WHERE request_id=$1', [id]);
-      await pool.query('DELETE FROM reviews WHERE request_id=$1', [id]);
-      await pool.query('DELETE FROM requests WHERE id=$1', [id]);
-      await pool.query('COMMIT'); res.json({ ok: true });
-    } catch(e) { await pool.query('ROLLBACK'); throw e; }
+      await client.query('BEGIN');
+      await client.query('DELETE FROM bids WHERE request_id=$1', [id]);
+      await client.query('DELETE FROM messages WHERE request_id=$1', [id]);
+      await client.query('DELETE FROM reviews WHERE request_id=$1', [id]);
+      await client.query('DELETE FROM requests WHERE id=$1', [id]);
+      await client.query('COMMIT'); res.json({ ok: true });
+    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} throw e; }
+    finally { client.release(); }
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -2131,18 +2161,20 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
     const acceptedBid = bid.rows[0];
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
       // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
-      const lock = await pool.query(
+      const lock = await client.query(
         `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
          WHERE id=$2 AND assigned_provider_id IS NULL
            AND status NOT IN ('completed','cancelled','closed_auto')
          RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id]);
-      if (!lock.rows.length) { await pool.query('ROLLBACK'); return res.status(400).json({ message: 'تمت ترسية هذا المشروع مسبقاً' }); }
-      await pool.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
-      await pool.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
-      await pool.query('COMMIT');
+      if (!lock.rows.length) { await client.query('ROLLBACK'); client.release(); return res.status(400).json({ message: 'تمت ترسية هذا المشروع مسبقاً' }); }
+      await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
+      await client.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
+      await client.query('COMMIT');
+      client.release();
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
@@ -3249,24 +3281,27 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
     const chk = await pool.query('SELECT id, name, email, role FROM users WHERE id=$1', [uid]);
     if (!chk.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (chk.rows[0].role==='admin') return res.status(403).json({ message: 'لا يمكن حذف المديرين' });
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
-      await pool.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
-      await pool.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [uid]);
-      await pool.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
-      await pool.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [uid]);
-      await pool.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [uid]);
-      try { await pool.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [uid]); } catch(e){}
-      try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1', [uid]); } catch(e){}
-      const urs = await pool.query('SELECT id FROM requests WHERE client_id=$1', [uid]);
-      for (const r of urs.rows) await pool.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
-      await pool.query('DELETE FROM requests WHERE client_id=$1', [uid]);
-      if (chk.rows[0].role==='provider') await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
-      const del = await pool.query('DELETE FROM users WHERE id=$1', [uid]);
-      _userState.delete(uid);
+      await client.query('BEGIN');
+      await client.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
+      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [uid]);
+      await client.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
+      await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [uid]);
+      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [uid]);
+      await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [uid]);
+      await client.query('DELETE FROM push_tokens WHERE user_id=$1', [uid]);
+      const urs = await client.query('SELECT id FROM requests WHERE client_id=$1', [uid]);
+      for (const r of urs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
+      await client.query('DELETE FROM requests WHERE client_id=$1', [uid]);
+      if (chk.rows[0].role==='provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
+      const del = await client.query('DELETE FROM users WHERE id=$1', [uid]);
       if (del.rowCount===0) throw new Error('فشل الحذف');
-      await pool.query('COMMIT'); res.json({ ok: true, deleted_user: chk.rows[0] });
-    } catch(e) { await pool.query('ROLLBACK'); throw e; }
+      await client.query('COMMIT');
+      _userState.delete(uid);
+      res.json({ ok: true, deleted_user: chk.rows[0] });
+    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} throw e; }
+    finally { client.release(); }
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3336,18 +3371,21 @@ app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), asyn
   try {
     const id = parseInt(req.params.id);
     if (!id) return res.status(400).json({ message: 'معرف غير صحيح' });
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
-      await pool.query('DELETE FROM bids WHERE request_id=$1', [id]);
-      await pool.query('DELETE FROM messages WHERE request_id=$1', [id]);
-      await pool.query('DELETE FROM reviews WHERE request_id=$1', [id]);
-      await pool.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
-      await pool.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
-      const del = await pool.query('DELETE FROM requests WHERE id=$1', [id]);
+      await client.query('BEGIN');
+      await client.query('DELETE FROM bids WHERE request_id=$1', [id]);
+      await client.query('DELETE FROM messages WHERE request_id=$1', [id]);
+      await client.query('DELETE FROM reviews WHERE request_id=$1', [id]);
+      await client.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
+      await client.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
+      const del = await client.query('DELETE FROM requests WHERE id=$1', [id]);
+      if (del.rowCount===0) { await client.query('ROLLBACK'); client.release(); return res.status(404).json({ message: 'غير موجود' }); }
+      await client.query('COMMIT');
+      client.release();
       await logAdmin(req, 'delete_request', 'request', id, 'حذف مشروع');
-      if (del.rowCount===0) { await pool.query('ROLLBACK'); return res.status(404).json({ message: 'غير موجود' }); }
-      await pool.query('COMMIT'); res.json({ ok: true });
-    } catch(e) { await pool.query('ROLLBACK'); throw e; }
+      res.json({ ok: true });
+    } catch(e) { try { await client.query('ROLLBACK'); client.release(); } catch(_){} throw e; }
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
