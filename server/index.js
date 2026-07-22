@@ -102,6 +102,16 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 }
 
 app.use(cors());
+// ترويسات أمان أساسية
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // يمنع تسريب الروابط السرية (رموز الكرت/الكراسة) للمواقع الخارجية عبر ترويسة الإحالة
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static('.'));
 
@@ -1203,11 +1213,30 @@ function generateProjectNumber() {
 }
 
 // ═══ AUTH MIDDLEWARE ═══
+// ذاكرة مؤقتة لحالة الحساب (60 ثانية) — يجعل الحظر/الحذف ساري المفعول فوراً تقريباً بلا إثقال القاعدة
+const _userState = new Map();
+setInterval(() => { const now = Date.now(); for (const [k,v] of _userState) { if (now > v.exp) _userState.delete(k); } }, 120000);
+async function isUserUsable(id){
+  const hit = _userState.get(id);
+  if (hit && Date.now() < hit.exp) return hit.ok;
+  try {
+    const r = await pool.query('SELECT is_active FROM users WHERE id=$1', [id]);
+    const ok = !!(r.rows.length && r.rows[0].is_active !== false);
+    _userState.set(id, { ok, exp: Date.now() + 60000 });
+    return ok;
+  } catch(e) { return true; } // لا نمنع الخدمة عند عطل قاعدة البيانات
+}
 function auth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'غير مصرح' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { res.status(401).json({ message: 'جلسة منتهية' }); }
+  let payload;
+  try { payload = jwt.verify(token, JWT_SECRET); }
+  catch { return res.status(401).json({ message: 'جلسة منتهية' }); }
+  req.user = payload;
+  isUserUsable(payload.id).then(ok => {
+    if (!ok) return res.status(403).json({ message: 'الحساب موقوف أو غير موجود' });
+    next();
+  }).catch(() => next());
 }
 // مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض الطلب
 function optionalAuth(req, res, next) {
@@ -1364,6 +1393,16 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
     const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
+    // منع تكرار الجوال (يقارن الصيغة الخام والموحّدة) — يمنع حرمان صاحب الرقم من الدخول واختطاف ربط المستهدفين
+    if (phone && String(phone).trim()) {
+      const raw = String(phone).trim();
+      const norm = normPhone(raw);
+      const dupPhone = await pool.query(
+        `SELECT id FROM users WHERE phone IS NOT NULL AND (phone=$1 OR regexp_replace(phone,'[^0-9]','','g') = $2) LIMIT 1`,
+        [raw, norm ? norm : raw.replace(/[^0-9]/g,'')]
+      );
+      if (dupPhone.rows.length) return res.status(400).json({ message: 'رقم الجوال مستخدم لحساب آخر' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
     const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
@@ -1515,6 +1554,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       if (role === 'client') { const projs = await pool.query('SELECT id FROM requests WHERE client_id=$1', [userId]); for (const p of projs.rows) await pool.query('DELETE FROM bids WHERE request_id=$1', [p.id]); await pool.query('DELETE FROM requests WHERE client_id=$1', [userId]); }
       if (role === 'provider') await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
       const del = await pool.query('DELETE FROM users WHERE id=$1', [userId]);
+      _userState.delete(userId);
       if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
       await pool.query('COMMIT');
       console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
@@ -2030,6 +2070,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
     const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
     const existing = await pool.query('SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
     let row; let isUpdate = false;
@@ -3128,6 +3169,7 @@ app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (r
     if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
     { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
     const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
+    _userState.delete(uid);
     if(r.rows.length) await logAdmin(req, r.rows[0].is_active?'activate_user':'ban_user', 'user', uid, r.rows[0].is_active?'تفعيل حساب':'إيقاف حساب');
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
@@ -3221,6 +3263,7 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
       await pool.query('DELETE FROM requests WHERE client_id=$1', [uid]);
       if (chk.rows[0].role==='provider') await pool.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
       const del = await pool.query('DELETE FROM users WHERE id=$1', [uid]);
+      _userState.delete(uid);
       if (del.rowCount===0) throw new Error('فشل الحذف');
       await pool.query('COMMIT'); res.json({ ok: true, deleted_user: chk.rows[0] });
     } catch(e) { await pool.query('ROLLBACK'); throw e; }
@@ -3825,7 +3868,7 @@ app.put('/api/admin/reports/:id', requirePermission('reports.resolve'), async (r
     const reportedId=r.rows[0].reported_id;
     await pool.query('UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3',[newStatus, admin_note||null, id]);
     if (reportedId) {
-      if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); await notify(reportedId,'تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
+      if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); _userState.delete(reportedId); await notify(reportedId,'تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
       else if (action==='warn') await notify(reportedId,'تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
     }
     await logAdmin(req, 'resolve_report', 'report', id, 'معالجة بلاغ: ' + action);
