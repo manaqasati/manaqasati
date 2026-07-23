@@ -37,7 +37,6 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 .btn:active{transform:scale(.98)}
 .btn-wa{background:var(--green);color:#fff;box-shadow:0 8px 20px rgba(37,211,102,.32)}
 .btn-call{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff}
-.btn-vcard{background:#fff;color:var(--p);border:1.5px solid var(--p)}
 .btn-map{background:#fff;color:var(--text2);border:1.5px solid var(--border)}
 .sec{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px 17px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.04)}
 .sec-t{font-family:'Cairo',sans-serif;font-size:14px;font-weight:900;color:var(--p);margin-bottom:12px;display:flex;align-items:center;gap:7px}
@@ -135,7 +134,6 @@ function render(d){
   if(wa)h+='<a class="btn btn-wa" href="https://api.whatsapp.com/send?phone='+wa+'&text='+encodeURIComponent('السلام عليكم، شفت كرتك على مناقصة 👋')+'&type=phone_number&app_absent=0" target="_blank" rel="noopener noreferrer">💬 محادثة واتساب</a>';
   h+='<div class="row2">';
   if(d.phone)h+='<a class="btn btn-call" href="tel:'+esc(d.phone)+'">📞 اتصال</a>';
-  h+='<button class="btn btn-vcard" onclick="saveVCard()">📇 حفظ الجهة</button>';
   h+='</div>';
   h+='<a class="btn btn-map" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">📍 الموقع على الخريطة</a>';
   h+='</div>';
@@ -188,25 +186,6 @@ function render(d){
 }
 
 function toggleEdit(){document.getElementById('editBox').classList.toggle('on');}
-function saveVCard(){
-  var d=_data||{}; var L=d.links||{};
-  var v=['BEGIN:VCARD','VERSION:3.0','FN:'+(d.name||''),'ORG:'+(d.name||'')];
-  if(d.category)v.push('TITLE:'+d.category);
-  if(d.phone)v.push('TEL;TYPE=CELL:'+d.phone);
-  if(d.city)v.push('ADR;TYPE=WORK:;;;'+d.city+';;;السعودية');
-  v.push('URL:'+CARD_URL);
-  ['website','instagram','tiktok','snapchat','twitter'].forEach(function(k){if(L[k])v.push('URL:'+L[k]);});
-  if(d.bio)v.push('NOTE:'+String(d.bio).replace(/\n/g,' '));
-  v.push('END:VCARD');
-  try{
-    var blob=new Blob([v.join('\r\n')],{type:'text/vcard;charset=utf-8'});
-    var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download=((d.name||'contact').replace(/\s+/g,'_'))+'.vcf';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(function(){URL.revokeObjectURL(a.href);},1500);
-    toast('تم حفظ جهة الاتصال');
-  }catch(e){toast('تعذّر الحفظ');}
-}
 function shareCard(){
   if(navigator.share){navigator.share({title:'الكرت الرقمي',url:CARD_URL}).catch(function(){});}
   else{navigator.clipboard.writeText(CARD_URL).then(function(){toast('تم نسخ الرابط');}).catch(function(){toast(CARD_URL);});}
