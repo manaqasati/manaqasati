@@ -724,6 +724,8 @@ const ROLE_PERMISSIONS = {
 };
 function effectivePermissions(row){
   if(!row || row.role!=='admin') return [];
+  // المالك يملك كل الصلاحيات دائماً — يمنع حجب نفسه عن اللوحة بأي إعداد خاطئ
+  if(row.email && row.email.toLowerCase() === OWNER_EMAIL.toLowerCase()) return ['*'];
   if(Array.isArray(row.permissions) && row.permissions.length) return row.permissions;
   if(row.admin_role && ROLE_PERMISSIONS[row.admin_role]) return ROLE_PERMISSIONS[row.admin_role];
   return ['*'];
