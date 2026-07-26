@@ -344,7 +344,7 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // صفحات SEO — دليل الخدمات حسب التخصص والمدينة (مرسومة من الخادم)
 // ═══════════════════════════════════════════════════════════════
-const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس وطباشير'];
+const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس وطباشير','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','ستلايت ورسيفر','تسليك مجاري','تنسيق حدائق'];
 const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الأحساء','الطائف','بريدة','تبوك','خميس مشيط','أبها','حائل','نجران','جازان','الجبيل','ينبع','القطيف'];
 function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
 function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
@@ -360,7 +360,37 @@ app.get('/dalil', (req, res) => {
   res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر طلبك واستقبل عروضاً مجاناً."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/">انشر طلبك مجاناً</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
 });
 
-// صفحة تخصص + مدينة
+// مولّدات محتوى غني لصفحات SEO — يجعل كل صفحة قيّمة لقوقل حتى بلا مزوّدين
+function seoRichIntro(cat, city){
+  return `تُعدّ خدمات ${cat} في ${city} من أكثر الخدمات طلباً، نظراً لحاجة المنازل والمنشآت إليها بشكل متكرر. سواء كنت تبحث عن تنفيذ جديد أو صيانة أو إصلاح عاجل، فإن اختيار مزوّد ${cat} المناسب في ${city} يوفّر عليك الوقت والتكلفة ويضمن جودة العمل. عبر منصة مناقصة، تنشر طلبك مرة واحدة ويصلك عدة عروض من مزوّدين في ${city} تقارن بينها وتختار الأنسب سعراً وجودة، بدلاً من الاتصال على كل مزوّد على حدة والمساومة معه.`;
+}
+function seoRichFaq(cat, city){
+  const faqs = [
+    { q: `كم تكلفة ${cat} في ${city}؟`, a: `تختلف تكلفة ${cat} في ${city} حسب حجم العمل ونوعه والمواد المستخدمة. أفضل طريقة لمعرفة السعر المناسب هي نشر طلبك على مناقصة واستقبال عدة عروض أسعار من مزوّدين مختلفين، ثم المقارنة بينها لاختيار الأنسب.` },
+    { q: `كيف أختار أفضل مزوّد ${cat} في ${city}؟`, a: `ابحث عن مزوّد لديه تقييمات جيدة وأعمال سابقة موثّقة، والتزام بالمواعيد، وشفافية في التسعير. عبر مناقصة يمكنك رؤية تقييمات المزوّدين ومقارنة عروضهم قبل اتخاذ القرار.` },
+    { q: `كم يستغرق تنفيذ خدمة ${cat}؟`, a: `تعتمد المدة على طبيعة العمل وحجمه. عند نشر طلبك، حدّد التفاصيل بدقة ليقدّم لك المزوّدون تقديراً واقعياً للمدة والتكلفة.` },
+    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر الطلب وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة بسيطة (1% من قيمة العقد) على العميل فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
+  ];
+  let h = '<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px;margin-bottom:14px">';
+  faqs.forEach(f => {
+    h += `<div style="margin-bottom:15px"><div style="font-weight:800;color:#1e3a8a;font-size:14px;margin-bottom:5px">${seoEsc(f.q)}</div><div style="font-size:13px;color:#3a4c6b;line-height:1.9">${seoEsc(f.a)}</div></div>`;
+  });
+  h += '</div>';
+  return { html: h, data: faqs };
+}
+function seoRichTips(cat){
+  const tips = [
+    'حدّد احتياجك بوضوح واكتب تفاصيل دقيقة عند نشر الطلب.',
+    'قارن بين عدة عروض ولا تعتمد على عرض واحد فقط.',
+    'اطّلع على تقييمات المزوّد وأعماله السابقة قبل الاتفاق.',
+    'اتفق على التفاصيل والسعر والمدة كتابياً قبل بدء العمل.'
+  ];
+  let h = '<ul style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px 20px 20px 0;margin:0 0 14px;list-style:none">';
+  tips.forEach(t => { h += `<li style="font-size:13px;color:#3a4c6b;line-height:1.9;padding-right:24px;position:relative;margin-bottom:8px">✓ ${seoEsc(t)}</li>`; });
+  h += '</ul>';
+  return h;
+}
+
 app.get('/dalil/:cat/:city', async (req, res) => {
   try {
     const cat = seoUnslug(req.params.cat);
@@ -395,15 +425,26 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
     const otherCats = SEO_CATS.filter(c=>c!==cat).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(c)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:12.5px">${seoEsc(c)} ${seoEsc(city)}</a>`).join('');
 
+    const _intro = seoRichIntro(cat, city);
+    const _faq = seoRichFaq(cat, city);
+    const _tips = seoRichTips(cat);
+
     const schema = {
-      "@context":"https://schema.org","@type":"CollectionPage",
+      "@context":"https://schema.org","@graph":[
+      {
+      "@type":"CollectionPage",
       "name":title,"description":desc,"url":canonical,
       "about":{"@type":"Service","serviceType":cat,"areaServed":{"@type":"City","name":city}},
       "mainEntity":{"@type":"ItemList","numberOfItems":providers.length,
         "itemListElement":providers.slice(0,10).map((p,i)=>({"@type":"ListItem","position":i+1,"name":(p.business_name||p.name||'مزوّد'),"url":`${SITE_URL}/pro/${seoSlug(p.business_name||p.name||'مزود')}-${p.id}`}))}
+      },
+      {
+      "@type":"FAQPage",
+      "mainEntity": _faq.data.map(f=>({"@type":"Question","name":f.q,"acceptedAnswer":{"@type":"Answer","text":f.a}}))
+      }]
     };
 
-    res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر طلبك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر طلبك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر طلبك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر طلبك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر طلبك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر طلبك الآن</a></div><h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`);
+    res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر طلبك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر طلبك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر طلبك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر طلبك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر طلبك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر طلبك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`);
   } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
 });
 
