@@ -242,12 +242,12 @@
   }
 
   .section-title {
-    text-align: center; margin-bottom: 60px;
+    text-align: center; margin-bottom: clamp(28px, 6vw, 60px);
   }
 
   .section-title h2 {
     font-family: 'Cairo', sans-serif;
-    font-size: 36px; font-weight: 800;
+    font-size: clamp(22px, 5.5vw, 30px); font-weight: 800;
     margin-bottom: 12px;
   }
 
@@ -604,6 +604,7 @@
   .hzp-cat-ic{transform:scale(1.3)}
   .hzp-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
   .hzp-open{background:rgba(22,163,74,.92)}
+  .hzp-rev{background:rgba(217,119,6,.92)}
   .hzp-done{background:rgba(100,116,139,.88)}
   .hzp-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
   .hzp-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -1179,14 +1180,17 @@ function handleBidClick(reqId){
 }
 function card(p){
   var isOpen=p.status==='open';
+  var isRev=p.status==='pending_review'||p.status==='review';
   var isDone=p.status==='completed'||p.status==='in_progress'||p.status==='done';
+  var badgeCls=isOpen?'hzp-open':(isRev?'hzp-rev':'hzp-done');
+  var badgeTxt=isOpen?'مفتوح':(isRev?'قيد المراجعة':'مغلق');
   var img=null;var _imgs=[p.thumbnail,p.images&&p.images[0],p.image_url];for(var _ii=0;_ii<_imgs.length;_ii++){if(isImg(_imgs[_ii])){img=_imgs[_ii];break;}}
   var catIcon=catSvg(p.category,32);
   var bidN=parseInt(p.bid_count)||0;
   var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
   var imgBox=img
-    ? '<div class="hzp-img"><img src="'+img+'" loading="lazy"><span class="hzp-badge '+(isOpen?'hzp-open':'hzp-done')+'">'+(isOpen?'مفتوح':'مغلق')+'</span></div>'
-    : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">'+catIcon+'</span><span class="hzp-badge '+(isOpen?'hzp-open':'hzp-done')+'">'+(isOpen?'مفتوح':'مغلق')+'</span></div>';
+    ? '<div class="hzp-img"><img src="'+img+'" loading="lazy"><span class="hzp-badge '+badgeCls+'">'+badgeTxt+'</span></div>'
+    : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">'+catIcon+'</span><span class="hzp-badge '+badgeCls+'">'+badgeTxt+'</span></div>';
   return '<div class="hzp" data-slug="'+projSlug+'" onclick="goProject(this)">'
     +imgBox
     +'<div class="hzp-body">'
@@ -1775,6 +1779,22 @@ initDemoBids();
 load();
 loadProviders();
 initPersonalHome();
+</script>
+
+<button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="العودة للأعلى" style="position:fixed;bottom:22px;left:22px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:900;transition:opacity .25s,transform .25s;opacity:0">
+  <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+<script>
+(function(){
+  var btn=document.getElementById('toTopBtn');
+  if(!btn)return;
+  function toggle(){
+    if(window.scrollY>400){ btn.style.display='flex'; requestAnimationFrame(function(){btn.style.opacity='1';btn.style.transform='translateY(0)';}); }
+    else { btn.style.opacity='0';btn.style.transform='translateY(10px)'; setTimeout(function(){ if(window.scrollY<=400)btn.style.display='none'; },250); }
+  }
+  window.addEventListener('scroll',toggle,{passive:true});
+  toggle();
+})();
 </script>
 
 </body>
