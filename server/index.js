@@ -2864,6 +2864,17 @@ app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (
   catch(e){ res.status(500).json({ message:'تعذّر الحذف' }); }
 });
 
+// حذف جماعي بطلب واحد — سريع وموثوق (بدل مئات الطلبات المتتالية)
+app.post('/api/admin/leads/bulk-delete', requirePermission('outreach.manage'), async (req, res) => {
+  try {
+    var ids = Array.isArray(req.body.ids) ? req.body.ids.map(function(x){return parseInt(x);}).filter(function(n){return !isNaN(n);}) : [];
+    if (!ids.length) return res.status(400).json({ message: 'لا توجد عناصر محددة' });
+    if (ids.length > 5000) ids = ids.slice(0, 5000);
+    const r = await pool.query('DELETE FROM leads WHERE id = ANY($1::int[])', [ids]);
+    res.json({ ok: true, deleted: r.rowCount });
+  } catch(e){ console.error('bulk-delete leads:', e.message); res.status(500).json({ message:'تعذّر الحذف الجماعي' }); }
+});
+
 // إحصائيات الاستقطاب
 // إضافة يدوية/دفعة بكشف التكرار (بالرقم)
 app.post('/api/admin/leads/manual', requirePermission('outreach.manage'), async (req, res) => {
