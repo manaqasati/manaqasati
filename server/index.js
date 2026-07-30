@@ -2950,7 +2950,7 @@ app.post('/api/admin/leads/:id/dismiss-match', requirePermission('outreach.manag
 app.get('/api/admin/leads/export', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const { where, v } = buildLeadFilter(req.query);
-    var r = await pool.query(`SELECT name,phone,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ${where} ORDER BY created_at DESC`, v);
+    var r = await pool.query(`SELECT name,phone,phone_norm,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ${where} ORDER BY created_at DESC`, v);
     res.json({ leads: r.rows });
   }catch(e){ res.status(500).json({ message:'تعذّر التصدير' }); }
 });
