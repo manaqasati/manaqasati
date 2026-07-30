@@ -1880,10 +1880,8 @@ initPersonalHome();
   var _params, _src='';
   try{ _params=new URLSearchParams(location.search); _src=(_params.get('src')||_params.get('utm_source')||'').toLowerCase(); }catch(e){}
   if(!hasToken() && (_src==='tiktok' || _src==='tt' || _params && _params.get('post')==='1')){
-    // مباشرة لنشر الطلب — يكمّل وعد الفيديو
-    if(typeof goAuthRole==='function'){ goAuthRole('client'); return; }
-    try{sessionStorage.setItem('auth_role','client');sessionStorage.setItem('auth_mode','register');}catch(e){}
-    location.href='/auth.html'; return;
+    // مباشرة لصفحة نشر الطلب — يكمّل وعد الفيديو (اعرض مشروعك)، والتسجيل يجي بعد التعبئة
+    location.href='/post'; return;
   }
 
   // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
@@ -1891,6 +1889,7 @@ initPersonalHome();
   gate.style.display='flex';
   document.body.style.overflow='hidden';
   window.mnqChooseGo=function(role){
+    if(role==='client'){ location.href='/post'; return; }
     if(typeof goAuthRole==='function'){ goAuthRole(role); }
     else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
   };
