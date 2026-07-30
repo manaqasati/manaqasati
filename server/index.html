@@ -1870,26 +1870,33 @@ initPersonalHome();
 </script>
 <script>
 (function(){
-  // شاشة التوجيه تظهر للزائر الجديد فقط (مو للمسجّل، ولا لمن اختار سابقاً، ولا للقادم برابط مرجعي محدد)
+  // شاشة التوجيه تظهر للزائر الجديد فقط (مو للمسجّل، ولا للقادم برابط قسم محدد)
   function hasToken(){ try{ return !!localStorage.getItem('token'); }catch(e){ return false; } }
-  function chosen(){ try{ return !!localStorage.getItem('mnq_chose'); }catch(e){ return false; } }
   var gate=document.getElementById('mnqChoose');
   if(!gate) return;
-  // لا نعرضها لو: مسجّل دخول، أو اختار قبل، أو دخل عبر رابط قسم (#hash)
-  if(hasToken() || chosen() || location.hash){ gate.style.display='none'; return; }
+  // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
+  if(hasToken() || location.hash){ gate.style.display='none'; return; }
   gate.style.display='flex';
-  // نخفي بقية الصفحة مؤقتاً حتى يختار (تركيز كامل)
   document.body.style.overflow='hidden';
   window.mnqChooseGo=function(role){
-    try{ localStorage.setItem('mnq_chose','1'); }catch(e){}
     if(typeof goAuthRole==='function'){ goAuthRole(role); }
     else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
   };
+  // «تصفّح المنصة»: يخفي الشاشة لهذه الجلسة فقط (بلا حفظ دائم) + يُظهر زر العودة للخيارين
   window.mnqChooseBrowse=function(){
-    try{ localStorage.setItem('mnq_chose','1'); }catch(e){}
     gate.style.display='none';
     document.body.style.overflow='';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='flex';
     window.scrollTo({top:0,behavior:'smooth'});
+  };
+  // زر العودة لشاشة الخيارين (يظهر بعد التصفّح)
+  window.mnqReopenChoose=function(){
+    gate.style.display='flex';
+    document.body.style.overflow='hidden';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='none';
+    window.scrollTo({top:0,behavior:'auto'});
   };
 })();
 </script>
@@ -1910,5 +1917,10 @@ initPersonalHome();
 })();
 </script>
 
+<!-- زر العودة لشاشة الخيارين (يظهر بعد التصفّح) -->
+<button id="mnqBackToChoose" onclick="mnqReopenChoose()" style="display:none;position:fixed;bottom:22px;right:22px;align-items:center;gap:8px;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;border-radius:26px;padding:12px 20px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13.5px;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;z-index:900">
+  <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  عميل أو مزوّد؟
+</button>
 </body>
 </html>
