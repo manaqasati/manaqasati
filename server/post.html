@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>انشر طلبك مجاناً — مناقصة</title>
+<meta name="description" content="اعرض مشروعك أو طلبك على مناقصة، واستقبل عروض أسعار من عدة مزوّدين موثوقين، واختر الأنسب — مجاناً.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--p:#1e3a8a;--p2:#2563eb;--p3:#172554;--accent:#0ea5e9;--bg:#f7faff;--card:#fff;--text:#1e293b;--text2:#3a4c6b;--muted:#64748b;--border:#e6eefb;--green:#16a34a}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:'Tajawal',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);line-height:1.7}
+.nav{background:var(--p3);padding:13px 18px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.nav .logo{font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;color:#fff;text-decoration:none}
+.nav .back{color:#cdddf9;font-size:13px;text-decoration:none;font-weight:700}
+.wrap{max-width:540px;margin:0 auto;padding:20px 16px 60px}
+.hero{text-align:center;margin-bottom:22px}
+.hero h1{font-family:'Cairo',sans-serif;font-size:clamp(22px,6vw,28px);font-weight:900;color:var(--p);margin-bottom:8px;line-height:1.4}
+.hero p{font-size:14.5px;color:var(--muted)}
+.steps-mini{display:flex;justify-content:center;gap:6px;margin:14px 0 4px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.steps-mini span{background:#eef4ff;border:1px solid #cdddf9;color:var(--p);padding:4px 11px;border-radius:14px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px 17px;box-shadow:0 4px 18px rgba(37,99,235,.06)}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:7px}
+.fg .opt{font-weight:500;color:var(--muted);font-size:12px}
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cat-btn{background:#f7faff;border:1.5px solid var(--border);border-radius:12px;padding:12px 4px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:var(--text2);transition:.15s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.cat-btn .ic{font-size:20px}
+.cat-btn.active{border-color:var(--p2);background:#eff5ff;color:var(--p);box-shadow:0 4px 12px rgba(37,99,235,.14)}
+input[type=text],input[type=number],textarea,select{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:15px;color:var(--text);background:#fff;transition:border-color .15s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--p2)}
+textarea{resize:vertical;min-height:80px;line-height:1.8}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.submit{width:100%;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border:none;border-radius:14px;padding:16px;font-family:'Cairo',sans-serif;font-size:17px;font-weight:900;cursor:pointer;margin-top:6px;box-shadow:0 8px 22px rgba(30,58,138,.28)}
+.submit:active{transform:scale(.99)}
+.note{text-align:center;font-size:12.5px;color:var(--muted);margin-top:12px}
+.trust{display:flex;justify-content:center;gap:14px;margin-top:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.trust span{display:flex;align-items:center;gap:4px}
+.err{color:#dc2626;font-size:12.5px;margin-top:6px;display:none}
+@media(max-width:380px){.cats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="/">مناقصة</a>
+  <a class="back" href="/">← الرئيسية</a>
+</nav>
+<div class="wrap">
+  <div class="hero">
+    <h1>اعرض مشروعك، والمزوّدون يتنافسون عليك</h1>
+    <p>انشر طلبك مرة، واستقبل عروض أسعار من عدة مزوّدين — واختر الأنسب.</p>
+    <div class="steps-mini"><span>1· اكتب طلبك</span><span>2· استقبل العروض</span><span>3· اختر الأنسب</span></div>
+  </div>
+
+  <div class="card">
+    <div class="fg">
+      <label>وش الخدمة اللي تحتاجها؟</label>
+      <div class="cats" id="cats"></div>
+      <div id="cat-other-wrap" style="display:none;margin-top:10px">
+        <input type="text" id="cat-other" placeholder="اكتب نوع الخدمة">
+      </div>
+      <div class="err" id="cat-err">يرجى اختيار الخدمة</div>
+    </div>
+
+    <div class="fg">
+      <label>عنوان مختصر للطلب</label>
+      <input type="text" id="p-title" placeholder="مثال: تركيب مكيف سبليت بغرفة نوم" maxlength="200">
+      <div class="err" id="title-err">يرجى كتابة عنوان مختصر</div>
+    </div>
+
+    <div class="fg">
+      <label>تفاصيل الطلب <span class="opt">(اختياري — كل ما وضّحت، جاك عرض أدق)</span></label>
+      <textarea id="p-desc" placeholder="وش تحتاج بالضبط؟ اكتب باختصار..." maxlength="4000"></textarea>
+    </div>
+
+    <div class="fg">
+      <label>المدينة</label>
+      <select id="p-city"></select>
+    </div>
+
+    <div class="row2">
+      <div class="fg">
+        <label>الميزانية <span class="opt">(اختياري)</span></label>
+        <input type="number" id="p-budget" placeholder="ر.س" min="0">
+      </div>
+      <div class="fg">
+        <label>الموعد <span class="opt">(اختياري)</span></label>
+        <input type="text" id="p-deadline" onfocus="this.type='date'" placeholder="متى تحتاجه؟">
+      </div>
+    </div>
+
+    <button class="submit" onclick="submitDraft()">انشر طلبك واستقبل العروض ←</button>
+    <div class="note">مجاني — تدفع فقط عند الاتفاق مع مزوّد</div>
+    <div class="trust">
+      <span>✅ بدون التزام</span>
+      <span>🔒 بياناتك محمية</span>
+      <span>⚡ عروض خلال ساعات</span>
+    </div>
+  </div>
+</div>
+
+<script>
+var CATS=[
+  {n:'تبريد وتكييف',i:'❄️'},{n:'كهرباء',i:'💡'},{n:'سباكة',i:'🔧'},
+  {n:'نجارة',i:'🪚'},{n:'تنظيف',i:'🧹'},{n:'نقل عفش',i:'📦'},
+  {n:'دهانات وديكور',i:'🎨'},{n:'كاميرات مراقبة',i:'📹'},{n:'مكافحة حشرات',i:'🐜'},
+  {n:'كشف تسربات المياه',i:'💧'},{n:'تركيب مطابخ',i:'🍽️'},{n:'أخرى',i:'➕'}
+];
+var CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الأحساء','الطائف','بريدة','تبوك','خميس مشيط','أبها','حائل','نجران','جازان','الجبيل','ينبع','القطيف'];
+var selCat='';
+(function(){
+  var c=document.getElementById('cats');
+  c.innerHTML=CATS.map(function(x){return '<button class="cat-btn" data-cat="'+x.n+'" onclick="pickCat(this)"><span class="ic">'+x.i+'</span>'+x.n+'</button>';}).join('');
+  var s=document.getElementById('p-city');
+  s.innerHTML='<option value="">اختر المدينة</option>'+CITIES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+})();
+function pickCat(btn){
+  document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  selCat=btn.getAttribute('data-cat');
+  document.getElementById('cat-other-wrap').style.display=(selCat==='أخرى')?'block':'none';
+  document.getElementById('cat-err').style.display='none';
+}
+function showErr(id){var e=document.getElementById(id);if(e)e.style.display='block';}
+function submitDraft(){
+  var cat=selCat;
+  if(cat==='أخرى'){ cat=(document.getElementById('cat-other').value||'').trim()||'أخرى'; }
+  var title=(document.getElementById('p-title').value||'').trim();
+  var desc=(document.getElementById('p-desc').value||'').trim();
+  var city=document.getElementById('p-city').value;
+  var budget=document.getElementById('p-budget').value;
+  var deadline=document.getElementById('p-deadline').value;
+
+  var ok=true;
+  if(!selCat){ showErr('cat-err'); ok=false; }
+  if(!title){ showErr('title-err'); ok=false; }
+  if(!ok){ window.scrollTo({top:0,behavior:'smooth'}); return; }
+
+  var draft={ category:cat, title:title, description:desc, city:city, budget_max:budget, deadline:deadline };
+  try{ sessionStorage.setItem('mnq_req_draft', JSON.stringify(draft)); }catch(e){}
+  // لو مسجّل دخول أصلاً → روح للوحة وانشر مباشرة
+  var hasTok=false; try{ hasTok=!!localStorage.getItem('token'); }catch(e){}
+  if(hasTok){ location.href='/dashboard-client.html?postdraft=1'; return; }
+  // غير مسجّل → سجّل كعميل ثم يُرسل تلقائياً
+  try{ sessionStorage.setItem('auth_role','client'); sessionStorage.setItem('auth_mode','register'); }catch(e){}
+  location.href='/auth.html?redirect=postdraft&ref=post';
+}
+</script>
+</body>
+</html>
