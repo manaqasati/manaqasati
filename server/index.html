@@ -133,9 +133,30 @@
   /* SECTIONS */
   section { position: relative; z-index: 1; }
 
+  /* شاشة التوجيه (عميل/مزوّد) */
+  #mnqChoose{max-width:520px;margin:0 auto;padding:38px 18px 30px;min-height:78vh;display:flex;align-items:center;justify-content:center}
+  .mnq-ch-wrap{width:100%}
+  .mnq-ch-head{text-align:center;margin-bottom:26px}
+  .mnq-ch-logo{font-family:'Cairo',sans-serif;font-size:26px;font-weight:900;color:var(--p);margin-bottom:14px}
+  .mnq-ch-q{font-family:'Cairo',sans-serif;font-size:24px;font-weight:900;color:var(--text);margin-bottom:5px}
+  .mnq-ch-sub{font-size:14px;color:var(--muted)}
+  .mnq-ch-card{display:flex;align-items:center;gap:14px;width:100%;text-align:right;background:#fff;border:2px solid var(--border);border-radius:18px;padding:20px 18px;margin-bottom:14px;cursor:pointer;font-family:inherit;transition:transform .15s,border-color .15s,box-shadow .15s;position:relative;overflow:hidden}
+  .mnq-ch-card:active{transform:scale(.98)}
+  .mnq-ch-client{border-color:#bfdbfe;background:linear-gradient(135deg,#eff5ff,#fff)}
+  .mnq-ch-client:hover{border-color:var(--p2);box-shadow:0 10px 28px rgba(37,99,235,.16)}
+  .mnq-ch-prov:hover{border-color:#94a3b8;box-shadow:0 8px 22px rgba(100,116,139,.14)}
+  .mnq-ch-ic{font-size:34px;flex-shrink:0;width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#f0f5ff}
+  .mnq-ch-prov .mnq-ch-ic{background:#f1f5f9}
+  .mnq-ch-txt{flex:1;min-width:0}
+  .mnq-ch-title{font-size:16px;font-weight:900;color:var(--text);margin-bottom:4px}
+  .mnq-ch-desc{font-size:12.5px;color:var(--muted);line-height:1.7}
+  .mnq-ch-go{font-size:13px;font-weight:800;color:var(--p2);flex-shrink:0;align-self:flex-end}
+  .mnq-ch-prov .mnq-ch-go{color:#475569}
+  .mnq-ch-browse{display:block;margin:8px auto 0;background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:10px;text-decoration:underline}
+  @media(max-width:400px){.mnq-ch-desc{font-size:12px}.mnq-ch-go{display:none}}
+
   /* HERO */
-  .hero {
-    padding: 100px 40px 80px;
+  .hero {padding: 100px 40px 80px;
     text-align: center;
     max-width: 900px;
     margin: 0 auto;
@@ -774,6 +795,33 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
 <!-- HERO -->
 <section id="home-personal" style="display:none"></section>
+<!-- شاشة التوجيه: عميل أو مزوّد (للزائر الجديد) -->
+<section id="mnqChoose" style="display:none">
+  <div class="mnq-ch-wrap">
+    <div class="mnq-ch-head">
+      <div class="mnq-ch-logo">مناقصة</div>
+      <div class="mnq-ch-q">وش تبي تسوي؟</div>
+      <div class="mnq-ch-sub">اختر وابدأ خلال ثوانٍ</div>
+    </div>
+    <button class="mnq-ch-card mnq-ch-client" onclick="mnqChooseGo('client')">
+      <div class="mnq-ch-ic">🔍</div>
+      <div class="mnq-ch-txt">
+        <div class="mnq-ch-title">عندي مشروع أو أحتاج خدمة</div>
+        <div class="mnq-ch-desc">انشر طلبك مرة، واستقبل عروض من عدة مزوّدين، واختر الأنسب — مجاناً</div>
+      </div>
+      <div class="mnq-ch-go">انشر طلبك ←</div>
+    </button>
+    <button class="mnq-ch-card mnq-ch-prov" onclick="mnqChooseGo('provider')">
+      <div class="mnq-ch-ic">🔧</div>
+      <div class="mnq-ch-txt">
+        <div class="mnq-ch-title">أقدّم خدمة وأبحث عن عملاء</div>
+        <div class="mnq-ch-desc">سجّل، اعرض أعمالك، واستقبل طلبات العملاء في تخصصك ومدينتك</div>
+      </div>
+      <div class="mnq-ch-go">سجّل كمزوّد ←</div>
+    </button>
+    <button class="mnq-ch-browse" onclick="mnqChooseBrowse()">أو تصفّح المنصة أولاً ↓</button>
+  </div>
+</section>
 <section class="hero">
   <div class="hero-badge">🚀 مناقصة — وجهتك الأولى للمشاريع في السعودية</div>
   <h1>احصل على <span class="highlight">أفضل سعر</span><br>لأي خدمة تحتاجها</h1>
@@ -1819,6 +1867,31 @@ initDemoBids();
 load();
 loadProviders();
 initPersonalHome();
+</script>
+<script>
+(function(){
+  // شاشة التوجيه تظهر للزائر الجديد فقط (مو للمسجّل، ولا لمن اختار سابقاً، ولا للقادم برابط مرجعي محدد)
+  function hasToken(){ try{ return !!localStorage.getItem('token'); }catch(e){ return false; } }
+  function chosen(){ try{ return !!localStorage.getItem('mnq_chose'); }catch(e){ return false; } }
+  var gate=document.getElementById('mnqChoose');
+  if(!gate) return;
+  // لا نعرضها لو: مسجّل دخول، أو اختار قبل، أو دخل عبر رابط قسم (#hash)
+  if(hasToken() || chosen() || location.hash){ gate.style.display='none'; return; }
+  gate.style.display='flex';
+  // نخفي بقية الصفحة مؤقتاً حتى يختار (تركيز كامل)
+  document.body.style.overflow='hidden';
+  window.mnqChooseGo=function(role){
+    try{ localStorage.setItem('mnq_chose','1'); }catch(e){}
+    if(typeof goAuthRole==='function'){ goAuthRole(role); }
+    else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
+  };
+  window.mnqChooseBrowse=function(){
+    try{ localStorage.setItem('mnq_chose','1'); }catch(e){}
+    gate.style.display='none';
+    document.body.style.overflow='';
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+})();
 </script>
 
 <button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="العودة للأعلى" style="position:fixed;bottom:22px;left:22px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:900;transition:opacity .25s,transform .25s;opacity:0">
