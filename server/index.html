@@ -1874,6 +1874,18 @@ initPersonalHome();
   function hasToken(){ try{ return !!localStorage.getItem('token'); }catch(e){ return false; } }
   var gate=document.getElementById('mnqChoose');
   if(!gate) return;
+
+  // توجيه ذكي حسب مصدر الحملة — يطابق وعد الإعلان مباشرة
+  // فيديو تيك توك يقول "اعرض مشروعك" → نوجّه زائره فوراً لمسار العميل (بلا تشتيت)
+  var _params, _src='';
+  try{ _params=new URLSearchParams(location.search); _src=(_params.get('src')||_params.get('utm_source')||'').toLowerCase(); }catch(e){}
+  if(!hasToken() && (_src==='tiktok' || _src==='tt' || _params && _params.get('post')==='1')){
+    // مباشرة لنشر الطلب — يكمّل وعد الفيديو
+    if(typeof goAuthRole==='function'){ goAuthRole('client'); return; }
+    try{sessionStorage.setItem('auth_role','client');sessionStorage.setItem('auth_mode','register');}catch(e){}
+    location.href='/auth.html'; return;
+  }
+
   // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
   if(hasToken() || location.hash){ gate.style.display='none'; return; }
   gate.style.display='flex';
@@ -1882,7 +1894,6 @@ initPersonalHome();
     if(typeof goAuthRole==='function'){ goAuthRole(role); }
     else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
   };
-  // «تصفّح المنصة»: يخفي الشاشة لهذه الجلسة فقط (بلا حفظ دائم) + يُظهر زر العودة للخيارين
   window.mnqChooseBrowse=function(){
     gate.style.display='none';
     document.body.style.overflow='';
@@ -1890,7 +1901,6 @@ initPersonalHome();
     if(fab) fab.style.display='flex';
     window.scrollTo({top:0,behavior:'smooth'});
   };
-  // زر العودة لشاشة الخيارين (يظهر بعد التصفّح)
   window.mnqReopenChoose=function(){
     gate.style.display='flex';
     document.body.style.overflow='hidden';
