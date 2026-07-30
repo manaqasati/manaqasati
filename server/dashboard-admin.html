@@ -2356,6 +2356,7 @@ function _oQueryStr(){
   Object.keys(m).forEach(function(k){ var val=g(m[k]); if(val)p.push(k+'='+encodeURIComponent(val)); });
   var q=g('o-f-q').trim(); if(q)p.push('q='+encodeURIComponent(q));
   var mb=document.getElementById('o-f-maybe'); if(mb&&mb.getAttribute('data-on')==='1')p.push('maybe=1');
+  if(window._oLimit) p.push('limit='+window._oLimit);
   return p.length ? '?'+p.join('&') : '';
 }
 function _oToggleMaybe(){
@@ -2465,7 +2466,7 @@ function _oLoadList(){
   fetch(API+'/api/admin/leads'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
     var L=d.leads||[]; _oLeads=L;
     var cnt=document.getElementById('o-count'); if(cnt)cnt.textContent=L.length?(L.length+' نتيجة'):'';
-    if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد نتائج مطابقة للفلاتر</div>'; return; }
+    if(!L.length){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12.5px">لا يوجد نتائج مطابقة للفلاتر</div>'; _oRenderLimitBar(0,d.total||0); return; }
     var h='<div id="o-bulkbar" style="display:none;align-items:center;gap:10px;margin-bottom:10px;padding:9px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px">'
       +'<span id="o-selcount" style="font-size:12.5px;font-weight:800;color:#b91c1c"></span>'
       +'<button onclick="_oBulkDelete()" style="background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">🗑️ حذف المحدد</button>'
@@ -2503,8 +2504,27 @@ function _oLoadList(){
     h+='</tbody></table></div>';
     box.innerHTML=h;
     _oUpdateSelBar();
+    _oRenderLimitBar(_oLeads.length, d.total||_oLeads.length);
   }).catch(function(){ box.innerHTML='<div style="color:#dc2626;font-size:12.5px">تعذّر الجلب</div>'; });
 }
+
+// شريط التحكم بعدد النتائج المعروضة (أسفل القائمة)
+function _oRenderLimitBar(shown, total){
+  var box=document.getElementById('o-list'); if(!box) return;
+  var cur=window._oLimit||300;
+  var opts=[{v:100,t:'100'},{v:500,t:'500'},{v:2000,t:'2000'},{v:10000,t:'الكل'}];
+  var btns=opts.map(function(o){
+    var on=(cur==o.v)||(o.v===10000&&cur>=10000);
+    return '<button onclick="_oSetLimit('+o.v+')" style="padding:7px 14px;border-radius:9px;border:1.5px solid '+(on?'var(--p)':'var(--border)')+';background:'+(on?'var(--p)':'#fff')+';color:'+(on?'#fff':'var(--text2)')+';font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'+o.t+'</button>';
+  }).join('');
+  var info = total>shown ? ('عرض '+shown+' من '+total) : ('عرض الكل ('+total+')');
+  var bar='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;background:#f7faff;border:1px solid var(--border);border-radius:12px">'
+    +'<span style="font-size:12.5px;color:var(--muted);font-weight:700">'+info+'</span>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--muted)">اعرض:</span>'+btns+'</div>'
+    +'</div>';
+  box.insertAdjacentHTML('beforeend', bar);
+}
+function _oSetLimit(n){ window._oLimit=n; _oLoadList(); }
 // ═══ تحديد جماعي + حذف + واتساب بالرسالة الصحيحة ═══
 var _oSel={};
 function _oWaRow(id){
