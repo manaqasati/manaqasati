@@ -2537,15 +2537,19 @@ function _oBulkDelete(){
   var ids=Object.keys(_oSel).filter(function(k){return _oSel[k];});
   if(!ids.length){ toast('ما فيه محدّد','error'); return; }
   if(!confirm('حذف '+ids.length+' مستهدف نهائياً؟ لا يمكن التراجع.')) return;
-  var done=0, fail=0;
-  var run=function(i){
-    if(i>=ids.length){ toast('تم حذف '+done+(fail?' · فشل '+fail:''), fail?'error':'success'); _oSel={}; _oLoadList(); return; }
-    fetch(API+'/api/admin/leads/'+ids[i],{method:'DELETE',headers:hdr().headers})
-      .then(function(r){ if(r.ok)done++; else fail++; })
-      .catch(function(){ fail++; })
-      .finally(function(){ run(i+1); });
-  };
-  run(0);
+  var btn=document.querySelector('#o-bulkbar button');
+  toast('جارٍ حذف '+ids.length+'...','success');
+  fetch(API+'/api/admin/leads/bulk-delete',Object.assign({method:'POST',body:JSON.stringify({ids:ids})},hdr()))
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+    .then(function(res){
+      if(res.ok && res.d && res.d.ok){
+        toast('تم حذف '+(res.d.deleted||ids.length)+' مستهدف ✓','success');
+        _oSel={}; _oLoadList();
+      } else {
+        toast((res.d&&res.d.message)||'تعذّر الحذف — تأكّد من صلاحياتك','error');
+      }
+    })
+    .catch(function(){ toast('تعذّر الاتصال بالخادم','error'); });
 }
 
 function _refreshHealth(btn){
