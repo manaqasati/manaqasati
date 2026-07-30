@@ -205,6 +205,8 @@ app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card
 app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
 app.get('/b2b',                    (req, res) => res.sendFile(__dirname + '/b2b.html'));
 app.get('/b2b.html',               (req, res) => res.sendFile(__dirname + '/b2b.html'));
+app.get('/post',                   (req, res) => res.sendFile(__dirname + '/post.html'));
+app.get('/post.html',              (req, res) => res.sendFile(__dirname + '/post.html'));
 app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
 
 app.get(/^\/project\/(.+)$/, async (req, res) => {
