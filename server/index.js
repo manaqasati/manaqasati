@@ -2791,8 +2791,13 @@ function buildLeadFilter(qp){
 app.get('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const { where, v } = buildLeadFilter(req.query);
-    const r = await pool.query(`SELECT * FROM leads ${where} ORDER BY score DESC, created_at DESC LIMIT 300`, v);
-    res.json({ leads: r.rows });
+    let lim = parseInt(req.query.limit);
+    if (isNaN(lim) || lim <= 0) lim = 300;
+    if (lim > 10000) lim = 10000;
+    v.push(lim);
+    const r = await pool.query(`SELECT * FROM leads ${where} ORDER BY score DESC, created_at DESC LIMIT $${v.length}`, v);
+    const total = await pool.query(`SELECT COUNT(*)::int AS n FROM leads ${where}`, v.slice(0, v.length-1));
+    res.json({ leads: r.rows, total: total.rows[0].n });
   } catch(e){ console.error('leads list:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
 });
 
