@@ -2221,14 +2221,43 @@ function _oExport(){
     var L=d.leads||[]; if(!L.length){ toast('لا يوجد ما يُصدّر','error'); return; }
     var cols=['name','phone','category','city','rating','reviews_count','status','tag','score','notes'];
     var headers=['الاسم','الجوال','التخصص','المدينة','التقييم','المراجعات','الحالة','الوسم','الأولوية','ملاحظات'];
-    var csv='\ufeff'+headers.join(',')+'\n';
-    L.forEach(function(l){
-      csv+=cols.map(function(c){ var v=l[c]==null?'':String(l[c]).replace(/"/g,'""'); return /[,"\n]/.test(v)?'"'+v+'"':v; }).join(',')+'\n';
-    });
-    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-    a.download='مستهدفين-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
-    toast('تم تصدير '+L.length+' مستهدف','success');
+    try{
+      // ملف Excel حقيقي (.xlsx) — يفصل الأعمدة صح مهما كانت إعدادات Excel العربي
+      var aoa=[headers];
+      L.forEach(function(l){
+        aoa.push(cols.map(function(c){
+          var v=l[c];
+          if(v==null) return '';
+          // الجوال بصيغة دولية تبدأ بـ966 (من phone_norm الجاهز، أو تحويل احتياطي)
+          if(c==='phone'){
+            var pn=l.phone_norm ? String(l.phone_norm).replace(/[^0-9]/g,'') : '';
+            if(!pn){ var raw=String(v).replace(/[^0-9]/g,''); if(raw.indexOf('966')===0)pn=raw; else if(raw.indexOf('05')===0)pn='966'+raw.slice(1); else if(raw.indexOf('5')===0&&raw.length===9)pn='966'+raw; else if(raw.indexOf('0')===0)pn='966'+raw.slice(1); else pn=raw; }
+            return pn;
+          }
+          return v;
+        }));
+      });
+      var ws=XLSX.utils.aoa_to_sheet(aoa);
+      // عرض الأعمدة
+      ws['!cols']=[{wch:28},{wch:15},{wch:16},{wch:12},{wch:8},{wch:9},{wch:10},{wch:10},{wch:8},{wch:30}];
+      // اتجاه الورقة من اليمين لليسار
+      if(!ws['!sheetViews']) ws['!sheetViews']=[{}];
+      ws['!sheetViews'][0].rightToLeft=true;
+      var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'المستهدفون');
+      XLSX.writeFile(wb, 'مستهدفين-'+new Date().toISOString().slice(0,10)+'.xlsx');
+      toast('تم تصدير '+L.length+' مستهدف إلى Excel','success');
+    }catch(e){
+      // احتياطي: CSV بفاصلة منقوطة (يتوافق مع Excel العربي)
+      var csv='\ufeff'+headers.join(';')+'\n';
+      L.forEach(function(l){
+        csv+=cols.map(function(c){ var v=l[c]==null?'':String(l[c]); if(c==='phone'){ var pn=l.phone_norm?String(l.phone_norm).replace(/[^0-9]/g,''):''; if(!pn){var raw=v.replace(/[^0-9]/g,'');if(raw.indexOf('966')===0)pn=raw;else if(raw.indexOf('05')===0)pn='966'+raw.slice(1);else if(raw.indexOf('5')===0&&raw.length===9)pn='966'+raw;else if(raw.indexOf('0')===0)pn='966'+raw.slice(1);else pn=raw;} v=pn; } v=v.replace(/"/g,'""'); return /[;"\n]/.test(v)?'"'+v+'"':v; }).join(';')+'\n';
+      });
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='مستهدفين-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+      toast('تم تصدير '+L.length+' مستهدف','success');
+    }
   }).catch(function(){ toast('تعذّر التصدير','error'); });
 }
 
