@@ -134,7 +134,8 @@
   section { position: relative; z-index: 1; }
 
   /* شاشة التوجيه (عميل/مزوّد) */
-  #mnqChoose{max-width:520px;margin:0 auto;padding:38px 18px 30px;min-height:78vh;display:flex;align-items:center;justify-content:center}
+  #mnqChoose{position:fixed;inset:0;z-index:2000;background:var(--bg);overflow-y:auto;max-width:none;margin:0;padding:32px 18px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+#mnqChoose .mnq-ch-wrap{max-width:520px;width:100%;margin:0 auto}
   .mnq-ch-wrap{width:100%}
   .mnq-ch-head{text-align:center;margin-bottom:26px}
   .mnq-ch-logo{font-family:'Cairo',sans-serif;font-size:26px;font-weight:900;color:var(--p);margin-bottom:14px}
