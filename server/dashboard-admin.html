@@ -48,22 +48,35 @@ svg{display:block}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
 
 /* SIDEBAR — نظيف فاتح */
-.side{width:256px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100}
-.side-brand{padding:24px 20px 18px}
+.side{width:258px;background:var(--white);border-left:1px solid var(--border);height:100vh;position:fixed;right:0;top:0;display:flex;flex-direction:column;z-index:100;box-shadow:-1px 0 0 rgba(16,24,40,.02)}
+.side-brand{padding:22px 20px 16px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.nav{padding:4px 12px;overflow-y:auto;flex:1}
+.nav::-webkit-scrollbar{width:5px}
+.nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .logo{font-size:21px;font-weight:900;color:var(--p);display:flex;align-items:center;gap:9px;letter-spacing:-.3px}
 .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(240,165,0,.15)}
 .logo-sub{font-size:11px;color:var(--muted);font-weight:600;margin-top:5px;margin-right:19px}
 .nav{padding:8px 12px;flex:1;overflow-y:auto}
 .nav::-webkit-scrollbar{width:0}
-.nav-label{font-size:11px;font-weight:700;color:var(--hint);letter-spacing:.3px;padding:0 12px;margin:16px 0 6px}
-.ni{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;color:var(--text2);cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:inherit;margin-bottom:2px;transition:all .18s;position:relative}
+.nav-label{font-size:10.5px;font-weight:800;color:var(--hint);letter-spacing:.6px;padding:0 13px;margin:18px 0 7px;text-transform:uppercase;opacity:.85}
+.ni{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:11px;color:var(--text2);cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;text-align:right;font-family:inherit;margin-bottom:3px;transition:all .18s cubic-bezier(.4,0,.2,1);position:relative}
+.ni svg{width:18px;height:18px;flex-shrink:0;opacity:.72;transition:opacity .18s}
 .ni:hover{background:var(--bg);color:var(--text)}
-.ni.on{background:var(--p-light);color:var(--p);font-weight:700}
+.ni:hover svg{opacity:1}
+.ni.on{background:linear-gradient(90deg,var(--p-light),rgba(219,234,254,.35));color:var(--p);font-weight:800}
+.ni.on svg{opacity:1;color:var(--p)}
+.ni.on::before{content:'';position:absolute;right:-13px;top:50%;transform:translateY(-50%);width:4px;height:22px;background:var(--p);border-radius:0 4px 4px 0}
 .ni.on::before{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--gold);border-radius:0 3px 3px 0}
 .ni svg{width:19px;height:19px;stroke:currentColor;flex-shrink:0;opacity:.85}
 .ni.on svg{opacity:1;stroke:var(--p)}
 .ni-badge{margin-right:auto;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:20px;height:20px;border-radius:10px;padding:0 6px;display:flex;align-items:center;justify-content:center}
-.side-foot{padding:14px;border-top:1px solid var(--border)}
+.side-foot{padding:12px;border-top:1px solid var(--border)}
+.side-user{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:var(--bg);margin-bottom:8px}
+.side-user-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p),#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;overflow:hidden}
+.side-user-av img{width:100%;height:100%;object-fit:cover}
+.side-user-info{flex:1;min-width:0}
+.side-user-name{font-size:13.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-user-role{font-size:11px;color:var(--muted);font-weight:600}
 .logoutbtn{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;color:var(--muted);cursor:pointer;font-size:14px;font-weight:600;border:none;background:none;width:100%;font-family:inherit;transition:.18s}
 .logoutbtn:hover{background:var(--red-l);color:var(--red)}
 .logoutbtn svg{width:18px;height:18px}
@@ -358,6 +371,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('health',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>صحة النظام</button>
   </nav>
   <div class="side-foot">
+    <div class="side-user" id="sideUser">
+      <div class="side-user-av" id="sideUserAv">A</div>
+      <div class="side-user-info">
+        <div class="side-user-name" id="sideUserName">المدير</div>
+        <div class="side-user-role" id="sideUserRole">مالك المنصة</div>
+      </div>
+    </div>
     <button class="logoutbtn" onclick="logout()"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
   </div>
 </aside>
@@ -675,7 +695,11 @@ function toast(msg,type){var t=document.createElement('div');t.style.cssText='po
 function spinner(){return '<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';}
 function emptyState(msg){return '<div class="empty"><div class="empty-ic"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h4>'+msg+'</h4></div>';}
 
-(function(){var n=user.name||'المدير';document.getElementById('adminName').textContent=n;document.getElementById('adminAv').textContent=n[0]||'م';})();
+(function(){var n=user.name||'المدير';document.getElementById('adminName').textContent=n;document.getElementById('adminAv').textContent=n[0]||'م';
+  var sn=document.getElementById('sideUserName'); if(sn)sn.textContent=n;
+  var sav=document.getElementById('sideUserAv'); if(sav){ if(user.profile_image&&(user.profile_image.startsWith('http')||user.profile_image.startsWith('data:'))){sav.innerHTML='<img src="'+user.profile_image+'">';}else{sav.textContent=n[0]||'م';} }
+  var sr=document.getElementById('sideUserRole'); if(sr)sr.textContent=(user.email==='wled-111@hotmail.com')?'مالك المنصة':'مشرف';
+})();
 
 function showPage(pg,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
