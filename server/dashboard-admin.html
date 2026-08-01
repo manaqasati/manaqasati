@@ -599,9 +599,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <div class="modal">
     <div class="modal-head"><h3>تعديل بيانات المستخدم</h3><button class="modal-x" onclick="closeModal('uEditModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
+      <div id="ue-role-warn" style="display:none;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;font-weight:700">⚠️ هذا الحساب دوره «عميل» لكن عنده بيانات مزوّد (اسم نشاط/نبذة). قد يكون سجّل كمزوّد واختار عميل بالخطأ — راجع البيانات وصحّح الدور لو لزم.</div>
       <div class="fld"><label>الاسم</label><input id="ue-name"></div>
       <div class="fld"><label>الإيميل</label><input id="ue-email" type="email"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="fld"><label>الجوال</label><input id="ue-phone"></div><div class="fld"><label>المدينة</label><input id="ue-city"></div></div>
+      <div class="fld"><label>نوع الحساب</label><select id="ue-role"><option value="client">عميل (طالب خدمة)</option><option value="provider">مزوّد خدمة</option></select></div>
       <div class="fld" id="ue-biz-wrap"><label>اسم النشاط (للمزود)</label><input id="ue-biz"></div>
       <div class="fld" style="margin-bottom:0"><label>نبذة</label><textarea id="ue-bio"></textarea></div>
     </div>
@@ -2935,13 +2937,21 @@ function openUserEdit(uid){
   document.getElementById('ue-city').value=u.city||'';
   document.getElementById('ue-biz').value=u.business_name||'';
   document.getElementById('ue-bio').value=u.bio||'';
-  document.getElementById('ue-biz-wrap').style.display=(u.role==='provider')?'block':'none';
+  // نعرض بيانات المزوّد دائماً لو فيها محتوى (يكشف من سجّل كمزوّد لكن دوره عميل) أو لو الدور مزوّد
+  var hasProvData = !!(u.business_name || u.bio || (u.specialties&&u.specialties.length) || u.category);
+  document.getElementById('ue-biz-wrap').style.display=(u.role==='provider'||hasProvData)?'block':'none';
+  // مؤشّر تنبيه لو فيه تعارض: دوره عميل لكن عنده بيانات مزوّد
+  var warn=document.getElementById('ue-role-warn');
+  if(warn) warn.style.display=(u.role==='client'&&hasProvData)?'block':'none';
+  // اعرض الدور الحالي في قائمة الاختيار لو موجودة
+  var rSel=document.getElementById('ue-role'); if(rSel) rSel.value=u.role||'client';
   closeModal('userModal');
   document.getElementById('uEditModal').classList.add('show');
 }
 function saveUserEdit(){
   if(!_editUserId)return;
   var body={name:document.getElementById('ue-name').value.trim(),email:document.getElementById('ue-email').value.trim(),phone:document.getElementById('ue-phone').value.trim()||null,city:document.getElementById('ue-city').value.trim()||null,business_name:document.getElementById('ue-biz').value.trim()||null,bio:document.getElementById('ue-bio').value.trim()||null};
+  var rSel=document.getElementById('ue-role'); if(rSel&&rSel.value) body.role=rSel.value;
   var btn=document.getElementById('ue-save');btn.disabled=true;btn.textContent='جاري الحفظ...';
   fetch(API+'/api/admin/users/'+_editUserId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
