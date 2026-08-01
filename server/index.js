@@ -3257,9 +3257,11 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
   try {
     const uid = parseInt(req.params.id);
     { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const { name, email, phone, city, bio, business_name } = req.body || {};
+    const { name, email, phone, city, bio, business_name, role } = req.body || {};
     if (email) { const dup = await pool.query('SELECT id FROM users WHERE email=$1 AND id<>$2', [email, uid]); if (dup.rows.length) return res.status(409).json({ message: 'الإيميل مستخدم لحساب آخر' }); }
-    const r = await pool.query(`UPDATE users SET name=COALESCE(NULLIF($1,''),name), email=COALESCE(NULLIF($2,''),email), phone=$3, city=$4, bio=$5, business_name=$6 WHERE id=$7 RETURNING id, name, email`, [name||'', email||'', phone||null, city||null, bio||null, business_name||null, uid]);
+    // تغيير الدور مسموح فقط بين عميل/مزوّد (أمان: لا يُرفَّع أحد إلى admin، ولا يُغيَّر دور admin)
+    let roleVal = (role === 'client' || role === 'provider') ? role : null;
+    const r = await pool.query(`UPDATE users SET name=COALESCE(NULLIF($1,''),name), email=COALESCE(NULLIF($2,''),email), phone=$3, city=$4, bio=$5, business_name=$6, role=CASE WHEN $7::text IS NOT NULL AND role<>'admin' THEN $7::text ELSE role END WHERE id=$8 RETURNING id, name, email, role`, [name||'', email||'', phone||null, city||null, bio||null, business_name||null, roleVal, uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_user', 'user', uid, 'تعديل بيانات: ' + (r.rows[0].name||''));
     res.json(r.rows[0]);
