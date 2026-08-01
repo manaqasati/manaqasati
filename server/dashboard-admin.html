@@ -819,7 +819,7 @@ function renderUsers(){
       +'<td style="font-size:12.5px;color:var(--muted)">'+esc(u.city||'—')+'</td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+activity+'</td>'
       +'<td><span class="status '+(u.is_active?'s-on':'s-off')+'">'+(u.is_active?'نشط':'محظور')+'</span></td>'
-      +'<td><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></td>'
+      +'<td><div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="openUserView('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>';
   updateSelBar();
@@ -903,6 +903,27 @@ function sendSelectedMsg(){
     .finally(function(){btn.disabled=false;btn.textContent='إرسال الرسالة';});
 }
 
+function openUserView(uid){
+  var u=_allUsers.find(function(x){return x.id===uid;});if(!u)return;
+  var hasProvData = !!(u.business_name || u.bio);
+  var roleTxt = u.role==='provider'?'مزوّد خدمة':(u.role==='client'?'عميل (طالب خدمة)':(u.role==='admin'?'مشرف':u.role));
+  var roleColor = u.role==='provider'?'#334155':(u.role==='client'?'#1e3a8a':'#7c3aed');
+  var row=function(label,val){ return '<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:12.5px;font-weight:700">'+label+'</span><span style="font-size:13.5px;font-weight:700;text-align:left;word-break:break-word">'+esc(val||'—')+'</span></div>'; };
+  var warn = (u.role==='client'&&hasProvData) ? '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;font-weight:700">⚠️ دوره «عميل» لكن عنده بيانات مزوّد (اسم نشاط/نبذة) — قد يكون سجّل كمزوّد واختار عميل بالخطأ. راجع «إدارة» لتصحيح الدور.</div>' : '';
+  document.getElementById('um-title').textContent='عرض بيانات المستخدم';
+  document.getElementById('um-body').innerHTML=''
+    +'<div class="usr-header"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+u.profile_image+'">':esc((u.name||'?')[0]))+'</div><div><div style="font-size:16px;font-weight:900">'+esc(u.name)+'</div><div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(u.email)+'</div></div></div>'
+    +warn
+    +'<div style="display:inline-block;background:'+roleColor+';color:#fff;font-size:12px;font-weight:800;padding:5px 14px;border-radius:20px;margin-bottom:10px">'+roleTxt+'</div>'
+    +row('الجوال', u.phone)
+    +row('المدينة', u.city)
+    +(hasProvData||u.role==='provider'?row('اسم النشاط', u.business_name):'')
+    +(hasProvData||u.role==='provider'?row('النبذة', u.bio):'')
+    +row('الحالة', u.is_active?'نشط':'موقوف')
+    +row('تاريخ التسجيل', u.created_at?String(u.created_at).slice(0,10):'')
+    +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:14px" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة / تعديل</button>';
+  document.getElementById('userModal').classList.add('show');
+}
 function openUserModal(uid){
   var u=_allUsers.find(function(x){return x.id===uid;});if(!u)return;
   var verified=u.badge==='verified'||u.badge==='موثق';
