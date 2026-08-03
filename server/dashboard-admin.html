@@ -1949,7 +1949,7 @@ function _oBriefLoad(){
       +'<span style="font-size:11px;color:#64748b;width:100%;margin-top:3px">💡 تقدر تكتب أي كلمة في خانة التخصص (مثل «سكوريت» بدل «زجاج») ليطابق مزودين أدق، ثم اضغط بحث.</span>'
     +'</div>';
     if(!L.length){
-      h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px;line-height:1.8">ما فيه مزودين مطابقين لهذا البحث.<br>وسّع البحث (امسح المدينة/التخصص)، أو <b>اصطد مزودين جدد</b> من قسم الصيد بالأعلى ثم أعد البحث.</div>';
+      h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:14px;line-height:1.9;background:#fffbeb;border:1px solid #fde68a;border-radius:10px">✅ <b>تم البحث</b> — لكن ما فيه مزوّد بهذا التخصص «'+esc(f.cat||'')+'»'+(f.city?' في «'+esc(f.city)+'»':'')+'.<br><span style="font-size:11.5px">جرّب كلمة أعم (مثل «زجاج» بدل «سكوريت»)، أو امسح الفلاتر، أو اصطد مزودين جدد من قسم الصيد.</span><br><button onclick="_oBriefWiden()" style="margin-top:9px;background:#1e40af;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-family:Tajawal;font-size:12px;font-weight:800;cursor:pointer">↺ وسّع البحث (امسح الفلاتر)</button></div>';
     } else {
       h+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">'+L.length+' مزوّد — أرسل لهم الكراسة:</div><div style="display:grid;gap:7px;max-height:320px;overflow:auto">';
       L.forEach(function(l){
@@ -1965,6 +1965,13 @@ function _oBriefLoad(){
   }).catch(function(){ out.innerHTML='<div style="color:#dc2626;font-size:12.5px;padding:8px">تعذّر الجلب</div>'; });
 }
 function _oBriefCopy(){ if(_oBrief&&_oBrief.brief_url)navigator.clipboard.writeText(_oBrief.brief_url).then(function(){toast('تم نسخ رابط الكراسة','success');}).catch(function(){}); }
+// وسّع البحث: امسح فلاتر المدينة والتخصص وابحث من جديد
+function _oBriefWiden(){
+  var c=document.getElementById('o-bf-city'); if(c)c.value='';
+  var k=document.getElementById('o-bf-cat'); if(k)k.value='';
+  var s=document.getElementById('o-bf-score'); if(s)s.value='0';
+  _oBriefLoad();
+}
 function _oBriefSend(id){
   if(!_oBrief)return;
   var l=(_oBrief.leads||[]).find(function(x){return x.id===id;}); if(!l||!l.phone_norm)return;
