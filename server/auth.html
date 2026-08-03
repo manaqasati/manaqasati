@@ -704,7 +704,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();})
 var _regAvatarData=null, _regWorksData=[];
 function _regAvatar(inp){
   var f=inp.files[0];if(!f)return;
-  if(f.size>3*1024*1024){alert('الصورة أكبر من 3 ميجا');return;}
+  if(f.size>3*1024*1024){setAl(null,'الصورة أكبر من 3 ميجا','err');return;}
   var rd=new FileReader();
   rd.onload=function(e){
     _regAvatarData=e.target.result;
@@ -716,8 +716,8 @@ function _regAvatar(inp){
 function _regWorks(inp){
   var files=[].slice.call(inp.files);inp.value='';
   files.forEach(function(f){
-    if(f.size>5*1024*1024){alert(f.name+': أكبر من 5 ميجا');return;}
-    if(_regWorksData.length>=6){alert('الحد الأقصى 6 صور');return;}
+    if(f.size>5*1024*1024){setAl(null,f.name+': أكبر من 5 ميجا','err');return;}
+    if(_regWorksData.length>=6){setAl(null,'الحد الأقصى 6 صور','err');return;}
     var rd=new FileReader();
     rd.onload=function(e){_regWorksData.push(e.target.result);_renderRegWorks();};
     rd.readAsDataURL(f);
