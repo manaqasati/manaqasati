@@ -1703,7 +1703,13 @@ function _renderChatMsgs(){
     var bg=isMe?'var(--p3)':'var(--white)';var color=isMe?'#fff':'var(--text)';var border=isMe?'none':'1px solid var(--border)';
     var h='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px"><div style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:13px;line-height:1.7;word-break:break-word">';
     if(!isMe)h+='<div style="font-size:10px;opacity:.55;margin-bottom:3px;font-weight:700">'+_esc(m.sender_name||'')+'</div>';
-    h+=_esc(m.content)+'<div style="font-size:10px;opacity:.45;margin-top:4px;text-align:left">'+_ago(m.created_at)+'</div></div></div>';
+    h+=_esc(m.content);
+    var tk='';
+    if(isMe && !String(m.id).startsWith('tmp_')){
+      var rd=(m.is_read===true||m.is_read==='t'||m.is_read===1);
+      tk='<span style="margin-inline-start:4px;color:'+(rd?'#53bdeb':'rgba(255,255,255,.6)')+';font-weight:900;letter-spacing:-2px">'+(rd?'✓✓':'✓')+'</span>';
+    }
+    h+='<div style="font-size:10px;opacity:.55;margin-top:4px;text-align:left">'+_ago(m.created_at)+tk+'</div></div></div>';
     return h;
   }).join('');
   setTimeout(function(){wrap.scrollTop=wrap.scrollHeight;},30);
