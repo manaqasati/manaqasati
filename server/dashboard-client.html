@@ -1421,12 +1421,15 @@ function loadBids(id){
 // BID ACTIONS
 // ═══════════════════════════════════
 function acceptBid(bidId,reqId){
+  if(window._acceptingBid)return;              // حماية من الضغط المزدوج
   if(!confirm('هل تؤكد قبول هذا العرض؟'))return;
+  window._acceptingBid=true;
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
-    .catch(function(){showToast('تعذر القبول','error');});
+    .catch(function(){showToast('تعذر القبول','error');})
+    .finally(function(){window._acceptingBid=false;});
 }
 function rejectBid(bidId,reqId){
   if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
