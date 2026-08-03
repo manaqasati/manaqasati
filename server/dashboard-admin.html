@@ -1940,11 +1940,13 @@ function _oBriefLoad(){
       +'</div></div>';
     // شريط البحث المرن عن المزودين
     h+='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:11px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px">'
-      +'<span style="font-size:12px;font-weight:800;color:#1e40af;width:100%;margin-bottom:2px">🔍 بحث مرن عن المزودين المناسبين:</span>'
+      +'<span style="font-size:12px;font-weight:800;color:#1e40af;width:100%;margin-bottom:2px">🔍 عدّل التخصص أو المدينة لمطابقة مزودين مختلفين:</span>'
       +'<input id="o-bf-city" value="'+esc(f.city||'')+'" placeholder="المدينة (فارغ=الكل)" style="'+fin+';flex:1;min-width:120px">'
-      +'<input id="o-bf-cat" value="'+esc(f.cat||'')+'" placeholder="التخصص/كلمة (فارغ=الكل)" style="'+fin+';flex:1;min-width:120px">'
+      +'<input id="o-bf-cat" list="o-bf-cat-list" value="'+esc(f.cat||'')+'" placeholder="اكتب التخصص (مثال: سكوريت، زجاج، شاور)" style="'+fin+';flex:1.4;min-width:150px">'
+      +'<datalist id="o-bf-cat-list"><option value="زجاج ومرايا"><option value="سكوريت"><option value="شاور"><option value="واجهات زجاجية"><option value="تبريد وتكييف"><option value="سباكة"><option value="كهرباء"><option value="نجارة"><option value="تنظيف"><option value="نقل عفش"><option value="حدادة"><option value="ألمنيوم"><option value="مسابح"><option value="كاميرات مراقبة"><option value="دهانات وديكور"><option value="بلاط ورخام"><option value="تركيب أثاث"><option value="باركيه"><option value="تنظيف سجاد وكنب"><option value="مكافحة حشرات"><option value="عزل حراري"><option value="جبس"><option value="تركيب مطابخ"><option value="صيانة مصاعد"><option value="ترميم مبانٍ"></datalist>'
       +'<select id="o-bf-score" style="'+fin+';cursor:pointer"><option value="0"'+(ms===0?' selected':'')+'>كل الأولويات</option><option value="45"'+(ms===45?' selected':'')+'>متوسطة (45+)</option><option value="70"'+(ms===70?' selected':'')+'>عالية (70+)</option></select>'
-      +'<button onclick="_oBriefLoad()" style="background:#1e40af;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-family:Tajawal;font-size:12.5px;font-weight:800;cursor:pointer">بحث</button>'
+      +'<button onclick="_oBriefLoad()" style="background:#1e40af;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-family:Tajawal;font-size:12.5px;font-weight:800;cursor:pointer">🔍 بحث</button>'
+      +'<span style="font-size:11px;color:#64748b;width:100%;margin-top:3px">💡 تقدر تكتب أي كلمة في خانة التخصص (مثل «سكوريت» بدل «زجاج») ليطابق مزودين أدق، ثم اضغط بحث.</span>'
     +'</div>';
     if(!L.length){
       h+='<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:12px;line-height:1.8">ما فيه مزودين مطابقين لهذا البحث.<br>وسّع البحث (امسح المدينة/التخصص)، أو <b>اصطد مزودين جدد</b> من قسم الصيد بالأعلى ثم أعد البحث.</div>';
