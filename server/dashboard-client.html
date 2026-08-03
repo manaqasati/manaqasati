@@ -1937,20 +1937,39 @@ function loadNotifs(){
     if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات بعد','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');return;}
     el.innerHTML=notifs.map(function(n){
       var mt=notifMeta(n.type);
-      return'<div class="notif-item'+(n.is_read?'':' unread')+'" onclick="markRead('+n.id+',this,'+(n.ref_id||'null')+')">'
-        +'<div class="notif-ic" style="background:'+mt.bg+';color:'+mt.c+'">'+mt.ic+'</div>'
-        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--text)">'+esc(n.title||'')+'</div>'
+      return'<div class="notif-item'+(n.is_read?'':' unread')+'" id="notif-'+n.id+'">'
+        +'<div class="notif-ic" style="background:'+mt.bg+';color:'+mt.c+'" onclick="notifOpen('+n.id+','+(n.ref_id||'null')+')">'+mt.ic+'</div>'
+        +'<div style="flex:1;min-width:0;cursor:pointer" onclick="notifOpen('+n.id+','+(n.ref_id||'null')+')"><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--text)">'+esc(n.title||'')+'</div>'
         +'<div style="font-size:11.5px;color:var(--muted);line-height:1.6">'+esc(n.body||'')+'</div>'
         +'<div style="font-size:10px;color:var(--hint);margin-top:3px">'+timeAgo(n.created_at)+'</div></div>'
-        +(n.is_read?'':'<span style="width:8px;height:8px;border-radius:50%;background:var(--p);flex-shrink:0;align-self:center"></span>')
+        +(n.is_read?'':'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-self:center"><button onclick="event.stopPropagation();notifMarkOne('+n.id+')" title="تعليم كمقروء" style="background:var(--green-l);color:var(--green);border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✓</button><button onclick="event.stopPropagation();notifSnooze('+n.id+')" title="تأجيل" style="background:var(--bg);color:var(--muted);border:1px solid var(--border);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">⏰</button></div>')
       +'</div>';
     }).join('');
   }).catch(function(){if(el)el.innerHTML=errH();});
 }
-function markRead(id,el,refId){
-  if(el)el.classList.remove('unread');
-  fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){});
+// فتح الإشعار (يعلّمه مقروءاً ويروح للتفاصيل)
+function notifOpen(id,refId){
+  notifMarkOne(id,true);
   if(refId){openDetail(refId,null);show('detail',null,'detail');}
+}
+// تعليم إشعار واحد كمقروء (بدون فتح)
+function notifMarkOne(id,silent){
+  var el=document.getElementById('notif-'+id); if(el)el.classList.remove('unread');
+  var btns=el?el.querySelector('div[style*="flex-direction:column"]'):null; if(btns)btns.remove();
+  fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){});
+  _notifRecount();
+  if(!silent&&typeof showToast==='function')showToast('تم ✓','success');
+}
+// تأجيل إشعار (يخفيه من القائمة لهذه الجلسة فقط، يرجع عند التحديث)
+function notifSnooze(id){
+  var el=document.getElementById('notif-'+id);
+  if(el){ el.style.transition='opacity .25s,transform .25s'; el.style.opacity='0'; el.style.transform='translateX(-20px)'; setTimeout(function(){if(el)el.style.display='none';},260); }
+  if(typeof showToast==='function')showToast('تم التأجيل — يظهر لاحقاً','success');
+}
+// إعادة حساب الشارة بعد تعليم مقروء
+function _notifRecount(){
+  var unread=document.querySelectorAll('.notif-item.unread').length;
+  ['notifBadge','mob-notif-badge'].forEach(function(bid){var b=document.getElementById(bid);if(b){if(unread>0){b.textContent=unread;b.style.display='flex';}else{b.style.display='none';}}});
 }
 function markAllRead(){
   fetch(API+'/api/notifications/read',Object.assign({method:'PUT'},hdr())).then(function(){
@@ -2089,10 +2108,16 @@ function renderChatMsgs(){
   if(!_chatMsgs.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">لا توجد رسائل بعد</div>';return;}
   el.innerHTML=_chatMsgs.map(function(m){
     var isMe=String(m.sender_id)===String(user.id);
+    var ticks='';
+    if(isMe){
+      // علامات القراءة (مثل واتساب): ✓ أُرسلت · ✓✓ زرقاء = قُرئت
+      var read=(m.is_read===true||m.is_read==='t'||m.is_read===1);
+      ticks='<span style="font-size:11px;margin-inline-start:4px;color:'+(read?'#53bdeb':'rgba(255,255,255,.6)')+';font-weight:900;letter-spacing:-2px">'+(read?'✓✓':'✓')+'</span>';
+    }
     return'<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'">'
       +(!isMe?'<div style="font-size:10px;font-weight:700;opacity:.65;margin-bottom:2px">'+esc(m.sender_name||'مزود')+'</div>':'')
       +esc(m.content)
-      +'<div class="msg-time">'+timeAgo(m.created_at)+'</div>'
+      +'<div class="msg-time">'+timeAgo(m.created_at)+ticks+'</div>'
     +'</div>';
   }).join('');
   el.scrollTop=el.scrollHeight;
