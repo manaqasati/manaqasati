@@ -1097,7 +1097,7 @@ async function _submitBid(projId){
     var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note})});
     if(r&&(r.id||r.request_id)){closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
-  }catch(e){showToast('تعذر الاتصال','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
+  }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
 }
 
 async function _viewProj(id){
@@ -1165,7 +1165,7 @@ async function _submitReport(){
   var details=((document.getElementById('rpt-details-inp')||{}).value||'').trim();
   var payload={reported_id:_rptTarget.id,type:'user',reason:sel.value};if(details)payload.details=details;if(_rptTarget.reqId)payload.request_id=_rptTarget.reqId;
   try{var r=await _api('/api/reports',{method:'POST',body:JSON.stringify(payload)});_closeRptModal();if(r&&r.ok){showToast('تم إرسال البلاغ — ستتم المراجعة خلال 24 ساعة','success');}else{showToast((r&&r.message)||'حدث خطأ','error');}}
-  catch(e){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذر الاتصال','error');}
+  catch(e){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');}
 }
 
 function openImgFull(src){var v=_el('imgViewer'),i=_el('imgViewerImg');if(!v||!i)return;i.src=src;v.style.display='flex';}
@@ -1529,13 +1529,17 @@ function _uploadAvatar(inp){
   };
   rd.readAsDataURL(f);
 }
+function _pCompress(file,cb){
+  if(!/^image\//.test(file.type)){var rr=new FileReader();rr.onload=function(e){cb(e.target.result);};rr.readAsDataURL(file);return;}
+  var r=new FileReader();
+  r.onload=function(e){var img=new Image();img.onload=function(){var max=1280,w=img.width,h=img.height;if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}var c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);try{cb(c.toDataURL('image/jpeg',0.8));}catch(err){cb(e.target.result);}};img.onerror=function(){cb(e.target.result);};img.src=e.target.result;};
+  r.readAsDataURL(file);
+}
 function _uploadPort(inp){
   var files=[].slice.call(inp.files);inp.value='';
   files.forEach(function(f){
-    if(f.size>5*1024*1024){showToast(f.name+': أكبر من 5MB','error');return;}
-    var rd=new FileReader();
-    rd.onload=async function(e){var r=await _api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:e.target.result})});if(r&&(r.ok||r.count))showToast('تم رفع الصورة','success');else showToast((r&&r.message)||'فشل الرفع','error');};
-    rd.readAsDataURL(f);
+    if(f.size>10*1024*1024){showToast(f.name+': أكبر من 10MB','error');return;}
+    _pCompress(f,async function(data){var r=await _api('/api/provider/profile/portfolio',{method:'POST',body:JSON.stringify({image:data})});if(r&&(r.ok||r.count))showToast('تم رفع الصورة','success');else showToast((r&&r.message)||'فشل الرفع','error');});
   });
   setTimeout(loadProfile,1500);
 }
