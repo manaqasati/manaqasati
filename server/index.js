@@ -2606,6 +2606,12 @@ app.delete('/api/notifications', auth, async (req, res) => {
   try { await pool.query('DELETE FROM notifications WHERE user_id=$1',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// حذف تلقائي للإشعارات المقروءة الأقدم من 30 يوم (يمنع التراكم اللانهائي)
+setInterval(async () => {
+  try { await pool.query("DELETE FROM notifications WHERE is_read=TRUE AND created_at < NOW() - INTERVAL '30 days'"); }
+  catch(e){ console.error('notif cleanup:', e.message); }
+}, 6 * 60 * 60 * 1000); // كل 6 ساعات
+
 // ═══ PUSH ═══
 app.get('/api/push/vapid-public-key', (req, res) => {
   if (!VAPID_PUBLIC_KEY) return res.status(503).json({ message: 'Push غير مفعّل' });
