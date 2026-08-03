@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <!-- NOTIFS -->
     <div class="page" id="page-notifs">
       <div class="card card-accent">
-        <div class="ch"><h3>الإشعارات</h3><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button></div>
+        <div class="ch"><h3>الإشعارات</h3><div style="display:flex;gap:10px"><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button><button class="ch-link" onclick="deleteAllNotifs()" style="color:var(--red)">حذف الكل</button></div></div>
         <div id="notifs-list"></div>
       </div>
     </div>
@@ -953,14 +953,26 @@ function show(pg,el,key){
   if(pg==='new'){fillCitySelect(document.getElementById('n-city'));loadNotifCount();_restoreReqDraft();_bindReqDraft();}
   // أخفِ الشريط السفلي داخل المحادثة فقط
   if(pg==='chat'){document.body.classList.add('in-chat');}else{document.body.classList.remove('in-chat');}
-  // احفظ الحالة في URL ليبقى المكان بعد التحديث
+  // احفظ الحالة في URL ليبقى المكان بعد التحديث + يخدم زر الرجوع
   if(!window._skipHash){
     var hash='#'+pg;
     if(pg==='detail'&&curRequestId)hash='#detail/'+curRequestId;
-    if(location.hash!==hash){history.replaceState(null,'',hash);}
+    if(location.hash!==hash){
+      // pushState (وليس replace) ليُحفظ التنقّل → زر الرجوع يرجّع للقسم السابق داخل اللوحة
+      if(window._navReplace){ history.replaceState({pg:pg},'',hash); window._navReplace=false; }
+      else { history.pushState({pg:pg},'',hash); }
+    }
   }
   window.scrollTo(0,0);
 }
+// زر رجوع المتصفّح: يرجّع للقسم السابق داخل اللوحة بدل الخروج منها
+window.addEventListener('popstate',function(ev){
+  var h=(location.hash||'').replace('#','');
+  if(!h||h==='home'){ window._skipHash=true; show('home',document.getElementById('ni-home')); window._skipHash=false; return; }
+  if(h.indexOf('detail/')===0){ var rid=h.split('/')[1]; if(rid&&typeof openDetail==='function'){window._skipHash=true;curRequestId=rid;openDetail(rid,null);show('detail',null,'detail');window._skipHash=false;} return; }
+  var known=['home','requests','notifs','profile','chat','new','detail'];
+  if(known.indexOf(h)>=0){ window._skipHash=true; show(h,document.getElementById('ni-'+h)); window._skipHash=false; }
+});
 function showTab(t,el){
   document.querySelectorAll('.tab').forEach(function(x){x.className='tab';});
   document.querySelectorAll('.tab-btn').forEach(function(x){x.className='tab-btn';});
@@ -1175,7 +1187,7 @@ function _sendCliReport(){
   if(_cliRptTarget.rid)payload.request_id=_cliRptTarget.rid;
   jFetch('/api/reports',{method:'POST',body:JSON.stringify(payload)})
     .then(function(r){_closeCliRpt();showToast('تم إرسال البلاغ — ستتم المراجعة','success');})
-    .catch(function(){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذر الإرسال','error');});
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذّر الإرسال — تحقّق من اتصالك','error');});
 }
 var _cliRptTarget={};
 function loadHome(){
@@ -1407,7 +1419,7 @@ function loadBids(id){
           fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:pid})},hdr()))
             .then(function(r){return r.json();})
             .then(function(d){if(d.request_id){window._openChatReqId=d.request_id;window._openChatPid=pid;show('chat',null,'chat');}})
-            .catch(function(){showToast('تعذر فتح المحادثة','error');});
+            .catch(function(){showToast('تعذّر فتح المحادثة — حاول مجدداً','error');});
         });
       });
     })
@@ -1428,7 +1440,7 @@ function acceptBid(bidId,reqId){
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
-    .catch(function(){showToast('تعذر القبول','error');})
+    .catch(function(){showToast('تعذّر القبول — تحقّق من اتصالك','error');})
     .finally(function(){window._acceptingBid=false;});
 }
 function rejectBid(bidId,reqId){
@@ -1436,7 +1448,7 @@ function rejectBid(bidId,reqId){
   fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(){showToast('تم الرفض','success');loadBids(reqId);})
-    .catch(function(){showToast('تعذر الرفض','error');});
+    .catch(function(){showToast('تعذّر الرفض — تحقّق من اتصالك','error');});
 }
 
 // ═══════════════════════════════════
@@ -1514,13 +1526,13 @@ function repostReq(id){
   fetch(API+'/api/requests/'+id+'/repost',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(d){ if(d&&d.ok){showToast('تم إعادة نشر الطلب','success');loadActions(id);loadHome();if(window.track)track('StartPost');} else showToast((d&&d.message)||'تعذر إعادة النشر','error'); })
-    .catch(function(){showToast('تعذر الاتصال','error');});
+    .catch(function(){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');});
 }
 function markNotDone(id){
   fetch(API+'/api/requests/'+id+'/not-done',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(d){ if(d&&d.ok){showToast('تم — سنذكّرك لاحقاً','success');loadActions(id);loadHome();} else showToast((d&&d.message)||'تعذر التحديث','error'); })
-    .catch(function(){showToast('تعذر التحديث','error');});
+    .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function markDone(id){
   if(!confirm('هل تؤكد إتمام هذا الطلب؟'))return;
@@ -1533,7 +1545,7 @@ function markDone(id){
       return r;
     })
     .then(function(){showToast('تم تحديث حالة الطلب','success');loadBids(id);loadActions(id);loadHome();})
-    .catch(function(){showToast('تعذر التحديث','error');});
+    .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function openRate(reqId){
   var bids=window._currentBids||[];
@@ -1597,12 +1609,28 @@ function fillCitySelect(sel){
 function previewImages(input){
   var files=[].slice.call(input.files).slice(0,3-_reqImages.length);
   files.forEach(function(f){
-    if(f.size>5*1024*1024){showToast('الحجم الأقصى 5MB','error');return;}
-    var r=new FileReader();
-    r.onload=function(e){_reqImages.push({name:f.name,data:e.target.result});renderImgGrid();};
-    r.readAsDataURL(f);
+    if(f.size>10*1024*1024){showToast('الحجم الأقصى 10MB','error');return;}
+    compressImage(f,function(dataUrl){_reqImages.push({name:f.name,data:dataUrl});renderImgGrid();});
   });
   input.value='';
+}
+// ضغط الصورة تلقائياً (يصغّرها لتسريع الرفع وتوفير الاستهلاك)
+function compressImage(file,cb){
+  if(!/^image\//.test(file.type)){ var rr=new FileReader();rr.onload=function(e){cb(e.target.result);};rr.readAsDataURL(file);return; }
+  var r=new FileReader();
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var max=1280, w=img.width, h=img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      var c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      try{ cb(c.toDataURL('image/jpeg',0.8)); }catch(err){ cb(e.target.result); }
+    };
+    img.onerror=function(){cb(e.target.result);};
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(file);
 }
 function renderImgGrid(){
   var g=document.getElementById('img-grid');if(!g)return;
@@ -1763,7 +1791,7 @@ function openEditReq(id,e){
     document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
-  }).catch(function(){showToast('تعذر تحميل الطلب','error');});
+  }).catch(function(){showToast('تعذّر تحميل الطلب — حدّث الصفحة','error');});
 }
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
 function submitEditReq(){
@@ -1775,7 +1803,7 @@ function submitEditReq(){
   fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
-    .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذر التحديث','error');});
+    .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function deleteReq(id,e){
   if(e)e.stopPropagation();
@@ -1783,7 +1811,7 @@ function deleteReq(id,e){
   fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){if(r.ok||r.id){showToast('تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
-    .catch(function(){showToast('تعذر الحذف','error');});
+    .catch(function(){showToast('تعذّر الحذف — تحقّق من اتصالك','error');});
 }
 function openImgFull(src){var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
 
@@ -1803,7 +1831,7 @@ function submitRate(){
     .then(function(r){
       if(r.id){document.getElementById('rateOverlay').className='overlay';showToast('شكراً على تقييمك','success');}
       else{var e=document.getElementById('rate-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}
-    }).catch(function(){showToast('تعذر إرسال التقييم','error');});
+    }).catch(function(){showToast('تعذّر إرسال التقييم — تحقّق من اتصالك','error');});
 }
 
 // ═══════════════════════════════════
@@ -1850,7 +1878,7 @@ function saveClientProfile(btn){
       showToast('تم الحفظ','success');
       if(p&&p.name){user.name=p.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=p.name;document.getElementById('profNameDisp').textContent=p.name;}
     })
-    .catch(function(){showToast('تعذر الحفظ','error');})
+    .catch(function(){showToast('تعذّر الحفظ — تحقّق من اتصالك','error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function changeClientPw(){
@@ -1859,7 +1887,7 @@ function changeClientPw(){
   fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({password:pw})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){showToast('تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';})
-    .catch(function(){showToast('تعذر التغيير','error');});
+    .catch(function(){showToast('تعذّر التغيير — تحقّق من اتصالك','error');});
 }
 
 // ═══════════════════════════════════
@@ -1981,6 +2009,15 @@ function markAllRead(){
     showToast('تم تحديد الكل كمقروء','success');
   }).catch(function(){});
 }
+function deleteAllNotifs(){
+  if(!confirm('حذف كل الإشعارات نهائياً؟'))return;
+  fetch(API+'/api/notifications',Object.assign({method:'DELETE'},hdr())).then(function(r){
+    if(!r.ok)throw new Error();
+    var el=document.getElementById('notifs-list'); if(el)el.innerHTML=emptyH('لا توجد إشعارات','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');
+    ['notifBadge','mob-notif-badge'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';});
+    showToast('تم حذف كل الإشعارات','success');
+  }).catch(function(){showToast('تعذّر الحذف، حاول مجدداً','error');});
+}
 
 // ═══════════════════════════════════
 // CHAT
@@ -2076,8 +2113,8 @@ function openClientChatSearch(){
             jFetch('/api/direct-message',{method:'POST',body:JSON.stringify({provider_id:parseInt(uid)})}).then(function(d){
               var ovEl=document.getElementById('clChatSearchOv');if(ovEl)ovEl.remove();
               if(d&&d.request_id){showToast('تم فتح المحادثة','success');gotoMessagesAndOpen(d.request_id,parseInt(uid),pname);}
-              else{showToast('تعذر فتح المحادثة','error');}
-            }).catch(function(){showToast('تعذر فتح المحادثة','error');});
+              else{showToast('تعذّر فتح المحادثة — حاول مجدداً','error');}
+            }).catch(function(){showToast('تعذّر فتح المحادثة — حاول مجدداً','error');});
           };
         });
       }).catch(function(){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--red);font-size:12px">تعذر البحث</div>';});
@@ -2132,7 +2169,7 @@ function sendChatMsg(){
   fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatWith,content:msg})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(m){_chatMsgs.push(m);renderChatMsgs();})
-    .catch(function(){showToast('تعذر الإرسال','error');inp.value=msg;});
+    .catch(function(){showToast('تعذّر الإرسال — تحقّق من اتصالك','error');inp.value=msg;});
 }
 
 // ═══════════════════════════════════
