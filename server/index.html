@@ -1579,11 +1579,21 @@ function _openReq(r){location.href='/project/'+_reqSlug(r)+'?id='+r.id;}
 
 function initPersonalHome(){
   var u=getUser(); if(!u) return;                 // زائر → تبقى الصفحة التسويقية
+  // المستخدم المسجّل يُوجّه مباشرة للوحته (زي باقي المنصات) — يمنع اللخبطة
+  // نستثني لو دخل عبر رابط قسم محدد (#hash) أو معاملات خاصة
+  var hash=location.hash||'';
+  if(hash && hash!=='#home' && hash.length>1) return; // رابط قسم محدد → يبقى بالرئيسية
+  var dash = u.role==='provider' ? 'dashboard-provider.html' : (u.role==='admin' ? 'dashboard-admin.html' : 'dashboard-client.html');
+  location.replace(dash);
+}
+
+// (النسخة الشخصية القديمة — لم تعد تُستخدم، أبقيناها للتوافق)
+function initPersonalHomeOld(){
+  var u=getUser(); if(!u) return;
   var hero=document.querySelector('.hero');
   var host=document.getElementById('home-personal');
   if(!host) return;
   if(hero) hero.style.display='none';
-  // إخفاء الأقسام التسويقية للمستخدم المسجّل (نُبقي «مزودو الخدمات» مفيداً للعميل)
   ['.stats','.how','.categories','.cta','.showcase','.demo','#try','#projects','#showcase'].forEach(function(sel){
     document.querySelectorAll(sel).forEach(function(el){el.style.display='none';});
   });
@@ -1591,12 +1601,10 @@ function initPersonalHome(){
   host.innerHTML='<div class="ph-band"><div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">\u2026</div><div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b \u0628\u0643</h3><div class="ph-sub">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0644\u0648\u062d\u062a\u0643...</div></div></div></div>';
   var _prov=document.getElementById('providers');
   if(u.role==='provider'){
-    // المزوّد: يشوف لوحته فقط — لا حاجة لعرض مزودين آخرين (منافسين)
     if(_prov)_prov.style.display='none';
     var t=document.getElementById('try'); if(t)t.style.display='none';
     renderProviderHome(u);
   } else {
-    // العميل: نُبقي «مزودو الخدمات» ليتصفّحهم
     if(_prov){_prov.style.display='block'; if(typeof loadProviders==='function'){try{loadProviders();}catch(e){}}}
     renderClientHome(u);
   }
