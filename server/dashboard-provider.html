@@ -560,9 +560,9 @@ function urlBase64ToUint8Array(base64String){
   return outputArray;
 }
 async function pushSubscribe(){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window)){alert('متصفحك لا يدعم الإشعارات الفورية');return false;}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){showToast('متصفحك لا يدعم الإشعارات الفورية','error');return false;}
   try{
-    var perm=await Notification.requestPermission();if(perm!=='granted'){alert('يجب السماح بالإشعارات');return false;}
+    var perm=await Notification.requestPermission();if(perm!=='granted'){showToast('يجب السماح بالإشعارات من إعدادات المتصفح','error');return false;}
     var reg=await navigator.serviceWorker.ready;
     var existing=await reg.pushManager.getSubscription();
     if(existing){await fetch(API+'/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},body:JSON.stringify({subscription:existing.toJSON()})});return true;}
@@ -586,7 +586,7 @@ function dismissPushBanner(){var b=document.getElementById('pushBanner');if(b)b.
 async function enablePushFromBanner(){
   var btn=document.querySelector('.push-banner-yes');if(btn){btn.disabled=true;btn.textContent='جاري التفعيل...';}
   var ok=await pushSubscribe();
-  if(ok){var b=document.getElementById('pushBanner');if(b)b.classList.remove('show');localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');setTimeout(function(){alert('تم تفعيل الإشعارات بنجاح!');},200);}
+  if(ok){var b=document.getElementById('pushBanner');if(b)b.classList.remove('show');localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');showToast('تم تفعيل الإشعارات بنجاح ✓','success');}
   else{if(btn){btn.disabled=false;btn.textContent='السماح بالإشعارات';}}
 }
 async function maybeShowPushBanner(){
@@ -1487,7 +1487,7 @@ async function togglePush(){
   var sw=document.getElementById('pushToggleSwitch');if(!sw||sw.disabled)return;sw.disabled=true;
   var active=await isPushActive();
   if(active){if(await askConfirm({title:'إيقاف الإشعارات',message:'لن تصلك إشعارات فورية بالمشاريع الجديدة.',confirmText:'إيقاف'})){var ok=await pushUnsubscribe();if(ok)localStorage.removeItem('manaqasa_push_enabled_'+_me.id);}}
-  else{var ok=await pushSubscribe();if(ok){localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');setTimeout(function(){alert('تم تفعيل الإشعارات بنجاح!');},200);}}
+  else{var ok=await pushSubscribe();if(ok){localStorage.setItem('manaqasa_push_enabled_'+_me.id,'1');showToast('تم تفعيل الإشعارات بنجاح ✓','success');}}
   sw.disabled=false;
 }
 
