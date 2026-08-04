@@ -1736,7 +1736,16 @@ function _pBindKeyboardFix(overlay){
   setTimeout(function(){
     var inp=document.getElementById('p-chat-inp');
     if(inp){
-      inp.addEventListener('focus',function(){ [80,200,400,700].forEach(function(t){setTimeout(apply,t);}); });
+      inp.addEventListener('focus',function(){
+        [80,200,400,700].forEach(function(t){setTimeout(apply,t);});
+        // ضمانة قاطعة: أجبر المتصفّح على إظهار الصندوق فوق الكيبورد
+        [250,500,800].forEach(function(t){
+          setTimeout(function(){
+            try{ inp.scrollIntoView({block:'end',behavior:'smooth'}); }catch(err){}
+            var m=document.getElementById('p-chat-msgs'); if(m)m.scrollTop=m.scrollHeight;
+          },t);
+        });
+      });
       inp.addEventListener('blur',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
     }
   },50);
@@ -1754,7 +1763,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
     +'<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(receiverName||'العميل')+'</div>'+(reqTitle?'<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(reqTitle)+'</div>':'')+'</div>'
     +'</div>'
     +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
-    +'<div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
+    +'<div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto;position:sticky;bottom:0;z-index:10">'
     +'<textarea id="p-chat-inp" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;resize:none;max-height:80px"></textarea>'
     +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;flex-shrink:0">إرسال</button>'
     +'</div>';
