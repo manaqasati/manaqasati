@@ -62,6 +62,16 @@ async function uploadToR2(base64Data, folder) {
 const app = express();
 const port = process.env.PORT || 3000;
 
+// ── ضغط الاستجابات (gzip) — يقلّل حجم الصفحات ~75% ويسرّع التحميل كثيراً ──
+// آمن: لو الحزمة غير مثبّتة يتخطّاها بلا كسر الخادم
+try {
+  const compression = require('compression');
+  app.use(compression({ threshold: 1024 }));
+  console.log('✓ compression enabled');
+} catch (e) {
+  console.warn('compression not installed — run: npm i compression (يسرّع الموقع كثيراً)');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DATABASE
 // ═══════════════════════════════════════════════════════════════
@@ -113,7 +123,18 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '25mb' }));
-app.use(express.static('.'));
+// كاش ذكي للملفات الثابتة: الصور/الأيقونات تُحفظ طويلاً، وصفحات HTML لا تُخزَّن أبداً
+app.use(express.static('.', {
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
+    } else if (/\.html$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache'); // HTML يُتحقَّق منه دائماً (تصل التحديثات فوراً)
+    }
+  }
+}));
 
 // Rate Limiting بسيط (in-memory) — حماية من brute force
 const _rateLimit = new Map();
