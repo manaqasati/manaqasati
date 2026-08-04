@@ -297,7 +297,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 @media (max-width:768px){
   #page-chat.on{position:fixed;inset:0;z-index:200;background:var(--white);padding:12px;overflow:hidden}
-  #page-chat .chat-wrap{flex:1 1 auto;height:auto;max-height:none;min-height:0}
+  #page-chat .chat-wrap{flex:1 1 auto;height:calc(100dvh - 230px);min-height:300px;max-height:calc(100dvh - 200px)}
+.chat-input{position:sticky;bottom:0;z-index:5;padding-bottom:8px}
   #page-chat #chat-container{height:100%;display:flex;flex-direction:column}
   /* أخفِ الشريط السفلي وقت المحادثة (مثل واتساب) */
   body.in-chat .bnav{display:none!important}
@@ -884,6 +885,9 @@ function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
+// كاش خفيف: يعرض آخر بيانات محفوظة فوراً (سرعة)، ثم يحدّثها من الخادم
+function _cGet(key){ try{ var v=sessionStorage.getItem('mnq_c_'+key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function _cSet(key,val){ try{ sessionStorage.setItem('mnq_c_'+key,JSON.stringify(val)); }catch(e){} }
 function jFetch(path,opts){
   return fetch(API+path,Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{}))
     .then(function(r){
@@ -1227,25 +1231,34 @@ function _sendCliReport(){
 var _cliRptTarget={};
 function loadHome(){
   var el=document.getElementById('home-reqs');
-  if(el)el.innerHTML=_skCards(3);
+  // اعرض آخر بيانات محفوظة فوراً (سرعة)، ثم حدّث من الخادم
+  var cached=_cGet('my_reqs');
+  if(cached&&Array.isArray(cached)&&cached.length){ try{_paintHome(cached);}catch(e){ if(el)el.innerHTML=_skCards(3);} }
+  else if(el)el.innerHTML=_skCards(3);
   try{_reqDraftNudge();}catch(e){}
   jFetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
-    var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
-    var openN=all.filter(function(r){return r.status==='open';}).length;
-    var doneN=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
-    var offers=all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
-    if(so)so.textContent=openN;
-    if(sd)sd.textContent=doneN;
-    if(sof)sof.textContent=offers;
-    var hl=document.getElementById('phHl');
-    if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
-    if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
-    renderNudges(all);
-    renderQuestionNudge(all);
-    renderBestOffer(all);
-  }).catch(function(){if(el)el.innerHTML=errH(loadHome);});
+    _cSet('my_reqs',all);
+    _paintHome(all);
+  }).catch(function(){ if(!cached)el&&(el.innerHTML=errH(loadHome)); });
   loadNotifCount();
+}
+// عرض بيانات الرئيسية (يُستخدم للكاش والخادم)
+function _paintHome(all){
+  var el=document.getElementById('home-reqs');
+  var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
+  var openN=all.filter(function(r){return r.status==='open';}).length;
+  var doneN=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
+  var offers=all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
+  if(so)so.textContent=openN;
+  if(sd)sd.textContent=doneN;
+  if(sof)sof.textContent=offers;
+  var hl=document.getElementById('phHl');
+  if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
+  if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
+  renderNudges(all);
+  renderQuestionNudge(all);
+  renderBestOffer(all);
 }
 // شريط النبيهات الذكية — مستنتج من حالة طلبات العميل ورسائله
 function renderNudges(all){
