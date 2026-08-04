@@ -1724,7 +1724,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   var overlay=document.createElement('div');overlay.id='prov-chat-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:flex-end;justify-content:center';
   overlay.innerHTML=''
-    +'<div style="background:var(--bg);width:100%;max-width:500px;height:88dvh;max-height:88dvh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">'
+    +'<div style="background:var(--bg);width:100%;max-width:500px;height:100dvh;max-height:100dvh;border-radius:0;display:flex;flex-direction:column;overflow:hidden">'
     +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px;flex:0 0 auto">'
     +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">&#215;</button>'
     +'<div><div style="font-size:14px;font-weight:800;color:#fff">'+_esc(receiverName||'العميل')+'</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">'+_esc(reqTitle||'')+'</div></div>'
@@ -1756,7 +1756,7 @@ function _renderChatMsgs(){
   _chatMsgs.forEach(function(m){var k=m.id||(m.content+m.created_at);if(!seen[k]){seen[k]=1;unique.push(m);}});
   wrap.innerHTML=unique.map(function(m){
     var isMe=(String(m.sender_id)===String(_me.id));
-    var align=isMe?'flex-end':'flex-start';var radius=isMe?'16px 16px 4px 16px':'16px 16px 16px 4px';
+    var align=isMe?'flex-start':'flex-end';var radius=isMe?'16px 16px 16px 4px':'16px 16px 4px 16px';
     var bg=isMe?'var(--p3)':'var(--white)';var color=isMe?'#fff':'var(--text)';var border=isMe?'none':'1px solid var(--border)';
     var h='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px"><div style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:13px;line-height:1.7;word-break:break-word">';
     if(!isMe)h+='<div style="font-size:10px;opacity:.55;margin-bottom:3px;font-weight:700">'+_esc(m.sender_name||'')+'</div>';
