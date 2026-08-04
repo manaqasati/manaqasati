@@ -1001,7 +1001,13 @@ function openBidFormDirectly(reqId){_openBidModal(reqId);}
 async function loadBrowse(){
   var pg=_el('page-browse');if(!pg)return;
   if(!Array.isArray(_allProjs)||_allProjs.length===0){pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div>'+_skList(5);}
-  try{var fresh=await _api('/api/requests');_allProjs=Array.isArray(fresh)?fresh:[];}catch(e){_allProjs=[];}
+  var failed=false;
+  try{var fresh=await _api('/api/requests');if(fresh===null){failed=true;}else{_allProjs=Array.isArray(fresh)?fresh:[];}}catch(e){failed=true;}
+  // فشل شبكة حقيقي + لا بيانات مخزّنة → زر إعادة محاولة (بدل حالة فاضية مضلّلة)
+  if(failed && (!Array.isArray(_allProjs)||_allProjs.length===0)){
+    pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div><div style="text-align:center;padding:40px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button onclick="loadBrowse()" style="background:var(--p3);color:#fff;border:none;padding:10px 24px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>حاول مرة ثانية</button></div>';
+    return;
+  }
   _renderBrowse();
 }
 function _renderBrowse(){
@@ -1338,7 +1344,7 @@ var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){
   _pollPaused=document.hidden;
 });
-setInterval(function(){if(!_pollPaused)_loadNotifCount();},30000);
+setInterval(function(){if(!_pollPaused){_loadNotifCount();_loadChatBadge();}},35000);
 
 // ═══ PROFILE — مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
 async function loadProfile(){
@@ -1591,7 +1597,7 @@ async function _loadChatBadge(){
     var b2=_el('bn-chat-badge');if(b2){b2.style.display=unread?'flex':'none';b2.textContent=unread;}
   }catch(e){}
 }
-setInterval(function(){if(!_pollPaused)_loadChatBadge();},30000);
+// (دُمج تحديث شارة الرسائل مع الإشعارات في مؤقّت واحد أعلاه — تخفيف الحمل)
 
 function _openNewChatSearch(){
   var body='<div style="margin-bottom:12px"><input id="p-chat-inp" placeholder="ابحث باسم العميل..." style="width:100%;padding:11px 13px;border:1.5px solid var(--p-light);border-radius:10px;font-size:13px;font-family:Tajawal,sans-serif;background:var(--bg)"></div><div id="p-chat-res" style="max-height:240px;overflow-y:auto"></div>';
