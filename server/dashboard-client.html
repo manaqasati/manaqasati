@@ -2182,7 +2182,7 @@ function openClientChatSearch(){
 // visualViewport هي الوسيلة الوحيدة لمعرفة ارتفاع الكيبورد فعلياً؛ CSS وحده لا يكفي
 var _kbBound=false;
 function _bindKeyboardFix(){
-  if(_kbBound||!window.visualViewport)return; _kbBound=true;
+  if(!window.visualViewport)return;
   var vv=window.visualViewport;
   function apply(){
     var pg=document.getElementById('page-chat');
@@ -2198,22 +2198,26 @@ function _bindKeyboardFix(){
     if(window.scrollY!==0){ window.scrollTo(0,0); }
     var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
   }
-  vv.addEventListener('resize',apply);
-  vv.addEventListener('scroll',apply);
-  setTimeout(apply,60);
-  document.addEventListener('focusin',function(e){
-    if(e.target&&(e.target.id==='chatInp')){
-      [80,200,400,700].forEach(function(t){setTimeout(apply,t);});
-      // ضمانة قاطعة: أجبر المتصفّح على إظهار الصندوق فوق الكيبورد
-      [250,500,800].forEach(function(t){
-        setTimeout(function(){
-          try{ e.target.scrollIntoView({block:'end',behavior:'smooth'}); }catch(err){}
-          var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
-        },t);
-      });
-    }
-  });
-  document.addEventListener('focusout',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
+  window._kbApply=apply;                 // متاح للاستدعاء عند كل فتح محادثة
+  if(!_kbBound){                          // اربط المستمعات مرة واحدة فقط
+    _kbBound=true;
+    vv.addEventListener('resize',apply);
+    vv.addEventListener('scroll',apply);
+    document.addEventListener('focusin',function(e){
+      if(e.target&&(e.target.id==='chatInp')){
+        [80,200,400,700].forEach(function(t){setTimeout(apply,t);});
+        [250,500,800].forEach(function(t){
+          setTimeout(function(){
+            try{ e.target.scrollIntoView({block:'end',behavior:'smooth'}); }catch(err){}
+            var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
+          },t);
+        });
+      }
+    });
+    document.addEventListener('focusout',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
+  }
+  // اضبط فوراً عند فتح المحادثة (يمنع الفراغ قبل ظهور الكيبورد)
+  [0,50,150,350].forEach(function(t){setTimeout(apply,t);});
 }
 function openChat(reqId,providerId,providerName,reqTitle){
   _chatReqId=reqId;_chatWith=providerId;
