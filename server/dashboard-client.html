@@ -886,7 +886,18 @@ function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن'
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
 function jFetch(path,opts){
   return fetch(API+path,Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{}))
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+    .then(function(r){
+      if(r.status===401){ _sessionExpired(); throw new Error('انتهت الجلسة'); }
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.json();
+    });
+}
+// انتهاء الجلسة: يُعلم المستخدم ويوجّهه لتسجيل الدخول (بدل أخطاء غامضة)
+var _sessionExpiredShown=false;
+function _sessionExpired(){
+  if(_sessionExpiredShown)return; _sessionExpiredShown=true;
+  try{ if(typeof showToast==='function')showToast('انتهت جلستك — يرجى تسجيل الدخول من جديد','error'); }catch(e){}
+  setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} location.href='/auth.html'; }, 1500);
 }
 function showToast(msg,type){
   var w=document.getElementById('_tw');
@@ -2133,7 +2144,7 @@ function openChat(reqId,providerId,providerName,reqTitle){
     +'<div class="chat-input"><input class="chat-inp" id="chatInp" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"><button class="chat-send" onclick="sendChatMsg()">إرسال</button></div></div>';
   loadChatMsgs();
   if(_chatPoll)clearInterval(_chatPoll);
-  _chatPoll=setInterval(function(){if(_chatReqId)loadChatMsgs();else clearInterval(_chatPoll);},6000);
+  _chatPoll=setInterval(function(){if(_chatReqId){if(!_pollPaused)loadChatMsgs();}else clearInterval(_chatPoll);},6000);
 }
 function loadChatMsgs(){
   if(!_chatReqId)return;
