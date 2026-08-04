@@ -1013,6 +1013,11 @@ function loadClientQuestions(id){
   }).catch(function(){ if(el)el.innerHTML=errH(); });
 }
 function _cqPending(q){ return !(q.answer&&String(q.answer).trim()); }
+// تتبّع "الأسئلة المُشاهَدة" — يختفي النبيه بمجرّد الاطّلاع (حتى لو ما جاوب)
+function _qSeenKey(){ try{ return 'mnq_q_seen_'+(user.id||''); }catch(e){ return 'mnq_q_seen'; } }
+function _getQSeen(){ try{ return JSON.parse(localStorage.getItem(_qSeenKey())||'{}'); }catch(e){ return {}; } }
+function _markReqQuestionsSeen(reqId){ try{ var s=_getQSeen(); s[reqId]=Date.now(); localStorage.setItem(_qSeenKey(),JSON.stringify(s)); }catch(e){} }
+function _isReqQSeen(reqId){ var s=_getQSeen(); return !!s[reqId]; }
 function renderClientQuestions(qs,id){
   var el=document.getElementById('cq-list'); if(!el)return;
   qs=qs.slice().sort(function(a,b){
@@ -1051,6 +1056,8 @@ function cqSubmitAnswer(qid){
     .catch(function(){ showToast('تعذّر إرسال الرد','error'); });
 }
 function openQuestionsTab(id,ev){
+  _markReqQuestionsSeen(id);          // علّم أسئلة هذا الطلب كمُشاهَدة → يختفي النبيه
+  var slot=document.getElementById('ph-q-nudge'); if(slot)slot.innerHTML='';
   openDetail(id,ev);
   setTimeout(function(){
     var btns=document.querySelectorAll('#page-detail .tab-btn'); var cqBtn=null;
@@ -1079,7 +1086,8 @@ function scanQuestions(all,doNudge){
     jFetch('/api/requests/'+r.id+'/questions').then(function(qs){
       var pn=Array.isArray(qs)?qs.filter(_cqPending).length:0;
       paintQBadge(r.id,pn);
-      if(pn>0){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
+      // النبيه العلوي يتجاهل الطلبات التي اطّلع عليها المستخدم (حتى لو لم يجب)
+      if(pn>0 && !_isReqQSeen(r.id)){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
     }).catch(function(){ paintQBadge(r.id,0); }).then(function(){
       done++;
       if(done===cand.length && doNudge){ paintQNudge(total,topReq); }
@@ -1293,9 +1301,9 @@ function renderBestOffer(all){
     var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
     var price=best.price?fmtN(best.price):'—';
     var avHtml=isImg(best.provider_image)?'<img src="'+best.provider_image+'">':esc(nm.charAt(0));
-    slot.innerHTML='<div class="ph-feat" onclick="openDetail('+req.id+',event)">'
+    slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="openDetail('+req.id+',event)">'
       +'<span class="ph-fb">أفضل عرض على طلبك</span>'
-      +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:4px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
         +'<div style="display:flex;align-items:center;gap:9px">'
           +'<div class="ph-feat-sq">'+avHtml+'</div>'
