@@ -1716,6 +1716,32 @@ function _renderProvConvList(convs,pg){
 }
 
 // ── ضبط محادثة المزوّد مع كيبورد الجوّال (visualViewport — الحل الصحيح لـ iOS Safari) ──
+// ── الحظر بين المستخدمين (المزوّد) ──
+async function _pToggleBlock(uid){
+  if(!uid)return;
+  var btn=document.getElementById('p-chat-block');
+  var isBlocked=btn&&btn.getAttribute('data-blocked')==='1';
+  if(!isBlocked && !confirm('حظر هذا المستخدم؟\nلن تصلك رسائله ولن تصله رسائلك.'))return;
+  try{
+    var d=await _api('/api/blocks/'+uid,{method:isBlocked?'DELETE':'POST'});
+    if(d===null)throw new Error();
+    _pPaintBlockBtn(!!d.blocked);
+    if(typeof showToast==='function')showToast(d.blocked?'تم الحظر':'تم فك الحظر','success');
+  }catch(e){ if(typeof showToast==='function')showToast('تعذّر التنفيذ — تحقّق من اتصالك','error'); }
+}
+function _pPaintBlockBtn(blocked){
+  var btn=document.getElementById('p-chat-block'); if(!btn)return;
+  btn.setAttribute('data-blocked',blocked?'1':'0');
+  btn.textContent=blocked?'فكّ الحظر':'حظر';
+  btn.style.background=blocked?'rgba(220,38,38,.85)':'rgba(255,255,255,.12)';
+  var inp=document.getElementById('p-chat-inp'), snd=document.getElementById('p-chat-send');
+  if(inp){inp.disabled=blocked;inp.placeholder=blocked?'لا يمكن المراسلة (محظور)':'اكتب رسالتك...';}
+  if(snd){snd.disabled=blocked;snd.style.opacity=blocked?'.5':'';}
+}
+async function _pCheckBlock(uid){
+  if(!uid)return;
+  try{ var d=await _api('/api/blocks?check='+uid); if(d)_pPaintBlockBtn(!!d.blocked); }catch(e){}
+}
 function _pBindKeyboardFix(overlay){
   if(!window.visualViewport||!overlay)return;
   var vv=window.visualViewport;
@@ -1762,6 +1788,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
     +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px;flex:0 0 auto">'
     +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#215;</button>'
     +'<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(receiverName||'العميل')+'</div>'+(reqTitle?'<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(reqTitle)+'</div>':'')+'</div>'
+    +'<button id="p-chat-block" onclick="_pToggleBlock('+(receiverId||0)+')" title="حظر" style="background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-family:Tajawal;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">حظر</button>'
     +'</div>'
     +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
     +'<div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto;position:sticky;bottom:0;z-index:10">'
@@ -1770,6 +1797,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
     +'</div>';
   document.body.appendChild(overlay);
   _pBindKeyboardFix(overlay);
+  _pCheckBlock(receiverId);
   _el('p-chat-close').onclick=function(){overlay.remove();clearInterval(_chatPolling);};
   _el('p-chat-send').onclick=_sendChatMsg;
   _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
