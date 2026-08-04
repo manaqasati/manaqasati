@@ -913,7 +913,14 @@ function stTag(s){
   return m[s]||'<span class="tag t-rev">'+s+'</span>';
 }
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
-function errH(){return '<div class="empty"><h4 style="color:var(--red)"> تعذر التحميل</h4></div>';}
+function errH(retryFn){
+  var id='_retry_'+Math.random().toString(36).slice(2,8);
+  if(retryFn)window[id]=retryFn;
+  return '<div class="empty"><h4 style="color:var(--red)">تعذّر التحميل</h4>'
+    +'<div style="font-size:12px;color:var(--muted);margin:6px 0 12px">تحقّق من اتصالك بالإنترنت</div>'
+    +(retryFn?'<button onclick="(window[\''+id+'\']||function(){})()" style="background:var(--p);color:#fff;border:none;padding:9px 22px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>حاول مرة ثانية</button>':'')
+    +'</div>';
+}
 function _skCard(){return '<div class="sk-box"><div style="display:flex;gap:8px;align-items:center"><div style="width:4px;height:50px;border-radius:4px;background:#dbe6fa;flex-shrink:0"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div></div>';}
 function _skCards(n){var h='<div class="card card-accent"><div class="ch"><div class="sk sk-line" style="width:120px;height:16px"></div></div>';for(var i=0;i<(n||4);i++)h+=_skCard();return h+'</div>';}
 
@@ -1206,7 +1213,7 @@ function loadHome(){
   if(el)el.innerHTML=_skCards(3);
   try{_reqDraftNudge();}catch(e){}
   jFetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){if(el)el.innerHTML=errH();return;}
+    if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
     var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
     var openN=all.filter(function(r){return r.status==='open';}).length;
     var doneN=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
@@ -1220,7 +1227,7 @@ function loadHome(){
     renderNudges(all);
     renderQuestionNudge(all);
     renderBestOffer(all);
-  }).catch(function(){if(el)el.innerHTML=errH();});
+  }).catch(function(){if(el)el.innerHTML=errH(loadHome);});
   loadNotifCount();
 }
 // شريط النبيهات الذكية — مستنتج من حالة طلبات العميل ورسائله
@@ -1309,10 +1316,10 @@ function loadReqs(){
   var el=document.getElementById('all-reqs');
   if(el)el.innerHTML=_skCards(5);
   jFetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){if(el)el.innerHTML=errH();return;}
+    if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
     if(el)el.innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyReqsH();
     scanQuestions(all,false);
-  }).catch(function(){if(el)el.innerHTML=errH();});
+  }).catch(function(){if(el)el.innerHTML=errH(loadReqs);});
 }
 
 // ═══════════════════════════════════
@@ -1363,7 +1370,7 @@ function loadBids(id){
   fetch(API+'/api/requests/'+id+'/bids',hdr())
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(bids){
-      if(!Array.isArray(bids)){el.innerHTML=errH();return;}
+      if(!Array.isArray(bids)){el.innerHTML=errH(function(){loadBids(curRequestId);});return;}
       document.getElementById('bids-count').textContent=bids.length;
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
@@ -1505,7 +1512,7 @@ function loadActions(id){
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
-  }).catch(function(){if(el)el.innerHTML=errH();});
+  }).catch(function(){if(el)el.innerHTML=errH(function(){loadActions(curRequestId);});});
 }
 function loadTimeline(id){
   var el=document.getElementById('timeline-list');if(!el)return;
@@ -1987,7 +1994,7 @@ function loadNotifs(){
         +(n.is_read?'':'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-self:center"><button onclick="event.stopPropagation();notifMarkOne('+n.id+')" title="تعليم كمقروء" style="background:var(--green-l);color:var(--green);border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✓</button><button onclick="event.stopPropagation();notifSnooze('+n.id+')" title="تأجيل" style="background:var(--bg);color:var(--muted);border:1px solid var(--border);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">⏰</button></div>')
       +'</div>';
     }).join('');
-  }).catch(function(){if(el)el.innerHTML=errH();});
+  }).catch(function(){if(el)el.innerHTML=errH(loadNotifs);});
 }
 // فتح الإشعار (يعلّمه مقروءاً ويروح للتفاصيل)
 function notifOpen(id,refId){
@@ -2077,7 +2084,7 @@ function loadChatPage(){
     h+='</div></div>';
     el.innerHTML=h;
     bindNewChatBtn();
-  }).catch(function(){if(el)el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+errH()+'</div>';});
+  }).catch(function(){if(el)el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+errH(loadChatPage)+'</div>';});
 }
 
 function newChatBtnHtml(){
