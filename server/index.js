@@ -1021,11 +1021,13 @@ async function runReminders(){
       const warnBefore = Math.max(0, parseInt(await getSetting('lc_close_warn','2'))||2);
       // تنبيه قبل الإغلاق
       if(warnBefore>0){
+        // نحسب الفرق في JS (طرح المعاملات النصية داخل SQL يسبب: operator is not unique)
+        const warnFrom = Number(closeDays) - Number(warnBefore);
         const w = await pool.query(
           `SELECT id, client_id, title FROM requests
            WHERE status='open' AND assigned_provider_id IS NULL
-             AND created_at <= NOW() - (($1-$2) || ' days')::interval
-             AND created_at >  NOW() - ($1 || ' days')::interval`, [String(closeDays), String(warnBefore)]);
+             AND created_at <= NOW() - ($1 || ' days')::interval
+             AND created_at >  NOW() - ($2 || ' days')::interval`, [String(warnFrom), String(closeDays)]);
         for(const x of w.rows){
           await _remindOnce(x.client_id, 'close_warn', x.id,
             'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${eEsc(x.title)}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
