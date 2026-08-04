@@ -302,7 +302,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   #page-chat .chat-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--white)}
   #page-chat .chat-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:0 12px}
   #page-chat .chat-msgs{flex:1 1 auto;min-height:0;margin-bottom:8px}
-  #page-chat .chat-input{flex:0 0 auto;background:var(--white);padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 10px)}
+  #page-chat .chat-input{flex:0 0 auto;position:sticky;bottom:0;z-index:10;background:var(--white);padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 10px);box-shadow:0 -2px 8px rgba(0,0,0,.04)}
   /* أخفِ الشريط السفلي وقت المحادثة (مثل واتساب) */
   body.in-chat .bnav{display:none!important}
   .chat-home-back{display:inline-flex!important}
@@ -2202,7 +2202,16 @@ function _bindKeyboardFix(){
   vv.addEventListener('scroll',apply);
   setTimeout(apply,60);
   document.addEventListener('focusin',function(e){
-    if(e.target&&(e.target.id==='chatInp')){ [80,200,400,700].forEach(function(t){setTimeout(apply,t);}); }
+    if(e.target&&(e.target.id==='chatInp')){
+      [80,200,400,700].forEach(function(t){setTimeout(apply,t);});
+      // ضمانة قاطعة: أجبر المتصفّح على إظهار الصندوق فوق الكيبورد
+      [250,500,800].forEach(function(t){
+        setTimeout(function(){
+          try{ e.target.scrollIntoView({block:'end',behavior:'smooth'}); }catch(err){}
+          var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
+        },t);
+      });
+    }
   });
   document.addEventListener('focusout',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
 }
