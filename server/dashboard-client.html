@@ -1249,6 +1249,7 @@ function loadHome(){
 }
 // عرض بيانات الرئيسية (يُستخدم للكاش والخادم)
 function _paintHome(all){
+  window._allMyReqs=all||[];        // متاح لمعالج النبيه
   var el=document.getElementById('home-reqs');
   var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
   var openN=all.filter(function(r){return r.status==='open';}).length;
@@ -1265,17 +1266,36 @@ function _paintHome(all){
   renderBestOffer(all);
 }
 // شريط النبيهات الذكية — مستنتج من حالة طلبات العميل ورسائله
+// تتبّع "العروض المُشاهَدة" — النبيه يختفي بمجرّد الاطّلاع عليها
+function _offSeenKey(){ try{ return 'mnq_off_seen_'+(user.id||''); }catch(e){ return 'mnq_off_seen'; } }
+function _getOffSeen(){ try{ return JSON.parse(localStorage.getItem(_offSeenKey())||'{}'); }catch(e){ return {}; } }
+function _markOffersSeen(all){
+  try{
+    var s=_getOffSeen();
+    (all||[]).forEach(function(r){ if((parseInt(r.bid_count)||0)>0) s[r.id]=parseInt(r.bid_count)||0; });
+    localStorage.setItem(_offSeenKey(),JSON.stringify(s));
+    var slot=document.getElementById('ph-nudges');
+    var n=slot?slot.querySelector('.nudge'):null; // أزل نبيه العروض فوراً
+    if(n&&/عرض جديد|عروض جديدة/.test(n.textContent||'')) n.remove();
+  }catch(e){}
+}
+// هل وصل عرض جديد لم يُشاهَد بعد؟ (يقارن العدد الحالي بالمُشاهَد)
+function _hasUnseenOffers(r){
+  var s=_getOffSeen(); var cur=parseInt(r.bid_count)||0;
+  return cur > (parseInt(s[r.id])||0);
+}
 function renderNudges(all){
   var slot=document.getElementById('ph-nudges');if(!slot)return;
   all=all||[];
-  var openBid=all.filter(function(r){return r.status==='open'&&(parseInt(r.bid_count)||0)>0;});
+  // النبيه يظهر فقط للطلبات التي فيها عروض لم يطّلع عليها بعد
+  var openBid=all.filter(function(r){return r.status==='open'&&(parseInt(r.bid_count)||0)>0&&_hasUnseenOffers(r);});
   var totalOffers=openBid.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
   var inProg=all.filter(function(r){return r.status==='in_progress';});
   var doneR=all.filter(function(r){return r.status==='completed'||r.status==='done';});
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var reqItems=[];
   if(totalOffers>0){
-    reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="show(\'requests\',null,\'requests\')">'
+    reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="_markOffersSeen(window._allMyReqs||[]);show(\'requests\',null,\'requests\')">'
       +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'طلب':'طلبات')+' — راجعها واختر الأنسب</div></div>'
       +'<div class="nudge-cta">عرض '+chev+'</div></div>');
@@ -1367,6 +1387,14 @@ function loadReqs(){
 function openDetail(id,e){
   if(e)e.stopPropagation();
   curRequestId=id;
+  // اطّلع على الطلب ⇒ عروضه تُعدّ مُشاهَدة (يختفي نبيه "لديك عرض جديد")
+  try{
+    var r=(window._allMyReqs||[]).filter(function(x){return String(x.id)===String(id);})[0];
+    if(r&&(parseInt(r.bid_count)||0)>0){
+      var s=_getOffSeen(); s[id]=parseInt(r.bid_count)||0;
+      localStorage.setItem(_offSeenKey(),JSON.stringify(s));
+    }
+  }catch(err){}
   show('detail',null,'detail');
   if(!window._skipHash&&location.hash!=='#detail/'+id){history.replaceState(null,'','#detail/'+id);}
   jFetch('/api/requests/'+id).then(function(req){
