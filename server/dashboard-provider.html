@@ -1722,18 +1722,17 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   clearInterval(_chatPolling);
   var old=_el('prov-chat-overlay');if(old)old.remove();
   var overlay=document.createElement('div');overlay.id='prov-chat-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:var(--white);z-index:999;display:flex;flex-direction:column';
+  overlay.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;overflow:hidden';
   overlay.innerHTML=''
-    +'<div style="background:var(--bg);width:100%;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden">'
     +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px;flex:0 0 auto">'
-    +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">&#215;</button>'
-    +'<div><div style="font-size:14px;font-weight:800;color:#fff">'+_esc(receiverName||'العميل')+'</div><div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">'+_esc(reqTitle||'')+'</div></div>'
+    +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#215;</button>'
+    +'<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(receiverName||'العميل')+'</div>'+(reqTitle?'<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(reqTitle)+'</div>':'')+'</div>'
     +'</div>'
-    +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
-    +'<div style="display:flex;gap:8px;padding:12px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
+    +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
+    +'<div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
     +'<textarea id="p-chat-inp" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;resize:none;max-height:80px"></textarea>'
-    +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700">إرسال</button>'
-    +'</div></div>';
+    +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;flex-shrink:0">إرسال</button>'
+    +'</div>';
   document.body.appendChild(overlay);
   _el('p-chat-close').onclick=function(){overlay.remove();clearInterval(_chatPolling);};
   _el('p-chat-send').onclick=_sendChatMsg;
@@ -1773,15 +1772,27 @@ function _renderChatMsgs(){
 }
 
 async function _sendChatMsg(){
+  if(window._pSendingMsg)return;                      // منع الإرسال المزدوج
   var inp=_el('p-chat-inp');if(!inp)return;var content=inp.value.trim();if(!content)return;
-  var btn=_el('p-chat-send');inp.value='';inp.style.height='auto';
+  var btn=_el('p-chat-send');
+  window._pSendingMsg=true;
+  inp.value='';inp.style.height='auto';
+  if(btn){btn.disabled=true;btn.style.opacity='.6';}
   var tempMsg={id:'tmp_'+Date.now(),sender_id:_myId,content:content,created_at:new Date().toISOString(),sender_name:'أنت'};
   _chatMsgs.push(tempMsg);_renderChatMsgs();
   try{
     await _api('/api/messages',{method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiverId,content:content})});
     var msgs=await _api('/api/messages/'+_chatReqId+'?with='+_chatReceiverId)||[];
     if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();}
-  }catch(e){_chatMsgs=_chatMsgs.filter(function(m){return m.id!==tempMsg.id;});_renderChatMsgs();if(btn)btn.disabled=false;}
+  }catch(e){
+    _chatMsgs=_chatMsgs.filter(function(m){return m.id!==tempMsg.id;});_renderChatMsgs();
+    inp.value=content;                                 // أعِد النص ليحاول مجدداً
+    if(typeof showToast==='function')showToast('تعذّر الإرسال — تحقّق من اتصالك','error');
+  }finally{
+    window._pSendingMsg=false;
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+    inp.focus();
+  }
 }
 
 document.addEventListener('DOMContentLoaded',function(){
