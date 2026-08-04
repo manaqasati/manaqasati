@@ -1001,7 +1001,16 @@ function showTab(t,el){
   if(t==='timeline')loadTimeline(curRequestId);
   if(t==='cq')loadClientQuestions(curRequestId);
 }
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/auth.html';}
+function logout(){
+  try{
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('mnq_role');
+    sessionStorage.clear();
+  }catch(e){}
+  // توجيه ثابت لصفحة الدخول (replace يمنع الرجوع للوحة بزر العودة)
+  location.replace('/auth.html');
+}
 
 // ═══ الأسئلة والتوضيحات (لوحة العميل) ═══
 function loadClientQuestions(id){
@@ -1283,9 +1292,14 @@ function renderNudges(all){
   }).catch(function(){paint(null);});
 }
 // بطاقة "أفضل عرض على طلبك" — تُستنتج من أحدث طلب له عروض
+function _boSeenKey(){ try{ return 'mnq_bo_seen_'+(user.id||''); }catch(e){ return 'mnq_bo_seen'; } }
+function _getBOSeen(){ try{ return JSON.parse(localStorage.getItem(_boSeenKey())||'{}'); }catch(e){ return {}; } }
+function _markBestOfferSeen(reqId){ try{ var s=_getBOSeen(); s[reqId]=Date.now(); localStorage.setItem(_boSeenKey(),JSON.stringify(s)); var slot=document.getElementById('ph-feat-slot'); if(slot)slot.innerHTML=''; }catch(e){} }
+function _isBestOfferSeen(reqId){ var s=_getBOSeen(); return !!s[reqId]; }
 function renderBestOffer(all){
   var slot=document.getElementById('ph-feat-slot');if(!slot)return;
-  var withB=(all||[]).filter(function(r){return (parseInt(r.bid_count)||0)>0;});
+  // تجاهل الطلبات التي اطّلع عليها المستخدم (شاف العرض) — البطاقة تختفي بعد المشاهدة
+  var withB=(all||[]).filter(function(r){return (parseInt(r.bid_count)||0)>0 && !_isBestOfferSeen(r.id);});
   if(!withB.length){slot.innerHTML='';return;}
   var req=withB[0];
   jFetch('/api/requests/'+req.id+'/bids').then(function(bids){
@@ -1301,7 +1315,7 @@ function renderBestOffer(all){
     var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
     var price=best.price?fmtN(best.price):'—';
     var avHtml=isImg(best.provider_image)?'<img src="'+best.provider_image+'">':esc(nm.charAt(0));
-    slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="openDetail('+req.id+',event)">'
+    slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">'
       +'<span class="ph-fb">أفضل عرض على طلبك</span>'
       +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
@@ -1312,7 +1326,7 @@ function renderBestOffer(all){
         +'</div>'
         +'<div style="text-align:left"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900;color:var(--green)">'+price+' <span style="font-size:12px">ر.س</span></div>'+(best.days?'<div style="font-size:11px;color:var(--muted)">خلال '+best.days+' يوم</div>':'')+'</div>'
       +'</div>'
-      +'<button class="ph-feat-cta" onclick="openDetail('+req.id+',event)">استعرض كل العروض</button>'
+      +'<button class="ph-feat-cta" onclick="event.stopPropagation();_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">استعرض كل العروض</button>'
     +'</div>';
   }).catch(function(){slot.innerHTML='';});
 }
