@@ -299,7 +299,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 @media (max-width:768px){
   #page-chat.on{position:fixed;inset:0;z-index:200;background:var(--white);padding:12px;overflow:hidden}
-  #page-chat .chat-wrap{flex:1 1 auto;display:flex;flex-direction:column;height:calc(100dvh - 150px);min-height:320px;max-height:calc(100dvh - 130px)}
+  #page-chat .chat-wrap{flex:1 1 auto;display:flex;flex-direction:column;height:calc(var(--app-vh, 100dvh) - 150px);min-height:320px;max-height:calc(var(--app-vh, 100dvh) - 130px)}
 .chat-input{flex:0 0 auto;background:var(--white);padding-top:6px}
   #page-chat #chat-container{height:100%;display:flex;flex-direction:column}
   /* أخفِ الشريط السفلي وقت المحادثة (مثل واتساب) */
@@ -2439,5 +2439,28 @@ function gotoMessagesAndOpen(reqId,provId,provName){
 })();
 </script>
 
+<script>
+(function(){
+  function setAppVh(){
+    var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    document.documentElement.style.setProperty('--app-vh', h + 'px');
+  }
+  setAppVh();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setAppVh);
+    window.visualViewport.addEventListener('scroll', setAppVh);
+  }
+  window.addEventListener('resize', setAppVh);
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.id === 'chatInp') {
+      setTimeout(function(){
+        setAppVh();
+        var el = document.getElementById('chatMsgs');
+        if (el) el.scrollTop = el.scrollHeight;
+      }, 300);
+    }
+  });
+})();
+</script>
 </body>
 </html>
