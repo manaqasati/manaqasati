@@ -16,8 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://manaqasati-production.up.railway.app">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   --p:#1e3a8a;--p2:#1e40af;--p3:#172554;
@@ -1016,8 +1015,8 @@ function logout(){
     localStorage.removeItem('mnq_role');
     sessionStorage.clear();
   }catch(e){}
-  // توجيه ثابت لصفحة الدخول (replace يمنع الرجوع للوحة بزر العودة)
-  location.replace('/auth.html');
+  // بعد الخروج → الصفحة الرئيسية (زي باقي المنصات)، replace يمنع الرجوع للوحة
+  location.replace('/');
 }
 
 // ═══ الأسئلة والتوضيحات (لوحة العميل) ═══
@@ -1096,7 +1095,8 @@ function paintQBadge(id,pn){
 }
 function scanQuestions(all,doNudge){
   all=all||[];
-  var cand=all.slice(0,30);
+  // نفحص أحدث 8 طلبات فقط (كان 30 = حتى 30 طلب شبكة متزامن يسبب بطئاً ملموساً)
+  var cand=all.slice(0,8);
   if(!cand.length){ if(doNudge){ paintQNudge(0,null); } return; }
   var total=0, topReq=null, topN=0, done=0;
   cand.forEach(function(r){
