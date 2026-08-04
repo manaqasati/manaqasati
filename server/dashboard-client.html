@@ -2187,22 +2187,24 @@ function _bindKeyboardFix(){
   function apply(){
     var pg=document.getElementById('page-chat');
     if(!pg||!pg.classList.contains('on'))return;
-    // ارتفاع الكيبورد = فرق ارتفاع النافذة عن المساحة المرئية
-    var kb=Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    pg.style.height=(vv.height)+'px';
+    // ثبّت الطبقة أعلى الشاشة، واجعل ارتفاعها = المساحة المرئية فعلياً (فوق الكيبورد)
+    pg.style.position='fixed';
+    pg.style.top='0px';
+    pg.style.left='0px';
+    pg.style.right='0px';
     pg.style.bottom='auto';
-    pg.style.top=(vv.offsetTop||0)+'px';
-    // مرّر لآخر رسالة ليبقى الحوار مرئياً
+    pg.style.height=vv.height+'px';
+    // امنع الصفحة من الانزلاق تحت الكيبورد (iOS يزحزح النافذة أحياناً)
+    if(window.scrollY!==0){ window.scrollTo(0,0); }
     var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
   }
   vv.addEventListener('resize',apply);
   vv.addEventListener('scroll',apply);
   setTimeout(apply,60);
-  // عند التركيز على الصندوق: انتظر الكيبورد ثم اضبط (توقيتات متعددة لتغطية iOS وأندرويد)
   document.addEventListener('focusin',function(e){
-    if(e.target&&(e.target.id==='chatInp')){ setTimeout(apply,120); setTimeout(apply,350); setTimeout(apply,650); }
+    if(e.target&&(e.target.id==='chatInp')){ [80,200,400,700].forEach(function(t){setTimeout(apply,t);}); }
   });
-  document.addEventListener('focusout',function(){ setTimeout(apply,120); });
+  document.addEventListener('focusout',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
 }
 function openChat(reqId,providerId,providerName,reqTitle){
   _chatReqId=reqId;_chatWith=providerId;
