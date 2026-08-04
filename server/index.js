@@ -1311,6 +1311,9 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS requests (id SERIAL PRIMARY KEY, client_id INTEGER REFERENCES users(id), title VARCHAR(255) NOT NULL, description TEXT NOT NULL, category VARCHAR(100), city VARCHAR(100), address TEXT, budget_max DECIMAL(10,2), deadline DATE, image_url TEXT, images TEXT[], attachments JSONB, main_image_index INTEGER DEFAULT 0, project_number VARCHAR(50), status VARCHAR(20) DEFAULT 'pending_review', assigned_provider_id INTEGER REFERENCES users(id), assigned_at TIMESTAMP, completed_at TIMESTAMP, admin_notes TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS bids (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id), price INTEGER NOT NULL, days INTEGER NOT NULL, note TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    // حظر بين المستخدمين: blocker يحظر blocked فلا تصله رسائله
+    await pool.query(`CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(blocker_id, blocked_id))`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
@@ -2368,6 +2371,40 @@ app.get('/api/messages/unread-count', auth, async (req, res) => {
   } catch(e) { console.error('/messages/unread-count:', e); res.json({ count: 0 }); }
 });
 
+// ═══ الحظر بين المستخدمين ═══
+// حظر مستخدم (لا تصلك رسائله ولا تصله رسائلك)
+app.post('/api/blocks/:userId', auth, async (req, res) => {
+  try {
+    const target = parseInt(req.params.userId);
+    if (!target || target === req.user.id) return res.status(400).json({ message: 'طلب غير صالح' });
+    await pool.query('INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, target]);
+    res.json({ ok: true, blocked: true });
+  } catch(e) { console.error('block:', e.message); res.status(500).json({ message: 'تعذّر الحظر' }); }
+});
+// فك الحظر
+app.delete('/api/blocks/:userId', auth, async (req, res) => {
+  try {
+    const target = parseInt(req.params.userId);
+    await pool.query('DELETE FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2', [req.user.id, target]);
+    res.json({ ok: true, blocked: false });
+  } catch(e) { console.error('unblock:', e.message); res.status(500).json({ message: 'تعذّر فك الحظر' }); }
+});
+// قائمة من حظرتهم + فحص حالة مستخدم معيّن
+app.get('/api/blocks', auth, async (req, res) => {
+  try {
+    if (req.query.check) {
+      const t = parseInt(req.query.check);
+      const r = await pool.query('SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2 LIMIT 1', [req.user.id, t]);
+      return res.json({ blocked: r.rows.length > 0 });
+    }
+    const r = await pool.query(
+      'SELECT b.blocked_id, u.name, u.profile_image, b.created_at FROM user_blocks b JOIN users u ON u.id=b.blocked_id WHERE b.blocker_id=$1 ORDER BY b.created_at DESC',
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch(e) { console.error('blocks list:', e.message); res.json([]); }
+});
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.requestId);
@@ -2388,10 +2425,20 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
   try {
     const { request_id, receiver_id, content } = req.body;
     if (!request_id || !receiver_id || !content) return res.status(400).json({ message: 'البيانات ناقصة' });
-    const r = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [request_id, req.user.id, receiver_id, content]);
+    // حد أقصى لطول الرسالة (حماية قاعدة البيانات — لا يقيّد من يراسل)
+    const msgText = String(content).trim();
+    if (!msgText) return res.status(400).json({ message: 'الرسالة فارغة' });
+    if (msgText.length > 2000) return res.status(400).json({ message: 'الرسالة طويلة جداً (الحد 2000 حرف)' });
+    // احترام الحظر: لا تُرسل إن كان أحد الطرفين حاظراً للآخر
+    const blk = await pool.query(
+      'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+      [req.user.id, receiver_id]
+    );
+    if (blk.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال الرسالة (الحساب محظور)' });
+    const r = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [request_id, req.user.id, receiver_id, msgText]);
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
-    await notify(receiver_id, 'رسالة جديدة', `${eEsc(senderName)}: ${content.slice(0,50)}${content.length>50?'...':''}`, 'message', request_id);
+    await notify(receiver_id, 'رسالة جديدة', `${eEsc(senderName)}: ${msgText.slice(0,50)}${msgText.length>50?'...':''}`, 'message', request_id);
     const cacheKey = `${receiver_id}-${request_id}`;
     const now = Date.now(); const lastEmailTime = _msgEmailCache[cacheKey] || 0;
     if (now - lastEmailTime > 18*60*1000) {
@@ -2401,7 +2448,7 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
         const reqInfo = await pool.query('SELECT title FROM requests WHERE id=$1', [request_id]);
         if (recvInfo.rows.length && recvInfo.rows[0].email) {
           const subject = `رسالة جديدة من ${eEsc(senderName)}`;
-          const body = `<p>عزيزي <strong>${eEsc(recvInfo.rows[0].name)}</strong>،</p><p>وصلتك رسالة من <strong>${eEsc(senderName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${eEsc(reqInfo.rows[0]?.title||'مشروع')}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${content.slice(0,200).replace(/</g,'&lt;')}${content.length>200?'...':''}"</div></div>`;
+          const body = `<p>عزيزي <strong>${eEsc(recvInfo.rows[0].name)}</strong>،</p><p>وصلتك رسالة من <strong>${eEsc(senderName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${eEsc(reqInfo.rows[0]?.title||'مشروع')}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${msgText.slice(0,200).replace(/</g,'&lt;')}${msgText.length>200?'...':''}"</div></div>`;
           sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(()=>{});
         }
       } catch(e) { console.error('message email:', e.message); }
