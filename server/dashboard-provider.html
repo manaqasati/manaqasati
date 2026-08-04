@@ -10,7 +10,7 @@
 </script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,interactive-widget=resizes-content">
 <title>مناقصة — لوحة المزود</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1732,7 +1732,7 @@ function _pBindKeyboardFix(overlay){
   setTimeout(function(){
     var inp=document.getElementById('p-chat-inp');
     if(inp){
-      inp.addEventListener('focus',function(){ setTimeout(apply,120); setTimeout(apply,350); });
+      inp.addEventListener('focus',function(){ setTimeout(apply,120); setTimeout(apply,350); setTimeout(apply,650); });
       inp.addEventListener('blur',function(){ setTimeout(apply,120); });
     }
   },50);
