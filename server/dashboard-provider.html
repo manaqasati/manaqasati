@@ -1721,9 +1721,13 @@ function _pBindKeyboardFix(overlay){
   var vv=window.visualViewport;
   function apply(){
     if(!document.body.contains(overlay))return;
-    overlay.style.height=vv.height+'px';
-    overlay.style.top=(vv.offsetTop||0)+'px';
+    overlay.style.position='fixed';
+    overlay.style.top='0px';
+    overlay.style.left='0px';
+    overlay.style.right='0px';
     overlay.style.bottom='auto';
+    overlay.style.height=vv.height+'px';
+    if(window.scrollY!==0){ window.scrollTo(0,0); }
     var m=document.getElementById('p-chat-msgs'); if(m)m.scrollTop=m.scrollHeight;
   }
   vv.addEventListener('resize',apply);
@@ -1732,8 +1736,8 @@ function _pBindKeyboardFix(overlay){
   setTimeout(function(){
     var inp=document.getElementById('p-chat-inp');
     if(inp){
-      inp.addEventListener('focus',function(){ setTimeout(apply,120); setTimeout(apply,350); setTimeout(apply,650); });
-      inp.addEventListener('blur',function(){ setTimeout(apply,120); });
+      inp.addEventListener('focus',function(){ [80,200,400,700].forEach(function(t){setTimeout(apply,t);}); });
+      inp.addEventListener('blur',function(){ [80,250].forEach(function(t){setTimeout(apply,t);}); });
     }
   },50);
 }
