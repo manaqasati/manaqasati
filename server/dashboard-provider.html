@@ -631,10 +631,17 @@ function doLogout(){
 
 function _api(path,opts){
   var headers={'Authorization':'Bearer '+(localStorage.getItem('token')||_token||''),'Content-Type':'application/json'};
-  function doFetch(){var fetchOpts=Object.assign({headers:headers,cache:'no-store'},opts||{});return fetch(API+path,fetchOpts).then(function(r){return r.json();}).catch(function(){return null;});}
+  function doFetch(){var fetchOpts=Object.assign({headers:headers,cache:'no-store'},opts||{});return fetch(API+path,fetchOpts).then(function(r){if(r.status===401){_sessionExpired();return null;}return r.json();}).catch(function(){return null;});}
   var req=doFetch().then(function(r){if(r!==null)return r;return new Promise(function(res){setTimeout(res,1000);}).then(doFetch);});
   var timeout=new Promise(function(res){setTimeout(function(){res(null);},12000);});
   return Promise.race([req,timeout]);
+}
+// انتهاء الجلسة: يُعلم المزوّد ويوجّهه لتسجيل الدخول
+var _sessionExpiredShown=false;
+function _sessionExpired(){
+  if(_sessionExpiredShown)return; _sessionExpiredShown=true;
+  try{ if(typeof showToast==='function')showToast('انتهت جلستك — يرجى تسجيل الدخول من جديد','error'); }catch(e){}
+  setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} location.href='/auth.html'; }, 1500);
 }
 
 var _lb={t:null,v:0,
