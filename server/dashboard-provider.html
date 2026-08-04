@@ -1715,13 +1715,35 @@ function _renderProvConvList(convs,pg){
   if(ncb)ncb.addEventListener('click',function(){_openNewChatSearch();});
 }
 
+// ── ضبط محادثة المزوّد مع كيبورد الجوّال (visualViewport — الحل الصحيح لـ iOS Safari) ──
+function _pBindKeyboardFix(overlay){
+  if(!window.visualViewport||!overlay)return;
+  var vv=window.visualViewport;
+  function apply(){
+    if(!document.body.contains(overlay))return;
+    overlay.style.height=vv.height+'px';
+    overlay.style.top=(vv.offsetTop||0)+'px';
+    overlay.style.bottom='auto';
+    var m=document.getElementById('p-chat-msgs'); if(m)m.scrollTop=m.scrollHeight;
+  }
+  vv.addEventListener('resize',apply);
+  vv.addEventListener('scroll',apply);
+  setTimeout(apply,60);
+  setTimeout(function(){
+    var inp=document.getElementById('p-chat-inp');
+    if(inp){
+      inp.addEventListener('focus',function(){ setTimeout(apply,120); setTimeout(apply,350); });
+      inp.addEventListener('blur',function(){ setTimeout(apply,120); });
+    }
+  },50);
+}
 async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   reqId=parseInt(reqId);receiverId=parseInt(receiverId);
   _chatReqId=reqId;_chatReceiverId=receiverId;_chatMsgs=[];
   clearInterval(_chatPolling);
   var old=_el('prov-chat-overlay');if(old)old.remove();
   var overlay=document.createElement('div');overlay.id='prov-chat-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;overflow:hidden';
+  overlay.style.cssText='position:fixed;left:0;right:0;top:0;height:100dvh;background:var(--bg);z-index:999;display:flex;flex-direction:column;overflow:hidden';
   overlay.innerHTML=''
     +'<div style="background:var(--p3);padding:14px 16px;display:flex;align-items:center;gap:12px;flex:0 0 auto">'
     +'<button id="p-chat-close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#215;</button>'
@@ -1733,6 +1755,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
     +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;flex-shrink:0">إرسال</button>'
     +'</div>';
   document.body.appendChild(overlay);
+  _pBindKeyboardFix(overlay);
   _el('p-chat-close').onclick=function(){overlay.remove();clearInterval(_chatPolling);};
   _el('p-chat-send').onclick=_sendChatMsg;
   _el('p-chat-inp').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChatMsg();}});
