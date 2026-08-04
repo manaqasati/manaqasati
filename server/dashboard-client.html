@@ -297,7 +297,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 
 @media (max-width:768px){
-  #page-chat.on{position:fixed;inset:0;z-index:200;background:var(--white);padding:0;overflow:hidden;display:flex;flex-direction:column}
+  #page-chat.on{position:fixed;left:0;right:0;top:0;height:100dvh;z-index:200;background:var(--white);padding:0;overflow:hidden;display:flex;flex-direction:column}
   #page-chat #chat-container{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   #page-chat .chat-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--white)}
   #page-chat .chat-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;padding:0 12px}
@@ -2178,8 +2178,35 @@ function openClientChatSearch(){
     },400);
   });
 }
+// ── ضبط المحادثة مع كيبورد الجوّال (الحل الصحيح لـ iOS Safari) ──
+// visualViewport هي الوسيلة الوحيدة لمعرفة ارتفاع الكيبورد فعلياً؛ CSS وحده لا يكفي
+var _kbBound=false;
+function _bindKeyboardFix(){
+  if(_kbBound||!window.visualViewport)return; _kbBound=true;
+  var vv=window.visualViewport;
+  function apply(){
+    var pg=document.getElementById('page-chat');
+    if(!pg||!pg.classList.contains('on'))return;
+    // ارتفاع الكيبورد = فرق ارتفاع النافذة عن المساحة المرئية
+    var kb=Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    pg.style.height=(vv.height)+'px';
+    pg.style.bottom='auto';
+    pg.style.top=(vv.offsetTop||0)+'px';
+    // مرّر لآخر رسالة ليبقى الحوار مرئياً
+    var m=document.getElementById('chatMsgs'); if(m)m.scrollTop=m.scrollHeight;
+  }
+  vv.addEventListener('resize',apply);
+  vv.addEventListener('scroll',apply);
+  setTimeout(apply,60);
+  // عند التركيز على الصندوق: انتظر الكيبورد ثم اضبط
+  document.addEventListener('focusin',function(e){
+    if(e.target&&(e.target.id==='chatInp')){ setTimeout(apply,120); setTimeout(apply,350); }
+  });
+  document.addEventListener('focusout',function(){ setTimeout(apply,120); });
+}
 function openChat(reqId,providerId,providerName,reqTitle){
   _chatReqId=reqId;_chatWith=providerId;
+  _bindKeyboardFix();                                  // ضبط المحادثة مع الكيبورد (iOS)
   var el=document.getElementById('chat-container');if(!el)return;
   var name=providerName||'مزود';
   el.innerHTML='<div class="chat-head">'
