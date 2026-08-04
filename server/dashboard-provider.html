@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 </div>
 
 <div id="imgViewer" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9998;align-items:center;justify-content:center;padding:20px">
-  <img id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px;pointer-events:none">
+  <img loading="lazy" id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px;pointer-events:none">
 </div>
 
 <div id="toast"><div id="tIc"></div><span id="tMsg"></span></div>
@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded',function(){
 function _setAvatar(img){
   ['userAv','mobAv'].forEach(function(id){
     var el=_el(id);if(!el)return;
-    if(img){el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover">';}
+    if(img){el.innerHTML='<img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover">';}
     else{el.innerHTML='';el.textContent=(_me.name||'م')[0];}
   });
 }
@@ -758,7 +758,7 @@ function _renderHome(data){
   var pool=matchedBySpec?matches:openAll;
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
   var newCount=pool.length;
-  var avHtml=(profile&&profile.profile_image)?'<img src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+(_me.name||'م')[0]+'</span>';
+  var avHtml=(profile&&profile.profile_image)?'<img loading="lazy" src="'+profile.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+(_me.name||'م')[0]+'</span>';
   var firstName=String(_me.name||'المزود').split(' ')[0];
   var html='';
 
@@ -912,7 +912,7 @@ function _showMyQR(url){
   var ref=url+(url.indexOf('?')>-1?'&':'?')+'ref=pro'+url.split('/pro/')[1];
   var q='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(ref);
   var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Tajawal,sans-serif';
-  ov.innerHTML='<div style="background:#fff;border-radius:20px;padding:24px;text-align:center;max-width:300px"><div style="font-weight:900;color:#1e3a8a;font-size:16px;margin-bottom:14px;font-family:Cairo,sans-serif">رمز صفحتك</div><img src="'+q+'" style="width:220px;height:220px;border-radius:12px" alt="QR"/><div style="font-size:11.5px;color:#64748b;margin:12px 0 14px;line-height:1.6">امسح الرمز للوصول لصفحتك — ضعه في كرت عملك أو حساباتك</div><button onclick="this.closest(\'div\').parentNode.remove()" style="width:100%;background:#2563eb;color:#fff;border:none;padding:11px;border-radius:11px;font-weight:800;font-family:Tajawal;cursor:pointer">إغلاق</button></div>';
+  ov.innerHTML='<div style="background:#fff;border-radius:20px;padding:24px;text-align:center;max-width:300px"><div style="font-weight:900;color:#1e3a8a;font-size:16px;margin-bottom:14px;font-family:Cairo,sans-serif">رمز صفحتك</div><img loading="lazy" src="'+q+'" style="width:220px;height:220px;border-radius:12px" alt="QR"/><div style="font-size:11.5px;color:#64748b;margin:12px 0 14px;line-height:1.6">امسح الرمز للوصول لصفحتك — ضعه في كرت عملك أو حساباتك</div><button onclick="this.closest(\'div\').parentNode.remove()" style="width:100%;background:#2563eb;color:#fff;border:none;padding:11px;border-radius:11px;font-weight:800;font-family:Tajawal;cursor:pointer">إغلاق</button></div>';
   ov.onclick=function(e){if(e.target===ov)ov.remove();};
   document.body.appendChild(ov);
 }
@@ -1139,7 +1139,7 @@ async function _viewProj(id){
   if(r.city)body+='<span style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.city)+'</span>';
   if(r.category)body+='<span style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);padding:3px 10px;border-radius:20px;font-size:10px">'+_esc(r.category)+'</span>';
   body+='</div></div>';
-  if(imgs.length){body+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">';imgs.forEach(function(img){body+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="openImgFull(this.dataset.s)" data-s="'+img+'"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});body+='</div>';}
+  if(imgs.length){body+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">';imgs.forEach(function(img){body+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="openImgFull(this.dataset.s)" data-s="'+img+'"><img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});body+='</div>';}
   if(r.description)body+='<div style="background:var(--bg);border-right:3px solid var(--border);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2);white-space:pre-wrap;word-wrap:break-word">'+_esc(r.description)+'</div>';
   body+='<div style="background:var(--bg);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div></div>';
   _el('mBd').innerHTML=body;
@@ -1290,7 +1290,7 @@ async function loadReviews(){
       if(r.comment)html+='<div style="font-size:12px;color:var(--text2);background:var(--bg);padding:8px 12px;border-radius:8px;border-right:3px solid var(--gold);line-height:1.8">'+_esc(r.comment)+'</div>';
       if(r.images&&r.images.length){
         html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
-        r.images.forEach(function(img){html+='<div onclick="_viewImg(\''+img+'\')" style="width:60px;height:60px;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border)"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});
+        r.images.forEach(function(img){html+='<div onclick="_viewImg(\''+img+'\')" style="width:60px;height:60px;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--border)"><img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});
         html+='</div>';
       }
       if(r.provider_reply){
@@ -1397,7 +1397,7 @@ async function loadProfile(){
   try{if(!_myBids.length){var bids=await _api('/api/provider/bids')||[];if(Array.isArray(bids)){_myBids=bids;totalBids=bids.length;}}}catch(e){}
   var completed=Array.isArray(projs)?projs.filter(function(x){return x.status==='completed';}).length:0;
   var avgR=Array.isArray(reviews)&&reviews.length?(reviews.reduce(function(s,r){return s+(r.rating||0);},0)/reviews.length).toFixed(1):(p.avg_rating?Number(p.avg_rating).toFixed(1):'—');
-  var avHtml=p.profile_image?'<img src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:28px;font-weight:900;color:var(--p2)">'+_esc((p.name||'م')[0])+'</span>';
+  var avHtml=p.profile_image?'<img loading="lazy" src="'+p.profile_image+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:28px;font-weight:900;color:var(--p2)">'+_esc((p.name||'م')[0])+'</span>';
   var portImgs=p.portfolio_images||[];
   pg.innerHTML='';
 
@@ -1474,7 +1474,7 @@ async function loadProfile(){
   var portCard=document.createElement('div');portCard.className='card';
   var portHtml='<div class="ch"><div class="ch-l"><h3>معرض الأعمال</h3></div><span style="font-size:11px;color:var(--muted)">'+portImgs.length+'/6</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  portImgs.forEach(function(img,i){portHtml+='<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openImgFull(this.dataset.s)" data-s="'+img+'"><button onclick="_delPortImg('+i+')" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center">&#215;</button></div>';});
+  portImgs.forEach(function(img,i){portHtml+='<div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1"><img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openImgFull(this.dataset.s)" data-s="'+img+'"><button onclick="_delPortImg('+i+')" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,.85);border:none;cursor:pointer;width:22px;height:22px;border-radius:50%;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center">&#215;</button></div>';});
   if(portImgs.length<6){portHtml+='<div onclick="document.getElementById(&quot;port-inp&quot;).click()" style="border:2px dashed var(--border);border-radius:8px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:5px;background:var(--bg)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--muted)" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--muted)">إضافة</span></div>';}
   portHtml+='</div><input type="file" id="port-inp" accept="image/*" multiple style="display:none" onchange="_uploadPort(this)">';
   portCard.innerHTML=portHtml;pg.appendChild(portCard);
@@ -1576,7 +1576,7 @@ function _uploadAvatar(inp){
   var f=inp.files[0];if(!f)return;if(f.size>3*1024*1024){showToast('الحجم الأقصى 3MB','error');return;}
   var rd=new FileReader();
   rd.onload=async function(e){
-    var img=e.target.result;var pr=_el('av-preview');if(pr)pr.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover">';
+    var img=e.target.result;var pr=_el('av-preview');if(pr)pr.innerHTML='<img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover">';
     _setAvatar(img);localStorage.setItem('pav_'+_me.id,img);
     await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify({profile_image:img})});showToast('تم حفظ الصورة','success');
   };
@@ -1655,7 +1655,7 @@ function _openNewChatSearch(){
           var h='';
           users.forEach(function(u){
             h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;border-bottom:1px solid var(--border)">';
-            h+='<div style="width:38px;height:38px;border-radius:50%;background:var(--p3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">'+(u.profile_image?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'ع')[0])+'</div>';
+            h+='<div style="width:38px;height:38px;border-radius:50%;background:var(--p3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">'+(u.profile_image?'<img loading="lazy" src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'ع')[0])+'</div>';
             h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--text)">'+(u.name||'عميل')+'</div><div style="font-size:11px;color:var(--muted)">'+(u.city||'')+'</div></div>';
             h+='<button data-uid="'+u.id+'" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>';
             h+='</div>';
@@ -1702,7 +1702,7 @@ function _renderProvConvList(convs,pg){
       var cname=String(cv.client_name||'عميل').replace(/'/g,'');var ctitle=String(cv.request_title||'').replace(/'/g,'');
       html+='<div onclick="_openChatConv('+cv.request_id+','+cv.client_id+')" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer'+(unread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">';
       html+='<div style="width:44px;height:44px;border-radius:50%;background:var(--p3);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;position:relative">';
-      if(cv.client_image)html+='<img src="'+cv.client_image+'" style="width:100%;height:100%;object-fit:cover">';
+      if(cv.client_image)html+='<img loading="lazy" src="'+cv.client_image+'" style="width:100%;height:100%;object-fit:cover">';
       else html+=_esc(initials);
       if(unread)html+='<div style="position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;background:var(--gold);border:2px solid var(--white)"></div>';
       html+='</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(unread?'900':'700')+';color:var(--text);margin-bottom:2px">'+_esc(cv.client_name||'عميل')+'</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(cv.last_message||'')+'</div></div>';
@@ -1854,7 +1854,7 @@ function _viewImg(src){
   var o=document.createElement('div');
   o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer';
   o.onclick=function(){o.remove();};
-  o.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;border-radius:12px">';
+  o.innerHTML='<img loading="lazy" src="'+src+'" style="max-width:100%;max-height:100%;border-radius:12px">';
   document.body.appendChild(o);
 }
 
