@@ -1732,7 +1732,8 @@ function _pBindKeyboardFix(overlay){
   }
   vv.addEventListener('resize',apply);
   vv.addEventListener('scroll',apply);
-  setTimeout(apply,60);
+  // اضبط فوراً عند فتح المحادثة (يمنع الفراغ قبل ظهور الكيبورد)
+  [0,50,150,350].forEach(function(t){setTimeout(apply,t);});
   setTimeout(function(){
     var inp=document.getElementById('p-chat-inp');
     if(inp){
