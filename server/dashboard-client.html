@@ -11,7 +11,7 @@
 </script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,interactive-widget=resizes-content">
 <title>مناقصة — لوحة العميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2198,9 +2198,9 @@ function _bindKeyboardFix(){
   vv.addEventListener('resize',apply);
   vv.addEventListener('scroll',apply);
   setTimeout(apply,60);
-  // عند التركيز على الصندوق: انتظر الكيبورد ثم اضبط
+  // عند التركيز على الصندوق: انتظر الكيبورد ثم اضبط (توقيتات متعددة لتغطية iOS وأندرويد)
   document.addEventListener('focusin',function(e){
-    if(e.target&&(e.target.id==='chatInp')){ setTimeout(apply,120); setTimeout(apply,350); }
+    if(e.target&&(e.target.id==='chatInp')){ setTimeout(apply,120); setTimeout(apply,350); setTimeout(apply,650); }
   });
   document.addEventListener('focusout',function(){ setTimeout(apply,120); });
 }
