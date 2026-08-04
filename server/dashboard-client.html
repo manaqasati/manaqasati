@@ -819,7 +819,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 </div>
 
 <div id="imgViewer" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <img id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px">
+  <img loading="lazy" id="imgViewerImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:10px">
 </div>
 <script>
 // ═══════════════════════════════════
@@ -935,7 +935,7 @@ function applyAvatar(img){
   if(!isImg(img))return;
   ['userAv','mobAv','profileAv','phAv'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
-    el.innerHTML='<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+    el.innerHTML='<img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
   });
 }
 
@@ -1327,7 +1327,7 @@ function renderBestOffer(all){
     var reviews=parseInt(best.provider_reviews)||0;
     var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
     var price=best.price?fmtN(best.price):'—';
-    var avHtml=isImg(best.provider_image)?'<img src="'+best.provider_image+'">':esc(nm.charAt(0));
+    var avHtml=isImg(best.provider_image)?'<img loading="lazy" src="'+best.provider_image+'">':esc(nm.charAt(0));
     slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">'
       +'<span class="ph-fb">أفضل عرض على طلبك</span>'
       +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
@@ -1611,7 +1611,7 @@ function openRate(reqId){
     var pname=ab.provider_business_name||ab.provider_name||'المزود';
     var pimg=ab.provider_image;
     var avHtml=isImg(pimg)
-      ?'<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid var(--sky)"><img src="'+pimg+'" style="width:100%;height:100%;object-fit:cover"></div>'
+      ?'<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid var(--sky)"><img loading="lazy" src="'+pimg+'" style="width:100%;height:100%;object-fit:cover"></div>'
       :'<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;border:3px solid var(--sky)">'+esc(pname.charAt(0))+'</div>';
     pv.innerHTML=avHtml+'<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:var(--text)">'+esc(pname)+'</div><div style="font-size:12px;color:var(--muted)">كيف كانت تجربتك معه؟</div></div>';
   } else if(pv){ pv.innerHTML=''; }
@@ -1687,7 +1687,7 @@ function compressImage(file,cb){
 }
 function renderImgGrid(){
   var g=document.getElementById('img-grid');if(!g)return;
-  g.innerHTML=_reqImages.map(function(img,i){return'<div style="position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1"><img src="'+img.data+'" style="width:100%;height:100%;object-fit:cover"><button onclick="removeReqImg('+i+')" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;font-size:13px;cursor:pointer"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
+  g.innerHTML=_reqImages.map(function(img,i){return'<div style="position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1"><img loading="lazy" src="'+img.data+'" style="width:100%;height:100%;object-fit:cover"><button onclick="removeReqImg('+i+')" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;font-size:13px;cursor:pointer"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
 }
 function removeReqImg(i){_reqImages.splice(i,1);renderImgGrid();}
 var _reqFiles=[];
@@ -2102,7 +2102,7 @@ function loadChatPage(){
     var h='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
     convs.forEach(function(cv){
       var name=cv.provider_name||'مزود';
-      var avHtml=isImg(cv.provider_image)?'<img src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
+      var avHtml=isImg(cv.provider_image)?'<img loading="lazy" src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
       h+='<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s'+(cv.unread>0?';background:var(--p-light)':'')+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\''+(cv.unread>0?'var(--p-light)':'var(--white)')+'\'" onclick="openChat(\''+cv.request_id+'\',\''+cv.provider_id+'\',\''+esc(name)+'\',\''+esc(cv.request_title||'محادثة')+'\')">'
         +'<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--sky));color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">'+avHtml+'</div>'
         +'<div style="flex:1;min-width:0">'
@@ -2151,7 +2151,7 @@ function openClientChatSearch(){
         if(!users||!users.length){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>';return;}
         var h='';
         users.forEach(function(u){
-          var av=isImg(u.profile_image)?'<img src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'م')[0];
+          var av=isImg(u.profile_image)?'<img loading="lazy" src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'م')[0];
           h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">'
             +'<div style="width:38px;height:38px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;overflow:hidden">'+av+'</div>'
             +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800">'+esc(u.business_name||u.name||'مزود')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.city||'')+'</div></div>'
