@@ -151,8 +151,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .chat-msgs::-webkit-scrollbar{width:3px}
 .chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .msg-bubble{max-width:72%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6}
-.msg-me{background:var(--p3);color:#fff;align-self:flex-end;border-radius:16px 16px 4px 16px}
-.msg-other{background:var(--white);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
+.msg-me{background:var(--p3);color:#fff;align-self:flex-start;border-radius:16px 16px 16px 4px}
+.msg-other{background:var(--white);border:1px solid var(--border);align-self:flex-end;border-radius:16px 16px 4px 16px}
 .msg-time{font-size:10px;opacity:.5;margin-top:3px}
 .chat-input{display:flex;gap:8px;flex:0 0 auto;background:var(--white);padding-top:4px}
 .chat-inp{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;transition:.18s}
@@ -250,6 +250,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   .mob-head{display:flex}
   .bnav{display:block}
   .content{padding:12px 14px 120px}
+  .content:has(#page-chat.on){padding-bottom:12px}
+  #page-chat.on{padding-bottom:0}
   .stat-grid{grid-template-columns:repeat(4,1fr);gap:6px}
   .sc{padding:12px 10px;border-radius:12px}
   .sn{font-size:22px}
@@ -297,8 +299,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 @media (max-width:768px){
   #page-chat.on{position:fixed;inset:0;z-index:200;background:var(--white);padding:12px;overflow:hidden}
-  #page-chat .chat-wrap{flex:1 1 auto;height:calc(100dvh - 230px);min-height:300px;max-height:calc(100dvh - 200px)}
-.chat-input{position:sticky;bottom:0;z-index:5;padding-bottom:8px}
+  #page-chat .chat-wrap{flex:1 1 auto;display:flex;flex-direction:column;height:calc(100dvh - 150px);min-height:320px;max-height:calc(100dvh - 130px)}
+.chat-input{flex:0 0 auto;background:var(--white);padding-top:6px}
   #page-chat #chat-container{height:100%;display:flex;flex-direction:column}
   /* أخفِ الشريط السفلي وقت المحادثة (مثل واتساب) */
   body.in-chat .bnav{display:none!important}
