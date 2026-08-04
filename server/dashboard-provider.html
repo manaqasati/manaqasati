@@ -709,6 +709,14 @@ function _gotoPageInner(page){
   var pt=_el('pageTitle');if(pt)pt.textContent=_pages[page]||page;
   _curPage=page;
   sessionStorage.setItem('mnq_prov_page',page);
+  // احفظ التنقّل في تاريخ المتصفّح → زر الرجوع يرجّع للقسم السابق داخل اللوحة
+  if(!window._pSkipHash){
+    var hash='#'+page;
+    if(location.hash!==hash){
+      if(window._pNavReplace){history.replaceState({pg:page},'',hash);window._pNavReplace=false;}
+      else{history.pushState({pg:page},'',hash);}
+    }
+  }
   window.scrollTo(0,0);
   if(page==='home')loadHome();
   else if(page==='browse')loadBrowse();
@@ -719,6 +727,13 @@ function _gotoPageInner(page){
   else if(page==='chat'){loadChat();}
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
+// زر رجوع المتصفّح: يرجّع للقسم السابق داخل لوحة المزوّد بدل الخروج
+window.addEventListener('popstate',function(){
+  var h=(location.hash||'').replace('#','');
+  var known=['home','browse','works','notifs','profile','chat'];
+  var target=known.indexOf(h)>=0?h:'home';
+  window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
+});
 
 function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
 function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
@@ -1309,22 +1324,47 @@ async function loadNotifs(){
   try{var fresh=await _api('/api/notifications')||[];list=Array.isArray(fresh)?fresh:[];_cacheSet('notifs',list);}catch(e){}
   if(!Array.isArray(list))list=[];
   var unseen=list.filter(function(n){return !n.is_read;}).length;
-  var html='<div class="pghd" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div class="pg-t">الإشعارات</div><div class="pg-s">'+unseen+' غير مقروء</div></div>';
+  var html='<div class="pghd" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div class="pg-t">الإشعارات</div><div class="pg-s">'+unseen+' غير مقروء</div></div><div style="display:flex;gap:8px">';
   if(unseen)html+='<button class="mark-all-btn" onclick="_markRead()">تحديد الكل مقروء</button>';
-  html+='</div><div class="card card-accent">';
+  if(list.length)html+='<button class="mark-all-btn" onclick="_deleteAllNotifs()" style="color:var(--red)">حذف الكل</button>';
+  html+='</div></div><div class="card card-accent">';
   if(list.length){
     list.forEach(function(n){
       var isUnread=!n.is_read;
       var mt=_notifMeta(n.type);
-      html+='<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)'+(isUnread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">';
+      html+='<div id="pnotif-'+n.id+'" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)'+(isUnread?';background:var(--bg);margin:0 -16px;padding-left:16px;padding-right:16px':'')+'">';
       html+='<div style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+mt.bg+';color:'+mt.c+'">'+mt.ic+'</div>';
       html+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isUnread?'800':'600')+';color:'+(isUnread?'var(--text)':'var(--muted)')+'">'+_esc(n.title||'')+'</div>';
       if(n.body)html+='<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">'+_esc(n.body)+'</div>';
-      html+='</div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+(isUnread?'<span style="width:8px;height:8px;border-radius:50%;background:var(--p)"></span>':'')+'<div style="font-size:9px;color:var(--hint)">'+_ago(n.created_at)+'</div></div></div>';
+      html+='<div style="font-size:9px;color:var(--hint);margin-top:3px">'+_ago(n.created_at)+'</div></div>';
+      html+='<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'+(isUnread?'<button onclick="_pNotifMarkOne('+n.id+')" title="تعليم كمقروء" style="background:var(--green-l);color:var(--green);border:none;width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:12px">✓</button><button onclick="_pNotifSnooze('+n.id+')" title="تأجيل" style="background:var(--bg);color:var(--muted);border:1px solid var(--border);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:11px">⏰</button>':'')+'</div></div>';
     });
   }else{html+=_empty('لا يوجد إشعارات','');}
   html+='</div>';
-  pg.innerHTML=html;_lb.done();if(unseen)_markRead();
+  pg.innerHTML=html;_lb.done();
+}
+// تعليم إشعار واحد كمقروء (المزوّد)
+function _pNotifMarkOne(id){
+  var el=_el('pnotif-'+id); if(el){el.style.background='';el.style.margin='';el.querySelector('div[style*="flex-direction:column"]').innerHTML='';}
+  _api('/api/notifications/'+id+'/read',{method:'PUT'});
+  _loadNotifCount();
+  if(typeof showToast==='function')showToast('تم ✓','success');
+}
+// تأجيل إشعار (المزوّد)
+function _pNotifSnooze(id){
+  var el=_el('pnotif-'+id);
+  if(el){el.style.transition='opacity .25s';el.style.opacity='0';setTimeout(function(){if(el)el.style.display='none';},260);}
+  if(typeof showToast==='function')showToast('تم التأجيل','success');
+}
+// حذف كل الإشعارات (المزوّد)
+function _deleteAllNotifs(){
+  if(!confirm('حذف كل الإشعارات نهائياً؟'))return;
+  _api('/api/notifications',{method:'DELETE'}).then(function(){
+    _cacheSet('notifs',[]);
+    if(_curPage==='notifs')loadNotifs();
+    ['nb-notif','mob-nb'].forEach(function(id){var el=_el(id);if(el)el.style.display='none';});
+    if(typeof showToast==='function')showToast('تم حذف كل الإشعارات','success');
+  }).catch(function(){if(typeof showToast==='function')showToast('تعذّر الحذف — تحقّق من اتصالك','error');});
 }
 async function _markRead(){
   await _api('/api/notifications/read',{method:'PUT'});
