@@ -122,8 +122,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
         <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <div class="hd-info"><div class="hd-t">المحادثات</div><div class="hd-s" id="listSub">جاري التحميل...</div></div>
+      <button class="hd-btn" onclick="openNew()" title="محادثة جديدة">
+        <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </div>
     <div id="listBody"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+  </div>
+
+  <!-- ══ شاشة محادثة جديدة (بحث) ══ -->
+  <div class="screen" id="scNew">
+    <div class="hd">
+      <button class="hd-btn" onclick="closeNew()" title="رجوع">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="hd-info"><div class="hd-t">محادثة جديدة</div><div class="hd-s">ابحث عن مزوّد بالاسم أو التخصص</div></div>
+    </div>
+    <div style="flex:0 0 auto;padding:12px 14px;background:var(--white);border-bottom:1px solid var(--border)">
+      <input id="searchInp" placeholder="اكتب اسم المزوّد أو التخصص..." style="width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:22px;font-family:inherit;font-size:14.5px;outline:none;background:var(--bg)">
+    </div>
+    <div id="searchBody" style="flex:1 1 auto;min-height:0;overflow-y:auto;background:var(--white)">
+      <div class="empty"><div class="empty-ic">🔍</div><div class="empty-t">ابحث عن مزوّد</div><div>اكتب اسمه أو تخصصه (مثل: زجاج، كهرباء)</div></div>
+    </div>
   </div>
 
   <!-- ══ شاشة المحادثة ══ -->
@@ -234,6 +253,68 @@ function renderList(){
   }).join('');
 }
 
+/* ═══ محادثة جديدة: بحث عن مزوّد ═══ */
+var searchTimer=null;
+function openNew(){
+  document.getElementById('scList').classList.remove('on');
+  document.getElementById('scNew').classList.add('on');
+  history.pushState({v:'new'},'','#new');
+  setTimeout(function(){ var s=document.getElementById('searchInp'); if(s)s.focus(); },120);
+}
+function closeNew(){
+  document.getElementById('scNew').classList.remove('on');
+  document.getElementById('scList').classList.add('on');
+  if(location.hash)history.replaceState(null,'',location.pathname);
+}
+function doSearch(q){
+  var body=document.getElementById('searchBody');
+  if(!q||q.length<2){ body.innerHTML='<div class="empty"><div class="empty-ic">🔍</div><div class="empty-t">ابحث عن مزوّد</div><div>اكتب حرفين على الأقل</div></div>'; return; }
+  body.innerHTML='<div class="load">جاري البحث...</div>';
+  api('/api/providers?q='+encodeURIComponent(q)).then(function(d){
+    var list=Array.isArray(d)?d.slice(0,30):[];
+    if(!list.length){ body.innerHTML='<div class="empty"><div class="empty-ic">🤷</div><div class="empty-t">لا نتائج</div><div>جرّب كلمة أخرى (اسم أو تخصص)</div></div>'; return; }
+    body.innerHTML=list.map(function(p){
+      var av=(p.profile_image&&/^(https?:|data:)/.test(p.profile_image))?'<img loading="lazy" src="'+esc(p.profile_image)+'">':esc((p.name||'؟').charAt(0));
+      var spec=(p.specialties&&p.specialties.length)?p.specialties.slice(0,2).join(' · '):'';
+      var rate=(p.avg_rating>0)?('⭐ '+p.avg_rating.toFixed(1)+' ('+p.review_count+')'):'مزوّد جديد';
+      return '<div class="conv" onclick="startNew('+p.id+',\''+esc(p.name||'مزوّد').replace(/'/g,"\\'")+'\')">'
+        +'<div class="conv-av">'+av+'</div>'
+        +'<div class="conv-body">'
+          +'<div class="conv-name">'+esc(p.name||'مزوّد')+'</div>'
+          +(spec?'<div class="conv-proj">'+esc(spec)+'</div>':'')
+          +'<div class="conv-last">'+esc(p.city||'')+(p.city&&rate?' · ':'')+rate+'</div>'
+        +'</div>'
+        +'<svg width="16" height="16" fill="none" stroke="var(--p)" stroke-width="2.5" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+      +'</div>';
+    }).join('');
+  }).catch(function(){ body.innerHTML='<div class="empty"><div class="empty-ic">📡</div><div class="empty-t">تعذّر البحث</div><div>تحقّق من اتصالك</div></div>'; });
+}
+// بدء محادثة جديدة مع مزوّد (تحتاج مشروعاً — نختار أحد مشاريع العميل)
+function startNew(provId,provName){
+  if(isProvider){ toast('المزوّدون يراسلون العملاء عبر المشاريع','err'); return; }
+  api('/api/requests/my').then(function(rs){
+    var open=(Array.isArray(rs)?rs:[]).filter(function(r){return r.status==='open'||r.status==='in_progress';});
+    if(!open.length){
+      if(confirm('لبدء محادثة تحتاج مشروعاً منشوراً.\nهل تريد نشر مشروع الآن؟')) location.href='/dashboard-client.html#new';
+      return;
+    }
+    if(open.length===1){ location.href='/chat?req='+open[0].id+'&with='+provId+'&name='+encodeURIComponent(provName); return; }
+    // أكثر من مشروع → اختر
+    var s=document.getElementById('sheet');
+    var btns=open.slice(0,8).map(function(r){
+      return '<button class="sheet-btn" onclick="location.href=\'/chat?req='+r.id+'&with='+provId+'&name='+encodeURIComponent(provName)+'\'"><span style="font-size:17px">📁</span> '+esc(String(r.title||'مشروع').slice(0,40))+'</button>';
+    }).join('');
+    s.innerHTML='<div class="sheet-card"><div class="sheet-grip"></div>'
+      +'<div style="padding:6px 20px 10px;font-size:12.5px;color:var(--muted);font-weight:700">اختر المشروع الذي تريد مراسلته بشأنه:</div>'
+      +btns+'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>';
+    s.classList.add('on');
+  }).catch(function(){ toast('تعذّر جلب مشاريعك','err'); });
+}
+(function(){
+  var s=document.getElementById('searchInp');
+  if(s)s.addEventListener('input',function(){ var v=this.value.trim(); clearTimeout(searchTimer); searchTimer=setTimeout(function(){doSearch(v);},350); });
+})();
+
 /* ═══ فتح محادثة ═══ */
 function openChat(reqId,withId,name,proj){
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
@@ -260,6 +341,7 @@ function backToList(){
 }
 window.addEventListener('popstate',function(){
   if(document.getElementById('scChat').classList.contains('on'))backToList();
+  else if(document.getElementById('scNew').classList.contains('on'))closeNew();
   else goBackDash();
 });
 
@@ -484,21 +566,24 @@ function paintBlock(b){
 /* ═══ بدء ═══ */
 document.addEventListener('visibilitychange',function(){ if(!document.hidden&&curReq)loadMsgs(true); });
 loadList();
-// فتح محادثة مباشرة عبر الرابط: ?req=123&with=456
+// فتح محادثة مباشرة عبر الرابط: ?req=123&with=456 (تعمل حتى لو المحادثة جديدة)
 (function(){
   var p=new URLSearchParams(location.search);
   var r=parseInt(p.get('req')), w=parseInt(p.get('with'));
-  if(r&&w){
-    var t=setInterval(function(){
-      if(convs.length||document.getElementById('listBody').querySelector('.empty')){
-        clearInterval(t);
-        var c=convs.filter(function(x){return x.request_id==r;})[0];
-        var nm=c?(isProvider?c.client_name:c.provider_name):(p.get('name')||'محادثة');
-        openChat(r,w,nm,c?c.request_title:(p.get('proj')||''));
-      }
-    },200);
-    setTimeout(function(){clearInterval(t);},6000);
-  }
+  if(!r||!w)return;
+  var nameParam=p.get('name')||'';
+  var tries=0;
+  var t=setInterval(function(){
+    tries++;
+    var listReady=convs.length||document.getElementById('listBody').querySelector('.empty');
+    if(listReady||tries>25){
+      clearInterval(t);
+      var c=convs.filter(function(x){return x.request_id==r&&(isProvider?x.client_id==w:x.provider_id==w);})[0];
+      var nm=c?(isProvider?c.client_name:c.provider_name):(nameParam||'محادثة جديدة');
+      var pj=c?c.request_title:(p.get('proj')||'');
+      openChat(r,w,nm,pj);
+    }
+  },180);
 })();
 </script>
 </body>
