@@ -1852,11 +1852,11 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
     +'</div>'
     +'<div id="p-chat-msgs" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:2px;background:var(--bg)"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">جاري التحميل...</div></div>'
     +'<div id="p-reply-bar" style="display:none;align-items:center;gap:8px;background:var(--bg);padding:7px 12px;border-top:1px solid var(--border);flex:0 0 auto"></div>'
-    +'<div style="display:flex;gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
+    +'<div style="display:flex;gap:9px;align-items:flex-end;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-top:1px solid var(--border);flex:0 0 auto">'
     +'<input type="file" id="p-chat-file" accept="image/*,.pdf,.doc,.docx" style="display:none" onchange="_pAttachFile(this)">'
-    +'<button onclick="document.getElementById(\'p-chat-file\').click()" title="إرفاق" style="background:var(--bg);border:1.5px solid var(--border);border-radius:11px;width:42px;flex-shrink:0;cursor:pointer;font-size:17px">📎</button>'
-    +'<textarea id="p-chat-inp" maxlength="2000" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;resize:none;max-height:80px"></textarea>'
-    +'<button id="p-chat-send" style="padding:10px 16px;background:var(--p3);color:#fff;border:none;border-radius:11px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;flex-shrink:0">إرسال</button>'
+    +'<button onclick="document.getElementById(\'p-chat-file\').click()" title="إرفاق" style="width:46px;height:46px;flex-shrink:0;border:1.5px solid var(--border);border-radius:50%;background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted)"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>'
+    +'<textarea id="p-chat-inp" maxlength="2000" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:22px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;resize:none;max-height:90px;background:var(--bg);line-height:1.5"></textarea>'
+    +'<button id="p-chat-send" title="إرسال" style="width:46px;height:46px;flex-shrink:0;border:none;border-radius:50%;background:linear-gradient(135deg,var(--p3),#2563eb);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(30,58,138,.28)"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="transform:scaleX(-1)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
     +'</div>';
   document.body.appendChild(overlay);
   _pBindKeyboardFix(overlay);
@@ -1900,7 +1900,9 @@ function _renderChatMsgs(){
       h+='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px"><div style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:12.5px;opacity:.55;font-style:italic">🚫 حُذفت هذه الرسالة</div></div>';
       return h;
     }
-    h+='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px"><div style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:13px;line-height:1.7;word-break:break-word">';
+    var canDel=isMe&&!String(m.id).startsWith('tmp_')&&((Date.now()-new Date(m.created_at).getTime())/60000<60);
+    var pl=encodeURIComponent(JSON.stringify({id:m.id,txt:String(m.content||(m.attachment_url?'مرفق':'')).slice(0,60),who:(m.sender_name||(isMe?'أنت':'')),del:canDel}));
+    h+='<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:6px"><div class="pmsg" data-m="'+pl+'" oncontextmenu="return _pMsgMenu(event,this)" style="max-width:78%;padding:10px 13px;border-radius:'+radius+';background:'+bg+';color:'+color+';border:'+border+';font-size:13px;line-height:1.7;word-break:break-word">';
     if(!isMe)h+='<div style="font-size:10px;opacity:.55;margin-bottom:3px;font-weight:700">'+_esc(m.sender_name||'')+'</div>';
     // اقتباس الرد
     if(m.reply_to&&m.reply_content){
@@ -1921,16 +1923,50 @@ function _renderChatMsgs(){
       tk='<span style="margin-inline-start:4px;color:'+(rd?'#53bdeb':'rgba(255,255,255,.6)')+';font-weight:900;letter-spacing:-2px">'+(rd?'✓✓':'✓')+'</span>';
     }
     h+='<div style="font-size:10px;opacity:.55;margin-top:4px;text-align:left">'+_ago(m.created_at)+tk+'</div>';
-    // أزرار: رد · حذف (للمرسل خلال ساعة)
-    var canDel=isMe&&!String(m.id).startsWith('tmp_')&&((Date.now()-new Date(m.created_at).getTime())/60000<60);
-    h+='<div style="display:flex;gap:7px;margin-top:5px;opacity:.75">'
-      +'<button onclick="event.stopPropagation();_pReplyTo('+m.id+',\''+_esc(String(m.content||'مرفق')).replace(/'/g,"\\'").slice(0,40)+'\',\''+_esc(m.sender_name||(isMe?'أنت':'')).replace(/'/g,"\\'")+'\')" style="background:none;border:none;padding:0;font-size:10.5px;font-weight:700;cursor:pointer;color:inherit;font-family:Tajawal">↩ رد</button>'
-      +(canDel?'<button onclick="event.stopPropagation();_pDeleteMsg('+m.id+')" style="background:none;border:none;padding:0;font-size:10.5px;font-weight:700;cursor:pointer;color:inherit;font-family:Tajawal">🗑 حذف</button>':'')
-      +'</div>';
     h+='</div></div>';
     return h;
   }).join('');
   setTimeout(function(){wrap.scrollTop=wrap.scrollHeight;},30);
+  _pBindLongPress();
+}
+// ── الضغط المطوّل على الرسالة (المزوّد) ──
+function _pBindLongPress(){
+  var el=_el('p-chat-msgs'); if(!el)return;
+  el.querySelectorAll('.pmsg[data-m]').forEach(function(b){
+    if(b._lpBound)return; b._lpBound=true;
+    var t=null, moved=false;
+    b.addEventListener('touchstart',function(e){ moved=false; t=setTimeout(function(){ if(!moved)_pMsgMenu(e,b); },420); },{passive:true});
+    b.addEventListener('touchmove',function(){ moved=true; clearTimeout(t); },{passive:true});
+    b.addEventListener('touchend',function(){ clearTimeout(t); },{passive:true});
+    b.addEventListener('dblclick',function(e){ _pMsgMenu(e,b); });
+  });
+}
+function _pMsgMenu(e,el){
+  if(e&&e.preventDefault)e.preventDefault();
+  var d={}; try{ d=JSON.parse(decodeURIComponent(el.getAttribute('data-m')||'{}')); }catch(err){}
+  if(navigator.vibrate)try{navigator.vibrate(12);}catch(err){}
+  var sheet=document.createElement('div');
+  sheet.id='pMsgSheet';
+  sheet.style.cssText='position:fixed;inset:0;z-index:1200;background:rgba(15,23,42,.35);display:flex;align-items:flex-end;justify-content:center';
+  var btn='display:flex;align-items:center;gap:12px;width:100%;padding:15px 18px;background:none;border:none;font-family:Tajawal,sans-serif;font-size:14.5px;font-weight:700;cursor:pointer;text-align:right;color:var(--text);border-bottom:1px solid var(--border)';
+  sheet.innerHTML='<div style="background:var(--white);width:100%;max-width:460px;border-radius:20px 20px 0 0;overflow:hidden;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 6px)">'
+    +'<div style="width:38px;height:4px;background:var(--border);border-radius:3px;margin:9px auto"></div>'
+    +'<button style="'+btn+'" onclick="_pSheetAct(\'reply\')"><span style="font-size:19px">↩️</span> رد على الرسالة</button>'
+    +'<button style="'+btn+'" onclick="_pSheetAct(\'copy\')"><span style="font-size:19px">📋</span> نسخ النص</button>'
+    +(d.del?'<button style="'+btn+';color:var(--red)" onclick="_pSheetAct(\'delete\')"><span style="font-size:19px">🗑️</span> حذف الرسالة</button>':'')
+    +'<button style="'+btn+';border-bottom:none;justify-content:center;color:var(--muted)" onclick="_pCloseSheet()">إلغاء</button>'
+    +'</div>';
+  sheet.onclick=function(ev){ if(ev.target===sheet)_pCloseSheet(); };
+  window._pSheetData=d;
+  document.body.appendChild(sheet);
+  return false;
+}
+function _pCloseSheet(){ var s=_el('pMsgSheet'); if(s)s.remove(); }
+function _pSheetAct(act){
+  var d=window._pSheetData||{}; _pCloseSheet();
+  if(act==='reply') _pReplyTo(d.id,d.txt,d.who);
+  else if(act==='copy'){ _copyText(d.txt); }
+  else if(act==='delete') _pDeleteMsg(d.id);
 }
 // الرد على رسالة (المزوّد)
 var _pReplyCtx=null;
