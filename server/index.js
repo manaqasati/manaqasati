@@ -1337,6 +1337,13 @@ async function setupDatabase() {
     // حظر بين المستخدمين: blocker يحظر blocked فلا تصله رسائله
     await pool.query(`CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(blocker_id, blocked_id))`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
+    // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_req ON messages(request_id, created_at)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
@@ -2428,16 +2435,30 @@ app.get('/api/blocks', auth, async (req, res) => {
   } catch(e) { console.error('blocks list:', e.message); res.json([]); }
 });
 
+// حذف رسالة (حذف ناعم — للمرسل فقط، خلال ساعة)
+app.delete('/api/messages/:id', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const m = await pool.query('SELECT sender_id, created_at FROM messages WHERE id=$1', [id]);
+    if (!m.rows.length) return res.status(404).json({ message: 'الرسالة غير موجودة' });
+    if (String(m.rows[0].sender_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليست رسالتك' });
+    const ageMin = (Date.now() - new Date(m.rows[0].created_at).getTime()) / 60000;
+    if (ageMin > 60) return res.status(400).json({ message: 'لا يمكن حذف رسالة مضى عليها أكثر من ساعة' });
+    await pool.query("UPDATE messages SET deleted_at=NOW(), content='', attachment_url=NULL WHERE id=$1", [id]);
+    res.json({ ok: true });
+  } catch(e) { console.error('del msg:', e.message); res.status(500).json({ message: 'تعذّر الحذف' }); }
+});
+
 app.get('/api/messages/:requestId', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.requestId);
     const withUser = parseInt(req.query.with) || null;
     let r;
     if (withUser) {
-      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image FROM messages m JOIN users u ON m.sender_id=u.id WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL)) ORDER BY m.created_at ASC`, [requestId, req.user.id, withUser]);
+      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL)) ORDER BY m.created_at ASC`, [requestId, req.user.id, withUser]);
       await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND sender_id=$3 AND is_read=FALSE', [requestId, req.user.id, withUser]);
     } else {
-      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image FROM messages m JOIN users u ON m.sender_id=u.id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
+      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
       await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
     }
     res.json(r.rows);
@@ -2446,11 +2467,11 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
 
 app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
   try {
-    const { request_id, receiver_id, content } = req.body;
-    if (!request_id || !receiver_id || !content) return res.status(400).json({ message: 'البيانات ناقصة' });
-    // حد أقصى لطول الرسالة (حماية قاعدة البيانات — لا يقيّد من يراسل)
-    const msgText = String(content).trim();
-    if (!msgText) return res.status(400).json({ message: 'الرسالة فارغة' });
+    const { request_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to } = req.body;
+    if (!request_id || !receiver_id) return res.status(400).json({ message: 'البيانات ناقصة' });
+    const msgText = String(content || '').trim();
+    // يُسمح برسالة بلا نص إن كان فيها مرفق
+    if (!msgText && !attachment_url) return res.status(400).json({ message: 'الرسالة فارغة' });
     if (msgText.length > 2000) return res.status(400).json({ message: 'الرسالة طويلة جداً (الحد 2000 حرف)' });
     // احترام الحظر: لا تُرسل إن كان أحد الطرفين حاظراً للآخر
     const blk = await pool.query(
@@ -2458,7 +2479,11 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
       [req.user.id, receiver_id]
     );
     if (blk.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال الرسالة (الحساب محظور)' });
-    const r = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [request_id, req.user.id, receiver_id, msgText]);
+    const r = await pool.query(
+      `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+      [request_id, req.user.id, receiver_id, msgText, attachment_url || null, attachment_type || null, attachment_name || null, reply_to || null]
+    );
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
     await notify(receiver_id, 'رسالة جديدة', `${eEsc(senderName)}: ${msgText.slice(0,50)}${msgText.length>50?'...':''}`, 'message', request_id);
