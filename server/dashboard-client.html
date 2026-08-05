@@ -2290,7 +2290,12 @@ function openChat(reqId,providerId,providerName,reqTitle){
     +'<button id="chatBlockBtn" onclick="toggleBlockUser('+(providerId||0)+',\''+esc(name).replace(/'/g,"\\'")+'\')" title="حظر هذا المستخدم" style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-family:Tajawal;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--muted);flex-shrink:0">حظر</button>'
     +'</div>'
     +'<div class="chat-wrap"><div class="chat-msgs" id="chatMsgs"><div class="loading">جاري التحميل...</div></div>'
-    +'<div class="chat-input"><input class="chat-inp" id="chatInp" maxlength="2000" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChatMsg();}"><button class="chat-send" onclick="sendChatMsg()">إرسال</button></div></div>';
+    +'<div id="replyBar" style="display:none;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:7px 9px;margin-bottom:6px"></div>'
+    +'<div class="chat-input">'
+    +'<input type="file" id="chatFile" accept="image/*,.pdf,.doc,.docx" style="display:none" onchange="_attachFile(this)">'
+    +'<button onclick="document.getElementById(\'chatFile\').click()" title="إرفاق صورة أو ملف" style="background:var(--bg);border:1.5px solid var(--border);border-radius:11px;width:42px;flex-shrink:0;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center">📎</button>'
+    +'<input class="chat-inp" id="chatInp" maxlength="2000" placeholder="اكتب رسالة..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendChatMsg();}">'
+    +'<button class="chat-send" onclick="sendChatMsg()">إرسال</button></div></div>';
   loadChatMsgs();
   _checkBlockState(providerId);
   if(_chatPoll)clearInterval(_chatPoll);
@@ -2304,39 +2309,121 @@ function loadChatMsgs(){
     _chatMsgs=msgs;renderChatMsgs();
   }).catch(function(){});
 }
+// فاصل التاريخ (اليوم / أمس / التاريخ)
+function _dayLabel(d){
+  var dt=new Date(d), now=new Date();
+  var s=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();};
+  var diff=(s(now)-s(dt))/86400000;
+  if(diff===0)return 'اليوم';
+  if(diff===1)return 'أمس';
+  return dt.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+}
 function renderChatMsgs(){
   var el=document.getElementById('chatMsgs');if(!el)return;
   if(!_chatMsgs.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12.5px;padding:30px 20px;line-height:1.9;margin:auto"><div style="font-size:28px;margin-bottom:8px">💬</div><div style="font-weight:700;color:var(--text);margin-bottom:4px">ابدأ المحادثة</div><div>اسأل عن التفاصيل، الأسعار، أو موعد التنفيذ</div></div>';return;}
+  var lastDay='';
   el.innerHTML=_chatMsgs.map(function(m){
+    var out='';
+    // فاصل التاريخ
+    var dl=_dayLabel(m.created_at);
+    if(dl!==lastDay){ lastDay=dl; out+='<div style="align-self:center;background:rgba(30,58,138,.07);color:var(--muted);font-size:10.5px;font-weight:800;padding:4px 12px;border-radius:20px;margin:6px 0">'+dl+'</div>'; }
     var isMe=String(m.sender_id)===String(user.id);
+    // رسالة محذوفة
+    if(m.deleted_at){
+      out+='<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'" style="opacity:.55;font-style:italic">🚫 حُذفت هذه الرسالة</div>';
+      return out;
+    }
     var ticks='';
     if(isMe){
-      // علامات القراءة (مثل واتساب): ✓ أُرسلت · ✓✓ زرقاء = قُرئت
       var read=(m.is_read===true||m.is_read==='t'||m.is_read===1);
       ticks='<span style="font-size:11px;margin-inline-start:4px;color:'+(read?'#53bdeb':'rgba(255,255,255,.6)')+';font-weight:900;letter-spacing:-2px">'+(read?'✓✓':'✓')+'</span>';
     }
-    return'<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'">'
+    var body='';
+    // اقتباس الرد
+    if(m.reply_to&&m.reply_content){
+      body+='<div style="background:rgba(0,0,0,.09);border-inline-start:3px solid '+(isMe?'rgba(255,255,255,.5)':'var(--p)')+';border-radius:7px;padding:5px 8px;margin-bottom:6px;font-size:11px;opacity:.85"><div style="font-weight:800;margin-bottom:1px">'+esc(m.reply_sender||'رسالة')+'</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+esc(String(m.reply_content).slice(0,60))+'</div></div>';
+    }
+    // مرفق
+    if(m.attachment_url){
+      if((m.attachment_type||'').indexOf('image')===0){
+        body+='<img loading="lazy" src="'+esc(m.attachment_url)+'" onclick="window.open(\''+esc(m.attachment_url)+'\',\'_blank\')" style="max-width:100%;border-radius:10px;margin-bottom:'+(m.content?'6px':'0')+';cursor:pointer;display:block">';
+      } else {
+        body+='<a href="'+esc(m.attachment_url)+'" target="_blank" style="display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.08);border-radius:9px;padding:8px 10px;margin-bottom:'+(m.content?'6px':'0')+';text-decoration:none;color:inherit;font-size:12px"><span style="font-size:17px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف مرفق')+'</span></a>';
+      }
+    }
+    if(m.content)body+=esc(m.content);
+    // أزرار الرسالة (رد · حذف للمرسل خلال ساعة)
+    var canDel=isMe&&!String(m.id).startsWith('tmp_')&&((Date.now()-new Date(m.created_at).getTime())/60000<60);
+    var acts='<div style="display:flex;gap:6px;margin-top:5px;opacity:.75">'
+      +'<button onclick="event.stopPropagation();_replyTo('+m.id+',\''+esc(String(m.content||'مرفق')).replace(/'/g,"\\'").slice(0,40)+'\',\''+esc(m.sender_name||(isMe?'أنت':'')).replace(/'/g,"\\'")+'\')" style="background:none;border:none;padding:0;font-size:10.5px;font-weight:700;cursor:pointer;color:inherit;font-family:Tajawal">↩ رد</button>'
+      +(canDel?'<button onclick="event.stopPropagation();_deleteMsg('+m.id+')" style="background:none;border:none;padding:0;font-size:10.5px;font-weight:700;cursor:pointer;color:inherit;font-family:Tajawal">🗑 حذف</button>':'')
+      +'</div>';
+    out+='<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'">'
       +(!isMe?'<div style="font-size:10px;font-weight:700;opacity:.65;margin-bottom:2px">'+esc(m.sender_name||'مزود')+'</div>':'')
-      +esc(m.content)
+      +body
       +'<div class="msg-time">'+timeAgo(m.created_at)+ticks+'</div>'
+      +acts
     +'</div>';
+    return out;
   }).join('');
   el.scrollTop=el.scrollHeight;
+}
+// الرد على رسالة
+var _replyCtx=null;
+function _replyTo(id,preview,who){
+  _replyCtx={id:id,preview:preview,who:who};
+  var bar=document.getElementById('replyBar');
+  if(bar){
+    bar.style.display='flex';
+    bar.innerHTML='<div style="flex:1;min-width:0;border-inline-start:3px solid var(--p);padding-inline-start:8px"><div style="font-size:10.5px;font-weight:800;color:var(--p)">رد على '+esc(who||'')+'</div><div style="font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(preview||'')+'</div></div><button onclick="_cancelReply()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:0 6px">×</button>';
+  }
+  var inp=document.getElementById('chatInp'); if(inp)inp.focus();
+}
+function _cancelReply(){ _replyCtx=null; var bar=document.getElementById('replyBar'); if(bar){bar.style.display='none';bar.innerHTML='';} }
+// حذف رسالة
+function _deleteMsg(id){
+  if(!confirm('حذف هذه الرسالة؟'))return;
+  fetch(API+'/api/messages/'+id,Object.assign({method:'DELETE'},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){ loadChatMsgs(); showToast('تم الحذف','success'); })
+    .catch(function(){ showToast('تعذّر الحذف (يمكن حذف الرسائل خلال ساعة فقط)','error'); });
+}
+// إرفاق ملف/صورة (يُضغط الصور تلقائياً ثم يُرسل)
+var _pendingAttach=null;
+function _attachFile(inp){
+  var f=inp.files&&inp.files[0]; inp.value='';
+  if(!f)return;
+  if(f.size>10*1024*1024){showToast('الحجم الأقصى 10MB','error');return;}
+  showToast('جاري رفع الملف...','info');
+  var send=function(dataUrl){
+    _pendingAttach={data:dataUrl,type:f.type||'application/octet-stream',name:f.name};
+    sendChatMsg();   // يُرسل مباشرة (مع أي نص مكتوب)
+  };
+  if(/^image\//.test(f.type)) compressImage(f,send);
+  else { var r=new FileReader(); r.onload=function(e){send(e.target.result);}; r.readAsDataURL(f); }
 }
 function sendChatMsg(){
   if(window._sendingMsg)return;                       // منع الإرسال المزدوج
   var inp=document.getElementById('chatInp');if(!inp)return;
-  var msg=inp.value.trim();if(!msg||!_chatReqId)return;
+  var msg=inp.value.trim();
+  var att=_pendingAttach; _pendingAttach=null;
+  if((!msg&&!att)||!_chatReqId)return;                // نص أو مرفق على الأقل
+  var rep=_replyCtx; _cancelReply();
   var btn=document.querySelector('.chat-send');
   window._sendingMsg=true;
   inp.value='';
   if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  var payload={request_id:_chatReqId,receiver_id:_chatWith,content:msg};
+  if(att){payload.attachment_url=att.data;payload.attachment_type=att.type;payload.attachment_name=att.name;}
+  if(rep&&rep.id)payload.reply_to=rep.id;
   // اعرض الرسالة فوراً (إحساس سريع)، وتُستبدل بالمؤكّدة من الخادم
-  var tmp={id:'tmp_'+Date.now(),sender_id:user.id,content:msg,created_at:new Date().toISOString(),is_read:false};
+  var tmp={id:'tmp_'+Date.now(),sender_id:user.id,content:msg,created_at:new Date().toISOString(),is_read:false,
+           attachment_url:att?att.data:null,attachment_type:att?att.type:null,attachment_name:att?att.name:null,
+           reply_to:rep?rep.id:null,reply_content:rep?rep.preview:null,reply_sender:rep?rep.who:null};
   _chatMsgs.push(tmp);renderChatMsgs();
-  fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatWith,content:msg})},hdr()))
+  fetch(API+'/api/messages',Object.assign({method:'POST',body:JSON.stringify(payload)},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(m){_chatMsgs=_chatMsgs.filter(function(x){return x.id!==tmp.id;});_chatMsgs.push(m);renderChatMsgs();})
+    .then(function(){ loadChatMsgs(); })   // أعِد الجلب ليصل المرفق وبيانات الرد كاملة
     .catch(function(){
       _chatMsgs=_chatMsgs.filter(function(x){return x.id!==tmp.id;});renderChatMsgs();
       showToast('تعذّر الإرسال — تحقّق من اتصالك','error');inp.value=msg;
