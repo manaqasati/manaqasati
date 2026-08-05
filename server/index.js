@@ -2654,9 +2654,14 @@ app.delete('/api/favorites/:providerId', auth, async (req, res) => {
 
 app.get('/api/providers', async (req, res) => {
   try {
-    const { category, city, specialty } = req.query;
+    const { category, city, specialty, q: searchQ } = req.query;
     let q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects FROM users WHERE role='provider' AND is_active=TRUE`;
     const params = [];
+    // بحث نصّي بالاسم أو اسم النشاط أو التخصص (لبدء محادثة جديدة)
+    if (searchQ) {
+      params.push(`%${String(searchQ).trim()}%`);
+      q += ` AND (name ILIKE $${params.length} OR COALESCE(business_name,'') ILIKE $${params.length} OR array_to_string(COALESCE(specialties,'{}'),' ') ILIKE $${params.length})`;
+    }
     if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
     if (specialty){ params.push(specialty); q += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
     if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
