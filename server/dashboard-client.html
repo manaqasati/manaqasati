@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
       طلباتي
     </button>
-    <button class="ni" onclick="show('chat',this,'chat')">
+    <button class="ni" onclick="location.href='/chat'">
       <div class="ni-ic" style="position:relative"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="ni-badge" id="chatBadge" style="display:none">0</span></div>
       المحادثات
     </button>
@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div><span class="bt">الرئيسية</span></button>
     <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">طلباتي</span></button>
     <button class="bni-fab" onclick="show('new',null,'new')"><div class="fab-circle"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="fab-label">جديد</span></button>
-    <button class="bni" id="bn-chat" onclick="show('chat',null,'chat')"><div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bni-badge" id="bn-chat-badge">0</span></div><span class="bt">محادثات</span></button>
+    <button class="bni" id="bn-chat" onclick="location.href='/chat'"><div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bni-badge" id="bn-chat-badge">0</span></div><span class="bt">محادثات</span></button>
     <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="bt">حسابي</span></button>
   </div>
 </div>
@@ -1509,7 +1509,7 @@ function loadBids(id){
           var pid=btn.getAttribute('data-pid');if(!pid)return;
           fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:pid})},hdr()))
             .then(function(r){return r.json();})
-            .then(function(d){if(d.request_id){window._openChatReqId=d.request_id;window._openChatPid=pid;show('chat',null,'chat');}})
+            .then(function(d){if(d.request_id){window._openChatReqId=d.request_id;window._openChatPid=pid;location.href='/chat';}})
             .catch(function(){showToast('تعذّر فتح المحادثة — حاول مجدداً','error');});
         });
       });
@@ -2141,7 +2141,7 @@ function loadChatPage(){
     convs.forEach(function(cv){
       var name=cv.provider_name||'مزود';
       var avHtml=isImg(cv.provider_image)?'<img loading="lazy" src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
-      h+='<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s'+(cv.unread>0?';background:var(--p-light)':'')+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\''+(cv.unread>0?'var(--p-light)':'var(--white)')+'\'" onclick="openChat(\''+cv.request_id+'\',\''+cv.provider_id+'\',\''+esc(name)+'\',\''+esc(cv.request_title||'محادثة')+'\')">'
+      h+='<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s'+(cv.unread>0?';background:var(--p-light)':'')+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\''+(cv.unread>0?'var(--p-light)':'var(--white)')+'\'" onclick=\'location.href="/chat?req='+cv.request_id+'&with='+cv.provider_id+'"\'>'
         +'<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--sky));color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">'+avHtml+'</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13px;font-weight:800;margin-bottom:2px">'+esc(name)+'</div>'
@@ -2546,7 +2546,7 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   window._openChatName=provName||null;
   // انتقل لتبويب المحادثات (سيقرأ loadChatPage القيم ويفتح المحادثة)
   var chatNav=document.getElementById('bn-chat')||document.querySelector('[onclick*="\'chat\'"]');
-  if(typeof show==='function'){try{show('chat',null,'chat');}catch(e){}}
+  if(typeof show==='function'){try{location.href='/chat';}catch(e){}}
 }
 </script>
 
