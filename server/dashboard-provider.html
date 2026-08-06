@@ -2255,6 +2255,12 @@ function _provOpenAnswers(){
   window.addEventListener('online',function(){ if(!_alive) _wsConnect(); });
   setTimeout(_wsConnect, 800);
 })();
+
+// تحديث آخر ظهور
+(function(){
+  var ping=function(){ if(!document.hidden)_api('/api/me/ping',{method:'POST'}); };
+  ping(); setInterval(ping,120000);
+})();
 </script>
 
 </body>
