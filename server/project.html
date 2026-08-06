@@ -199,9 +199,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <body>
 
 <nav class="nav">
-  <button class="back-btn" onclick="history.length>1?history.back():location.href='/'">
+  <button class="back-btn" onclick="_smartBack()">
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    رجوع
+    <span id="backLbl">رجوع</span>
   </button>
   <a href="/" class="logo"><span class="logo-dot"></span>مناقصة</a>
   <button class="nav-in" id="navBtn" onclick="goLogin()">دخول</button>
@@ -1019,5 +1019,27 @@ load();
 })();
 </script>
 
+
+<script>
+// رجوع ذكي: يعود للصفحة السابقة داخل الموقع فقط، وإلا للرئيسية
+function _smartBack(){
+  var ref=document.referrer||'';
+  var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
+  if(same){ history.length>1 ? history.back() : (location.href=ref); return; }
+  location.href='/';
+}
+(function(){
+  var lbl=document.getElementById('backLbl'); if(!lbl)return;
+  var ref=document.referrer||'';
+  if(ref.indexOf(location.origin)===0){
+    if(/\/pro\//.test(ref)) lbl.textContent='المزوّد';
+    else if(/\/dashboard-client/.test(ref)) lbl.textContent='لوحتي';
+    else if(/\/dashboard-provider/.test(ref)) lbl.textContent='لوحتي';
+    else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
+    else if(/\/dalil\//.test(ref)) lbl.textContent='الدليل';
+    else lbl.textContent='رجوع';
+  } else lbl.textContent='الرئيسية';
+})();
+</script>
 </body>
 </html>
