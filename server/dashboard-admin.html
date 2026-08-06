@@ -2,6 +2,18 @@
 <!-- MANAQASA-ADMIN-v3.0 -->
 <html lang="ar" dir="rtl">
 <head>
+<script>
+/* حارس فوري — يمنع ومضة لوحة الإدارة لغير المصرّح */
+(function(){
+  try{
+    var t=localStorage.getItem('token');
+    var u=JSON.parse(localStorage.getItem('user')||'{}');
+    if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/auth.html'); return; }
+    if(u.role!=='admin'){ document.documentElement.style.visibility='hidden'; location.replace(u.role==='provider'?'/dashboard-provider.html':'/dashboard-client.html'); return; }
+  }catch(e){}
+})();
+</script>
+
 <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
