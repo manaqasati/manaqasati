@@ -2316,7 +2316,15 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
     else return res.status(403).json({ message: 'غير مصرح بالمراسلة' });
     // منع مراسلة النفس
     if (clientId === providerId) return res.status(400).json({ message: 'لا يمكنك مراسلة نفسك' });
-    let reqRow = await pool.query(`SELECT id FROM requests WHERE client_id=$1 AND assigned_provider_id=$2 AND category='direct' ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
+    // 1) ابحث عن محادثة قائمة بينهما على أي مشروع (يمنع فقدان الرسائل السابقة)
+    let reqRow = await pool.query(
+      `SELECT request_id AS id FROM messages
+       WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)
+       ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
+    // 2) وإلا: محادثة مباشرة سابقة
+    if (!reqRow.rows.length) {
+      reqRow = await pool.query(`SELECT id FROM requests WHERE client_id=$1 AND assigned_provider_id=$2 AND category='direct' ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
+    }
     let requestId;
     if (reqRow.rows.length) { requestId = reqRow.rows[0].id; }
     else {
