@@ -2341,7 +2341,7 @@ function _counterOffer(provId,reqId,curPrice){
     +'<div style="font-size:16px;font-weight:900;margin-bottom:4px">اقترح سعرك</div>'
     +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.7">عرضه الحالي <b style="color:var(--green)">'+(curPrice?Number(curPrice).toLocaleString('en-US'):'—')+' ر.س</b> — اكتب السعر الذي تراه مناسباً</div>'
     +'<input id="co-price" type="number" inputmode="numeric" placeholder="السعر المقترح (ر.س)" style="'+fin+';margin-bottom:10px">'
-    +'<textarea id="co-note" rows="2" placeholder="سبب الاقتراح (اختياري)" style="'+fin+';resize:none;margin-bottom:14px"></textarea>'
+    +'<textarea id="co-note" rows="2" placeholder="تفاصيل إضافية (اختياري) — مثال: الثابت 80 والمتحرك 120" style="'+fin+';resize:none;margin-bottom:14px"></textarea>'
     +'<div style="display:flex;gap:9px">'
       +'<button onclick="document.getElementById(\'negModal\').remove()" style="flex:1;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-family:Tajawal;font-size:14px;font-weight:700;cursor:pointer">إلغاء</button>'
       +'<button id="co-send" onclick="_sendCounter('+bidId+','+provId+','+reqId+')" style="flex:1.4;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;font-family:Tajawal;font-size:14px;font-weight:800;cursor:pointer">إرسال الاقتراح</button>'
