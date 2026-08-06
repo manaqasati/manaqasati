@@ -1262,6 +1262,9 @@ function loadHome(){
   jFetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
     _cSet('my_reqs',all);
+    var _sg=all.map(function(r){return r.id+':'+r.status+':'+(r.bid_count||0);}).join(',');
+    if(_sg===window._homeSig && cached && cached.length) return;   // لا تغيير → لا إعادة رسم
+    window._homeSig=_sg;
     _paintHome(all);
   }).catch(function(){ if(!cached)el&&(el.innerHTML=errH(loadHome)); });
   loadNotifCount();
