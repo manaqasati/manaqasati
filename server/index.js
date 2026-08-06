@@ -1341,6 +1341,7 @@ async function setupDatabase() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
     // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
@@ -2165,6 +2166,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at,
         u.name as provider_name, u.phone as provider_phone,
+        u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.badge as provider_badge, u.tier as provider_tier,
         u.business_name as provider_business_name,
         u.specialties as provider_specialties,
@@ -2449,6 +2451,42 @@ app.delete('/api/messages/:id', auth, async (req, res) => {
     await pool.query("UPDATE messages SET deleted_at=NOW(), content='', attachment_url=NULL WHERE id=$1", [id]);
     res.json({ ok: true });
   } catch(e) { console.error('del msg:', e.message); res.status(500).json({ message: 'تعذّر الحذف' }); }
+});
+
+// ═══ التفاوض على العرض ═══
+// إشعار المزوّد أن العميل يريد التفاوض (يحفّزه للرد/التعديل)
+app.post('/api/bids/:id/negotiate', auth, clientOnly, async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const b = await pool.query(
+      `SELECT b.id, b.provider_id, b.price, b.request_id, r.client_id, r.title
+       FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1`, [bidId]);
+    if (!b.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    const row = b.rows[0];
+    if (String(row.client_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليس مشروعك' });
+    const counter = req.body.counter_price ? parseFloat(req.body.counter_price) : null;
+    const note = String(req.body.note || '').trim().slice(0, 300);
+    let title = 'العميل يريد التفاوض';
+    let body = `على عرضك في «${eEsc(row.title)}» — تواصل معه أو عدّل عرضك`;
+    if (counter && counter > 0) {
+      title = 'عرض مضاد من العميل';
+      body = `يقترح ${counter.toLocaleString('en-US')} ر.س بدل ${Number(row.price).toLocaleString('en-US')} — في «${eEsc(row.title)}»`;
+      // نسجّل العرض المضاد كرسالة موثّقة في المحادثة
+      await pool.query(
+        `INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`,
+        [row.request_id, req.user.id, row.provider_id,
+         `💰 عرض مضاد: أقترح ${counter.toLocaleString('en-US')} ر.س` + (note ? `\n${note}` : '')]
+      );
+    }
+    await notify(row.provider_id, title, body, 'negotiate', row.request_id);
+    res.json({ ok: true, counter: counter || null });
+  } catch(e) { console.error('negotiate:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+
+// تحديث آخر ظهور (يُستدعى دورياً من الواجهة)
+app.post('/api/me/ping', auth, async (req, res) => {
+  try { await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
+  catch(e) { res.json({ ok: false }); }
 });
 
 app.get('/api/messages/:requestId', auth, async (req, res) => {
