@@ -286,11 +286,14 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT b.id, b.price, b.note as proposal, b.days, b.status, b.created_at,
+      SELECT b.id, b.days, b.status, b.created_at,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
+        COALESCE(b.price_visibility,'client') as price_visibility,
+        b.price as _p,
+        b.note as proposal,
         u.id as provider_id,
         u.name as provider_name,
         u.city as provider_city,
-        u.phone as provider_phone,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN u.profile_image ELSE NULL END as provider_image,
@@ -398,7 +401,7 @@ function seoRichFaq(cat, city){
     { q: `كم تكلفة ${cat} في ${city}؟`, a: `تختلف تكلفة ${cat} في ${city} حسب حجم العمل ونوعه والمواد المستخدمة. أفضل طريقة لمعرفة السعر المناسب هي نشر طلبك على مناقصة واستقبال عدة عروض أسعار من مزوّدين مختلفين، ثم المقارنة بينها لاختيار الأنسب.` },
     { q: `كيف أختار أفضل مزوّد ${cat} في ${city}؟`, a: `ابحث عن مزوّد لديه تقييمات جيدة وأعمال سابقة موثّقة، والتزام بالمواعيد، وشفافية في التسعير. عبر مناقصة يمكنك رؤية تقييمات المزوّدين ومقارنة عروضهم قبل اتخاذ القرار.` },
     { q: `كم يستغرق تنفيذ خدمة ${cat}؟`, a: `تعتمد المدة على طبيعة العمل وحجمه. عند نشر طلبك، حدّد التفاصيل بدقة ليقدّم لك المزوّدون تقديراً واقعياً للمدة والتكلفة.` },
-    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر الطلب وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة بسيطة (1% من قيمة العقد) على العميل فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
+    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر الطلب وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة (3% من قيمة العقد) على مزوّد الخدمة فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
   ];
   let h = '<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px;margin-bottom:14px">';
   faqs.forEach(f => {
