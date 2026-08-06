@@ -1924,6 +1924,10 @@ initPersonalHome();
     if(_fab) _fab.style.display='flex';   // يبقى زر "عميل أو مزوّد؟" متاحاً لمن يريده
     return;
   }
+  var _seen=false;
+  try{ _seen = sessionStorage.getItem('mnq_gate_seen')==='1'; }catch(e){}
+  if(_seen){ gate.style.display='none'; var _f=document.getElementById('mnqBackToChoose'); if(_f)_f.style.display='flex'; return; }
+  try{ sessionStorage.setItem('mnq_gate_seen','1'); }catch(e){}
   gate.style.display='flex';
   document.body.style.overflow='hidden';
   window.mnqChooseGo=function(role){
