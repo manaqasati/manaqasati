@@ -1153,7 +1153,12 @@ function _openBidNudge(projId,bidCount){
 }
 
 function _openBidModal(projId){
-  var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div><div class="fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>';
+  var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div><div class="fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>'
+    +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+    +'<div style="font-size:12.5px;font-weight:800;margin-bottom:9px">🔒 من يشوف سعرك؟</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:var(--white);border:1.5px solid var(--p-mid);border-radius:10px;cursor:pointer;margin-bottom:7px"><input type="radio" name="bidVis" value="client" checked style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">صاحب المشروع فقط</div><div style="font-size:11px;color:var(--muted);margin-top:1px">منافسوك لا يرون سعرك — يُنصح به</div></div></label>'
+    +'<label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:var(--white);border:1px solid var(--border);border-radius:10px;cursor:pointer"><input type="radio" name="bidVis" value="public" style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">الجميع</div><div style="font-size:11px;color:var(--muted);margin-top:1px">يظهر للزوّار — قد يجذب انتباهاً أكثر</div></div></label>'
+    +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button><button onclick="_submitBid('+projId+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إرسال العرض</button>';
   openModal('تقديم عرض',body,foot);
 }
@@ -1165,7 +1170,7 @@ async function _submitBid(projId){
   if(!note){showToast('أدخل رسالتك للعميل','error');return;}
   var btn=document.querySelector('[onclick*="_submitBid"]');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
-    var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note})});
+    var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note,price_visibility:((document.querySelector('input[name="bidVis"]:checked')||{}).value||'client')})});
     if(r&&(r.id||r.request_id)){closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
   }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
