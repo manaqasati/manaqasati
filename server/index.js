@@ -1832,16 +1832,16 @@ app.get('/api/provider/reviews', auth, async (req, res) => {
 app.get('/api/provider/conversations', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT DISTINCT ON (r.id)
+      SELECT DISTINCT ON (r.client_id)
         r.id as request_id, r.client_id, r.title as request_title,
         u.name as client_name, u.profile_image as client_image,
-        (SELECT content FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM messages WHERE request_id=r.id ORDER BY created_at DESC LIMIT 1) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE request_id=r.id AND receiver_id=$1 AND is_read=FALSE) as unread
+        (SELECT content FROM messages WHERE ((sender_id=$1 AND receiver_id=r.client_id) OR (sender_id=r.client_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT created_at FROM messages WHERE ((sender_id=$1 AND receiver_id=r.client_id) OR (sender_id=r.client_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=r.client_id AND is_read=FALSE) as unread
       FROM requests r JOIN users u ON u.id=r.client_id
       WHERE (r.assigned_provider_id=$1 OR EXISTS(SELECT 1 FROM messages m2 WHERE m2.request_id=r.id AND m2.sender_id=$1))
         AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
-      ORDER BY r.id, last_time DESC NULLS LAST
+      ORDER BY r.client_id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/conversations:', e); res.json([]); }
@@ -1860,22 +1860,24 @@ app.get('/api/client/conversations', auth, async (req, res) => {
         FROM messages m
         WHERE (m.sender_id = $1 OR m.receiver_id = $1)
       )
-      SELECT
+      SELECT DISTINCT ON (c.provider_id)
         c.request_id,
         c.provider_id,
         COALESCE(r.title, 'محادثة مباشرة') as request_title,
         u.name as provider_name,
         u.profile_image as provider_image,
         u.phone as provider_phone,
-        (SELECT content FROM messages WHERE request_id = c.request_id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT MAX(created_at) FROM messages WHERE request_id = c.request_id) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE request_id = c.request_id AND receiver_id = $1 AND is_read = FALSE) as unread
+        (SELECT content FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_message,
+        (SELECT MAX(created_at) FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1))) as last_time,
+        (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=c.provider_id AND is_read=FALSE) as unread
       FROM conv c
       LEFT JOIN requests r ON r.id = c.request_id
       LEFT JOIN users u ON u.id = c.provider_id
       WHERE c.provider_id IS NOT NULL
-      ORDER BY last_time DESC NULLS LAST
+      ORDER BY c.provider_id, (SELECT MAX(created_at) FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1))) DESC NULLS LAST
     `, [req.user.id]);
+    // رتّب النتيجة النهائية بالأحدث
+    r.rows.sort(function(a,b){ return new Date(b.last_time||0) - new Date(a.last_time||0); });
     res.json(r.rows);
   } catch(e) { console.error('/client/conversations:', e); res.json([]); }
 });
@@ -2503,8 +2505,24 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
     const withUser = parseInt(req.query.with) || null;
     let r;
     if (withUser) {
-      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL)) ORDER BY m.created_at ASC`, [requestId, req.user.id, withUser]);
-      await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND sender_id=$3 AND is_read=FALSE', [requestId, req.user.id, withUser]);
+      // كل الرسائل المتبادلة مع هذا الشخص (عبر كل المشاريع) — تمنع تشتّت المحادثة
+      const allProjects = req.query.all !== '0';
+      const sql = allProjects
+        ? `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
+                  COALESCE(rq.title,'محادثة مباشرة') as project_title
+           FROM messages m JOIN users u ON m.sender_id=u.id
+           LEFT JOIN requests rq ON rq.id=m.request_id
+           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
+           WHERE ((m.sender_id=$2 AND m.receiver_id=$3) OR (m.sender_id=$3 AND m.receiver_id=$2))
+           ORDER BY m.created_at ASC`
+        : `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender
+           FROM messages m JOIN users u ON m.sender_id=u.id
+           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
+           WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL))
+           ORDER BY m.created_at ASC`;
+      r = await pool.query(sql, [requestId, req.user.id, withUser]);
+      // علّم رسائل هذا الشخص مقروءة
+      await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
     } else {
       r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
       await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
