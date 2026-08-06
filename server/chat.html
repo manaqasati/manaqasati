@@ -64,8 +64,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 
 /* ═══ المحادثة ═══ */
 #msgs{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:3px;background:var(--bg)}
-.bub{max-width:78%;padding:9px 13px;font-size:14px;line-height:1.65;word-break:break-word;overflow-wrap:anywhere;position:relative;animation:pop .16s ease-out}
-@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.bub{max-width:78%;padding:9px 13px;font-size:14px;line-height:1.65;word-break:break-word;overflow-wrap:anywhere;position:relative}
+
 .me{align-self:flex-start;background:var(--p);color:#fff;border-radius:16px 16px 16px 5px}
 .you{align-self:flex-end;background:var(--white);border:1px solid var(--border);border-radius:16px 16px 5px 16px}
 .bub-who{font-size:10.5px;font-weight:800;opacity:.6;margin-bottom:2px}
@@ -197,7 +197,7 @@ if(!token||!user.id){ location.replace('/auth.html'); }
 var isProvider=(user.role==='provider');
 
 var convs=[], msgs=[], curReq=null, curWith=null, curName='', curProj='';
-var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false, _openedReq=0;
+var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false, _openedReq=0, _msgsSig='';
 
 function hdr(){ return {headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'}; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
@@ -358,7 +358,7 @@ function startNew(provId,provName){
 
 /* ═══ فتح محادثة ═══ */
 function openChat(reqId,withId,name,proj){
-  window._recovered=false;
+  window._recovered=false; _msgsSig='';
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
   document.getElementById('chName').textContent=curName;
   document.getElementById('chProj').textContent=curProj?('📁 '+curProj):'';
@@ -392,8 +392,17 @@ function loadMsgs(silent){
   if(!curReq)return;
   api('/api/messages/'+curReq+'?with='+curWith).then(function(d){
     if(!Array.isArray(d))return;
-    var changed=(d.length!==msgs.length);
-    msgs=d; renderMsgs(!silent||changed);
+    // لا نعيد الرسم إلا عند تغيّر فعلي — إعادة الرسم كل 6 ثوانٍ تسبب ومضة مرئية
+    var sig=d.map(function(m){return m.id+':'+(m.is_read?1:0)+':'+(m.deleted_at?1:0);}).join(',');
+    if(sig===_msgsSig && silent) return;          // لا جديد → اترك الشاشة كما هي
+    var wasAtBottom=true;
+    try{
+      var el=document.getElementById('msgs');
+      if(el) wasAtBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 60;
+    }catch(e){}
+    _msgsSig=sig;
+    msgs=d;
+    renderMsgs(wasAtBottom||!silent);
   }).catch(function(){
     if(!silent&&!msgs.length)document.getElementById('msgs').innerHTML='<div class="empty"><div class="empty-ic">📡</div><div class="empty-t">تعذّر التحميل</div><button onclick="loadMsgs()" style="margin-top:12px;background:var(--p);color:#fff;border:none;padding:9px 22px;border-radius:10px;font-family:inherit;font-weight:800;cursor:pointer">حاول مجدداً</button></div>';
   });
