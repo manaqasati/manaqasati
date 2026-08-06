@@ -337,6 +337,7 @@ function startNew(provId,provName){
 
 /* ═══ فتح محادثة ═══ */
 function openChat(reqId,withId,name,proj){
+  window._recovered=false;
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
   document.getElementById('chName').textContent=curName;
   document.getElementById('chProj').textContent=curProj?('📁 '+curProj):'';
@@ -370,6 +371,19 @@ function loadMsgs(silent){
   if(!curReq)return;
   api('/api/messages/'+curReq+'?with='+curWith).then(function(d){
     if(!Array.isArray(d))return;
+    // لا رسائل على هذا المشروع؟ ابحث عن محادثة سابقة مع نفس الشخص (تمنع "بدء محادثة جديدة" خطأً)
+    if(!d.length&&!silent&&!window._recovered){
+      var prev=convs.filter(function(c){
+        var pid=isProvider?c.client_id:c.provider_id;
+        return String(pid)===String(curWith)&&String(c.request_id)!==String(curReq)&&c.last_message;
+      });
+      if(prev.length){
+        window._recovered=true;
+        var p=prev[0];
+        openChat(p.request_id,curWith,curName,p.request_title||curProj);
+        return;
+      }
+    }
     var changed=(d.length!==msgs.length);
     msgs=d; renderMsgs(!silent||changed);
   }).catch(function(){
