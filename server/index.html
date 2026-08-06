@@ -1266,8 +1266,11 @@ function getUser(){
 }
 function handleBidClick(reqId){
   var u=getUser();
-  if(u){var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';location.href=dash+'?bid='+reqId;}
-  else{location.href='auth.html?mode=register&next=bid&ref='+reqId;}
+  if(u){var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';location.href=dash+'?bid='+reqId;return;}
+  // الزائر: يُوجّه لصفحة المشروع أولاً (يشوف التفاصيل ويتحمّس)، والتسجيل يُطلب عند تقديم العرض هناك
+  var r=null; try{ r=(typeof ALL!=='undefined'&&ALL)?ALL.filter(function(x){return x.id===reqId;})[0]:null; }catch(e){}
+  var slug=r?_reqSlug(r):('m-'+reqId);
+  location.href='/project/'+slug+'?id='+reqId;
 }
 function card(p){
   var isOpen=p.status==='open';
