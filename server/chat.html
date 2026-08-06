@@ -28,8 +28,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .hd-btn{background:rgba(255,255,255,.13);border:none;color:#fff;width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
 .hd-btn:active{transform:scale(.92)}
 .hd-info{flex:1;min-width:0}
-.hd-t{font-size:15.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hd-s{font-size:11.5px;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.hd-t{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-s{font-size:10.5px;opacity:.68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .hd-av{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;overflow:hidden}
 .hd-av img{width:100%;height:100%;object-fit:cover}
 
@@ -67,8 +67,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .bub img{max-width:100%;border-radius:11px;display:block;cursor:pointer}
 .bub-file{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.08);border-radius:10px;padding:9px 11px;text-decoration:none;color:inherit;font-size:12.5px}
 .daysep{align-self:center;background:rgba(30,58,138,.08);color:var(--muted);font-size:10.5px;font-weight:800;padding:4px 13px;border-radius:20px;margin:8px 0}
-.projsep{align-self:stretch;background:linear-gradient(90deg,rgba(30,58,138,.1),rgba(37,99,235,.04));color:var(--p);font-size:11.5px;font-weight:900;padding:8px 13px;border-radius:10px;margin:15px 0 5px;border-inline-start:3px solid var(--p);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.projsep{align-self:stretch;background:linear-gradient(90deg,rgba(30,58,138,.09),rgba(37,99,235,.05));color:var(--p);font-size:11.5px;font-weight:900;padding:7px 14px;border-radius:10px;margin:14px 0 6px;border-inline-start:3px solid var(--p);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.projsep{align-self:center;max-width:92%;background:var(--white);color:var(--p);font-size:11px;font-weight:800;padding:6px 14px;border-radius:20px;margin:16px 0 6px;border:1px solid var(--p-mid);box-shadow:0 1px 4px rgba(30,58,138,.06);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 
 /* ═══ شريط الرد ═══ */
 #replyBar{display:none;align-items:center;gap:9px;background:var(--white);border-top:1px solid var(--border);padding:8px 13px;flex:0 0 auto}
@@ -601,6 +600,8 @@ loadList();
   var p=new URLSearchParams(location.search);
   var r=parseInt(p.get('req')), w=parseInt(p.get('with'));
   if(!r||!w)return;
+  // ضع مدخل "القائمة" في التاريخ أولاً — فزر الرجوع يرجّع للقائمة لا لخارج الصفحة
+  history.replaceState({v:'list'},'','/chat');
   var nameParam=p.get('name')||'';
   var tries=0;
   var t=setInterval(function(){
