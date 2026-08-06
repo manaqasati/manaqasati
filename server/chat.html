@@ -186,7 +186,7 @@ if(!token||!user.id){ location.replace('/auth.html'); }
 var isProvider=(user.role==='provider');
 
 var convs=[], msgs=[], curReq=null, curWith=null, curName='', curProj='';
-var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false;
+var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false, _openedReq=0;
 
 function hdr(){ return {headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'}; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
@@ -215,7 +215,16 @@ function dayLabel(d){
   if(diff===1)return'أمس';
   return dt.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
 }
-function goBackDash(){ location.href = isProvider?'/dashboard-provider.html':'/dashboard-client.html'; }
+function goBackDash(){
+  // ارجع لنقطة الانطلاق (تفاصيل المشروع الذي جئت منه) إن وُجدت
+  var back='';
+  try{ back=sessionStorage.getItem('mnq_chat_back')||''; }catch(e){}
+  if(back){ try{sessionStorage.removeItem('mnq_chat_back');}catch(e){} location.href=back; return; }
+  var dash=isProvider?'/dashboard-provider.html':'/dashboard-client.html';
+  var r=parseInt(_openedReq)||curReq||0;
+  if(r&&!isProvider){ location.href=dash+'#detail/'+r; return; }
+  location.href=dash;
+}
 
 /* ═══ قائمة المحادثات ═══ */
 function loadList(){
@@ -600,6 +609,7 @@ loadList();
   var p=new URLSearchParams(location.search);
   var r=parseInt(p.get('req')), w=parseInt(p.get('with'));
   if(!r||!w)return;
+  _openedReq=r;   // احفظ المشروع الذي فُتحت منه المحادثة (للرجوع إليه)
   // ضع مدخل "القائمة" في التاريخ أولاً — فزر الرجوع يرجّع للقائمة لا لخارج الصفحة
   history.replaceState({v:'list'},'','/chat');
   var nameParam=p.get('name')||'';
