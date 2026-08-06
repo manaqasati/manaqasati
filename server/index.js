@@ -286,11 +286,14 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT b.id, b.price, b.note as proposal, b.days, b.status, b.created_at,
+      SELECT b.id, b.days, b.status, b.created_at,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
+        COALESCE(b.price_visibility,'client') as price_visibility,
+        b.price as _p,
+        b.note as proposal,
         u.id as provider_id,
         u.name as provider_name,
         u.city as provider_city,
-        u.phone as provider_phone,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN u.profile_image ELSE NULL END as provider_image,
@@ -298,7 +301,10 @@ app.get('/api/bids/public/:id', async (req, res) => {
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
     `, [id]);
-    res.json(r.rows);
+    const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
+    const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
+    const rows = r.rows.map(x => { const { _p, ...rest } = x; return rest; });
+    res.json({ bids: rows, range });
   } catch(e) { res.status(500).json([]); }
 });
 
@@ -1342,6 +1348,7 @@ async function setupDatabase() {
     // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
@@ -2203,7 +2210,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, created_at=NOW() WHERE request_id=$4 AND provider_id=$5 RETURNING *`, [price, days, note||null, requestId, req.user.id]);
       row = upd.rows[0]; isUpdate = true;
     } else {
-      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, created_at) VALUES ($1,$2,$3,$4,$5,'pending',NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null]);
+      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis]);
       row = ins.rows[0];
     }
     const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
@@ -2231,6 +2238,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
+    const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';
     const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
