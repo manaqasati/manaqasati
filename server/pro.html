@@ -187,7 +187,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <body>
 <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <nav class="nav">
-  <button class="back" onclick="location.href='/'"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>الرئيسية</button>
+  <button class="back" onclick="_smartBack()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg><span id="backLbl">رجوع</span></button>
   <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
   <button class="nav-in" onclick="location.href='/auth.html'">دخول</button>
 </nav>
@@ -386,6 +386,28 @@ function render(p,rat){
   x2.onerror=x2.ontimeout=function(){d2={};tryRender();};x2.send();
 })();
 
+</script>
+
+<script>
+// رجوع ذكي: يعود للصفحة السابقة داخل الموقع، وإلا للرئيسية
+function _smartBack(){
+  var ref=document.referrer||'';
+  var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
+  if(history.length>1 && same){ history.back(); return; }
+  if(same){ location.href=ref; return; }
+  location.href='/';
+}
+// اضبط نص الزر حسب مصدر الزيارة
+(function(){
+  var lbl=document.getElementById('backLbl'); if(!lbl)return;
+  var ref=document.referrer||'';
+  if(ref.indexOf(location.origin)===0){
+    if(/\/project\//.test(ref)) lbl.textContent='المشروع';
+    else if(/\/dashboard-client/.test(ref)) lbl.textContent='لوحتي';
+    else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
+    else lbl.textContent='رجوع';
+  } else lbl.textContent='الرئيسية';
+})();
 </script>
 </body>
 </html>
