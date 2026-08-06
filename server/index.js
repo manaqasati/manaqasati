@@ -285,8 +285,16 @@ app.get('/api/requests/public/:id', async (req, res) => {
 app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // تحقّق اختياري: أرقام المزوّدين تُكشف للمستخدمين المسجّلين فقط (يشجّع التسجيل ويحمي البيانات)
+    let isLoggedIn = false;
+    try {
+      const hdr = req.headers.authorization || '';
+      const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+      if (tok) { jwt.verify(tok, JWT_SECRET); isLoggedIn = true; }
+    } catch(e) { isLoggedIn = false; }
     const r = await pool.query(`
       SELECT b.id, b.days, b.status, b.created_at,
+        CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
         COALESCE(b.price_visibility,'client') as price_visibility,
         b.price as _p,
@@ -300,7 +308,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
-    `, [id]);
+    `, [id, isLoggedIn]);
     // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
