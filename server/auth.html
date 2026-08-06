@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>
+/* المسجّل لا يحتاج صفحة الدخول — توجيه فوري للوحته (يمنع ومضة) */
+(function(){
+  try{
+    var t=localStorage.getItem('token'); if(!t) return;
+    var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
+    var p=new URLSearchParams(location.search);
+    if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة
+    var d = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
+    document.documentElement.style.visibility='hidden';
+    location.replace(d);
+  }catch(e){}
+})();
+</script>
+
 <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
