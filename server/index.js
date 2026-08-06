@@ -2480,12 +2480,12 @@ app.post('/api/bids/:id/negotiate', auth, clientOnly, async (req, res) => {
     let body = `على عرضك في «${eEsc(row.title)}» — تواصل معه أو عدّل عرضك`;
     if (counter && counter > 0) {
       title = 'عرض مضاد من العميل';
-      body = `يقترح ${counter.toLocaleString('en-US')} ر.س بدل ${Number(row.price).toLocaleString('en-US')} — في «${eEsc(row.title)}»`;
+      body = `${counter.toLocaleString('en-US')} ر.س بدل ${Number(row.price).toLocaleString('en-US')} — في «${eEsc(row.title)}». ردّ عليه أو عدّل عرضك`;
       // نسجّل العرض المضاد كرسالة موثّقة في المحادثة
       await pool.query(
         `INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`,
         [row.request_id, req.user.id, row.provider_id,
-         `💰 عرض مضاد: أقترح ${counter.toLocaleString('en-US')} ر.س` + (note ? `\n${note}` : '')]
+         `💰 عرض مضاد: ${counter.toLocaleString('en-US')} ر.س` + (note ? `\n📝 ${note}` : '')]
       );
     }
     await notify(row.provider_id, title, body, 'negotiate', row.request_id);
