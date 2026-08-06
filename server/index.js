@@ -2507,20 +2507,27 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
     if (withUser) {
       // كل الرسائل المتبادلة مع هذا الشخص (عبر كل المشاريع) — تمنع تشتّت المحادثة
       const allProjects = req.query.all !== '0';
-      const sql = allProjects
-        ? `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
+      if (allProjects) {
+        r = await pool.query(
+          `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
                   COALESCE(rq.title,'محادثة مباشرة') as project_title
            FROM messages m JOIN users u ON m.sender_id=u.id
            LEFT JOIN requests rq ON rq.id=m.request_id
            LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
-           WHERE ((m.sender_id=$2 AND m.receiver_id=$3) OR (m.sender_id=$3 AND m.receiver_id=$2))
-           ORDER BY m.created_at ASC`
-        : `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender
+           WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1))
+           ORDER BY m.created_at ASC`,
+          [req.user.id, withUser]);
+      } else {
+        r = await pool.query(
+          `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
+                  COALESCE(rq.title,'محادثة مباشرة') as project_title
            FROM messages m JOIN users u ON m.sender_id=u.id
+           LEFT JOIN requests rq ON rq.id=m.request_id
            LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
            WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL))
-           ORDER BY m.created_at ASC`;
-      r = await pool.query(sql, [requestId, req.user.id, withUser]);
+           ORDER BY m.created_at ASC`,
+          [requestId, req.user.id, withUser]);
+      }
       // علّم رسائل هذا الشخص مقروءة
       await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
     } else {
