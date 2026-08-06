@@ -1900,6 +1900,19 @@ initPersonalHome();
 
   // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
   if(hasToken() || location.hash){ gate.style.display='none'; return; }
+  // ولا نعرضها للزائر الذي بدأ يستكشف فعلاً (اختار "تصفّح"، أو رجع من صفحة داخلية
+  // مثل مشروع/ملف مزوّد) — إعادة فرض الاختيار عليه تقطع فضوله وتطرده
+  var _browsing=false;
+  try{ _browsing = sessionStorage.getItem('mnq_browsing')==='1'; }catch(e){}
+  var _ref=document.referrer||'';
+  var _sameSite = _ref && _ref.indexOf(location.origin)===0;
+  var _fromInner = _sameSite && /\/(pro|project|dalil|chat|post)\b/.test(_ref);
+  if(_browsing || _fromInner){
+    gate.style.display='none';
+    var _fab=document.getElementById('mnqBackToChoose');
+    if(_fab) _fab.style.display='flex';   // يبقى زر "عميل أو مزوّد؟" متاحاً لمن يريده
+    return;
+  }
   gate.style.display='flex';
   document.body.style.overflow='hidden';
   window.mnqChooseGo=function(role){
@@ -1908,6 +1921,7 @@ initPersonalHome();
     else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
   };
   window.mnqChooseBrowse=function(){
+    try{ sessionStorage.setItem('mnq_browsing','1'); }catch(e){}   // لا تُفرض البوابة مجدداً هذه الجلسة
     gate.style.display='none';
     document.body.style.overflow='';
     var fab=document.getElementById('mnqBackToChoose');
