@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>
+/* حارس فوري — يمنع ومضة الصفحة */
+(function(){
+  try{
+    var t=localStorage.getItem('token');
+    var u=JSON.parse(localStorage.getItem('user')||'{}');
+    if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/auth.html'); }
+  }catch(e){}
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,interactive-widget=resizes-content">
 <meta name="theme-color" content="#1e3a8a">
