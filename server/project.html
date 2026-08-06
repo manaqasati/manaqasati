@@ -1023,10 +1023,12 @@ load();
 <script>
 // رجوع ذكي: يعود للصفحة السابقة داخل الموقع فقط، وإلا للرئيسية
 function _smartBack(){
+  // الأولوية دائماً لـ history.back(): انتقال فوري بلا إعادة تحميل (يمنع ومضات الصفحات)
   var ref=document.referrer||'';
   var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
-  if(same){ history.length>1 ? history.back() : (location.href=ref); return; }
-  location.href='/';
+  if(same && history.length>1){ history.back(); return; }
+  // بديل نادر: لا تاريخ صالح — استبدل الصفحة (replace يمنع تراكم التاريخ)
+  location.replace(same?ref:'/');
 }
 (function(){
   var lbl=document.getElementById('backLbl'); if(!lbl)return;
