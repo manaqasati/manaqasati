@@ -67,6 +67,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .bub img{max-width:100%;border-radius:11px;display:block;cursor:pointer}
 .bub-file{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.08);border-radius:10px;padding:9px 11px;text-decoration:none;color:inherit;font-size:12.5px}
 .daysep{align-self:center;background:rgba(30,58,138,.08);color:var(--muted);font-size:10.5px;font-weight:800;padding:4px 13px;border-radius:20px;margin:8px 0}
+.projsep{align-self:stretch;background:linear-gradient(90deg,rgba(30,58,138,.1),rgba(37,99,235,.04));color:var(--p);font-size:11.5px;font-weight:900;padding:8px 13px;border-radius:10px;margin:15px 0 5px;border-inline-start:3px solid var(--p);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.projsep{align-self:stretch;background:linear-gradient(90deg,rgba(30,58,138,.09),rgba(37,99,235,.05));color:var(--p);font-size:11.5px;font-weight:900;padding:7px 14px;border-radius:10px;margin:14px 0 6px;border-inline-start:3px solid var(--p);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ═══ شريط الرد ═══ */
 #replyBar{display:none;align-items:center;gap:9px;background:var(--white);border-top:1px solid var(--border);padding:8px 13px;flex:0 0 auto}
@@ -371,19 +373,6 @@ function loadMsgs(silent){
   if(!curReq)return;
   api('/api/messages/'+curReq+'?with='+curWith).then(function(d){
     if(!Array.isArray(d))return;
-    // لا رسائل على هذا المشروع؟ ابحث عن محادثة سابقة مع نفس الشخص (تمنع "بدء محادثة جديدة" خطأً)
-    if(!d.length&&!silent&&!window._recovered){
-      var prev=convs.filter(function(c){
-        var pid=isProvider?c.client_id:c.provider_id;
-        return String(pid)===String(curWith)&&String(c.request_id)!==String(curReq)&&c.last_message;
-      });
-      if(prev.length){
-        window._recovered=true;
-        var p=prev[0];
-        openChat(p.request_id,curWith,curName,p.request_title||curProj);
-        return;
-      }
-    }
     var changed=(d.length!==msgs.length);
     msgs=d; renderMsgs(!silent||changed);
   }).catch(function(){
@@ -396,9 +385,16 @@ function renderMsgs(scroll){
     el.innerHTML='<div class="empty"><div class="empty-ic">💬</div><div class="empty-t">ابدأ المحادثة</div><div>'+(isProvider?'وضّح عرضك أو اسأل عن تفاصيل المشروع':'اسأل عن التفاصيل، الأسعار، أو موعد التنفيذ')+'</div></div>';
     return;
   }
-  var lastDay='';
+  var lastDay='', lastProj='';
   el.innerHTML=msgs.map(function(m){
     var h='';
+    // فاصل المشروع (يظهر عند تغيّر المشروع داخل الخيط الموحّد)
+    var pj=m.project_title||'';
+    if(pj&&pj!==lastProj){
+      lastProj=pj;
+      h+='<div class="projsep">📁 '+esc(pj)+'</div>';
+      lastDay=''; // أعِد فاصل التاريخ بعد فاصل المشروع
+    }
     var dl=dayLabel(m.created_at);
     if(dl!==lastDay){ lastDay=dl; h+='<div class="daysep">'+dl+'</div>'; }
     var isMe=String(m.sender_id)===String(user.id);
