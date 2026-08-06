@@ -286,14 +286,11 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT b.id, b.days, b.status, b.created_at,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
-        COALESCE(b.price_visibility,'client') as price_visibility,
-        b.price as _p,
-        b.note as proposal,
+      SELECT b.id, b.price, b.note as proposal, b.days, b.status, b.created_at,
         u.id as provider_id,
         u.name as provider_name,
         u.city as provider_city,
+        u.phone as provider_phone,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN u.profile_image ELSE NULL END as provider_image,
@@ -301,6 +298,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
     `, [id]);
+    // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
     const rows = r.rows.map(x => { const { _p, ...rest } = x; return rest; });
@@ -1348,6 +1346,7 @@ async function setupDatabase() {
     // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+    // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
@@ -2238,7 +2237,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
-    const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';
+    const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
     const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3993,6 +3992,35 @@ app.get('/api/nudge-config', async (req,res)=>{
 });
 
 // إحصائيات بفلاتر زمنية (يوم/أسبوع/شهر/سنة/الكل)
+// إحصائيات خصوصية السعر — تساعد على قرار: هل نجعل الإظهار العام هو الافتراضي؟
+app.get('/api/admin/price-visibility', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT COALESCE(price_visibility,'client') AS vis,
+             COUNT(*)::int AS n,
+             COUNT(*) FILTER (WHERE status='accepted')::int AS accepted,
+             ROUND(AVG(price)::numeric,0)::float AS avg_price
+      FROM bids
+      GROUP BY 1`);
+    const rows = r.rows;
+    const total = rows.reduce((a,x)=>a+x.n,0);
+    const pub = rows.find(x=>x.vis==='public') || { n:0, accepted:0, avg_price:0 };
+    const cli = rows.find(x=>x.vis==='client') || { n:0, accepted:0, avg_price:0 };
+    // آخر 30 يوماً (لرصد تغيّر السلوك)
+    const recent = await pool.query(`
+      SELECT COALESCE(price_visibility,'client') AS vis, COUNT(*)::int AS n
+      FROM bids WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY 1`);
+    res.json({
+      total,
+      public: { count: pub.n, accepted: pub.accepted, avg_price: pub.avg_price, pct: total? Math.round(pub.n*100/total):0,
+                win_rate: pub.n? Math.round(pub.accepted*100/pub.n):0 },
+      client: { count: cli.n, accepted: cli.accepted, avg_price: cli.avg_price, pct: total? Math.round(cli.n*100/total):0,
+                win_rate: cli.n? Math.round(cli.accepted*100/cli.n):0 },
+      last30: recent.rows
+    });
+  } catch(e) { console.error('price-visibility:', e.message); res.json({ total:0 }); }
+});
+
 app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (req, res) => {
   try {
     const map = { day:'1 day', week:'7 days', month:'30 days', year:'365 days' };
