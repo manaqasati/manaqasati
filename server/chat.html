@@ -289,9 +289,29 @@ function doSearch(q){
     }).join('');
   }).catch(function(){ body.innerHTML='<div class="empty"><div class="empty-ic">📡</div><div class="empty-t">تعذّر البحث</div><div>تحقّق من اتصالك</div></div>'; });
 }
-// بدء محادثة جديدة مع مزوّد (تحتاج مشروعاً — نختار أحد مشاريع العميل)
+// بدء محادثة مع مزوّد — يفتح المحادثة القائمة إن وُجدت، وإلا يبدأ جديدة
 function startNew(provId,provName){
   if(isProvider){ toast('المزوّدون يراسلون العملاء عبر المشاريع','err'); return; }
+  // 1) هل بيننا محادثة قائمة؟ افتحها مباشرة (بدل إنشاء مكرّرة)
+  var existing=convs.filter(function(c){ return String(c.provider_id)===String(provId); });
+  if(existing.length===1){
+    closeNew();
+    openChat(existing[0].request_id,provId,provName,existing[0].request_title||'');
+    return;
+  }
+  if(existing.length>1){
+    // عدة محادثات مع نفس المزوّد (مشاريع مختلفة) → اختر
+    var s=document.getElementById('sheet');
+    s.innerHTML='<div class="sheet-card"><div class="sheet-grip"></div>'
+      +'<div style="padding:6px 20px 10px;font-size:12.5px;color:var(--muted);font-weight:700">لديكما محادثات على عدة مشاريع — اختر:</div>'
+      +existing.slice(0,8).map(function(c){
+        return '<button class="sheet-btn" onclick="closeSheet();closeNew();openChat('+c.request_id+','+provId+',\''+esc(provName).replace(/'/g,"\\'")+'\',\''+esc(c.request_title||'').replace(/'/g,"\\'")+'\')"><span style="font-size:17px">💬</span> '+esc(String(c.request_title||'مشروع').slice(0,40))+'</button>';
+      }).join('')
+      +'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>';
+    s.classList.add('on');
+    return;
+  }
+  // 2) لا توجد محادثة سابقة → ابدأ جديدة على أحد مشاريعك
   api('/api/requests/my').then(function(rs){
     var open=(Array.isArray(rs)?rs:[]).filter(function(r){return r.status==='open'||r.status==='in_progress';});
     if(!open.length){
