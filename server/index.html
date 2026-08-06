@@ -1582,10 +1582,16 @@ function _openReq(r){location.href='/project/'+_reqSlug(r)+'?id='+r.id;}
 
 function initPersonalHome(){
   var u=getUser(); if(!u) return;                 // زائر → تبقى الصفحة التسويقية
-  // المستخدم المسجّل يُوجّه مباشرة للوحته (زي باقي المنصات) — يمنع اللخبطة
-  // نستثني لو دخل عبر رابط قسم محدد (#hash) أو معاملات خاصة
   var hash=location.hash||'';
   if(hash && hash!=='#home' && hash.length>1) return; // رابط قسم محدد → يبقى بالرئيسية
+  // لا نعيد التوجيه إن وصل المستخدم بزر الرجوع أو من صفحة داخلية —
+  // التوجيه هنا يسبب "ومضة" صفحات متتالية ويبدو غير احترافي
+  try{
+    var nav=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||{};
+    if(nav.type==='back_forward') return;
+    var ref=document.referrer||'';
+    if(ref && ref.indexOf(location.origin)===0 && /\/(project|pro|chat|dalil|post)\b/.test(ref)) return;
+  }catch(e){}
   var dash = u.role==='provider' ? 'dashboard-provider.html' : (u.role==='admin' ? 'dashboard-admin.html' : 'dashboard-client.html');
   location.replace(dash);
 }
