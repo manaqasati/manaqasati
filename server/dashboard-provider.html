@@ -1046,7 +1046,11 @@ async function loadHome(){
   try{
     var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests')]);
     var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[],requests:Array.isArray(r[3])?r[3]:[]};
-    _cacheSet('home_data',fresh);_renderHome(fresh);
+    _cacheSet('home_data',fresh);
+    var _sg=''; try{_sg=JSON.stringify(fresh).length+':'+((fresh.bids||[]).length);}catch(e){}
+    if(_sg && _sg===window._provHomeSig && cached) return;   // لا تغيير → لا إعادة رسم
+    window._provHomeSig=_sg;
+    _renderHome(fresh);
   }catch(e){}
 }
 
