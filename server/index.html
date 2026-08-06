@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>
+/* توجيه فوري للمسجّل — قبل رسم أي شيء (يمنع ومضة الرئيسية) */
+(function(){
+  try{
+    var t=localStorage.getItem('token'); if(!t) return;
+    var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
+    var hash=location.hash||''; if(hash && hash!=='#home' && hash.length>1) return;
+    var nav=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||{};
+    if(nav.type==='back_forward') return;
+    var ref=document.referrer||'';
+    if(ref && ref.indexOf(location.origin)===0 && /(project|pro|chat|dalil|post|auth)/.test(ref)) return;
+    var p=new URLSearchParams(location.search); if(p.get('src')||p.get('post')) return;
+    var d = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
+    document.documentElement.style.visibility='hidden';
+    location.replace(d);
+  }catch(e){}
+})();
+</script>
+
 <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -1580,21 +1599,7 @@ function _initials(n){return (n||'\u0645').trim().charAt(0)||'\u0645';}
 function _reqSlug(r){return encodeURIComponent((r.title||'\u0645\u0634\u0631\u0648\u0639').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;}
 function _openReq(r){location.href='/project/'+_reqSlug(r)+'?id='+r.id;}
 
-function initPersonalHome(){
-  var u=getUser(); if(!u) return;                 // زائر → تبقى الصفحة التسويقية
-  var hash=location.hash||'';
-  if(hash && hash!=='#home' && hash.length>1) return; // رابط قسم محدد → يبقى بالرئيسية
-  // لا نعيد التوجيه إن وصل المستخدم بزر الرجوع أو من صفحة داخلية —
-  // التوجيه هنا يسبب "ومضة" صفحات متتالية ويبدو غير احترافي
-  try{
-    var nav=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||{};
-    if(nav.type==='back_forward') return;
-    var ref=document.referrer||'';
-    if(ref && ref.indexOf(location.origin)===0 && /\/(project|pro|chat|dalil|post)\b/.test(ref)) return;
-  }catch(e){}
-  var dash = u.role==='provider' ? 'dashboard-provider.html' : (u.role==='admin' ? 'dashboard-admin.html' : 'dashboard-client.html');
-  location.replace(dash);
-}
+function initPersonalHome(){ return; }  // التوجيه صار مبكراً في <head>
 
 // (النسخة الشخصية القديمة — لم تعد تُستخدم، أبقيناها للتوافق)
 function initPersonalHomeOld(){
