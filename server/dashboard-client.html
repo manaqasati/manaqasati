@@ -1447,6 +1447,16 @@ function loadBids(id){
       document.getElementById('bids-count').textContent=bids.length;
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
+      window._curBids=bids;
+      // زر مقارنة العروض (يظهر عند وجود عرضين فأكثر)
+      var cmpSlot=document.getElementById('bids-compare');
+      if(!cmpSlot){
+        cmpSlot=document.createElement('div'); cmpSlot.id='bids-compare';
+        el.parentNode.insertBefore(cmpSlot,el);
+      }
+      cmpSlot.innerHTML = bids.length>=2
+        ? '<button onclick="_compareBids()" style="width:100%;margin-bottom:11px;padding:11px;background:var(--p-light);color:var(--p);border:1.5px solid var(--p-mid);border-radius:12px;font-family:Tajawal;font-size:13.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>قارن العروض جنباً لجنب</button>'
+        : '';
 
       // الأفضل = أعلى تقييم ثم الأقل سعراً، والأرخص = أقل سعر
       var sorted=bids.slice().sort(function(a,b){var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;if(rb!==ra)return rb-ra;return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);});
@@ -1475,6 +1485,7 @@ function loadBids(id){
         if(isCheap)chips+='<span class="bid-chip cheap"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>أقل سعر</span>';
         if(safeProvId)chips+='<a href="'+proUrl+'" class="bid-chip prof"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
         chips+='<button class="_chatbtn bid-chip chat" data-pid="'+safeProvId+'"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
+        if(safeProvId&&!isAcc&&!isRej)chips+='<button class="bid-chip" onclick="_negotiate('+safeProvId+','+id+',\''+String(b.provider_name||'المزوّد').replace(/'/g,"\\'")+'\','+(b.price||0)+','+b.id+')" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تفاوض</button>';
         if(safeProvId)chips+='<button class="bid-chip" onclick="_cliReport('+safeProvId+','+id+')" style="color:var(--red)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>إبلاغ</button>';
 
         var note=b.note?'<div class="bid-note">'+esc(b.note)+'</div>':'<div class="bid-note empty">لم يُضف المزود رسالة مع العرض</div>';
@@ -1492,7 +1503,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+_onlineDot(b.provider_last_seen)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
               +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
             +'</div>'
@@ -1507,9 +1518,11 @@ function loadBids(id){
       el.querySelectorAll('._chatbtn').forEach(function(btn){
         btn.addEventListener('click',function(){
           var pid=btn.getAttribute('data-pid');if(!pid)return;
+          // المحادثة على نفس المشروع المعروض → افتحها مباشرة
+          if(curRequestId){ location.href='/chat?req='+curRequestId+'&with='+pid; return; }
           fetch(API+'/api/direct-message',Object.assign({method:'POST',body:JSON.stringify({provider_id:pid})},hdr()))
             .then(function(r){return r.json();})
-            .then(function(d){if(d.request_id){window._openChatReqId=d.request_id;window._openChatPid=pid;location.href='/chat';}})
+            .then(function(d){ if(d.request_id)location.href='/chat?req='+d.request_id+'&with='+pid; })
             .catch(function(){showToast('تعذّر فتح المحادثة — حاول مجدداً','error');});
         });
       });
@@ -2253,7 +2266,116 @@ function _bindKeyboardFix(){
   // اضبط فوراً عند فتح المحادثة (يمنع الفراغ قبل ظهور الكيبورد)
   [0,50,150,350].forEach(function(t){setTimeout(apply,t);});
 }
-// ── الحظر بين المستخدمين ──
+// ── التفاوض على العرض: اتصال · واتساب · محادثة ──
+// مؤشّر النشاط: متصل الآن / نشط قريباً
+function _onlineDot(lastSeen){
+  if(!lastSeen)return '';
+  var mins=(Date.now()-new Date(lastSeen).getTime())/60000;
+  if(mins<5) return '<span title="متصل الآن" style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#16a34a;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:20px;margin-inline-start:5px"><span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>متصل</span>';
+  if(mins<60) return '<span style="font-size:9.5px;color:var(--muted);font-weight:700;margin-inline-start:5px">نشط قبل '+Math.floor(mins)+' د</span>';
+  if(mins<1440) return '<span style="font-size:9.5px;color:var(--hint);font-weight:700;margin-inline-start:5px">نشط قبل '+Math.floor(mins/60)+' س</span>';
+  return '';
+}
+// ── مقارنة العروض جنباً لجنب ──
+function _compareBids(){
+  var list=(window._curBids||[]).filter(function(b){return b.status!=='rejected';});
+  if(list.length<2){ showToast('تحتاج عرضين على الأقل للمقارنة','error'); return; }
+  var minP=Math.min.apply(null,list.map(function(b){return parseFloat(b.price)||Infinity;}));
+  var minD=Math.min.apply(null,list.map(function(b){return parseInt(b.days)||Infinity;}));
+  var maxR=Math.max.apply(null,list.map(function(b){return parseFloat(b.provider_rating)||0;}));
+  var d=document.createElement('div');
+  d.id='cmpModal';
+  d.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center';
+  var best='background:#dcfce7;color:#15803d;font-weight:900;border-radius:6px';
+  var rows=list.slice(0,6).map(function(b){
+    var p=parseFloat(b.price)||0, dy=parseInt(b.days)||0, rt=parseFloat(b.provider_rating)||0;
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:11px 8px;font-size:12.5px;font-weight:800;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(b.provider_business_name||b.provider_name||'مزوّد')+'</td>'
+      +'<td style="padding:11px 6px;text-align:center;font-size:13px;'+(p===minP?best:'')+'">'+(p?p.toLocaleString('en-US'):'—')+'</td>'
+      +'<td style="padding:11px 6px;text-align:center;font-size:12.5px;'+(dy===minD?best:'')+'">'+(dy?dy+' يوم':'—')+'</td>'
+      +'<td style="padding:11px 6px;text-align:center;font-size:12.5px;'+(rt&&rt===maxR?best:'')+'">'+(rt?'⭐'+rt.toFixed(1):'جديد')+'</td>'
+      +'<td style="padding:11px 6px;text-align:center"><button onclick="document.getElementById(\'cmpModal\').remove();acceptBid('+b.id+','+b.request_id+')" style="background:var(--p);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-family:Tajawal;font-size:11.5px;font-weight:800;cursor:pointer">قبول</button></td>'
+    +'</tr>';
+  }).join('');
+  d.innerHTML='<div style="background:var(--white);width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:82vh;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px)">'
+    +'<div style="width:38px;height:4px;background:var(--border);border-radius:3px;margin:10px auto 12px"></div>'
+    +'<div style="padding:0 16px 12px"><div style="font-size:16px;font-weight:900">مقارنة العروض</div><div style="font-size:12px;color:var(--muted);margin-top:3px">الأفضل في كل عمود مظلّل بالأخضر</div></div>'
+    +'<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr style="background:var(--bg)"><th style="padding:9px 8px;font-size:11.5px;color:var(--muted);text-align:right">المزوّد</th><th style="padding:9px 6px;font-size:11.5px;color:var(--muted)">السعر</th><th style="padding:9px 6px;font-size:11.5px;color:var(--muted)">المدة</th><th style="padding:9px 6px;font-size:11.5px;color:var(--muted)">التقييم</th><th style="padding:9px 6px;font-size:11.5px;color:var(--muted)"></th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>'
+    +'<div style="padding:14px 16px 0"><button onclick="document.getElementById(\'cmpModal\').remove()" style="width:100%;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-family:Tajawal;font-size:14px;font-weight:700;cursor:pointer">إغلاق</button></div>'
+    +'</div>';
+  d.onclick=function(e){ if(e.target===d)d.remove(); };
+  document.body.appendChild(d);
+}
+function _negotiate(provId,reqId,provName,price,bidId){
+  window._negBidId=bidId||0;
+  var m=document.getElementById('negModal');
+  if(m)m.remove();
+  var d=document.createElement('div');
+  d.id='negModal';
+  d.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.42);display:flex;align-items:flex-end;justify-content:center';
+  var btn='display:flex;align-items:center;gap:13px;width:100%;padding:15px 20px;background:none;border:none;font-family:Tajawal,sans-serif;font-size:15px;font-weight:700;cursor:pointer;text-align:right;color:var(--text);border-bottom:1px solid var(--border)';
+  d.innerHTML='<div style="background:var(--white);width:100%;max-width:470px;border-radius:22px 22px 0 0;overflow:hidden;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px)">'
+    +'<div style="width:38px;height:4px;background:var(--border);border-radius:3px;margin:10px auto"></div>'
+    +'<div style="padding:4px 20px 12px;text-align:center"><div style="font-size:15.5px;font-weight:900;margin-bottom:3px">التفاوض مع '+esc(provName)+'</div><div style="font-size:12.5px;color:var(--muted);line-height:1.7">عرضه الحالي <b style="color:var(--green)">'+(price?Number(price).toLocaleString('en-US'):'—')+' ر.س</b><br>تواصل معه لتتفقا على السعر أو التفاصيل</div></div>'
+    +'<button style="'+btn+'" onclick="_counterOffer('+provId+','+reqId+','+(price||0)+')"><span style="font-size:20px">💰</span><div><div>اقترح سعراً (عرض مضاد)</div><div style="font-size:11px;color:var(--muted);font-weight:600">أسرع طريقة — يصله إشعار فوري</div></div></button>'
+    +'<button style="'+btn+'" onclick="_negoGo(\'chat\','+provId+','+reqId+')"><span style="font-size:20px">💬</span><div><div>محادثة داخل المنصة</div><div style="font-size:11px;color:var(--muted);font-weight:600">موثّقة ومحفوظة</div></div></button>'
+    +'<button style="'+btn+'" onclick="_negoGo(\'call\','+provId+','+reqId+')"><span style="font-size:20px">📞</span><div><div>اتصال مباشر</div><div style="font-size:11px;color:var(--muted);font-weight:600">أسرع للتفاهم على التفاصيل</div></div></button>'
+    +'<button style="'+btn+'" onclick="_negoGo(\'wa\','+provId+','+reqId+')"><span style="font-size:20px">📱</span><div><div>واتساب</div><div style="font-size:11px;color:var(--muted);font-weight:600">تواصل خارج المنصة</div></div></button>'
+    +'<button style="'+btn+';border-bottom:none;justify-content:center;color:var(--muted)" onclick="document.getElementById(\'negModal\').remove()">إلغاء</button>'
+    +'</div>';
+  d.onclick=function(e){ if(e.target===d)d.remove(); };
+  document.body.appendChild(d);
+}
+// عرض مضاد: العميل يقترح سعراً → يصل المزوّد إشعار + رسالة موثّقة
+function _counterOffer(provId,reqId,curPrice){
+  var m=document.getElementById('negModal'); if(m)m.remove();
+  var bidId=window._negBidId||0;
+  var d=document.createElement('div');
+  d.id='negModal';
+  d.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.42);display:flex;align-items:flex-end;justify-content:center';
+  var fin='width:100%;padding:13px 15px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:15px;outline:none;box-sizing:border-box';
+  d.innerHTML='<div style="background:var(--white);width:100%;max-width:470px;border-radius:22px 22px 0 0;padding:0 20px calc(env(safe-area-inset-bottom,0px) + 18px)">'
+    +'<div style="width:38px;height:4px;background:var(--border);border-radius:3px;margin:10px auto 14px"></div>'
+    +'<div style="font-size:16px;font-weight:900;margin-bottom:4px">اقترح سعرك</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.7">عرضه الحالي <b style="color:var(--green)">'+(curPrice?Number(curPrice).toLocaleString('en-US'):'—')+' ر.س</b> — اكتب السعر الذي تراه مناسباً</div>'
+    +'<input id="co-price" type="number" inputmode="numeric" placeholder="السعر المقترح (ر.س)" style="'+fin+';margin-bottom:10px">'
+    +'<textarea id="co-note" rows="2" placeholder="سبب الاقتراح (اختياري)" style="'+fin+';resize:none;margin-bottom:14px"></textarea>'
+    +'<div style="display:flex;gap:9px">'
+      +'<button onclick="document.getElementById(\'negModal\').remove()" style="flex:1;padding:13px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-family:Tajawal;font-size:14px;font-weight:700;cursor:pointer">إلغاء</button>'
+      +'<button id="co-send" onclick="_sendCounter('+bidId+','+provId+','+reqId+')" style="flex:1.4;padding:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;font-family:Tajawal;font-size:14px;font-weight:800;cursor:pointer">إرسال الاقتراح</button>'
+    +'</div></div>';
+  d.onclick=function(e){ if(e.target===d)d.remove(); };
+  document.body.appendChild(d);
+  setTimeout(function(){var i=document.getElementById('co-price');if(i)i.focus();},150);
+}
+function _sendCounter(bidId,provId,reqId){
+  var price=parseFloat((document.getElementById('co-price')||{}).value||0);
+  var note=((document.getElementById('co-note')||{}).value||'').trim();
+  if(!price||price<=0){ showToast('أدخل سعراً صحيحاً','error'); return; }
+  var btn=document.getElementById('co-send'); if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  jFetch('/api/bids/'+bidId+'/negotiate',{method:'POST',body:JSON.stringify({counter_price:price,note:note})})
+    .then(function(){
+      var m=document.getElementById('negModal'); if(m)m.remove();
+      showToast('تم إرسال اقتراحك ✓ — وصله إشعار','success');
+      setTimeout(function(){ location.href='/chat?req='+reqId+'&with='+provId; },900);
+    })
+    .catch(function(){ showToast('تعذّر الإرسال — تحقّق من اتصالك','error'); if(btn){btn.disabled=false;btn.textContent='إرسال الاقتراح';} });
+}
+function _negoGo(mode,provId,reqId){
+  var m=document.getElementById('negModal'); if(m)m.remove();
+  if(mode==='chat'){ location.href='/chat?req='+reqId+'&with='+provId; return; }
+  // اتصال/واتساب: نجلب رقم المزوّد
+  jFetch('/api/providers/'+provId).then(function(p){
+    var phone=(p&&(p.phone||p.mobile))||'';
+    if(!phone){ showToast('رقم المزوّد غير متاح — استخدم المحادثة','error'); return; }
+    var digits=String(phone).replace(/\D/g,'');
+    if(digits.indexOf('966')!==0)digits=digits.replace(/^0/,'966');
+    if(mode==='call') location.href='tel:+'+digits;
+    else window.open('https://wa.me/'+digits+'?text='+encodeURIComponent('السلام عليكم، بخصوص عرضك على مشروعي في منصة مناقصة'),'_blank');
+  }).catch(function(){ showToast('تعذّر جلب رقم المزوّد — استخدم المحادثة','error'); });
+}
 function toggleBlockUser(uid,name){
   if(!uid)return;
   var btn=document.getElementById('chatBlockBtn');
@@ -2690,6 +2812,12 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _wsConnect(); });
   window.addEventListener('online',function(){ if(!_alive) _wsConnect(); });
   setTimeout(_wsConnect, 800);
+})();
+
+// تحديث آخر ظهور (يُظهر "متصل الآن" للطرف الآخر)
+(function(){
+  var ping=function(){ if(!document.hidden)fetch(API+'/api/me/ping',Object.assign({method:'POST'},hdr())).catch(function(){}); };
+  ping(); setInterval(ping,120000);
 })();
 </script>
 
