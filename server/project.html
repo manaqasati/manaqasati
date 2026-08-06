@@ -371,8 +371,9 @@ async function load(){
     if(!rr.ok) throw new Error('not found');
     _req=await rr.json();
     var br=await fetch(API+'/api/bids/public/'+_rid);
-    _bids=br.ok?await br.json():[];
-    if(!Array.isArray(_bids))_bids=[];
+    var _bd=br.ok?await br.json():[];
+    if(Array.isArray(_bd)){ _bids=_bd; window._range=null; }
+    else { _bids=Array.isArray(_bd.bids)?_bd.bids:[]; window._range=_bd.range||null; }
     render();
   }catch(e){
     document.getElementById('main-content').innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)"><div style="font-size:14px;font-weight:700;color:var(--red)"> تعذر تحميل المشروع</div><div style="margin-top:12px"><button onclick="load()" style="padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal;font-size:13px;font-weight:700;cursor:pointer">إعادة المحاولة</button></div></div>';
@@ -465,7 +466,10 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   else h+='<div class="bid-stars2" style="color:var(--hint);font-size:11px">مزود جديد</div>';
   if(b.provider_city)h+='<div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>';
   h+='</div>';
-  h+='<div style="text-align:left;flex-shrink:0"><div style="font-family:\'Cairo\',sans-serif;font-size:20px;font-weight:900;color:var(--green);line-height:1">'+fmtN(price)+' <small style="font-size:10px;color:var(--muted);font-weight:700">ر.س</small></div>'+(b.days?'<div style="font-size:11px;color:var(--muted);margin-top:3px">خلال '+b.days+' أيام</div>':'')+'</div>';
+  var _ph = price>0
+    ? '<div style="font-family:\'Cairo\',sans-serif;font-size:20px;font-weight:900;color:var(--green);line-height:1">'+fmtN(price)+' <small style="font-size:10px;color:var(--muted);font-weight:700">ر.س</small></div>'
+    : '<div style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px">🔒 السعر خاص</div>';
+  h+='<div style="text-align:left;flex-shrink:0">'+_ph+(b.days?'<div style="font-size:11px;color:var(--muted);margin-top:3px">خلال '+b.days+' أيام</div>':'')+'</div>';
   h+='</div>';
   // note
   var note=b.proposal||b.note||'';
