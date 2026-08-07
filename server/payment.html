@@ -85,7 +85,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 <div class="topbar">
-  <button class="back-btn" onclick="history.length>1?history.back():location.href='/'"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
+  <button class="back-btn" onclick="history.length>1?history.back():_payBack()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
   <div class="logo"><span class="logo-dot"></span>مناقصة</div>
   <span style="width:76px"></span>
 </div>
@@ -230,5 +230,15 @@ function copyText(text, btn) {
 }
 </script>
 
+<script>
+function _payBack(){
+  try{
+    var t=localStorage.getItem('token');
+    var u=JSON.parse(localStorage.getItem('user')||'{}');
+    if(t&&u&&u.id){ location.href = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html'); return; }
+  }catch(e){}
+  location.href='/';
+}
+</script>
 </body>
 </html>
