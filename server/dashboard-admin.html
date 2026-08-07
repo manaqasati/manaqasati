@@ -354,7 +354,8 @@ function _themeIcon(){var dark=document.documentElement.getAttribute('data-theme
 function toggleTheme(){var on=document.documentElement.getAttribute('data-theme')==='dark';if(on){document.documentElement.removeAttribute('data-theme');}else{document.documentElement.setAttribute('data-theme','dark');}try{localStorage.setItem('theme',on?'light':'dark');}catch(e){}_themeIcon();}
 document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
-<div class="backdrop" id="backdrop" onclick="toggleSide()"></div>
+<div class="backdrop" id="backdrop" onclick="toggleSide()">
+</div>
 
 <aside class="side" id="sidebar">
   <div class="side-brand">
@@ -443,6 +444,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </div>
 
     <div class="page" id="page-requests">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button onclick="openProxyPost()" style="background:linear-gradient(135deg,var(--p),#2563eb);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(30,58,138,.25)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>نشر مشروع بالوكالة</button></div>
       <div class="card">
         <div class="card-head"><h3>إدارة المشاريع</h3><button class="act-btn ab-default" onclick="exportRequests()" style="margin-inline-start:auto"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير</button></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button></div>
@@ -3275,4 +3277,3 @@ setTimeout(refreshAdminBadges, 1500);
 <div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </body>
 </html>
-        <button onclick="openProxyPost()" style="background:linear-gradient(135deg,var(--p),#2563eb);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(30,58,138,.25)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>نشر مشروع بالوكالة</button>
