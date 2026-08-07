@@ -410,5 +410,14 @@ function _smartBack(){
   } else lbl.textContent='الرئيسية';
 })();
 </script>
+<script>
+function _askLogin(){
+  if(confirm('سجّل دخولك لعرض رقم المزوّد والتواصل معه.\nالتسجيل مجاني ولا يستغرق دقيقة.')){
+    try{ localStorage.setItem('_after_login', location.href); }catch(e){}
+    location.href='/auth.html';
+  }
+  return false;
+}
+</script>
 </body>
 </html>
