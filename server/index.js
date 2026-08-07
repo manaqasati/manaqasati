@@ -1106,7 +1106,7 @@ async function runReminders(){
         try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
     const _wb = await pool.query("SELECT price FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
     const _cfee = _wb.rows.length ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
-    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة '+_cfee.toLocaleString('en-US')+' ر.س (3%) — سجّل التزامك من صفحة الدفع.':''), 'completed', id);
+    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة '+_cfee.toLocaleString('en-US')+' ر.س (3%) — سدّدها خلال 10 أيام — من صفحة الدفع.':''), 'completed', id);
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
@@ -2374,7 +2374,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
     const _fee = Math.round((parseFloat(bid.price)||0) * 0.03);
-    await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) يُسجَّل بعد إتمام العمل.':''), 'bid_accepted', bid.request_id);
+    await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) تُسدَّد خلال 10 أيام من الاتفاق أو بدء التنفيذ.':''), 'bid_accepted', bid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
         const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
         const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
