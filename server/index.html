@@ -1898,6 +1898,28 @@ initPersonalHome();
   function hasToken(){ try{ return !!localStorage.getItem('token'); }catch(e){ return false; } }
   var gate=document.getElementById('mnqChoose');
   if(!gate) return;
+  // ── تعريف دوال البوابة أولاً (قبل أي شرط أو خروج) ──
+  window.mnqChooseGo=function(role){
+    if(role==='client'){ location.href='/post'; return; }
+    if(typeof goAuthRole==='function'){ goAuthRole(role); }
+    else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
+  };
+  window.mnqChooseBrowse=function(){
+    try{ sessionStorage.setItem('mnq_browsing','1'); }catch(e){}   // لا تُفرض البوابة مجدداً هذه الجلسة
+    gate.style.display='none';
+    document.body.style.overflow='';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  window.mnqReopenChoose=function(){
+    gate.style.display='flex';
+    document.body.style.overflow='hidden';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='none';
+    window.scrollTo({top:0,behavior:'auto'});
+  };
+
 
   // توجيه ذكي حسب مصدر الحملة — يطابق وعد الإعلان مباشرة
   // فيديو تيك توك يقول "اعرض مشروعك" → نوجّه زائره فوراً لمسار العميل (بلا تشتيت)
@@ -1928,26 +1950,7 @@ initPersonalHome();
   gate.style.display='none';
   var _f0=document.getElementById('mnqBackToChoose'); if(_f0)_f0.style.display='flex';
   // ملاحظة: نُكمل تعريف الدوال أدناه — لا نخرج هنا وإلا لن تُعرَّف أزرار البوابة.
-  window.mnqChooseGo=function(role){
-    if(role==='client'){ location.href='/post'; return; }
-    if(typeof goAuthRole==='function'){ goAuthRole(role); }
-    else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
-  };
-  window.mnqChooseBrowse=function(){
-    try{ sessionStorage.setItem('mnq_browsing','1'); }catch(e){}   // لا تُفرض البوابة مجدداً هذه الجلسة
-    gate.style.display='none';
-    document.body.style.overflow='';
-    var fab=document.getElementById('mnqBackToChoose');
-    if(fab) fab.style.display='flex';
-    window.scrollTo({top:0,behavior:'smooth'});
-  };
-  window.mnqReopenChoose=function(){
-    gate.style.display='flex';
-    document.body.style.overflow='hidden';
-    var fab=document.getElementById('mnqBackToChoose');
-    if(fab) fab.style.display='none';
-    window.scrollTo({top:0,behavior:'auto'});
-  };
+  
 })();
 </script>
 
