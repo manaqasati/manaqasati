@@ -811,7 +811,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <div class="nav-btns">
     <button class="btn-ghost" onclick="toggleTheme()" aria-label="الوضع الليلي" style="padding:8px 11px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
     <button class="btn-ghost" onclick="goLogin()">تسجيل الدخول</button>
-    <button class="btn-primary" onclick="goAuthRole('client')">ابدأ مجاناً</button>
+    <button class="btn-primary" onclick="mnqOpenChoose(event)">ابدأ مجاناً</button>
   </div>
 </nav>
 
@@ -1188,7 +1188,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <h2>جاهز تبدأ؟</h2>
   <p>انشر أول طلب مجاناً واحصل على عروض خلال ساعات</p>
   <div class="hero-btns">
-    <button class="btn-primary btn-lg" onclick="goAuthRole('client')">ابدأ مجاناً الآن</button>
+    <button class="btn-primary btn-lg" onclick="mnqOpenChoose(event)">ابدأ مجاناً الآن</button>
     <button class="btn-outline" onclick="goAuthRole('provider')">أنا مزود خدمة – سجّلني</button>
   </div>
 </section>
@@ -1924,11 +1924,12 @@ initPersonalHome();
     if(_fab) _fab.style.display='flex';   // يبقى زر "عميل أو مزوّد؟" متاحاً لمن يريده
     return;
   }
-  var _seen=false;
-  try{ _seen = sessionStorage.getItem('mnq_gate_seen')==='1'; }catch(e){}
-  if(_seen){ gate.style.display='none'; var _f=document.getElementById('mnqBackToChoose'); if(_f)_f.style.display='flex'; return; }
-  try{ sessionStorage.setItem('mnq_gate_seen','1'); }catch(e){}
-  gate.style.display='flex';
+    // لا نعرض البوابة تلقائياً — الزائر يتصفّح بحرية.
+  // تظهر فقط عند نيّة التسجيل (زر «ابدأ مجاناً») ليختار دوره حينها.
+  gate.style.display='none';
+  var _f0=document.getElementById('mnqBackToChoose'); if(_f0)_f0.style.display='flex';
+  return;
+
   document.body.style.overflow='hidden';
   window.mnqChooseGo=function(role){
     if(role==='client'){ location.href='/post'; return; }
@@ -1974,5 +1975,16 @@ initPersonalHome();
   <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   عميل أو مزوّد؟
 </button>
+
+<script>
+// فتح بوابة الاختيار عند نيّة التسجيل (لا عند الدخول للموقع)
+window.mnqOpenChoose=function(e){
+  if(e&&e.preventDefault)e.preventDefault();
+  var g=document.getElementById('mnqChoose');
+  if(g){ g.style.display='flex'; document.body.style.overflow='hidden'; }
+  else location.href='auth.html';
+  return false;
+};
+</script>
 </body>
 </html>
