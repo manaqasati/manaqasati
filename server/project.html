@@ -469,7 +469,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   h+='</div>';
   var _ph = price>0
     ? '<div style="font-family:\'Cairo\',sans-serif;font-size:20px;font-weight:900;color:var(--green);line-height:1">'+fmtN(price)+' <small style="font-size:10px;color:var(--muted);font-weight:700">ر.س</small></div>'
-    : '<div style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px">🔒 السعر خاص</div>';
+    : '<div style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px">\U0001F512 السعر خاص</div>';
   h+='<div style="text-align:left;flex-shrink:0">'+_ph+(b.days?'<div style="font-size:11px;color:var(--muted);margin-top:3px">خلال '+b.days+' أيام</div>':'')+'</div>';
   h+='</div>';
   // note
@@ -482,8 +482,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
     h+='<a href="https://wa.me/'+provPhone.replace('+','')+'" class="bid-btn bid-btn-wa" target="_blank" rel="noopener"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>واتساب</a>';
     h+='<a href="tel:'+provPhone+'" class="bid-btn bid-btn-call"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.86 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.77 0h3a2 2 0 012 1.72c.18.97.44 1.9.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45c.91.26 1.84.52 2.81.7A2 2 0 0122 15.16z"/></svg>اتصال</a>';
   } else if(!localStorage.getItem('token')){
-    // الزائر: نحفّزه على التسجيل بدل إخفاء التواصل تماماً
-    h+='<button onclick="goLogin()" class="bid-btn" style="background:var(--p);color:#fff;border:none" title="سجّل لعرض رقم المزوّد"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>سجّل لعرض الرقم</button>';
+    h+='<button onclick="goLogin()" class="bid-btn" style="background:var(--p);color:#fff;border:none"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>سجّل لعرض الرقم</button>';
   }
   if(provId){
     h+='<a href="'+proUrl+'" class="bid-btn bid-btn-pro"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض الملف</a>';
@@ -618,7 +617,12 @@ function render(){
   // ── Project Details Card ──
   h+='<div class="card">';
   h+='<div style="font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:900;color:var(--p);margin-bottom:11px">📋 تفاصيل المشروع</div>';
-  h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(req.city||'غير محدد')+'</div>';
+  var _locTxt = esc(req.city||'غير محدد') + (req.district ? (' \u2014 ' + esc(req.district)) : '');
+  h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+_locTxt+'</div>';
+  // الموقع الدقيق يظهر فقط لمن يملك الصلاحية (المالك أو المزوّد المعتمد) — الخادم يحجبه عن غيرهم
+  if(req.geo_lat && req.geo_lng){
+    h+='<a href="https://www.google.com/maps?q='+req.geo_lat+','+req.geo_lng+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:800;text-decoration:none;margin-top:9px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>افتح الموقع في الخرائط</a>';
+  }
   if(req.budget_max)h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الميزانية: '+fmtN(req.budget_max)+' ر.س</div>';
   if(req.deadline)h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>الموعد النهائي: '+fmtDate(req.deadline)+'</div>';
   h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>نُشر '+ago(req.created_at)+' مضت</div>';
@@ -1027,15 +1031,11 @@ load();
 })();
 </script>
 
-
 <script>
-// رجوع ذكي: يعود للصفحة السابقة داخل الموقع فقط، وإلا للرئيسية
 function _smartBack(){
-  // الأولوية دائماً لـ history.back(): انتقال فوري بلا إعادة تحميل (يمنع ومضات الصفحات)
   var ref=document.referrer||'';
   var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
   if(same && history.length>1){ history.back(); return; }
-  // بديل نادر: لا تاريخ صالح — استبدل الصفحة (replace يمنع تراكم التاريخ)
   location.replace(same?ref:'/');
 }
 (function(){
@@ -1043,8 +1043,7 @@ function _smartBack(){
   var ref=document.referrer||'';
   if(ref.indexOf(location.origin)===0){
     if(/\/pro\//.test(ref)) lbl.textContent='المزوّد';
-    else if(/\/dashboard-client/.test(ref)) lbl.textContent='لوحتي';
-    else if(/\/dashboard-provider/.test(ref)) lbl.textContent='لوحتي';
+    else if(/dashboard-/.test(ref)) lbl.textContent='لوحتي';
     else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
     else if(/\/dalil\//.test(ref)) lbl.textContent='الدليل';
     else lbl.textContent='رجوع';
