@@ -3338,18 +3338,20 @@ setTimeout(refreshAdminBadges, 1500);
   </div>
 </div>
 <div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js">
+</script>
+<script>
 // ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──
 function fmtText(s){
   if(!s) return '';
-  var E = (typeof esc==='function') ? esc : (typeof _esc==='function' ? _esc : function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});});
+  var E = (typeof esc==='function') ? esc : function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
   var out='';
   String(s).split(/\r?\n/).forEach(function(ln){
     var t=ln.trim();
     if(!t){ out+='<div style="height:7px"></div>'; return; }
     var mN=t.match(/^(\d+)[\.\)\-]\s+(.*)$/);
-    if(/^[-•*]\s+/.test(t)) out+='<div class="fx-b"><span>'+E(t.replace(/^[-•*]\s+/,''))+'</span></div>';
+    if(/^[-\u2022*]\s+/.test(t)) out+='<div class="fx-b"><span>'+E(t.replace(/^[-\u2022*]\s+/,''))+'</span></div>';
     else if(mN) out+='<div class="fx-n"><span class="fx-num">'+E(mN[1])+'.</span><span>'+E(mN[2])+'</span></div>';
-    else if(/[:：]$/.test(t) && t.length<60) out+='<div class="fx-h">'+E(t)+'</div>';
+    else if(/[:\uFF1A]$/.test(t) && t.length<60) out+='<div class="fx-h">'+E(t)+'</div>';
     else out+='<div>'+E(t)+'</div>';
   });
   return out;
@@ -3358,10 +3360,10 @@ function fmtText(s){
 function fmtBar(id){
   var b='background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:var(--text2)';
   return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px">'
-    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'bullet\')">• نقطة</button>'
-    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'num\')">1. ترقيم</button>'
-    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'head\')">عنوان:</button>'
-    +'</div>';
+    + '<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'bullet\')">\u2022 نقطة</button>'
+    + '<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'num\')">1. ترقيم</button>'
+    + '<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'head\')">عنوان:</button>'
+    + '</div>';
 }
 function fmtIns(id,kind){
   var el=document.getElementById(id); if(!el)return;
@@ -3371,7 +3373,6 @@ function fmtIns(id,kind){
   var ins= kind==='bullet' ? nl+'- ' : (kind==='num' ? nl+'1. ' : nl+'العنوان: \n');
   el.value=before+ins+after; el.focus();
   var p=(before+ins).length; try{el.setSelectionRange(p,p);}catch(e){}
-  try{el.dispatchEvent(new Event('input'));}catch(e){}
 }
 </script>
 </body>
