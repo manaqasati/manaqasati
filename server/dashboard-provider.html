@@ -1144,6 +1144,37 @@ function _renderBrowseList(list){
     return h;
   }).join('');
 }
+
+// ── نص اتفاقية رسوم المنصة (كامل) ──
+function _showFeeAgreement(){
+  var p=parseFloat((_el('bid-price')||{}).value||0);
+  var feeTxt = p>0 ? ('<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:11px;margin-top:14px;text-align:center;font-size:13px;font-weight:900;color:#9a3412">على سعرك الحالي ('+Math.round(p).toLocaleString('en-US')+' ر.س) تكون الرسوم <span style="font-size:16px">'+Math.round(p*0.03).toLocaleString('en-US')+'</span> ر.س</div>') : '';
+  var d=document.createElement('div');
+  d.id='feeAgrModal';
+  d.style.cssText='position:fixed;inset:0;z-index:1500;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#fff;width:100%;max-width:560px;max-height:86vh;overflow-y:auto;border-radius:18px;padding:22px">'
+    +'<div style="text-align:center;font-family:Cairo,Tajawal,sans-serif;font-size:17px;font-weight:900;color:var(--p3);margin-bottom:4px">اتفاقية رسوم المنصة</div>'
+    +'<div style="text-align:center;font-size:13px;font-weight:800;color:#9a3412;margin-bottom:14px">بسم الله الرحمن الرحيم</div>'
+    +'<div style="background:#f8fafc;border-right:4px solid var(--p);border-radius:10px;padding:14px;margin-bottom:16px">'
+      +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">قال الله تعالى:</div>'
+      +'<div style="font-family:Cairo,Tajawal,sans-serif;font-size:14.5px;line-height:2;color:var(--p3);font-weight:700;text-align:center">﴿وَأَوْفُوا بِعَهْدِ اللَّهِ إِذَا عَاهَدتُّمْ وَلَا تَنقُضُوا الْأَيْمَانَ بَعْدَ تَوْكِيدِهَا وَقَدْ جَعَلْتُمُ اللَّهَ عَلَيْكُمْ كَفِيلًا﴾</div>'
+      +'<div style="text-align:center;font-size:11.5px;color:var(--muted);font-weight:700;margin-top:7px">صدق الله العظيم</div>'
+    +'</div>'
+    +'<div style="font-size:13px;line-height:2.05;color:var(--text);text-align:justify">'
+      +'أتعهد أنا مزود الخدمة بالالتزام بسداد رسوم المنصة وقدرها <b>3% من قيمة الاتفاق</b>، إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تعاقد أو تنفيذ للمشروع، سواء تم ذلك من خلال المنصة أو خارجها، بشكل مباشر أو غير مباشر، متى كان سبب التعارف أو الوصول إلى العميل هو هذه المنصة.'
+      +'<br><br>كما أتعهد بسداد رسوم المنصة خلال <b>10 أيام</b> من تاريخ إبرام الاتفاق أو البدء في تنفيذ المشروع أو تنفيذه، أيها أسبق.'
+    +'</div>'
+    +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:13px;margin-top:15px">'
+      +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin-bottom:6px">ملاحظة</div>'
+      +'<div style="font-size:12px;line-height:1.95;color:var(--text2);text-align:justify">تُعد رسوم المنصة حقًا مستحقًا بمجرد الاستفادة من الفرصة التي وفرتها المنصة، ولا يؤثر على استحقاقها تغيير وسيلة التواصل، أو إتمام الاتفاق خارج المنصة، أو تعديل قيمة الاتفاق، أو تنفيذ المشروع جزئيًا أو كليًا، أو التعامل مع العميل مباشرة بعد التعارف من خلال المنصة. ولا تبرأ الذمة من هذه الرسوم إلا بعد سدادها كاملًا.</div>'
+    +'</div>'
+    +feeTxt
+    +'<button onclick="document.getElementById(\'feeAgrModal\').remove()" style="width:100%;margin-top:16px;padding:13px;background:var(--p3);color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer">إغلاق</button>'
+    +'</div>';
+  d.onclick=function(e){ if(e.target===d)d.remove(); };
+  document.body.appendChild(d);
+}
+
 function _bindFeeLive(){
   var inp=_el('bid-price'), out=_el('feeLive'); if(!inp||!out)return;
   var upd=function(){
@@ -1163,10 +1194,15 @@ function _openBidNudge(projId,bidCount){
 
 function _openBidModal(projId){
   var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div><div class="fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>'
-    +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:12px 13px;margin-bottom:11px">'
-      +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:5px">💰 رسوم المنصة 3%</div>'
-      +'<div style="font-size:11.5px;color:#7c2d12;line-height:1.8">إذا رست عليك هذه الفرصة وأنجزت العمل، فإن <b>سعي المنصة 3%</b> من قيمة الاتفاق — لأننا كنّا سبب وصولك للعميل.<br><span style="opacity:.85">تُسجَّل بالأمانة بعد إتمام العمل (مثل حراج) — لا خصم مسبق ولا بطاقة.</span></div>'
-      +'<div id="feeLive" style="margin-top:7px;font-size:12px;font-weight:800;color:#9a3412;display:none"></div>'
+    +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:13px;margin-bottom:11px">'
+      +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:6px">💰 اتفاقية رسوم المنصة — 3%</div>'
+      +'<div style="font-size:11.5px;color:#7c2d12;line-height:1.85">أتعهد بسداد <b>3% من قيمة الاتفاق</b> إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تنفيذ — سواء داخل المنصة أو خارجها — خلال <b>10 أيام</b> من الاتفاق أو بدء التنفيذ.</div>'
+      +'<div id="feeLive" style="margin-top:8px;font-size:12px;font-weight:800;color:#9a3412;display:none"></div>'
+      +'<button type="button" onclick="_showFeeAgreement()" style="margin-top:9px;background:none;border:none;color:#9a3412;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;padding:0">📜 اقرأ الاتفاقية كاملة</button>'
+      +'<label style="display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:10px 11px;background:#fff;border:1.5px solid #fed7aa;border-radius:10px;cursor:pointer">'
+        +'<input type="checkbox" id="feeAgree" style="margin-top:2px;width:17px;height:17px;flex-shrink:0;accent-color:#d97706">'
+        +'<span style="font-size:12px;font-weight:800;color:#7c2d12;line-height:1.6">أقرّ بأنني اطّلعت على اتفاقية رسوم المنصة وأتعهد بالالتزام بها</span>'
+      +'</label>'
     +'</div>'
     +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
     +'<div style="font-size:12.5px;font-weight:800;margin-bottom:9px">🔒 من يشوف سعرك؟</div>'
@@ -1183,6 +1219,9 @@ async function _submitBid(projId){
   if(!priceStr||isNaN(priceNum)||priceNum<=0){showToast('أدخل سعر العرض','error');return;}
   if(!daysStr||isNaN(daysNum)||daysNum<=0){showToast('أدخل مدة التنفيذ','error');return;}
   if(!note){showToast('أدخل رسالتك للعميل','error');return;}
+  var _ag=_el('feeAgree');
+  if(_ag && !_ag.checked){ showToast('يجب الإقرار بالموافقة على اتفاقية رسوم المنصة','error');
+    try{ _ag.closest('label').style.borderColor='#dc2626'; _ag.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} return; }
   var btn=document.querySelector('[onclick*="_submitBid"]');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
     var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note,price_visibility:((document.querySelector('input[name="bidVis"]:checked')||{}).value||'client')})});
