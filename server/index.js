@@ -1093,7 +1093,9 @@ async function runReminders(){
          RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
       for(const x of done.rows){
         try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
-        try{ if(x.assigned_provider_id){ await notify(x.assigned_provider_id, 'اكتمل المشروع', `اكتمل "${eEsc(x.title)}"`, 'request', x.id); await recomputeProviderTier(x.assigned_provider_id); } }catch(e){}
+    const _wb = await pool.query("SELECT price FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
+    const _cfee = _wb.rows.length ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
+    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة '+_cfee.toLocaleString('en-US')+' ر.س (3%) — سجّل التزامك من صفحة الدفع.':''), 'completed', id);
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
@@ -1986,6 +1988,49 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+
+// ═══ النشر بالوكالة: الإدارة تنشر مشروعاً نيابة عن عميل (بتوكيله) ═══
+// يحلّ مشكلة الطلب: نتواصل مع إدارات الأملاك، نأخذ تفاصيل مشروعهم، وننشره لهم.
+app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { client_name, client_phone, client_email, title, description, category, city, budget_max, deadline } = req.body;
+    if (!client_name || !client_phone || !title || !category || !city)
+      return res.status(400).json({ message: 'الاسم والجوال والعنوان والتصنيف والمدينة مطلوبة' });
+    const phoneNorm = String(client_phone).replace(/\D/g,'').replace(/^0/,'966');
+    if (phoneNorm.length < 12) return res.status(400).json({ message: 'رقم جوال غير صحيح' });
+
+    await client.query('BEGIN');
+    // 1) هل للعميل حساب بهذا الجوال؟ وإلا ننشئ حساباً مبدئياً (يفعّله لاحقاً)
+    let u = await client.query('SELECT id, name FROM users WHERE phone_norm=$1 OR phone=$2 LIMIT 1', [phoneNorm, client_phone]);
+    let clientId, isNew = false;
+    if (u.rows.length) {
+      clientId = u.rows[0].id;
+    } else {
+      const tempPass = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
+      const email = client_email || `proxy_${phoneNorm}@manaqasa.local`;
+      const nu = await client.query(
+        `INSERT INTO users (name, email, password, phone, phone_norm, city, role, is_active, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,'client',TRUE,NOW()) RETURNING id`,
+        [client_name, email, tempPass, client_phone, phoneNorm, city]);
+      clientId = nu.rows[0].id; isNew = true;
+    }
+    // 2) أنشئ المشروع باسمه
+    const r = await client.query(
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, status, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'open',NOW()) RETURNING id, title`,
+      [clientId, title, description || '', category, city, budget_max || null, deadline || null]);
+    await client.query('COMMIT');
+
+    // 3) سجّل العملية للمساءلة
+    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm });
+  } catch(e) {
+    try { await client.query('ROLLBACK'); } catch(_) {}
+    console.error('proxy-request:', e.message);
+    res.status(500).json({ message: 'تعذّر النشر: ' + e.message });
+  } finally { client.release(); }
+});
+
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
     const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
@@ -2290,7 +2335,8 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
-      await notify(acceptedBid.provider_id, 'تم قبول عرضك!', `تهانينا! تم قبول عرضك على "${eEsc(acceptedBid.title)}".`, 'bid_accepted', acceptedBid.request_id);
+    const _fee = Math.round((parseFloat(bid.price)||0) * 0.03);
+    await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) يُسجَّل بعد إتمام العمل.':''), 'bid_accepted', bid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
         const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
         const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
