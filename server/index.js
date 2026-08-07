@@ -2028,6 +2028,16 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
   try {
     const { client_name, client_phone, client_email, title, description, category, city, budget_max, deadline } = req.body;
     const pxDistrict = (req.body.district||'').toString().trim().slice(0,80) || null;
+    // رفع صور ومرفقات المشروع (نفس آلية نشر العميل)
+    const pxImages = [];
+    for (const img of (Array.isArray(req.body.images) ? req.body.images.slice(0,5) : [])) {
+      if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) pxImages.push(u); }
+      else if (img && img.startsWith('http')) pxImages.push(img);
+    }
+    const pxAtts = [];
+    for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
+      if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments'); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
+    }
     const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const pxLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
     if (!client_name || !client_phone || !title || !category || !city)
@@ -2052,9 +2062,10 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     }
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, status, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'open',NOW()) RETURNING id, title`,
-      [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng]);
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, status, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open',NOW()) RETURNING id, title`,
+      [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
+       pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
     await client.query('COMMIT');
 
     // 3) سجّل العملية للمساءلة
