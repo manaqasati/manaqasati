@@ -1240,7 +1240,45 @@ function exportUsersCSV(list){
 
 
 // ── النشر بالوكالة: نشر مشروع نيابة عن عميل (بتوكيله) ──
+
+// ── مرفقات النشر بالوكالة ──
+var _pxImgs=[], _pxFiles=[];
+function _pxCompress(file,cb){
+  if(!/^image\//.test(file.type)){var rr=new FileReader();rr.onload=function(e){cb(e.target.result);};rr.readAsDataURL(file);return;}
+  var r=new FileReader();
+  r.onload=function(e){var img=new Image();img.onload=function(){var max=1280,w=img.width,hh=img.height;if(w>max||hh>max){if(w>hh){hh=Math.round(hh*max/w);w=max;}else{w=Math.round(w*max/hh);hh=max;}}var c=document.createElement('canvas');c.width=w;c.height=hh;c.getContext('2d').drawImage(img,0,0,w,hh);try{cb(c.toDataURL('image/jpeg',0.8));}catch(err){cb(e.target.result);}};img.onerror=function(){cb(e.target.result);};img.src=e.target.result;};
+  r.readAsDataURL(file);
+}
+function _pxPickImages(inp){
+  var files=[].slice.call(inp.files).slice(0,5-_pxImgs.length); inp.value='';
+  files.forEach(function(f){
+    if(f.size>10*1024*1024){toast(f.name+': أكبر من 10MB','error');return;}
+    _pxCompress(f,function(d){ _pxImgs.push(d); _pxRenderPreview(); });
+  });
+}
+function _pxPickFiles(inp){
+  var files=[].slice.call(inp.files).slice(0,3-_pxFiles.length); inp.value='';
+  files.forEach(function(f){
+    if(f.size>10*1024*1024){toast(f.name+': أكبر من 10MB','error');return;}
+    var r=new FileReader(); r.onload=function(e){ _pxFiles.push({name:f.name,data:e.target.result}); _pxRenderPreview(); }; r.readAsDataURL(f);
+  });
+}
+function _pxRenderPreview(){
+  var el=document.getElementById('px-preview'); if(!el)return;
+  var h='';
+  _pxImgs.forEach(function(src,i){
+    h+='<div style="position:relative;width:62px;height:62px;border-radius:9px;overflow:hidden;border:1px solid var(--border)"><img src="'+src+'" style="width:100%;height:100%;object-fit:cover"><button type="button" onclick="_pxDelImg('+i+')" style="position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:rgba(220,38,38,.9);border:none;color:#fff;font-size:12px;cursor:pointer;line-height:1">×</button></div>';
+  });
+  _pxFiles.forEach(function(f,i){
+    h+='<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:11.5px;font-weight:700"><span>📎</span><span style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.name)+'</span><button type="button" onclick="_pxDelFile('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0">×</button></div>';
+  });
+  el.innerHTML=h;
+}
+function _pxDelImg(i){ _pxImgs.splice(i,1); _pxRenderPreview(); }
+function _pxDelFile(i){ _pxFiles.splice(i,1); _pxRenderPreview(); }
+
 function openProxyPost(){
+  _pxImgs=[]; _pxFiles=[];
   var fin='width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;box-sizing:border-box;margin-bottom:10px';
   var cats=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
   var cities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء'];
@@ -1256,6 +1294,15 @@ function openProxyPost(){
     +'<select id="px-cat" style="'+fin+';cursor:pointer"><option value="">التصنيف *</option>'+cats.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<select id="px-city" style="'+fin+';cursor:pointer"><option value="">المدينة *</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<input id="px-budget" type="number" inputmode="numeric" placeholder="الميزانية التقريبية (اختياري)" style="'+fin+'">'
+    +'<input id="px-district" placeholder="الحي / الموقع (اختياري)" style="'+fin+'">'
+    +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin:14px 0 8px">صور وملفات المشروع (اختياري)</div>'
+    +'<input type="file" id="px-images" accept="image/*" multiple style="display:none" onchange="_pxPickImages(this)">'
+    +'<input type="file" id="px-files" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="display:none" onchange="_pxPickFiles(this)">'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+      +'<button type="button" onclick="document.getElementById(\'px-images\').click()" style="flex:1;padding:11px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted)">🖼️ إضافة صور</button>'
+      +'<button type="button" onclick="document.getElementById(\'px-files\').click()" style="flex:1;padding:11px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted)">📎 إضافة ملفات</button>'
+    +'</div>'
+    +'<div id="px-preview" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px"></div>'
     +'</div>';
   body += '<div style="display:flex;gap:9px;margin-top:14px">'
     +'<button onclick="closeModal(\'userModal\')" style="flex:1;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:700;cursor:pointer">إلغاء</button>'
@@ -1269,7 +1316,10 @@ function submitProxyPost(){
   var g=function(id){return (document.getElementById(id)||{}).value||'';};
   var data={client_name:g('px-name').trim(),client_phone:g('px-phone').trim(),client_email:g('px-email').trim(),
             title:g('px-title').trim(),description:g('px-desc').trim(),category:g('px-cat'),city:g('px-city'),
-            budget_max:parseFloat(g('px-budget'))||null};
+            budget_max:parseFloat(g('px-budget'))||null,
+            district:g('px-district').trim()||null};
+  if(_pxImgs.length)data.images=_pxImgs;
+  if(_pxFiles.length)data.attachments=_pxFiles;
   if(!data.client_name||!data.client_phone){toast('اسم وجوال العميل مطلوبان','error');return;}
   if(!data.title||!data.category||!data.city){toast('عنوان المشروع والتصنيف والمدينة مطلوبة','error');return;}
   var btn=document.getElementById('px-save'); if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
