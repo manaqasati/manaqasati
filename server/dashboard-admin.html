@@ -1257,9 +1257,13 @@ function openProxyPost(){
     +'<select id="px-city" style="'+fin+';cursor:pointer"><option value="">المدينة *</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<input id="px-budget" type="number" inputmode="numeric" placeholder="الميزانية التقريبية (اختياري)" style="'+fin+'">'
     +'</div>';
-  var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:11px">إلغاء</button>'
-    +'<button id="px-save" onclick="submitProxyPost()" style="flex:1.4;padding:11px;background:var(--p);color:#fff;border:none;border-radius:10px;font-family:Tajawal;font-size:13.5px;font-weight:800;cursor:pointer">نشر المشروع</button>';
-  openModal('نشر مشروع بالوكالة',body,foot);
+  body += '<div style="display:flex;gap:9px;margin-top:14px">'
+    +'<button onclick="closeModal(\'userModal\')" style="flex:1;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:700;cursor:pointer">إلغاء</button>'
+    +'<button id="px-save" onclick="submitProxyPost()" style="flex:1.4;padding:12px;background:var(--p);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer">نشر المشروع</button>'
+    +'</div>';
+  document.getElementById('um-title').textContent='نشر مشروع بالوكالة';
+  document.getElementById('um-body').innerHTML=body;
+  document.getElementById('userModal').classList.add('show');
 }
 function submitProxyPost(){
   var g=function(id){return (document.getElementById(id)||{}).value||'';};
@@ -1273,7 +1277,7 @@ function submitProxyPost(){
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.ok)throw new Error(d.message||'فشل');
-      closeModal();
+      closeModal('userModal');
       toast('تم نشر المشروع'+(d.is_new_client?' وإنشاء حساب للعميل':'')+' ✓','success');
       var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة. ستصلك عروض المزوّدين قريباً، وسنوافيك بها.\nرابط المشروع: https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
       if(confirm('تم النشر ✓\n\nهل تريد إبلاغ العميل عبر واتساب الآن؟')) window.open(wa,'_blank');
