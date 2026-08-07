@@ -513,6 +513,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 input[type="date"]{-webkit-appearance:none;appearance:none;font-family:'Tajawal',sans-serif;font-size:14px;padding:11px 13px;height:44px;line-height:1.2;text-align:right;direction:rtl}
 input[type="date"]::-webkit-date-and-time-value{text-align:right;font-size:14px}
 input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;margin-inline-end:auto;opacity:.55;cursor:pointer}
+
+/* تنسيق النصوص الطويلة: يحفظ الأسطر ويُبرز النقاط والعناوين */
+.fmt-text{white-space:pre-line;word-wrap:break-word;line-height:1.95}
+.fmt-text .fx-b{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-b::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0;margin-top:9px}
+.fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
+.fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 </style>
 <script src="/track.js"></script>
 </head>
@@ -1439,7 +1447,7 @@ function openDetail(id,e){
       +(req.budget_max?'<span>'+money+' '+fmtN(req.budget_max)+' ر.س</span>':'')
       +(req.deadline?'<span>'+cal+' '+fmtDate(req.deadline)+'</span>':'')
       +'</div>'
-      +(req.description?'<div class="rdh-desc">'+esc(req.description)+'</div>':'')
+      +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
     +'</div>';
     document.getElementById('det-head').innerHTML=h;
   }).catch(function(){
@@ -1508,7 +1516,7 @@ function loadBids(id){
         if(safeProvId&&!isAcc&&!isRej)chips+='<button class="bid-chip" onclick="_negotiate('+safeProvId+','+id+',\''+String(b.provider_name||'المزوّد').replace(/'/g,"\\'")+'\','+(b.price||0)+','+b.id+')" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تفاوض</button>';
         if(safeProvId)chips+='<button class="bid-chip" onclick="_cliReport('+safeProvId+','+id+')" style="color:var(--red)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>إبلاغ</button>';
 
-        var note=b.note?'<div class="bid-note">'+esc(b.note)+'</div>':'<div class="bid-note empty">لم يُضف المزود رسالة مع العرض</div>';
+        var note=b.note?'<div class="bid-note fmt-text">'+fmtText(b.note)+'</div>':'<div class="bid-note empty">لم يُضف المزود رسالة مع العرض</div>';
 
         var acts='';
         if(!isAcc&&!isRej){
@@ -2847,6 +2855,42 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   var ping=function(){ if(!document.hidden)fetch(API+'/api/me/ping',Object.assign({method:'POST'},hdr())).catch(function(){}); };
   ping(); setInterval(ping,120000);
 })();
+
+// ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──
+function fmtText(s){
+  if(!s) return '';
+  var E = (typeof esc==='function') ? esc : (typeof _esc==='function' ? _esc : function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});});
+  var out='';
+  String(s).split(/\r?\n/).forEach(function(ln){
+    var t=ln.trim();
+    if(!t){ out+='<div style="height:7px"></div>'; return; }
+    var mN=t.match(/^(\d+)[\.\)\-]\s+(.*)$/);
+    if(/^[-•*]\s+/.test(t)) out+='<div class="fx-b"><span>'+E(t.replace(/^[-•*]\s+/,''))+'</span></div>';
+    else if(mN) out+='<div class="fx-n"><span class="fx-num">'+E(mN[1])+'.</span><span>'+E(mN[2])+'</span></div>';
+    else if(/[:：]$/.test(t) && t.length<60) out+='<div class="fx-h">'+E(t)+'</div>';
+    else out+='<div>'+E(t)+'</div>';
+  });
+  return out;
+}
+// ── شريط تنسيق للكتابة ──
+function fmtBar(id){
+  var b='background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:var(--text2)';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px">'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'bullet\')">• نقطة</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'num\')">1. ترقيم</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'head\')">عنوان:</button>'
+    +'</div>';
+}
+function fmtIns(id,kind){
+  var el=document.getElementById(id); if(!el)return;
+  var v=el.value, s=(el.selectionStart==null?v.length:el.selectionStart);
+  var before=v.slice(0,s), after=v.slice(s);
+  var nl=(before && !/\n$/.test(before))?'\n':'';
+  var ins= kind==='bullet' ? nl+'- ' : (kind==='num' ? nl+'1. ' : nl+'العنوان: \n');
+  el.value=before+ins+after; el.focus();
+  var p=(before+ins).length; try{el.setSelectionRange(p,p);}catch(e){}
+  try{el.dispatchEvent(new Event('input'));}catch(e){}
+}
 </script>
 
 </body>
