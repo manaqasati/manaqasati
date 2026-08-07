@@ -1836,6 +1836,21 @@ function _applyTemplate(i){
   if(typeof _saveReqDraft==='function')_saveReqDraft();
   showToast('تم تعبئة القالب — أكمل التفاصيل','success');
 }
+var _reqGeo={lat:null,lng:null};
+function pickMyLocation(){
+  var btn=document.getElementById('n-loc-btn'), hint=document.getElementById('n-loc-hint');
+  if(!navigator.geolocation){ showToast('متصفحك لا يدعم تحديد الموقع','error'); return; }
+  if(btn){btn.textContent='\u23F3';btn.disabled=true;}
+  navigator.geolocation.getCurrentPosition(function(pos){
+    _reqGeo.lat=pos.coords.latitude; _reqGeo.lng=pos.coords.longitude;
+    if(btn){btn.textContent='\u2705';btn.disabled=false;}
+    if(hint)hint.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد موقعك</span> \u2014 لن يظهر إلا للمزوّد الذي تقبل عرضه';
+    showToast('تم تحديد موقعك \u2713','success');
+  },function(){
+    if(btn){btn.textContent='\uD83D\uDCCD';btn.disabled=false;}
+    showToast('تعذّر تحديد الموقع \u2014 تأكّد من السماح للمتصفح','error');
+  },{enableHighAccuracy:true,timeout:10000});
+}
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
   if(cat==='أخرى')cat=document.getElementById('n-cat-other').value.trim()||'أخرى';
@@ -1876,6 +1891,8 @@ function acceptAgree(){
   var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
   var body={title:title,description:desc,category:cat,city:city};
+  var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
+  if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
   if(budget)body.budget_max=Number(budget);
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
