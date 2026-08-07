@@ -1144,6 +1144,15 @@ function _renderBrowseList(list){
     return h;
   }).join('');
 }
+function _bindFeeLive(){
+  var inp=_el('bid-price'), out=_el('feeLive'); if(!inp||!out)return;
+  var upd=function(){
+    var p=parseFloat(inp.value||0);
+    if(p>0){ out.style.display='block'; out.innerHTML='على سعرك الحالي: <span style="font-size:14.5px">'+Math.round(p*0.03).toLocaleString('en-US')+'</span> ر.س'; }
+    else out.style.display='none';
+  };
+  inp.addEventListener('input',upd); upd();
+}
 function _openBidNudge(projId,bidCount){
   var count=bidCount||0;
   var countText=count>0?'فيه <strong>'+count+'</strong> مزود قدّم عرضه على هذا المشروع.':'كن أول من يقدّم عرضه على هذا المشروع.';
@@ -1154,6 +1163,11 @@ function _openBidNudge(projId,bidCount){
 
 function _openBidModal(projId){
   var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div><div class="fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px"></textarea></div>'
+    +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:12px 13px;margin-bottom:11px">'
+      +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:5px">💰 رسوم المنصة 3%</div>'
+      +'<div style="font-size:11.5px;color:#7c2d12;line-height:1.8">إذا رست عليك هذه الفرصة وأنجزت العمل، فإن <b>سعي المنصة 3%</b> من قيمة الاتفاق — لأننا كنّا سبب وصولك للعميل.<br><span style="opacity:.85">تُسجَّل بالأمانة بعد إتمام العمل (مثل حراج) — لا خصم مسبق ولا بطاقة.</span></div>'
+      +'<div id="feeLive" style="margin-top:7px;font-size:12px;font-weight:800;color:#9a3412;display:none"></div>'
+    +'</div>'
     +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
     +'<div style="font-size:12.5px;font-weight:800;margin-bottom:9px">🔒 من يشوف سعرك؟</div>'
     +'<label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:var(--white);border:1.5px solid var(--p-mid);border-radius:10px;cursor:pointer;margin-bottom:7px"><input type="radio" name="bidVis" value="client" checked style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">صاحب المشروع فقط</div><div style="font-size:11px;color:var(--muted);margin-top:1px">منافسوك لا يرون سعرك — يُنصح به</div></div></label>'
@@ -1161,6 +1175,7 @@ function _openBidModal(projId){
     +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button><button onclick="_submitBid('+projId+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إرسال العرض</button>';
   openModal('تقديم عرض',body,foot);
+  setTimeout(_bindFeeLive,60);
 }
 async function _submitBid(projId){
   var priceStr=(_el('bid-price')||{}).value;var daysStr=(_el('bid-days')||{}).value;var note=((_el('bid-note')||{}).value||'').trim();
