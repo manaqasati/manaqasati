@@ -1924,13 +1924,11 @@ initPersonalHome();
     if(_fab) _fab.style.display='flex';   // يبقى زر "عميل أو مزوّد؟" متاحاً لمن يريده
     return;
   }
-    // لا نعرض البوابة تلقائياً — الزائر يتصفّح بحرية.
+  // لا نعرض البوابة تلقائياً — الزائر يتصفّح بحرية.
   // تظهر فقط عند نيّة التسجيل (زر «ابدأ مجاناً») ليختار دوره حينها.
   gate.style.display='none';
   var _f0=document.getElementById('mnqBackToChoose'); if(_f0)_f0.style.display='flex';
-  return;
-
-  document.body.style.overflow='hidden';
+  // ملاحظة: نُكمل تعريف الدوال أدناه — لا نخرج هنا وإلا لن تُعرَّف أزرار البوابة.
   window.mnqChooseGo=function(role){
     if(role==='client'){ location.href='/post'; return; }
     if(typeof goAuthRole==='function'){ goAuthRole(role); }
