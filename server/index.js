@@ -1361,6 +1361,10 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
+    // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
@@ -1707,7 +1711,23 @@ app.get('/api/profile', auth, async (req, res) => {
   try {
     const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,created_at FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json(r.rows[0]);
+    // خصوصية الموقع: الإحداثيات الدقيقة وجوال العميل للمالك أو المزوّد المعتمد فقط
+    const row = r.rows[0];
+    let viewer = null;
+    try {
+      const hdr = req.headers.authorization || '';
+      const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+      if (tok) viewer = jwt.verify(tok, JWT_SECRET);
+    } catch(e) { viewer = null; }
+    const isOwner = viewer && String(viewer.id) === String(row.client_id);
+    const isAssigned = viewer && row.assigned_provider_id && String(viewer.id) === String(row.assigned_provider_id);
+    const isAdmin = viewer && viewer.role === 'admin';
+    if (!(isOwner || isAssigned || isAdmin)) {
+      row.geo_lat = null; row.geo_lng = null;   // الحي يبقى ظاهراً، الموقع الدقيق لا
+      row.client_phone = null;
+      row.address = null;
+    }
+    res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -1971,6 +1991,7 @@ app.get('/api/requests/my', auth, async (req, res) => {
 app.get('/api/requests/:id', optionalAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const _gateGeo=1;
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
@@ -1995,6 +2016,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
   const client = await pool.connect();
   try {
     const { client_name, client_phone, client_email, title, description, category, city, budget_max, deadline } = req.body;
+    const pxDistrict = (req.body.district||'').toString().trim().slice(0,80) || null;
+    const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
+    const pxLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
     if (!client_name || !client_phone || !title || !category || !city)
       return res.status(400).json({ message: 'الاسم والجوال والعنوان والتصنيف والمدينة مطلوبة' });
     const phoneNorm = String(client_phone).replace(/\D/g,'').replace(/^0/,'966');
@@ -2017,9 +2041,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     }
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, status, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'open',NOW()) RETURNING id, title`,
-      [clientId, title, description || '', category, city, budget_max || null, deadline || null]);
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, status, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'open',NOW()) RETURNING id, title`,
+      [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng]);
     await client.query('COMMIT');
 
     // 3) سجّل العملية للمساءلة
@@ -2034,6 +2058,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
     const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
+    const district = (req.body.district||'').toString().trim().slice(0,80) || null;
+    const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
+    const gLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
     const rawImages = req.body.images || [];
     const images_arr = Array.isArray(rawImages) ? rawImages : [];
@@ -2057,7 +2084,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       if (!processedAttachments.length) processedAttachments = null;
     }
     const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn]);
+    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng]);
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
