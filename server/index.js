@@ -265,7 +265,8 @@ app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city,
+      SELECT r.id, r.title, r.description, r.category, r.city, r.district, r.client_id,
+        r.budget_max, r.geo_lat, r.geo_lng,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
         json_build_object('id', u.id, 'name', split_part(u.name,' ',1), 'city', u.city,
@@ -277,6 +278,16 @@ app.get('/api/requests/public/:id', async (req, res) => {
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+    // خصوصية الموقع: الإحداثيات الدقيقة للمالك أو المزوّد المعتمد فقط (الحي يبقى ظاهراً)
+    try {
+      let viewer = null;
+      const ah = req.headers.authorization || '';
+      const tk = ah.startsWith('Bearer ') ? ah.slice(7) : null;
+      if (tk) { try { viewer = jwt.verify(tk, JWT_SECRET); } catch(e) { viewer = null; } }
+      const assigned = (await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0] || {};
+      const ok = viewer && (String(viewer.id)===String(row.client_id) || String(viewer.id)===String(assigned.assigned_provider_id) || viewer.role==='admin');
+      if (!ok) { row.geo_lat = null; row.geo_lng = null; }
+    } catch(e) { row.geo_lat = null; row.geo_lng = null; }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
