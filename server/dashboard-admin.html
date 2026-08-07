@@ -346,6 +346,14 @@ tbody tr:hover{background:var(--bg)}
 .uchk{width:16px;height:16px;cursor:pointer;accent-color:var(--p);vertical-align:middle}
 .rtab{border:none;background:transparent;color:var(--muted);font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer}
 .rtab.on{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+/* تنسيق النصوص الطويلة: يحفظ الأسطر ويُبرز النقاط والعناوين */
+.fmt-text{white-space:pre-line;word-wrap:break-word;line-height:1.95}
+.fmt-text .fx-b{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-b::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0;margin-top:9px}
+.fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
+.fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1290,7 +1298,8 @@ function openProxyPost(){
     +'<input id="px-email" placeholder="البريد (اختياري)" style="'+fin+'">'
     +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin:14px 0 8px">تفاصيل المشروع</div>'
     +'<input id="px-title" placeholder="عنوان المشروع *" style="'+fin+'">'
-    +'<textarea id="px-desc" rows="3" placeholder="وصف تفصيلي (كلما زاد الوضوح، جاءت عروض أدق)" style="'+fin+';resize:vertical"></textarea>'
+    +fmtBar('px-desc')
+    +'<textarea id="px-desc" rows="6" placeholder="وصف تفصيلي — استخدم أزرار التنسيق أعلاه&#10;مثال:&#10;المطلوب:&#10;- تركيب 4 كاميرات خارجية&#10;- شاشة عرض + تخزين شهر&#10;التفاصيل:&#10;- المبنى دورين&#10;- التنفيذ نهاية الأسبوع" style="'+fin+';resize:vertical;line-height:1.9"></textarea>'
     +'<select id="px-cat" style="'+fin+';cursor:pointer"><option value="">التصنيف *</option>'+cats.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<select id="px-city" style="'+fin+';cursor:pointer"><option value="">المدينة *</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<input id="px-budget" type="number" inputmode="numeric" placeholder="الميزانية التقريبية (اختياري)" style="'+fin+'">'
@@ -3328,6 +3337,42 @@ setTimeout(refreshAdminBadges, 1500);
     <div class="cf-foot"><button class="cf-btn cf-cancel" onclick="cfClose(false)">إلغاء</button><button class="cf-btn cf-confirm" id="cf-ok" onclick="cfClose(true)">تأكيد</button></div>
   </div>
 </div>
-<div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js">
+// ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──
+function fmtText(s){
+  if(!s) return '';
+  var E = (typeof esc==='function') ? esc : (typeof _esc==='function' ? _esc : function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});});
+  var out='';
+  String(s).split(/\r?\n/).forEach(function(ln){
+    var t=ln.trim();
+    if(!t){ out+='<div style="height:7px"></div>'; return; }
+    var mN=t.match(/^(\d+)[\.\)\-]\s+(.*)$/);
+    if(/^[-•*]\s+/.test(t)) out+='<div class="fx-b"><span>'+E(t.replace(/^[-•*]\s+/,''))+'</span></div>';
+    else if(mN) out+='<div class="fx-n"><span class="fx-num">'+E(mN[1])+'.</span><span>'+E(mN[2])+'</span></div>';
+    else if(/[:：]$/.test(t) && t.length<60) out+='<div class="fx-h">'+E(t)+'</div>';
+    else out+='<div>'+E(t)+'</div>';
+  });
+  return out;
+}
+// ── شريط تنسيق للكتابة ──
+function fmtBar(id){
+  var b='background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:var(--text2)';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px">'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'bullet\')">• نقطة</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'num\')">1. ترقيم</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'head\')">عنوان:</button>'
+    +'</div>';
+}
+function fmtIns(id,kind){
+  var el=document.getElementById(id); if(!el)return;
+  var v=el.value, s=(el.selectionStart==null?v.length:el.selectionStart);
+  var before=v.slice(0,s), after=v.slice(s);
+  var nl=(before && !/\n$/.test(before))?'\n':'';
+  var ins= kind==='bullet' ? nl+'- ' : (kind==='num' ? nl+'1. ' : nl+'العنوان: \n');
+  el.value=before+ins+after; el.focus();
+  var p=(before+ins).length; try{el.setSelectionRange(p,p);}catch(e){}
+  try{el.dispatchEvent(new Event('input'));}catch(e){}
+}
+</script>
 </body>
 </html>
