@@ -194,6 +194,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .foot{text-align:center;font-size:11px;color:var(--muted);padding:16px;margin-bottom:70px}
 @media(max-width:480px){.proj-icon{width:80px;height:80px}.proj-ic-emoji{font-size:22px}.stats-row{grid-template-columns:1fr 1fr}}
 
+
+/* تنسيق النصوص الطويلة: يحفظ الأسطر ويُبرز النقاط والعناوين */
+.fmt-text{white-space:pre-line;word-wrap:break-word;line-height:1.95}
+.fmt-text .fx-b{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-b::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0;margin-top:9px}
+.fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
+.fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
+.fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -626,7 +634,7 @@ function render(){
   if(req.budget_max)h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>الميزانية: '+fmtN(req.budget_max)+' ر.س</div>';
   if(req.deadline)h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>الموعد النهائي: '+fmtDate(req.deadline)+'</div>';
   h+='<div class="info-row"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>نُشر '+ago(req.created_at)+' مضت</div>';
-  if(req.description)h+='<div class="desc-text">'+esc(req.description)+'</div>';
+  if(req.description)h+='<div class="desc-text fmt-text">'+fmtText(req.description)+'</div>';
   h+='</div>';
 
   // ── Project Stepper ──
@@ -1049,6 +1057,42 @@ function _smartBack(){
     else lbl.textContent='رجوع';
   } else lbl.textContent='الرئيسية';
 })();
+
+// ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──
+function fmtText(s){
+  if(!s) return '';
+  var E = (typeof esc==='function') ? esc : (typeof _esc==='function' ? _esc : function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});});
+  var out='';
+  String(s).split(/\r?\n/).forEach(function(ln){
+    var t=ln.trim();
+    if(!t){ out+='<div style="height:7px"></div>'; return; }
+    var mN=t.match(/^(\d+)[\.\)\-]\s+(.*)$/);
+    if(/^[-•*]\s+/.test(t)) out+='<div class="fx-b"><span>'+E(t.replace(/^[-•*]\s+/,''))+'</span></div>';
+    else if(mN) out+='<div class="fx-n"><span class="fx-num">'+E(mN[1])+'.</span><span>'+E(mN[2])+'</span></div>';
+    else if(/[:：]$/.test(t) && t.length<60) out+='<div class="fx-h">'+E(t)+'</div>';
+    else out+='<div>'+E(t)+'</div>';
+  });
+  return out;
+}
+// ── شريط تنسيق للكتابة ──
+function fmtBar(id){
+  var b='background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:var(--text2)';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px">'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'bullet\')">• نقطة</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'num\')">1. ترقيم</button>'
+    +'<button type="button" style="'+b+'" onclick="fmtIns(\''+id+'\',\'head\')">عنوان:</button>'
+    +'</div>';
+}
+function fmtIns(id,kind){
+  var el=document.getElementById(id); if(!el)return;
+  var v=el.value, s=(el.selectionStart==null?v.length:el.selectionStart);
+  var before=v.slice(0,s), after=v.slice(s);
+  var nl=(before && !/\n$/.test(before))?'\n':'';
+  var ins= kind==='bullet' ? nl+'- ' : (kind==='num' ? nl+'1. ' : nl+'العنوان: \n');
+  el.value=before+ins+after; el.focus();
+  var p=(before+ins).length; try{el.setSelectionRange(p,p);}catch(e){}
+  try{el.dispatchEvent(new Event('input'));}catch(e){}
+}
 </script>
 </body>
 </html>
