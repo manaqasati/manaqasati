@@ -1236,6 +1236,50 @@ function exportUsersCSV(list){
   downloadCSV(rows,'manaqasa-users-'+new Date().toISOString().slice(0,10)+'.csv');
 }
 
+
+// ── النشر بالوكالة: نشر مشروع نيابة عن عميل (بتوكيله) ──
+function openProxyPost(){
+  var fin='width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;box-sizing:border-box;margin-bottom:10px';
+  var cats=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
+  var cities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء'];
+  var body='<div style="max-height:70vh;overflow-y:auto;padding:2px">'
+    +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#1e40af;line-height:1.8">📋 تنشر المشروع <b>نيابة عن العميل بتوكيله</b>. يُنشأ له حساب تلقائياً إن لم يكن مسجّلاً، وتصله العروض على جواله.</div>'
+    +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin-bottom:8px">بيانات العميل</div>'
+    +'<input id="px-name" placeholder="اسم العميل / الجهة *" style="'+fin+'">'
+    +'<input id="px-phone" placeholder="جوال العميل * (05xxxxxxxx)" inputmode="tel" style="'+fin+'">'
+    +'<input id="px-email" placeholder="البريد (اختياري)" style="'+fin+'">'
+    +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin:14px 0 8px">تفاصيل المشروع</div>'
+    +'<input id="px-title" placeholder="عنوان المشروع *" style="'+fin+'">'
+    +'<textarea id="px-desc" rows="3" placeholder="وصف تفصيلي (كلما زاد الوضوح، جاءت عروض أدق)" style="'+fin+';resize:vertical"></textarea>'
+    +'<select id="px-cat" style="'+fin+';cursor:pointer"><option value="">التصنيف *</option>'+cats.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
+    +'<select id="px-city" style="'+fin+';cursor:pointer"><option value="">المدينة *</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
+    +'<input id="px-budget" type="number" inputmode="numeric" placeholder="الميزانية التقريبية (اختياري)" style="'+fin+'">'
+    +'</div>';
+  var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:11px">إلغاء</button>'
+    +'<button id="px-save" onclick="submitProxyPost()" style="flex:1.4;padding:11px;background:var(--p);color:#fff;border:none;border-radius:10px;font-family:Tajawal;font-size:13.5px;font-weight:800;cursor:pointer">نشر المشروع</button>';
+  openModal('نشر مشروع بالوكالة',body,foot);
+}
+function submitProxyPost(){
+  var g=function(id){return (document.getElementById(id)||{}).value||'';};
+  var data={client_name:g('px-name').trim(),client_phone:g('px-phone').trim(),client_email:g('px-email').trim(),
+            title:g('px-title').trim(),description:g('px-desc').trim(),category:g('px-cat'),city:g('px-city'),
+            budget_max:parseFloat(g('px-budget'))||null};
+  if(!data.client_name||!data.client_phone){toast('اسم وجوال العميل مطلوبان','error');return;}
+  if(!data.title||!data.category||!data.city){toast('عنوان المشروع والتصنيف والمدينة مطلوبة','error');return;}
+  var btn=document.getElementById('px-save'); if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
+  fetch(API+'/api/admin/proxy-request',Object.assign({method:'POST',body:JSON.stringify(data)},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.ok)throw new Error(d.message||'فشل');
+      closeModal();
+      toast('تم نشر المشروع'+(d.is_new_client?' وإنشاء حساب للعميل':'')+' ✓','success');
+      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة. ستصلك عروض المزوّدين قريباً، وسنوافيك بها.\nرابط المشروع: https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
+      if(confirm('تم النشر ✓\n\nهل تريد إبلاغ العميل عبر واتساب الآن؟')) window.open(wa,'_blank');
+      loadRequests();
+    })
+    .catch(function(e){ toast(e.message||'تعذّر النشر','error'); if(btn){btn.disabled=false;btn.textContent='نشر المشروع';} });
+}
+
 function loadRequests(){
   fetch(API+'/api/admin/requests',hdr()).then(function(r){return r.json();}).then(function(reqs){
     if(!Array.isArray(reqs)){document.getElementById('requests-table').innerHTML=emptyState('تعذر التحميل');return;}
@@ -3231,3 +3275,4 @@ setTimeout(refreshAdminBadges, 1500);
 <div class="offline-bar" id="offlineBar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-left:6px"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.58 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>لا يوجد اتصال بالإنترنت</div><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </body>
 </html>
+        <button onclick="openProxyPost()" style="background:linear-gradient(135deg,var(--p),#2563eb);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(30,58,138,.25)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>نشر مشروع بالوكالة</button>
