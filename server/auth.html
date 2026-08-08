@@ -429,6 +429,28 @@ function _getSelectedSpecs(){
   document.getElementById('reset-pg').style.display='flex';
 })();
 
+// ═══ الدخول السحري: ?magic=TOKEN — يدخل العميل مباشرة ويحوّله للوحته (بدون كلمة مرور) ═══
+(function(){
+  var mt=new URLSearchParams(location.search).get('magic');
+  if(!mt)return;
+  document.documentElement.style.visibility='hidden';
+  fetch(API+'/api/auth/magic-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:mt})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.token){
+        localStorage.setItem('token',d.token);
+        localStorage.setItem('user',JSON.stringify(d.user));
+        try{_notifyMobileApp(d.token,d.user);}catch(e){}
+        location.replace('dashboard-client.html');
+      } else {
+        document.documentElement.style.visibility='';
+        alert((d&&d.message)||'الرابط منتهي أو غير صالح');
+        location.replace('auth.html');
+      }
+    })
+    .catch(function(){ document.documentElement.style.visibility=''; location.replace('auth.html'); });
+})();
+
 async function apiFetch(p,o){
   return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'}},o||{}))
     .then(function(r){return r.json();})
