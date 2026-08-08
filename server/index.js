@@ -2076,8 +2076,20 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm });
   } catch(e) {
     try { await client.query('ROLLBACK'); } catch(_) {}
-    console.error('proxy-request:', e.message);
-    res.status(500).json({ message: 'تعذّر النشر: ' + e.message });
+    // تشخيص مفصّل في السجل (يظهر في Railway Logs)
+    console.error('❌ proxy-request FAILED:', {
+      message: e.message,
+      code: e.code,          // كود خطأ PostgreSQL (42703 = عمود غير موجود، 23502 = حقل إلزامي فارغ...)
+      detail: e.detail,
+      column: e.column,
+      table: e.table,
+      constraint: e.constraint
+    });
+    res.status(500).json({
+      message: 'تعذّر النشر: ' + (e.detail || e.message),
+      code: e.code || null,
+      column: e.column || null
+    });
   } finally { client.release(); }
 });
 
