@@ -2048,10 +2048,8 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     await client.query('BEGIN');
     // 1) هل للعميل حساب بهذا الجوال؟ وإلا ننشئ حساباً مبدئياً (يفعّله لاحقاً)
     let u = await client.query(
-      `SELECT id, name FROM users
-       WHERE regexp_replace(COALESCE(phone::text,''), '[^0-9]', '', 'g') IN ($1::text, $2::text, $3::text)
-       LIMIT 1`,
-      [phoneNorm, phoneNorm.replace(/^966/,'0'), phoneNorm.replace(/^966/,'')]);
+      "SELECT id, name FROM users WHERE phone IS NOT NULL AND (phone=$1 OR regexp_replace(phone,'[^0-9]','','g') = $2) LIMIT 1",
+      [client_phone, phoneNorm]);
     let clientId, isNew = false;
     if (u.rows.length) {
       clientId = u.rows[0].id;
@@ -2059,15 +2057,13 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       const tempPass = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
       const email = client_email || `proxy_${phoneNorm}@manaqasa.local`;
       const nu = await client.query(
-        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at)
-         VALUES ($1,$2,$3,$3,$4,$5,'client',TRUE,NOW()) RETURNING id`,
+        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at) VALUES ($1,$2,$3,$3,$4,$5,'client',TRUE,NOW()) RETURNING id`,
         [client_name, email, tempPass, client_phone, city]);
       clientId = nu.rows[0].id; isNew = true;
     }
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, status, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open',NOW()) RETURNING id, title`,
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open',NOW()) RETURNING id, title`,
       [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
     await client.query('COMMIT');
