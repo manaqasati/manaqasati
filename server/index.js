@@ -1169,8 +1169,10 @@ async function runReminders(){
       const minR = Math.max(1, parseInt(await getSetting('q_lowrating_min','3'))||3);
       const low = await pool.query(
         `SELECT u.id FROM users u
-         WHERE u.role='provider' AND COALESCE(u.review_count,0) >= $2
-           AND COALESCE(u.avg_rating,0) > 0 AND COALESCE(u.avg_rating,0) < $1`, [String(thr), minR]);
+         WHERE u.role='provider'
+           AND (SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id) >= $2
+           AND COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) > 0
+           AND COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) < $1`, [thr, minR]);
       for(const x of low.rows){
         await _remindOnce(x.id, 'low_rating_'+Math.floor(Date.now()/(30*86400000)), x.id,
           'لنرتقِ بخدمتك ⭐', 'تقييمك الحالي أقل من المتوسط — تحسين التواصل والالتزام يرفع تقييمك وفرصك',
@@ -2057,8 +2059,8 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       const tempPass = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
       const email = client_email || `proxy_${phoneNorm}@manaqasa.local`;
       const nu = await client.query(
-        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at) VALUES ($1,$2,$3,$3,$4,$5,'client',TRUE,NOW()) RETURNING id`,
-        [client_name, email, tempPass, client_phone, city]);
+        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,'client',TRUE,NOW()) RETURNING id`,
+        [client_name, email, tempPass, tempPass, client_phone, city]);
       clientId = nu.rows[0].id; isNew = true;
     }
     // 2) أنشئ المشروع باسمه
