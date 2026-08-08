@@ -1374,6 +1374,9 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
+    // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
@@ -1660,6 +1663,75 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, 
     } catch(e) {}
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ نسيت كلمة المرور: يرسل رابط إعادة تعيين للبريد (إن وُجد بريد حقيقي) ═══
+// نرجّع دائماً رسالة نجاح عامّة حتى لا نكشف إن كان الحساب موجوداً أم لا (منع الاستعلام العشوائي)
+app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) => {
+  const generic = { ok: true, message: 'إذا كان الحساب موجوداً فستصلك رسالة بخطوات إعادة التعيين' };
+  try {
+    const raw = (req.body.email || req.body.phone || '').toString().trim();
+    if (!raw) return res.status(400).json({ message: 'أدخل البريد أو رقم الجوال' });
+    const phoneNorm = raw.replace(/\D/g, '').replace(/^0/, '966');
+    // ابحث بالبريد أو بالجوال (بصيغته المُطبّعة)
+    const r = await pool.query(
+      "SELECT id, name, email FROM users WHERE email=$1 OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
+      [raw, phoneNorm]);
+    if (!r.rows.length) return res.json(generic);
+    const u = r.rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+    await pool.query("UPDATE users SET reset_token=$1, reset_expires=NOW()+INTERVAL '1 hour' WHERE id=$2", [token, u.id]);
+    // نرسل الرابط فقط لبريد حقيقي (حسابات الوكالة تحمل بريداً وهمياً @manaqasa.local — لا يُرسل لها)
+    const realEmail = u.email && !/@manaqasa\.local$/i.test(u.email);
+    if (realEmail) {
+      const link = SITE_URL + '/auth.html?reset=' + token;
+      const title = '🔐 إعادة تعيين كلمة المرور';
+      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا طلب لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
+      sendEmail(u.email, title, emailTpl(title, body, 'إعادة تعيين كلمة المرور', link)).catch(()=>{});
+    }
+    return res.json(generic);
+  } catch(e) { console.error('forgot-password:', e.message); return res.json(generic); }
+});
+
+// ═══ تعيين كلمة مرور جديدة عبر الرمز المؤقّت ═══
+app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) => {
+  try {
+    const { token, new_password } = req.body;
+    if (!token || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (String(new_password).length < 6) return res.status(400).json({ message: 'كلمة المرور 6 أحرف على الأقل' });
+    const r = await pool.query('SELECT id, email, name FROM users WHERE reset_token=$1 AND reset_expires > NOW() LIMIT 1', [token]);
+    if (!r.rows.length) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً' });
+    const u = r.rows[0];
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password=$1, password_hash=$2, reset_token=NULL, reset_expires=NULL WHERE id=$3', [hash, hash, u.id]);
+    try {
+      if (u.email && !/@manaqasa\.local$/i.test(u.email)) {
+        const title = '✅ تم تغيير كلمة المرور';
+        const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>تم تعيين كلمة مرور جديدة لحسابك بنجاح.</p><p>إذا لم تقم بهذا، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
+        sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
+      }
+    } catch(e) {}
+    return res.json({ ok: true, message: 'تم تعيين كلمة المرور' });
+  } catch(e) { console.error('reset-password:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ الدخول السحري: رابط يُرسل للعميل (المنشور بالوكالة) عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
+app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
+    let payload;
+    try { payload = jwt.verify(token, JWT_SECRET); } catch(e) { return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' }); }
+    if (!payload || payload.purpose !== 'magic' || !payload.id) return res.status(400).json({ message: 'الرابط غير صالح' });
+    const r = await pool.query('SELECT * FROM users WHERE id=$1', [payload.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
+    const user = r.rows[0];
+    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
+    const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
+    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires;
+    res.json({ user, token: sessionToken });
+  } catch(e) { console.error('magic-login:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ ACCOUNT DELETION ═══
@@ -2070,8 +2142,11 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
     await client.query('COMMIT');
 
-    // 3) سجّل العملية للمساءلة
-    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm });
+    // 3) رابط دخول سحري: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
+    const magicToken = jwt.sign({ id: clientId, purpose: 'magic' }, JWT_SECRET, { expiresIn: '30d' });
+    const magicLink = SITE_URL + '/auth.html?magic=' + magicToken;
+    // 4) سجّل العملية للمساءلة
+    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm, magic_link: magicLink });
   } catch(e) {
     try { await client.query('ROLLBACK'); } catch(_) {}
     // تشخيص مفصّل في السجل (يظهر في Railway Logs)
@@ -2314,6 +2389,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     let { price, days, note } = req.body;
+    const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
@@ -2325,7 +2401,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     let row; let isUpdate = false;
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
-      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, created_at=NOW() WHERE request_id=$4 AND provider_id=$5 RETURNING *`, [price, days, note||null, requestId, req.user.id]);
+      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, created_at=NOW() WHERE request_id=$5 AND provider_id=$6 RETURNING *`, [price, days, note||null, priceVis, requestId, req.user.id]);
       row = upd.rows[0]; isUpdate = true;
     } else {
       const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis]);
