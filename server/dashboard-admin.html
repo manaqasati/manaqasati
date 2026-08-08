@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </div>
 
     <div class="page" id="page-users">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button onclick="openIncomplete()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(217,119,6,.25)">⚠️ مزوّدون بملفات ناقصة</button></div>
       <div class="card">
         <div class="card-head"><h3>إدارة المستخدمين</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث..." oninput="filterUsers()"></div><button class="act-btn ab-default" onclick="openBroadcast()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>رسالة جماعية</button><button class="act-btn ab-default" onclick="exportUsers()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير Excel</button></div></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterRole('all',this)">الكل</button><button class="ftab" onclick="filterRole('client',this)">العملاء</button><button class="ftab" onclick="filterRole('provider',this)">المزودون</button></div>
@@ -1284,6 +1285,42 @@ function _pxRenderPreview(){
 }
 function _pxDelImg(i){ _pxImgs.splice(i,1); _pxRenderPreview(); }
 function _pxDelFile(i){ _pxFiles.splice(i,1); _pxRenderPreview(); }
+
+
+// ── المزوّدون بملفات ناقصة ──
+function openIncomplete(){
+  document.getElementById('um-title').textContent='مزوّدون بملفات ناقصة';
+  document.getElementById('um-body').innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  document.getElementById('userModal').classList.add('show');
+  fetch(API+'/api/admin/incomplete-providers',hdr()).then(function(r){return r.json();}).then(function(d){
+    var list=(d&&d.providers)||[];
+    if(!list.length){ document.getElementById('um-body').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:34px;margin-bottom:8px">🎉</div><div style="font-weight:800;color:var(--text)">كل الملفات مكتملة</div></div>'; return; }
+    var h='<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:11px 13px;margin-bottom:14px;font-size:12.5px;color:#7c2d12;line-height:1.75">📋 <b>'+list.length+' مزوّد</b> بملف ناقص — الملف المكتمل يضاعف فرص وصول العملاء إليه.</div>';
+    list.forEach(function(p){
+      var color = p.pct>=60?'#16a34a':(p.pct>=40?'#d97706':'#dc2626');
+      var wa='https://wa.me/'+String(p.phone||'').replace(/\D/g,'').replace(/^0/,'966')+'?text='+encodeURIComponent('السلام عليكم '+(p.name||'')+'،\nمعك فريق منصة مناقصة.\n\nلاحظنا أن ملفك في المنصة ناقص: '+(p.missing||[]).join('، ')+'.\n\nالمزوّدون بملف مكتمل تصلهم مشاريع أكثر بكثير — لأن العميل يختار من يشوف خبرته وأعماله بوضوح.\n\nأكمل ملفك من: https://manaqasa.com/dashboard-provider.html\nودقيقتين تكفي 👌');
+      h+='<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">'
+          +'<div style="font-size:14px;font-weight:800">'+esc(p.name||'مزوّد')+'</div>'
+          +'<div style="font-size:12px;font-weight:900;color:'+color+'">'+p.pct+'%</div>'
+        +'</div>'
+        +'<div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:9px"><div style="height:100%;width:'+p.pct+'%;background:'+color+'"></div></div>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.7">ناقص: '+esc((p.missing||[]).join(' · '))+'</div>'
+        +'<div style="display:flex;gap:7px">'
+          +'<button onclick="remindProvider('+p.id+',this)" style="flex:1;padding:9px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer">🔔 تذكير داخل المنصة</button>'
+          +(p.phone?'<a href="'+wa+'" target="_blank" style="flex:1;padding:9px;background:#25d366;color:#fff;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:800;text-align:center;text-decoration:none">📱 واتساب</a>':'')
+        +'</div></div>';
+    });
+    document.getElementById('um-body').innerHTML=h;
+  }).catch(function(){ document.getElementById('um-body').innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function remindProvider(id,btn){
+  if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  fetch(API+'/api/admin/remind-provider/'+id,Object.assign({method:'POST',body:JSON.stringify({})},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(!d.ok)throw new Error(); if(btn){btn.textContent='✓ تم الإرسال';btn.style.background='var(--green)';} toast('وصله التذكير ✓','success'); })
+    .catch(function(){ toast('تعذّر الإرسال','error'); if(btn){btn.disabled=false;btn.textContent='🔔 تذكير داخل المنصة';} });
+}
 
 function openProxyPost(){
   _pxImgs=[]; _pxFiles=[];
