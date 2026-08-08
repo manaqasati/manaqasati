@@ -2047,7 +2047,11 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
     await client.query('BEGIN');
     // 1) هل للعميل حساب بهذا الجوال؟ وإلا ننشئ حساباً مبدئياً (يفعّله لاحقاً)
-    let u = await client.query('SELECT id, name FROM users WHERE phone_norm=$1 OR phone=$2 LIMIT 1', [phoneNorm, client_phone]);
+    let u = await client.query(
+      `SELECT id, name FROM users
+       WHERE regexp_replace(COALESCE(phone,''),'[^0-9]','','g') IN ($1,$2,$3)
+       LIMIT 1`,
+      [phoneNorm, phoneNorm.replace(/^966/,'0'), phoneNorm.replace(/^966/,'')]);
     let clientId, isNew = false;
     if (u.rows.length) {
       clientId = u.rows[0].id;
@@ -2055,9 +2059,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       const tempPass = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
       const email = client_email || `proxy_${phoneNorm}@manaqasa.local`;
       const nu = await client.query(
-        `INSERT INTO users (name, email, password, phone, phone_norm, city, role, is_active, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,'client',TRUE,NOW()) RETURNING id`,
-        [client_name, email, tempPass, client_phone, phoneNorm, city]);
+        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at)
+         VALUES ($1,$2,$3,$3,$4,$5,'client',TRUE,NOW()) RETURNING id`,
+        [client_name, email, tempPass, client_phone, city]);
       clientId = nu.rows[0].id; isNew = true;
     }
     // 2) أنشئ المشروع باسمه
