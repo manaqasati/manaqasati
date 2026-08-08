@@ -4099,6 +4099,53 @@ app.get('/api/nudge-config', async (req,res)=>{
 
 // إحصائيات بفلاتر زمنية (يوم/أسبوع/شهر/سنة/الكل)
 // إحصائيات خصوصية السعر — تساعد على قرار: هل نجعل الإظهار العام هو الافتراضي؟
+
+// ═══ المزوّدون بملفات ناقصة — تذكيرهم يرفع جودة المنصة ويزيد فرصهم ═══
+app.get('/api/admin/incomplete-providers', requirePermission('users.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT id, name, phone, city, business_name, bio, specialties, profile_image,
+             experience_years, created_at, last_seen_at,
+             (SELECT COUNT(*) FROM bids WHERE provider_id=users.id)::int AS bids_count,
+             (
+               (CASE WHEN COALESCE(specialties,'{}')='{}' OR array_length(specialties,1) IS NULL THEN 0 ELSE 1 END) +
+               (CASE WHEN COALESCE(bio,'')='' THEN 0 ELSE 1 END) +
+               (CASE WHEN COALESCE(profile_image,'')='' THEN 0 ELSE 1 END) +
+               (CASE WHEN COALESCE(business_name,'')='' THEN 0 ELSE 1 END) +
+               (CASE WHEN COALESCE(city,'')='' THEN 0 ELSE 1 END)
+             ) AS filled
+      FROM users
+      WHERE role='provider' AND is_active=TRUE
+      ORDER BY filled ASC, created_at DESC
+      LIMIT 200`);
+    const rows = r.rows.map(u => {
+      const missing = [];
+      if (!u.specialties || !u.specialties.length) missing.push('التخصصات');
+      if (!u.bio) missing.push('نبذة عن خبرتك');
+      if (!u.profile_image) missing.push('صورة الملف');
+      if (!u.business_name) missing.push('اسم النشاط');
+      if (!u.city) missing.push('المدينة');
+      return { ...u, missing, pct: Math.round((u.filled / 5) * 100) };
+    }).filter(u => u.missing.length > 0);
+    res.json({ total: rows.length, providers: rows });
+  } catch(e) { console.error('incomplete-providers:', e.message); res.json({ total: 0, providers: [] }); }
+});
+
+// إرسال تذكير لمزوّد (إشعار داخل المنصة)
+app.post('/api/admin/remind-provider/:id', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const u = await pool.query("SELECT name, role FROM users WHERE id=$1 AND role='provider'", [id]);
+    if (!u.rows.length) return res.status(404).json({ message: 'المزوّد غير موجود' });
+    const missing = Array.isArray(req.body.missing) ? req.body.missing.slice(0,6).join('، ') : '';
+    await notify(id, 'أكمل ملفك ليصلك عملاء 🎯',
+      'ملفك الحالي ناقص' + (missing ? ` (${eEsc(missing)})` : '') +
+      ' — المزوّدون بملف مكتمل يحصلون على عروض أكثر بكثير. أكمله الآن من «ملفي الشخصي».',
+      'profile_incomplete', null);
+    res.json({ ok: true });
+  } catch(e) { console.error('remind-provider:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+
 app.get('/api/admin/price-visibility', requirePermission('analytics.view'), async (req, res) => {
   try {
     const r = await pool.query(`
