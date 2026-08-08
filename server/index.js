@@ -2049,7 +2049,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     // 1) هل للعميل حساب بهذا الجوال؟ وإلا ننشئ حساباً مبدئياً (يفعّله لاحقاً)
     let u = await client.query(
       `SELECT id, name FROM users
-       WHERE regexp_replace(COALESCE(phone,''),'[^0-9]','','g') IN ($1,$2,$3)
+       WHERE regexp_replace(COALESCE(phone::text,''), '[^0-9]', '', 'g') IN ($1::text, $2::text, $3::text)
        LIMIT 1`,
       [phoneNorm, phoneNorm.replace(/^966/,'0'), phoneNorm.replace(/^966/,'')]);
     let clientId, isNew = false;
