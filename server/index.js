@@ -219,6 +219,8 @@ app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dash
 app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
 app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
+// رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
+app.get('/m/:token',               (req, res) => res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token)));
 app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
 app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
 app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat.html'));
@@ -1377,6 +1379,10 @@ async function setupDatabase() {
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
+    // رابط الدخول السحري القصير: رمز مخزّن + انتهاؤه (للعميل المنشور بالوكالة وغيره)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
@@ -1715,21 +1721,37 @@ app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) =
   } catch(e) { console.error('reset-password:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// ═══ الدخول السحري: رابط يُرسل للعميل (المنشور بالوكالة) عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
+// ═══ الدخول السحري: رابط قصير يُرسل للعميل عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
+// يُنشئ رمزاً قصيراً ويعيد استعماله ما دام صالحاً (فتبقى الروابط المُرسلة سابقاً تعمل)
+async function getMagicToken(clientId) {
+  const cur = await pool.query('SELECT magic_token, magic_expires FROM users WHERE id=$1', [clientId]);
+  if (!cur.rows.length) return null;
+  let tok = cur.rows[0].magic_token;
+  const exp = cur.rows[0].magic_expires;
+  const stillValid = tok && exp && new Date(exp) > new Date();
+  if (!stillValid) tok = crypto.randomBytes(8).toString('hex'); // 16 حرفاً
+  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '60 days' WHERE id=$2", [tok, clientId]);
+  return tok;
+}
+
 app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
-    let payload;
-    try { payload = jwt.verify(token, JWT_SECRET); } catch(e) { return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' }); }
-    if (!payload || payload.purpose !== 'magic' || !payload.id) return res.status(400).json({ message: 'الرابط غير صالح' });
-    const r = await pool.query('SELECT * FROM users WHERE id=$1', [payload.id]);
+    let userId = null;
+    // 1) الرمز القصير المخزّن
+    const dbr = await pool.query('SELECT id FROM users WHERE magic_token=$1 AND magic_expires > NOW() LIMIT 1', [token]);
+    if (dbr.rows.length) userId = dbr.rows[0].id;
+    // 2) احتياط: رمز JWT قديم (روابط أُرسلت قبل هذا التحديث)
+    if (!userId) { try { const p = jwt.verify(token, JWT_SECRET); if (p && p.purpose === 'magic' && p.id) userId = p.id; } catch(e) {} }
+    if (!userId) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' });
+    const r = await pool.query('SELECT * FROM users WHERE id=$1', [userId]);
     if (!r.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
     const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires;
+    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
     res.json({ user, token: sessionToken });
   } catch(e) { console.error('magic-login:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -2142,9 +2164,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
     await client.query('COMMIT');
 
-    // 3) رابط دخول سحري: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
-    const magicToken = jwt.sign({ id: clientId, purpose: 'magic' }, JWT_SECRET, { expiresIn: '30d' });
-    const magicLink = SITE_URL + '/auth.html?magic=' + magicToken;
+    // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
+    const magicTok = await getMagicToken(clientId);
+    const magicLink = SITE_URL + '/m/' + magicTok;
     // 4) سجّل العملية للمساءلة
     res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm, magic_link: magicLink });
   } catch(e) {
@@ -3830,8 +3852,8 @@ app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit')
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     const row = r.rows[0];
     const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
-    const magicToken = jwt.sign({ id: row.client_id, purpose: 'magic' }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ ok: true, magic_link: SITE_URL + '/auth.html?magic=' + magicToken, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
+    const magicTok = await getMagicToken(row.client_id);
+    res.json({ ok: true, magic_link: SITE_URL + '/m/' + magicTok, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
   } catch(e) { console.error('admin magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
