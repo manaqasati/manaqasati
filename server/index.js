@@ -3822,6 +3822,19 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ رابط دخول العميل (سحري) لأي مشروع — يُرسل للعميل ليدخل بدون كلمة مرور (يشمل المشاريع القديمة) ═══
+app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query('SELECT r.title, r.client_id, u.name AS client_name, u.phone AS client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const row = r.rows[0];
+    const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
+    const magicToken = jwt.sign({ id: row.client_id, purpose: 'magic' }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ ok: true, magic_link: SITE_URL + '/auth.html?magic=' + magicToken, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
+  } catch(e) { console.error('admin magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
 app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
