@@ -1375,7 +1375,8 @@ function submitProxyPost(){
       if(!d.ok)throw new Error(d.message||'فشل');
       closeModal('userModal');
       toast('تم نشر المشروع'+(d.is_new_client?' وإنشاء حساب للعميل':'')+' ✓','success');
-      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة. ستصلك عروض المزوّدين قريباً، وسنوافيك بها.\nرابط المشروع: https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
+      var _entry=d.magic_link||('https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
+      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة ✓\nستصلك عروض المزوّدين قريباً.\n\nلمتابعة مشروعك واستعراض العروض، ادخل من الرابط التالي مباشرة (بدون كلمة مرور):\n'+_entry);
       if(confirm('تم النشر ✓\n\nهل تريد إبلاغ العميل عبر واتساب الآن؟')) window.open(wa,'_blank');
       loadRequests();
     })
