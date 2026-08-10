@@ -843,7 +843,7 @@ function _renderHome(data){
     var _fbids=parseInt(featured.bid_count||0);
     var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
     html+='<div class="ph-feat">'
-      +'<span class="ph-fb">أفضل فرصة لك'+(matchedBySpec?' · تناسب تخصصك':'')+'</span>'
+      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'طلب متاح')+'</span>'
       +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>'
       +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
         +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
