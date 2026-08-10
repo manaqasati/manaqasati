@@ -1011,7 +1011,7 @@ function openUserModal(uid){
     +(u.role==='provider'?('<div class="sec-label">المستوى (تلقائي حسب الصفقات — يمكن تجاوزه)</div>'+_tierPicker(u)):'')
     +'<div class="sec-label">المراسلة</div>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+',\''+esc(u.name).replace(/\x27/g,"")+'\')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
-    +'<div class="sec-label">إجراءات الحساب</div>'
+    +((u.role==='client')?('<div class="sec-label">تحكّم الأدمن</div>'+'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="enterClientAccount('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>دخول كحساب العميل</button>'+'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="addProjectForClient('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>أضف مشروعاً لهذا العميل</button>'):'')+'<div class="sec-label">إجراءات الحساب</div>'
     +'<div style="display:flex;gap:8px">'
       +'<button class="act-btn '+(u.is_active?'ab-default':'ab-primary')+'" style="flex:1;justify-content:center;padding:11px" onclick="toggleActive('+u.id+')">'+(u.is_active?'حظر المستخدم':'إلغاء الحظر')+'</button>'
       +'<button class="act-btn ab-danger" style="flex:1;justify-content:center;padding:11px" onclick="deleteUser('+u.id+')">حذف نهائي</button>'
@@ -1346,6 +1346,21 @@ function remindProvider(id,btn){
     .catch(function(){ toast('تعذّر الإرسال','error'); if(btn){btn.disabled=false;btn.textContent='🔔 تذكير داخل المنصة';} });
 }
 
+function enterClientAccount(uid){
+  fetch(API+'/api/admin/users/'+uid+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}
+    var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('رابط الدخول لحسابك في منصة مناقصة (بدون كلمة مرور):\n'+d.magic_link);
+    _showProxyDone(d.magic_link, wa);
+    toast('افتح الرابط في نافذة متخفّية حتى لا تُخرج نفسك من حساب الأدمن','info');
+  }).catch(function(){toast('تعذّر الاتصال','error');});
+}
+function addProjectForClient(uid){
+  var u=_allUsers.find(function(x){return x.id===uid;});if(!u)return;
+  openProxyPost();
+  var nm=document.getElementById('px-name'); if(nm){nm.value=u.name||'';nm.readOnly=true;nm.style.background='#f1f5f9';}
+  var ph=document.getElementById('px-phone'); if(ph){ph.value=u.phone||'';ph.readOnly=true;ph.style.background='#f1f5f9';}
+  var em=document.getElementById('px-email'); if(em&&u.email&&!/@manaqasa\.local$/i.test(u.email)){em.value=u.email;}
+}
 function openProxyPost(){
   _pxImgs=[]; _pxFiles=[];
   var fin='width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;box-sizing:border-box;margin-bottom:10px';
