@@ -316,6 +316,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.price ELSE NULL END as price,
         COALESCE(b.price_visibility,'client') as price_visibility,
+        COALESCE(b.price_unit,'total') as price_unit,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
         b.note as proposal,
@@ -332,7 +333,20 @@ app.get('/api/bids/public/:id', async (req, res) => {
     // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
-    const rows = r.rows.map(x => { const { _p, ...rest } = x; return rest; });
+    const rows = r.rows.map(x => {
+      const { _p, ...rest } = x;
+      // تمويه نص العرض للزائر/المنافس إن كان السعر مخفياً — حماية السعر من التسريب داخل النص
+      const locked = (String(rest.price_visibility) === 'client') && !isPrivileged;
+      if (locked && rest.proposal) {
+        const full = String(rest.proposal);
+        rest.proposal = full.length > 70 ? full.slice(0, 70) : full;
+        rest.note_truncated = full.length > 70;
+        rest.note_locked = true;
+      } else {
+        rest.note_locked = false;
+      }
+      return rest;
+    });
     res.json({ bids: rows, range });
   } catch(e) { res.status(500).json([]); }
 });
@@ -1385,6 +1399,8 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
+    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -2397,7 +2413,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
-             b.status, b.created_at,
+             b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.badge as provider_badge, u.tier as provider_tier,
@@ -2421,6 +2437,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const requestId = parseInt(req.params.id);
     let { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
+    const priceUnit = (['total','meter','unit'].indexOf(req.body.price_unit) >= 0) ? req.body.price_unit : 'total';
     // ملف عرض السعر (اختياري): صورة أو PDF بصيغة data-URL → يُرفع إلى التخزين ويُحفظ رابطه
     let attUrl = null;
     if (req.body.attachment && typeof req.body.attachment === 'string' && req.body.attachment.startsWith('data:')) {
@@ -2439,10 +2456,10 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
       // COALESCE: لو ما رفع ملفاً جديداً نُبقي القديم
-      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url), created_at=NOW() WHERE request_id=$6 AND provider_id=$7 RETURNING *`, [price, days, note||null, priceVis, attUrl, requestId, req.user.id]);
+      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, price_unit=$5, attachment_url=COALESCE($6,attachment_url), created_at=NOW() WHERE request_id=$7 AND provider_id=$8 RETURNING *`, [price, days, note||null, priceVis, priceUnit, attUrl, requestId, req.user.id]);
       row = upd.rows[0]; isUpdate = true;
     } else {
-      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, attUrl]);
+      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl]);
       row = ins.rows[0];
     }
     const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
