@@ -1255,6 +1255,7 @@ async function _submitBid(projId){
 }
 
 async function _viewProj(id){
+  location.href='/project.html?id='+id; return; // #١: المزود يشوف الصفحة الجميلة كاملة مع عروض المنافسين
   openModal('تفاصيل المشروع','<div class="loading">جاري التحميل...</div>','');
   var r=await _api('/api/requests/'+id);
   if(!r||!r.id){_el('mBd').innerHTML=_empty('تعذر التحميل','');return;}
