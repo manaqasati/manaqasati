@@ -915,6 +915,7 @@ function _tierBadge(t){
 }
 
 function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function _unitLabel(u){return u==='meter'?'/ متر':u==='unit'?'/ وحدة':'';}
 function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0';}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
@@ -1535,10 +1536,10 @@ function loadBids(id){
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
               +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
             +'</div>'
-            +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
+            +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س'+(_unitLabel(b.price_unit)?' '+_unitLabel(b.price_unit):'')+'</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
           +'</div>'
           +'<div class="bid-chips">'+chips+'</div>'
-          +'<div class="bid-note-h">رسالة المزود</div>'+note
+          +'<div class="bid-note-h">رسالة المزود</div>'+note+(b.attachment_url?'<a href="'+b.attachment_url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;font-weight:800;color:var(--p,#1e40af);background:var(--p-light,#eff6ff);padding:8px 13px;border-radius:9px;text-decoration:none">📎 عرض السعر (ملف مرفق)</a>':'')
           +acts
         +'</div>';
       }).join('');
