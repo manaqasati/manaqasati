@@ -299,17 +299,24 @@ app.get('/api/bids/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     // تحقّق اختياري: أرقام المزوّدين تُكشف للمستخدمين المسجّلين فقط (يشجّع التسجيل ويحمي البيانات)
-    let isLoggedIn = false;
+    let isLoggedIn = false, viewerId = null, viewerRole = null;
     try {
       const hdr = req.headers.authorization || '';
       const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-      if (tok) { jwt.verify(tok, JWT_SECRET); isLoggedIn = true; }
+      if (tok) { const v = jwt.verify(tok, JWT_SECRET); isLoggedIn = true; viewerId = v.id; viewerRole = v.role; }
     } catch(e) { isLoggedIn = false; }
+    // صاحب المشروع (أو المخصّص له أو الأدمن) يشوف الملف الرسمي دائماً — لأنه يحوي السعر
+    let isPrivileged = false;
+    try {
+      const rq = (await pool.query('SELECT client_id, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
+      isPrivileged = viewerId != null && (String(viewerId) === String(rq.client_id) || String(viewerId) === String(rq.assigned_provider_id) || viewerRole === 'admin');
+    } catch(e) {}
     const r = await pool.query(`
       SELECT b.id, b.days, b.status, b.created_at,
         CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
         COALESCE(b.price_visibility,'client') as price_visibility,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -321,7 +328,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
-    `, [id, isLoggedIn]);
+    `, [id, isLoggedIn, isPrivileged]);
     // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
@@ -1376,6 +1383,8 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
+    // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
+    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -2412,6 +2421,12 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const requestId = parseInt(req.params.id);
     let { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
+    // ملف عرض السعر (اختياري): صورة أو PDF بصيغة data-URL → يُرفع إلى التخزين ويُحفظ رابطه
+    let attUrl = null;
+    if (req.body.attachment && typeof req.body.attachment === 'string' && req.body.attachment.startsWith('data:')) {
+      attUrl = await uploadToCloud(req.body.attachment, 'manaqasa/bids');
+      if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
+    }
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
@@ -2423,10 +2438,11 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     let row; let isUpdate = false;
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
-      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, created_at=NOW() WHERE request_id=$5 AND provider_id=$6 RETURNING *`, [price, days, note||null, priceVis, requestId, req.user.id]);
+      // COALESCE: لو ما رفع ملفاً جديداً نُبقي القديم
+      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url), created_at=NOW() WHERE request_id=$6 AND provider_id=$7 RETURNING *`, [price, days, note||null, priceVis, attUrl, requestId, req.user.id]);
       row = upd.rows[0]; isUpdate = true;
     } else {
-      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis]);
+      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, attUrl]);
       row = ins.rows[0];
     }
     const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
