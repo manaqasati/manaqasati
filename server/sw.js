@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v4';
+var CACHE = 'manaqasa-v5';
 var STATIC = [
   './',
   './index.html',
@@ -121,6 +121,24 @@ self.addEventListener('fetch', function(e) {
             c.put(e.request, res.clone());
             return res;
           });
+        });
+      })
+    );
+    return;
+  }
+  // ── HTML pages: network-first — التحديثات تظهر فوراً بعد الرفع (مع رجوع للكاش عند انقطاع الشبكة) ──
+  var acc = e.request.headers.get('accept') || '';
+  if (e.request.mode === 'navigate' || acc.includes('text/html')) {
+    e.respondWith(
+      fetch(e.request).then(function(res) {
+        if (res && res.status === 200 && res.type !== 'opaque') {
+          var clone = res.clone();
+          caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
+        }
+        return res;
+      }).catch(function() {
+        return caches.match(e.request).then(function(cached) {
+          return cached || caches.match('./auth.html');
         });
       })
     );
