@@ -1,288 +1,39 @@
-From 6de37c8598c9165994d3211190494d85a8b487bb Mon Sep 17 00:00:00 2001
+From 68e09f43dce9ef91c781a0ddec6d3af54717ab0b Mon Sep 17 00:00:00 2001
 From: Manaqasa Dev <dev@manaqasa.com>
-Date: Sat, 8 Aug 2026 19:52:48 +0000
-Subject: [PATCH] Fix bid 500; auth: forgot/reset-password + short magic-login
- link (/m/:token, DB token, JWT fallback); proxy+admin client login link;
- brief legibility
+Date: Mon, 10 Aug 2026 15:06:23 +0000
+Subject: [PATCH] Fix lock emoji literal in private-price badge; stop labeling
+ off-specialty fallback as best opportunity
 
 ---
- server/auth.html            |  22 +++++++
- server/brief.html           |   2 +-
- server/dashboard-admin.html |  31 +++++++++-
- server/index.js             | 117 +++++++++++++++++++++++++++++++++++-
- 4 files changed, 165 insertions(+), 7 deletions(-)
+ server/dashboard-provider.html | 2 +-
+ server/project.html            | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/server/auth.html b/server/auth.html
-index c73a018..536d9a6 100644
---- a/server/auth.html
-+++ b/server/auth.html
-@@ -429,6 +429,28 @@ function _getSelectedSpecs(){
-   document.getElementById('reset-pg').style.display='flex';
- })();
- 
-+// ═══ الدخول السحري: ?magic=TOKEN — يدخل العميل مباشرة ويحوّله للوحته (بدون كلمة مرور) ═══
-+(function(){
-+  var mt=new URLSearchParams(location.search).get('magic');
-+  if(!mt)return;
-+  document.documentElement.style.visibility='hidden';
-+  fetch(API+'/api/auth/magic-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:mt})})
-+    .then(function(r){return r.json();})
-+    .then(function(d){
-+      if(d&&d.token){
-+        localStorage.setItem('token',d.token);
-+        localStorage.setItem('user',JSON.stringify(d.user));
-+        try{_notifyMobileApp(d.token,d.user);}catch(e){}
-+        location.replace('dashboard-client.html');
-+      } else {
-+        document.documentElement.style.visibility='';
-+        alert((d&&d.message)||'الرابط منتهي أو غير صالح');
-+        location.replace('auth.html');
-+      }
-+    })
-+    .catch(function(){ document.documentElement.style.visibility=''; location.replace('auth.html'); });
-+})();
-+
- async function apiFetch(p,o){
-   return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'}},o||{}))
-     .then(function(r){return r.json();})
-diff --git a/server/brief.html b/server/brief.html
-index 03d7ecf..8b7868a 100644
---- a/server/brief.html
-+++ b/server/brief.html
-@@ -42,7 +42,7 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
- .imgs .im:active img{transform:scale(.97)}
- .sec{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px 17px;margin-bottom:14px;box-shadow:0 2px 10px rgba(37,99,235,.04)}
- .sec-t{font-family:'Cairo',sans-serif;font-size:14px;font-weight:900;color:var(--p);margin-bottom:10px;display:flex;align-items:center;gap:7px}
--.desc{font-size:14px;line-height:2;color:var(--text2);white-space:pre-wrap}
-+.desc{font-size:15px;line-height:2;color:var(--text);font-weight:500;white-space:pre-wrap}
- .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
- .info{background:var(--bg);border-radius:12px;padding:12px 14px}
- .info-l{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
-diff --git a/server/dashboard-admin.html b/server/dashboard-admin.html
-index 0bdefb7..d79d12f 100644
---- a/server/dashboard-admin.html
-+++ b/server/dashboard-admin.html
-@@ -699,6 +699,30 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
-   </div>
- </div>
- 
-+<div class="overlay" id="proxyDoneModal">
-+  <div class="modal">
-+    <div class="modal-head"><h3>🔗 رابط دخول العميل</h3><button class="modal-x" onclick="closeModal('proxyDoneModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-+    <div class="modal-body">
-+      <p style="font-size:13px;color:#64748b;line-height:1.85;margin-bottom:12px">أرسل هذا الرابط للعميل عبر واتساب — يفتحه فيدخل حسابه مباشرة ويشوف مشروعه والعروض <b>بدون كلمة مرور</b>. صالح ٣٠ يوماً.</p>
-+      <div style="display:flex;gap:8px;align-items:center;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;margin-bottom:14px">
-+        <input id="pd-link" readonly onclick="this.select()" style="flex:1;min-width:0;border:none;background:transparent;font-size:12px;color:#334155;font-family:monospace;outline:none">
-+      </div>
-+      <div style="display:flex;gap:10px">
-+        <button onclick="_pdWa()" style="flex:1;background:#25D366;color:#fff;border:none;padding:12px;border-radius:11px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">💬 إرسال واتساب</button>
-+        <button onclick="_pdCopy()" style="flex:1;background:#1e3a8a;color:#fff;border:none;padding:12px;border-radius:11px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">📋 نسخ الرابط</button>
-+      </div>
-+    </div>
-+  </div>
-+</div>
-+
-+<script>
-+var _pdWaUrl='';
-+function _pdCopy(){var i=document.getElementById('pd-link');var l=i.value;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(l).then(function(){toast('تم نسخ الرابط','success');}).catch(function(){i.select();document.execCommand('copy');toast('تم نسخ الرابط','success');});}else{i.select();document.execCommand('copy');toast('تم نسخ الرابط','success');}}
-+function _pdWa(){if(_pdWaUrl)window.open(_pdWaUrl,'_blank');}
-+function _showProxyDone(link,wa){document.getElementById('pd-link').value=link;_pdWaUrl=wa;document.getElementById('proxyDoneModal').classList.add('show');}
-+function _clientLoginLink(id){fetch(API+'/api/admin/requests/'+id+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){if(!d||!d.ok||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم'+(d.client_name?' '+d.client_name:'')+'، للدخول لحسابك في منصة مناقصة ومتابعة مشروعك «'+d.title+'» والعروض، افتح الرابط التالي مباشرة (بدون كلمة مرور):\n'+d.magic_link);_showProxyDone(d.magic_link,wa);}).catch(function(){toast('تعذّر الاتصال','error');});}
-+</script>
-+
- <script>
- var API='https://manaqasati-production.up.railway.app';
- var token=localStorage.getItem('token')||'';
-@@ -1375,8 +1399,9 @@ function submitProxyPost(){
-       if(!d.ok)throw new Error(d.message||'فشل');
-       closeModal('userModal');
-       toast('تم نشر المشروع'+(d.is_new_client?' وإنشاء حساب للعميل':'')+' ✓','success');
--      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة. ستصلك عروض المزوّدين قريباً، وسنوافيك بها.\nرابط المشروع: https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
--      if(confirm('تم النشر ✓\n\nهل تريد إبلاغ العميل عبر واتساب الآن؟')) window.open(wa,'_blank');
-+      var _entry=d.magic_link||('https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
-+      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، تم نشر مشروعك «'+data.title+'» في منصة مناقصة ✓\nستصلك عروض المزوّدين قريباً.\n\nلمتابعة مشروعك واستعراض العروض، ادخل من الرابط التالي مباشرة (بدون كلمة مرور):\n'+_entry);
-+      _showProxyDone(_entry, wa);
-       loadRequests();
-     })
-     .catch(function(e){ toast(e.message||'تعذّر النشر','error'); if(btn){btn.disabled=false;btn.textContent='نشر المشروع';} });
-@@ -1440,7 +1465,7 @@ function renderRequests(){
-       +'<td style="font-size:12.5px">'+esc(r.client_name||'—')+'</td>'
-       +'<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'
-       +'<td style="text-align:center;font-weight:800">'+(r.bid_count||0)+'</td>'
--      +'<td><div class="act-btns"><a href="/project/x-'+r.id+'?id='+r.id+'" class="act-btn ab-default"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</a><button class="act-btn ab-default" onclick="_oBriefFromReq('+r.id+')" title="أرسل كراسة لمزودين مطابقين"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="10" y1="7" x2="14" y2="7"/><line x1="10" y1="11" x2="14" y2="11"/></svg>كراسة</button><button class="act-btn ab-default" onclick="openReqEdit('+r.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button><button class="act-btn ab-danger" onclick="deleteRequest('+r.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button></div></td>'
-+      +'<td><div class="act-btns"><a href="/project/x-'+r.id+'?id='+r.id+'" class="act-btn ab-default"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</a><button class="act-btn ab-default" onclick="_oBriefFromReq('+r.id+')" title="أرسل كراسة لمزودين مطابقين"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="10" y1="7" x2="14" y2="7"/><line x1="10" y1="11" x2="14" y2="11"/></svg>كراسة</button><button class="act-btn ab-default" onclick="_clientLoginLink('+r.id+')" title="رابط دخول العميل بدون كلمة مرور (يشمل القديمة)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>دخول</button><button class="act-btn ab-default" onclick="openReqEdit('+r.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button><button class="act-btn ab-danger" onclick="deleteRequest('+r.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button></div></td>'
-     +'</tr>';
-   }).join('')+'</tbody></table>';
- }
-diff --git a/server/index.js b/server/index.js
-index d71167b..369e56c 100644
---- a/server/index.js
-+++ b/server/index.js
-@@ -219,6 +219,8 @@ app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dash
- app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
- app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
- app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
-+// رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
-+app.get('/m/:token',               (req, res) => res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token)));
- app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
- app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
- app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat.html'));
-@@ -1374,6 +1376,13 @@ async function setupDatabase() {
-     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
-     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
-     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
-+    // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
-+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
-+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
-+    // رابط الدخول السحري القصير: رمز مخزّن + انتهاؤه (للعميل المنشور بالوكالة وغيره)
-+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
-+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
-+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
-     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
-     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
-     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
-@@ -1662,6 +1671,91 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req,
-   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
- });
- 
-+// ═══ نسيت كلمة المرور: يرسل رابط إعادة تعيين للبريد (إن وُجد بريد حقيقي) ═══
-+// نرجّع دائماً رسالة نجاح عامّة حتى لا نكشف إن كان الحساب موجوداً أم لا (منع الاستعلام العشوائي)
-+app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) => {
-+  const generic = { ok: true, message: 'إذا كان الحساب موجوداً فستصلك رسالة بخطوات إعادة التعيين' };
-+  try {
-+    const raw = (req.body.email || req.body.phone || '').toString().trim();
-+    if (!raw) return res.status(400).json({ message: 'أدخل البريد أو رقم الجوال' });
-+    const phoneNorm = raw.replace(/\D/g, '').replace(/^0/, '966');
-+    // ابحث بالبريد أو بالجوال (بصيغته المُطبّعة)
-+    const r = await pool.query(
-+      "SELECT id, name, email FROM users WHERE email=$1 OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
-+      [raw, phoneNorm]);
-+    if (!r.rows.length) return res.json(generic);
-+    const u = r.rows[0];
-+    const token = crypto.randomBytes(32).toString('hex');
-+    await pool.query("UPDATE users SET reset_token=$1, reset_expires=NOW()+INTERVAL '1 hour' WHERE id=$2", [token, u.id]);
-+    // نرسل الرابط فقط لبريد حقيقي (حسابات الوكالة تحمل بريداً وهمياً @manaqasa.local — لا يُرسل لها)
-+    const realEmail = u.email && !/@manaqasa\.local$/i.test(u.email);
-+    if (realEmail) {
-+      const link = SITE_URL + '/auth.html?reset=' + token;
-+      const title = '🔐 إعادة تعيين كلمة المرور';
-+      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا طلب لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
-+      sendEmail(u.email, title, emailTpl(title, body, 'إعادة تعيين كلمة المرور', link)).catch(()=>{});
-+    }
-+    return res.json(generic);
-+  } catch(e) { console.error('forgot-password:', e.message); return res.json(generic); }
-+});
-+
-+// ═══ تعيين كلمة مرور جديدة عبر الرمز المؤقّت ═══
-+app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) => {
-+  try {
-+    const { token, new_password } = req.body;
-+    if (!token || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
-+    if (String(new_password).length < 6) return res.status(400).json({ message: 'كلمة المرور 6 أحرف على الأقل' });
-+    const r = await pool.query('SELECT id, email, name FROM users WHERE reset_token=$1 AND reset_expires > NOW() LIMIT 1', [token]);
-+    if (!r.rows.length) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً' });
-+    const u = r.rows[0];
-+    const hash = await bcrypt.hash(new_password, 10);
-+    await pool.query('UPDATE users SET password=$1, password_hash=$2, reset_token=NULL, reset_expires=NULL WHERE id=$3', [hash, hash, u.id]);
-+    try {
-+      if (u.email && !/@manaqasa\.local$/i.test(u.email)) {
-+        const title = '✅ تم تغيير كلمة المرور';
-+        const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>تم تعيين كلمة مرور جديدة لحسابك بنجاح.</p><p>إذا لم تقم بهذا، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-+        sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
-+      }
-+    } catch(e) {}
-+    return res.json({ ok: true, message: 'تم تعيين كلمة المرور' });
-+  } catch(e) { console.error('reset-password:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-+});
-+
-+// ═══ الدخول السحري: رابط قصير يُرسل للعميل عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
-+// يُنشئ رمزاً قصيراً ويعيد استعماله ما دام صالحاً (فتبقى الروابط المُرسلة سابقاً تعمل)
-+async function getMagicToken(clientId) {
-+  const cur = await pool.query('SELECT magic_token, magic_expires FROM users WHERE id=$1', [clientId]);
-+  if (!cur.rows.length) return null;
-+  let tok = cur.rows[0].magic_token;
-+  const exp = cur.rows[0].magic_expires;
-+  const stillValid = tok && exp && new Date(exp) > new Date();
-+  if (!stillValid) tok = crypto.randomBytes(8).toString('hex'); // 16 حرفاً
-+  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '60 days' WHERE id=$2", [tok, clientId]);
-+  return tok;
-+}
-+
-+app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
-+  try {
-+    const { token } = req.body;
-+    if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
-+    let userId = null;
-+    // 1) الرمز القصير المخزّن
-+    const dbr = await pool.query('SELECT id FROM users WHERE magic_token=$1 AND magic_expires > NOW() LIMIT 1', [token]);
-+    if (dbr.rows.length) userId = dbr.rows[0].id;
-+    // 2) احتياط: رمز JWT قديم (روابط أُرسلت قبل هذا التحديث)
-+    if (!userId) { try { const p = jwt.verify(token, JWT_SECRET); if (p && p.purpose === 'magic' && p.id) userId = p.id; } catch(e) {} }
-+    if (!userId) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' });
-+    const r = await pool.query('SELECT * FROM users WHERE id=$1', [userId]);
-+    if (!r.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
-+    const user = r.rows[0];
-+    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-+    const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-+    pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-+    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
-+    res.json({ user, token: sessionToken });
-+  } catch(e) { console.error('magic-login:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-+});
-+
- // ═══ ACCOUNT DELETION ═══
- app.get('/api/account/deletion-preview', auth, async (req, res) => {
-   try {
-@@ -2070,8 +2164,11 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
-        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
-     await client.query('COMMIT');
- 
--    // 3) سجّل العملية للمساءلة
--    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm });
-+    // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
-+    const magicTok = await getMagicToken(clientId);
-+    const magicLink = SITE_URL + '/m/' + magicTok;
-+    // 4) سجّل العملية للمساءلة
-+    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm, magic_link: magicLink });
-   } catch(e) {
-     try { await client.query('ROLLBACK'); } catch(_) {}
-     // تشخيص مفصّل في السجل (يظهر في Railway Logs)
-@@ -2314,6 +2411,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
-   try {
-     const requestId = parseInt(req.params.id);
-     let { price, days, note } = req.body;
-+    const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
-     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
-     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
-     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
-@@ -2325,7 +2423,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
-     let row; let isUpdate = false;
-     if (existing.rows.length) {
-       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
--      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, created_at=NOW() WHERE request_id=$4 AND provider_id=$5 RETURNING *`, [price, days, note||null, requestId, req.user.id]);
-+      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, created_at=NOW() WHERE request_id=$5 AND provider_id=$6 RETURNING *`, [price, days, note||null, priceVis, requestId, req.user.id]);
-       row = upd.rows[0]; isUpdate = true;
-     } else {
-       const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis]);
-@@ -3746,6 +3844,19 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
-   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
- });
- 
-+// ═══ رابط دخول العميل (سحري) لأي مشروع — يُرسل للعميل ليدخل بدون كلمة مرور (يشمل المشاريع القديمة) ═══
-+app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit'), async (req, res) => {
-+  try {
-+    const id = parseInt(req.params.id);
-+    const r = await pool.query('SELECT r.title, r.client_id, u.name AS client_name, u.phone AS client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
-+    if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
-+    const row = r.rows[0];
-+    const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
-+    const magicTok = await getMagicToken(row.client_id);
-+    res.json({ ok: true, magic_link: SITE_URL + '/m/' + magicTok, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
-+  } catch(e) { console.error('admin magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-+});
-+
- app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), async (req, res) => {
-   try {
-     const id = parseInt(req.params.id);
+diff --git a/server/dashboard-provider.html b/server/dashboard-provider.html
+index c42e600..90528ed 100644
+--- a/server/dashboard-provider.html
++++ b/server/dashboard-provider.html
+@@ -843,7 +843,7 @@ function _renderHome(data){
+     var _fbids=parseInt(featured.bid_count||0);
+     var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
+     html+='<div class="ph-feat">'
+-      +'<span class="ph-fb">أفضل فرصة لك'+(matchedBySpec?' · تناسب تخصصك':'')+'</span>'
++      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'طلب متاح')+'</span>'
+       +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>'
+       +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
+         +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
+diff --git a/server/project.html b/server/project.html
+index ada05bf..dce7679 100644
+--- a/server/project.html
++++ b/server/project.html
+@@ -477,7 +477,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
+   h+='</div>';
+   var _ph = price>0
+     ? '<div style="font-family:\'Cairo\',sans-serif;font-size:20px;font-weight:900;color:var(--green);line-height:1">'+fmtN(price)+' <small style="font-size:10px;color:var(--muted);font-weight:700">ر.س</small></div>'
+-    : '<div style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px">\U0001F512 السعر خاص</div>';
++    : '<div style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px">🔒 السعر خاص</div>';
+   h+='<div style="text-align:left;flex-shrink:0">'+_ph+(b.days?'<div style="font-size:11px;color:var(--muted);margin-top:3px">خلال '+b.days+' أيام</div>':'')+'</div>';
+   h+='</div>';
+   // note
 -- 
 2.43.0
