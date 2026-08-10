@@ -1217,10 +1217,25 @@ function _openBidModal(projId){
     +'<div style="font-size:12.5px;font-weight:800;margin-bottom:9px">🔒 من يشوف سعرك؟</div>'
     +'<label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:var(--white);border:1.5px solid var(--p-mid);border-radius:10px;cursor:pointer;margin-bottom:7px"><input type="radio" name="bidVis" value="client" checked style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">صاحب المشروع فقط</div><div style="font-size:11px;color:var(--muted);margin-top:1px">منافسوك لا يرون سعرك — يُنصح به</div></div></label>'
     +'<label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:var(--white);border:1px solid var(--border);border-radius:10px;cursor:pointer"><input type="radio" name="bidVis" value="public" style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">الجميع</div><div style="font-size:11px;color:var(--muted);margin-top:1px">يظهر للزوّار — قد يجذب انتباهاً أكثر</div></div></label>'
+    +'</div>'
+    +'<div style="background:var(--bg);border:1px dashed var(--border);border-radius:12px;padding:12px 13px;margin-top:11px">'
+    +'<div style="font-size:12.5px;font-weight:800;margin-bottom:6px">📎 أرفق عرض السعر <span style="color:var(--muted);font-weight:600">(صورة أو PDF — اختياري)</span></div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:9px;line-height:1.7">لو عندك عرض سعر رسمي بورق مؤسستك ارفعه هنا — يشوفه صاحب المشروع فقط.</div>'
+    +'<input type="file" id="bid-file" accept="image/*,application/pdf" onchange="_onBidFile(this)" style="font-size:12px;font-family:Tajawal,sans-serif;width:100%">'
+    +'<div id="bid-file-name" style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:7px;display:none"></div>'
     +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button><button onclick="_submitBid('+projId+')" style="flex:1;padding:10px;background:var(--p);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">إرسال العرض</button>';
   openModal('تقديم عرض',body,foot);
   setTimeout(_bindFeeLive,60);
+}
+window._bidAttach=null;
+function _onBidFile(inp){
+  var f=inp.files&&inp.files[0];var lbl=_el('bid-file-name');
+  if(!f){window._bidAttach=null;if(lbl)lbl.style.display='none';return;}
+  var ok=['image/jpeg','image/jpg','image/png','image/webp','image/gif','image/heic','application/pdf'];
+  if(ok.indexOf(f.type)<0){showToast('نوع الملف غير مدعوم (صورة أو PDF)','error');inp.value='';window._bidAttach=null;if(lbl)lbl.style.display='none';return;}
+  if(f.size>10*1024*1024){showToast('حجم الملف كبير (الحد 10MB)','error');inp.value='';window._bidAttach=null;if(lbl)lbl.style.display='none';return;}
+  var rd=new FileReader();rd.onload=function(){window._bidAttach=rd.result;if(lbl){lbl.textContent='✓ '+f.name;lbl.style.display='block';}};rd.readAsDataURL(f);
 }
 async function _submitBid(projId){
   var priceStr=(_el('bid-price')||{}).value;var daysStr=(_el('bid-days')||{}).value;var note=((_el('bid-note')||{}).value||'').trim();
@@ -1233,8 +1248,8 @@ async function _submitBid(projId){
     try{ _ag.closest('label').style.borderColor='#dc2626'; _ag.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} return; }
   var btn=document.querySelector('[onclick*="_submitBid"]');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
-    var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note,price_visibility:((document.querySelector('input[name="bidVis"]:checked')||{}).value||'client')})});
-    if(r&&(r.id||r.request_id)){closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
+    var r=await _api('/api/requests/'+projId+'/bids',{method:'POST',body:JSON.stringify({price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note,price_visibility:((document.querySelector('input[name="bidVis"]:checked')||{}).value||'client'),attachment:(window._bidAttach||null)})});
+    if(r&&(r.id||r.request_id)){window._bidAttach=null;closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
   }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='إرسال العرض';}}
 }
