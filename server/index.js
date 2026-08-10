@@ -314,7 +314,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.days, b.status, b.created_at,
         CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' THEN b.price ELSE NULL END as price,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.price ELSE NULL END as price,
         COALESCE(b.price_visibility,'client') as price_visibility,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
