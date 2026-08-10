@@ -265,6 +265,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div class="bm-fg"><label>سعر العرض (ر.س) *</label><input type="number" id="bid-price" placeholder="مثال: 2500" min="1"></div>
       <div class="bm-fg"><label>مدة التنفيذ (أيام) *</label><input type="number" id="bid-days" placeholder="مثال: 7" min="1"></div>
       <div class="bm-fg"><label>رسالتك للعميل</label><textarea id="bid-note" placeholder="اشرح كيف ستنفذ المشروع..." style="min-height:80px;resize:vertical"></textarea></div>
+      <div class="bm-fg"><label>📎 أرفق عرض السعر (صورة أو PDF — اختياري)</label><input type="file" id="bid-file" accept="image/*,application/pdf" onchange="_onBidFileP(this)" style="font-size:12px;width:100%"><div id="bid-file-name" style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:6px;display:none"></div></div>
       <button class="bm-submit" onclick="submitBid(this)">إرسال العرض</button>
     </div>
   </div>
@@ -483,6 +484,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   // note
   var note=b.proposal||b.note||'';
   if(note)h+='<div class="bid-note" style="margin-top:11px;margin-bottom:0">'+esc(note)+'</div>';
+  if(b.attachment_url)h+='<a href="'+b.attachment_url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:8px 13px;border-radius:9px;text-decoration:none">📎 عرض السعر (ملف مرفق)</a>';
   if(isCheap)h+='<div class="bid-cheap2"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> أقل سعر</div>';
   // actions
   h+='<div class="bid-actions" style="margin-top:11px">';
@@ -793,6 +795,8 @@ function openBid(){
 }
 function closeBid(){document.getElementById('bidOverlay').classList.remove('on');}
 
+window._bidAttachP=null;
+function _onBidFileP(inp){var f=inp.files&&inp.files[0];var lbl=document.getElementById("bid-file-name");if(!f){window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}var ok=["image/jpeg","image/jpg","image/png","image/webp","image/gif","image/heic","application/pdf"];if(ok.indexOf(f.type)<0){alert("نوع الملف غير مدعوم (صورة أو PDF)");inp.value="";window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}if(f.size>10*1024*1024){alert("حجم الملف كبير (الحد 10MB)");inp.value="";window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}var rd=new FileReader();rd.onload=function(){window._bidAttachP=rd.result;if(lbl){lbl.textContent="✓ "+f.name;lbl.style.display="block";}};rd.readAsDataURL(f);}
 async function submitBid(btn){
   var u=getUser();
   if(!u){goLogin();return;}
@@ -806,11 +810,11 @@ async function submitBid(btn){
     var r=await fetch(API+'/api/requests/'+_rid+'/bids',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({price:Number(price),days:Number(days),note:note})
+      body:JSON.stringify({price:Number(price),days:Number(days),note:note,attachment:(window._bidAttachP||null)})
     });
     var d=await r.json();
     if(r.ok){
-      al.textContent='تم إرسال عرضك بنجاح!';al.style.cssText='display:block;background:var(--green-l);color:var(--green)';
+      window._bidAttachP=null;al.textContent='تم إرسال عرضك بنجاح!';al.style.cssText='display:block;background:var(--green-l);color:var(--green)';
       setTimeout(function(){closeBid();load();},1500);
     } else {
       al.textContent=d.message||'حدث خطأ';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';
