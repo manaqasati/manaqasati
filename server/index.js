@@ -1401,6 +1401,9 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
     // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
+    // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -3837,7 +3840,7 @@ app.get('/api/admin/providers', requirePermission('users.view'), async (req, res
 app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
   try {
     const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
+    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
     if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
@@ -3881,8 +3884,11 @@ app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), 
 
 app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes } = req.body;
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7 WHERE id=$8 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, id]);
+    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes, agent_name, agent_pct } = req.body;
+    const agentName = (agent_name && String(agent_name).trim()) ? String(agent_name).trim() : null;
+    let agentPct = (agent_pct === '' || agent_pct == null) ? null : parseFloat(agent_pct);
+    if (agentPct != null && (!Number.isFinite(agentPct) || agentPct < 0 || agentPct > 100)) agentPct = null;
+    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9 WHERE id=$10 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
     res.json(r.rows[0]);
