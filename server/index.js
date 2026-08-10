@@ -3705,6 +3705,18 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ #٥ تحكّم الأدمن: رابط دخول لأي مستخدم (يدخل الأدمن كحساب العميل — يُفتح في نافذة متخفية) ═══
+app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const u = (await pool.query('SELECT id, name, phone FROM users WHERE id=$1', [id])).rows[0];
+    if (!u) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    const tok = await getMagicToken(u.id);
+    const phoneNorm = String(u.phone || '').replace(/\D/g, '').replace(/^0/, '966');
+    res.json({ ok: true, magic_link: SITE_URL + '/m/' + tok, phone_norm: phoneNorm, name: u.name });
+  } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
 app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
