@@ -398,6 +398,15 @@ var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','ا�
   });
 })();
 
+// المصدر الموحّد: حدّث التخصصات من السيرفر (مع إبقاء القائمة أعلاه كاحتياطي)
+fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  if(d&&Array.isArray(d.categories)&&d.categories.length){
+    CATS=d.categories;
+    var grid=document.getElementById('specs-grid');
+    if(grid){ grid.innerHTML=''; CATS.forEach(function(c){ var b=document.createElement('button');b.type='button';b.className='spec-pill';b.textContent=c;b.onclick=function(){_togSpec(b);};grid.appendChild(b); }); }
+  }
+}).catch(function(){});
+
 function _togSpec(btn){
   var sel=document.querySelectorAll('.spec-pill.on');
   if(!btn.classList.contains('on')&&sel.length>=3){
