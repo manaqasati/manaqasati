@@ -267,13 +267,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
           <option value="">اختر مدينتك</option>
         </select>
       </div>
+      <div class="fg" id="fg-allcities" style="display:none">
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:600;font-size:13.5px">
+          <input type="checkbox" id="i-allcities" style="width:18px;height:18px;flex-shrink:0">
+          <span>أخدم كل المدن — تصلني مشاريع من جميع المدن (وليس مدينتي فقط)</span>
+        </label>
+      </div>
       <div class="specs-wrap" id="fg-specs" style="display:none">
         <div class="specs-hd">
           <div class="specs-hd-t">
             <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
             تخصصاتك <span style="color:var(--red)">*</span>
           </div>
-          <span class="specs-count" id="specs-count">0/3</span>
+          <span class="specs-count" id="specs-count">0/5</span>
         </div>
         <div class="specs-hint">اختر <strong>من 1 إلى 5 تخصصات</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
         <div class="specs-grid" id="specs-grid"></div>
@@ -503,6 +509,7 @@ function setMode(m){
   var inpN=document.getElementById('i-name');
   if(inpN){inpN.placeholder=(isR&&ROLE==='provider')?'محمد العمري أو مؤسسة العمري للمقاولات':'محمد أحمد العمري';}
   show('fg-extra',isR&&ROLE==='provider');
+  show('fg-allcities',isR&&ROLE==='provider');
   show('forgot-w',!isR);
   document.getElementById('note-reg').style.display=isR?'block':'none';
   if(isR){
@@ -621,6 +628,7 @@ async function doSubmit(){
         body.business_name=name;
         if(_regWorksData.length)body.portfolio_images=_regWorksData;
         body.notify_categories=selectedSpecs;
+        body.serves_all_cities=(document.getElementById('i-allcities')||{}).checked||false;
         body.experience_years=parseInt(getV('i-exp'))||null;
         body.bio=getV('i-bio')||null;
         body.website=getV('i-website')||null;
