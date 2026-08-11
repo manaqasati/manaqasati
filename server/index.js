@@ -3745,6 +3745,32 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// الأدمن: قائمة المناديب مع مشاريعهم (لحساب الإجماليات والدفع)
+app.get('/api/admin/agents', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT a.id, a.name, a.phone, a.token,
+        COALESCE(json_agg(json_build_object(
+          'id', r.id, 'title', r.title, 'status', r.status, 'pct', r.agent_pct,
+          'accepted_price', (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1),
+          'paid_at', r.agent_paid_at
+        ) ORDER BY r.created_at DESC) FILTER (WHERE r.id IS NOT NULL), '[]') as projects
+      FROM agents a LEFT JOIN requests r ON r.agent_id=a.id
+      GROUP BY a.id ORDER BY a.created_at DESC`);
+    res.json(r.rows.map(a => ({ ...a, link: SITE_URL + '/agent/' + a.token })));
+  } catch(e) { console.error('admin agents:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// الأدمن: تعليم عمولة مشروع كمدفوعة/غير مدفوعة
+app.put('/api/admin/requests/:id/agent-paid', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const paid = req.body.paid !== false;
+    await pool.query('UPDATE requests SET agent_paid_at=$1 WHERE id=$2', [paid ? new Date() : null, id]);
+    res.json({ ok: true, paid });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 // ═══ بوابة المندوب: رابط سحري يتابع فيه مشاريعه وعمولته (بلا تسجيل) ═══
 app.get('/agent/:token', async (req, res) => {
   try {
