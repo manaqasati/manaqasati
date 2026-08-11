@@ -771,6 +771,12 @@ function emptyState(msg){return '<div class="empty"><div class="empty-ic"><svg f
   var sr=document.getElementById('sideUserRole'); if(sr)sr.textContent=(user.email==='wled-111@hotmail.com')?'مالك المنصة':'مشرف';
 })();
 
+(function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  if(!d||!Array.isArray(d.categories)||!d.categories.length)return;
+  window._CATS=d.categories;
+  var sel=document.getElementById('re-cat');
+  if(sel){ sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+c+'</option>';}).join(''); }
+}).catch(function(){}); })();
 function showPage(pg,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
   if(pg!=='health' && typeof _healthTimer!=='undefined' && _healthTimer){clearInterval(_healthTimer);_healthTimer=null;}
@@ -1388,7 +1394,7 @@ function addProjectForClient(uid){
 function openProxyPost(){
   _pxImgs=[]; _pxFiles=[];
   var fin='width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;box-sizing:border-box;margin-bottom:10px';
-  var cats=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
+  var cats=(window._CATS&&window._CATS.length)?window._CATS:['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
   var cities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء'];
   var body='<div style="max-height:70vh;overflow-y:auto;padding:2px">'
     +'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#1e40af;line-height:1.8">📋 تنشر المشروع <b>نيابة عن العميل بتوكيله</b>. يُنشأ له حساب تلقائياً إن لم يكن مسجّلاً، وتصله العروض على جواله.</div>'
