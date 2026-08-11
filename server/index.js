@@ -1406,6 +1406,19 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
     // إشعار العميل تلقائياً بتقرير العروض عند بلوغ حدّ معيّن (يخزّن عدد العروض وقت الإشعار)
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
+    // ═══ سجل المناديب الخفيف (بلا حساب) — مندوب واحد ← عدة مشاريع، يتابع عبر رابط سحري ═══
+    await pool.query(`CREATE TABLE IF NOT EXISTS agents (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      phone TEXT,
+      token TEXT UNIQUE,
+      default_pct NUMERIC DEFAULT 1,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_id INTEGER`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -2142,6 +2155,8 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
       if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
       row.provider_phone = null;
     }
+    // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
+    if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
     res.json({ ...row, status: normalizeStatus(row.status) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3730,6 +3745,43 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ بوابة المندوب: رابط سحري يتابع فيه مشاريعه وعمولته (بلا تسجيل) ═══
+app.get('/agent/:token', async (req, res) => {
+  try {
+    const ag = (await pool.query('SELECT * FROM agents WHERE token=$1', [req.params.token])).rows[0];
+    if (!ag) return res.status(404).set('Content-Type','text/html; charset=utf-8').send('<html dir="rtl"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;color:#64748b">الرابط غير صالح</body></html>');
+    const rows = (await pool.query(`SELECT r.id, r.title, r.status, r.agent_pct, r.agent_paid_at, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price FROM requests r WHERE r.agent_id=$1 ORDER BY r.created_at DESC`, [ag.id])).rows;
+    const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    let totDue=0, totPaid=0, nPending=0;
+    const items = rows.map(r=>{
+      const pct = Number(r.agent_pct)||0;
+      const ap = Number(r.accepted_price)||0;
+      const done = (r.status==='in_progress'||r.status==='completed'||r.status==='done') && ap>0;
+      const due = done ? Math.round(ap*pct/100) : 0;
+      let badge, col;
+      if (r.agent_paid_at) { badge='مدفوعة'; col='#059669'; totPaid+=due; }
+      else if (done) { badge='مستحقة'; col='#1e40af'; totDue+=due; }
+      else { badge='قيد استقبال العروض'; col='#b45309'; nPending++; }
+      return `<tr><td><div style="font-weight:800;color:#0f2a4f">${e2(r.title||'—')}</div><div style="font-size:11px;color:#64748b">مشروع #${r.id} · ${pct}٪</div></td><td style="text-align:center"><span style="background:${col}1a;color:${col};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">${badge}</span></td><td style="text-align:left;font-weight:900;color:${r.agent_paid_at?'#059669':(due?'#1e40af':'#94a3b8')};white-space:nowrap">${due?due.toLocaleString('en-US')+' ر.س':'—'}</td></tr>`;
+    }).join('');
+    const html=`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>بوابة المندوب — مناقصة</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;color:#1e293b;background:#f1f5f9;padding:20px}.wrap{max-width:640px;margin:0 auto}.hd{background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border-radius:16px;padding:22px;margin-bottom:16px}.brand{font-family:Cairo,sans-serif;font-size:22px;font-weight:900}.brand span{color:#93c5fd}.wel{font-size:14px;margin-top:8px;opacity:.9}.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}.c{background:#fff;border-radius:13px;padding:15px 12px;text-align:center;border:1px solid #e2e8f0}.c .n{font-size:20px;font-weight:900}.c .l{font-size:11px;color:#64748b;margin-top:3px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:13px;overflow:hidden;border:1px solid #e2e8f0}th{background:#0f2a4f;color:#fff;font-size:11px;padding:10px;text-align:right;font-weight:700}td{border-bottom:1px solid #eef2f7;padding:12px 10px;font-size:12px;vertical-align:middle}.ft{text-align:center;font-size:11px;color:#94a3b8;margin-top:18px}</style></head><body><div class="wrap"><div class="hd"><div class="brand">مناقص<span>ة</span></div><div class="wel">أهلاً <strong>${e2(ag.name)}</strong> — هذي متابعة مشاريعك وعمولاتك</div></div><div class="cards"><div class="c"><div class="n" style="color:#b45309">${nPending}</div><div class="l">قيد الانتظار</div></div><div class="c"><div class="n" style="color:#1e40af">${totDue.toLocaleString('en-US')}</div><div class="l">مستحق (ر.س)</div></div><div class="c"><div class="n" style="color:#059669">${totPaid.toLocaleString('en-US')}</div><div class="l">مدفوع (ر.س)</div></div></div><table><thead><tr><th>المشروع</th><th style="text-align:center">الحالة</th><th style="text-align:left">العمولة</th></tr></thead><tbody>${items||'<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:26px">لا توجد مشاريع بعد</td></tr>'}</tbody></table><div class="ft">منصة مناقصة · manaqasa.com · العمولة تُستحق عند اعتماد عرض على المشروع</div></div></body></html>`;
+    res.set('Content-Type','text/html; charset=utf-8').send(html);
+  } catch(e) { console.error('agent portal:', e.message); res.status(500).send('خطأ'); }
+});
+
+// الأدمن: رابط بوابة المندوب المرتبط بمشروع (لإرساله له)
+app.get('/api/admin/requests/:id/agent-link', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT agent_id, agent_phone, agent_name FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || !rq.agent_id) return res.status(404).json({ message: 'لا يوجد مندوب مرتبط بهذا المشروع' });
+    const ag = (await pool.query('SELECT token FROM agents WHERE id=$1', [rq.agent_id])).rows[0];
+    if (!ag) return res.status(404).json({ message: 'المندوب غير موجود' });
+    const phoneNorm = String(rq.agent_phone||'').replace(/\D/g,'').replace(/^0/,'966');
+    res.json({ ok: true, url: SITE_URL + '/agent/' + ag.token, phone_norm: phoneNorm, name: rq.agent_name });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 // ═══ تقرير العروض (سيرفر) — قالب واحد يستخدمه الأدمن والعميل عبر رابط برمز آمن ═══
 function _renderOffersReportHTML(proj, bids) {
   const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -3971,11 +4023,27 @@ app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), 
 
 app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes, agent_name, agent_pct } = req.body;
+    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes, agent_name, agent_phone, agent_pct } = req.body;
     const agentName = (agent_name && String(agent_name).trim()) ? String(agent_name).trim() : null;
+    const agentPhone = (agent_phone && String(agent_phone).trim()) ? String(agent_phone).replace(/\D/g,'').replace(/^0/,'966') : null;
     let agentPct = (agent_pct === '' || agent_pct == null) ? null : parseFloat(agent_pct);
     if (agentPct != null && (!Number.isFinite(agentPct) || agentPct < 0 || agentPct > 100)) agentPct = null;
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9 WHERE id=$10 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, id]);
+    // ربط/إنشاء سجل مندوب خفيف
+    let agentId = null;
+    if (agentName) {
+      if (agentPct == null) agentPct = 1; // الافتراضي 1٪ من قيمة المشروع
+      let ag = null;
+      if (agentPhone) ag = (await pool.query('SELECT id FROM agents WHERE phone=$1 LIMIT 1', [agentPhone])).rows[0];
+      if (!ag) ag = (await pool.query('SELECT id FROM agents WHERE name=$1 AND (phone IS NULL OR phone=$2) LIMIT 1', [agentName, agentPhone])).rows[0];
+      if (ag) {
+        agentId = ag.id;
+        await pool.query('UPDATE agents SET name=$1, phone=COALESCE($2,phone), default_pct=$3 WHERE id=$4', [agentName, agentPhone, agentPct, agentId]);
+      } else {
+        const tok = crypto.randomBytes(8).toString('hex');
+        agentId = (await pool.query('INSERT INTO agents (name, phone, token, default_pct) VALUES ($1,$2,$3,$4) RETURNING id', [agentName, agentPhone, tok, agentPct])).rows[0].id;
+      }
+    }
+    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11 WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
     res.json(r.rows[0]);
