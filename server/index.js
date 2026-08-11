@@ -1404,6 +1404,8 @@ async function setupDatabase() {
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
+    // إشعار العميل تلقائياً بتقرير العروض عند بلوغ حدّ معيّن (يخزّن عدد العروض وقت الإشعار)
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -2478,6 +2480,24 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const body = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${eEsc(provName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${eEsc(note).replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
       sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
+    // إشعار العميل تلقائياً بتقرير العروض عند بلوغ الحد (مرة واحدة) — غير حاجب لتقديم العرض
+    if (!isUpdate) { (async () => {
+      try {
+        const THRESH = 3; // أرسل التقرير أول ما توصل العروض لهذا الحد
+        const cnt = parseInt((await pool.query('SELECT COUNT(*)::int c FROM bids WHERE request_id=$1', [requestId])).rows[0].c) || 0;
+        if (cnt < THRESH) return;
+        const pr = (await pool.query('SELECT offers_report_notified, title FROM requests WHERE id=$1', [requestId])).rows[0];
+        if (!pr || pr.offers_report_notified) return;
+        const cem = clientInfo.rows[0] && clientInfo.rows[0].email;
+        await pool.query('UPDATE requests SET offers_report_notified=$1 WHERE id=$2', [cnt, requestId]);
+        if (!cem || /@manaqasa\.local$/i.test(cem)) return;
+        const tok = jwt.sign({ rid: requestId, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
+        const link = SITE_URL + '/report/offers/' + requestId + '?t=' + tok;
+        const rt = '📋 وصلتك عروض على مشروعك';
+        const rb = `<p>وصلك ${cnt} عروض على مشروعك «${eEsc(pr.title||'')}». اضغط لعرض تقرير العروض كاملاً:</p>`;
+        sendEmail(cem, rt, emailTpl(rt, rb, 'عرض تقرير العروض', link)).catch(()=>{});
+      } catch(e) { console.error('auto report email:', e.message); }
+    })(); }
     res.json(row);
   } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3708,6 +3728,71 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
     await logAdmin(req, 'edit_user', 'user', uid, 'تعديل بيانات: ' + (r.rows[0].name||''));
     res.json(r.rows[0]);
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ تقرير العروض (سيرفر) — قالب واحد يستخدمه الأدمن والعميل عبر رابط برمز آمن ═══
+function _renderOffersReportHTML(proj, bids) {
+  const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const unit = (u) => u==='meter'?' / للمتر':u==='unit'?' / للوحدة':'';
+  const rows = bids.map((b,i)=>{
+    const nm=e2(b.provider_business_name||b.provider_name||'مزود');
+    const rate=(Number(b.provider_rating)>0)?('★ '+b.provider_rating+' ('+(b.provider_reviews||0)+')'):'مزود جديد';
+    const meta=[b.provider_city,rate].filter(Boolean).map(e2).join(' · ');
+    const pr=(Number(b.price)>0)?(Number(b.price).toLocaleString('en-US')+' ر.س'+unit(b.price_unit)):'—';
+    const acc=b.status==='accepted'?' <span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:800">مقبول</span>':'';
+    return `<tr><td style="text-align:center;color:#94a3b8;font-weight:800">${i+1}</td><td><div style="font-weight:800;color:#0f2a4f">${nm}${acc}</div><div style="font-size:11px;color:#64748b">${meta}</div></td><td style="font-weight:900;color:#1e40af;white-space:nowrap">${pr}</td><td style="text-align:center;white-space:nowrap">${b.days?e2(b.days)+' يوم':'—'}</td><td style="font-size:11px;color:#475569;line-height:1.7">${e2(b.note||'')}${b.attachment_url?' <span style="color:#1e40af;font-weight:700">(مرفق ملف)</span>':''}</td></tr>`;
+  }).join('');
+  const today=new Date().toLocaleDateString('en-GB');
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تقرير العروض — ${e2(proj.title||'')}</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;color:#1e293b;padding:34px;background:#fff}.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:15px;margin-bottom:20px}.brand{font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:#0f2a4f}.brand span{color:#1e40af}.pbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:16px}.pbox h1{font-size:16px;color:#0f2a4f;margin-bottom:6px}.pmeta{font-size:12px;color:#64748b;line-height:1.9}.cnt{font-size:13px;font-weight:800;color:#1e40af;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#0f2a4f;color:#fff;font-size:11px;padding:9px;text-align:right;font-weight:700}td{border-bottom:1px solid #e2e8f0;padding:9px;font-size:12px;vertical-align:top}tr:nth-child(even) td{background:#fafbfc}.ft{margin-top:22px;padding-top:13px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between}.pb{position:fixed;top:16px;left:16px;background:#1e40af;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-family:Tajawal;font-size:14px;font-weight:800;cursor:pointer}@media print{.pb{display:none}body{padding:0}}</style></head><body><button class="pb" onclick="window.print()">حفظ PDF / طباعة</button><div class="hd"><div><div class="brand">مناقص<span>ة</span></div><div style="font-size:13px;color:#64748b;margin-top:2px">تقرير العروض المقدّمة على المشروع</div></div><div style="text-align:left;font-size:11px;color:#94a3b8">تاريخ التقرير<br>${today}</div></div><div class="pbox"><h1>${e2(proj.title||'—')}</h1><div class="pmeta">رقم المشروع: #${proj.id} · التصنيف: ${e2(proj.category||'—')} · المدينة: ${e2(proj.city||'—')}<br>العميل: ${e2(proj.client_name||'—')}</div></div><div class="cnt">عدد العروض المقدّمة: ${bids.length}</div><table><thead><tr><th style="width:28px">#</th><th>المزوّد</th><th>السعر</th><th style="text-align:center">المدة</th><th>ملاحظة العرض</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">لا توجد عروض بعد</td></tr>'}</tbody></table><div class="ft"><span>منصة مناقصة · manaqasa.com</span><span>تقرير رسمي</span></div></body></html>`;
+}
+
+async function _fetchReportData(id) {
+  const pr = (await pool.query(`SELECT r.id, r.title, r.category, r.city, u.name as client_name FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1`, [id])).rows[0];
+  if (!pr) return null;
+  const bids = (await pool.query(`SELECT b.price,b.days,b.note,b.status,COALESCE(b.price_unit,'total') as price_unit,b.attachment_url,u.name as provider_name,u.business_name as provider_business_name,u.city as provider_city,COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 ORDER BY (b.price IS NULL), b.price ASC`, [id])).rows;
+  return { pr, bids };
+}
+
+// رابط عام برمز موقّع — يفتحه العميل بلا تسجيل
+app.get('/report/offers/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    let ok = false;
+    try { const p = jwt.verify(String(req.query.t||''), JWT_SECRET); if (p && p.purpose==='report' && String(p.rid)===String(id)) ok = true; } catch(e) {}
+    if (!ok) return res.status(403).set('Content-Type','text/html; charset=utf-8').send('<html dir="rtl"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;color:#64748b">الرابط غير صالح أو منتهي</body></html>');
+    const data = await _fetchReportData(id);
+    if (!data) return res.status(404).send('المشروع غير موجود');
+    res.set('Content-Type','text/html; charset=utf-8').send(_renderOffersReportHTML(data.pr, data.bids));
+  } catch(e) { console.error('report render:', e.message); res.status(500).send('خطأ'); }
+});
+
+// الأدمن: يحصل على رابط التقرير (لفتحه/طباعته)
+app.get('/api/admin/requests/:id/report-link', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const tok = jwt.sign({ rid: id, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
+    res.json({ ok: true, url: SITE_URL + '/report/offers/' + id + '?t=' + tok });
+  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
+});
+
+// الأدمن: إرسال التقرير للعميل (إيميل) + إرجاع الرابط لإرساله واتساب
+app.post('/api/admin/requests/:id/send-report', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const pr = (await pool.query(`SELECT r.id,r.title,u.name as client_name,u.email as client_email,u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1`, [id])).rows[0];
+    if (!pr) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const tok = jwt.sign({ rid: id, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
+    const link = SITE_URL + '/report/offers/' + id + '?t=' + tok;
+    const phoneNorm = String(pr.client_phone||'').replace(/\D/g,'').replace(/^0/,'966');
+    let emailed = false;
+    if (pr.client_email && !/@manaqasa\.local$/i.test(pr.client_email)) {
+      const title = '📋 عروض مشروعك جاهزة';
+      const body = `<p>عزيزي <strong>${eEsc(pr.client_name||'')}</strong>،</p><p>وصلتك عروض على مشروعك «${eEsc(pr.title||'')}». اضغط لعرض تقرير العروض كاملاً:</p>`;
+      sendEmail(pr.client_email, title, emailTpl(title, body, 'عرض تقرير العروض', link)).catch(()=>{});
+      emailed = true;
+    }
+    res.json({ ok: true, link, phone_norm: phoneNorm, emailed, client_name: pr.client_name });
+  } catch(e) { console.error('send-report:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 // ═══ #٥ تحكّم الأدمن: رابط دخول لأي مستخدم (يدخل الأدمن كحساب العميل — يُفتح في نافذة متخفية) ═══
