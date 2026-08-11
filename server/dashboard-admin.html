@@ -378,6 +378,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('requests',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>المشاريع</button>
     <button class="ni" onclick="showPage('bids',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض</button>
     <button class="ni" onclick="showPage('users',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المستخدمون</button>
+    <button class="ni" onclick="showPage('agents',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>المناديب</button>
     <div class="nav-label">الإشراف</div>
     <button class="ni" onclick="showPage('reports',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>البلاغات<span class="ni-badge" id="reports-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('questions',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="ni-badge" id="questions-badge" style="display:none">0</span></button>
@@ -468,6 +469,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       </div>
     </div>
 
+    <div class="page" id="page-agents">
+      <div class="card card-accent"><div class="card-head"><h3>المناديب وعمولاتهم</h3></div>
+      <div class="card-body"><div id="agents-list"><div style="padding:26px;text-align:center;color:#94a3b8">جارٍ التحميل...</div></div></div></div>
+    </div>
     <div class="page" id="page-bids">
       <div class="card">
         <div class="card-head"><h3>إدارة العروض</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="act-btn ab-default" onclick="exportBids()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير</button><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="bid-search" placeholder="ابحث بالمزود أو المشروع..." oninput="renderBids()"></div></div></div>
@@ -772,7 +777,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],agents:['المناديب','المناديب وعمولاتهم على المشاريع']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -787,6 +792,7 @@ function showPage(pg,el){
   if(pg==='logs')loadLogs();
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
+  if(pg==='agents')loadAgents();
   if(pg==='reviews')loadReviews();
   if(pg==='questions')loadQuestions();
   if(pg==='reports')loadReports();
@@ -1695,6 +1701,50 @@ async function printOffersReport(reqId){
     var w=window.open(d.url,'_blank');
     if(!w)toast('اسمح بالنوافذ المنبثقة لعرض التقرير','error');
   }catch(e){toast('تعذّر الاتصال','error');}
+}
+function loadAgents(){
+  fetch(API+'/api/admin/agents',hdr()).then(function(r){return r.json();}).then(function(list){
+    var el=document.getElementById('agents-list');
+    if(!Array.isArray(list)||!list.length){el.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8">لا يوجد مناديب بعد — اربط مندوباً بمشروع من تبويب المشاريع</div>';return;}
+    el.innerHTML=list.map(renderAgentCard).join('');
+  }).catch(function(){document.getElementById('agents-list').innerHTML='<div style="padding:26px;text-align:center;color:#dc2626">تعذّر التحميل</div>';});
+}
+function _agEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function renderAgentCard(a){
+  var pend=0,due=0,paid=0;
+  var rows=(a.projects||[]).map(function(p){
+    var pct=Number(p.pct)||0, ap=Number(p.accepted_price)||0;
+    var done=(p.status==='in_progress'||p.status==='completed'||p.status==='done')&&ap>0;
+    var d=done?Math.round(ap*pct/100):0;
+    var badge,col,act='';
+    if(p.paid_at){badge='مدفوعة';col='#059669';paid+=d;act='<button onclick="markAgentPaid('+p.id+',false)" style="background:none;border:1px solid #e2e8f0;color:#64748b;padding:5px 11px;border-radius:8px;font-family:Tajawal;font-size:11px;font-weight:700;cursor:pointer">إلغاء الدفع</button>';}
+    else if(done){badge='مستحقة';col='#1e40af';due+=d;act='<button onclick="markAgentPaid('+p.id+',true)" style="background:#059669;border:none;color:#fff;padding:5px 12px;border-radius:8px;font-family:Tajawal;font-size:11px;font-weight:800;cursor:pointer">تعليم كمدفوع</button>';}
+    else{badge='قيد استقبال العروض';col='#b45309';pend++;}
+    return '<tr><td style="padding:9px;font-size:12px"><div style="font-weight:700;color:#0f2a4f">'+_agEsc(p.title||'—')+'</div><div style="font-size:10.5px;color:#94a3b8">#'+p.id+' · '+pct+'٪</div></td>'
+      +'<td style="padding:9px;text-align:center"><span style="background:'+col+'1a;color:'+col+';padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800">'+badge+'</span></td>'
+      +'<td style="padding:9px;text-align:center;font-weight:900;color:'+(p.paid_at?'#059669':(d?'#1e40af':'#cbd5e1'))+';white-space:nowrap">'+(d?d.toLocaleString('en-US')+' ر.س':'—')+'</td>'
+      +'<td style="padding:9px;text-align:left">'+act+'</td></tr>';
+  }).join('');
+  return '<div style="border:1px solid #e2e8f0;border-radius:13px;padding:15px;margin-bottom:13px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px">'
+    +'<div><div style="font-size:15px;font-weight:900;color:#0f2a4f">'+_agEsc(a.name)+'</div><div style="font-size:12px;color:#64748b">'+_agEsc(a.phone||'بلا جوال')+' · '+((a.projects||[]).length)+' مشروع</div></div>'
+    +'<button onclick="copyAgentLink(\''+a.link+'\',\''+(a.phone||'')+'\')" style="background:#0f2a4f;color:#fff;border:none;padding:8px 14px;border-radius:9px;font-family:Tajawal;font-size:12px;font-weight:800;cursor:pointer">رابط التتبّع</button></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
+    +'<div style="background:#fffbeb;border-radius:10px;padding:9px;text-align:center"><div style="font-size:16px;font-weight:900;color:#b45309">'+pend+'</div><div style="font-size:10.5px;color:#92400e">قيد الانتظار</div></div>'
+    +'<div style="background:#eff6ff;border-radius:10px;padding:9px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1e40af">'+due.toLocaleString('en-US')+'</div><div style="font-size:10.5px;color:#1e40af">مستحق (ر.س)</div></div>'
+    +'<div style="background:#ecfdf5;border-radius:10px;padding:9px;text-align:center"><div style="font-size:16px;font-weight:900;color:#059669">'+paid.toLocaleString('en-US')+'</div><div style="font-size:10.5px;color:#059669">مدفوع (ر.س)</div></div></div>'
+    +(rows?('<table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:8px;text-align:right;font-size:10.5px;color:#64748b;border-bottom:1px solid #e2e8f0">المشروع</th><th style="padding:8px;text-align:center;font-size:10.5px;color:#64748b;border-bottom:1px solid #e2e8f0">الحالة</th><th style="padding:8px;text-align:center;font-size:10.5px;color:#64748b;border-bottom:1px solid #e2e8f0">العمولة</th><th style="border-bottom:1px solid #e2e8f0"></th></tr></thead><tbody>'+rows+'</tbody></table>'):'<div style="font-size:12px;color:#94a3b8;text-align:center;padding:8px">لا مشاريع</div>')
+    +'</div>';
+}
+function markAgentPaid(reqId,paid){
+  fetch(API+'/api/admin/requests/'+reqId+'/agent-paid',Object.assign({method:'PUT',body:JSON.stringify({paid:paid})},hdr()))
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){toast(paid?'تم تعليم العمولة مدفوعة ✓':'تم إلغاء الدفع','success');loadAgents();})
+    .catch(function(){toast('تعذّر التحديث','error');});
+}
+function copyAgentLink(url,phone){
+  var wa='https://wa.me/'+(phone||'')+'?text='+encodeURIComponent('رابط متابعة مشاريعك وعمولاتك في مناقصة:\n'+url);
+  _showProxyDone(url,wa);
 }
 function sendAgentLink(reqId){
   fetch(API+'/api/admin/requests/'+reqId+'/agent-link',hdr()).then(function(r){return r.json();}).then(function(d){
