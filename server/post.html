@@ -860,6 +860,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 // INIT
 // ═══════════════════════════════════
 var API='https://manaqasati-production.up.railway.app';
+// المصدر الموحّد للتخصصات (مع احتياطي القائمة الثابتة)
+(function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  var sel=document.getElementById('n-cat');
+  if(sel&&d&&Array.isArray(d.categories)&&d.categories.length){ sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+c+'</option>';}).join(''); }
+}).catch(function(){}); })();
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
 var user=JSON.parse(localStorage.getItem('user')||'{}');
