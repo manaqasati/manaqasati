@@ -3656,12 +3656,14 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
 app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { price, days, note, status } = req.body;
+    const { price, days, note, status, price_unit, price_visibility } = req.body;
     const sets = []; const params = []; let i = 1;
     if (price !== undefined) { params.push(Number(price)); sets.push(`price=$${i}`); i++; }
     if (days !== undefined) { params.push(parseInt(days)); sets.push(`days=$${i}`); i++; }
     if (note !== undefined) { params.push(note); sets.push(`note=$${i}`); i++; }
     if (status !== undefined) { params.push(status); sets.push(`status=$${i}`); i++; }
+    if (price_unit !== undefined && ['total','meter','unit'].indexOf(price_unit) >= 0) { params.push(price_unit); sets.push(`price_unit=$${i}`); i++; }
+    if (price_visibility !== undefined) { params.push(price_visibility === 'public' ? 'public' : 'client'); sets.push(`price_visibility=$${i}`); i++; }
     if (!sets.length) return res.status(400).json({ message: 'لا يوجد تعديل' });
     params.push(id);
     const r = await pool.query(`UPDATE bids SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, params);
