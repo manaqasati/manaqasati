@@ -269,9 +269,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <div class="fg" id="fg-allcities" style="display:none">
         <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:600;font-size:13.5px">
-          <input type="checkbox" id="i-allcities" style="width:18px;height:18px;flex-shrink:0">
+          <input type="checkbox" id="i-allcities" onchange="show('fg-svccities',!this.checked)" style="width:18px;height:18px;flex-shrink:0">
           <span>أخدم كل المدن — تصلني مشاريع من جميع المدن (وليس مدينتي فقط)</span>
         </label>
+      </div>
+      <div class="fg" id="fg-svccities" style="display:none">
+        <label>مدن أخرى تخدمها (اختياري)</label>
+        <select id="svc-city-sel" class="fi-sel" onchange="_svcAdd()"><option value="">أضف مدينة تخدمها...</option></select>
+        <div id="svc-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
       </div>
       <div class="specs-wrap" id="fg-specs" style="display:none">
         <div class="specs-hd">
@@ -389,7 +394,13 @@ var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','ا�
   CITIES.forEach(function(c){
     var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);
   });
+  var ssel=document.getElementById('svc-city-sel');
+  if(ssel){ CITIES.forEach(function(c){ var o=document.createElement('option');o.value=c;o.textContent=c;ssel.appendChild(o); }); }
 })();
+window._svcSel=[];
+function _svcRender(){ var b=document.getElementById('svc-chips'); if(!b)return; b.innerHTML=_svcSel.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700">'+c+' <span onclick="_svcDel(\''+c+'\')" style="cursor:pointer;font-weight:900">\u00d7</span></span>';}).join(''); }
+function _svcAdd(){ var sel=document.getElementById('svc-city-sel'); var c=sel.value; sel.value=''; if(!c)return; var prim=(document.getElementById('i-city')||{}).value; if(c===prim)return; if(_svcSel.indexOf(c)<0){_svcSel.push(c);_svcRender();} }
+function _svcDel(c){ _svcSel=_svcSel.filter(function(x){return x!==c;}); _svcRender(); }
 
 (function buildSpecs(){
   var grid=document.getElementById('specs-grid');
@@ -510,6 +521,7 @@ function setMode(m){
   if(inpN){inpN.placeholder=(isR&&ROLE==='provider')?'محمد العمري أو مؤسسة العمري للمقاولات':'محمد أحمد العمري';}
   show('fg-extra',isR&&ROLE==='provider');
   show('fg-allcities',isR&&ROLE==='provider');
+  show('fg-svccities',isR&&ROLE==='provider' && !((document.getElementById('i-allcities')||{}).checked));
   show('forgot-w',!isR);
   document.getElementById('note-reg').style.display=isR?'block':'none';
   if(isR){
@@ -629,6 +641,7 @@ async function doSubmit(){
         if(_regWorksData.length)body.portfolio_images=_regWorksData;
         body.notify_categories=selectedSpecs;
         body.serves_all_cities=(document.getElementById('i-allcities')||{}).checked||false;
+        body.service_cities=body.serves_all_cities?[]:(window._svcSel||[]);
         body.experience_years=parseInt(getV('i-exp'))||null;
         body.bio=getV('i-bio')||null;
         body.website=getV('i-website')||null;
