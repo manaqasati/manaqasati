@@ -170,7 +170,7 @@ async function notifyMatchingProviders(request){
       `SELECT DISTINCT id FROM users
         WHERE role='provider' AND is_active=TRUE
           AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
-          AND ($2::text IS NULL OR city IS NULL OR city = $2)`,
+          AND (COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR city IS NULL OR city = $2)`,
       [cat, city]);
     let sent=0;
     for(const p of r.rows){
@@ -1204,27 +1204,31 @@ async function runReminders(){
       }
     }
 
-    // ط) ملخّص أسبوعي للمزوّد (فرص مطابقة + عروضه)
+    // ط) إيميل مطابقة مُجمّع للمزوّد — يجمع المشاريع الجديدة المطابقة منذ آخر إيميل (بدل الأسبوعي)
     if((await getSetting('provider_weekly_on','1'))!=='0'){
-      const weekKey = Math.floor(Date.now()/(7*86400000));
       const provs = await pool.query(
-        `SELECT id, COALESCE(notify_categories, specialties) AS cats, city FROM users WHERE role='provider' AND is_active=TRUE`);
+        `SELECT id, email, COALESCE(notify_categories, specialties) AS cats, city, COALESCE(serves_all_cities,FALSE) AS allcities, last_match_email_at
+           FROM users WHERE role='provider' AND is_active=TRUE`);
       for(const p of provs.rows){
         try{
+          if(!p.email || /@manaqasa\.local$/i.test(p.email)) continue; // بريد حقيقي فقط
           const cats = Array.isArray(p.cats)?p.cats:[];
+          if(!cats.length) continue;
           const opp = await pool.query(
-            `SELECT COUNT(*) c FROM requests r
+            `SELECT r.id, r.title, r.city FROM requests r
              WHERE r.status='open' AND r.assigned_provider_id IS NULL
-               AND r.created_at > NOW() - INTERVAL '7 days'
-               AND ($1::text[] IS NULL OR array_length($1::text[],1) IS NULL OR r.category = ANY($1::text[]))
-               AND ($2::text IS NULL OR r.city IS NULL OR r.city = $2)`,
-            [cats.length?cats:null, p.city||null]);
-          const cnt = parseInt(opp.rows[0].c)||0;
-          if(cnt<=0) continue;
-          await _remindOnce(p.id, 'weekly_'+weekKey, p.id,
-            '📊 ملخّصك الأسبوعي', `${cnt} مشروع جديد يناسب تخصصك هذا الأسبوع — بادر بتقديم عروضك`,
-            'فرص هذا الأسبوع تناسبك', `<p>هذا الأسبوع ظهر <strong>${cnt}</strong> مشروع جديد يناسب تخصصك${p.city?(' في '+p.city):''}.</p><p>سارع بتقديم عروضك — المبادرة المبكرة ترفع فرص الفوز.</p>`,
-            'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html');
+               AND r.created_at > COALESCE($3::timestamp, NOW() - INTERVAL '24 hours')
+               AND r.category = ANY($1::text[])
+               AND ($4::boolean OR $2::text IS NULL OR r.city IS NULL OR r.city = $2)
+             ORDER BY r.created_at DESC LIMIT 12`,
+            [cats, p.city||null, p.last_match_email_at||null, p.allcities]);
+          const rows = opp.rows||[];
+          if(!rows.length) continue;
+          const items = rows.map(r=>`<li style="margin-bottom:6px"><strong>${eEsc(r.title||'')}</strong>${r.city?(' — '+eEsc(r.city)):''}</li>`).join('');
+          const title = `🔔 ${rows.length} مشروع جديد يناسب تخصصك`;
+          const body = `<p>ظهرت مشاريع جديدة تطابق تخصصك${p.city&&!p.allcities?(' في '+eEsc(p.city)):''}:</p><ul style="padding-inline-start:18px;margin:10px 0">${items}</ul><p>سارع بتقديم عروضك — المبادرة المبكرة ترفع فرص الفوز.</p>`;
+          sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+          await pool.query('UPDATE users SET last_match_email_at=NOW() WHERE id=$1', [p.id]);
         }catch(e){}
       }
     }
@@ -1419,6 +1423,9 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
+    // المزوّد: خدمة كل المدن + وقت آخر إيميل مطابقة (للإيميل المُجمّع)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
     // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
     try {
       await pool.query("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(specialties)");
@@ -1616,8 +1623,9 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
     const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
+    const servesAll = role === 'provider' ? (req.body.serves_all_cities === true || req.body.serves_all_cities === 'true') : false;
     const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null)]);
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll]);
     // احتساب الإحالة لصاحب صفحة المزوّد
     try{
       const ref = typeof req.body.ref==='string'?req.body.ref:'';
@@ -1868,7 +1876,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
 // ═══ PROFILES ═══
 app.get('/api/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,created_at FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities,created_at FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     // خصوصية الموقع: الإحداثيات الدقيقة وجوال العميل للمالك أو المزوّد المعتمد فقط
     const row = r.rows[0];
@@ -1893,7 +1901,7 @@ app.get('/api/profile', auth, async (req, res) => {
 app.put('/api/profile', auth, async (req, res) => {
   try {
     if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    const allowed = { name:'name', phone:'phone', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', profile_image:'profile_image' };
+    const allowed = { name:'name', phone:'phone', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', profile_image:'profile_image', serves_all_cities:'serves_all_cities' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -1904,7 +1912,7 @@ app.put('/api/profile', auth, async (req, res) => {
         sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
       }
     }
-    if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
+    if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
     params.push(req.user.id);
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image`, params);
     res.json(r.rows[0]);
