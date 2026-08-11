@@ -1616,10 +1616,11 @@ async function loadProfile(){
     +'<div class="fg" style="grid-column:1/-1"><label>البريد الإلكتروني</label><input type="email" id="p-email" placeholder="example@email.com"></div>'
     +'<div class="fg" style="grid-column:1/-1" id="cityWrap"><label>المدينة</label></div>'
     +'<div class="fg" style="grid-column:1/-1"><label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:600"><input type="checkbox" id="p-allcities" style="width:18px;height:18px;flex-shrink:0"><span>أخدم كل المدن — تصلني مشاريع من جميع المدن</span></label></div>'
+    +'<div class="fg" style="grid-column:1/-1" id="p-svcwrap"><label>مدن أخرى تخدمها (اختياري)</label><select id="p-svc-sel" onchange="_pSvcAdd()" style="width:100%;padding:11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif"><option value="">أضف مدينة تخدمها...</option></select><div id="p-svc-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div></div>'
     +'<div class="fg" style="grid-column:1/-1"><label>نبذة عن الأعمال</label><textarea id="p-bio" style="min-height:80px" placeholder="اكتب نبذة احترافية..."></textarea></div>'
     +'</div>';
   pg.appendChild(infoCard);
-  _el('p-name').value=p.name||'';_el('p-bname').value=p.business_name||'';_el('p-phone').value=p.phone||'';_el('p-exp').value=p.experience_years||'';_el('p-email').value=p.email||'';_el('p-bio').value=p.bio||'';var _ac=_el('p-allcities');if(_ac)_ac.checked=!!p.serves_all_cities;
+  _el('p-name').value=p.name||'';_el('p-bname').value=p.business_name||'';_el('p-phone').value=p.phone||'';_el('p-exp').value=p.experience_years||'';_el('p-email').value=p.email||'';_el('p-bio').value=p.bio||'';var _ac=_el('p-allcities');if(_ac)_ac.checked=!!p.serves_all_cities;window._pSvc=Array.isArray(p.service_cities)?p.service_cities.slice():[];var _ss=_el('p-svc-sel');if(_ss&&typeof CITIES!=='undefined'){CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;_ss.appendChild(o);});}_pSvcRender();var _pw=_el('p-svcwrap');if(_pw)_pw.style.display=(_ac&&_ac.checked)?'none':'';if(_ac)_ac.onchange=function(){var w=_el('p-svcwrap');if(w)w.style.display=this.checked?'none':'';};
   var citySelect=document.createElement('select');citySelect.id='p-city';
   var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر المدينة';citySelect.appendChild(defOpt);
   CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;if(c===p.city)o.selected=true;citySelect.appendChild(o);});
@@ -1714,13 +1715,16 @@ function _togSpec(btn){
   var cnt=document.querySelectorAll('.spec-pill.on').length;var sc=_el('specs-count');if(sc)sc.textContent=cnt+'/3';
 }
 
+function _pSvcRender(){var b=_el('p-svc-chips');if(!b)return;b.innerHTML=(window._pSvc||[]).map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700">'+c+' <span onclick="_pSvcDel(\''+c+'\')" style="cursor:pointer;font-weight:900">\u00d7</span></span>';}).join('');}
+function _pSvcAdd(){var sel=_el('p-svc-sel');var c=sel.value;sel.value='';if(!c)return;var prim=(_el('p-city')||{}).value;if(c===prim)return;window._pSvc=window._pSvc||[];if(window._pSvc.indexOf(c)<0){window._pSvc.push(c);_pSvcRender();}}
+function _pSvcDel(c){window._pSvc=(window._pSvc||[]).filter(function(x){return x!==c;});_pSvcRender();}
 async function _saveProfile(){
   var btn=_el('save-btn');
   var email=((_el('p-email')||{}).value||'').trim();
   if(!email||!email.includes('@')||!email.includes('.')){showToast('يرجى إدخال بريد إلكتروني صحيح','error');return;}
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   var specs=Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
-  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false};
+  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false,service_cities:((_el('p-allcities')||{}).checked?[]:(window._pSvc||[]))};
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
   if(r&&r.id){_me.name=r.name;if(r.email)_me.email=r.email;localStorage.setItem('user',JSON.stringify(_me));var un=_el('userName');if(un)un.textContent=r.name;showToast('تم الحفظ بنجاح','success');}
