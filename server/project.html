@@ -142,9 +142,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* MODAL */
 .bid-overlay{display:none;position:fixed;inset:0;background:rgba(13,25,55,.6);z-index:999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
 .bid-overlay.on{display:flex}
-.bid-modal{background:#fff;border-radius:20px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 20px 60px rgba(23,37,84,.3)}
-.bm-head{background:linear-gradient(135deg,#172554,#1e3a8a);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--sky)}
-.bm-body{padding:18px 20px}
+.bid-modal{background:#fff;border-radius:20px;width:100%;max-width:480px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(23,37,84,.3)}
+.bm-head{background:linear-gradient(135deg,#172554,#1e3a8a);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--sky);flex-shrink:0}
+.bm-body{padding:18px 20px;overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch}
 .bm-fg{margin-bottom:13px}
 .bm-fg label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px}
 .bm-fg input,.bm-fg textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:'Tajawal',sans-serif;outline:none;background:var(--bg);transition:.15s}
@@ -795,8 +795,9 @@ function openBid(){
   if(!u){goLogin();return;}
   if(u.role!=='provider'){alert('هذا الزر للمزودين فقط — يرجى تسجيل الدخول كمزود');return;}
   document.getElementById('bidOverlay').classList.add('on');
+  document.body.style.overflow='hidden';
 }
-function closeBid(){document.getElementById('bidOverlay').classList.remove('on');}
+function closeBid(){document.getElementById('bidOverlay').classList.remove('on');document.body.style.overflow='';}
 
 window._bidAttachP=null;
 function _onBidFileP(inp){var f=inp.files&&inp.files[0];var lbl=document.getElementById("bid-file-name");if(!f){window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}var ok=["image/jpeg","image/jpg","image/png","image/webp","image/gif","image/heic","application/pdf"];if(ok.indexOf(f.type)<0){alert("نوع الملف غير مدعوم (صورة أو PDF)");inp.value="";window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}if(f.size>10*1024*1024){alert("حجم الملف كبير (الحد 10MB)");inp.value="";window._bidAttachP=null;if(lbl)lbl.style.display="none";return;}var rd=new FileReader();rd.onload=function(){window._bidAttachP=rd.result;if(lbl){lbl.textContent="✓ "+f.name;lbl.style.display="block";}};rd.readAsDataURL(f);}
