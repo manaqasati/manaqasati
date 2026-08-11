@@ -1222,6 +1222,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
 <script>
 var API='https://manaqasati-production.up.railway.app';
+// المصدر الموحّد للتخصصات — يعبّي قوائم التصنيف (مع احتياطي)
+(function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  if(!d||!Array.isArray(d.categories)||!d.categories.length)return;
+  var opts=d.categories.map(function(c){return '<option>'+c+'</option>';}).join('');
+  function fill(id,keepFirst){ var sel=document.getElementById(id); if(!sel)return; var first=(keepFirst&&sel.options.length)?sel.options[0].outerHTML:''; sel.innerHTML=first+opts; }
+  fill('d-cat',false); fill('fcat',true); fill('pf-cat',true);
+}).catch(function(){}); })();
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 var ALL=[],CUR=[],PAGE=8,F_ST='all',F_CI='',F_Q='',F_CAT='';
 var PROV_ALL=[],PROV_PAGE=8,ALL_PROVS=[];
