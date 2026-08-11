@@ -1419,6 +1419,15 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
+    // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
+    try {
+      await pool.query("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(specialties)");
+      await pool.query("UPDATE users SET specialties=array_replace(specialties,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(specialties)");
+      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(notify_categories)");
+      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(notify_categories)");
+      await pool.query("UPDATE requests SET category='أبواب وبوابات أوتوماتيكية' WHERE category='أبواب'");
+      await pool.query("UPDATE requests SET category='جبس' WHERE category='جبس وطباشير'");
+    } catch(e) { console.error('category migration:', e.message); }
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
@@ -3131,6 +3140,10 @@ app.delete('/api/push-token', auth, async (req, res) => {
 // ═══ PUBLIC ═══
 app.get('/api/categories', (req, res) => { res.json(['برمجة وتطوير','تصميم','كتابة وترجمة','تسويق رقمي','أعمال','هندسة وعمارة','صوتيات ومرئيات','استشارات','تدريب','أخرى']); });
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
+// ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/أدمن/رئيسية) ═══
+const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
+app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-age=300'); res.json({ categories: CATEGORIES }); });
+
 app.get('/api/stats', async (req, res) => {
   try {
     const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
