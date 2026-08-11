@@ -1669,11 +1669,12 @@ function renderBids(){
         '</tr>';
     }).join('')+'</tbody></table>';
 }
-function editBid(id){
+async function editBid(id){
   var b=_allBids.find(function(x){return x.id===id;});if(!b)return;
   var price=prompt('السعر (ر.س):',b.price||'');if(price===null)return;
   var days=prompt('المدة (أيام):',b.days||'');if(days===null)return;
   var note=prompt('الملاحظة:',b.note||'');if(note===null)return;
+  if(!await askConfirm({title:'تعديل عرض المزود',message:'سيُعدّل عرض المزود إلى السعر '+(Number(price)||0).toLocaleString('en-US')+' ر.س والمدة '+(parseInt(days)||0)+' يوم. هل تؤكد؟',confirmText:'نعم، عدّل'}))return;
   fetch(API+'/api/admin/bids/'+id,Object.assign({method:'PUT',body:JSON.stringify({price:Number(price),days:parseInt(days),note:note})},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){toast('تم تعديل العرض','success');loadBids();})
