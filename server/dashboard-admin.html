@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="fld"><label>المدينة</label><select id="re-city"><option value="">اختر المدينة</option></select></div>
       </div>
       <div class="fld"><label>الميزانية (ر.س)</label><input id="re-budget" type="number"></div>
-      <div class="fld"><label>مندوب (اختياري)</label><input id="re-agent-name" placeholder="اسم المندوب الذي جلب المشروع"></div><div class="fld"><label>نسبة المندوب %</label><input id="re-agent-pct" type="number" min="0" max="100" step="0.5" placeholder="مثال: 5" oninput="_updAgentDue()"><div id="re-agent-due" style="font-size:12px;font-weight:700;color:var(--p);margin-top:7px"></div></div><div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
+      <div class="fld"><label>مندوب (اختياري)</label><input id="re-agent-name" placeholder="اسم المندوب الذي جلب المشروع"></div><div class="fld"><label>جوال المندوب</label><input id="re-agent-phone" placeholder="05xxxxxxxx (لرابط المتابعة)"></div><div class="fld"><label>نسبة المندوب %</label><input id="re-agent-pct" type="number" min="0" max="100" step="0.5" placeholder="مثال: 5" oninput="_updAgentDue()"><div id="re-agent-due" style="font-size:12px;font-weight:700;color:var(--p);margin-top:7px"></div><button type="button" onclick="sendAgentLink(_editReqId)" style="margin-top:9px;background:#0f2a4f;color:#fff;border:none;padding:9px 15px;border-radius:9px;font-family:Tajawal;font-size:12px;font-weight:800;cursor:pointer">رابط تتبّع المندوب</button></div><div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
     </div>
     <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
   </div>
@@ -1502,7 +1502,7 @@ function renderRequests(){
     +'</tr>';
   }).join('')+'</tbody></table>';
 }
-function _updAgentDue(){var el=document.getElementById('re-agent-due');if(!el)return;var pct=parseFloat((document.getElementById('re-agent-pct')||{}).value||0);var ap=window._reAcceptedPrice||0;if(!pct){el.textContent='';return;}if(ap>0){var due=Math.round(ap*pct/100);el.textContent='المستحق للمندوب: '+due.toLocaleString('en-US')+' ر.س ('+pct+'% من '+Math.round(ap).toLocaleString('en-US')+' ر.س — العرض المعتمد)';el.style.color='#059669';}else{el.textContent='يُحتسب المستحق ('+pct+'%) تلقائياً عند اعتماد عرض على المشروع.';el.style.color='#64748b';}}
+function _updAgentDue(){var el=document.getElementById('re-agent-due');if(!el)return;var pct=parseFloat((document.getElementById('re-agent-pct')||{}).value||0);var ap=window._reAcceptedPrice||0;if(!pct){el.textContent='';return;}if(pct>=3){el.textContent='⚠️ النسبة '+pct+'٪ تساوي أو تتجاوز رسوم المنصة (٣٪) — لن يتبقى لك ربح.';el.style.color='#dc2626';return;}if(ap>0){var due=Math.round(ap*pct/100);el.textContent='المستحق للمندوب: '+due.toLocaleString('en-US')+' ر.س ('+pct+'% من '+Math.round(ap).toLocaleString('en-US')+' ر.س — العرض المعتمد)';el.style.color='#059669';}else{el.textContent='يُحتسب المستحق ('+pct+'%) تلقائياً عند اعتماد عرض على المشروع.';el.style.color='#64748b';}}
 function openReqEdit(id){
   var r=_allReq.find(function(x){return x.id===id;});if(!r)return;
   _editReqId=id;
@@ -1518,6 +1518,7 @@ function openReqEdit(id){
   document.getElementById('re-budget').value=r.budget_max||'';
   document.getElementById('re-notes').value=r.admin_notes||'';
   document.getElementById('re-agent-name').value=r.agent_name||'';
+  document.getElementById('re-agent-phone').value=r.agent_phone||'';
   document.getElementById('re-agent-pct').value=(r.agent_pct!=null&&r.agent_pct!==''?r.agent_pct:'');
   window._reAcceptedPrice=parseFloat(r.accepted_price)||0;
   window._reStatus=r.status||'';
@@ -1527,7 +1528,7 @@ function openReqEdit(id){
 function saveReqEdit(){
   if(!_editReqId)return;
   var btn=document.getElementById('re-save');btn.disabled=true;btn.textContent='جاري الحفظ...';
-  var body={title:document.getElementById('re-title').value.trim(),description:document.getElementById('re-desc').value.trim(),category:document.getElementById('re-cat').value.trim()||null,city:document.getElementById('re-city').value.trim()||null,budget_max:parseInt(document.getElementById('re-budget').value)||null,admin_notes:document.getElementById('re-notes').value.trim()||null,agent_name:document.getElementById('re-agent-name').value.trim()||null,agent_pct:document.getElementById('re-agent-pct').value.trim()||null};
+  var body={title:document.getElementById('re-title').value.trim(),description:document.getElementById('re-desc').value.trim(),category:document.getElementById('re-cat').value.trim()||null,city:document.getElementById('re-city').value.trim()||null,budget_max:parseInt(document.getElementById('re-budget').value)||null,admin_notes:document.getElementById('re-notes').value.trim()||null,agent_name:document.getElementById('re-agent-name').value.trim()||null,agent_phone:document.getElementById('re-agent-phone').value.trim()||null,agent_pct:document.getElementById('re-agent-pct').value.trim()||null};
   fetch(API+'/api/admin/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم حفظ التعديلات','success');closeModal('reqModal');loadRequests();}).catch(function(){toast('تعذر الحفظ','error');}).finally(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});
 }
 async function deleteRequest(id){
@@ -1694,6 +1695,13 @@ async function printOffersReport(reqId){
     var w=window.open(d.url,'_blank');
     if(!w)toast('اسمح بالنوافذ المنبثقة لعرض التقرير','error');
   }catch(e){toast('تعذّر الاتصال','error');}
+}
+function sendAgentLink(reqId){
+  fetch(API+'/api/admin/requests/'+reqId+'/agent-link',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.ok||!d.url){toast((d&&d.message)||'لا يوجد مندوب مرتبط — احفظ اسم المندوب أولاً','error');return;}
+    var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('مرحباً '+(d.name||'')+'، هذا رابط متابعة مشاريعك وعمولاتك في مناقصة:\n'+d.url);
+    _showProxyDone(d.url, wa);
+  }).catch(function(){toast('تعذّر الاتصال','error');});
 }
 function sendOffersReport(reqId){
   fetch(API+'/api/admin/requests/'+reqId+'/send-report',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){
