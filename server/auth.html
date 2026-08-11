@@ -720,7 +720,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();})
   var t=qs.get('t')||qs.get('card');
   if(!t)return;
   window._cardToken=t;
-  try{selRole('provider');}catch(e){}
+  try{selRole(qs.get('role')==='client'?'client':'provider');}catch(e){}
   try{setMode('register');}catch(e){}
   fetch(API+'/api/card/'+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d)return;
