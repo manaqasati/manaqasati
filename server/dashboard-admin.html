@@ -2561,6 +2561,42 @@ function _oReadXLSX(file){
   };
   reader.readAsArrayBuffer(file);
 }
+function _oShowPreview(items){
+  window._oPreviewItems=items;
+  var type=window._oImportType||'provider';
+  var tl=type==='client'?'عملاء':'مزودين';
+  var isP=type==='provider';
+  var body=items.slice(0,1000).map(function(it,i){
+    return '<tr><td style="padding:7px 9px;color:#94a3b8;font-weight:700;text-align:center;border-bottom:1px solid #eef2f7">'+(i+1)+'</td>'
+      +'<td style="padding:7px 9px;font-weight:700;color:#0f2a4f;border-bottom:1px solid #eef2f7">'+_agEsc(it.name)+'</td>'
+      +'<td style="padding:7px 9px;color:#334155;border-bottom:1px solid #eef2f7;white-space:nowrap">'+_agEsc(it.phone)+'</td>'
+      +(isP?'<td style="padding:7px 9px;color:#64748b;border-bottom:1px solid #eef2f7">'+_agEsc(it.category||'—')+'</td>':'')
+      +'<td style="padding:7px 9px;color:#64748b;border-bottom:1px solid #eef2f7">'+_agEsc(it.city||'—')+'</td></tr>';
+  }).join('');
+  var th='<th style="padding:9px;background:#0f2a4f;color:#fff;font-size:11px;text-align:right;font-weight:700">';
+  var d=document.createElement('div'); d.id='oPreviewModal';
+  d.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#fff;width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;font-family:Tajawal,sans-serif">'
+    +'<div style="padding:15px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;font-size:16px;color:#0f2a4f">معاينة الاستيراد — '+items.length+' '+tl+'</h3><button onclick="_oClosePreview()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1">\u00d7</button></div>'
+    +'<div style="padding:9px 20px 0;font-size:12px;color:#64748b">راجع البيانات قبل الإضافة. المكرّر بالجوال يُتخطّى تلقائياً.</div>'
+    +'<div style="overflow-y:auto;flex:1;padding:12px 20px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'+th+'#</th>'+th+'الاسم</th>'+th+'الجوال</th>'+(isP?th+'التخصص</th>':'')+th+'المدينة</th></tr></thead><tbody>'+body+'</tbody></table></div>'
+    +'<div style="padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px">'
+    +'<button onclick="_oConfirmImport()" style="flex:1;background:#1e40af;color:#fff;border:none;padding:12px;border-radius:11px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">تأكيد الإضافة ('+items.length+')</button>'
+    +'<button onclick="_oClosePreview()" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;padding:12px 22px;border-radius:11px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">إلغاء</button></div></div>';
+  d.onclick=function(e){if(e.target===d)_oClosePreview();};
+  document.body.appendChild(d);
+}
+function _oClosePreview(){ var d=document.getElementById('oPreviewModal'); if(d)d.remove(); }
+function _oConfirmImport(){
+  var items=window._oPreviewItems||[]; if(!items.length){ _oClosePreview(); return; }
+  _oClosePreview();
+  toast('جاري استيراد '+items.length+' صف...','info');
+  fetch(API+'/api/admin/leads/manual',{method:'POST',headers:hdr().headers,body:JSON.stringify({items:items,lead_type:(window._oImportType||'provider')})})
+    .then(function(r){return r.json();}).then(function(d){
+      toast('أُضيف '+(d.added||0)+' · مكرر '+(d.dup||0)+' · غير صالح '+(d.invalid||0),'success');
+      loadOutreach();
+    }).catch(function(){ toast('تعذّر الاستيراد','error'); });
+}
 function _oParseRows(rows){
   if(!rows||rows.length<1){ toast('الملف فارغ','error'); return; }
   // اكتشاف الأعمدة من العناوين (اسم، جوال، تخصص، مدينة)
@@ -2582,12 +2618,7 @@ function _oParseRows(rows){
     items.push({ name:nm, phone:ph, category:iCat>-1?String(row[iCat]||'').trim()||null:null, city:iCity>-1?String(row[iCity]||'').trim()||null:null, lead_type:(window._oImportType||'provider') });
   }
   if(!items.length){ toast('لم أجد صفوفاً صالحة (تأكّد من عمودَي الاسم والجوال)','error'); return; }
-  toast('جاري استيراد '+items.length+' صف...','info');
-  fetch(API+'/api/admin/leads/manual',{method:'POST',headers:hdr().headers,body:JSON.stringify({items:items,lead_type:(window._oImportType||'provider')})})
-    .then(function(r){return r.json();}).then(function(d){
-      toast('أُضيف '+(d.added||0)+' · مكرر '+(d.dup||0)+' · غير صالح '+(d.invalid||0),'success');
-      loadOutreach();
-    }).catch(function(){ toast('تعذّر الاستيراد','error'); });
+  _oShowPreview(items);
 }
 
 // ═══ تصدير ═══
