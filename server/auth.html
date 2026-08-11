@@ -275,7 +275,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
           </div>
           <span class="specs-count" id="specs-count">0/3</span>
         </div>
-        <div class="specs-hint">اختر <strong>من 1 إلى 3 تخصصات</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
+        <div class="specs-hint">اختر <strong>من 1 إلى 5 تخصصات</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
         <div class="specs-grid" id="specs-grid"></div>
       </div>
       <div class="fg" id="fg-extra" style="display:none">
@@ -409,8 +409,8 @@ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d
 
 function _togSpec(btn){
   var sel=document.querySelectorAll('.spec-pill.on');
-  if(!btn.classList.contains('on')&&sel.length>=3){
-    setAl(null,'الحد الأقصى 3 تخصصات','err');
+  if(!btn.classList.contains('on')&&sel.length>=5){
+    setAl(null,'الحد الأقصى 5 تخصصات','err');
     setTimeout(clearAl,1800);
     return;
   }
@@ -606,8 +606,8 @@ async function doSubmit(){
           if(sw)sw.scrollIntoView({behavior:'smooth',block:'center'});
           return;
         }
-        if(selectedSpecs.length>3){
-          setAl(null,'الحد الأقصى 3 تخصصات','err');
+        if(selectedSpecs.length>5){
+          setAl(null,'الحد الأقصى 5 تخصصات','err');
           return;
         }
       }
