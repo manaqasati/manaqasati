@@ -2140,6 +2140,7 @@ function _renderOutreach(st, cov){
     +'<button class="ftab" onclick="_oManualAdd()">➕ إضافة يدوية</button>'
     +'<button class="ftab" onclick="window._oImportType=\'provider\';document.getElementById(\'o-csv\').click()">📄 استيراد مزودين</button>'
     +'<button class="ftab" onclick="window._oImportType=\'client\';document.getElementById(\'o-csv\').click()">📄 استيراد عملاء</button>'
+    +'<button class="ftab" onclick="_oDownloadTemplate()">⬇️ تحميل النموذج</button>'
     +'<input type="file" id="o-csv" accept=".csv,.xlsx,.xls" style="display:none" onchange="_oImportCSV(this)">'
     +'</div></div><div class="card-body">'
     +'<div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:10px">'
@@ -2513,6 +2514,13 @@ function _oManualSave(btn){
 }
 
 // ═══ استيراد CSV/Excel ═══
+function _oDownloadTemplate(){
+  downloadCSV([
+    {'الاسم':'مؤسسة العتيبي للحدادة','الجوال':'0501234567','التخصص':'حدادة','المدينة':'بريدة'},
+    {'الاسم':'سعد القحطاني','الجوال':'0559876543','التخصص':'','المدينة':'الرياض'}
+  ],'نموذج-الاستقطاب.csv');
+  toast('حمّلت النموذج — احذف صفوف المثال واكتب بياناتك ثم استورده','info');
+}
 function _oImportCSV(input){
   var file=input.files[0]; if(!file)return;
   var name=file.name.toLowerCase();
