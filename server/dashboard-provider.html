@@ -1628,12 +1628,14 @@ async function loadProfile(){
 
   var specsCard=document.createElement('div');specsCard.className='card';
   var specsList=p.specialties||[];
-  specsCard.innerHTML='<div class="ch"><div class="ch-l"><h3>التخصصات</h3></div><span id="specs-count" style="font-size:12px;font-weight:800;color:#fff;background:var(--p);padding:4px 10px;border-radius:20px">'+specsList.length+'/3</span></div>'
-    +'<div id="specs-grid" style="display:flex;flex-wrap:wrap;gap:6px"></div>'
-    +'<div style="font-size:10px;color:var(--muted);margin-top:8px">اختر حتى 3 تخصصات — تصلك إشعارات المشاريع المطابقة لها</div>';
+  specsCard.innerHTML='<div class="ch"><div class="ch-l"><h3>التخصصات</h3></div><span id="specs-count" style="font-size:12px;font-weight:800;color:#fff;background:var(--p);padding:4px 10px;border-radius:20px">'+specsList.length+'/5</span></div>'
+    +'<select id="pspec-sel" onchange="_pSpecAdd()" style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;background:var(--bg)"><option value="">أضف تخصصاً...</option></select>'
+    +'<div id="pspec-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px"></div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:8px">اختر حتى 5 تخصصات — تصلك إشعارات المشاريع المطابقة لها</div>';
   pg.appendChild(specsCard);
-  var specsGrid=_el('specs-grid');
-  CATS.forEach(function(c){var btn=document.createElement('button');btn.type='button';btn.className='spec-pill'+(specsList.indexOf(c)>=0?' on':'');btn.textContent=c;btn.onclick=function(){_togSpec(btn);};specsGrid.appendChild(btn);});
+  window._provSpecSel=(specsList||[]).slice();
+  var _psel=_el('pspec-sel'); if(_psel){CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;_psel.appendChild(o);});}
+  _pSpecRender();
 
   var portCard=document.createElement('div');portCard.className='card';
   var portHtml='<div class="ch"><div class="ch-l"><h3>معرض الأعمال</h3></div><span style="font-size:11px;color:var(--muted)">'+portImgs.length+'/6</span></div>'
@@ -1708,12 +1710,12 @@ async function togglePush(){
   sw.disabled=false;
 }
 
-function _togSpec(btn){
-  var sel=document.querySelectorAll('.spec-pill.on');
-  if(!btn.classList.contains('on')&&sel.length>=3){showToast('الحد الأقصى 3 تخصصات','error');return;}
-  btn.classList.toggle('on');
-  var cnt=document.querySelectorAll('.spec-pill.on').length;var sc=_el('specs-count');if(sc)sc.textContent=cnt+'/3';
+function _pSpecRender(){
+  var box=_el('pspec-chips'); if(box){box.innerHTML=(window._provSpecSel||[]).map(function(c){return '<span class="spec-pill on" style="cursor:default">'+c+' <span onclick="_pSpecDel(\''+c+'\')" style="cursor:pointer;font-weight:900;margin-inline-start:4px">\u00d7</span></span>';}).join('');}
+  var sc=_el('specs-count'); if(sc)sc.textContent=(window._provSpecSel||[]).length+'/5';
 }
+function _pSpecAdd(){var s=_el('pspec-sel');var c=s.value;s.value='';if(!c)return;window._provSpecSel=window._provSpecSel||[];if(window._provSpecSel.length>=5){showToast('الحد الأقصى 5 تخصصات','error');return;}if(window._provSpecSel.indexOf(c)<0){window._provSpecSel.push(c);_pSpecRender();}}
+function _pSpecDel(c){window._provSpecSel=(window._provSpecSel||[]).filter(function(x){return x!==c;});_pSpecRender();}
 
 function _pSvcRender(){var b=_el('p-svc-chips');if(!b)return;b.innerHTML=(window._pSvc||[]).map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700">'+c+' <span onclick="_pSvcDel(\''+c+'\')" style="cursor:pointer;font-weight:900">\u00d7</span></span>';}).join('');}
 function _pSvcAdd(){var sel=_el('p-svc-sel');var c=sel.value;sel.value='';if(!c)return;var prim=(_el('p-city')||{}).value;if(c===prim)return;window._pSvc=window._pSvc||[];if(window._pSvc.indexOf(c)<0){window._pSvc.push(c);_pSvcRender();}}
@@ -1723,7 +1725,7 @@ async function _saveProfile(){
   var email=((_el('p-email')||{}).value||'').trim();
   if(!email||!email.includes('@')||!email.includes('.')){showToast('يرجى إدخال بريد إلكتروني صحيح','error');return;}
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  var specs=Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
+  var specs=(window._provSpecSel||[]).slice();
   var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false,service_cities:((_el('p-allcities')||{}).checked?[]:(window._pSvc||[]))};
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
