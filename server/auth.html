@@ -287,7 +287,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
           <span class="specs-count" id="specs-count">0/5</span>
         </div>
         <div class="specs-hint">اختر <strong>من 1 إلى 5 تخصصات</strong> — ستصلك إشعارات المشاريع المطابقة لها</div>
-        <div class="specs-grid" id="specs-grid"></div>
+        <select id="spec-sel" class="fi-sel" onchange="_specAdd()"><option value="">أضف تخصصاً...</option></select>
+        <div class="specs-grid" id="spec-chips" style="margin-top:9px"></div>
       </div>
       <div class="fg" id="fg-extra" style="display:none">
         <div class="extra-divider"><span>معلومات إضافية (اختياري)</span></div>
@@ -402,50 +403,27 @@ function _svcRender(){ var b=document.getElementById('svc-chips'); if(!b)return;
 function _svcAdd(){ var sel=document.getElementById('svc-city-sel'); var c=sel.value; sel.value=''; if(!c)return; var prim=(document.getElementById('i-city')||{}).value; if(c===prim)return; if(_svcSel.indexOf(c)<0){_svcSel.push(c);_svcRender();} }
 function _svcDel(c){ _svcSel=_svcSel.filter(function(x){return x!==c;}); _svcRender(); }
 
-(function buildSpecs(){
-  var grid=document.getElementById('specs-grid');
-  if(!grid)return;
-  CATS.forEach(function(c){
-    var btn=document.createElement('button');
-    btn.type='button';
-    btn.className='spec-pill';
-    btn.textContent=c;
-    btn.onclick=function(){_togSpec(btn);};
-    grid.appendChild(btn);
-  });
-})();
+window._specSel=[];
+(function fillSpecSel(){ var s=document.getElementById('spec-sel'); if(!s)return; CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o);}); })();
 
-// المصدر الموحّد: حدّث التخصصات من السيرفر (مع إبقاء القائمة أعلاه كاحتياطي)
+// المصدر الموحّد: حدّث التخصصات من السيرفر (مع إبقاء القائمة كاحتياطي)
 fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
   if(d&&Array.isArray(d.categories)&&d.categories.length){
     CATS=d.categories;
-    var grid=document.getElementById('specs-grid');
-    if(grid){ grid.innerHTML=''; CATS.forEach(function(c){ var b=document.createElement('button');b.type='button';b.className='spec-pill';b.textContent=c;b.onclick=function(){_togSpec(b);};grid.appendChild(b); }); }
+    var s=document.getElementById('spec-sel');
+    if(s){ s.innerHTML='<option value="">أضف تخصصاً...</option>'+CATS.map(function(c){return '<option>'+c+'</option>';}).join(''); }
   }
 }).catch(function(){});
 
-function _togSpec(btn){
-  var sel=document.querySelectorAll('.spec-pill.on');
-  if(!btn.classList.contains('on')&&sel.length>=5){
-    setAl(null,'الحد الأقصى 5 تخصصات','err');
-    setTimeout(clearAl,1800);
-    return;
-  }
-  btn.classList.toggle('on');
-  _updateSpecsCount();
-}
-function _updateSpecsCount(){
-  var cnt=document.querySelectorAll('.spec-pill.on').length;
+function _specRender(){
+  var box=document.getElementById('spec-chips');
+  if(box){ box.innerHTML=(window._specSel||[]).map(function(c){return '<span class="spec-pill on" style="cursor:default">'+c+' <span onclick="_specDel(\''+c+'\')" style="cursor:pointer;font-weight:900;margin-inline-start:4px">\u00d7</span></span>';}).join(''); }
   var el=document.getElementById('specs-count');
-  if(el){
-    el.textContent=cnt+'/3';
-    if(cnt>=1)el.className='specs-count done';
-    else el.className='specs-count';
-  }
+  if(el){ var n=(window._specSel||[]).length; el.textContent=n+'/5'; el.className=n>=1?'specs-count done':'specs-count'; }
 }
-function _getSelectedSpecs(){
-  return Array.prototype.slice.call(document.querySelectorAll('.spec-pill.on')).map(function(b){return b.textContent.trim();});
-}
+function _specAdd(){ var s=document.getElementById('spec-sel'); var c=s.value; s.value=''; if(!c)return; window._specSel=window._specSel||[]; if(window._specSel.length>=5){ setAl(null,'الحد الأقصى 5 تخصصات','err'); setTimeout(clearAl,1800); return; } if(window._specSel.indexOf(c)<0){ window._specSel.push(c); _specRender(); } }
+function _specDel(c){ window._specSel=(window._specSel||[]).filter(function(x){return x!==c;}); _specRender(); }
+function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
 
 (function(){
   var t=new URLSearchParams(location.search).get('reset');
