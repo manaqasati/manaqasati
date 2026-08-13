@@ -824,9 +824,27 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="edit-msg" class="alert"></div>
       <div class="fg" style="margin-bottom:12px"><label>العنوان</label><input type="text" id="e-title"></div>
       <div class="fg" style="margin-bottom:12px"><label>التفاصيل</label><textarea id="e-desc"></textarea></div>
-      <div class="form-grid">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="fg"><label>التصنيف</label><select id="e-cat"></select></div>
+        <div class="fg"><label>المدينة</label><select id="e-city"></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>الموقع على الخريطة (اختياري)</label>
+        <div style="display:flex;gap:8px;align-items:stretch">
+          <input type="text" id="e-maploc" placeholder="ألصق رابط خرائط جوجل أو الإحداثيات" oninput="_editParseGeo()" style="flex:1">
+          <button type="button" onclick="_editPickLoc()" style="white-space:nowrap;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:9px;padding:0 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">📍 موقعي</button>
+        </div>
+        <div id="e-loc-hint" style="font-size:11px;color:var(--muted);margin-top:5px"></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
         <div class="fg"><label>الميزانية</label><input type="number" id="e-budget"></div>
         <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div>
+      </div>
+      <div class="fg" style="margin-bottom:4px">
+        <label>المخططات والملفات</label>
+        <div id="e-att-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <input type="file" id="e-att-input" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv,image/*" multiple onchange="_editAttAdd(this)" style="padding:8px;font-size:12px">
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · صور — حتى 3 ملفات</div>
       </div>
     </div>
     <div class="modal-foot">
@@ -1960,17 +1978,56 @@ function openEditReq(id,e){
     document.getElementById('e-desc').value=req.description||'';
     document.getElementById('e-budget').value=req.budget_max||'';
     document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
+    var _ec=document.getElementById('e-cat'), _nc=document.getElementById('n-cat'); if(_ec&&_nc){ _ec.innerHTML=_nc.innerHTML; _ec.value=req.category||''; }
+    var _ecy=document.getElementById('e-city'), _ncy=document.getElementById('n-city'); if(_ecy&&_ncy){ _ecy.innerHTML=_ncy.innerHTML; _ecy.value=req.city||''; }
+    _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)};
+    var _eml=document.getElementById('e-maploc'); if(_eml)_eml.value=(_editGeo.lat&&_editGeo.lng)?('https://www.google.com/maps?q='+_editGeo.lat+','+_editGeo.lng):'';
+    var _elh=document.getElementById('e-loc-hint'); if(_elh)_elh.innerHTML=(_editGeo.lat&&_editGeo.lng)?'<span style="color:var(--green);font-weight:700">\u2713 الموقع محدّد</span>':'';
+    _editAtts=(Array.isArray(req.attachments)?req.attachments.slice(0,3):[]).map(function(a){return {name:a.name||'ملف',url:a.url};});
+    _editAttRender();
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
   }).catch(function(){showToast('تعذّر تحميل الطلب — حدّث الصفحة','error');});
 }
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
+var _editGeo={lat:null,lng:null}; var _editAtts=[];
+function _editParseGeo(){
+  var v=(document.getElementById('e-maploc')||{}).value||'';
+  var m=v.match(/(-?\d{1,2}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})/);
+  var h=document.getElementById('e-loc-hint');
+  if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){_editGeo.lat=la;_editGeo.lng=ln;if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد الموقع</span>';return;}}
+  _editGeo.lat=null;_editGeo.lng=null;if(h)h.innerHTML='';
+}
+function _editPickLoc(){
+  if(!navigator.geolocation){showToast('متصفحك لا يدعم تحديد الموقع','error');return;}
+  showToast('جارٍ تحديد موقعك...','info');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    _editGeo.lat=pos.coords.latitude;_editGeo.lng=pos.coords.longitude;
+    var el=document.getElementById('e-maploc');if(el)el.value='https://www.google.com/maps?q='+_editGeo.lat+','+_editGeo.lng;
+    var h=document.getElementById('e-loc-hint');if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد موقعك</span>';
+    showToast('تم تحديد موقعك \u2713','success');
+  },function(){showToast('تعذّر تحديد الموقع','error');},{enableHighAccuracy:true,timeout:10000});
+}
+function _editAttRender(){
+  var box=document.getElementById('e-att-list'); if(!box)return;
+  box.innerHTML=(_editAtts||[]).map(function(a,idx){return '<div style="display:flex;align-items:center;gap:8px;background:var(--card2,#f8fafc);border:1px solid var(--border);border-radius:9px;padding:8px 10px"><span style="flex:1;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.name||'ملف')+'</span><span onclick="_editAttDel('+idx+')" style="cursor:pointer;color:var(--red);font-weight:900;font-size:16px">\u00d7</span></div>';}).join('');
+}
+function _editAttDel(idx){ _editAtts.splice(idx,1); _editAttRender(); }
+function _editAttAdd(input){
+  var files=[].slice.call(input.files); input.value='';
+  files.forEach(function(f){
+    if(_editAtts.length>=3){showToast('الحد الأقصى 3 ملفات','error');return;}
+    if(f.size>15*1024*1024){showToast(f.name+': كبير جداً (حد 15MB)','error');return;}
+    var rd=new FileReader(); rd.onload=function(e){ if(_editAtts.length<3){_editAtts.push({name:f.name,data:e.target.result}); _editAttRender();} }; rd.readAsDataURL(f);
+  });
+}
 function submitEditReq(){
   var title=document.getElementById('e-title').value.trim();
   var desc=document.getElementById('e-desc').value.trim();
   if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
-  var body={title:title,description:desc,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null};
+  var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[])};
+  if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
   fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
