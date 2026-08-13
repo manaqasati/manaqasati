@@ -2335,8 +2335,23 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const { title, description, category, city, address, budget_max, deadline } = req.body;
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title), description=COALESCE(NULLIF($2,''),description), category=$3, city=$4, address=$5, budget_max=$6, deadline=$7 WHERE id=$8 RETURNING *`, [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null, id]);
+    const { title, description, category, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
+    const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)', 'category=$3', 'city=$4', 'address=$5', 'budget_max=$6', 'deadline=$7'];
+    const params = [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null];
+    let i = 8;
+    const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
+    const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
+    if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
+    if (Array.isArray(attachments)) {
+      const atts = [];
+      for (const a of attachments.slice(0, 3)) {
+        if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,80), url: a.url });
+        else if (a && a.data) { const u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); if (u) atts.push({ name: String(a.name||'ملف').slice(0,80), url: u }); }
+      }
+      sets.push('attachments=$'+i); params.push(JSON.stringify(atts)); i++;
+    }
+    params.push(id);
+    const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
