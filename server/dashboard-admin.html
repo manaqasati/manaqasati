@@ -1324,7 +1324,7 @@ function _pxPickImages(inp){
 function _pxPickFiles(inp){
   var files=[].slice.call(inp.files).slice(0,3-_pxFiles.length); inp.value='';
   files.forEach(function(f){
-    if(f.size>10*1024*1024){toast(f.name+': أكبر من 10MB','error');return;}
+    if(f.size>30*1024*1024){toast(f.name+': أكبر من 30MB','error');return;}
     var r=new FileReader(); r.onload=function(e){ _pxFiles.push({name:f.name,data:e.target.result}); _pxRenderPreview(); }; r.readAsDataURL(f);
   });
 }
