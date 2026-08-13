@@ -1520,6 +1520,8 @@ function openReqEdit(id){
   _editReqId=id;
   document.getElementById('re-title').value=r.title||'';
   document.getElementById('re-desc').value=r.description||'';
+  var _rc=document.getElementById('re-cat');
+  if(_rc && window._CATS && window._CATS.length){ _rc.innerHTML='<option value="">اختر التصنيف</option>'+window._CATS.map(function(c){return '<option>'+c+'</option>';}).join(''); }
   document.getElementById('re-cat').value=r.category||'';
   var citySel=document.getElementById('re-city');
   if(citySel&&citySel.options.length<=1){
