@@ -33,7 +33,7 @@ const UPLOAD_TYPES = {
 };
 // ملفات فنية/مكتبية تُحمَّل فقط (غير قابلة للتنفيذ في المتصفح) — تُقبل بالامتداد
 const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, csv:1, rvt:1, pptx:1, ppt:1 };
-const UPLOAD_MAX_BYTES = 16 * 1024 * 1024; // 16MB
+const UPLOAD_MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
 async function uploadToR2(base64Data, folder, filename) {
   if (!r2Client || !base64Data) return base64Data; // fallback
@@ -129,7 +129,7 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '45mb' }));
 // كاش ذكي للملفات الثابتة: الصور/الأيقونات تُحفظ طويلاً، وصفحات HTML لا تُخزَّن أبداً
 app.use(express.static('.', {
   etag: true,
