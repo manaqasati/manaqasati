@@ -677,6 +677,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <option>صيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option>
               <option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option>
               <option>حفر آبار ومضخات</option>
+              <option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option>
               <option>أخرى</option>
             </select>
           </div>
@@ -868,6 +869,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 // INIT
 // ═══════════════════════════════════
 var API='https://manaqasati-production.up.railway.app';
+// المصدر الموحّد: حدّث تصنيفات نموذج الطلب من السيرفر (مع احتياطي)
+(function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  var sel=document.getElementById('n-cat');
+  if(sel&&d&&Array.isArray(d.categories)&&d.categories.length){ var cur=sel.value; sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+c+'</option>';}).join(''); if(cur)sel.value=cur; }
+}).catch(function(){}); })();
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
 var user=JSON.parse(localStorage.getItem('user')||'{}');
