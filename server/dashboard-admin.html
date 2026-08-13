@@ -1393,7 +1393,16 @@ function addProjectForClient(uid){
   var ph=document.getElementById('px-phone'); if(ph){ph.value=u.phone||'';ph.readOnly=true;ph.style.background='#f1f5f9';}
   var em=document.getElementById('px-email'); if(em&&u.email&&!/@manaqasa\.local$/i.test(u.email)){em.value=u.email;}
 }
+window._pxGeoLat=null; window._pxGeoLng=null;
+function _pxParseGeo(){
+  var v=(document.getElementById('px-maploc')||{}).value||'';
+  var m=v.match(/(-?\d{1,2}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})/);
+  var ok=document.getElementById('px-geo-ok');
+  if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){window._pxGeoLat=la;window._pxGeoLng=ln;if(ok)ok.style.display='block';return;}}
+  window._pxGeoLat=null;window._pxGeoLng=null;if(ok)ok.style.display='none';
+}
 function openProxyPost(){
+  window._pxGeoLat=null; window._pxGeoLng=null;
   _pxImgs=[]; _pxFiles=[];
   var fin='width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;box-sizing:border-box;margin-bottom:10px';
   var cats=(window._CATS&&window._CATS.length)?window._CATS:['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أخرى'];
@@ -1412,6 +1421,8 @@ function openProxyPost(){
     +'<select id="px-city" style="'+fin+';cursor:pointer"><option value="">المدينة *</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>'
     +'<input id="px-budget" type="number" inputmode="numeric" placeholder="الميزانية التقريبية (اختياري)" style="'+fin+'">'
     +'<input id="px-district" placeholder="الحي / الموقع (اختياري)" style="'+fin+'">'
+    +'<input id="px-maploc" placeholder="الموقع على الخريطة (رابط جوجل أو إحداثيات — اختياري)" oninput="_pxParseGeo()" style="'+fin+'">'
+    +'<div id="px-geo-ok" style="display:none;font-size:11px;color:#059669;font-weight:700;margin:-4px 0 8px">✓ تم تحديد الموقع على الخريطة</div>'
     +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin:14px 0 8px">صور وملفات المشروع (اختياري)</div>'
     +'<input type="file" id="px-images" accept="image/*" multiple style="display:none" onchange="_pxPickImages(this)">'
     +'<input type="file" id="px-files" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple style="display:none" onchange="_pxPickFiles(this)">'
@@ -1434,7 +1445,7 @@ function submitProxyPost(){
   var data={client_name:g('px-name').trim(),client_phone:g('px-phone').trim(),client_email:g('px-email').trim(),
             title:g('px-title').trim(),description:g('px-desc').trim(),category:g('px-cat'),city:g('px-city'),
             budget_max:parseFloat(g('px-budget'))||null,
-            district:g('px-district').trim()||null};
+            district:g('px-district').trim()||null,geo_lat:window._pxGeoLat||null,geo_lng:window._pxGeoLng||null};
   if(_pxImgs.length)data.images=_pxImgs;
   if(_pxFiles.length)data.attachments=_pxFiles;
   if(!data.client_name||!data.client_phone){toast('اسم وجوال العميل مطلوبان','error');return;}
