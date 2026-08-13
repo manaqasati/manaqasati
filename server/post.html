@@ -1804,7 +1804,7 @@ function previewFiles(input){
   var files=[].slice.call(input.files).slice(0,3-_reqFiles.length);
   files.forEach(function(f){
     if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP)','error');return;}
-    if(f.size>15*1024*1024){showToast('الحجم الأقصى 15MB','error');return;}
+    if(f.size>30*1024*1024){showToast('الحجم الأقصى 30MB','error');return;}
     var r=new FileReader();
     r.onload=function(e){_reqFiles.push({name:f.name,data:e.target.result});renderFileList();};
     r.readAsDataURL(f);
