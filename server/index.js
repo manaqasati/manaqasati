@@ -287,14 +287,14 @@ app.get('/api/requests/public/:id', async (req, res) => {
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    // خصوصية الموقع: الإحداثيات الدقيقة للمالك أو المزوّد المعتمد فقط (الحي يبقى ظاهراً)
+    // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الأدمن، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
     try {
       let viewer = null;
       const ah = req.headers.authorization || '';
       const tk = ah.startsWith('Bearer ') ? ah.slice(7) : null;
       if (tk) { try { viewer = jwt.verify(tk, JWT_SECRET); } catch(e) { viewer = null; } }
       const assigned = (await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0] || {};
-      const ok = viewer && (String(viewer.id)===String(row.client_id) || String(viewer.id)===String(assigned.assigned_provider_id) || viewer.role==='admin');
+      const ok = viewer && (String(viewer.id)===String(row.client_id) || String(viewer.id)===String(assigned.assigned_provider_id) || viewer.role==='admin' || viewer.role==='provider');
       if (!ok) { row.geo_lat = null; row.geo_lng = null; }
     } catch(e) { row.geo_lat = null; row.geo_lng = null; }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
