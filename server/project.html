@@ -179,6 +179,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* NEW BID CARD */
 .bid-x{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px;margin-bottom:9px;position:relative}
 .bid-x:last-child{margin-bottom:0}
+.bid-x-accepted{border:2px solid var(--green)!important;box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.bid-x-rejected{opacity:.5}
+.bid-accepted-banner{background:var(--green-l,#f0fdf4);border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
 .bid-x-best{border:2px solid var(--p);box-shadow:0 4px 16px rgba(30,58,138,.12)}
 .bid-x-badge{position:absolute;top:-11px;right:13px;background:var(--p);color:#fff;font-family:'Cairo',sans-serif;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
 .bid-x-av{width:46px;height:46px;border-radius:50%;background:var(--gold-l);border:2px solid var(--gold-soft);display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:var(--gold-d);flex-shrink:0;overflow:hidden}
@@ -469,8 +472,9 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   var isCheap=(price>0&&price===minP&&_bids.length>1);
   var starsHtml='';for(var i=1;i<=5;i++){starsHtml+='<span style="color:'+(i<=Math.round(avg)?'var(--star)':'var(--border)')+'">★</span>';}
 
-  var h='<div class="bid-x'+(isBest?' bid-x-best':'')+'">';
-  if(isBest)h+='<div class="bid-x-badge">الأفضل</div>';
+  var isAcc=b.status==='accepted',isRej=b.status==='rejected';
+  var h='<div class="bid-x'+((isBest&&!isAcc&&!isRej)?' bid-x-best':'')+(isAcc?' bid-x-accepted':'')+(isRej?' bid-x-rejected':'')+'">';
+  if(isAcc)h+='<div class="bid-x-badge" style="background:var(--green)">✓ العرض المقبول</div>'; else if(isBest&&!isRej)h+='<div class="bid-x-badge">الأفضل</div>';
   h+='<div style="display:flex;align-items:flex-start;gap:11px">';
   h+=provImg?'<div class="bid-x-av"><img src="'+provImg+'" loading="lazy" alt="'+esc(name)+'"></div>':'<div class="bid-x-av">'+esc(name.charAt(0))+'</div>';
   h+='<div style="flex:1;min-width:0">';
@@ -500,17 +504,14 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   if(provId){
     h+='<a href="'+proUrl+'" class="bid-btn bid-btn-pro"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>عرض الملف</a>';
   }
-  if(isOwner&&reqStatus==='open'){
-    var isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    if(isAcc){
+  if(isAcc){
       h+='<span style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:var(--green-l);color:var(--green);border-radius:10px;font-size:11px;font-weight:800;border:1px solid #bbf7d0"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مقبول</span>';
     } else if(isRej){
       h+='<span style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:#FEF2F2;color:var(--red);border-radius:10px;font-size:11px;font-weight:800;border:1px solid #fecaca"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> مرفوض</span>';
-    } else {
+    } else if(isOwner&&reqStatus==='open'){
       h+='<button onclick="acceptBid('+b.id+')" style="display:inline-flex;align-items:center;gap:4px;padding:8px 14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> قبول</button>';
       h+='<button onclick="rejectBid('+b.id+')" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;background:#FEF2F2;color:var(--red);border:1px solid #fecaca;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> رفض</button>';
     }
-  }
   h+='</div></div>';
   return h;
 }
@@ -524,6 +525,8 @@ function _renderBidsList(mode){
   var bestId=best&&best.id;
   var arr=_sortedBids(mode);
   var html='';
+  var accB=_bids.filter(function(b){return b.status==='accepted';})[0];
+  if(accB){ html+='<div class="bid-accepted-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> تم اختيار عرض <b>'+esc(accB.provider_name||'مزود')+'</b> — المشروع الآن قيد التنفيذ</div>'; }
   arr.forEach(function(b){html+=_bidCard(b,String(b.id)===String(bestId),isOwner,req.status);});
   wrap.innerHTML=html;
 }
