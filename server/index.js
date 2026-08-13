@@ -31,17 +31,24 @@ const UPLOAD_TYPES = {
   'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp',
   'image/gif':'gif', 'image/heic':'heic', 'application/pdf':'pdf'
 };
-const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+// ملفات فنية/مكتبية تُحمَّل فقط (غير قابلة للتنفيذ في المتصفح) — تُقبل بالامتداد
+const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, csv:1, rvt:1, pptx:1, ppt:1 };
+const UPLOAD_MAX_BYTES = 16 * 1024 * 1024; // 16MB
 
-async function uploadToR2(base64Data, folder) {
+async function uploadToR2(base64Data, folder, filename) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
   try {
     const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) return base64Data;
     const contentType = String(matches[1]).toLowerCase().trim();
-    const ext = UPLOAD_TYPES[contentType];
-    if (!ext) { console.warn('رفض رفع نوع غير مسموح:', contentType); return null; }
+    let ext = UPLOAD_TYPES[contentType];
+    let forceDownload = false;
+    if (!ext) {
+      const fe = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+      if (fe && UPLOAD_EXT_TYPES[fe[1]]) { ext = fe[1]; forceDownload = true; }
+    }
+    if (!ext) { console.warn('رفض رفع نوع غير مسموح:', contentType, filename||''); return null; }
     const buffer = Buffer.from(matches[2], 'base64');
     if (!buffer.length || buffer.length > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم غير صالح:', buffer.length); return null; }
     const key = (folder || 'img').replace(/[^a-zA-Z0-9/_-]/g,'') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
@@ -49,8 +56,8 @@ async function uploadToR2(base64Data, folder) {
       Bucket: R2_BUCKET,
       Key: key,
       Body: buffer,
-      ContentType: contentType,
-      ContentDisposition: contentType === 'application/pdf' ? 'inline' : undefined
+      ContentType: forceDownload ? 'application/octet-stream' : contentType,
+      ContentDisposition: forceDownload ? 'attachment' : (contentType === 'application/pdf' ? 'inline' : undefined)
     }));
     return R2_PUBLIC_URL + '/' + key;
   } catch (e) {
@@ -2196,7 +2203,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     }
     const pxAtts = [];
     for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
-      if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments'); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
+      if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
     }
     const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const pxLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
@@ -2272,7 +2279,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       processedAttachments = [];
       for (const att of attachments.slice(0,3)) {
         if (att && att.data && String(att.data).startsWith('data:')) {
-          const url = await uploadToCloud(att.data, 'manaqasa/attachments');
+          const url = await uploadToCloud(att.data, 'manaqasa/attachments', att.name);
           if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
         } else if (att && att.url) {
           processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: att.url });
