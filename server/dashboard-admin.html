@@ -2645,7 +2645,11 @@ function _oParseRows(rows){
 // ═══ تصدير ═══
 function _oExport(){
   fetch(API+'/api/admin/leads/export'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
-    var L=d.leads||[]; if(!L.length){ toast('لا يوجد ما يُصدّر','error'); return; }
+    var L=d.leads||[];
+    var _selIds=Object.keys(_oSel).filter(function(k){return _oSel[k];});
+    if(_selIds.length){ var _ss={}; _selIds.forEach(function(id){_ss[id]=1;}); L=L.filter(function(l){return _ss[l.id];}); }
+    if(!L.length){ toast('لا يوجد ما يُصدّر','error'); return; }
+    if(_selIds.length) toast('تصدير '+L.length+' محدّد','success');
     var cols=['name','phone','category','city','rating','reviews_count','status','tag','score','notes'];
     var headers=['الاسم','الجوال','التخصص','المدينة','التقييم','المراجعات','الحالة','الوسم','الأولوية','ملاحظات'];
     try{
