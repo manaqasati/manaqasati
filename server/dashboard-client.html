@@ -727,8 +727,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <div id="img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
             </div>
             <div class="fg ff">
-              <label>مخططات أو ملفات (PDF — اختياري)</label>
-              <input type="file" accept="application/pdf,.pdf" multiple onchange="previewFiles(this)" style="padding:8px">
+              <label>مخططات أو ملفات (PDF · DWG · Excel · Word — اختياري)</label>
+              <input type="file" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv" multiple onchange="previewFiles(this)" style="padding:8px">
               <div id="file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
             </div>
           </div>
@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <label>المخططات والملفات</label>
         <div id="e-att-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
         <input type="file" id="e-att-input" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv,image/*" multiple onchange="_editAttAdd(this)" style="padding:8px;font-size:12px">
-        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · صور — حتى 3 ملفات</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · صور — حتى 3 ملفات (حد 30MB للملف)</div>
       </div>
     </div>
     <div class="modal-foot">
@@ -1806,8 +1806,8 @@ var _reqFiles=[];
 function previewFiles(input){
   var files=[].slice.call(input.files).slice(0,3-_reqFiles.length);
   files.forEach(function(f){
-    if(f.type!=='application/pdf' && !/\.pdf$/i.test(f.name)){showToast('يُقبل PDF فقط','error');return;}
-    if(f.size>10*1024*1024){showToast('الحجم الأقصى 10MB','error');return;}
+    if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP)','error');return;}
+    if(f.size>30*1024*1024){showToast('الحجم الأقصى 30MB','error');return;}
     var r=new FileReader();
     r.onload=function(e){_reqFiles.push({name:f.name,data:e.target.result});renderFileList();};
     r.readAsDataURL(f);
@@ -2017,7 +2017,7 @@ function _editAttAdd(input){
   var files=[].slice.call(input.files); input.value='';
   files.forEach(function(f){
     if(_editAtts.length>=3){showToast('الحد الأقصى 3 ملفات','error');return;}
-    if(f.size>15*1024*1024){showToast(f.name+': كبير جداً (حد 15MB)','error');return;}
+    if(f.size>30*1024*1024){showToast(f.name+': كبير جداً (حد 30MB)','error');return;}
     var rd=new FileReader(); rd.onload=function(e){ if(_editAtts.length<3){_editAtts.push({name:f.name,data:e.target.result}); _editAttRender();} }; rd.readAsDataURL(f);
   });
 }
