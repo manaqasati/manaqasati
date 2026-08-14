@@ -2343,16 +2343,22 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
     if (Array.isArray(attachments)) {
-      const atts = [];
+      const atts = []; const _attDbg = [];
       for (const a of attachments.slice(0, 3)) {
         if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,80), url: a.url });
-        else if (a && a.data) { const u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); if (u) atts.push({ name: String(a.name||'ملف').slice(0,80), url: u }); }
+        else if (a && a.data) {
+          let u = null;
+          try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(e) { _attDbg.push({ name: a.name, error: e.message }); }
+          if (u) atts.push({ name: String(a.name||'ملف').slice(0,80), url: u });
+          else _attDbg.push({ name: a.name, dropped: true, prefix: String(a.data||'').slice(0,30), b64len: String(a.data||'').length });
+        }
       }
       sets.push('attachments=$'+i); params.push(JSON.stringify(atts)); i++;
+      req._attDbg = _attDbg;
     }
     params.push(id);
     const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
-    res.json(r.rows[0]);
+    res.json(Object.assign({}, r.rows[0], req._attDbg && req._attDbg.length ? { _attDebug: req._attDbg } : {}));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
