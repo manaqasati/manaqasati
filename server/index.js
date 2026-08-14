@@ -4883,21 +4883,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-async function uploadToCloud(base64Data, folder='manaqasa') {
+async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
   if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
   // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
   const m = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
   if (!m) return null;
   const ctype = String(m[1]).toLowerCase().trim();
-  if (!UPLOAD_TYPES[ctype]) { console.warn('رفض رفع نوع غير مسموح:', ctype); return null; }
+  // مسموح: صورة/PDF عبر MIME، أو ملف فني/مكتبي عبر امتداد الاسم (تحميل فقط)
+  const fe = String(filename||'').toLowerCase().match(/\.([a-z0-9]+)$/);
+  const extAllowed = !!(fe && UPLOAD_EXT_TYPES[fe[1]]);
+  if (!UPLOAD_TYPES[ctype] && !extAllowed) { console.warn('رفض رفع نوع غير مسموح:', ctype, filename||''); return null; }
   if (Buffer.byteLength(m[2], 'base64') > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم كبير'); return null; }
-  // جرّب R2 أولاً
+  // جرّب R2 أولاً (نمرّر الاسم ليحدّد الامتداد الصحيح للملفات الفنية)
   if (r2Client) {
-    const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'));
+    const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'), filename);
     if (url && url.startsWith('http')) { console.log('✅ R2 upload:', url); return url; }
   }
-  // fallback: Cloudinary (صور فقط)
-  if (ctype === 'application/pdf') return null;
+  // fallback: Cloudinary (صور فقط) — لا ينطبق على PDF أو الملفات الفنية
+  if (ctype === 'application/pdf' || extAllowed) return null;
   try {
     const result = await cloudinary.uploader.upload(base64Data, { folder, transformation: [{ quality: 'auto', fetch_format: 'auto' }], resource_type: 'image' });
     console.log('✅ Cloudinary upload:', result.secure_url);
