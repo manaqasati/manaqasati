@@ -1326,7 +1326,7 @@ function _paintHome(all){
   if(sd)sd.textContent=doneN;
   if(sof)sof.textContent=offers;
   var hl=document.getElementById('phHl');
-  if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?'لديك <b>'+offers+' عرض</b> جديد على طلباتك':'ابدأ بنشر أول طلب واستقبل العروض');
+  if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?('لديك <b>'+offers+' عرض</b> جديد على طلباتك'):(all.length>0?('طلباتك بانتظار وصول العروض — <b>'+openN+'</b> طلب نشط'):'ابدأ بنشر أول طلب واستقبل العروض'));
   if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
   renderNudges(all);
   renderQuestionNudge(all);
@@ -2028,10 +2028,20 @@ function submitEditReq(){
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[])};
   if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
-  fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
-    .then(function(r){return r.json();})
-    .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})
-    .catch(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
+  var xhr=new XMLHttpRequest();
+  xhr.open('PUT',API+'/api/requests/'+_editReqId);
+  var _hh=(hdr().headers)||{}; Object.keys(_hh).forEach(function(k){try{xhr.setRequestHeader(k,_hh[k]);}catch(e){}});
+  xhr.upload.onprogress=function(ev){ if(ev.lengthComputable){ var pct=Math.round(ev.loaded/ev.total*100); btn.textContent=(pct<100?('جاري الرفع... '+pct+'%'):'جاري الحفظ...'); } };
+  xhr.onload=function(){
+    btn.disabled=false;btn.textContent='حفظ التعديلات';
+    var r={}; try{r=JSON.parse(xhr.responseText);}catch(e){}
+    if(xhr.status>=200&&xhr.status<300&&r.id){ closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome(); }
+    else { var e2=document.getElementById('edit-msg');e2.textContent=(r.message||'حدث خطأ، حاول مرة أخرى');e2.className='alert err'; }
+  };
+  xhr.onerror=function(){ btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذّر التحديث — تحقّق من اتصالك','error'); };
+  xhr.ontimeout=function(){ btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('انتهت المهلة — الملف كبير أو الاتصال بطيء','error'); };
+  xhr.timeout=180000;
+  xhr.send(JSON.stringify(body));
 }
 function deleteReq(id,e){
   if(e)e.stopPropagation();
