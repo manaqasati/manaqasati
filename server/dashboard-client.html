@@ -2039,7 +2039,7 @@ function submitEditReq(){
       var _g=(r.geo_lat&&r.geo_lng)?'الموقع ✓':'الموقع ✗';
       var _atts=r.attachments; if(typeof _atts==='string'){try{_atts=JSON.parse(_atts);}catch(e){_atts=[];}}
       var _a='المرفقات: '+((_atts&&_atts.length)||0);
-      console.log('EDIT SAVED:', {geo_lat:r.geo_lat, geo_lng:r.geo_lng, attachments:_atts});
+      console.log('EDIT SAVED:', {geo_lat:r.geo_lat, geo_lng:r.geo_lng, attachments:_atts, attDebug:r._attDebug});
       closeEditReq();showToast('تم التحديث — '+_g+' · '+_a,'success');loadReqs();loadHome();
     }
     else { var e2=document.getElementById('edit-msg');e2.textContent=(r.message||'حدث خطأ، حاول مرة أخرى');e2.className='alert err'; }
