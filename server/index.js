@@ -39,7 +39,7 @@ async function uploadToR2(base64Data, folder, filename) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
   try {
-    const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+    const matches = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
     if (!matches) return base64Data;
     const contentType = String(matches[1]).toLowerCase().trim();
     let ext = UPLOAD_TYPES[contentType];
@@ -4880,7 +4880,7 @@ cloudinary.config({
 async function uploadToCloud(base64Data, folder='manaqasa') {
   if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
   // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
-  const m = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+  const m = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
   if (!m) return null;
   const ctype = String(m[1]).toLowerCase().trim();
   if (!UPLOAD_TYPES[ctype]) { console.warn('رفض رفع نوع غير مسموح:', ctype); return null; }
