@@ -381,10 +381,10 @@ async function load(){
     return;
   }
   try{
-    var rr=await fetch(API+'/api/requests/public/'+_rid);
+    var _tk=''; try{_tk=localStorage.getItem('token')||'';}catch(e){}
+    var rr=await fetch(API+'/api/requests/public/'+_rid, _tk?{headers:{'Authorization':'Bearer '+_tk}}:{});
     if(!rr.ok) throw new Error('not found');
     _req=await rr.json();
-    var _tk=''; try{_tk=localStorage.getItem('token')||'';}catch(e){}
     var br=await fetch(API+'/api/bids/public/'+_rid, _tk?{headers:{'Authorization':'Bearer '+_tk}}:{});
     var _bd=br.ok?await br.json():[];
     if(Array.isArray(_bd)){ _bids=_bd; window._range=null; }
