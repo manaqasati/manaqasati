@@ -2197,6 +2197,7 @@ function _renderOutreach(st, cov){
     +'<div style="display:flex;gap:8px;align-items:center">'
     +'<span id="o-count" style="font-size:12px;color:var(--muted);font-weight:700"></span>'
     +'<button class="ftab" onclick="_oExport()">📥 تصدير</button>'
+    +'<button class="ftab" onclick="_oDeleteByFilter()" style="background:#fef2f2;color:#dc2626;border-color:#fecaca">🗑️ حذف المطابق</button>'
     +'</div></div>'
     +'<div class="card-body">'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:12px;background:var(--bg);border-radius:12px">'
@@ -2643,6 +2644,23 @@ function _oParseRows(rows){
 }
 
 // ═══ تصدير ═══
+function _oFilterParams(){
+  var p={}, m={status:'o-f-status',type:'o-f-type',tag:'o-f-tag',prio:'o-f-prio',city:'o-f-city'};
+  Object.keys(m).forEach(function(k){ var val=g(m[k]); if(val)p[k]=val; });
+  var q=g('o-f-q').trim(); if(q)p.q=q;
+  var mb=document.getElementById('o-f-maybe'); if(mb&&mb.getAttribute('data-on')==='1')p.maybe='1';
+  return p;
+}
+function _oDeleteByFilter(){
+  var p=_oFilterParams();
+  if(!Object.keys(p).length){ toast('حدّد فلتراً أولاً (بحث/مدينة/تخصص) — للحماية من حذف الكل','error'); return; }
+  var cnt=((document.getElementById('o-count')||{}).textContent||'').trim();
+  if(!confirm('حذف كل النتائج المطابقة للفلتر نهائياً؟ '+cnt+'\nلا يمكن التراجع.')) return;
+  fetch(API+'/api/admin/leads/delete-by-filter',Object.assign({method:'POST',body:JSON.stringify(p)},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){ toast('تم حذف '+d.deleted+' عميل','success'); _oCityCache=null; _oLoadList(); }
+    else toast(d.message||'تعذّر الحذف','error');
+  }).catch(function(){ toast('تعذّر الحذف','error'); });
+}
 function _oExport(){
   fetch(API+'/api/admin/leads/export'+_oQueryStr(),hdr()).then(function(r){return r.json();}).then(function(d){
     var L=d.leads||[];
