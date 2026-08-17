@@ -3302,7 +3302,7 @@ function buildLeadFilter(qp){
   if(city){ v.push(city); w.push(`city=$${v.length}`); }
   if(category){ v.push(category); w.push(`category=$${v.length}`); }
   if(tag){ v.push(tag); w.push(`tag=$${v.length}`); }
-  if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length})`); }
+  if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length} OR category ILIKE $${v.length})`); }
   // شريحة الأولوية — نفس عتبات ألوان الجدول (70 / 45)
   if(prio==='high'){ w.push('score>=70'); }
   else if(prio==='mid'){ w.push('score>=45 AND score<70'); }
@@ -3396,6 +3396,15 @@ app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (
 });
 
 // حذف جماعي بطلب واحد — سريع وموثوق (بدل مئات الطلبات المتتالية)
+app.post('/api/admin/leads/delete-by-filter', requirePermission('outreach.manage'), async (req, res) => {
+  try {
+    const { where, v } = buildLeadFilter(req.body || {});
+    if (!where) return res.status(400).json({ message: 'يجب تحديد فلتر واحد على الأقل (حماية من حذف الكل)' });
+    const r = await pool.query(`DELETE FROM leads ${where}`, v);
+    res.json({ ok: true, deleted: r.rowCount });
+  } catch(e){ console.error('delete-by-filter leads:', e.message); res.status(500).json({ message:'تعذّر الحذف' }); }
+});
+
 app.post('/api/admin/leads/bulk-delete', requirePermission('outreach.manage'), async (req, res) => {
   try {
     var ids = Array.isArray(req.body.ids) ? req.body.ids.map(function(x){return parseInt(x);}).filter(function(n){return !isNaN(n);}) : [];
