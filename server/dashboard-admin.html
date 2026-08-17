@@ -3084,6 +3084,28 @@ function _hCard(title,ok,rows){
     +'<span style="margin-inline-start:auto;font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:20px;background:'+(ok?'rgba(22,163,74,.12)':'rgba(220,38,38,.12)')+';color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'يعمل':'تحقّق')+'</span></div>'
     +'<div style="display:grid;gap:10px;max-width:420px">'+rows.map(function(r){return '<div style="display:flex;align-items:center;gap:14px;font-size:13px"><span style="color:var(--muted);min-width:110px">'+r[0]+'</span><span dir="ltr" style="font-weight:800;color:var(--text2);direction:ltr;unicode-bidi:isolate;text-align:right;white-space:nowrap">'+r[1]+'</span></div>';}).join('')+'</div></div>';
 }
+function _hBar(label, usedMB, capMB){
+  var pct = capMB>0 ? Math.min(100, usedMB/capMB*100) : 0;
+  var col = pct<60?'#16a34a':(pct<85?'#d97706':'#dc2626');
+  var lbl = pct<60?'مرتاح':(pct<85?'تنبّه':'راجع الترقية');
+  var fmt=function(mb){ return mb>=1024?((mb/1024).toFixed(mb/1024<10?2:1)+' GB'):(Math.round(mb*10)/10+' MB'); };
+  return '<div style="margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-bottom:7px">'
+    +'<span style="font-weight:800;color:var(--text2)">'+label+'</span>'
+    +'<span dir="ltr" style="font-weight:800;color:'+col+'">'+fmt(usedMB)+' / '+fmt(capMB)+'</span></div>'
+    +'<div style="height:13px;background:#eef2f7;border-radius:9px;overflow:hidden"><div style="height:100%;width:'+Math.max(2,pct)+'%;background:'+col+';border-radius:9px;transition:width .5s"></div></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:10.5px;margin-top:5px"><span style="color:'+col+';font-weight:800">'+lbl+' · '+(Math.round(pct*10)/10)+'%</span><span style="color:var(--muted)">باقٍ ~'+fmt(Math.max(0,capMB-usedMB))+'</span></div></div>';
+}
+function _hStorageCard(st){
+  return '<div class="card" style="margin-bottom:14px;border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">'
+    +'<svg width="17" height="17" fill="none" stroke="var(--text2)" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
+    +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">التخزين والحجم</h3></div>'
+    +_hBar('تخزين الملفات والمخططات (R2)', st.r2UsedMB||0, st.r2CapMB||10240)
+    +_hBar('قاعدة البيانات', st.dbSizeMB||0, st.dbCapMB||1024)
+    +'<div style="display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin-top:4px"><span>مشاريع فيها ملفات: <b style="color:var(--text2)">'+(st.projectsWithFiles||0)+'</b></span><span>صور مرفوعة: <b style="color:var(--text2)">'+(st.imagesCount||0)+'</b></span></div>'
+    +'<div style="font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.7">🟢 مرتاح · 🟡 تنبّه · 🔴 راجع الترقية · تخزين الملفات يُحسب تراكمياً من الآن — والرقم الدقيق في لوحة Cloudflare R2.</div></div>';
+}
 function _fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'ي ':'')+(h?h+'س ':'')+m+'د';}
 function renderHealth(d){
   d=d||{};var box=document.getElementById('health-body');if(!box)return;
@@ -3097,7 +3119,7 @@ function renderHealth(d){
     +_hCard('الإيميل (Resend)', em.ok, [['الإعداد', em.configured?'مضبوط':'غير مضبوط'],['المُرسِل', em.from||'—']])
     +_hCard('الإشعارات (Push)', pu.ok, [['أجهزة مسجّلة', (pu.tokens||0)],['مستخدمون', (pu.users||0)]])
     +_hCard('الخادم', sv.ok, [['مدة التشغيل', _fmtUp(sv.uptimeSec||0)],['إصدار Node', sv.node||'—'],['الذاكرة', (sv.memMB||0)+' MB']])
-    +_hCard('التخزين والحجم', true, [['حجم قاعدة البيانات', (d.storage&&d.storage.dbSizeMB!=null?d.storage.dbSizeMB+' MB':'—')],['تخزين الملفات (R2)', (d.storage&&d.storage.r2Configured?'مفعّل':'—')],['مشاريع فيها ملفات', ((d.storage&&d.storage.projectsWithFiles)||0)],['صور مرفوعة', ((d.storage&&d.storage.imagesCount)||0)]])
+    +_hStorageCard(d.storage||{})
     +'<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><h3 style="margin:0;font-size:15px;color:var(--text2)">لمحة سريعة</h3></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'
     +_mkStat(dt.users||0,'مستخدمون')+_mkStat(dt.providers||0,'مزودون','#d97706')+_mkStat(dt.requests||0,'مشاريع','#6366f1')+_mkStat(dt.openRequests||0,'مفتوحة','#0ea5e9')+_mkStat(dt.completedRequests||0,'مكتملة','#16a34a')+_mkStat(dt.bids||0,'عروض','#8b5cf6')+_mkStat(dt.leads||0,'استقطاب','#0891b2')+_mkStat(dt.pendingReports||0,'بلاغات معلّقة',(dt.pendingReports>0?'#dc2626':'#16a34a'))
