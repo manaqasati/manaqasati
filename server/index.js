@@ -4240,7 +4240,15 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
     const dbs = await pool.query("SELECT pg_database_size(current_database())::bigint b");
     const att = await pool.query("SELECT COUNT(*)::int c FROM requests WHERE attachments IS NOT NULL AND attachments::text NOT IN ('[]','null','')").catch(()=>({rows:[{c:0}]}));
     const img = await pool.query("SELECT COALESCE(SUM(COALESCE(array_length(images,1),0)),0)::int c FROM requests").catch(()=>({rows:[{c:0}]}));
-    out.storage = { dbSizeMB: Math.round(Number(dbs.rows[0].b)/1048576*10)/10, projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client };
+    const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
+    const dbMB = Math.round(Number(dbs.rows[0].b)/1048576*10)/10;
+    const r2Bytes = r2b.rows.length ? (Number(r2b.rows[0].value)||0) : 0;
+    const R2_CAP_MB = 10*1024, DB_CAP_MB = 1024; // مراجع قابلة للتعديل (R2 المجاني 10GB · حسب خطة Postgres)
+    out.storage = {
+      dbSizeMB: dbMB, dbCapMB: DB_CAP_MB, dbPct: Math.min(100, Math.round(dbMB/DB_CAP_MB*1000)/10),
+      r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
+      projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
+    };
   } catch(e){ out.storage={}; }
   out.allOk = out.db.ok && out.email.ok && out.server.ok;
   res.json(out);
@@ -4917,7 +4925,12 @@ async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
   // جرّب R2 أولاً (نمرّر الاسم ليحدّد الامتداد الصحيح للملفات الفنية)
   if (r2Client) {
     const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'), filename);
-    if (url && url.startsWith('http')) { console.log('✅ R2 upload:', url); return url; }
+    if (url && url.startsWith('http')) {
+      const _sz = Buffer.byteLength(m[2], 'base64');
+      pool.query(`INSERT INTO platform_settings (key,value,updated_at) VALUES ('r2_bytes',$1::text,NOW()) ON CONFLICT (key) DO UPDATE SET value=(COALESCE(platform_settings.value,'0')::bigint + $1::bigint)::text, updated_at=NOW()`, [_sz]).catch(()=>{});
+      console.log('✅ R2 upload:', url);
+      return url;
+    }
   }
   // fallback: Cloudinary (صور فقط) — لا ينطبق على PDF أو الملفات الفنية
   if (ctype === 'application/pdf' || extAllowed) return null;
