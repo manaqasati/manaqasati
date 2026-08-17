@@ -2838,6 +2838,7 @@ function _oClearFilters(){
 }
 // تعبئة قائمة المدن (مرّة واحدة، مع تخزين مؤقّت)
 var _oCityCache=null;
+var _oBaseCities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','الرس','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء','حفر الباطن','الخرج','المجمعة','الزلفي','شقراء','الدوادمي','القويعية','وادي الدواسر','بيشة','محايل عسير','صبيا','أبو عريش','الليث','القنفذة','رابغ','ضباء','الوجه','تيماء','دومة الجندل','طريف'];
 function _oFillCities(){
   var sel=document.getElementById('o-f-city'); if(!sel)return;
   var fill=function(arr){
@@ -2847,7 +2848,7 @@ function _oFillCities(){
   };
   if(_oCityCache){ fill(_oCityCache); return; }
   fetch(API+'/api/admin/leads',hdr()).then(function(r){return r.json();}).then(function(d){
-    var set={}; (d.leads||[]).forEach(function(l){ if(l.city)set[l.city]=1; });
+    var set={}; _oBaseCities.forEach(function(c){set[c]=1;}); (d.leads||[]).forEach(function(l){ if(l.city)set[l.city]=1; });
     _oCityCache=Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');});
     fill(_oCityCache);
   }).catch(function(){});
@@ -3078,10 +3079,11 @@ function renderHealth(d){
     +_hCard('الإيميل (Resend)', em.ok, [['الإعداد', em.configured?'مضبوط':'غير مضبوط'],['المُرسِل', em.from||'—']])
     +_hCard('الإشعارات (Push)', pu.ok, [['أجهزة مسجّلة', (pu.tokens||0)],['مستخدمون', (pu.users||0)]])
     +_hCard('الخادم', sv.ok, [['مدة التشغيل', _fmtUp(sv.uptimeSec||0)],['إصدار Node', sv.node||'—'],['الذاكرة', (sv.memMB||0)+' MB']])
+    +_hCard('التخزين والحجم', true, [['حجم قاعدة البيانات', (d.storage&&d.storage.dbSizeMB!=null?d.storage.dbSizeMB+' MB':'—')],['تخزين الملفات (R2)', (d.storage&&d.storage.r2Configured?'مفعّل':'—')],['مشاريع فيها ملفات', ((d.storage&&d.storage.projectsWithFiles)||0)],['صور مرفوعة', ((d.storage&&d.storage.imagesCount)||0)]])
     +'<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><h3 style="margin:0;font-size:15px;color:var(--text2)">لمحة سريعة</h3></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">'
-    +_mkStat(dt.users||0,'مستخدمون')+_mkStat(dt.providers||0,'مزودون','#d97706')+_mkStat(dt.openRequests||0,'مشاريع مفتوحة','#0ea5e9')+_mkStat(dt.pendingReports||0,'بلاغات معلّقة',(dt.pendingReports>0?'#dc2626':'#16a34a'))
-    +'</div></div>';
+    +_mkStat(dt.users||0,'مستخدمون')+_mkStat(dt.providers||0,'مزودون','#d97706')+_mkStat(dt.requests||0,'مشاريع','#6366f1')+_mkStat(dt.openRequests||0,'مفتوحة','#0ea5e9')+_mkStat(dt.completedRequests||0,'مكتملة','#16a34a')+_mkStat(dt.bids||0,'عروض','#8b5cf6')+_mkStat(dt.leads||0,'استقطاب','#0891b2')+_mkStat(dt.pendingReports||0,'بلاغات معلّقة',(dt.pendingReports>0?'#dc2626':'#16a34a'))
+    +'</div><div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.7">💡 حجم تخزين الملفات الدقيق (R2) والطلبات في لوحة Cloudflare R2 · استهلاك المعالج/الذاكرة التفصيلي في Railway → Metrics.</div></div>';
 }
 function setChart(btn,days){
   var tabs=document.querySelectorAll('#chart-tabs .rtab');for(var i=0;i<tabs.length;i++)tabs[i].className='rtab';
