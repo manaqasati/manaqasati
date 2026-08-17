@@ -4218,10 +4218,21 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
       pool.query("SELECT COUNT(*)::int c FROM users WHERE role='provider'"),
       pool.query("SELECT COUNT(*)::int c FROM requests"),
       pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='open'"),
-      pool.query("SELECT COUNT(*)::int c FROM reports WHERE status='pending'").catch(()=>({rows:[{c:0}]}))
+      pool.query("SELECT COUNT(*)::int c FROM reports WHERE status='pending'").catch(()=>({rows:[{c:0}]})),
+      pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='completed'").catch(()=>({rows:[{c:0}]})),
+      pool.query("SELECT COUNT(*)::int c FROM bids").catch(()=>({rows:[{c:0}]})),
+      pool.query("SELECT COUNT(*)::int c FROM leads").catch(()=>({rows:[{c:0}]})),
+      pool.query("SELECT COUNT(*)::int c FROM messages").catch(()=>({rows:[{c:0}]}))
     ]);
-    out.data = { users:d[0].rows[0].c, providers:d[1].rows[0].c, requests:d[2].rows[0].c, openRequests:d[3].rows[0].c, pendingReports:d[4].rows[0].c };
+    out.data = { users:d[0].rows[0].c, providers:d[1].rows[0].c, requests:d[2].rows[0].c, openRequests:d[3].rows[0].c, pendingReports:d[4].rows[0].c, completedRequests:d[5].rows[0].c, bids:d[6].rows[0].c, leads:d[7].rows[0].c, messages:d[8].rows[0].c };
   } catch(e){ out.data={}; }
+  // التخزين والحجم
+  try {
+    const dbs = await pool.query("SELECT pg_database_size(current_database())::bigint b");
+    const att = await pool.query("SELECT COUNT(*)::int c FROM requests WHERE attachments IS NOT NULL AND attachments::text NOT IN ('[]','null','')").catch(()=>({rows:[{c:0}]}));
+    const img = await pool.query("SELECT COALESCE(SUM(COALESCE(array_length(images,1),0)),0)::int c FROM requests").catch(()=>({rows:[{c:0}]}));
+    out.storage = { dbSizeMB: Math.round(Number(dbs.rows[0].b)/1048576*10)/10, projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client };
+  } catch(e){ out.storage={}; }
   out.allOk = out.db.ok && out.email.ok && out.server.ok;
   res.json(out);
 });
