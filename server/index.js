@@ -2352,7 +2352,12 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
     if (req.body.close_days !== undefined) {
       const _cd = parseInt(req.body.close_days)||0;
-      if (_cd>0) { sets.push('close_at = created_at + ($'+i+" || ' days')::interval"); params.push(String(_cd)); i++; }
+      if (_cd>0) {
+        sets.push("close_at = created_at + ($"+i+" || ' days')::interval"); params.push(String(_cd)); i++;
+        // تمديد المدة يعيد فتح مشروع أُغلق تلقائياً (طالما لم يُعتمد مزوّد)
+        const _st = await pool.query("SELECT status, assigned_provider_id FROM requests WHERE id=$1", [id]);
+        if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { sets.push("status='open'"); }
+      }
       else { sets.push('close_at = NULL'); }
     }
     if (Array.isArray(attachments)) {
