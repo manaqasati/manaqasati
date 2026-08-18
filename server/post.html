@@ -719,6 +719,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <label>الموعد النهائي</label>
               <input type="date" id="n-deadline">
             </div>
+            <div class="fg">
+              <label>مدة استقبال العروض</label>
+              <select id="n-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select>
+            </div>
             <div class="fg ff">
               <label>الصور (حتى 3)</label>
               <input type="file" accept="image/*" multiple onchange="previewImages(this)" style="padding:8px">
@@ -1933,6 +1937,7 @@ function acceptAgree(){
   var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
   var body={title:title,description:desc,category:cat,city:city};
+  var _cd=(document.getElementById('n-closedur')||{}).value; if(_cd)body.close_days=parseInt(_cd);
   if(window._geoLat!=null&&window._geoLng!=null){body.geo_lat=window._geoLat;body.geo_lng=window._geoLng;}
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
