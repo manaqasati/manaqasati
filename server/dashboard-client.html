@@ -1673,11 +1673,11 @@ function loadActions(id){
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
     // إدارة الطلب: تعديل (للطلب المفتوح) + حذف (مع تأكيد)
-    var _canEdit=(req.status==='open');
+    var _canEdit=(req.status==='open'), _canReopen=(req.status==='closed_auto'||req.status==='expired');
     h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة الطلب</h3></div>'
-      +(_canEdit?'<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل الطلب</button>':'')
+      +((_canEdit||_canReopen)?'<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>'+(_canReopen?'تمديد المدة وإعادة الفتح':'تعديل الطلب')+'</button>':'')
       +'<button class="btn-sm" onclick="deleteReq('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fecaca;color:#dc2626;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>حذف الطلب</button>'
-      +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+(_canEdit?'تقدر تعدّل التفاصيل والتصنيف والموقع والملفات، أو تحذف الطلب نهائياً.':'الحذف نهائي ولا يمكن التراجع عنه.')+'</p></div>';
+      +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+(_canReopen?'مدّد مدة استقبال العروض ليُعاد فتح مشروعك ويستقبل عروضاً جديدة.':(_canEdit?'تقدر تعدّل التفاصيل والتصنيف والموقع والملفات، أو تحذف الطلب نهائياً.':'الحذف نهائي ولا يمكن التراجع عنه.'))+'</p></div>';
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
   }).catch(function(){if(el)el.innerHTML=errH(function(){loadActions(curRequestId);});});
 }
