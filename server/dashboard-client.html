@@ -721,6 +721,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <label>الموعد النهائي</label>
               <input type="date" id="n-deadline">
             </div>
+            <div class="fg">
+              <label>مدة استقبال العروض</label>
+              <select id="n-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select>
+            </div>
             <div class="fg ff">
               <label>الصور (حتى 3)</label>
               <input type="file" accept="image/*" multiple onchange="previewImages(this)" style="padding:8px">
@@ -839,7 +843,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       </div>
       <div class="form-grid" style="margin-bottom:12px">
         <div class="fg"><label>الميزانية</label><input type="number" id="e-budget"></div>
-        <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div>
+        <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div><div class="fg"><label>مدة استقبال العروض</label><select id="e-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div>
       </div>
       <div class="fg" style="margin-bottom:4px">
         <label>المخططات والملفات</label>
@@ -1959,6 +1963,7 @@ function acceptAgree(){
   var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
   var body={title:title,description:desc,category:cat,city:city};
+  var _cd=(document.getElementById('n-closedur')||{}).value; if(_cd)body.close_days=parseInt(_cd);
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
   if(budget)body.budget_max=Number(budget);
@@ -1994,6 +1999,7 @@ function openEditReq(id,e){
     document.getElementById('e-desc').value=req.description||'';
     document.getElementById('e-budget').value=req.budget_max||'';
     document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
+    (function(){var _m={7:7,14:14,30:30,60:60,90:90,120:120,180:180};var _sel=document.getElementById('e-closedur');if(_sel){_sel.value='';if(req.close_at&&req.created_at){var _d=Math.round((new Date(req.close_at)-new Date(req.created_at))/86400000);if(_m[_d])_sel.value=String(_d);}}})();
     var _ec=document.getElementById('e-cat'), _nc=document.getElementById('n-cat'); if(_ec&&_nc){ _ec.innerHTML=_nc.innerHTML; _ec.value=req.category||''; }
     var _ecy=document.getElementById('e-city'), _ncy=document.getElementById('n-city'); if(_ecy&&_ncy){ _ecy.innerHTML=_ncy.innerHTML; _ecy.value=req.city||''; }
     _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)};
@@ -2043,6 +2049,7 @@ function submitEditReq(){
   if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[])};
+  body.close_days=parseInt((document.getElementById('e-closedur')||{}).value)||0;
   if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
   var xhr=new XMLHttpRequest();
   xhr.open('PUT',API+'/api/requests/'+_editReqId);
