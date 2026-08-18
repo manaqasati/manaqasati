@@ -262,10 +262,11 @@ app.get(/^\/project\/(.+)$/, async (req, res) => {
     const pageUrl = SITE_URL + '/project/' + raw;
     const pgT = p.title + (p.category ? ' — ' + p.category : '') + (p.city ? ' في ' + p.city : '') + ' | مناقصة';
     const pgD = p.title + ' في ' + (p.city||'السعودية') + (p.category ? ' — ' + p.category : '') + '. قدّم عرضك على منصة مناقصة.';
+    const ogImg = SITE_URL + '/og/project/' + id;
     html = html
       .replace('<title>مشروع — مناقصة</title>', '<title>' + pgT + '</title>')
       .replace('<meta name="description" content="مشروع على منصة مناقصة السعودية">', '<meta name="description" content="' + pgD + '">')
-      .replace('</head>', '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><link rel="canonical" href="' + pageUrl + '"></head>');
+      .replace('</head>', '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><meta property="og:image" content="' + ogImg + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:type" content="article"><meta property="og:site_name" content="مناقصة"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + pgT + '"><meta name="twitter:description" content="' + pgD + '"><meta name="twitter:image" content="' + ogImg + '"><link rel="canonical" href="' + pageUrl + '"></head>');
     res.send(html);
   } catch(e) { console.error('/project SSR:', e.message); res.sendFile(__dirname + '/project.html'); }
 });
@@ -4861,6 +4862,24 @@ app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req
 });
 
 // ═══ OG / SITEMAP / ROBOTS ═══
+app.get('/og/project/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query("SELECT title, category, city FROM requests WHERE id=$1", [id]);
+    if (!r.rows.length) return res.status(404).end();
+    const p = r.rows[0];
+    const esc = s => String(s==null?'':s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+    const words = String(p.title||'مشروع').slice(0,80).split(/\s+/);
+    let l1='', l2='';
+    words.forEach(function(w){ if(!l2 && (l1+' '+w).trim().length<=32) l1=(l1+' '+w).trim(); else l2=(l2+' '+w).trim(); });
+    l2 = l2.slice(0,38);
+    const cat = esc(p.category||'مشروع');
+    const city = esc(p.city||'السعودية');
+    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><rect x="410" y="150" width="380" height="56" rx="28" fill="rgba(201,146,10,0.18)" stroke="#C9920A" stroke-width="1.5"/><text x="600" y="188" font-family="Arial" font-size="30" fill="#C9920A" text-anchor="middle">${cat}</text><text x="600" y="315" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l1)}</text>${l2?`<text x="600" y="388" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l2)}</text>`:''}<text x="600" y="478" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.7)" text-anchor="middle">${city}</text><text x="600" y="558" font-family="Arial" font-size="32" font-weight="bold" fill="#7dd3fc" text-anchor="middle">قدّم عرضك الآن</text><text x="600" y="598" font-family="Arial" font-size="20" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
+    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+  } catch(e) { res.status(500).end(); }
+});
+
 app.get('/og/pro/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
