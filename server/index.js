@@ -1,5012 +1,1979 @@
-const express = require('express');
-const cors = require('cors');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
-const webpush = require('web-push');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-const crypto = require('crypto');
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<script>
+/* توجيه فوري للمسجّل — قبل رسم أي شيء (يمنع ومضة الرئيسية) */
+(function(){
+  try{
+    var t=localStorage.getItem('token'); if(!t) return;
+    var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
+    var hash=location.hash||''; if(hash && hash!=='#home' && hash.length>1) return;
+    var nav=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||{};
+    if(nav.type==='back_forward') return;
+    var ref=document.referrer||'';
+    if(ref && ref.indexOf(location.origin)===0 && /(project|pro|chat|dalil|post|auth)/.test(ref)) return;
+    var p=new URLSearchParams(location.search); if(p.get('src')||p.get('post')) return;
+    var d = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
+    document.documentElement.style.visibility='hidden';
+    location.replace(d);
+  }catch(e){}
+})();
+</script>
 
-// Cloudflare R2 Setup
-let r2Client = null;
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
-const R2_BUCKET = process.env.R2_BUCKET || 'manaqasa-images';
-if (process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY && process.env.R2_ENDPOINT) {
-  r2Client = new S3Client({
-    region: 'auto',
-    endpoint: process.env.R2_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY,
-      secretAccessKey: process.env.R2_SECRET_KEY
-    }
-  });
-  console.log('✅ R2 storage connected');
-} else {
-  console.warn(' R2 keys not set — image upload will use base64 fallback');
-}
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xmr1ll3q07");
+</script>
 
-// رفع صورة base64 إلى R2، يرجع رابط عام
-// أنواع الملفات المسموحة فقط — يمنع رفع HTML/SVG قابل للتنفيذ (XSS مخزّن)
-const UPLOAD_TYPES = {
-  'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp',
-  'image/gif':'gif', 'image/heic':'heic', 'application/pdf':'pdf'
-};
-// ملفات فنية/مكتبية تُحمَّل فقط (غير قابلة للتنفيذ في المتصفح) — تُقبل بالامتداد
-const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, csv:1, rvt:1, pptx:1, ppt:1 };
-const UPLOAD_MAX_BYTES = 30 * 1024 * 1024; // 30MB
-
-async function uploadToR2(base64Data, folder, filename) {
-  if (!r2Client || !base64Data) return base64Data; // fallback
-  if (!base64Data.startsWith('data:')) return base64Data; // already a URL
-  try {
-    const matches = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
-    if (!matches) return base64Data;
-    const contentType = String(matches[1]).toLowerCase().trim();
-    let ext = UPLOAD_TYPES[contentType];
-    let forceDownload = false;
-    if (!ext) {
-      const fe = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
-      if (fe && UPLOAD_EXT_TYPES[fe[1]]) { ext = fe[1]; forceDownload = true; }
-    }
-    if (!ext) { console.warn('رفض رفع نوع غير مسموح:', contentType, filename||''); return null; }
-    const buffer = Buffer.from(matches[2], 'base64');
-    if (!buffer.length || buffer.length > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم غير صالح:', buffer.length); return null; }
-    const key = (folder || 'img').replace(/[^a-zA-Z0-9/_-]/g,'') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
-    await r2Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      Body: buffer,
-      ContentType: forceDownload ? 'application/octet-stream' : contentType,
-      ContentDisposition: forceDownload ? 'attachment' : (contentType === 'application/pdf' ? 'inline' : undefined)
-    }));
-    return R2_PUBLIC_URL + '/' + key;
-  } catch (e) {
-    console.error('R2 upload failed:', e.message);
-    return null;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1f4ed8">
+<meta property="og:type" content="website">
+<meta property="og:title" content="مناقصة – منصة العطاءات">
+<meta property="og:description" content="انشر طلبك واستقبل عروض المزودين، قارن واختر الأنسب.">
+<meta property="og:image" content="https://www.manaqasa.com/og-image.png">
+<meta property="og:url" content="https://www.manaqasa.com">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.manaqasa.com/og-image.png">
+<script src="/track.js" defer></script>
+<meta name="description" content="منصة مناقصة السعودية — انشر طلبك واستقبل عروض المزودين، قارن واختر الأنسب.">
+<title>مناقصة – منصة العطاءات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://manaqasati-production.up.railway.app">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #eff6ff;
+    --card: #ffffff;
+    --card2: #dbeafe;
+    --accent: #1d4ed8;
+    --accent2: #1e40af;
+    --blue: #2563eb;
+    --teal: #0284c7;
+    --text: #1e3a8a;
+    --muted: #3b82f6;
+    --border: rgba(37,99,235,0.15);
+    --glow: rgba(37,99,235,0.06);
+    --nav-bg: rgba(255,255,255,0.95);
   }
-}
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// ── ضغط الاستجابات (gzip) — يقلّل حجم الصفحات ~75% ويسرّع التحميل كثيراً ──
-// آمن: لو الحزمة غير مثبّتة يتخطّاها بلا كسر الخادم
-try {
-  const compression = require('compression');
-  app.use(compression({ threshold: 1024 }));
-  console.log('✓ compression enabled');
-} catch (e) {
-  console.warn('compression not installed — run: npm i compression (يسرّع الموقع كثيراً)');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DATABASE
-// ═══════════════════════════════════════════════════════════════
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/manaqasa',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-pool.connect()
-  .then(() => console.log('✅ Database connected'))
-  .catch(err => console.error('Database error:', err));
-
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
-if (!process.env.JWT_SECRET) {
-  console.error('🔴 تحذير أمني: JWT_SECRET غير معيّن — تم توليد مفتاح عشوائي مؤقّت.');
-  console.error('   النتيجة: تُلغى جلسات المستخدمين عند كل إعادة تشغيل (يحتاجون تسجيل دخول جديد).');
-  console.error('   الحل: عيّن JWT_SECRET في Railway → Variables بقيمة عشوائية طويلة وثابتة.');
-}
-const SITE_URL   = process.env.SITE_URL   || 'https://manaqasa.com';
-const RESEND_KEY = process.env.RESEND_KEY || process.env.RESEND_API_KEY || '';
-const SERVER_START = Date.now();
-const FROM_EMAIL = process.env.FROM_EMAIL || 'cs@manaqasa.com';
-const FROM_NAME  = process.env.FROM_NAME  || 'مناقصة';
-
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
-const VAPID_SUBJECT     = process.env.VAPID_SUBJECT     || 'mailto:cs@manaqasa.com';
-
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-    console.log('✅ Web Push (VAPID) configured');
-  } catch (e) {
-    console.error('VAPID setup error:', e.message);
+  [data-theme="dark"]{
+    --bg:#0f172a; --bg2:#1e293b; --card:#1e293b; --card2:#334155;
+    --accent:#3b82f6; --accent2:#60a5fa; --blue:#60a5fa; --teal:#38bdf8;
+    --text:#e2e8f0; --muted:#94a3b8; --border:rgba(148,163,184,0.22); --glow:rgba(59,130,246,0.10);
+    --nav-bg: rgba(15,23,42,0.95);
   }
-} else {
-  console.warn(' VAPID keys not set — push notifications disabled');
-}
 
-app.use(cors());
-// ترويسات أمان أساسية
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  // يمنع تسريب الروابط السرية (رموز الكرت/الكراسة) للمواقع الخارجية عبر ترويسة الإحالة
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  next();
-});
-app.use(express.json({ limit: '45mb' }));
-// كاش ذكي للملفات الثابتة: الصور/الأيقونات تُحفظ طويلاً، وصفحات HTML لا تُخزَّن أبداً
-app.use(express.static('.', {
-  etag: true,
-  lastModified: true,
-  setHeaders: (res, filePath) => {
-    if (/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
-      res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
-    } else if (/\.html$/i.test(filePath)) {
-      res.setHeader('Cache-Control', 'no-cache'); // HTML يُتحقَّق منه دائماً (تصل التحديثات فوراً)
-    }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
   }
-}));
 
-// Rate Limiting بسيط (in-memory) — حماية من brute force
-const _rateLimit = new Map();
-function rateLimiter(maxReq, windowMs){
-  return (req, res, next) => {
-    const key = (req.ip || req.headers['x-forwarded-for'] || 'unknown') + ':' + req.path;
-    const now = Date.now();
-    const rec = _rateLimit.get(key) || { count: 0, reset: now + windowMs };
-    if (now > rec.reset) { rec.count = 0; rec.reset = now + windowMs; }
-    rec.count++;
-    _rateLimit.set(key, rec);
-    if (rec.count > maxReq) {
-      return res.status(429).json({ message: 'محاولات كثيرة، حاول بعد قليل' });
-    }
-    next();
-  };
-}
-// تنظيف الذاكرة كل 10 دقائق
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
-}, 600000);
-
-// نشر الطلبات قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
-async function notifyMatchingProviders(request){
-  try{
-    if(!request || !request.id) return;
-    if((await getSetting('match_notify_on','1'))==='0') return;
-    const cat = request.category || null;
-    const city = request.city || null;
-    // مزوّد يطابق الفئة (ضمن تخصصاته أو فئات إشعاره) ونفس المدينة إن توفّرت
-    const r = await pool.query(
-      `SELECT DISTINCT id FROM users
-        WHERE role='provider' AND is_active=TRUE
-          AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
-          AND (COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))`,
-      [cat, city]);
-    let sent=0;
-    for(const p of r.rows){
-      try{
-        await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id);
-        sent++;
-      }catch(e){}
-    }
-    if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
-  }catch(e){ console.error('notifyMatchingProviders:', e.message); }
-}
-setInterval(async () => {
-  try {
-    const mins = Math.max(0, parseInt(await getSetting('review_minutes', '5')) || 0);
-    const r = await pool.query(
-      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND created_at <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title, category, city`,
-      [String(mins)]
-    );
-    for (const row of r.rows) {
-      try { await notify(row.client_id, 'تم نشر مشروعك', `مشروعك "${row.title}" تمت مراجعته ونُشر للعروض الآن`, 'request', row.id); } catch(e) {}
-      try { await notifyMatchingProviders(row); } catch(e) {}
-    }
-    if (r.rows.length) console.log(`[auto-publish] نُشر ${r.rows.length} مشروع تلقائياً`);
-  } catch(e) { console.error('auto-publish:', e.message); }
-}, 60000);
-
-// منع الكاش على ملفات HTML
-app.use(function(req, res, next){
-  if(req.path.endsWith('.html') || req.path === '/'){
-    res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma','no-cache');
-    res.setHeader('Expires','0');
+  /* Background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(37,99,235,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(37,99,235,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(14,165,233,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
   }
-  next();
-});
-
-app.use((req, res, next) => { console.log(`${req.method} ${req.path}`); next(); });
-
-app.get('/',                       (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/favicon.ico', (req, res) => {
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.send('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#16213E"/><circle cx="16" cy="16" r="5" fill="#C9920A"/></svg>');
-});
-app.get('/google0ed958111c5d0ae7.html', (req, res) => res.send('google-site-verification: google0ed958111c5d0ae7.html'));
-app.get('/dashboard-admin.html',   (req, res) => res.sendFile(__dirname + '/dashboard-admin.html'));
-app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dashboard-client.html'));
-app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
-app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
-// رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
-app.get('/m/:token',               (req, res) => res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token)));
-app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
-app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
-app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat.html'));
-app.get('/chat.html',              (req, res) => res.sendFile(__dirname + '/chat.html'));
-app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
-app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
-app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
-app.get('/b2b',                    (req, res) => res.sendFile(__dirname + '/b2b.html'));
-app.get('/b2b.html',               (req, res) => res.sendFile(__dirname + '/b2b.html'));
-app.get('/post',                   (req, res) => res.sendFile(__dirname + '/post.html'));
-app.get('/post.html',              (req, res) => res.sendFile(__dirname + '/post.html'));
-app.get('/terms.html',             (req, res) => res.sendFile(__dirname + '/terms.html'));
-
-app.get(/^\/project\/(.+)$/, async (req, res) => {
-  try {
-    const raw = req.path.replace(/^\/project\//, '');
-    const slug = decodeURIComponent(raw);
-    const match = slug.match(/(\d+)$/);
-    if (!match) return res.sendFile(__dirname + '/project.html');
-    const id = parseInt(match[1]);
-    const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city,
-        r.budget_max as budget, r.deadline, r.status, r.created_at,
-        u.name as client_name, u.city as client_city,
-        (SELECT COUNT(*) FROM bids WHERE request_id=r.id) as bid_count
-      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1
-    `, [id]);
-    if (!r.rows.length) return res.sendFile(__dirname + '/project.html');
-    const p = r.rows[0];
-    const fs = require('fs');
-    let html = fs.readFileSync(__dirname + '/project.html', 'utf8');
-    const pageUrl = SITE_URL + '/project/' + raw;
-    const pgT = p.title + (p.category ? ' — ' + p.category : '') + (p.city ? ' في ' + p.city : '') + ' | مناقصة';
-    const pgD = p.title + ' في ' + (p.city||'السعودية') + (p.category ? ' — ' + p.category : '') + '. قدّم عرضك على منصة مناقصة.';
-    const ogImg = SITE_URL + '/og/project/' + id;
-    html = html
-      .replace('<title>مشروع — مناقصة</title>', '<title>' + pgT + '</title>')
-      .replace('<meta name="description" content="مشروع على منصة مناقصة السعودية">', '<meta name="description" content="' + pgD + '">')
-      .replace('</head>', '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><meta property="og:image" content="' + ogImg + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:type" content="article"><meta property="og:site_name" content="مناقصة"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + pgT + '"><meta name="twitter:description" content="' + pgD + '"><meta name="twitter:image" content="' + ogImg + '"><link rel="canonical" href="' + pageUrl + '"></head>');
-    res.send(html);
-  } catch(e) { console.error('/project SSR:', e.message); res.sendFile(__dirname + '/project.html'); }
-});
-
-app.get('/api/requests/public/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city, r.district, r.client_id,
-        r.budget_max, r.geo_lat, r.geo_lng,
-        r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.attachments,
-        COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
-        json_build_object('id', u.id, 'name', split_part(u.name,' ',1), 'city', u.city,
-          'badge', u.badge,
-          'completed_count', (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed'),
-          'is_premium', (u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3)
-        ) as client
-      FROM requests r LEFT JOIN users u ON u.id=r.client_id WHERE r.id=$1
-    `, [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const row = r.rows[0];
-    // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الأدمن، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
-    try {
-      let viewer = null;
-      const ah = req.headers.authorization || '';
-      const tk = ah.startsWith('Bearer ') ? ah.slice(7) : null;
-      if (tk) { try { viewer = jwt.verify(tk, JWT_SECRET); } catch(e) { viewer = null; } }
-      const assigned = (await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0] || {};
-      const ok = viewer && (String(viewer.id)===String(row.client_id) || String(viewer.id)===String(assigned.assigned_provider_id) || viewer.role==='admin' || viewer.role==='provider');
-      if (!ok) { row.geo_lat = null; row.geo_lng = null; }
-    } catch(e) { row.geo_lat = null; row.geo_lng = null; }
-    try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
-    res.json(row);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/bids/public/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    // تحقّق اختياري: أرقام المزوّدين تُكشف للمستخدمين المسجّلين فقط (يشجّع التسجيل ويحمي البيانات)
-    let isLoggedIn = false, viewerId = null, viewerRole = null;
-    try {
-      const hdr = req.headers.authorization || '';
-      const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-      if (tok) { const v = jwt.verify(tok, JWT_SECRET); isLoggedIn = true; viewerId = v.id; viewerRole = v.role; }
-    } catch(e) { isLoggedIn = false; }
-    // صاحب المشروع (أو المخصّص له أو الأدمن) يشوف الملف الرسمي دائماً — لأنه يحوي السعر
-    let isPrivileged = false;
-    try {
-      const rq = (await pool.query('SELECT client_id, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
-      isPrivileged = viewerId != null && (String(viewerId) === String(rq.client_id) || String(viewerId) === String(rq.assigned_provider_id) || viewerRole === 'admin');
-    } catch(e) {}
-    const r = await pool.query(`
-      SELECT b.id, b.days, b.status, b.created_at,
-        CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.price ELSE NULL END as price,
-        COALESCE(b.price_visibility,'client') as price_visibility,
-        COALESCE(b.price_unit,'total') as price_unit,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.attachment_url ELSE NULL END as attachment_url,
-        b.price as _p,
-        b.note as proposal,
-        u.id as provider_id,
-        u.name as provider_name,
-        u.city as provider_city,
-        u.business_name as provider_business_name,
-        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
-          THEN u.profile_image ELSE NULL END as provider_image,
-        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
-      FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
-    `, [id, isLoggedIn, isPrivileged]);
-    // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
-    const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
-    const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
-    const rows = r.rows.map(x => {
-      const { _p, ...rest } = x;
-      // تمويه نص العرض للزائر/المنافس إن كان السعر مخفياً — حماية السعر من التسريب داخل النص
-      const locked = (String(rest.price_visibility) === 'client') && !isPrivileged;
-      if (locked && rest.proposal) {
-        const full = String(rest.proposal);
-        rest.proposal = full.length > 70 ? full.slice(0, 70) : full;
-        rest.note_truncated = full.length > 70;
-        rest.note_locked = true;
-      } else {
-        rest.note_locked = false;
-      }
-      return rest;
-    });
-    res.json({ bids: rows, range });
-  } catch(e) { res.status(500).json([]); }
-});
-
-app.get(/^\/pro\/(.+)$/, async (req, res) => {
-  try {
-    const raw = req.path.replace(/^\/pro\//, '');
-    const slug = decodeURIComponent(raw);
-    // يقبل ID في النهاية (وليد-49) أو البداية (49-وليد) أو ?id=
-    const params = new URLSearchParams(req.query);
-    let id = null;
-    if (params.get('id') && /^\d+$/.test(params.get('id'))) {
-      id = parseInt(params.get('id'));
-    } else {
-      const m = slug.match(/(\d+)$/) || slug.match(/^(\d+)-/);
-      if (m) id = parseInt(m[1]);
-    }
-    if (!id) return res.sendFile(__dirname + '/pro.html');
-    const r = await pool.query(`
-      SELECT id, name, phone, city, bio, specialties, profile_image, business_name, experience_years,
-        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count,
-        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects
-      FROM users WHERE id=$1 AND role='provider'
-    `, [id]);
-    if (!r.rows.length) return res.sendFile(__dirname + '/pro.html');
-    const p = r.rows[0];
-    const pName = p.business_name || p.name || 'مزود خدمة';
-    const pCity = p.city || 'السعودية';
-    const specs = (p.specialties || []).join('، ');
-    const avg = parseFloat(p.avg_rating) || 0;
-    const cnt = parseInt(p.review_count) || 0;
-    // canonical دائماً بالاسم الكامل (SEO قوي) مهما كان رابط الدخول
-    const seoSlug = encodeURIComponent(pName.replace(/\s+/g, '-')) + '-' + p.id;
-    const pageUrl = `${SITE_URL}/pro/${seoSlug}`;
-    const title = `${pName}${specs ? ' — ' + specs : ''}${pCity !== 'السعودية' ? ' في ' + pCity : ''} | مناقصة`;
-    const desc = `${pName} مزود خدمة في ${pCity}${specs ? '، متخصص في ' + specs : ''}${avg > 0 ? '، تقييم ' + avg.toFixed(1) + ' من 5' : ''}. تواصل معه على منصة مناقصة.`;
-    const keywords = [pName, pCity, ...(p.specialties||[]), ...(p.specialties||[]).map(s => s+' '+pCity), 'مزود خدمة', 'مناقصة'].join(', ');
-    const fs = require('fs');
-    let html = fs.readFileSync(__dirname + '/pro.html', 'utf8');
-    html = html
-      .replace('<title>ملف المزود — مناقصة</title>', `<title>${title}</title>`)
-      .replace('<meta name="description" content="مزود خدمة على منصة مناقصة السعودية">', `<meta name="description" content="${desc}">`)
-      .replace('<script type="application/ld+json" id="ld"></script>', `
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"LocalBusiness","name":"${pName}","description":"${desc.replace(/"/g,'\\"')}","url":"${pageUrl}","telephone":"${p.phone||''}","address":{"@type":"PostalAddress","addressLocality":"${pCity}","addressCountry":"SA"}${avg>0?`,"aggregateRating":{"@type":"AggregateRating","ratingValue":"${avg.toFixed(1)}","reviewCount":"${cnt}","bestRating":"5"}`:''}}</script>
-<script type="application/ld+json" id="ld"></script>`)
-      .replace('</head>', `
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${desc}">
-  <meta property="og:url" content="${pageUrl}">
-  <meta property="og:image" content="${SITE_URL}/og/pro/${id}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:image" content="${SITE_URL}/og/pro/${id}">
-  <meta property="og:type" content="profile">
-  <meta property="og:site_name" content="مناقصة">
-  <meta property="og:locale" content="ar_SA">
-  <meta name="keywords" content="${keywords}">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${title}">
-  <meta name="twitter:description" content="${desc}">
-  <link rel="canonical" href="${pageUrl}">
-</head>`);
-    res.send(html);
-  } catch(e) { console.error('/pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// صفحات SEO — دليل الخدمات حسب التخصص والمدينة (مرسومة من الخادم)
-// ═══════════════════════════════════════════════════════════════
-const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب'];
-const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الأحساء','الطائف','بريدة','تبوك','خميس مشيط','أبها','حائل','نجران','جازان','الجبيل','ينبع','القطيف'];
-function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
-function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
-function seoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function seoStars(n){ n=Math.round(n||0); let h=''; for(let i=1;i<=5;i++) h+= (i<=n?'★':'☆'); return h; }
-
-// دليل رئيسي (هَب للربط الداخلي)
-app.get('/dalil', (req, res) => {
-  const cards = SEO_CATS.map(cat => {
-    const links = SEO_CITIES.slice(0,8).map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(city)}</a>`).join('');
-    return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px;margin-bottom:12px"><h2 style="font-size:16px;color:#1e3a8a;margin:0 0 9px">${seoEsc(cat)}</h2><div>${links}</div></div>`;
-  }).join('');
-  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر طلبك واستقبل عروضاً مجاناً."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/">انشر طلبك مجاناً</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
-});
-
-// مولّدات محتوى غني لصفحات SEO — يجعل كل صفحة قيّمة لقوقل حتى بلا مزوّدين
-function seoRichIntro(cat, city){
-  return `تُعدّ خدمات ${cat} في ${city} من أكثر الخدمات طلباً، نظراً لحاجة المنازل والمنشآت إليها بشكل متكرر. سواء كنت تبحث عن تنفيذ جديد أو صيانة أو إصلاح عاجل، فإن اختيار مزوّد ${cat} المناسب في ${city} يوفّر عليك الوقت والتكلفة ويضمن جودة العمل. عبر منصة مناقصة، تنشر طلبك مرة واحدة ويصلك عدة عروض من مزوّدين في ${city} تقارن بينها وتختار الأنسب سعراً وجودة، بدلاً من الاتصال على كل مزوّد على حدة والمساومة معه.`;
-}
-function seoRichFaq(cat, city){
-  const faqs = [
-    { q: `كم تكلفة ${cat} في ${city}؟`, a: `تختلف تكلفة ${cat} في ${city} حسب حجم العمل ونوعه والمواد المستخدمة. أفضل طريقة لمعرفة السعر المناسب هي نشر طلبك على مناقصة واستقبال عدة عروض أسعار من مزوّدين مختلفين، ثم المقارنة بينها لاختيار الأنسب.` },
-    { q: `كيف أختار أفضل مزوّد ${cat} في ${city}؟`, a: `ابحث عن مزوّد لديه تقييمات جيدة وأعمال سابقة موثّقة، والتزام بالمواعيد، وشفافية في التسعير. عبر مناقصة يمكنك رؤية تقييمات المزوّدين ومقارنة عروضهم قبل اتخاذ القرار.` },
-    { q: `كم يستغرق تنفيذ خدمة ${cat}؟`, a: `تعتمد المدة على طبيعة العمل وحجمه. عند نشر طلبك، حدّد التفاصيل بدقة ليقدّم لك المزوّدون تقديراً واقعياً للمدة والتكلفة.` },
-    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر الطلب وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة (3% من قيمة العقد) على مزوّد الخدمة فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
-  ];
-  let h = '<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px;margin-bottom:14px">';
-  faqs.forEach(f => {
-    h += `<div style="margin-bottom:15px"><div style="font-weight:800;color:#1e3a8a;font-size:14px;margin-bottom:5px">${seoEsc(f.q)}</div><div style="font-size:13px;color:#3a4c6b;line-height:1.9">${seoEsc(f.a)}</div></div>`;
-  });
-  h += '</div>';
-  return { html: h, data: faqs };
-}
-function seoRichTips(cat){
-  const tips = [
-    'حدّد احتياجك بوضوح واكتب تفاصيل دقيقة عند نشر الطلب.',
-    'قارن بين عدة عروض ولا تعتمد على عرض واحد فقط.',
-    'اطّلع على تقييمات المزوّد وأعماله السابقة قبل الاتفاق.',
-    'اتفق على التفاصيل والسعر والمدة كتابياً قبل بدء العمل.'
-  ];
-  let h = '<ul style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px 20px 20px 0;margin:0 0 14px;list-style:none">';
-  tips.forEach(t => { h += `<li style="font-size:13px;color:#3a4c6b;line-height:1.9;padding-right:24px;position:relative;margin-bottom:8px">✓ ${seoEsc(t)}</li>`; });
-  h += '</ul>';
-  return h;
-}
-
-// تخزين مؤقت لصفحات SEO (10 دقائق) — يخفّف ضغط قاعدة البيانات عند زحف قوقل للـ414 صفحة ويسرّعها للزوار
-const _dalilCache = new Map();
-const _DALIL_TTL = 10 * 60 * 1000;
-setInterval(() => { const now = Date.now(); for (const [k,v] of _dalilCache) { if (now > v.exp) _dalilCache.delete(k); } }, 5*60*1000);
-
-app.get('/dalil/:cat/:city', async (req, res) => {
-  try {
-    const _ck = req.params.cat + '|' + req.params.city;
-    const _hit = _dalilCache.get(_ck);
-    if (_hit && Date.now() < _hit.exp) { return res.set('Content-Type','text/html; charset=utf-8').send(_hit.html); }
-    const cat = seoUnslug(req.params.cat);
-    const city = seoUnslug(req.params.city);
-    if (!SEO_CATS.includes(cat) || !SEO_CITIES.includes(city)) return res.redirect(302, '/dalil');
-    let providers = [];
-    try {
-      const r = await pool.query(
-        `SELECT id, name, business_name, city, bio, profile_image, tier, badge,
-           COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
-           COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count
-         FROM users WHERE role='provider' AND is_active=TRUE
-           AND $1=ANY(COALESCE(specialties,'{}')) AND city ILIKE $2
-         ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL THEN 0 ELSE 1 END,
-           COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) DESC LIMIT 30`,
-        [cat, '%'+city+'%']);
-      providers = r.rows;
-    } catch(e){ providers = []; }
-
-    const title = `${cat} في ${city} — أفضل المزوّدين وعروض الأسعار | مناقصة`;
-    const desc = `تبحث عن ${cat} في ${city}؟ تصفّح مزوّدين موثوقين، أو انشر طلبك مجاناً على مناقصة واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب.`;
-    const canonical = `${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`;
-
-    const provCards = providers.length ? providers.map(p => {
-      const nm = seoEsc(p.business_name || p.name || 'مزوّد');
-      const av = p.avg_rating ? `<span style="color:#F0A500">${seoStars(p.avg_rating)}</span> <span style="color:#64748b;font-size:12px">${(+p.avg_rating).toFixed(1)} (${p.review_count})</span>` : '<span style="color:#94a3b8;font-size:12px">جديد</span>';
-      const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
-      const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
-      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a></h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
-    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b">لا يوجد مزوّدون مسجّلون بعد في ${seoEsc(cat)} بـ${seoEsc(city)}. <strong>كن أول من يستفيد:</strong> انشر طلبك وسنوصّلك بمزوّدين مناسبين.</p>`;
-
-    const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
-    const otherCats = SEO_CATS.filter(c=>c!==cat).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(c)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:12.5px">${seoEsc(c)} ${seoEsc(city)}</a>`).join('');
-
-    const _intro = seoRichIntro(cat, city);
-    const _faq = seoRichFaq(cat, city);
-    const _tips = seoRichTips(cat);
-
-    const schema = {
-      "@context":"https://schema.org","@graph":[
-      {
-      "@type":"CollectionPage",
-      "name":title,"description":desc,"url":canonical,
-      "about":{"@type":"Service","serviceType":cat,"areaServed":{"@type":"City","name":city}},
-      "mainEntity":{"@type":"ItemList","numberOfItems":providers.length,
-        "itemListElement":providers.slice(0,10).map((p,i)=>({"@type":"ListItem","position":i+1,"name":(p.business_name||p.name||'مزوّد'),"url":`${SITE_URL}/pro/${seoSlug(p.business_name||p.name||'مزود')}-${p.id}`}))}
-      },
-      {
-      "@type":"FAQPage",
-      "mainEntity": _faq.data.map(f=>({"@type":"Question","name":f.q,"acceptedAnswer":{"@type":"Answer","text":f.a}}))
-      }]
-    };
-
-    const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر طلبك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر طلبك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر طلبك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر طلبك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر طلبك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر طلبك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
-    _dalilCache.set(_ck, { html: _pageHtml, exp: Date.now() + _DALIL_TTL });
-    res.set('Content-Type','text/html; charset=utf-8').send(_pageHtml);
-  } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
-});
-
-// خريطة الموقع (Sitemap) — يساعد قوقل يكتشف صفحات SEO
-// ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
-function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
-
-// صفحة الكرت — لو تحوّل المستهدف لمزوّد مسجّل، حوّل لصفحته الرسمية؛ وإلا اعرض الكرت (مع وسوم معاينة)
-let _cardTpl = null;
-app.get('/card/:token', async (req, res) => {
-  try{
-    const r = await pool.query('SELECT converted_user_id, name, category, city, rating, card_published FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
-    const lead = r.rows[0];
-    if(lead && lead.converted_user_id){
-      const u = await pool.query("SELECT id, COALESCE(business_name,name) AS nm FROM users WHERE id=$1 AND role='provider'", [lead.converted_user_id]);
-      if(u.rows[0]){
-        const seoSlug = encodeURIComponent(String(u.rows[0].nm||'مزود').replace(/\s+/g,'-')) + '-' + u.rows[0].id;
-        return res.redirect(302, '/pro/' + seoSlug);
-      }
-    }
-    if(_cardTpl === null){ try{ _cardTpl = require('fs').readFileSync(__dirname + '/card.html','utf8'); }catch(e){ _cardTpl = ''; } }
-    if(!_cardTpl || !lead || lead.card_published === false) return res.sendFile(__dirname + '/card.html');
-    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const nm = esc(lead.name||'بطاقة رقمية');
-    const desc = esc([lead.category, lead.city].filter(Boolean).join(' · ') + (lead.rating?` · ⭐ ${(+lead.rating).toFixed(1)}`:''));
-    const url = `${SITE_URL}/card/${req.params.token}`;
-    const img = `${SITE_URL}/og/card/${req.params.token}`;
-    const og = `\n<meta property="og:type" content="profile">\n<meta property="og:title" content="${nm} — بطاقة رقمية | مناقصة">\n<meta property="og:description" content="${desc}">\n<meta property="og:url" content="${url}">\n<meta property="og:image" content="${img}">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="${nm} — بطاقة رقمية">\n<meta name="twitter:description" content="${desc}">\n<meta name="twitter:image" content="${img}">\n`;
-    res.header('Content-Type','text/html; charset=utf-8');
-    res.send(_cardTpl.replace('</head>', og + '</head>'));
-  }catch(e){ res.sendFile(__dirname + '/card.html'); }
-});
-
-// صورة معاينة الكرت (OG) — بهوية مناقصة الزرقاء
-app.get('/og/card/:token', async (req, res) => {
-  try{
-    const r = await pool.query('SELECT name, category, city, rating FROM leads WHERE card_token=$1 LIMIT 1', [req.params.token]);
-    if(!r.rows.length) return res.status(404).send('Not found');
-    const p = r.rows[0];
-    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const name = esc(p.name||'بطاقة رقمية');
-    const specs = esc([p.category, p.city].filter(Boolean).join('  ·  ') || 'مزوّد خدمة');
-    const avg = parseFloat(p.rating)||0;
-    const initial = esc((String(p.name||'?').trim()[0])||'م');
-    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#0ea5e9"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.55)" text-anchor="middle">بطاقة رقمية · مناقصة</text><circle cx="600" cy="235" r="72" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" stroke-width="4"/><text x="600" y="235" font-family="Arial" font-size="70" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">${initial}</text><text x="600" y="380" font-family="Arial" font-size="64" font-weight="bold" fill="#fff" text-anchor="middle">${name}</text><text x="600" y="450" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.85)" text-anchor="middle">${specs}</text>${avg>0?`<text x="600" y="520" font-family="Arial" font-size="34" fill="#7dd3fc" text-anchor="middle">★ ${avg.toFixed(1)}</text>`:''}<text x="600" y="585" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.4)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
-  }catch(e){ res.status(500).send('error'); }
-});
-
-// بيانات الكرت العامة (حقول آمنة فقط)
-app.get('/api/card/:token', async (req, res) => {
-  try{
-    const r = await pool.query(
-      `SELECT name, phone, phone_norm, category, city, rating, reviews_count, website,
-              card_bio, card_logo, card_links, card_published
-       FROM leads WHERE card_token=$1 LIMIT 1`, [req.params.token]);
-    if(!r.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
-    const l = r.rows[0];
-    if(l.card_published === false) return res.status(410).json({ unpublished:true, message:'الكرت غير متاح' });
-    let views = 0;
-    try{ const uv = await pool.query('UPDATE leads SET card_views=COALESCE(card_views,0)+1 WHERE card_token=$1 RETURNING card_views', [req.params.token]); views = (uv.rows[0] && uv.rows[0].card_views) || 0; }catch(e){}
-    res.json({
-      name: l.name, phone: l.phone, phone_norm: l.phone_norm, category: l.category, city: l.city,
-      rating: l.rating, reviews_count: l.reviews_count, website: l.website,
-      bio: l.card_bio || '', logo: l.card_logo || '', links: l.card_links || {}, views: views
-    });
-  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
-});
-
-// تعديل ذاتي بالرمز (من عنده الرابط يملكه) — نبذة/روابط/إخفاء
-app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
-  try{
-    const token = req.params.token;
-    const chk = await pool.query('SELECT id FROM leads WHERE card_token=$1 LIMIT 1', [token]);
-    if(!chk.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
-    const bio = typeof req.body.bio === 'string' ? req.body.bio.slice(0,600) : null;
-    const inLinks = (req.body.links && typeof req.body.links === 'object') ? req.body.links : {};
-    const allow = ['instagram','snapchat','tiktok','twitter','whatsapp','maps','website'];
-    const links = {};
-    allow.forEach(k => { if(typeof inLinks[k]==='string' && inLinks[k].trim()) links[k] = inLinks[k].trim().slice(0,300); });
-    const sets = ['card_updated_at=NOW()'], v = [];
-    if(bio !== null){ v.push(bio); sets.push(`card_bio=$${v.length}`); }
-    if(typeof req.body.logo === 'string'){
-      let logo = req.body.logo.trim();
-      if(logo.startsWith('data:')) logo = await uploadToR2(logo, 'manaqasa/cards');
-      v.push(logo || null); sets.push(`card_logo=$${v.length}`);
-    }
-    v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`);
-    if(req.body.unpublish === true) sets.push('card_published=false');
-    if(req.body.unpublish === false) sets.push('card_published=true');
-    v.push(token);
-    await pool.query(`UPDATE leads SET ${sets.join(',')} WHERE card_token=$${v.length}`, v);
-    res.json({ ok:true });
-  }catch(e){ res.status(500).json({ message:'تعذّر الحفظ' }); }
-});
-
-// (أدمن) إنشاء/جلب رابط الكرت لمستهدف
-app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const id = parseInt(req.params.id);
-    const r = await pool.query('SELECT card_token, card_views, card_published FROM leads WHERE id=$1', [id]);
-    if(!r.rows.length) return res.status(404).json({ message:'غير موجود' });
-    let token = r.rows[0].card_token;
-    if(!token){
-      for(let i=0;i<5 && !token;i++){
-        const t = genCardToken();
-        try{
-          const up = await pool.query('UPDATE leads SET card_token=$1 WHERE id=$2 AND card_token IS NULL RETURNING card_token', [t, id]);
-          if(up.rows.length) token = up.rows[0].card_token;
-        }catch(e){}
-      }
-    }
-    if(!token) return res.status(500).json({ message:'تعذّر توليد الرمز' });
-    res.json({ token, url: `${SITE_URL}/card/${token}`, views: r.rows[0].card_views || 0, published: r.rows[0].card_published !== false });
-  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
-});
-
-// ═══ كراسة المشروع (Brief) — توليد الطلب ═══
-// (أدمن) اقتراح مزودين مطابقين لمشروع من قائمة الاستقطاب
-app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const id = parseInt(req.params.id);
-    const rq = await pool.query('SELECT id, title, category, city, budget_max FROM requests WHERE id=$1', [id]);
-    if(!rq.rows.length) return res.status(404).json({ message:'المشروع غير موجود' });
-    const p = rq.rows[0];
-    // تحكّم يدوي: يتجاوز مطابقة المشروع الافتراضية عند تمريره
-    const qCity = (req.query.city != null) ? String(req.query.city).trim() : (p.city || '');
-    const qCat  = (req.query.cat  != null) ? String(req.query.cat).trim()  : (p.category || '');
-    const minScore = parseInt(req.query.min_score) || 0;
-    const cityLike = qCity ? '%'+qCity+'%' : null;
-    const catLike  = qCat  ? '%'+qCat+'%'  : null;
-    const r = await pool.query(
-      `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
-       FROM leads
-       WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
-         AND ($1::text IS NULL OR city ILIKE $1)
-         AND ($2::text IS NULL OR category ILIKE $2)
-         AND (COALESCE(score,0) >= $3)
-       ORDER BY score DESC NULLS LAST, updated_at DESC LIMIT 80`, [cityLike, catLike, minScore]);
-    let leads = r.rows;
-    // fallback: لو ما فيه مطابقة بالتخصص+المدينة، جرّب المدينة فقط (فقط عند عدم وجود تحكّم يدوي بالتخصص)
-    if(!leads.length && cityLike && req.query.cat == null){
-      const r2 = await pool.query(
-        `SELECT id, name, phone, phone_norm, category, city, score, status, card_token
-         FROM leads WHERE lead_type='provider' AND phone_norm IS NOT NULL AND status NOT IN ('converted','rejected')
-           AND city ILIKE $1 AND (COALESCE(score,0) >= $2) ORDER BY score DESC NULLS LAST LIMIT 80`, [cityLike, minScore]);
-      leads = r2.rows;
-    }
-    res.json({
-      project: { id:p.id, title:p.title, category:p.category, city:p.city, budget_max:p.budget_max },
-      brief_url:`${SITE_URL}/brief/${p.id}`,
-      filters: { city:qCity, cat:qCat, min_score:minScore },
-      leads
-    });
-  }catch(e){ console.error('match-leads:', e.message); res.status(500).json({ message:'تعذّر' }); }
-});
-
-// صفحة الكراسة العامة (noindex) — لا تكشف بيانات العميل
-app.get('/brief/:id', (req, res) => res.sendFile(__dirname + '/brief.html'));
-
-// ═══ EMAIL ═══
-async function sendEmail(to, subject, html) {
-  if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
-  if (!to) return false;
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html })
-    });
-    if (!r.ok) { console.error('Resend error:', await r.text()); return false; }
-    console.log(`📧 Email sent → ${to} — "${subject}"`);
-    return true;
-  } catch(e) { console.error('sendEmail:', e.message); return false; }
-}
-
-// تهريب HTML لمنع حقن روابط/وسوم في الإيميلات (ناقل تصيّد)
-function eEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-function emailTpl(title, body, btnText, btnUrl) {
-  const year = new Date().getFullYear();
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#eef2f7;font-family:Tahoma,Arial,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">${title} — منصة مناقصة</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;padding:28px 14px">
-    <tr><td align="center">
-      <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(22,33,62,.10)">
-        <!-- Header -->
-        <tr><td style="background:#16213E;background:linear-gradient(135deg,#0D1829 0%,#16213E 55%,#1B3A6B 100%);padding:0;position:relative">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:34px 28px 28px;text-align:center">
-            <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:.5px">
-              <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:8px;box-shadow:0 0 0 4px rgba(201,146,10,.25)"></span>مناقصة
-            </div>
-            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:7px;font-weight:600">سوق المشاريع والخدمات</div>
-          </td></tr></table>
-          <div style="height:4px;background:linear-gradient(90deg,#A87000,#C9920A,#F0A500,#C9920A,#A87000)"></div>
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="padding:34px 30px 26px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td>
-            <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
-            <div style="width:46px;height:3px;background:#C9920A;border-radius:2px;margin-bottom:20px"></div>
-            <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
-            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#C9920A,#A87000)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
-          </td></tr></table>
-        </td></tr>
-        <!-- Divider -->
-        <tr><td style="padding:0 30px"><div style="height:1px;background:#E8EAED"></div></td></tr>
-        <!-- Footer -->
-        <tr><td style="padding:22px 30px 26px;text-align:center">
-          <div style="font-size:13px;font-weight:800;color:#16213E;margin-bottom:6px">منصة مناقصة</div>
-          <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
-            <a href="https://manaqasa.com" style="color:#C9920A;text-decoration:none;font-weight:700">manaqasa.com</a>
-          </div>
-          <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
-        </td></tr>
-      </table>
-      <div style="font-size:10.5px;color:#a0aab8;margin-top:16px;line-height:1.7">وصلتك هذه الرسالة لأنك مسجّل في منصة مناقصة</div>
-    </td></tr>
-  </table>
-</body></html>`;
-}
-
-// ═══ PUSH ═══
-async function sendPush(userId, title, body, url, refType, refId) {
-  try {
-    const r = await pool.query(`SELECT token, platform FROM push_tokens WHERE user_id=$1`, [userId]);
-    if (!r.rows.length) return;
-    let badgeCount = 1;
-    try {
-      const badgeRes = await pool.query(`
-        SELECT (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false) +
-               (SELECT COUNT(*)::int FROM messages WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL)) AS total
-      `, [userId]);
-      const total = badgeRes.rows[0]?.total;
-      if (typeof total === 'number' && total > 0) badgeCount = total;
-    } catch(e) { console.error('badge count error:', e.message); }
-    const webPayload = JSON.stringify({ title: title||'مناقصة', body: body||'', url: url||'/', type: refType||'general', ref_id: refId||null, tag: `${refType||'general'}-${refId||Date.now()}`, badge: badgeCount });
-    const expoMessages = [];
-    for (const row of r.rows) {
-      const platform = row.platform || 'web';
-      if (platform === 'web') {
-        if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) continue;
-        let subscription;
-        try { subscription = JSON.parse(row.token); } catch(e) { continue; }
-        try {
-          await webpush.sendNotification(subscription, webPayload);
-        } catch(err) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [userId, row.token]); } catch(e) {}
-          } else { console.error('sendPush web error:', err.statusCode, err.message); }
-        }
-      } else if (platform === 'ios' || platform === 'android' || platform === 'expo') {
-        if (row.token && row.token.startsWith('ExponentPushToken')) {
-          expoMessages.push({ to: row.token, sound: 'default', title: title||'مناقصة', body: body||'', data: { url: url||'/', type: refType||'general', ref_id: refId||null }, badge: badgeCount, priority: 'high', channelId: 'default', _displayInForeground: true, ttl: 0, mutableContent: true, interruptionLevel: 'time-sensitive' });
-        }
-      }
-    }
-    if (expoMessages.length > 0) {
-      try {
-        const expoResp = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'Accept': 'application/json', 'Accept-encoding': 'gzip, deflate', 'Content-Type': 'application/json' }, body: JSON.stringify(expoMessages) });
-        const expoResult = await expoResp.json();
-        if (expoResult && expoResult.data && Array.isArray(expoResult.data)) {
-          for (let i = 0; i < expoResult.data.length; i++) {
-            const ticket = expoResult.data[i];
-            if (ticket.status === 'error') {
-              const errCode = ticket.details && ticket.details.error;
-              if (errCode === 'DeviceNotRegistered') {
-                try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [userId, expoMessages[i].to]); console.log(`🗑️  Removed invalid Expo token for user ${userId}`); } catch(e) {}
-              } else { console.error('Expo push error:', errCode, ticket.message); }
-            }
-          }
-        }
-      } catch(expoErr) { console.error('Expo push API error:', expoErr.message); }
-    }
-  } catch(e) { console.error('sendPush helper error:', e.message); }
-}
-
-async function logAdmin(req, action, targetType, targetId, details) {
-  try {
-    await pool.query(
-      'INSERT INTO admin_logs (admin_id, admin_name, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5,$6)',
-      [req.user?.id||null, req.user?.name||'أدمن', action, targetType||null, targetId||null, details||null]
-    );
-  } catch(e) { console.error('logAdmin:', e.message); }
-}
-
-async function getSetting(key, def) {
-  try { const r = await pool.query('SELECT value FROM platform_settings WHERE key=$1', [key]); return r.rows.length ? r.rows[0].value : def; }
-  catch(e) { return def; }
-}
-async function setSetting(key, value) {
-  await pool.query(`INSERT INTO platform_settings (key, value, updated_at) VALUES ($1,$2,NOW()) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`, [key, String(value)]);
-}
-
-// ═══════════ نظام الصلاحيات (RBAC) ═══════════
-const OWNER_EMAIL = 'wled-111@hotmail.com';
-const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage'];
-const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
-const ROLE_LABELS = {super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
-const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20,outreach_specialist:25};
-const ROLE_PERMISSIONS = {
-  super_admin: ['*'],
-  content_manager: ['dashboard.view','analytics.view','users.view','users.edit','users.badge','users.role','users.delete','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send'],
-  support: ['dashboard.view','users.view','requests.view','questions.view','questions.answer','reports.view','reports.resolve'],
-  analyst: ['dashboard.view','analytics.view','users.view','requests.view','bids.view'],
-  outreach_specialist: ['dashboard.view','outreach.manage']
-};
-function effectivePermissions(row){
-  if(!row || row.role!=='admin') return [];
-  // المالك يملك كل الصلاحيات دائماً — يمنع حجب نفسه عن اللوحة بأي إعداد خاطئ
-  if(row.email && row.email.toLowerCase() === OWNER_EMAIL.toLowerCase()) return ['*'];
-  if(Array.isArray(row.permissions) && row.permissions.length) return row.permissions;
-  if(row.admin_role && ROLE_PERMISSIONS[row.admin_role]) return ROLE_PERMISSIONS[row.admin_role];
-  return ['*'];
-}
-function hasPerm(perms, perm){ return perms.includes('*') || perms.includes(perm); }
-async function loadAdmin(req, res, next){
-  try{
-    const r = await pool.query('SELECT id,name,email,role,admin_role,admin_level,permissions,is_active FROM users WHERE id=$1',[req.user.id]);
-    if(!r.rows.length || r.rows[0].role!=='admin') return res.status(403).json({ message:'للمدير فقط' });
-    if(r.rows[0].is_active===false) return res.status(403).json({ message:'الحساب معطّل' });
-    req.adminUser = r.rows[0];
-    req.adminPerms = effectivePermissions(r.rows[0]);
-    next();
-  }catch(e){ res.status(500).json({ message:'حدث خطأ، حاول مرة أخرى' }); }
-}
-// ═══ محرّك الاستقطاب: أدوات ═══
-// توحيد صيغة الجوال السعودي → 9665XXXXXXXX
-function normPhone(p){
-  if(!p) return null;
-  let d = String(p).replace(/[^\d]/g, '');
-  if(d.startsWith('00966')) d = d.slice(2);
-  else if(d.startsWith('966')) { /* كما هو */ }
-  else if(d.startsWith('05')) d = '966' + d.slice(1);
-  else if(d.startsWith('5') && d.length === 9) d = '966' + d;
-  else if(d.startsWith('0')) d = '966' + d.slice(1);
-  if(!d.startsWith('966')) return null;
-  const rest = d.slice(3);
-  if(rest.length !== 9 || !rest.startsWith('5')) return null;
-  return d;
-}
-// توحيد اسم المنشأة للمطابقة: يوحّد الحروف، يشيل التشكيل و«ال» والكلمات العامة (مؤسسة/شركة/محل...)
-function normName(s){
-  if(!s) return '';
-  let t = String(s)
-    .replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
-    .replace(/[\u064B-\u0652\u0640]/g,'')               // تشكيل + تطويل
-    .replace(/[^\u0621-\u064A0-9a-zA-Z ]/g,' ')         // رموز/علامات
-    .toLowerCase();
-  const stop = { 'موسسه':1,'شركه':1,'مكتب':1,'محل':1,'مصنع':1,'مركز':1,'معرض':1,'ورشه':1,'مجموعه':1,'مؤسسه':1,
-    'للتجاره':1,'التجاريه':1,'للمقاولات':1,'للخدمات':1,'الخدمات':1,'and':1,'co':1,'est':1,'company':1,'trading':1 };
-  const toks = t.split(/\s+/).map(w => w.replace(/^ال/,'')).filter(w => w && !stop[w]);
-  return toks.join(' ');
-}
-// تشابه اسمين — متحفّظ لتقليل الإنذارات الكاذبة (يُستخدم فقط كإشارة مراجعة يدوية)
-function nameSimilar(a, b){
-  a = normName(a); b = normName(b);
-  if(!a || !b) return false;
-  if(a === b) return true;
-  const A = a.split(' '), B = b.split(' ');
-  const setB = {}; B.forEach(w => { setB[w] = 1; });
-  const common = A.filter(w => setB[w] && w.length >= 2).length;
-  if(common >= 2) return true;                          // كلمتان مميزتان مشتركتان
-  // اسم من كلمة واحدة مميزة (≥4 حروف) موجودة في الآخر
-  if(A.length === 1 && A[0].length >= 4 && b.indexOf(A[0]) >= 0) return true;
-  if(B.length === 1 && B[0].length >= 4 && a.indexOf(B[0]) >= 0) return true;
-  return false;
-}
-
-// نقل بيانات الكرت (نبذة/شعار/روابط) إلى ملف المزود — ملء الفارغ فقط
-async function transferCardToUser(userId, lead){
-  if(!userId || !lead) return;
-  const lk = lead.card_links || {};
-  const hasAny = lead.card_bio || lead.card_logo || (lk && Object.keys(lk).length);
-  if(!hasAny) return;
-  try{
-    await pool.query(
-      `UPDATE users SET
-         bio           = COALESCE(NULLIF(bio,''), $2),
-         profile_image = COALESCE(profile_image, $3),
-         instagram     = COALESCE(NULLIF(instagram,''), $4),
-         snapchat      = COALESCE(NULLIF(snapchat,''), $5),
-         tiktok        = COALESCE(NULLIF(tiktok,''), $6),
-         twitter       = COALESCE(NULLIF(twitter,''), $7),
-         website       = COALESCE(NULLIF(website,''), $8),
-         location_url  = COALESCE(NULLIF(location_url,''), $9)
-       WHERE id=$1`,
-      [userId, lead.card_bio||null, lead.card_logo||null, lk.instagram||null, lk.snapchat||null,
-       lk.tiktok||null, lk.twitter||null, lk.website||null, lk.maps||null]
-    );
-  }catch(e){ console.error('card→profile transfer:', e.message); }
-}
-
-// نقاط الأولوية: تقييم عالٍ + مراجعات كثيرة + بلا موقع = صيد ثمين
-function scoreLead(l){
-  let s = 0;
-  const r = parseFloat(l.rating) || 0;
-  const rc = parseInt(l.reviews_count) || 0;
-  if(r >= 4.5) s += 35; else if(r >= 4.0) s += 25; else if(r >= 3.5) s += 12;
-  if(rc >= 50) s += 30; else if(rc >= 20) s += 22; else if(rc >= 5) s += 12; else if(rc > 0) s += 5;
-  if(!l.website) s += 20;           // بلا موقع → يحتاج قناة عملاء
-  if(l.phone_norm) s += 15;         // رقم صالح
-  return Math.min(100, s);
-}
-
-function requirePermission(perm){
-  return [auth, adminOnly, loadAdmin, function(req,res,next){
-    if(!hasPerm(req.adminPerms, perm)) return res.status(403).json({ message:'ليس لديك صلاحية لهذا الإجراء' });
-    next();
-  }];
-}
-// يمنع التصرّف على من هو أعلى أو مساوٍ في الرتبة (إلا المالك)
-function canActOn(actor, targetLevel){
-  if(actor.email===OWNER_EMAIL) return true;
-  return (actor.admin_level||0) > (targetLevel||0);
-}
-async function guardUserTarget(req, targetId){
-  const t = await pool.query('SELECT email, role, admin_level FROM users WHERE id=$1', [targetId]);
-  if(!t.rows.length) return { code:404, message:'غير موجود' };
-  const tg = t.rows[0];
-  if(tg.email===OWNER_EMAIL && req.adminUser.email!==OWNER_EMAIL) return { code:403, message:'لا يمكن المساس بالمالك' };
-  if(tg.role==='admin' && !canActOn(req.adminUser, tg.admin_level)) return { code:403, message:'لا يمكنك التصرّف على مشرف برتبتك أو أعلى' };
-  return null;
-}
-
-async function notify(userId, title, body, type, refId) {
-  try {
-    await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
-    const url = (() => {
-      if (!type) return '/';
-      if (type === 'message') return '/dashboard-client.html#messages';
-      if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
-      if (type === 'new_request') return '/dashboard-provider.html';
-      if (type === 'request' || type === 'request_published') return '/dashboard-client.html';
-      if (type === 'review') return '/';
-      if (type === 'new_question') return '/dashboard-client.html';
-      if (type === 'question_answered') return '/';
-      return '/';
-    })();
-    sendPush(userId, title, body, url, type, refId).catch(() => {});
-    wsBroadcast(userId, { type: 'notification', notif: { title, body, ntype: type, ref_id: refId, url, created_at: new Date().toISOString() } });
-  } catch(e) { console.error('Notification error:', e); }
-}
-
-async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
-  await notify(userId, title, body, type, refId);
-  try {
-    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
-    if (u.rows.length && u.rows[0].email) {
-      sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL)).catch(() => {});
-    }
-  } catch(e) { console.error('notifyWithEmail email part:', e.message); }
-}
-
-/* ═══════════ محرّك التذكيرات المجدولة (Push + Email، مرّة واحدة لكل حالة) ═══════════ */
-async function _remindOnce(userId, kind, refId, title, body, emailSubject, emailBody, btnText, btnUrl){
-  try{
-    const ins = await pool.query(
-      `INSERT INTO reminders_log(user_id, kind, ref_id) VALUES($1,$2,$3) ON CONFLICT (user_id, kind, ref_id) DO NOTHING RETURNING id`,
-      [userId, kind, refId||0]
-    );
-    if(!ins.rows.length) return false; // أُرسل سابقاً
-    await notifyWithEmail(userId, title, body, 'reminder', refId, emailSubject, emailBody, btnText, btnUrl);
-    return true;
-  }catch(e){ console.error('_remindOnce '+kind+':', e.message); return false; }
-}
-async function runReminders(){
-  try{
-    const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
-    const dDeal   = Math.max(0, parseInt(await getSetting('rem_deal_days','5'))||5);
-    const dReview = Math.max(0, parseInt(await getSetting('rem_review_days','1'))||1);
-    const dProfile= Math.max(0, parseInt(await getSetting('rem_profile_days','1'))||1);
-    const on = async (k)=> (await getSetting('rem_'+k+'_on','1'))!=='0';
-    // 1) عميل عنده عروض ولم يختر
-    if(await on('offers')){
-    const r1 = await pool.query(
-      `SELECT r.id, r.client_id, r.title, COUNT(b.id) AS bids
-       FROM requests r JOIN bids b ON b.request_id=r.id
-       WHERE r.status='open' AND r.assigned_provider_id IS NULL
-         AND r.created_at <= NOW() - ($1 || ' days')::interval
-       GROUP BY r.id, r.client_id, r.title HAVING COUNT(b.id) > 0`, [String(dOffers)]);
-    for(const x of r1.rows){
-      await _remindOnce(x.client_id, 'offers_waiting', x.id,
-        'عندك عروض بانتظارك 🎯', `وصلك ${x.bids} عرض على "${eEsc(x.title)}" — قارن واختر الأنسب`,
-        'عروض بانتظار اختيارك', `<p>وصلك <strong>${x.bids}</strong> عرض على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>ادخل الآن، قارن العروض، واختر الأنسب لك.</p>`,
-        'استعراض العروض', SITE_URL+'/dashboard-client.html');
-    }}
-    // 2) اختار مزوّداً ولم تُتمّ الصفقة
-    if(await on('deal')){
-    const r2 = await pool.query(
-      `SELECT id, client_id, title FROM requests
-       WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
-         AND assigned_at <= NOW() - ($1 || ' days')::interval AND status NOT IN ('completed','cancelled')`, [String(dDeal)]);
-    for(const x of r2.rows){
-      await _remindOnce(x.client_id, 'complete_deal', x.id,
-        'أتمم صفقتك ✅', `مشروعك "${eEsc(x.title)}" ما زال قيد التنفيذ — تابع مع المزوّد لإتمامه`,
-        'أتمم صفقتك', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" ما زال مفتوحاً.</p><p>تابع مع المزوّد، أكمل الصفقة، ثم قيّمه ليستفيد غيرك.</p>`,
-        'متابعة المشروع', SITE_URL+'/dashboard-client.html');
-    }}
-    // 3) صفقة تمّت ولم يقيّم العميل
-    if(await on('review')){
-    const r3 = await pool.query(
-      `SELECT r.id, r.client_id, r.title FROM requests r
-       WHERE r.completed_at IS NOT NULL AND r.completed_at <= NOW() - ($1 || ' days')::interval
-         AND NOT EXISTS (SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)`, [String(dReview)]);
-    for(const x of r3.rows){
-      await _remindOnce(x.client_id, 'review_reminder', x.id,
-        'قيّم المزوّد ⭐', `كيف كانت تجربتك في "${eEsc(x.title)}"؟ أضف تقييمك الآن`,
-        'رأيك يهمّنا', `<p>أنهيت مشروع "<strong>${eEsc(x.title)}</strong>".</p><p>قيّم المزوّد ليساعد غيرك على الاختيار الصحيح — دقيقة واحدة تكفي.</p>`,
-        'أضف تقييمك', SITE_URL+'/dashboard-client.html');
-    }}
-    // 4) مزوّد ملفه ناقص
-    if(await on('profile')){
-    const r4 = await pool.query(
-      `SELECT id FROM users WHERE role='provider' AND created_at <= NOW() - ($1 || ' days')::interval
-        AND (bio IS NULL OR bio='' OR profile_image IS NULL
-             OR specialties IS NULL OR array_length(specialties,1) IS NULL
-             OR portfolio_images IS NULL OR array_length(portfolio_images,1) IS NULL)`, [String(dProfile)]);
-    for(const x of r4.rows){
-      await _remindOnce(x.id, 'complete_profile', 0,
-        'أكمل ملفك التعريفي 🚀', 'الملف المكتمل يجذب فرصاً أكثر — أضف نبذتك وأعمالك وتخصصاتك',
-        'أكمل ملفك لتحصل على فرص أكثر', `<p>المزوّدون بملفات مكتملة يحصلون على <strong>عروض وفرص أكثر بكثير</strong>.</p><p>أضف صورتك، نبذتك، تخصصاتك، ومعرض أعمالك الآن لتبرز أمام العملاء.</p>`,
-        'أكمل ملفي', SITE_URL+'/dashboard-provider.html');
-    }}
-
-    /* ═══ دورة حياة المشروع (أتمتة) ═══ */
-    // أ) مشروع بعروض ولم يُختر: تنبيه قبل الإغلاق ثم إغلاق تلقائي
-    if((await getSetting('lc_close_on','1'))!=='0'){
-      const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
-      const warnBefore = Math.max(0, parseInt(await getSetting('lc_close_warn','2'))||2);
-      // تنبيه قبل الإغلاق
-      if(warnBefore>0){
-        // نحسب الفرق في JS (طرح المعاملات النصية داخل SQL يسبب: operator is not unique)
-        const warnFrom = Number(closeDays) - Number(warnBefore);
-        const w = await pool.query(
-          `SELECT id, client_id, title FROM requests
-           WHERE status='open' AND assigned_provider_id IS NULL
-             AND created_at <= NOW() - ($1 || ' days')::interval
-             AND created_at >  NOW() - ($2 || ' days')::interval`, [String(warnFrom), String(closeDays)]);
-        for(const x of w.rows){
-          await _remindOnce(x.client_id, 'close_warn', x.id,
-            'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${eEsc(x.title)}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
-            'بادر قبل إغلاق مشروعك', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" سيُغلق تلقائياً خلال <strong>${warnBefore} يوم</strong> لعدم اختيار عرض.</p><p>ادخل الآن واختر الأنسب قبل فوات الفرصة.</p>`,
-            'اختر عرضاً الآن', SITE_URL+'/dashboard-client.html');
-        }
-      }
-      // الإغلاق الفعلي
-      const cl = await pool.query(
-        `UPDATE requests SET status='closed_auto'
-         WHERE status='open' AND assigned_provider_id IS NULL
-           AND created_at <= NOW() - ($1 || ' days')::interval
-         RETURNING id, client_id, title`, [String(closeDays)]);
-      for(const x of cl.rows){
-        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
-      }
-      if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
-    }
-
-    // ب) مشروع اختير مزوّده ولم يُتمّ: طلب تأكيد (موافقة ضمنية)
-    if((await getSetting('lc_confirm_on','1'))!=='0'){
-      const confirmDays = Math.max(1, parseInt(await getSetting('lc_confirm_days','20'))||20);
-      const graceDays   = Math.max(1, parseInt(await getSetting('lc_confirm_grace','3'))||3);
-      // 1) اطلب التأكيد (مرّة)، وسجّل وقت الطلب
-      const ask = await pool.query(
-        `SELECT id, client_id, title FROM requests
-         WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
-           AND status NOT IN ('completed','cancelled','closed_auto','archived_auto')
-           AND (confirm_requested_at IS NULL)
-           AND assigned_at <= NOW() - ($1 || ' days')::interval`, [String(confirmDays)]);
-      for(const x of ask.rows){
-        try{
-          await pool.query(`UPDATE requests SET confirm_requested_at=NOW() WHERE id=$1`, [x.id]);
-          await notifyWithEmail(x.client_id, 'هل تمّ تنفيذ مشروعك؟', `أكّد إن كان "${eEsc(x.title)}" قد نُفّذ`, 'request', x.id,
-            'أكّد إتمام مشروعك ✅', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" مع المزوّد المختار.</p><p>هل تمّ التنفيذ؟ ادخل وأكّد — وإن لم ترد خلال ${graceDays} أيام سنعتبره منتهياً تلقائياً.</p>`,
-            'تأكيد الإتمام', SITE_URL+'/dashboard-client.html');
-        }catch(e){}
-      }
-      // 2) بعد مهلة السماح بلا رد → منتهٍ بموافقة ضمنية
-      const done = await pool.query(
-        `UPDATE requests SET status='completed', completed_at=NOW(), auto_completed=TRUE
-         WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
-           AND confirm_requested_at IS NOT NULL
-           AND confirm_requested_at <= NOW() - ($1 || ' days')::interval
-           AND status NOT IN ('completed','cancelled','closed_auto','archived_auto')
-         RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
-      for(const x of done.rows){
-        try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
-    const _wb = await pool.query("SELECT price FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
-    const _cfee = _wb.rows.length ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
-    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة '+_cfee.toLocaleString('en-US')+' ر.س (3%) — سدّدها خلال 10 أيام — من صفحة الدفع.':''), 'completed', id);
-      }
-      if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
-    }
-
-    /* ═══ المرحلة ٢: تنشيط المزوّد الخامل ═══ */
-    // ج) مزوّد لم يدخل منذ مدة (اعتماداً على آخر ظهور)
-    if((await getSetting('react_inactive_on','1'))!=='0'){
-      const inDays = Math.max(1, parseInt(await getSetting('react_inactive_days','30'))||30);
-      const col = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name IN ('last_seen_at','last_login_at','updated_at')`);
-      const names = col.rows.map(r=>r.column_name);
-      const seenCol = names.includes('last_seen_at')?'last_seen_at':(names.includes('last_login_at')?'last_login_at':(names.includes('updated_at')?'updated_at':null));
-      if(seenCol){
-        const inactive = await pool.query(
-          `SELECT id FROM users WHERE role='provider'
-             AND ${seenCol} IS NOT NULL AND ${seenCol} <= NOW() - ($1 || ' days')::interval
-             AND ${seenCol} > NOW() - (($1::int + 14) || ' days')::interval`, [String(inDays)]);
-        for(const x of inactive.rows){
-          await _remindOnce(x.id, 'react_inactive_'+Math.floor(Date.now()/(14*86400000)), x.id,
-            'اشتقنا لك 👋', 'فيه فرص ومشاريع جديدة تناسب تخصصك — ادخل وقدّم عروضك',
-            'فرص جديدة بانتظارك', `<p>مضى وقت منذ آخر زيارة لك.</p><p>ظهرت مشاريع جديدة تناسب تخصصك — ادخل الآن وقدّم عروضك قبل أن تفوتك.</p>`,
-            'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html');
-        }
-      }
-    }
-    // د) مزوّد لم يقدّم أي عرض منذ مدة رغم وجود فرص
-    if((await getSetting('react_nobids_on','1'))!=='0'){
-      const nbDays = Math.max(1, parseInt(await getSetting('react_nobids_days','21'))||21);
-      const nobids = await pool.query(
-        `SELECT u.id FROM users u
-         WHERE u.role='provider' AND u.created_at <= NOW() - ($1 || ' days')::interval
-           AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.provider_id=u.id AND b.created_at > NOW() - ($1 || ' days')::interval)
-           AND EXISTS (SELECT 1 FROM requests r WHERE r.status='open' AND r.created_at > NOW() - INTERVAL '14 days')`, [String(nbDays)]);
-      for(const x of nobids.rows){
-        await _remindOnce(x.id, 'react_nobids_'+Math.floor(Date.now()/(21*86400000)), x.id,
-          'لا تفوّت الفرص 🎯', 'مشاريع مفتوحة تنتظر عروضك — كل عرض فرصة لعميل جديد',
-          'مشاريع تنتظر عروضك', `<p>يوجد مشاريع مفتوحة تناسب مجالك ولم تقدّم عليها عروضاً.</p><p>كلّما قدّمت أكثر، زادت فرصك في الفوز بعملاء جدد.</p>`,
-          'قدّم عرضك الآن', SITE_URL+'/dashboard-provider.html');
-      }
-    }
-
-    /* ═══ المرحلة ٣: جودة وثقة ═══ */
-    // هـ) طلب لم يصله أي عرض بعد مدة → نصيحة تحسين الوصف للعميل
-    if((await getSetting('q_nooffers_on','1'))!=='0'){
-      const noDays = Math.max(1, parseInt(await getSetting('q_nooffers_days','3'))||3);
-      const noOffers = await pool.query(
-        `SELECT r.id, r.client_id, r.title FROM requests r
-         WHERE r.status='open' AND r.assigned_provider_id IS NULL
-           AND r.created_at <= NOW() - ($1 || ' days')::interval
-           AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id)`, [String(noDays)]);
-      for(const x of noOffers.rows){
-        await _remindOnce(x.client_id, 'no_offers', x.id,
-          'لم تصلك عروض بعد 💡', `حسّن وصف "${eEsc(x.title)}" (تفاصيل، ميزانية، صور) لجذب عروض أفضل`,
-          'اجعل طلبك يجذب العروض', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — الطلبات الواضحة تحصل على عروض أسرع وأفضل.</p>`,
-          'تحسين الطلب', SITE_URL+'/dashboard-client.html');
-      }
-    }
-    // و) مزوّد تقييمه منخفض → تنبيه لطيف لتحسين الخدمة
-    if((await getSetting('q_lowrating_on','1'))!=='0'){
-      const thr = parseFloat(await getSetting('q_lowrating_threshold','3.0'))||3.0;
-      const minR = Math.max(1, parseInt(await getSetting('q_lowrating_min','3'))||3);
-      const low = await pool.query(
-        `SELECT u.id FROM users u
-         WHERE u.role='provider'
-           AND (SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id) >= $2
-           AND COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) > 0
-           AND COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) < $1`, [thr, minR]);
-      for(const x of low.rows){
-        await _remindOnce(x.id, 'low_rating_'+Math.floor(Date.now()/(30*86400000)), x.id,
-          'لنرتقِ بخدمتك ⭐', 'تقييمك الحالي أقل من المتوسط — تحسين التواصل والالتزام يرفع تقييمك وفرصك',
-          'نصائح لرفع تقييمك', `<p>تقييمك الحالي أقل من المتوسط. لا تقلق — يمكن تحسينه بسرعة:</p><p>التزم بالمواعيد، تواصل بوضوح، واحرص على جودة التنفيذ. تقييم أعلى = عملاء أكثر.</p>`,
-          'تحسين ملفي', SITE_URL+'/dashboard-provider.html');
-      }
-    }
-
-    // ط) إيميل مطابقة مُجمّع للمزوّد — يجمع المشاريع الجديدة المطابقة منذ آخر إيميل (بدل الأسبوعي)
-    if((await getSetting('provider_weekly_on','1'))!=='0'){
-      const provs = await pool.query(
-        `SELECT id, email, COALESCE(notify_categories, specialties) AS cats, city, COALESCE(serves_all_cities,FALSE) AS allcities, service_cities, last_match_email_at
-           FROM users WHERE role='provider' AND is_active=TRUE`);
-      for(const p of provs.rows){
-        try{
-          if(!p.email || /@manaqasa\.local$/i.test(p.email)) continue; // بريد حقيقي فقط
-          const cats = Array.isArray(p.cats)?p.cats:[];
-          if(!cats.length) continue;
-          const opp = await pool.query(
-            `SELECT r.id, r.title, r.city FROM requests r
-             WHERE r.status='open' AND r.assigned_provider_id IS NULL
-               AND r.created_at > COALESCE($3::timestamp, NOW() - INTERVAL '24 hours')
-               AND r.category = ANY($1::text[])
-               AND ($4::boolean OR r.city IS NULL OR ($2::text IS NULL AND ($5::text[] IS NULL OR cardinality($5::text[])=0)) OR r.city = $2 OR r.city = ANY(COALESCE($5::text[],ARRAY[]::text[])))
-             ORDER BY r.created_at DESC LIMIT 12`,
-            [cats, p.city||null, p.last_match_email_at||null, p.allcities, p.service_cities||null]);
-          const rows = opp.rows||[];
-          if(!rows.length) continue;
-          const items = rows.map(r=>`<li style="margin-bottom:6px"><strong>${eEsc(r.title||'')}</strong>${r.city?(' — '+eEsc(r.city)):''}</li>`).join('');
-          const title = `🔔 ${rows.length} مشروع جديد يناسب تخصصك`;
-          const body = `<p>ظهرت مشاريع جديدة تطابق تخصصك${p.city&&!p.allcities?(' في '+eEsc(p.city)):''}:</p><ul style="padding-inline-start:18px;margin:10px 0">${items}</ul><p>سارع بتقديم عروضك — المبادرة المبكرة ترفع فرص الفوز.</p>`;
-          sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-          await pool.query('UPDATE users SET last_match_email_at=NOW() WHERE id=$1', [p.id]);
-        }catch(e){}
-      }
-    }
-
-    /* ═══ تذكيرات إضافية ═══ */
-    // ي) تذكير العميل بالرد على أسئلة المزودين
-    if((await getSetting('qa_answer_on','1'))!=='0'){
-      const qDays = Math.max(1, parseInt(await getSetting('qa_answer_days','2'))||2);
-      const qs = await pool.query(
-        `SELECT DISTINCT r.client_id, r.id AS rid, r.title, COUNT(q.id) AS cnt
-         FROM request_questions q JOIN requests r ON r.id=q.request_id
-         WHERE q.answer IS NULL AND q.created_at <= NOW() - ($1 || ' days')::interval
-           AND r.status NOT IN ('completed','cancelled','closed_auto')
-         GROUP BY r.client_id, r.id, r.title`, [String(qDays)]);
-      for(const x of qs.rows){
-        await _remindOnce(x.client_id, 'answer_q', x.rid,
-          'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${eEsc(x.title)}" — ردّك يساعدك تحصل على عروض أدق`,
-          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>الرد السريع يوضّح طلبك ويجذب عروضاً أفضل.</p>`,
-          'الرد على الأسئلة', SITE_URL+'/dashboard-client.html');
-      }
-    }
-    // ك) تذكير المزوّد بعرضه المعلّق منذ مدة (متابعة)
-    if((await getSetting('bid_followup_on','1'))!=='0'){
-      const bDays = Math.max(1, parseInt(await getSetting('bid_followup_days','7'))||7);
-      const pend = await pool.query(
-        `SELECT b.id AS bid_id, b.provider_id, r.title
-         FROM bids b JOIN requests r ON r.id=b.request_id
-         WHERE b.status='pending' AND r.status='open' AND r.assigned_provider_id IS NULL
-           AND b.created_at <= NOW() - ($1 || ' days')::interval`, [String(bDays)]);
-      for(const x of pend.rows){
-        await _remindOnce(x.provider_id, 'bid_followup', x.bid_id,
-          'تابع عرضك 💬', `عرضك على "${eEsc(x.title)}" لا يزال قيد المراجعة — تواصل مع العميل لتحسين فرصك`,
-          'تابع عرضك المعلّق', `<p>عرضك على "<strong>${eEsc(x.title)}</strong>" لم يُبتّ فيه بعد.</p><p>بادر بالتواصل مع العميل عبر المحادثة أو حسّن عرضك — المتابعة ترفع فرص القبول.</p>`,
-          'فتح المحادثة', SITE_URL+'/dashboard-provider.html');
-      }
-    }
-
-    /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
-    // ز) ملخّص يومي للأدمن (مرّة كل يوم)
-    if((await getSetting('admin_summary_on','1'))!=='0'){
-      const dayKey = String(Math.floor(Date.now()/86400000));
-      if(await getSetting('admin_summary_lastday','') !== dayKey){
-        await setSetting('admin_summary_lastday', dayKey);
-        const q=(s)=>pool.query(s);
-        const [np, nc, npr, nb, nComp, cAuto] = await Promise.all([
-          q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '1 day'`),
-          q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '1 day'`),
-          q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '1 day'`),
-          q(`SELECT COUNT(*) c FROM bids WHERE created_at > NOW() - INTERVAL '1 day'`),
-          q(`SELECT COUNT(*) c FROM requests WHERE completed_at > NOW() - INTERVAL '1 day'`),
-          q(`SELECT COUNT(*) c FROM requests WHERE status='closed_auto' AND created_at > NOW() - INTERVAL '2 days'`)
-        ]);
-        const n=r=>parseInt(r.rows[0].c)||0;
-        const html = emailTpl('ملخّص مناقصة اليومي',
-          `<p>ملخّص آخر ٢٤ ساعة:</p>
-           <ul style="line-height:2;font-size:15px">
-             <li>مشاريع جديدة: <strong>${n(np)}</strong></li>
-             <li>تسجيل عملاء: <strong>${n(nc)}</strong></li>
-             <li>تسجيل مزوّدين: <strong>${n(npr)}</strong></li>
-             <li>عروض مقدّمة: <strong>${n(nb)}</strong></li>
-             <li>مشاريع مكتملة: <strong>${n(nComp)}</strong></li>
-             <li>مشاريع أُغلقت تلقائياً: <strong>${n(cAuto)}</strong></li>
-           </ul>`, 'فتح لوحة الأدمن', SITE_URL+'/dashboard-admin.html');
-        const admins = await pool.query(`SELECT email FROM users WHERE role='admin' AND email IS NOT NULL`);
-        for(const a of admins.rows){ if(a.email) sendEmail(a.email, '📊 ملخّص مناقصة اليومي', html).catch(()=>{}); }
-      }
-    }
-    // ح) كشف شذوذ: طفرة تسجيلات في ساعة (احتمال حسابات وهمية)
-    if((await getSetting('admin_anomaly_on','1'))!=='0'){
-      const thr = Math.max(3, parseInt(await getSetting('admin_anomaly_threshold','15'))||15);
-      const spike = await pool.query(`SELECT COUNT(*) c FROM users WHERE created_at > NOW() - INTERVAL '1 hour'`);
-      const cnt = parseInt(spike.rows[0].c)||0;
-      if(cnt >= thr){
-        const hourKey = String(Math.floor(Date.now()/3600000));
-        if(await getSetting('admin_anomaly_lasthour','') !== hourKey){
-          await setSetting('admin_anomaly_lasthour', hourKey);
-          const admins = await pool.query(`SELECT id, email FROM users WHERE role='admin'`);
-          for(const a of admins.rows){
-            try{ await notify(a.id, '⚠️ تنبيه: طفرة تسجيلات', `تم تسجيل ${cnt} حساب خلال ساعة — يُنصح بالمراجعة`, 'system', 0); }catch(e){}
-            if(a.email) sendEmail(a.email, '⚠️ تنبيه شذوذ في التسجيلات', emailTpl('طفرة تسجيلات غير معتادة', `<p>تم تسجيل <strong>${cnt}</strong> حساب خلال الساعة الماضية.</p><p>قد تكون حسابات وهمية — يُنصح بمراجعة المستخدمين الجدد.</p>`, 'مراجعة المستخدمين', SITE_URL+'/dashboard-admin.html')).catch(()=>{});
-          }
-        }
-      }
-    }
-  }catch(e){ console.error('runReminders:', e.message); }
-}
-setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
-setTimeout(runReminders, 60000);          // مرّة بعد دقيقة من الإقلاع
-
-
-function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
-
-// ═══ مستوى المزود (tier) — مستنتج من الصفقات المكتملة، منفصل عن badge اليدوي ═══
-function tierFromCompleted(n){ n=parseInt(n)||0; if(n>=25) return 'expert'; if(n>=10) return 'distinguished'; if(n>=3) return 'active'; return 'new'; }
-const TIER_LABELS = { new:'مزود جديد', active:'مزود نشط', distinguished:'مزود مميّز', expert:'خبير معتمد' };
-const TIER_RANK = { new:0, active:1, distinguished:2, expert:3 };
-async function recomputeProviderTier(providerId){
-  try{
-    if(!providerId) return;
-    const cur = await pool.query("SELECT tier, tier_locked FROM users WHERE id=$1 AND role='provider'", [providerId]);
-    if(!cur.rows.length) return;
-    if(cur.rows[0].tier_locked) return; // مستوى مثبّت يدوياً — لا يُعاد حسابه
-    const oldTier = cur.rows[0].tier || 'new';
-    const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [providerId]);
-    const newTier = tierFromCompleted(c.rows[0] && c.rows[0].n);
-    if(newTier === oldTier) return;
-    await pool.query("UPDATE users SET tier=$1 WHERE id=$2 AND role='provider'", [newTier, providerId]);
-    // إشعار ترقية فقط عند ارتقاء فعلي لأعلى
-    if((TIER_RANK[newTier]||0) > (TIER_RANK[oldTier]||0)){
-      try{ await notify(providerId, 'مبروك! ارتقيت لمستوى جديد', 'وصلت إلى مستوى «'+(TIER_LABELS[newTier]||newTier)+'» — يظهر الآن للعملاء على عروضك ويرفع ترتيبك.', 'tier_up', null); }catch(e){}
-    }
-  }catch(e){ console.error('recomputeProviderTier:', e.message); }
-}
-
-function generateProjectNumber() {
-  const d = new Date();
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
-  return `MNQ-${y}${m}${dy}-${Math.floor(Math.random()*9999).toString().padStart(4,'0')}`;
-}
-
-// ═══ AUTH MIDDLEWARE ═══
-// ذاكرة مؤقتة لحالة الحساب (60 ثانية) — يجعل الحظر/الحذف ساري المفعول فوراً تقريباً بلا إثقال القاعدة
-const _userState = new Map();
-setInterval(() => { const now = Date.now(); for (const [k,v] of _userState) { if (now > v.exp) _userState.delete(k); } }, 120000);
-async function isUserUsable(id){
-  const hit = _userState.get(id);
-  if (hit && Date.now() < hit.exp) return hit.ok;
-  try {
-    const r = await pool.query('SELECT is_active FROM users WHERE id=$1', [id]);
-    const ok = !!(r.rows.length && r.rows[0].is_active !== false);
-    _userState.set(id, { ok, exp: Date.now() + 60000 });
-    return ok;
-  } catch(e) { return true; } // لا نمنع الخدمة عند عطل قاعدة البيانات
-}
-function auth(req, res, next) {
-  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'غير مصرح' });
-  let payload;
-  try { payload = jwt.verify(token, JWT_SECRET); }
-  catch { return res.status(401).json({ message: 'جلسة منتهية' }); }
-  req.user = payload;
-  isUserUsable(payload.id).then(ok => {
-    if (!ok) return res.status(403).json({ message: 'الحساب موقوف أو غير موجود' });
-    next();
-  }).catch(() => next());
-}
-// مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض الطلب
-function optionalAuth(req, res, next) {
-  const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
-  if (token) { try { req.user = jwt.verify(token, JWT_SECRET); } catch(e) {} }
-  next();
-}
-function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
-function clientOnly(req, res, next) { if (req.user.role !== 'client') return res.status(403).json({ message: 'للعملاء فقط' }); next(); }
-function providerOnly(req, res, next) { if (req.user.role !== 'provider') return res.status(403).json({ message: 'لمزودي الخدمة فقط' }); next(); }
-
-// ═══ DATABASE SETUP ═══
-async function setupDatabase() {
-  console.log('🔄 Setting up database...');
-  try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255), password_hash VARCHAR(255), phone VARCHAR(20), role VARCHAR(20) NOT NULL CHECK (role IN ('client','provider','admin')), specialties TEXT[], notify_categories TEXT[], bio TEXT, city VARCHAR(100), badge VARCHAR(50) DEFAULT 'none', is_active BOOLEAN DEFAULT TRUE, experience_years INTEGER, portfolio_images TEXT[], profile_image TEXT, report_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS requests (id SERIAL PRIMARY KEY, client_id INTEGER REFERENCES users(id), title VARCHAR(255) NOT NULL, description TEXT NOT NULL, category VARCHAR(100), city VARCHAR(100), address TEXT, budget_max DECIMAL(10,2), deadline DATE, image_url TEXT, images TEXT[], attachments JSONB, main_image_index INTEGER DEFAULT 0, project_number VARCHAR(50), status VARCHAR(20) DEFAULT 'pending_review', assigned_provider_id INTEGER REFERENCES users(id), assigned_at TIMESTAMP, completed_at TIMESTAMP, admin_notes TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS bids (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id), price INTEGER NOT NULL, days INTEGER NOT NULL, note TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
-    // حظر بين المستخدمين: blocker يحظر blocked فلا تصله رسائله
-    await pool.query(`CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(blocker_id, blocked_id))`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
-    // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
-    // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
-    // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
-    // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
-    // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
-    // إشعار العميل تلقائياً بتقرير العروض عند بلوغ حدّ معيّن (يخزّن عدد العروض وقت الإشعار)
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
-    // ═══ سجل المناديب الخفيف (بلا حساب) — مندوب واحد ← عدة مشاريع، يتابع عبر رابط سحري ═══
-    await pool.query(`CREATE TABLE IF NOT EXISTS agents (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      phone TEXT,
-      token TEXT UNIQUE,
-      default_pct NUMERIC DEFAULT 1,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_id INTEGER`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
-    // المزوّد: خدمة كل المدن + وقت آخر إيميل مطابقة (للإيميل المُجمّع)
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
-    // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
-    try {
-      await pool.query("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(specialties)");
-      await pool.query("UPDATE users SET specialties=array_replace(specialties,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(specialties)");
-      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(notify_categories)");
-      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(notify_categories)");
-      await pool.query("UPDATE requests SET category='أبواب وبوابات أوتوماتيكية' WHERE category='أبواب'");
-      await pool.query("UPDATE requests SET category='جبس' WHERE category='جبس وطباشير'");
-    } catch(e) { console.error('category migration:', e.message); }
-    // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
-    // رابط الدخول السحري القصير: رمز مخزّن + انتهاؤه (للعميل المنشور بالوكالة وغيره)
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
-    // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_req ON messages(request_id, created_at)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','5') ON CONFLICT (key) DO NOTHING`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
-    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS confirm_requested_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
-
-    // ═══ محرّك الاستقطاب: جدول المستهدفين ═══
-    try {
-      await pool.query(`CREATE TABLE IF NOT EXISTS leads (
-        id SERIAL PRIMARY KEY,
-        lead_type VARCHAR(20) NOT NULL DEFAULT 'provider',
-        name VARCHAR(200) NOT NULL,
-        phone VARCHAR(30),
-        phone_norm VARCHAR(20),
-        category VARCHAR(100),
-        city VARCHAR(80),
-        address TEXT,
-        rating NUMERIC(2,1),
-        reviews_count INTEGER DEFAULT 0,
-        website VARCHAR(300),
-        place_id VARCHAR(200) UNIQUE,
-        score INTEGER DEFAULT 0,
-        status VARCHAR(20) NOT NULL DEFAULT 'new',
-        notes TEXT,
-        matched_request_id INTEGER,
-        contacted_at TIMESTAMP,
-        replied_at TIMESTAMP,
-        converted_user_id INTEGER,
-        converted_at TIMESTAMP,
-        followup_at TIMESTAMP,
-        contact_count INTEGER DEFAULT 0,
-        created_by INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )`);
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_logo TEXT"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
-      try { await pool.query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS brief_views INTEGER DEFAULT 0"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_updated_at TIMESTAMP"); } catch(e){}
-      try { await pool.query("CREATE INDEX IF NOT EXISTS idx_leads_card_token ON leads(card_token)"); } catch(e){}
-    } catch(e){ console.error('leads table:', e.message); }
-    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level INTEGER DEFAULT 0'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_role VARCHAR(40)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
-    try {
-      // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
-      await pool.query(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
-      // المالك المحمي — أعلى رتبة لا تُمَس
-      await pool.query(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
-    } catch(e){ console.error('seed owner:', e.message); }
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
-    try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tiktok VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
-    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'new'"); } catch(e){}
-    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_locked BOOLEAN DEFAULT FALSE"); } catch(e){}
-    // حشو/تحديث مستوى كل المزودين تلقائياً من عدد الصفقات المكتملة (مرة عند الإقلاع)
-    try { await pool.query(`UPDATE users SET tier = CASE
-        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 25 THEN 'expert'
-        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 10 THEN 'distinguished'
-        WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 3 THEN 'active'
-        ELSE 'new' END
-      WHERE role='provider' AND COALESCE(tier_locked,FALSE)=FALSE`); } catch(e){ console.error('tier backfill:', e.message); }
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
-    // ═══ فهارس الأداء — تمنع مسح الجداول كاملة مع نمو البيانات ═══
-    const _idx = [
-      'CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id)',
-      'CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status)',
-      'CREATE INDEX IF NOT EXISTS idx_requests_provider ON requests(assigned_provider_id)',
-      'CREATE INDEX IF NOT EXISTS idx_requests_created ON requests(created_at DESC)',
-      'CREATE INDEX IF NOT EXISTS idx_requests_cat_city ON requests(category, city)',
-      'CREATE INDEX IF NOT EXISTS idx_bids_request ON bids(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_bids_provider ON bids(provider_id)',
-      'CREATE INDEX IF NOT EXISTS idx_bids_status ON bids(status)',
-      'CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, is_read)',
-      'CREATE INDEX IF NOT EXISTS idx_messages_request ON messages(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)',
-      'CREATE INDEX IF NOT EXISTS idx_reviews_reviewed ON reviews(reviewed_id)',
-      'CREATE INDEX IF NOT EXISTS idx_reviews_request ON reviews(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)',
-      'CREATE INDEX IF NOT EXISTS idx_users_city ON users(city)',
-      'CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)',
-      'CREATE INDEX IF NOT EXISTS idx_questions_request ON request_questions(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id)'
-    ];
-    for (const q of _idx) { try { await pool.query(q); } catch(e) {} }
-    console.log('✅ Database setup complete');
-  } catch(error) { console.error('Database setup error:', error); }
-}
-setupDatabase();
-
-// ═══ AUTH ═══
-app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
-  try {
-    const { email, phone, password } = req.body;
-    if ((!email && !phone) || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
-    const query = phone ? 'SELECT * FROM users WHERE phone=$1' : 'SELECT * FROM users WHERE email=$1';
-    const result = await pool.query(query, [email || phone]);
-    if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
-    const user = result.rows[0];
-    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const storedHash = user.password || user.password_hash || '';
-    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة' });
-    const ok = await bcrypt.compare(password, storedHash);
-    if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash;
-    res.json({ user, token });
-  } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
-  try {
-    const { name, email, phone, password, role, specialties, city, bio } = req.body;
-    if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
-    if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
-    if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
-    const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
-    if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
-    // منع تكرار الجوال (يقارن الصيغة الخام والموحّدة) — يمنع حرمان صاحب الرقم من الدخول واختطاف ربط المستهدفين
-    if (phone && String(phone).trim()) {
-      const raw = String(phone).trim();
-      const norm = normPhone(raw);
-      const dupPhone = await pool.query(
-        `SELECT id FROM users WHERE phone IS NOT NULL AND (phone=$1 OR regexp_replace(phone,'[^0-9]','','g') = $2) LIMIT 1`,
-        [raw, norm ? norm : raw.replace(/[^0-9]/g,'')]
-      );
-      if (dupPhone.rows.length) return res.status(400).json({ message: 'رقم الجوال مستخدم لحساب آخر' });
-    }
-    const hash = await bcrypt.hash(password, 10);
-    const specs = role === 'provider' ? (Array.isArray(specialties) ? specialties : (specialties ? [specialties] : null)) : null;
-    const notifyCats = role === 'provider' ? (Array.isArray(req.body.notify_categories) ? req.body.notify_categories : specs) : null;
-    const servesAll = role === 'provider' ? (req.body.serves_all_cities === true || req.body.serves_all_cities === 'true') : false;
-    const serviceCities = (role === 'provider' && Array.isArray(req.body.service_cities)) ? req.body.service_cities.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,20) : null;
-    const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
-    // احتساب الإحالة لصاحب صفحة المزوّد
-    try{
-      const ref = typeof req.body.ref==='string'?req.body.ref:'';
-      const m = ref.match(/^pro(\d+)$/);
-      if(m){ await pool.query('UPDATE users SET referral_count = COALESCE(referral_count,0)+1 WHERE id=$1', [parseInt(m[1])]); }
-    }catch(e){}
-    // محرّك الاستقطاب: رصد التحويل تلقائياً (مطابقة الجوال) + إشارة اسم للمراجعة
-    try{
-      const uid = result.rows[0].id;
-      // ربط مباشر عبر رمز الكرت (مضمون حتى لو سجّل بجوال مختلف)
-      const cardToken = typeof req.body.card_token==='string' ? req.body.card_token.trim() : '';
-      if(cardToken){
-        try{
-          const ct = await pool.query(
-            `UPDATE leads SET status='converted', converted_user_id=$1, converted_at=NOW(),
-               maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW()
-             WHERE card_token=$2 AND status<>'converted'
-             RETURNING card_bio, card_logo, card_links`, [uid, cardToken]);
-          if(ct.rows[0]) await transferCardToUser(uid, ct.rows[0]);
-        }catch(e){ console.error('card_token link:', e.message); }
-      }
-      const pn = normPhone(phone);
-      let convertedByPhone = 0;
-      if(pn){
-        const up = await pool.query(
-          `UPDATE leads SET status='converted', converted_user_id=$1, converted_at=NOW(), updated_at=NOW()
-           WHERE phone_norm=$2 AND status <> 'converted'`,
-          [uid, pn]
-        );
-        convertedByPhone = up.rowCount || 0;
-        // نقل بيانات الكرت إلى ملف المزود الجديد (ملء الفارغ فقط)
-        if(convertedByPhone > 0){
-          try{
-            const cl = await pool.query(
-              `SELECT card_bio, card_logo, card_links FROM leads
-               WHERE phone_norm=$1 AND converted_user_id=$2
-                 AND (card_bio IS NOT NULL OR card_logo IS NOT NULL OR card_links IS NOT NULL)
-               ORDER BY card_updated_at DESC NULLS LAST LIMIT 1`, [pn, uid]);
-            if(cl.rows[0]) await transferCardToUser(uid, cl.rows[0]);
-          }catch(e){ console.error('card transfer (register):', e.message); }
-        }
-      }
-      // إذا ما تحوّل شيء بالجوال، جرّب مطابقة الاسم (إشارة يدوية فقط — لا تحويل تلقائي)
-      if(convertedByPhone === 0){
-        const regName = (req.body.business_name || name || '').trim();
-        if(regName){
-          const cityLike = city ? '%' + city.trim() + '%' : null;
-          const cand = await pool.query(
-            `SELECT id, name FROM leads
-             WHERE lead_type='provider' AND status NOT IN ('converted','rejected') AND maybe_user_id IS NULL
-               AND ($1::text IS NULL OR city ILIKE $1)
-             ORDER BY updated_at DESC LIMIT 500`,
-            [cityLike]
-          );
-          const hits = cand.rows.filter(r => nameSimilar(regName, r.name)).map(r => r.id);
-          if(hits.length){
-            await pool.query(
-              `UPDATE leads SET maybe_user_id=$1, maybe_at=NOW(), updated_at=NOW() WHERE id = ANY($2)`,
-              [uid, hits]
-            );
-          }
-        }
-      }
-    }catch(e){ console.error('lead match:', e.message); }
-    const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    try {
-      const isProvider = role === 'provider';
-      const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
-      const welcomeBody = isProvider
-        ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
-        : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-      await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! نحن سعداء بانضمامك إلينا.`, 'welcome', null);
-      if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر طلبك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
-    } catch(we) { console.error('welcome notification:', we.message); }
-    res.json({ user, token });
-  } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// [أُزيلت] /api/direct-admin — كانت باباً خلفياً يسمح بإنشاء/اختطاف حساب أدمن عبر رابط GET
-// بكلمة سر افتراضية مكتوبة في الكود. تُدار حسابات المشرفين الآن من لوحة الأدمن (admins.manage) فقط.
-
-
-app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, res) => {
-  try {
-    const { old_password, new_password } = req.body;
-    if (!old_password || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
-    const r = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
-    const storedHash = r.rows[0].password || r.rows[0].password_hash || '';
-    const ok = await bcrypt.compare(old_password, storedHash);
-    if (!ok) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
-    const hash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
-    try {
-      const u = r.rows[0];
-      if (u.email) {
-        const title = '🔐 تم تغيير كلمة المرور';
-        const body = `<p>عزيزي <strong>${u.name}</strong>،</p><p>تم تغيير كلمة المرور بنجاح.</p><p>إذا لم تقم بهذا الإجراء، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-        sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
-      }
-    } catch(e) {}
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ نسيت كلمة المرور: يرسل رابط إعادة تعيين للبريد (إن وُجد بريد حقيقي) ═══
-// نرجّع دائماً رسالة نجاح عامّة حتى لا نكشف إن كان الحساب موجوداً أم لا (منع الاستعلام العشوائي)
-app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) => {
-  const generic = { ok: true, message: 'إذا كان الحساب موجوداً فستصلك رسالة بخطوات إعادة التعيين' };
-  try {
-    const raw = (req.body.email || req.body.phone || '').toString().trim();
-    if (!raw) return res.status(400).json({ message: 'أدخل البريد أو رقم الجوال' });
-    const phoneNorm = raw.replace(/\D/g, '').replace(/^0/, '966');
-    // ابحث بالبريد أو بالجوال (بصيغته المُطبّعة)
-    const r = await pool.query(
-      "SELECT id, name, email FROM users WHERE email=$1 OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
-      [raw, phoneNorm]);
-    if (!r.rows.length) return res.json(generic);
-    const u = r.rows[0];
-    const token = crypto.randomBytes(32).toString('hex');
-    await pool.query("UPDATE users SET reset_token=$1, reset_expires=NOW()+INTERVAL '1 hour' WHERE id=$2", [token, u.id]);
-    // نرسل الرابط فقط لبريد حقيقي (حسابات الوكالة تحمل بريداً وهمياً @manaqasa.local — لا يُرسل لها)
-    const realEmail = u.email && !/@manaqasa\.local$/i.test(u.email);
-    if (realEmail) {
-      const link = SITE_URL + '/auth.html?reset=' + token;
-      const title = '🔐 إعادة تعيين كلمة المرور';
-      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا طلب لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
-      sendEmail(u.email, title, emailTpl(title, body, 'إعادة تعيين كلمة المرور', link)).catch(()=>{});
-    }
-    return res.json(generic);
-  } catch(e) { console.error('forgot-password:', e.message); return res.json(generic); }
-});
-
-// ═══ تعيين كلمة مرور جديدة عبر الرمز المؤقّت ═══
-app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) => {
-  try {
-    const { token, new_password } = req.body;
-    if (!token || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
-    if (String(new_password).length < 6) return res.status(400).json({ message: 'كلمة المرور 6 أحرف على الأقل' });
-    const r = await pool.query('SELECT id, email, name FROM users WHERE reset_token=$1 AND reset_expires > NOW() LIMIT 1', [token]);
-    if (!r.rows.length) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً' });
-    const u = r.rows[0];
-    const hash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password=$1, password_hash=$2, reset_token=NULL, reset_expires=NULL WHERE id=$3', [hash, hash, u.id]);
-    try {
-      if (u.email && !/@manaqasa\.local$/i.test(u.email)) {
-        const title = '✅ تم تغيير كلمة المرور';
-        const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>تم تعيين كلمة مرور جديدة لحسابك بنجاح.</p><p>إذا لم تقم بهذا، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-        sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
-      }
-    } catch(e) {}
-    return res.json({ ok: true, message: 'تم تعيين كلمة المرور' });
-  } catch(e) { console.error('reset-password:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ الدخول السحري: رابط قصير يُرسل للعميل عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
-// يُنشئ رمزاً قصيراً ويعيد استعماله ما دام صالحاً (فتبقى الروابط المُرسلة سابقاً تعمل)
-async function getMagicToken(clientId) {
-  const cur = await pool.query('SELECT magic_token, magic_expires FROM users WHERE id=$1', [clientId]);
-  if (!cur.rows.length) return null;
-  let tok = cur.rows[0].magic_token;
-  const exp = cur.rows[0].magic_expires;
-  const stillValid = tok && exp && new Date(exp) > new Date();
-  if (!stillValid) tok = crypto.randomBytes(8).toString('hex'); // 16 حرفاً
-  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '60 days' WHERE id=$2", [tok, clientId]);
-  return tok;
-}
-
-app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
-    let userId = null;
-    // 1) الرمز القصير المخزّن
-    const dbr = await pool.query('SELECT id FROM users WHERE magic_token=$1 AND magic_expires > NOW() LIMIT 1', [token]);
-    if (dbr.rows.length) userId = dbr.rows[0].id;
-    // 2) احتياط: رمز JWT قديم (روابط أُرسلت قبل هذا التحديث)
-    if (!userId) { try { const p = jwt.verify(token, JWT_SECRET); if (p && p.purpose === 'magic' && p.id) userId = p.id; } catch(e) {} }
-    if (!userId) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' });
-    const r = await pool.query('SELECT * FROM users WHERE id=$1', [userId]);
-    if (!r.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
-    const user = r.rows[0];
-    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
-    res.json({ user, token: sessionToken });
-  } catch(e) { console.error('magic-login:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ ACCOUNT DELETION ═══
-app.get('/api/account/deletion-preview', auth, async (req, res) => {
-  try {
-    const userId = req.user.id; const role = req.user.role; const stats = {};
-    if (role === 'client') { const r1 = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND (category IS DISTINCT FROM 'direct')", [userId]); stats.projects = r1.rows[0].c; }
-    if (role === 'provider') {
-      const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]); stats.bids = r2.rows[0].c;
-      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]); stats.active_projects = r3.rows[0].c;
-    }
-    const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]); stats.messages = r4.rows[0].c;
-    const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
-    const r6 = await pool.query('SELECT COUNT(*)::int as c FROM notifications WHERE user_id=$1', [userId]); stats.notifications = r6.rows[0].c;
-    res.json({ ok: true, stats, warning: 'سيتم حذف جميع بياناتك نهائياً ولا يمكن استعادتها.' });
-  } catch(e) { console.error('deletion-preview:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/account/delete', auth, async (req, res) => {
-  try {
-    const userId = req.user.id; const role = req.user.role; const { confirmation } = req.body;
-    if (confirmation !== 'حذف' && confirmation !== 'DELETE') return res.status(400).json({ message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد', code: 'CONFIRMATION_REQUIRED' });
-    if (role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
-    if (role === 'provider') {
-      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]);
-      if (active.rows[0].c > 0) return res.status(400).json({ message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أولاً.`, code: 'ACTIVE_PROJECTS' });
-    }
-    const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
-    if (!userInfo.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
-    const userName = userInfo.rows[0].name; const userEmail = userInfo.rows[0].email;
-    // معاملة حقيقية على اتصال مخصّص — يضمن التراجع الكامل عند أي فشل
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      if (role === 'provider') await client.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
-      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
-      await client.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
-      await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
-      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
-      await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]);
-      await client.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]);
-      if (role === 'client') {
-        const projs = await client.query('SELECT id FROM requests WHERE client_id=$1', [userId]);
-        for (const p of projs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [p.id]);
-        await client.query('DELETE FROM requests WHERE client_id=$1', [userId]);
-      }
-      if (role === 'provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
-      const del = await client.query('DELETE FROM users WHERE id=$1', [userId]);
-      if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
-      await client.query('COMMIT');
-      _userState.delete(userId);
-      console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
-      if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${eEsc(userName)}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
-      res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
-    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} console.error('account delete transaction:', e); throw e; }
-    finally { client.release(); }
-  } catch(e) { console.error('DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ PROFILES ═══
-app.get('/api/profile', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,created_at FROM users WHERE id=$1`, [req.user.id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    // خصوصية الموقع: الإحداثيات الدقيقة وجوال العميل للمالك أو المزوّد المعتمد فقط
-    const row = r.rows[0];
-    let viewer = null;
-    try {
-      const hdr = req.headers.authorization || '';
-      const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-      if (tok) viewer = jwt.verify(tok, JWT_SECRET);
-    } catch(e) { viewer = null; }
-    const isOwner = viewer && String(viewer.id) === String(row.client_id);
-    const isAssigned = viewer && row.assigned_provider_id && String(viewer.id) === String(row.assigned_provider_id);
-    const isAdmin = viewer && viewer.role === 'admin';
-    if (!(isOwner || isAssigned || isAdmin)) {
-      row.geo_lat = null; row.geo_lng = null;   // الحي يبقى ظاهراً، الموقع الدقيق لا
-      row.client_phone = null;
-      row.address = null;
-    }
-    res.json(row);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/profile', auth, async (req, res) => {
-  try {
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    const allowed = { name:'name', phone:'phone', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', profile_image:'profile_image', serves_all_cities:'serves_all_cities', service_cities:'service_cities' };
-    const sets=[]; const params=[]; let idx=1;
-    for (const key in allowed) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
-        if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
-        if (val==='') val=null;
-        sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
-      }
-    }
-    if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
-    params.push(req.user.id);
-    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,role,specialties,notify_categories,bio,city,badge,experience_years,profile_image`, params);
-    res.json(r.rows[0]);
-  } catch(e) { console.error('/profile PUT:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/client/profile', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests FROM users WHERE id=$1`, [req.user.id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/client/profile', auth, async (req, res) => {
-  try {
-    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
-      const newEmail = String(req.body.email||'').trim().toLowerCase();
-      if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
-      const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
-      if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
-    }
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
-    const sets=[]; const params=[]; let idx=1;
-    for (const key in allowed) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
-        if (key==='email') val=String(val||'').trim().toLowerCase();
-        if (val==='') val=null;
-        sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
-      }
-    }
-    if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,profile_image FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
-    params.push(req.user.id);
-    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,profile_image`, params);
-    res.json(r.rows[0]);
-  } catch(e) { console.error('client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/provider/profile', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/provider/:id/profile', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
-    res.json(r.rows[0]);
-  } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/ratings/provider/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const agg = await pool.query(`SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count FROM reviews WHERE reviewed_id=$1`, [id]);
-    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.images, r.provider_reply, r.reply_at, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
-    res.json({ average: parseFloat(agg.rows[0].average)||0, count: agg.rows[0].count||0, reviews: rv.rows });
-  } catch(e) { console.error('/api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
-});
-
-app.put('/api/provider/profile', auth, async (req, res) => {
-  try {
-    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
-      const newEmail = String(req.body.email||'').trim().toLowerCase();
-      if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
-      const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
-      if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
-    }
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
-    if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
-      const uploaded = [];
-      for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) uploaded.push(u); } else if (img) uploaded.push(img); }
-      req.body.portfolio_images = uploaded;
-    }
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
-    const sets=[]; const params=[]; let idx=1;
-    for (const key in allowed) {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
-        if (key==='email') val=String(val||'').trim().toLowerCase();
-        if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
-        if (val==='') val=null;
-        sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
-      }
-    }
-    if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,instagram,twitter,snapchat,tiktok,youtube FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
-    params.push(req.user.id);
-    const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,location_url,instagram,twitter,snapchat,tiktok,youtube`, params);
-    res.json(r.rows[0]);
-  } catch(e) { console.error('provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ PROVIDER ENDPOINTS ═══
-app.get('/api/provider/bids', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, CASE WHEN b.status='accepted' THEN u.phone ELSE NULL END as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { console.error('/provider/bids:', e); res.json([]); }
-});
-
-app.get('/api/provider/projects', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { console.error('/provider/projects:', e); res.json([]); }
-});
-
-app.get('/api/provider/reviews', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.images, rv.provider_reply, rv.reply_at, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { console.error('/provider/reviews:', e); res.json([]); }
-});
-
-app.get('/api/provider/conversations', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT DISTINCT ON (r.client_id)
-        r.id as request_id, r.client_id, r.title as request_title,
-        u.name as client_name, u.profile_image as client_image,
-        (SELECT content FROM messages WHERE ((sender_id=$1 AND receiver_id=r.client_id) OR (sender_id=r.client_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM messages WHERE ((sender_id=$1 AND receiver_id=r.client_id) OR (sender_id=r.client_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=r.client_id AND is_read=FALSE) as unread
-      FROM requests r JOIN users u ON u.id=r.client_id
-      WHERE (r.assigned_provider_id=$1 OR EXISTS(SELECT 1 FROM messages m2 WHERE m2.request_id=r.id AND m2.sender_id=$1))
-        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
-      ORDER BY r.client_id, last_time DESC NULLS LAST
-    `, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { console.error('/provider/conversations:', e); res.json([]); }
-});
-
-// إصلاح المشكلة: رسائل المزود لا تظهر عند العميل
-// السبب: الكود القديم كان يشترط r.assigned_provider_id IS NOT NULL
-// مما يمنع ظهور المحادثات عندما يرسل المزود قبل قبول عرضه
-app.get('/api/client/conversations', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`
-      WITH conv AS (
-        SELECT DISTINCT
-          m.request_id,
-          CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END as provider_id
-        FROM messages m
-        WHERE (m.sender_id = $1 OR m.receiver_id = $1)
-      )
-      SELECT DISTINCT ON (c.provider_id)
-        c.request_id,
-        c.provider_id,
-        COALESCE(r.title, 'محادثة مباشرة') as request_title,
-        u.name as provider_name,
-        u.profile_image as provider_image,
-        u.phone as provider_phone,
-        (SELECT content FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT MAX(created_at) FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1))) as last_time,
-        (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=c.provider_id AND is_read=FALSE) as unread
-      FROM conv c
-      LEFT JOIN requests r ON r.id = c.request_id
-      LEFT JOIN users u ON u.id = c.provider_id
-      WHERE c.provider_id IS NOT NULL
-      ORDER BY c.provider_id, (SELECT MAX(created_at) FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1))) DESC NULLS LAST
-    `, [req.user.id]);
-    // رتّب النتيجة النهائية بالأحدث
-    r.rows.sort(function(a,b){ return new Date(b.last_time||0) - new Date(a.last_time||0); });
-    res.json(r.rows);
-  } catch(e) { console.error('/client/conversations:', e); res.json([]); }
-});
-
-app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
-  try {
-    const { image } = req.body;
-    if (!image) return res.status(400).json({ message: 'image required' });
-    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
-    const imgs = cur.rows[0]?.portfolio_images || [];
-    if (imgs.length >= 6) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
-    imgs.push(image);
-    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
-    res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('portfolio POST:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/provider/profile/portfolio/:i', auth, async (req, res) => {
-  try {
-    const idx = parseInt(req.params.i);
-    const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
-    const imgs = cur.rows[0]?.portfolio_images || [];
-    if (idx < 0 || idx >= imgs.length) return res.status(400).json({ message: 'index out of range' });
-    imgs.splice(idx, 1);
-    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
-    res.json({ ok: true, count: imgs.length });
-  } catch(e) { console.error('portfolio DELETE:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
-  try {
-    const check = await pool.query('SELECT last_bumped_at FROM users WHERE id=$1', [req.user.id]);
-    const lastBump = check.rows[0]?.last_bumped_at;
-    if (lastBump) {
-      const hoursSince = (Date.now() - new Date(lastBump)) / 3600000;
-      if (hoursSince < 24) {
-        const hoursLeft = Math.ceil(24 - hoursSince);
-        return res.status(429).json({ ok: false, message: `يمكنك التحديث بعد ${hoursLeft} ساعة`, hours_left: hoursLeft });
-      }
-    }
-    await pool.query('UPDATE users SET last_bumped_at = NOW() WHERE id=$1', [req.user.id]);
-    res.json({ ok: true, message: 'تم تحديث موقعك — أنت الآن في الأعلى!' });
-  } catch(e) { console.error('PUT /api/provider/bump:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ REQUESTS ═══
-app.get('/api/requests', async (req, res) => {
-  try {
-    const { category, city, status } = req.query;
-    // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct')`;
-    const params = [];
-    if (status && status !== 'all') {
-      if (status === 'open') { query += ` AND r.status='open'`; }
-      else if (status === 'done') { query += ` AND r.status IN ('completed','in_progress','done')`; }
-    }
-    if (category) { params.push(category); query += ` AND r.category=$${params.length}`; }
-    if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
-    query += ' ORDER BY r.created_at DESC LIMIT 100';
-    const result = await pool.query(query, params);
-    res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
-  } catch(e) { console.error('/requests:', e); res.json([]); }
-});
-
-app.get('/api/requests/my', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
-    res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
-  } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/requests/:id', optionalAuth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const _gateGeo=1;
-    const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const row = r.rows[0];
-    // خصوصية العميل: جواله يظهر فقط لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن
-    const uid = req.user && req.user.id, role = req.user && req.user.role;
-    const isOwner = uid && uid === row.client_id;
-    const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
-    const isAdmin = role === 'admin';
-    if (!(isOwner || isAssigned || isAdmin)) {
-      row.client_phone = null;
-      if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
-      row.provider_phone = null;
-    }
-    // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
-    if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
-    res.json({ ...row, status: normalizeStatus(row.status) });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-
-// ═══ النشر بالوكالة: الإدارة تنشر مشروعاً نيابة عن عميل (بتوكيله) ═══
-// يحلّ مشكلة الطلب: نتواصل مع إدارات الأملاك، نأخذ تفاصيل مشروعهم، وننشره لهم.
-app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { client_name, client_phone, client_email, title, description, category, city, budget_max, deadline } = req.body;
-    const pxDistrict = (req.body.district||'').toString().trim().slice(0,80) || null;
-    // رفع صور ومرفقات المشروع (نفس آلية نشر العميل)
-    const pxImages = [];
-    for (const img of (Array.isArray(req.body.images) ? req.body.images.slice(0,5) : [])) {
-      if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) pxImages.push(u); }
-      else if (img && img.startsWith('http')) pxImages.push(img);
-    }
-    const pxAtts = [];
-    for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
-      if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
-    }
-    const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
-    const pxLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
-    if (!client_name || !client_phone || !title || !category || !city)
-      return res.status(400).json({ message: 'الاسم والجوال والعنوان والتصنيف والمدينة مطلوبة' });
-    const phoneNorm = String(client_phone).replace(/\D/g,'').replace(/^0/,'966');
-    if (phoneNorm.length < 12) return res.status(400).json({ message: 'رقم جوال غير صحيح' });
-
-    await client.query('BEGIN');
-    // 1) هل للعميل حساب بهذا الجوال؟ وإلا ننشئ حساباً مبدئياً (يفعّله لاحقاً)
-    let u = await client.query(
-      "SELECT id, name FROM users WHERE phone IS NOT NULL AND (phone=$1 OR regexp_replace(phone,'[^0-9]','','g') = $2) LIMIT 1",
-      [client_phone, phoneNorm]);
-    let clientId, isNew = false;
-    if (u.rows.length) {
-      clientId = u.rows[0].id;
-    } else {
-      const tempPass = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
-      const email = client_email || `proxy_${phoneNorm}@manaqasa.local`;
-      const nu = await client.query(
-        `INSERT INTO users (name, email, password, password_hash, phone, city, role, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,'client',TRUE,NOW()) RETURNING id`,
-        [client_name, email, tempPass, tempPass, client_phone, city]);
-      clientId = nu.rows[0].id; isNew = true;
-    }
-    // 2) أنشئ المشروع باسمه
-    const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open',NOW()) RETURNING id, title`,
-      [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
-       pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
-    await client.query('COMMIT');
-
-    // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
-    const magicTok = await getMagicToken(clientId);
-    const magicLink = SITE_URL + '/m/' + magicTok;
-    // 4) سجّل العملية للمساءلة
-    res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm, magic_link: magicLink });
-  } catch(e) {
-    try { await client.query('ROLLBACK'); } catch(_) {}
-    // تشخيص مفصّل في السجل (يظهر في Railway Logs)
-    console.error('❌ proxy-request FAILED:', {
-      message: e.message,
-      code: e.code,          // كود خطأ PostgreSQL (42703 = عمود غير موجود، 23502 = حقل إلزامي فارغ...)
-      detail: e.detail,
-      column: e.column,
-      table: e.table,
-      constraint: e.constraint
-    });
-    res.status(500).json({
-      message: 'تعذّر النشر: ' + (e.detail || e.message),
-      code: e.code || null,
-      column: e.column || null
-    });
-  } finally { client.release(); }
-});
-
-app.post('/api/requests', auth, clientOnly, async (req, res) => {
-  try {
-    const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
-    const district = (req.body.district||'').toString().trim().slice(0,80) || null;
-    const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
-    const gLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
-    if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
-    const rawImages = req.body.images || [];
-    const images_arr = Array.isArray(rawImages) ? rawImages : [];
-    const uploadedImages = [];
-    for (const img of images_arr) {
-      if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) uploadedImages.push(u); }
-      else if (img && img.startsWith('http')) uploadedImages.push(img);
-    }
-    // معالجة المرفقات (PDF/مخططات هندسية) — رفعها لـR2 مثل الصور
-    let processedAttachments = null;
-    if (Array.isArray(attachments) && attachments.length) {
-      processedAttachments = [];
-      for (const att of attachments.slice(0,3)) {
-        if (att && att.data && String(att.data).startsWith('data:')) {
-          const url = await uploadToCloud(att.data, 'manaqasa/attachments', att.name);
-          if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
-        } else if (att && att.url) {
-          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: att.url });
-        }
-      }
-      if (!processedAttachments.length) processedAttachments = null;
-    }
-    const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng]);
-    const newReq = r.rows[0];
-    try {
-      const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
-      if (clientInfo.rows.length && clientInfo.rows[0].email) {
-        const ctitle = '✅ تم نشر مشروعك بنجاح';
-        const cBody = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تم نشر مشروعك "<strong>${eEsc(newReq.title)}</strong>" بنجاح. رقم المشروع: ${pn}</p>`;
-        sendEmail(clientInfo.rows[0].email, ctitle, emailTpl(ctitle, cBody, 'متابعة المشروع', SITE_URL+'/dashboard-client.html')).catch(()=>{});
-        await notify(req.user.id, ctitle, `تم نشر "${eEsc(newReq.title)}" بنجاح`, 'request_published', newReq.id);
-      }
-    } catch(e) { console.error('client confirmation email:', e.message); }
-    if (newReq.category) {
-      try {
-        const cat = String(newReq.category).trim();
-        const directProvId = req.body.direct_provider_id;
-        if (directProvId) {
-          const dp = await pool.query('SELECT id,name,email FROM users WHERE id=$1 AND role=$2', [directProvId, 'provider']);
-          if (dp.rows.length) {
-            const cName2 = (await pool.query('SELECT name FROM users WHERE id=$1',[req.user.id])).rows[0]?.name||'عميل';
-            await notify(dp.rows[0].id, '💬 استفسار مباشر جديد', `${cName2} يريد التواصل معك مباشرة`, 'new_request', newReq.id);
-            if(dp.rows[0].email) sendEmail(dp.rows[0].email,'💬 استفسار مباشر',emailTpl('استفسار مباشر',`<p>يريد <strong>${cName2}</strong> التواصل معك.</p>`,'فتح المحادثة',SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-          }
-          return res.json(newReq);
-        }
-        const provs = await pool.query(`SELECT id, name, email FROM users WHERE role='provider' AND is_active=TRUE AND ((specialties IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(specialties))))) OR (notify_categories IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(notify_categories))))))`, [cat]);
-        const cityHint = newReq.city ? ` في ${newReq.city}` : '';
-        const nTitle = '🆕 مشروع جديد في تخصصك';
-        const nBody = `${eEsc(newReq.title)}${cityHint} — اطّلع وقدّم عرضك`;
-        const emailBody = `<p>وصلنا طلب مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${eEsc(newReq.title)}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
-        for (const p of provs.rows) {
-          await notify(p.id, nTitle, nBody, 'new_request', newReq.id);
-          if (p.email) sendEmail(p.email, nTitle, emailTpl(nTitle, emailBody, 'فتح المشروع الآن', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-        }
-        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
-      } catch(nerr) { console.error('notify providers:', nerr); }
-    }
-    await addTimeline(newReq.id, 'published', 'تم نشر المشروع');
-    res.json(newReq);
-  } catch(e) { console.error('create request:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/requests/:id', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const { title, description, category, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
-    const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)', 'category=$3', 'city=$4', 'address=$5', 'budget_max=$6', 'deadline=$7'];
-    const params = [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null];
-    let i = 8;
-    const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
-    const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
-    if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
-    if (Array.isArray(attachments)) {
-      const atts = []; const _attDbg = [];
-      for (const a of attachments.slice(0, 3)) {
-        if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,80), url: a.url });
-        else if (a && a.data) {
-          let u = null;
-          try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(e) { _attDbg.push({ name: a.name, error: e.message }); }
-          if (u) atts.push({ name: String(a.name||'ملف').slice(0,80), url: u });
-          else _attDbg.push({ name: a.name, dropped: true, prefix: String(a.data||'').slice(0,30), b64len: String(a.data||'').length });
-        }
-      }
-      sets.push('attachments=$'+i); params.push(JSON.stringify(atts)); i++;
-      req._attDbg = _attDbg;
-    }
-    params.push(id);
-    const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
-    res.json(Object.assign({}, r.rows[0], req._attDbg && req._attDbg.length ? { _attDebug: req._attDbg } : {}));
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/requests/:id', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('DELETE FROM bids WHERE request_id=$1', [id]);
-      await client.query('DELETE FROM messages WHERE request_id=$1', [id]);
-      await client.query('DELETE FROM reviews WHERE request_id=$1', [id]);
-      await client.query('DELETE FROM requests WHERE id=$1', [id]);
-      await client.query('COMMIT'); res.json({ ok: true });
-    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} throw e; }
-    finally { client.release(); }
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/requests/:id/images', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); const { image } = req.body;
-    if (!image) return res.status(400).json({ message: 'لا توجد صورة' });
-    const own = await pool.query('SELECT client_id, images FROM requests WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const current = own.rows[0].images || [];
-    if (current.length >= 10) return res.status(400).json({ message: 'الحد الأقصى 10 صور' });
-    current.push(image);
-    await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
-    res.json({ ok: true, count: current.length });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/requests/:id/attachments', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); const { name, type, data } = req.body;
-    if (!data) return res.status(400).json({ message: 'لا توجد بيانات' });
-    const own = await pool.query('SELECT client_id, attachments FROM requests WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const current = own.rows[0].attachments || [];
-    if (current.length >= 3) return res.status(400).json({ message: 'الحد الأقصى 3 ملفات' });
-    if (typeof data === 'string' && data.length > 14000000) return res.status(400).json({ message: 'حجم الملف كبير (الحد 10MB)' });
-    let stored = data;
-    if (typeof stored === 'string' && stored.startsWith('data:')) stored = await uploadToCloud(stored, 'manaqasa/attachments');
-    if (!stored) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة فقط)' });
-    current.push({ name: String(name||'ملف').slice(0,120), type: type||null, url: stored, uploaded_at: new Date().toISOString() });
-    await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
-    res.json({ ok: true, count: current.length });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 AND assigned_provider_id IS NOT NULL AND status NOT IN ('completed','cancelled') RETURNING id, assigned_provider_id, title`, [id, req.user.id]);
-    if (!r.rows.length) return res.status(400).json({ message: 'لا يمكن إنهاء المشروع (تأكد أنه قيد التنفيذ ومُسنَد لمزوّد)' });
-    if (r.rows[0].assigned_provider_id) { recomputeProviderTier(r.rows[0].assigned_provider_id); }
-    if (r.rows[0].assigned_provider_id) {
-      const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
-      const projTitle = r.rows[0].title;
-      await notify(r.rows[0].assigned_provider_id, '🎉 مشروع مكتمل', `العميل أنهى مشروع "${projTitle}".`, 'request', id);
-      if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, 'مشروع مكتمل', emailTpl('مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${projTitle}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-    }
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// Alias
-app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.redirect(307, req.path.replace('/done','/complete')); });
-
-// إعادة نشر مشروع مُغلق (بطلب العميل)
-app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(
-      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL
-       WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
-       RETURNING id, title, category, city, client_id`, [id, req.user.id]);
-    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
-    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); }catch(e){}
-    try{ await notifyMatchingProviders(r.rows[0]); }catch(e){}
-    res.json({ ok:true });
-  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// «لم يتم بعد» — يوقف التأكيد التلقائي ويعيد ضبط المؤقّت
-app.put('/api/requests/:id/not-done', auth, clientOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(
-      `UPDATE requests SET confirm_requested_at=NULL, assigned_at=NOW()
-       WHERE id=$1 AND client_id=$2 AND completed_at IS NULL
-       RETURNING id`, [id, req.user.id]);
-    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو ليس طلبك' });
-    // امسح سجل التذكير حتى يُعاد لاحقاً
-    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('complete_deal')`, [id]); }catch(e){}
-    res.json({ ok:true });
-  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// ═══ BIDS ═══
-app.get('/api/bids/my', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT b.*, r.title as request_title, r.project_number, r.status as request_status, u.name as client_name FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/requests/:id/bids', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
-    const r = await pool.query(`
-      SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
-             b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
-        u.name as provider_name, u.phone as provider_phone,
-        u.last_seen_at as provider_last_seen,
-        u.city as provider_city, u.badge as provider_badge, u.tier as provider_tier,
-        u.business_name as provider_business_name,
-        u.specialties as provider_specialties,
-        u.bio as provider_bio,
-        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
-             THEN u.profile_image ELSE NULL END as provider_image,
-        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews
-      FROM bids b JOIN users u ON b.provider_id=u.id
-      WHERE b.request_id=$1
-      ORDER BY (b.status='accepted') DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
-    `, [id]);
-    res.json(r.rows);
-  } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    let { price, days, note } = req.body;
-    const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
-    const priceUnit = (['total','meter','unit'].indexOf(req.body.price_unit) >= 0) ? req.body.price_unit : 'total';
-    // ملف عرض السعر (اختياري): صورة أو PDF بصيغة data-URL → يُرفع إلى التخزين ويُحفظ رابطه
-    let attUrl = null;
-    if (req.body.attachment && typeof req.body.attachment === 'string' && req.body.attachment.startsWith('data:')) {
-      attUrl = await uploadToCloud(req.body.attachment, 'manaqasa/bids');
-      if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
-    }
-    price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
-    if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
-    if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
-    const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
-    if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
-    if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
-    const existing = await pool.query('SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
-    let row; let isUpdate = false;
-    if (existing.rows.length) {
-      if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
-      // COALESCE: لو ما رفع ملفاً جديداً نُبقي القديم
-      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, price_unit=$5, attachment_url=COALESCE($6,attachment_url), created_at=NOW() WHERE request_id=$7 AND provider_id=$8 RETURNING *`, [price, days, note||null, priceVis, priceUnit, attUrl, requestId, req.user.id]);
-      row = upd.rows[0]; isUpdate = true;
-    } else {
-      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl]);
-      row = ins.rows[0];
-    }
-    const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-    const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
-    const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
-    let isFirst = false;
-    if (!isUpdate) { try{ const cnt = await pool.query('SELECT COUNT(*) c FROM bids WHERE request_id=$1', [requestId]); isFirst = (parseInt(cnt.rows[0].c)||0) === 1; }catch(e){} }
-    const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : (isFirst ? '🎉 وصلك أول عرض!' : '💼 عرض جديد');
-    const inAppBody = isUpdate ? `قام ${eEsc(provName)} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${eEsc(provName)} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${eEsc(provName)} على "${projTitle}"`);
-    await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
-    if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate) {
-      const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
-      const body = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${eEsc(provName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${eEsc(note).replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
-      sendEmail(clientInfo.rows[0].email, subject, emailTpl(subject, body, 'مراجعة العرض', SITE_URL+'/dashboard-client.html')).catch(()=>{});
-    }
-    // إشعار العميل تلقائياً بتقرير العروض عند بلوغ الحد (مرة واحدة) — غير حاجب لتقديم العرض
-    if (!isUpdate) { (async () => {
-      try {
-        const THRESH = 3; // أرسل التقرير أول ما توصل العروض لهذا الحد
-        const cnt = parseInt((await pool.query('SELECT COUNT(*)::int c FROM bids WHERE request_id=$1', [requestId])).rows[0].c) || 0;
-        if (cnt < THRESH) return;
-        const pr = (await pool.query('SELECT offers_report_notified, title FROM requests WHERE id=$1', [requestId])).rows[0];
-        if (!pr || pr.offers_report_notified) return;
-        const cem = clientInfo.rows[0] && clientInfo.rows[0].email;
-        await pool.query('UPDATE requests SET offers_report_notified=$1 WHERE id=$2', [cnt, requestId]);
-        if (!cem || /@manaqasa\.local$/i.test(cem)) return;
-        const tok = jwt.sign({ rid: requestId, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
-        const link = SITE_URL + '/report/offers/' + requestId + '?t=' + tok;
-        const rt = '📋 وصلتك عروض على مشروعك';
-        const rb = `<p>وصلك ${cnt} عروض على مشروعك «${eEsc(pr.title||'')}». اضغط لعرض تقرير العروض كاملاً:</p>`;
-        sendEmail(cem, rt, emailTpl(rt, rb, 'عرض تقرير العروض', link)).catch(()=>{});
-      } catch(e) { console.error('auto report email:', e.message); }
-    })(); }
-    res.json(row);
-  } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
-    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
-    const { price, days, note } = req.body;
-    const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
-    const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
-    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'لا يمكن حذف عرض مقبول' });
-    await pool.query('DELETE FROM bids WHERE id=$1', [id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
-  try {
-    const bidId = parseInt(req.params.id);
-    const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
-    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
-    const acceptedBid = bid.rows[0];
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
-      const lock = await client.query(
-        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
-         WHERE id=$2 AND assigned_provider_id IS NULL
-           AND status NOT IN ('completed','cancelled','closed_auto')
-         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id]);
-      if (!lock.rows.length) { await client.query('ROLLBACK'); client.release(); return res.status(400).json({ message: 'تمت ترسية هذا المشروع مسبقاً' }); }
-      await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
-      await client.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
-      await client.query('COMMIT');
-      client.release();
-      const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
-      const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
-      const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
-    const _fee = Math.round((parseFloat(bid.price)||0) * 0.03);
-    await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) تُسدَّد خلال 10 أيام من الاتفاق أو بدء التنفيذ.':''), 'bid_accepted', bid.request_id);
-      if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
-        const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
-        const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
-        sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-      }
-      const rejected = await pool.query(`SELECT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected'`, [acceptedBid.request_id, bidId]);
-      for (const rej of rejected.rows) {
-        await notify(rej.provider_id, '😔 لم يُقبل عرضك', `اختار العميل عرضاً آخر على "${eEsc(acceptedBid.title)}".`, 'bid_rejected', acceptedBid.request_id);
-        if (rej.email) sendEmail(rej.email, `📋 لم يُقبل عرضك على "${eEsc(acceptedBid.title)}"`, emailTpl('لم يُقبل عرضك', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر. لا تيأس!</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-      }
-      await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
-      res.json({ ok: true });
-    } catch(e) { await pool.query('ROLLBACK'); throw e; }
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
-  try {
-    const bidId = parseInt(req.params.id);
-    const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
-    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
-    await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
-    const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
-    await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, 'bid_rejected', bid.rows[0].request_id);
-    if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${eEsc(provInfo.rows[0].name)}</strong>،</p><p>تم رفض عرضك على "${eEsc(bid.rows[0].title)}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ DIRECT MESSAGE ═══
-app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) => {
-  try {
-    const { provider_id, message } = req.body;
-    if (!provider_id) return res.status(400).json({ message: 'provider_id مطلوب' });
-    const senderId = req.user.id; const senderRole = req.user.role;
-    let clientId, providerId;
-    if (senderRole === 'client' || senderRole === 'admin') { clientId = senderId; providerId = parseInt(provider_id); }
-    else if (senderRole === 'provider') {
-      // مزود يراسل طرف آخر — يُعامل المرسل كعميل في هذه المحادثة
-      providerId = senderId; clientId = parseInt(provider_id);
-    }
-    else return res.status(403).json({ message: 'غير مصرح بالمراسلة' });
-    // منع مراسلة النفس
-    if (clientId === providerId) return res.status(400).json({ message: 'لا يمكنك مراسلة نفسك' });
-    // 1) ابحث عن محادثة قائمة بينهما على أي مشروع (يمنع فقدان الرسائل السابقة)
-    let reqRow = await pool.query(
-      `SELECT request_id AS id FROM messages
-       WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)
-       ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
-    // 2) وإلا: محادثة مباشرة سابقة
-    if (!reqRow.rows.length) {
-      reqRow = await pool.query(`SELECT id FROM requests WHERE client_id=$1 AND assigned_provider_id=$2 AND category='direct' ORDER BY created_at DESC LIMIT 1`, [clientId, providerId]);
-    }
-    let requestId;
-    if (reqRow.rows.length) { requestId = reqRow.rows[0].id; }
-    else {
-      const prov = await pool.query('SELECT name FROM users WHERE id=$1', [providerId]);
-      const provName = prov.rows[0]?.name || 'مزود';
-      const newReq = await pool.query(`INSERT INTO requests (client_id, title, description, category, status, assigned_provider_id, created_at) VALUES ($1,$2,'محادثة مباشرة','direct','in_progress',$3,NOW()) RETURNING id`, [clientId, 'محادثة مع '+provName, providerId]);
-      requestId = newReq.rows[0].id;
-    }
-    const msgText = (message && message.trim()) ? message.trim() : 'السلام عليكم';
-    const receiverId = senderRole === 'client' ? providerId : clientId;
-    const existing = await pool.query('SELECT id FROM messages WHERE request_id=$1 LIMIT 1', [requestId]);
-    if (!existing.rows.length || (message && message.trim())) {
-      await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`, [requestId, senderId, receiverId, msgText]);
-    }
-    res.json({ request_id: requestId, success: true });
-  } catch(e) { console.error('direct-message:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/users/search', auth, async (req, res) => {
-  try {
-    const q = (req.query.q||'').trim();
-    if (!q) return res.json([]);
-    const role = req.user.role === 'client' ? 'provider' : 'client';
-    const r = await pool.query(`SELECT id, name, business_name, phone, city, profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
-    res.json(r.rows);
-  } catch(e) { res.json([]); }
-});
-
-app.get('/api/requests/:id/timeline', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query('SELECT * FROM request_timeline WHERE request_id=$1 ORDER BY created_at ASC', [id]);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json([]); }
-});
-
-async function addTimeline(requestId, event, description) {
-  try { await pool.query('INSERT INTO request_timeline (request_id, event, description) VALUES ($1,$2,$3)', [requestId, event, description]); } catch(e) {}
-}
-
-app.post('/api/favorites/provider/:id', auth, async (req, res) => {
-  try {
-    const pid = parseInt(req.params.id);
-    const existing = await pool.query('SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]);
-    if (existing.rows.length) { await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]); res.json({ saved: false }); }
-    else { await pool.query('INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, pid]); res.json({ saved: true }); }
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/favorites', auth, async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT u.id, u.name, u.business_name, u.city, u.profile_image, u.specialties, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating FROM favorites f JOIN users u ON u.id=f.provider_id WHERE f.user_id=$1`, [req.user.id]);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json([]); }
-});
-
-app.get('/api/search', async (req, res) => {
-  try {
-    const q = (req.query.q||'').trim(); const city = req.query.city||''; const type = req.query.type||'all';
-    if (!q && !city) return res.json({ projects:[], providers:[] });
-    const results = { projects: [], providers: [] };
-    if (type !== 'providers') {
-      const pr = await pool.query(`SELECT id, title, category, city, budget_max, status, created_at, (SELECT COUNT(*) FROM bids WHERE request_id=requests.id) as bid_count FROM requests WHERE status='open' AND ($1='' OR title ILIKE $2 OR description ILIKE $2 OR category ILIKE $2) AND ($3='' OR city ILIKE $4) ORDER BY created_at DESC LIMIT 20`, [q, '%'+q+'%', city, '%'+city+'%']);
-      results.projects = pr.rows;
-    }
-    if (type !== 'projects') {
-      const pv = await pool.query(`SELECT id, name, business_name, city, specialties, profile_image, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating FROM users WHERE role='provider' AND ($1='' OR name ILIKE $2 OR business_name ILIKE $2 OR bio ILIKE $2 OR specialties::text ILIKE $2) AND ($3='' OR city ILIKE $4) ORDER BY avg_rating DESC LIMIT 20`, [q, '%'+q+'%', city, '%'+city+'%']);
-      results.providers = pv.rows;
-    }
-    res.json(results);
-  } catch(e) { res.status(500).json({ projects:[], providers:[] }); }
-});
-
-// ═══ MESSAGES ═══
-const _msgEmailCache = {};
-// تنظيف دوري: يمنع نمو الذاكرة بلا حد (كل ساعة، يحذف ما مضى عليه أكثر من ساعة)
-setInterval(() => {
-  const cutoff = Date.now() - 3600000;
-  for (const k in _msgEmailCache) { if (_msgEmailCache[k] < cutoff) delete _msgEmailCache[k]; }
-}, 3600000);
-
-app.get('/api/messages/unread-count', auth, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND is_read=FALSE', [req.user.id]);
-    res.json({ count: parseInt(r.rows[0].count)||0 });
-  } catch(e) { console.error('/messages/unread-count:', e); res.json({ count: 0 }); }
-});
-
-// ═══ الحظر بين المستخدمين ═══
-// حظر مستخدم (لا تصلك رسائله ولا تصله رسائلك)
-app.post('/api/blocks/:userId', auth, async (req, res) => {
-  try {
-    const target = parseInt(req.params.userId);
-    if (!target || target === req.user.id) return res.status(400).json({ message: 'طلب غير صالح' });
-    await pool.query('INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, target]);
-    res.json({ ok: true, blocked: true });
-  } catch(e) { console.error('block:', e.message); res.status(500).json({ message: 'تعذّر الحظر' }); }
-});
-// فك الحظر
-app.delete('/api/blocks/:userId', auth, async (req, res) => {
-  try {
-    const target = parseInt(req.params.userId);
-    await pool.query('DELETE FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2', [req.user.id, target]);
-    res.json({ ok: true, blocked: false });
-  } catch(e) { console.error('unblock:', e.message); res.status(500).json({ message: 'تعذّر فك الحظر' }); }
-});
-// قائمة من حظرتهم + فحص حالة مستخدم معيّن
-app.get('/api/blocks', auth, async (req, res) => {
-  try {
-    if (req.query.check) {
-      const t = parseInt(req.query.check);
-      const r = await pool.query('SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2 LIMIT 1', [req.user.id, t]);
-      return res.json({ blocked: r.rows.length > 0 });
-    }
-    const r = await pool.query(
-      'SELECT b.blocked_id, u.name, u.profile_image, b.created_at FROM user_blocks b JOIN users u ON u.id=b.blocked_id WHERE b.blocker_id=$1 ORDER BY b.created_at DESC',
-      [req.user.id]
-    );
-    res.json(r.rows);
-  } catch(e) { console.error('blocks list:', e.message); res.json([]); }
-});
-
-// حذف رسالة (حذف ناعم — للمرسل فقط، خلال ساعة)
-app.delete('/api/messages/:id', auth, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const m = await pool.query('SELECT sender_id, created_at FROM messages WHERE id=$1', [id]);
-    if (!m.rows.length) return res.status(404).json({ message: 'الرسالة غير موجودة' });
-    if (String(m.rows[0].sender_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليست رسالتك' });
-    const ageMin = (Date.now() - new Date(m.rows[0].created_at).getTime()) / 60000;
-    if (ageMin > 60) return res.status(400).json({ message: 'لا يمكن حذف رسالة مضى عليها أكثر من ساعة' });
-    await pool.query("UPDATE messages SET deleted_at=NOW(), content='', attachment_url=NULL WHERE id=$1", [id]);
-    res.json({ ok: true });
-  } catch(e) { console.error('del msg:', e.message); res.status(500).json({ message: 'تعذّر الحذف' }); }
-});
-
-// ═══ التفاوض على العرض ═══
-// إشعار المزوّد أن العميل يريد التفاوض (يحفّزه للرد/التعديل)
-app.post('/api/bids/:id/negotiate', auth, clientOnly, async (req, res) => {
-  try {
-    const bidId = parseInt(req.params.id);
-    const b = await pool.query(
-      `SELECT b.id, b.provider_id, b.price, b.request_id, r.client_id, r.title
-       FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1`, [bidId]);
-    if (!b.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
-    const row = b.rows[0];
-    if (String(row.client_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليس مشروعك' });
-    const counter = req.body.counter_price ? parseFloat(req.body.counter_price) : null;
-    const note = String(req.body.note || '').trim().slice(0, 300);
-    let title = 'العميل يريد التفاوض';
-    let body = `على عرضك في «${eEsc(row.title)}» — تواصل معه أو عدّل عرضك`;
-    if (counter && counter > 0) {
-      title = 'عرض مضاد من العميل';
-      body = `${counter.toLocaleString('en-US')} ر.س بدل ${Number(row.price).toLocaleString('en-US')} — في «${eEsc(row.title)}». ردّ عليه أو عدّل عرضك`;
-      // نسجّل العرض المضاد كرسالة موثّقة في المحادثة
-      await pool.query(
-        `INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`,
-        [row.request_id, req.user.id, row.provider_id,
-         `💰 عرض مضاد: ${counter.toLocaleString('en-US')} ر.س` + (note ? `\n📝 ${note}` : '')]
-      );
-    }
-    await notify(row.provider_id, title, body, 'negotiate', row.request_id);
-    res.json({ ok: true, counter: counter || null });
-  } catch(e) { console.error('negotiate:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
-});
-
-// تحديث آخر ظهور (يُستدعى دورياً من الواجهة)
-app.post('/api/me/ping', auth, async (req, res) => {
-  try { await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
-  catch(e) { res.json({ ok: false }); }
-});
-
-app.get('/api/messages/:requestId', auth, async (req, res) => {
-  try {
-    const requestId = parseInt(req.params.requestId);
-    const withUser = parseInt(req.query.with) || null;
-    let r;
-    if (withUser) {
-      // كل الرسائل المتبادلة مع هذا الشخص (عبر كل المشاريع) — تمنع تشتّت المحادثة
-      const allProjects = req.query.all !== '0';
-      if (allProjects) {
-        r = await pool.query(
-          `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
-                  COALESCE(rq.title,'محادثة مباشرة') as project_title
-           FROM messages m JOIN users u ON m.sender_id=u.id
-           LEFT JOIN requests rq ON rq.id=m.request_id
-           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
-           WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1))
-           ORDER BY m.created_at ASC`,
-          [req.user.id, withUser]);
-      } else {
-        r = await pool.query(
-          `SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender,
-                  COALESCE(rq.title,'محادثة مباشرة') as project_title
-           FROM messages m JOIN users u ON m.sender_id=u.id
-           LEFT JOIN requests rq ON rq.id=m.request_id
-           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
-           WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL))
-           ORDER BY m.created_at ASC`,
-          [requestId, req.user.id, withUser]);
-      }
-      // علّم رسائل هذا الشخص مقروءة
-      await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
-    } else {
-      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
-      await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
-    }
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
-  try {
-    const { request_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to } = req.body;
-    if (!request_id || !receiver_id) return res.status(400).json({ message: 'البيانات ناقصة' });
-    const msgText = String(content || '').trim();
-    // يُسمح برسالة بلا نص إن كان فيها مرفق
-    if (!msgText && !attachment_url) return res.status(400).json({ message: 'الرسالة فارغة' });
-    if (msgText.length > 2000) return res.status(400).json({ message: 'الرسالة طويلة جداً (الحد 2000 حرف)' });
-    // احترام الحظر: لا تُرسل إن كان أحد الطرفين حاظراً للآخر
-    const blk = await pool.query(
-      'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
-      [req.user.id, receiver_id]
-    );
-    if (blk.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال الرسالة (الحساب محظور)' });
-    const r = await pool.query(
-      `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
-      [request_id, req.user.id, receiver_id, msgText, attachment_url || null, attachment_type || null, attachment_name || null, reply_to || null]
-    );
-    const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-    const senderName = sender.rows[0].name;
-    await notify(receiver_id, 'رسالة جديدة', `${eEsc(senderName)}: ${msgText.slice(0,50)}${msgText.length>50?'...':''}`, 'message', request_id);
-    const cacheKey = `${receiver_id}-${request_id}`;
-    const now = Date.now(); const lastEmailTime = _msgEmailCache[cacheKey] || 0;
-    if (now - lastEmailTime > 18*60*1000) {
-      _msgEmailCache[cacheKey] = now;
-      try {
-        const recvInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [receiver_id]);
-        const reqInfo = await pool.query('SELECT title FROM requests WHERE id=$1', [request_id]);
-        if (recvInfo.rows.length && recvInfo.rows[0].email) {
-          const subject = `رسالة جديدة من ${eEsc(senderName)}`;
-          const body = `<p>عزيزي <strong>${eEsc(recvInfo.rows[0].name)}</strong>،</p><p>وصلتك رسالة من <strong>${eEsc(senderName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:14px;font-weight:700;color:#16213E">${eEsc(reqInfo.rows[0]?.title||'مشروع')}</div><div style="background:#fff;border-right:3px solid #C9920A;padding:10px 14px;border-radius:6px;font-size:13px;color:#374151;margin-top:8px">"${msgText.slice(0,200).replace(/</g,'&lt;')}${msgText.length>200?'...':''}"</div></div>`;
-          sendEmail(recvInfo.rows[0].email, subject, emailTpl(subject, body, 'الرد على الرسالة', SITE_URL)).catch(()=>{});
-        }
-      } catch(e) { console.error('message email:', e.message); }
-    }
-    res.json(r.rows[0]);
-    const newMsg = r.rows[0];
-    wsBroadcast(receiver_id, { type:'new_message', message:{...newMsg,sender_name:senderName}, request_id, sender_id:req.user.id, sender_name:senderName });
-    wsBroadcast(req.user.id, { type:'message_sent', message:{...newMsg,sender_name:senderName}, request_id });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ REVIEWS ═══
-app.get('/api/reviews/user/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 50`, [id]);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// هل قيّم المستخدم هذا الطلب؟
-app.get('/api/requests/:id/my-review', auth, async (req, res) => {
-  try {
-    const rid = parseInt(req.params.id);
-    const r = await pool.query('SELECT id, rating, comment FROM reviews WHERE request_id=$1 AND reviewer_id=$2 LIMIT 1', [rid, req.user.id]);
-    res.json(r.rows[0] || null);
-  } catch(e) { res.json(null); }
-});
-
-app.post('/api/reviews', auth, async (req, res) => {
-  try {
-    const { request_id, reviewed_id, rating, comment, images } = req.body;
-    if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
-    if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
-    const reqRow = await pool.query('SELECT status, title, client_id, assigned_provider_id FROM requests WHERE id=$1', [request_id]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
-    if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
-    // منع التقييمات الوهمية: المُقيِّم لازم يكون طرفاً في المشروع، والمُقيَّم هو الطرف الآخر
-    {
-      const rq = reqRow.rows[0];
-      const isClient = rq.client_id === req.user.id;
-      const isProvider = rq.assigned_provider_id && rq.assigned_provider_id === req.user.id;
-      if (!isClient && !isProvider) return res.status(403).json({ message: 'لا يمكنك تقييم مشروع لست طرفاً فيه' });
-      const counterparty = isClient ? rq.assigned_provider_id : rq.client_id;
-      if (!counterparty || parseInt(reviewed_id) !== parseInt(counterparty)) return res.status(400).json({ message: 'الطرف المُقيَّم غير صحيح' });
-    }
-    const existing = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
-    let row;
-    if (existing.rows.length) {
-      const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, images=$3, created_at=NOW() WHERE request_id=$4 AND reviewer_id=$5 RETURNING *`, [rating, comment||null, (Array.isArray(images)&&images.length)?images:null, request_id, req.user.id]);
-      row = upd.rows[0];
-    } else {
-      const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null, (Array.isArray(images)&&images.length)?images:null]);
-      row = ins.rows[0];
-    }
-    const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-    const reviewedInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reviewed_id]);
-    const stars = '⭐'.repeat(rating);
-    await notify(reviewed_id, '⭐ تقييم جديد', `حصلت على ${rating} نجوم من ${reviewerInfo.rows[0]?.name||'العميل'}`, 'review', request_id);
-    if (reviewedInfo.rows.length && reviewedInfo.rows[0].email) {
-      const subject = `⭐ تقييم جديد ${rating===5?'5 نجوم!':`${rating} نجوم`}`;
-      const body = `<p>عزيزي <strong>${eEsc(reviewedInfo.rows[0].name)}</strong>،</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:18px;margin:16px 0;text-align:center"><div style="font-size:32px;letter-spacing:6px">${stars}</div><div style="font-size:14px;font-weight:700;color:#92400e">${rating} من 5 نجوم</div>${comment?`<div style="margin-top:12px;font-size:13px;color:#374151;text-align:right">"${eEsc(comment)}"</div>`:''}</div>`;
-      sendEmail(reviewedInfo.rows[0].email, subject, emailTpl(subject, body, 'مشاهدة الملف الشخصي', SITE_URL)).catch(()=>{});
-    }
-    res.json(row);
-  } catch(e) { console.error('POST /api/reviews:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ رد المزود على تقييم ═══
-app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
-  try {
-    const reviewId = parseInt(req.params.id);
-    const { reply } = req.body;
-    if (!reply || !reply.trim()) return res.status(400).json({ message: 'الرد فارغ' });
-    // تأكد أن التقييم موجّه لهذا المزود
-    const rv = await pool.query('SELECT reviewed_id, reviewer_id FROM reviews WHERE id=$1', [reviewId]);
-    if (!rv.rows.length) return res.status(404).json({ message: 'التقييم غير موجود' });
-    if (rv.rows[0].reviewed_id !== req.user.id) return res.status(403).json({ message: 'لا يمكنك الرد على هذا التقييم' });
-    const upd = await pool.query('UPDATE reviews SET provider_reply=$1, reply_at=NOW() WHERE id=$2 RETURNING *', [reply.trim(), reviewId]);
-    // أشعر العميل بالرد
-    try { await notify(rv.rows[0].reviewer_id, 'رد على تقييمك', 'ردّ المزود على تقييمك.', 'review_reply', null); } catch(e){}
-    res.json(upd.rows[0]);
-  } catch(e) { console.error('review reply:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ QUESTIONS & CLARIFICATIONS (الأسئلة والتوضيحات) ═══
-// GET: قائمة أسئلة مشروع (عامة، بدون تسجيل دخول)
-app.get('/api/requests/:id/questions', async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
-    res.json(r.rows);
-  } catch(e) { console.error('GET /questions:', e.message); res.json([]); }
-});
-
-// POST: طرح سؤال (أي مستخدم مسجّل — عادةً مزود)
-app.post('/api/requests/:id/questions', rateLimiter(20, 600000), auth, async (req, res) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    const body = (req.body.body || req.body.question || '').trim();
-    if (!body) return res.status(400).json({ message: 'نص السؤال مطلوب' });
-    const reqRow = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [requestId]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
-    const ins = await pool.query(`INSERT INTO request_questions (request_id, asker_id, body, created_at) VALUES ($1,$2,$3,NOW()) RETURNING *`, [requestId, req.user.id, body]);
-    const ownerId = reqRow.rows[0].client_id;
-    if (ownerId && String(ownerId) !== String(req.user.id)) {
-      const askerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-      const askerName = askerInfo.rows[0]?.name || 'مزود';
-      await notify(ownerId, '❓ سؤال جديد على مشروعك', `${askerName} يسأل عن "${reqRow.rows[0].title}".`, 'new_question', requestId);
-    }
-    res.json(ins.rows[0]);
-  } catch(e) { console.error('POST /questions:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// POST: رد صاحب الطلب على سؤال (المالك فقط)
-app.post('/api/requests/:id/questions/:qid/answer', auth, async (req, res) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    const qid = parseInt(req.params.qid);
-    const answer = (req.body.answer || req.body.body || '').trim();
-    if (!answer) return res.status(400).json({ message: 'نص الرد مطلوب' });
-    const reqRow = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [requestId]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
-    if (String(reqRow.rows[0].client_id) !== String(req.user.id)) return res.status(403).json({ message: 'صاحب الطلب فقط يمكنه الرد' });
-    const upd = await pool.query(`UPDATE request_questions SET answer=$1, answered_at=NOW() WHERE id=$2 AND request_id=$3 RETURNING *`, [answer, qid, requestId]);
-    if (!upd.rows.length) return res.status(404).json({ message: 'السؤال غير موجود' });
-    const askerId = upd.rows[0].asker_id;
-    if (askerId && String(askerId) !== String(req.user.id)) {
-      await notify(askerId, '💬 تم الرد على سؤالك', `ردّ صاحب الطلب على سؤالك في "${reqRow.rows[0].title}".`, 'question_answered', requestId);
-    }
-    res.json(upd.rows[0]);
-  } catch(e) { console.error('POST /answer:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ REPORTS, FAVORITES, PROVIDERS ═══
-app.post('/api/reports', rateLimiter(10, 600000), auth, async (req, res) => {
-  try {
-    const { reported_id, request_id, type, reason, details } = req.body;
-    if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
-    const r = await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [req.user.id, reported_id||null, request_id||null, type||'other', reason, details||null]);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/favorites/:providerId', auth, async (req, res) => {
-  try { await pool.query(`INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [req.user.id, parseInt(req.params.providerId)]); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/favorites/:providerId', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, parseInt(req.params.providerId)]); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/providers', async (req, res) => {
-  try {
-    const { category, city, specialty, q: searchQ } = req.query;
-    let q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects FROM users WHERE role='provider' AND is_active=TRUE`;
-    const params = [];
-    // بحث نصّي بالاسم أو اسم النشاط أو التخصص (لبدء محادثة جديدة)
-    if (searchQ) {
-      params.push(`%${String(searchQ).trim()}%`);
-      q += ` AND (name ILIKE $${params.length} OR COALESCE(business_name,'') ILIKE $${params.length} OR array_to_string(COALESCE(specialties,'{}'),' ') ILIKE $${params.length})`;
-    }
-    if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
-    if (specialty){ params.push(specialty); q += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
-    if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
-    q += ` ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 100`;
-    const r = await pool.query(q, params);
-    res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
-  } catch(e) { console.error('GET /api/providers:', e); res.json([]); }
-});
-
-app.get('/api/providers/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,tier,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,location_url,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const prov = r.rows[0];
-    // اعرض كل الصور (base64 أو http)
-    if (Array.isArray(prov.portfolio_images)) {
-      prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
-    }
-    res.json(prov);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ NOTIFICATIONS ═══
-app.get('/api/notifications', auth, async (req, res) => {
-  try { const r=await pool.query(`SELECT id, title, body, type, ref_id, is_read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,[req.user.id]); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.get('/api/notifications/count', auth, async (req, res) => {
-  try { const r=await pool.query('SELECT COUNT(*) as count FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count) }); } catch(e) { res.json({ count: 0 }); }
-});
-app.get('/api/notifications/unread-count', auth, async (req, res) => {
-  try { const r=await pool.query('SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ count: parseInt(r.rows[0].count)||0 }); } catch(e) { console.error('/notifications/unread-count:', e); res.json({ count: 0 }); }
-});
-app.put('/api/notifications/read', auth, async (req, res) => {
-  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.put('/api/notifications/:id/read', auth, async (req, res) => {
-  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.delete('/api/notifications/:id', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM notifications WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.delete('/api/notifications', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM notifications WHERE user_id=$1',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// حذف تلقائي للإشعارات المقروءة الأقدم من 30 يوم (يمنع التراكم اللانهائي)
-setInterval(async () => {
-  try { await pool.query("DELETE FROM notifications WHERE is_read=TRUE AND created_at < NOW() - INTERVAL '30 days'"); }
-  catch(e){ console.error('notif cleanup:', e.message); }
-}, 6 * 60 * 60 * 1000); // كل 6 ساعات
-
-// ═══ PUSH ═══
-app.get('/api/push/vapid-public-key', (req, res) => {
-  if (!VAPID_PUBLIC_KEY) return res.status(503).json({ message: 'Push غير مفعّل' });
-  res.json({ publicKey: VAPID_PUBLIC_KEY });
-});
-app.post('/api/push/subscribe', auth, async (req, res) => {
-  try {
-    const { subscription } = req.body;
-    if (!subscription||!subscription.endpoint||!subscription.keys) return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
-    await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web') ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`, [req.user.id, JSON.stringify(subscription)]);
-    res.json({ ok: true });
-  } catch(e) { console.error('/api/push/subscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.post('/api/push/unsubscribe', auth, async (req, res) => {
-  try {
-    const { endpoint } = req.body;
-    if (endpoint) {
-      const r=await pool.query(`SELECT id, token FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]);
-      for (const row of r.rows) { try { const sub=JSON.parse(row.token); if(sub.endpoint===endpoint) await pool.query('DELETE FROM push_tokens WHERE id=$1',[row.id]); } catch(e){} }
-    } else { await pool.query(`DELETE FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); }
-    res.json({ ok: true });
-  } catch(e) { console.error('/api/push/unsubscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.post('/api/push/register-native', auth, async (req, res) => {
-  try {
-    const { token, platform } = req.body;
-    if (!token) return res.status(400).json({ message: 'token مطلوب' });
-    if (!String(token).startsWith('ExponentPushToken')) return res.status(400).json({ message: 'صيغة token غير صحيحة' });
-    const plat = (platform==='ios'||platform==='android') ? platform : 'expo';
-    await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, plat]);
-    console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
-    res.json({ ok: true });
-  } catch(e) { console.error('/api/push/register-native:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.get('/api/push/status', auth, async (req, res) => {
-  try { const r=await pool.query(`SELECT COUNT(*)::int as cnt FROM push_tokens WHERE user_id=$1 AND platform='web'`,[req.user.id]); res.json({ subscribed: r.rows[0].cnt>0, count: r.rows[0].cnt }); } catch(e) { res.json({ subscribed:false, count:0 }); }
-});
-app.get('/api/push/badge', auth, async (req, res) => {
-  try { const r=await pool.query(`SELECT (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false)+(SELECT COUNT(*)::int FROM messages WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL)) AS total`,[req.user.id]); res.json({ badge: r.rows[0]?.total||0 }); } catch(e) { res.json({ badge:0 }); }
-});
-app.post('/api/push-token', auth, async (req, res) => {
-  try { const { token, platform } = req.body; if (!token) return res.status(400).json({ message: 'token مطلوب' }); await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, platform||'expo']); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-app.delete('/api/push-token', auth, async (req, res) => {
-  try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',[req.user.id, req.body.token]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ PUBLIC ═══
-app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
-// ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/أدمن/رئيسية) ═══
-const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','أخرى'];
-app.get('/api/version', (req, res) => { res.json({ version: 'edit-geo-atts-30mb-v3', features: ['edit_geo','edit_attachments','dwg_30mb','provider_location','categories_fixed'], ts: '2026-08-14' }); });
-app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-age=300'); res.json({ categories: CATEGORIES }); });
-
-app.get('/api/stats', async (req, res) => {
-  try {
-    const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
-    res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
-  } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
-});
-
-// عام: تسجيل مشاهدة صفحة مزوّد (لا يحسب صاحبها)
-app.post('/api/pro/:id/view', rateLimiter(60, 600000), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if(!id) return res.json({ ok:false });
-    await pool.query('UPDATE users SET profile_views = COALESCE(profile_views,0)+1 WHERE id=$1 AND role=$2', [id, 'provider']);
-    res.json({ ok:true });
-  } catch(e){ res.json({ ok:false }); }
-});
-// للمزوّد: إحصائيات التسويق الخاصة به (مشاهدات + إحالات)
-app.get('/api/me/marketing', auth, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT COALESCE(profile_views,0)::int views, COALESCE(referral_count,0)::int refs FROM users WHERE id=$1', [req.user.id]);
-    const row = r.rows[0]||{views:0,refs:0};
-    res.json({ views: row.views, referrals: row.refs, shareUrl: SITE_URL+'/pro/'+req.user.id });
-  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// عام: أحدث المشاريع المنجزة (دليل اجتماعي — بيانات مجهّلة)
-// ═══════════ محرّك الاستقطاب (Outreach Engine) ═══════════
-
-// بحث Google Places → نتائج مرشّحة (لا يحفظ)
-app.post('/api/admin/leads/search', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const key = process.env.GOOGLE_PLACES_KEY;
-    if(!key) return res.status(400).json({ message:'مفتاح Google Places غير مضبوط (GOOGLE_PLACES_KEY)' });
-    const q = (req.body.query||'').trim();
-    if(!q) return res.status(400).json({ message:'اكتب عبارة البحث' });
-    // عدد الصفحات (كل صفحة حتى 20 نتيجة) — بحث مفرد حتى 3، الكنس عادةً 2
-    const maxPages = Math.min(Math.max(parseInt(req.body.pages)||1, 1), 3);
-
-    // ملاحظة: لازم nextPageToken في FieldMask وإلا ما يرجع رمز الصفحة التالية
-    const fieldMask = 'nextPageToken,places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.primaryTypeDisplayName';
-    let raw = [], token = null, pages = 0;
-    do {
-      const body = { textQuery: q, languageCode:'ar', regionCode:'SA', maxResultCount: 20 };
-      if(token) body.pageToken = token;
-      const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': fieldMask },
-        body: JSON.stringify(body)
-      });
-      const data = await r.json();
-      if(data.error){
-        // لو فشلت صفحة تالية، نرجّع اللي جمعناه بدل ما نفشل كلياً
-        if(pages === 0) return res.status(400).json({ message: data.error.message || 'فشل البحث' });
-        break;
-      }
-      raw = raw.concat(data.places || []);
-      token = data.nextPageToken || null;
-      pages++;
-      // رمز الصفحة يحتاج لحظة ليصبح صالحاً
-      if(token && pages < maxPages) await new Promise(r => setTimeout(r, 700));
-    } while(token && pages < maxPages);
-
-    const places = raw.map(p => ({
-      place_id: p.id,
-      name: (p.displayName && p.displayName.text) || '—',
-      phone: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
-      phone_norm: normPhone(p.nationalPhoneNumber || p.internationalPhoneNumber),
-      address: p.formattedAddress || null,
-      rating: p.rating || null,
-      reviews_count: p.userRatingCount || 0,
-      website: p.websiteUri || null,
-      type: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || null
-    }));
-    // تعليم الموجود مسبقاً
-    const ids = places.map(p=>p.place_id).filter(Boolean);
-    let existing = [];
-    if(ids.length){
-      const ex = await pool.query('SELECT place_id FROM leads WHERE place_id = ANY($1)', [ids]);
-      existing = ex.rows.map(x=>x.place_id);
-    }
-    places.forEach(p => { p.exists = existing.includes(p.place_id); p.score = scoreLead(p); });
-    res.json({ results: places, count: places.length });
-  } catch(e){ console.error('leads/search:', e); res.status(500).json({ message:'تعذّر البحث' }); }
-});
-
-// حفظ مستهدفين (دفعة) — يتجاهل المكرّر
-app.post('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const items = Array.isArray(req.body.items) ? req.body.items : [req.body];
-    const type = req.body.lead_type === 'client' ? 'client' : 'provider';
-    let added = 0, skipped = 0;
-    for(const it of items){
-      const pn = normPhone(it.phone);
-      const row = { ...it, phone_norm: pn };
-      const sc = scoreLead(row);
-      try {
-        const r = await pool.query(
-          `INSERT INTO leads (lead_type,name,phone,phone_norm,category,city,address,rating,reviews_count,website,place_id,score,created_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-           ON CONFLICT (place_id) DO NOTHING RETURNING id`,
-          [it.lead_type||type, it.name, it.phone||null, pn, it.category||null, it.city||null, it.address||null,
-           it.rating||null, it.reviews_count||0, it.website||null, it.place_id||null, sc, req.user.id]
-        );
-        if(r.rows.length) added++; else skipped++;
-      } catch(e){ skipped++; }
-    }
-    res.json({ added, skipped });
-  } catch(e){ console.error('leads add:', e); res.status(500).json({ message:'تعذّر الحفظ' }); }
-});
-
-// بنّاء فلاتر المستهدفين (مشترك بين القائمة والتصدير)
-// يدعم: الحالة، النوع، المدينة، التخصص، الوسم/التصنيف، بحث نصّي، وشريحة الأولوية
-function buildLeadFilter(qp){
-  const { status, type, city, category, q, tag, prio } = qp || {};
-  const w = [], v = [];
-  if(status){ v.push(status); w.push(`status=$${v.length}`); }
-  if(type){ v.push(type); w.push(`lead_type=$${v.length}`); }
-  if(city){ v.push(city); w.push(`city=$${v.length}`); }
-  if(category){ v.push(category); w.push(`category=$${v.length}`); }
-  if(tag){ v.push(tag); w.push(`tag=$${v.length}`); }
-  if(q){ v.push('%'+q+'%'); w.push(`(name ILIKE $${v.length} OR phone ILIKE $${v.length} OR category ILIKE $${v.length})`); }
-  // شريحة الأولوية — نفس عتبات ألوان الجدول (70 / 45)
-  if(prio==='high'){ w.push('score>=70'); }
-  else if(prio==='mid'){ w.push('score>=45 AND score<70'); }
-  else if(prio==='low'){ w.push('(score<45 OR score IS NULL)'); }
-  // «محتمل سجّل» فقط
-  if(qp && (qp.maybe==='1' || qp.maybe==='true')){ w.push("maybe_user_id IS NOT NULL AND status<>'converted'"); }
-  const where = w.length ? 'WHERE '+w.join(' AND ') : '';
-  return { where, v };
-}
-
-// قائمة المستهدفين (فلترة)
-app.get('/api/admin/leads', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const { where, v } = buildLeadFilter(req.query);
-    let lim = parseInt(req.query.limit);
-    if (isNaN(lim) || lim <= 0) lim = 300;
-    if (lim > 10000) lim = 10000;
-    v.push(lim);
-    const r = await pool.query(`SELECT * FROM leads ${where} ORDER BY score DESC, created_at DESC LIMIT $${v.length}`, v);
-    const total = await pool.query(`SELECT COUNT(*)::int AS n FROM leads ${where}`, v.slice(0, v.length-1));
-    res.json({ leads: r.rows, total: total.rows[0].n });
-  } catch(e){ console.error('leads list:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
-});
-
-// طابور الصيد: التالي (غير متواصل معه) + مطابقة طلب حقيقي
-app.get('/api/admin/leads/queue', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const type = req.query.type === 'client' ? 'client' : 'provider';
-    const r = await pool.query(
-      `SELECT * FROM leads WHERE lead_type=$1 AND status IN ('new','followup')
-       AND phone_norm IS NOT NULL
-       AND (followup_at IS NULL OR followup_at <= NOW())
-       ORDER BY score DESC, created_at ASC LIMIT 25`, [type]);
-    const leads = r.rows;
-    // مطابقة كل مزوّد بأقرب طلب مفتوح في تخصصه/مدينته
-    if(type === 'provider' && leads.length){
-      for(const l of leads){
-        try {
-          const m = await pool.query(
-            `SELECT id, title, category, city, budget_max FROM requests
-             WHERE status='open' AND ($1::text IS NULL OR city=$1) AND ($2::text IS NULL OR category=$2)
-             ORDER BY created_at DESC LIMIT 1`, [l.city||null, l.category||null]);
-          l.matched_request = m.rows[0] || null;
-        } catch(e){ l.matched_request = null; }
-      }
-    }
-    res.json({ leads, count: leads.length });
-  } catch(e){ console.error('leads queue:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
-});
-
-// تحديث حالة مستهدف
-app.put('/api/admin/leads/:id', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { status, notes, followup_days, category, city, name, phone } = req.body;
-    const sets = [], v = [];
-    if(name){ v.push(name); sets.push(`name=$${v.length}`); }
-    if(phone !== undefined){
-      const ph = (phone||'').trim();
-      const pn = normPhone(ph);
-      if(ph && !pn) return res.status(400).json({ message:'رقم جوال غير صالح' });
-      // منع التكرار: نفس الرقم عند مستهدف آخر
-      if(pn){
-        const dup = await pool.query('SELECT id FROM leads WHERE phone_norm=$1 AND id<>$2 LIMIT 1', [pn, id]);
-        if(dup.rows.length) return res.status(400).json({ message:'هذا الجوال مسجّل عند مستهدف آخر' });
-      }
-      v.push(ph||null); sets.push(`phone=$${v.length}`);
-      v.push(pn); sets.push(`phone_norm=$${v.length}`);
-    }
-    if(status){
-      v.push(status); sets.push(`status=$${v.length}`);
-      if(status==='contacted'){ sets.push('contacted_at=NOW()'); sets.push('contact_count=COALESCE(contact_count,0)+1'); }
-      if(status==='replied'||status==='interested'){ sets.push('replied_at=NOW()'); }
-    }
-    if(notes !== undefined){ v.push(notes); sets.push(`notes=$${v.length}`); }
-    if(category !== undefined){ v.push(category); sets.push(`category=$${v.length}`); }
-    if(city !== undefined){ v.push(city); sets.push(`city=$${v.length}`); }
-    if(followup_days){ v.push(parseInt(followup_days)); sets.push(`followup_at=NOW() + ($${v.length} || ' days')::interval`); }
-    sets.push('updated_at=NOW()');
-    if(!sets.length) return res.json({ ok:true });
-    v.push(id);
-    const r = await pool.query(`UPDATE leads SET ${sets.join(',')} WHERE id=$${v.length} RETURNING *`, v);
-    res.json({ lead: r.rows[0] });
-  } catch(e){ console.error('leads update:', e); res.status(500).json({ message:'تعذّر التحديث' }); }
-});
-
-// حذف مستهدف
-app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (req, res) => {
-  try { await pool.query('DELETE FROM leads WHERE id=$1', [parseInt(req.params.id)]); res.json({ ok:true }); }
-  catch(e){ res.status(500).json({ message:'تعذّر الحذف' }); }
-});
-
-// حذف جماعي بطلب واحد — سريع وموثوق (بدل مئات الطلبات المتتالية)
-app.post('/api/admin/leads/delete-by-filter', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const { where, v } = buildLeadFilter(req.body || {});
-    if (!where) return res.status(400).json({ message: 'يجب تحديد فلتر واحد على الأقل (حماية من حذف الكل)' });
-    const r = await pool.query(`DELETE FROM leads ${where}`, v);
-    res.json({ ok: true, deleted: r.rowCount });
-  } catch(e){ console.error('delete-by-filter leads:', e.message); res.status(500).json({ message:'تعذّر الحذف' }); }
-});
-
-app.post('/api/admin/leads/bulk-delete', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    var ids = Array.isArray(req.body.ids) ? req.body.ids.map(function(x){return parseInt(x);}).filter(function(n){return !isNaN(n);}) : [];
-    if (!ids.length) return res.status(400).json({ message: 'لا توجد عناصر محددة' });
-    if (ids.length > 5000) ids = ids.slice(0, 5000);
-    const r = await pool.query('DELETE FROM leads WHERE id = ANY($1::int[])', [ids]);
-    res.json({ ok: true, deleted: r.rowCount });
-  } catch(e){ console.error('bulk-delete leads:', e.message); res.status(500).json({ message:'تعذّر الحذف الجماعي' }); }
-});
-
-// إحصائيات الاستقطاب
-// إضافة يدوية/دفعة بكشف التكرار (بالرقم)
-app.post('/api/admin/leads/manual', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    var items = Array.isArray(req.body.items) ? req.body.items : [req.body];
-    var type = req.body.lead_type==='client'?'client':'provider';
-    var added=0, dup=0, invalid=0;
-    for(const it of items){
-      var pn = normPhone(it.phone);
-      if(!it.name || !pn){ invalid++; continue; }
-      // كشف التكرار بالرقم
-      var ex = await pool.query('SELECT id FROM leads WHERE phone_norm=$1 LIMIT 1', [pn]);
-      if(ex.rows.length){ dup++; continue; }
-      var row = { rating:it.rating||null, reviews_count:it.reviews_count||0, website:it.website||null, phone_norm:pn };
-      var sc = scoreLead(row);
-      await pool.query(
-        `INSERT INTO leads (lead_type,name,phone,phone_norm,category,city,rating,reviews_count,website,score,created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-        [it.lead_type||type, it.name, it.phone, pn, it.category||null, it.city||null, it.rating||null, it.reviews_count||0, it.website||null, sc, req.user.id]
-      );
-      added++;
-    }
-    res.json({ added, dup, invalid });
-  }catch(e){ console.error('leads/manual:', e); res.status(500).json({ message:'تعذّر الإضافة' }); }
-});
-
-// عدّاد الرسائل المُرسلة اليوم (حماية من الحظر)
-app.get('/api/admin/leads/sent-today', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    var r = await pool.query(`SELECT COUNT(*)::int n FROM leads WHERE contacted_at >= CURRENT_DATE`);
-    res.json({ count: r.rows[0].n, limit: 50 });
-  }catch(e){ res.json({ count:0, limit:50 }); }
-});
-
-// وسم مستهدف (جاد/مهتم/محتمل)
-app.put('/api/admin/leads/:id/tag', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    var tag = req.body.tag || null;
-    await pool.query('UPDATE leads SET tag=$1, updated_at=NOW() WHERE id=$2', [tag, parseInt(req.params.id)]);
-    res.json({ ok:true });
-  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
-});
-
-// تأكيد «محتمل سجّل» ← تحويل مؤكّد
-app.post('/api/admin/leads/:id/confirm-match', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const id = parseInt(req.params.id);
-    const r = await pool.query(
-      `UPDATE leads SET status='converted', converted_user_id=maybe_user_id, converted_at=NOW(),
-        maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW()
-       WHERE id=$1 RETURNING *`, [id]);
-    const lead = r.rows[0];
-    if(lead && lead.converted_user_id) await transferCardToUser(lead.converted_user_id, lead);
-    res.json({ lead });
-  }catch(e){ res.status(500).json({ message:'تعذّر التأكيد' }); }
-});
-
-// رفض «محتمل سجّل» ← إزالة الإشارة فقط
-app.post('/api/admin/leads/:id/dismiss-match', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const id = parseInt(req.params.id);
-    await pool.query('UPDATE leads SET maybe_user_id=NULL, maybe_at=NULL, updated_at=NOW() WHERE id=$1', [id]);
-    res.json({ ok:true });
-  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
-});
-
-// تصدير المستهدفين (JSON للتحويل إلى CSV بالواجهة)
-app.get('/api/admin/leads/export', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const { where, v } = buildLeadFilter(req.query);
-    var r = await pool.query(`SELECT name,phone,phone_norm,category,city,rating,reviews_count,status,tag,score,notes,created_at FROM leads ${where} ORDER BY created_at DESC`, v);
-    res.json({ leads: r.rows });
-  }catch(e){ res.status(500).json({ message:'تعذّر التصدير' }); }
-});
-
-// متابعات اليوم (مستحقة)
-app.get('/api/admin/leads/due-today', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    var r = await pool.query(
-      `SELECT * FROM leads WHERE followup_at IS NOT NULL AND followup_at <= NOW()
-       AND status NOT IN ('converted','rejected') ORDER BY followup_at ASC LIMIT 50`);
-    res.json({ leads: r.rows });
-  }catch(e){ res.status(500).json({ message:'تعذّر' }); }
-});
-
-app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const s = await pool.query(`SELECT status, lead_type, COUNT(*)::int n FROM leads GROUP BY status, lead_type`);
-    const tot = await pool.query(`SELECT COUNT(*)::int total,
-      COUNT(*) FILTER (WHERE status='contacted')::int contacted,
-      COUNT(*) FILTER (WHERE status IN ('replied','interested'))::int replied,
-      COUNT(*) FILTER (WHERE status='converted')::int converted,
-      COUNT(*) FILTER (WHERE status='rejected')::int rejected,
-      COUNT(*) FILTER (WHERE followup_at IS NOT NULL AND followup_at <= NOW() AND status NOT IN ('converted','rejected'))::int due
-      FROM leads`);
-    const t = tot.rows[0];
-    const sent = (t.contacted||0) + (t.replied||0) + (t.converted||0) + (t.rejected||0);
-    // مقاييس الطلب — الرقم اللي يهم فعلاً
-    let dem = { req_today:0, req_week:0, req_month:0, req_open:0 };
-    try{
-      const rq = await pool.query(`SELECT
-        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int req_today,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int req_week,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int req_month,
-        COUNT(*) FILTER (WHERE status NOT IN ('completed','cancelled','rejected'))::int req_open
-        FROM requests`);
-      dem = rq.rows[0] || dem;
-    }catch(e){}
-    res.json({
-      ...t,
-      sent,
-      reply_rate: sent ? Math.round(((t.replied+t.converted)/sent)*100) : 0,
-      convert_rate: sent ? Math.round((t.converted/sent)*100) : 0,
-      ...dem,
-      breakdown: s.rows
-    });
-  } catch(e){ console.error('leads stats:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
-});
-
-// خريطة الفجوات: طلبات مفتوحة بلا تغطية مزودين كافية
-// ═══ محرّك الاستقطاب: ذكاء Claude ═══
-async function callClaude(system, user, maxTokens){
-  const key = process.env.ANTHROPIC_API_KEY;
-  if(!key) return null;
-  try{
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01' },
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens: maxTokens||400,
-        system: system,
-        messages:[{ role:'user', content:user }]
-      })
-    });
-    const data = await r.json();
-    if(data && data.content && data.content[0] && data.content[0].text) return data.content[0].text.trim();
-    return null;
-  }catch(e){ console.error('claude:', e.message); return null; }
-}
-
-// توليد رسالة أولى مخصّصة
-app.post('/api/admin/leads/:id/gen-message', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
-    const l = r.rows[0];
-    if(!l) return res.status(404).json({ message:'غير موجود' });
-    let matched = null;
-    if(l.lead_type==='provider'){
-      const m = await pool.query(`SELECT title,category,city,budget_max FROM requests WHERE status='open' AND ($1::text IS NULL OR city=$1) AND ($2::text IS NULL OR category=$2) ORDER BY created_at DESC LIMIT 1`, [l.city||null, l.category||null]);
-      matched = m.rows[0] || null;
-    }
-    const sys = 'أنت خبير تسويق سعودي لمنصة «مناقصة» (منصة تربط العملاء بمزودي الخدمات). اكتب رسالة واتساب قصيرة (٣-٤ أسطر) بلهجة سعودية مهذبة واحترافية لدعوة منشأة للانضمام. الرسالة تعطي قيمة قبل الطلب، شخصية، وتنتهي بسؤال بسيط. لا تكتب أي شيء غير الرسالة نفسها. ضمّن الرابط https://www.manaqasa.com';
-    let usr = 'نوع المستهدف: '+(l.lead_type==='client'?'عميل محتمل (شركة تحتاج خدمات)':'مزوّد خدمة')+'\nالاسم: '+l.name+'\nالتخصص: '+(l.category||'غير محدد')+'\nالمدينة: '+(l.city||'غير محدد')+'\nالتقييم: '+(l.rating||'—');
-    if(matched) usr += '\n\nيوجد طلب حقيقي مطابق يمكن ذكره كطُعم: «'+matched.title+'»'+(matched.budget_max?' بميزانية '+matched.budget_max+' ريال':'')+' في '+(matched.city||'')+'. اذكره لجذبه.';
-    const msg = await callClaude(sys, usr, 300);
-    if(!msg) return res.json({ message:null, fallback:true });
-    res.json({ message: msg });
-  }catch(e){ console.error('gen-message:', e); res.status(500).json({ message:'تعذّر التوليد' }); }
-});
-
-// تحليل رد المزوّد + صياغة الرد المناسب
-app.post('/api/admin/leads/:id/analyze-reply', requirePermission('outreach.manage'), async (req, res) => {
-  try{
-    const reply = String(req.body.reply||'').trim().slice(0,4000);
-    if(!reply) return res.status(400).json({ message:'الصق رد المزوّد' });
-    const r = await pool.query('SELECT * FROM leads WHERE id=$1', [parseInt(req.params.id)]);
-    const l = r.rows[0] || {};
-    const sys = 'أنت مساعد مبيعات لمنصة «مناقصة» السعودية. حلّل رد المستهدف وصنّفه، ثم اكتب رداً مقترحاً بلهجة سعودية مهذبة. أجب حصراً بصيغة JSON صالحة بدون أي نص إضافي، بهذا الشكل: {"intent":"interested|price_question|hesitant|rejected|later|unclear","summary":"ملخص قصير","suggested_reply":"الرد المقترح للإرسال","followup_days":عدد}. القيم الممكنة لـ intent: interested (مهتم)، price_question (يسأل عن السعر/العمولة)، hesitant (متردد)، rejected (رفض)، later (لاحقاً)، unclear (غير واضح). followup_days: عدد أيام المتابعة المقترح (0 لو لا حاجة).';
-    const usr = 'المستهدف: '+(l.name||'')+' ('+(l.category||'')+' - '+(l.city||'')+')\n\nرده على رسالتنا:\n"'+reply+'"';
-    const raw = await callClaude(sys, usr, 500);
-    if(!raw) return res.json({ fallback:true });
-    let parsed = null;
-    try{ parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){ parsed = { intent:'unclear', summary:raw.slice(0,120), suggested_reply:'', followup_days:3 }; }
-    // حدّث حالة المستهدف حسب التصنيف
-    const map = { interested:'interested', price_question:'interested', hesitant:'replied', rejected:'rejected', later:'followup', unclear:'replied' };
-    const newStatus = map[parsed.intent] || 'replied';
-    try{
-      const fd = parseInt(parsed.followup_days)||0;
-      await pool.query(`UPDATE leads SET status=$1, replied_at=NOW(), updated_at=NOW(), notes=COALESCE(notes,'')||$2 ${fd>0?", followup_at=NOW() + ($3 || ' days')::interval":''} WHERE id=$4`,
-        fd>0 ? [newStatus, '\n[رد]: '+(parsed.summary||''), fd, l.id] : [newStatus, '\n[رد]: '+(parsed.summary||''), l.id]);
-    }catch(e){}
-    res.json({ analysis: parsed });
-  }catch(e){ console.error('analyze-reply:', e); res.status(500).json({ message:'تعذّر التحليل' }); }
-});
-
-app.get('/api/admin/coverage-gaps', requirePermission('outreach.manage'), async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT r.id, r.title, r.category, r.city, r.budget_max, r.created_at,
-        (SELECT COUNT(*)::int FROM users u WHERE u.role='provider' AND u.is_active=true
-          AND (u.city = r.city) AND (u.specialties IS NULL OR r.category = ANY(u.specialties))) AS providers,
-        (SELECT COUNT(*)::int FROM bids b WHERE b.request_id = r.id) AS bids
-      FROM requests r
-      WHERE r.status='open'
-      ORDER BY providers ASC, r.created_at DESC
-      LIMIT 30`);
-    const gaps = r.rows.filter(x => (x.providers||0) < 3);
-    res.json({ gaps, all: r.rows });
-  } catch(e){ console.error('coverage-gaps:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
-});
-
-app.get('/api/showcase', async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT r.title, r.category, r.city, r.completed_at,
-              (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
-       FROM requests r
-       WHERE r.status='completed' AND r.completed_at IS NOT NULL
-         AND (r.category IS DISTINCT FROM 'direct')
-       ORDER BY r.completed_at DESC LIMIT 8`);
-    res.set('Cache-Control','public, max-age=300');
-    res.json(r.rows.map(x=>({ title:x.title, category:x.category||'', city:x.city||'', offers:x.offers||0 })));
-  } catch(e){ res.json([]); }
-});
-
-// ═══ ADMIN ═══
-app.get('/api/admin/logs', requirePermission('logs.view'), async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 200');
-    res.json(r.rows);
-  } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res) => {
-  try {
-    const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
-    const [
-      users, requests, bids, providers, clients, pending, inProgress, completed,
-      todayUsers, todayProviders, todayClients, todayRequests, todayBids,
-      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders
-    ] = await Promise.all([
-      q('SELECT COUNT(*) FROM users'),
-      q('SELECT COUNT(*) FROM requests'),
-      q('SELECT COUNT(*) FROM bids'),
-      q(`SELECT COUNT(*) FROM users WHERE role='provider'`),
-      q(`SELECT COUNT(*) FROM users WHERE role='client'`),
-      q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
-      q(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),
-      q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
-      q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
-      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`)
-    ]);
-    // آخر 7 أيام (تسجيلات يومية)
-    const daily = await pool.query(`
-      SELECT created_at::date as day, COUNT(*)::int as n
-      FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY created_at::date ORDER BY day`);
-    // ═══ سلاسل زمنية: شهري (12 شهر) + سنوي (5 سنوات) ═══
-    let monthly={rows:[]}, yearly={rows:[]}, dailyReq={rows:[]};
-    try {
-      monthly = await pool.query(`
-        SELECT to_char(date_trunc('month', created_at),'YYYY-MM') as period,
-               COUNT(*)::int as users,
-               COUNT(*) FILTER (WHERE role='provider')::int as providers
-        FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
-        GROUP BY period ORDER BY period`);
-    } catch(e){ console.error('monthly:', e.message); }
-    try {
-      yearly = await pool.query(`
-        SELECT to_char(date_trunc('year', created_at),'YYYY') as period,
-               COUNT(*)::int as users
-        FROM users WHERE created_at >= date_trunc('year', CURRENT_DATE) - INTERVAL '4 years'
-        GROUP BY period ORDER BY period`);
-    } catch(e){ console.error('yearly:', e.message); }
-    try {
-      dailyReq = await pool.query(`
-        SELECT created_at::date as day, COUNT(*)::int as n
-        FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
-        GROUP BY created_at::date ORDER BY day`);
-    } catch(e){ console.error('dailyReq:', e.message); }
-    // أكثر التخصصات (محمي — لو فشل لا يكسر باقي الإحصائيات)
-    let topSpecs={rows:[]}, topCities={rows:[]};
-    try {
-      topSpecs = await pool.query(`
-        SELECT unnest(specialties) as spec, COUNT(*)::int as n
-        FROM users WHERE role='provider' AND specialties IS NOT NULL
-        GROUP BY spec ORDER BY n DESC LIMIT 5`);
-    } catch(e) { console.error('topSpecs:', e.message); }
-    try {
-      topCities = await pool.query(`
-        SELECT city, COUNT(*)::int as n FROM users WHERE city IS NOT NULL AND city<>''
-        GROUP BY city ORDER BY n DESC LIMIT 5`);
-    } catch(e) { console.error('topCities:', e.message); }
-    res.json({
-      total_users:users, requests, total_bids:bids, providers, clients,
-      pending_review:pending, in_progress:inProgress, completed, verified, active_providers:activeProviders,
-      today:{ users:todayUsers, providers:todayProviders, clients:todayClients, requests:todayRequests, bids:todayBids },
-      week:{ users:weekUsers, requests:weekRequests },
-      month:{ users:monthUsers, requests:monthRequests },
-      daily_signups: daily.rows,
-      daily_requests: dailyReq.rows,
-      monthly_signups: monthly.rows,
-      yearly_signups: yearly.rows,
-      top_specialties: topSpecs.rows,
-      top_cities: topCities.rows
-    });
-  } catch(e) { console.error('stats:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ كل العروض (للأدمن) مع فلترة ═══
-app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
-  try {
-    const { status, provider_id, request_id } = req.query;
-    const conds = []; const params = []; let i = 1;
-    if (status) { params.push(status); conds.push(`b.status=$${i}`); i++; }
-    if (provider_id) { params.push(parseInt(provider_id)); conds.push(`b.provider_id=$${i}`); i++; }
-    if (request_id) { params.push(parseInt(request_id)); conds.push(`b.request_id=$${i}`); i++; }
-    const where = conds.length ? 'WHERE '+conds.join(' AND ') : '';
-    const r = await pool.query(`
-      SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
-        u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
-        rq.title as request_title, rq.client_id,
-        cu.name as client_name
-      FROM bids b
-      JOIN users u ON b.provider_id=u.id
-      JOIN requests rq ON b.request_id=rq.id
-      LEFT JOIN users cu ON rq.client_id=cu.id
-      ${where} ORDER BY b.created_at DESC LIMIT 200`, params);
-    res.json(r.rows);
-  } catch(e) { console.error('admin bids:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ تعديل عرض (أدمن) ═══
-app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { price, days, note, status, price_unit, price_visibility } = req.body;
-    const sets = []; const params = []; let i = 1;
-    if (price !== undefined) { params.push(Number(price)); sets.push(`price=$${i}`); i++; }
-    if (days !== undefined) { params.push(parseInt(days)); sets.push(`days=$${i}`); i++; }
-    if (note !== undefined) { params.push(note); sets.push(`note=$${i}`); i++; }
-    if (status !== undefined) { params.push(status); sets.push(`status=$${i}`); i++; }
-    if (price_unit !== undefined && ['total','meter','unit'].indexOf(price_unit) >= 0) { params.push(price_unit); sets.push(`price_unit=$${i}`); i++; }
-    if (price_visibility !== undefined) { params.push(price_visibility === 'public' ? 'public' : 'client'); sets.push(`price_visibility=$${i}`); i++; }
-    if (!sets.length) return res.status(400).json({ message: 'لا يوجد تعديل' });
-    params.push(id);
-    const r = await pool.query(`UPDATE bids SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, params);
-    if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
-    await logAdmin(req, 'edit_bid', 'bid', id, 'تعديل عرض');
-    res.json(r.rows[0]);
-  } catch(e) { console.error('edit bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ حذف عرض (أدمن) ═══
-app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
-    await logAdmin(req, 'delete_bid', 'bid', id, 'حذف عرض');
-    res.json({ ok: true });
-  } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
-  try {
-    const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
-    const params = [];
-    if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
-    q += ' ORDER BY u.created_at DESC';
-    const r = await pool.query(q, params); res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id);
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const { name, email, phone, city, bio, business_name, role } = req.body || {};
-    if (email) { const dup = await pool.query('SELECT id FROM users WHERE email=$1 AND id<>$2', [email, uid]); if (dup.rows.length) return res.status(409).json({ message: 'الإيميل مستخدم لحساب آخر' }); }
-    // تغيير الدور مسموح فقط بين عميل/مزوّد (أمان: لا يُرفَّع أحد إلى admin، ولا يُغيَّر دور admin)
-    let roleVal = (role === 'client' || role === 'provider') ? role : null;
-    const r = await pool.query(`UPDATE users SET name=COALESCE(NULLIF($1,''),name), email=COALESCE(NULLIF($2,''),email), phone=$3, city=$4, bio=$5, business_name=$6, role=CASE WHEN $7::text IS NOT NULL AND role<>'admin' THEN $7::text ELSE role END WHERE id=$8 RETURNING id, name, email, role`, [name||'', email||'', phone||null, city||null, bio||null, business_name||null, roleVal, uid]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    await logAdmin(req, 'edit_user', 'user', uid, 'تعديل بيانات: ' + (r.rows[0].name||''));
-    res.json(r.rows[0]);
-  } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// الأدمن: قائمة المناديب مع مشاريعهم (لحساب الإجماليات والدفع)
-app.get('/api/admin/agents', requirePermission('requests.view'), async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT a.id, a.name, a.phone, a.token,
-        COALESCE(json_agg(json_build_object(
-          'id', r.id, 'title', r.title, 'status', r.status, 'pct', r.agent_pct,
-          'accepted_price', (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1),
-          'paid_at', r.agent_paid_at
-        ) ORDER BY r.created_at DESC) FILTER (WHERE r.id IS NOT NULL), '[]') as projects
-      FROM agents a LEFT JOIN requests r ON r.agent_id=a.id
-      GROUP BY a.id ORDER BY a.created_at DESC`);
-    res.json(r.rows.map(a => ({ ...a, link: SITE_URL + '/agent/' + a.token })));
-  } catch(e) { console.error('admin agents:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// الأدمن: تعليم عمولة مشروع كمدفوعة/غير مدفوعة
-app.put('/api/admin/requests/:id/agent-paid', requirePermission('requests.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const paid = req.body.paid !== false;
-    await pool.query('UPDATE requests SET agent_paid_at=$1 WHERE id=$2', [paid ? new Date() : null, id]);
-    res.json({ ok: true, paid });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ بوابة المندوب: رابط سحري يتابع فيه مشاريعه وعمولته (بلا تسجيل) ═══
-app.get('/agent/:token', async (req, res) => {
-  try {
-    const ag = (await pool.query('SELECT * FROM agents WHERE token=$1', [req.params.token])).rows[0];
-    if (!ag) return res.status(404).set('Content-Type','text/html; charset=utf-8').send('<html dir="rtl"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;color:#64748b">الرابط غير صالح</body></html>');
-    const rows = (await pool.query(`SELECT r.id, r.title, r.status, r.agent_pct, r.agent_paid_at, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price FROM requests r WHERE r.agent_id=$1 ORDER BY r.created_at DESC`, [ag.id])).rows;
-    const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    let totDue=0, totPaid=0, nPending=0;
-    const items = rows.map(r=>{
-      const pct = Number(r.agent_pct)||0;
-      const ap = Number(r.accepted_price)||0;
-      const done = (r.status==='in_progress'||r.status==='completed'||r.status==='done') && ap>0;
-      const due = done ? Math.round(ap*pct/100) : 0;
-      let badge, col;
-      if (r.agent_paid_at) { badge='مدفوعة'; col='#059669'; totPaid+=due; }
-      else if (done) { badge='مستحقة'; col='#1e40af'; totDue+=due; }
-      else { badge='قيد استقبال العروض'; col='#b45309'; nPending++; }
-      return `<tr><td><div style="font-weight:800;color:#0f2a4f">${e2(r.title||'—')}</div><div style="font-size:11px;color:#64748b">مشروع #${r.id} · ${pct}٪</div></td><td style="text-align:center"><span style="background:${col}1a;color:${col};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800">${badge}</span></td><td style="text-align:left;font-weight:900;color:${r.agent_paid_at?'#059669':(due?'#1e40af':'#94a3b8')};white-space:nowrap">${due?due.toLocaleString('en-US')+' ر.س':'—'}</td></tr>`;
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--nav-bg, rgba(255,255,255,0.95));
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 68px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Cairo', sans-serif;
+    font-weight: 900;
+    font-size: 24px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--teal); -webkit-text-fill-color: var(--teal); }
+
+  nav .links { display: flex; gap: 32px; align-items: center; }
+  nav .links a {
+    color: var(--muted); text-decoration: none;
+    font-size: 15px; font-weight: 500;
+    transition: color 0.2s;
+  }
+  nav .links a:hover { color: var(--text); }
+
+  .nav-btns { display: flex; gap: 12px; align-items: center; }
+
+  .btn-ghost {
+    background: none; border: 1.5px solid rgba(37,99,235,0.35);
+    color: var(--accent); padding: 8px 20px;
+    border-radius: 8px; cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px; font-weight: 700;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); background: var(--glow); }
+  [data-theme="dark"] .btn-ghost { border-color: rgba(96,165,250,0.45); color: var(--accent2); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #ffffff;
+    padding: 9px 22px; border-radius: 8px;
+    cursor: pointer; font-family: 'Tajawal', sans-serif;
+    font-size: 14px; font-weight: 700;
+    transition: all 0.2s; box-shadow: 0 4px 20px rgba(37,99,235,0.25);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(37,99,235,0.35); }
+
+  /* SECTIONS */
+  section { position: relative; z-index: 1; }
+
+  /* شاشة التوجيه (عميل/مزوّد) */
+  #mnqChoose{position:fixed;inset:0;z-index:2000;background:var(--bg);overflow-y:auto;max-width:none;margin:0;padding:32px 18px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+#mnqChoose .mnq-ch-wrap{max-width:520px;width:100%;margin:0 auto}
+  .mnq-ch-wrap{width:100%}
+  .mnq-ch-head{text-align:center;margin-bottom:26px}
+  .mnq-ch-logo{font-family:'Cairo',sans-serif;font-size:26px;font-weight:900;color:var(--p);margin-bottom:14px}
+  .mnq-ch-q{font-family:'Cairo',sans-serif;font-size:24px;font-weight:900;color:var(--text);margin-bottom:5px}
+  .mnq-ch-sub{font-size:14px;color:var(--muted)}
+  .mnq-ch-card{display:flex;align-items:center;gap:14px;width:100%;text-align:right;border:none;border-radius:18px;padding:22px 18px;margin-bottom:14px;cursor:pointer;font-family:inherit;transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(15,23,42,.12)}
+  .mnq-ch-card:active{transform:scale(.98)}
+  .mnq-ch-client{background:linear-gradient(135deg,#1e3a8a,#2563eb)}
+  .mnq-ch-client:hover{box-shadow:0 12px 30px rgba(37,99,235,.35);transform:translateY(-2px)}
+  .mnq-ch-prov{background:linear-gradient(135deg,#334155,#475569)}
+  .mnq-ch-prov:hover{box-shadow:0 12px 30px rgba(51,65,85,.34);transform:translateY(-2px)}
+  .mnq-ch-ic{font-size:34px;flex-shrink:0;width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18)}
+  .mnq-ch-prov .mnq-ch-ic{background:rgba(255,255,255,.15)}
+  .mnq-ch-txt{flex:1;min-width:0}
+  .mnq-ch-title{font-size:16px;font-weight:900;color:#fff;margin-bottom:4px}
+  .mnq-ch-desc{font-size:12.5px;color:#dbe6ff;line-height:1.7}
+  .mnq-ch-prov .mnq-ch-desc{color:#cbd5e1}
+  .mnq-ch-go{font-size:13px;font-weight:800;color:#fff;flex-shrink:0;align-self:flex-end}
+  .mnq-ch-prov .mnq-ch-go{color:#e2e8f0}
+  .mnq-ch-browse{display:block;margin:8px auto 0;background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:10px;text-decoration:underline}
+  @media(max-width:400px){.mnq-ch-desc{font-size:12px}.mnq-ch-go{display:none}}
+
+  /* HERO */
+  .hero {padding: 100px 40px 80px;
+    text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(37,99,235,0.08);
+    border: 1px solid rgba(37,99,235,0.2);
+    padding: 6px 16px; border-radius: 100px;
+    font-size: 13px; color: var(--accent);
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero-badge::before {
+    content: '●'; font-size: 8px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  .hero h1 {
+    font-family: 'Cairo', sans-serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero h1 .highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 19px; color: var(--muted);
+    line-height: 1.7; max-width: 600px;
+    margin: 0 auto 40px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-btns {
+    display: flex; gap: 16px; justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .btn-lg {
+    padding: 14px 32px; font-size: 16px;
+    border-radius: 10px; font-weight: 700;
+  }
+
+  .btn-outline {
+    background: none; border: 1px solid var(--border);
+    color: var(--text); padding: 14px 32px;
+    border-radius: 10px; cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 16px; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { border-color: rgba(255,255,255,0.3); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS */
+  .stats {
+    display: flex; justify-content: center; gap: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 0 40px;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+
+  .stat-item {
+    flex: 1; max-width: 220px;
+    padding: 32px 20px; text-align: center;
+    border-left: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-left: none; }
+
+  .stat-num {
+    font-family: 'Cairo', sans-serif;
+    font-size: 36px; font-weight: 900;
+    -webkit-background-clip: text; background: linear-gradient(135deg, var(--accent), var(--teal));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .stat-label { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  /* HOW IT WORKS */
+  .how {
+    padding: 80px 40px;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  .section-title {
+    text-align: center; margin-bottom: clamp(28px, 6vw, 60px);
+  }
+
+  .section-title h2 {
+    font-family: 'Cairo', sans-serif;
+    font-size: clamp(22px, 5.5vw, 30px); font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  .section-title p { color: var(--muted); font-size: 16px; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    position: relative;
+  }
+
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px 24px;
+    position: relative; overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .step-card:hover {
+    border-color: rgba(37,99,235,0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  }
+
+  .step-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--glow), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .step-card:hover::before { opacity: 1; }
+
+  .step-num {
+    font-family: 'Cairo', sans-serif;
+    font-size: 48px; font-weight: 900;
+    color: rgba(37,99,235,0.12);
+    position: absolute; top: 16px; left: 20px;
+    line-height: 1;
+  }
+
+  .step-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+    position: relative; z-index: 1;
+    color:#1e3a8a;
+  }
+  .icon-teal{color:#0ea5e9}
+  .icon-red{color:#1d4ed8}
+
+  .icon-blue { background:#dbeafe; }
+  .icon-orange { background:#e0e7ff; }
+  .icon-teal { background:#e0f2fe; }
+  .icon-red { background:#dbeafe; }
+
+  .step-card h3 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 18px; font-weight: 700;
+    margin-bottom: 10px; position: relative; z-index: 1;
+  }
+
+  .step-card p {
+    color: var(--muted); font-size: 14px;
+    line-height: 1.7; position: relative; z-index: 1;
+  }
+
+  /* DEMO SECTION */
+  .demo {
+    padding: 80px 40px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .demo-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 40px; align-items: start;
+  }
+
+  /* REQUEST FORM */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+  }
+
+  .form-card h3 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 20px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .form-card .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+  .form-group { margin-bottom: 18px; }
+
+  .form-group label {
+    display: block; font-size: 14px;
+    font-weight: 500; margin-bottom: 8px;
+    color: var(--muted);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+  }
+
+  .form-group textarea { min-height: 100px; resize: vertical; }
+  .form-group select { appearance: none; cursor: pointer; }
+  .form-group select option { background: #fff; color: var(--text); }
+
+  /* BIDS LIST */
+  .bids-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+  }
+
+  .bids-card h3 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 20px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .bids-card .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+  .request-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+
+  .req-title {
+    font-weight: 600; font-size: 15px; margin-bottom: 4px;
+  }
+
+  .req-tags {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+  }
+
+  .tag {
+    background: rgba(61,127,255,0.12);
+    color: var(--blue); border: 1px solid rgba(61,127,255,0.2);
+    padding: 3px 10px; border-radius: 100px; font-size: 12px;
+  }
+
+  .bids-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .bid-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px;
+    display: flex; align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s; cursor: pointer;
+  }
+
+  .bid-item:hover {
+    border-color: rgba(37,99,235,0.25);
+    background: var(--card2);
+  }
+
+  .bid-item.best {
+    border-color: rgba(0,212,170,0.4);
+    background: rgba(0,212,170,0.05);
+  }
+
+  .best-badge {
+    background: var(--teal); color: #ffffff;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 100px;
+    margin-right: 8px;
+  }
+
+  .bid-provider {
+    display: flex; align-items: center; gap: 12px;
+  }
+
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .av1 { background: rgba(61,127,255,0.2); color: var(--blue); }
+  .av2 { background: rgba(0,212,170,0.2); color: var(--teal); }
+  .av3 { background: rgba(37,99,235,0.12); color: var(--accent); }
+
+  .bid-name { font-size: 14px; font-weight: 600; }
+  .bid-rating { color: var(--accent); font-size: 12px; }
+
+  .bid-price {
+    text-align: left;
+  }
+
+  .price-num {
+    font-family: 'Cairo', sans-serif;
+    font-size: 20px; font-weight: 800;
+    color: var(--accent);
+  }
+
+  .price-label { color: var(--muted); font-size: 12px; }
+
+  .btn-choose {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #ffffff;
+    padding: 8px 18px; border-radius: 8px;
+    cursor: pointer; font-family: 'Tajawal', sans-serif;
+    font-size: 13px; font-weight: 700;
+    margin-top: 8px; transition: all 0.2s;
+  }
+  .btn-choose:hover { opacity: 0.9; transform: scale(1.02); }
+
+  /* CATEGORIES */
+  .categories {
+    padding: 80px 40px;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  .flow{max-width:1080px;margin:0 auto;display:flex;align-items:flex-start;justify-content:center;flex-wrap:nowrap;position:relative}
+  .flow-step{flex:1;text-align:center;position:relative;padding:0 6px}
+  .flow-node{width:66px;height:66px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 15px;position:relative;box-shadow:0 10px 24px rgba(29,78,216,.30)}
+  .flow-node svg{width:27px;height:27px}
+  .flow-num{position:absolute;top:-8px;right:-8px;min-width:24px;height:24px;padding:0 5px;border-radius:12px;background:#fff;color:var(--accent);font-size:12.5px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.14)}
+  .flow-step h3{font-size:16.5px;font-weight:800;margin:0 0 6px;color:var(--text,#0f172a)}
+  .flow-step p{font-size:12.5px;color:var(--muted);line-height:1.65;margin:0;max-width:190px;margin-inline:auto}
+  .flow-arrow{flex:0 0 auto;display:flex;align-items:center;color:var(--accent);opacity:.32;padding-top:19px}
+  .flow-arrow svg{width:28px;height:28px}
+  @media(max-width:760px){
+    .flow{flex-direction:column;align-items:stretch;max-width:370px;gap:0}
+    .flow-step{display:flex;gap:15px;text-align:right;align-items:flex-start;padding:0}
+    .flow-node{margin:0;flex-shrink:0;width:54px;height:54px;border-radius:16px}
+    .flow-node svg{width:23px;height:23px}
+    .flow-step p{max-width:none;margin-inline:0}
+    .flow-arrow{padding:5px 0 5px 19px;transform:rotate(90deg);width:54px;justify-content:center}
+  }
+  .cats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px; max-width:1080px; margin:0 auto;
+  }
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px 14px;
+    text-align: center; cursor: pointer;
+    display:flex; flex-direction:column; align-items:center; gap:11px;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+  }
+  .cat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(29,78,216,0.15);
+  }
+  .cat-card:hover .cat-icon{ background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; transform:scale(1.07); }
+  .cat-icon{width:52px;height:52px;border-radius:15px;background:#dbeafe;color:#1e3a8a;display:flex;align-items:center;justify-content:center;margin:0;transition:all .25s}
+  .cat-name { font-size: 13.5px; font-weight: 700; color:var(--text,#0f172a); }
+
+  /* CTA */
+  .cta {
+    padding: 100px 40px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(61,127,255,0.05), rgba(37,99,235,0.03));
+    border-top: 1px solid var(--border);
+  }
+
+  .cta h2 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 44px; font-weight: 900;
+    margin-bottom: 16px;
+  }
+
+  .cta p { color: var(--muted); font-size: 18px; margin-bottom: 40px; }
+
+  /* FOOTER */
+  footer {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--bg);
+    border-radius: 10px; padding: 4px;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    flex: 1; padding: 10px; border: none;
+    border-radius: 8px; cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 14px; font-weight: 500;
+    transition: all 0.2s;
+    background: none; color: var(--muted);
+  }
+
+  .tab.active {
+    background: var(--card2);
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .form-card, .bids-card {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  }
+
+  .step-card {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  @media (max-width: 768px) {
+    nav { padding: 0 20px; }
+    nav .links { display: none; }
+    .hero { padding: 60px 20px 50px; }
+    .stats { margin: 0 20px; flex-wrap: wrap; }
+    .stat-item { max-width: none; border-left: none; border-bottom: 1px solid var(--border); }
+    .demo-inner { grid-template-columns: 1fr; }
+    .demo { padding: 50px 20px; }
+    .how, .categories { padding: 60px 20px; }
+  }
+
+  /* ══ LIVE SECTIONS (مشاريع + مزودون حقيقيون) ══ */
+  .live{padding:80px 40px;max-width:1100px;margin:0 auto}
+  .live .section-title{margin-bottom:34px}
+  .lv-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:center}
+  .lv-tab{padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'Tajawal',sans-serif;transition:.15s}
+  .lv-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .lv-tab.on{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 10px rgba(37,99,235,.25)}
+  .lv-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;justify-content:center}
+  .lv-inp,.lv-sel{flex:1;min-width:160px;max-width:280px;padding:11px 15px;border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--text);background:var(--card);font-family:'Tajawal',sans-serif;outline:none;transition:.15s}
+  .lv-inp:focus,.lv-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+  .lv-sel{cursor:pointer;appearance:none}
+  .lv-cl{padding:11px 18px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:700;color:var(--muted);background:var(--card);cursor:pointer;font-family:'Tajawal',sans-serif;white-space:nowrap}
+  .lv-cl:hover{border-color:var(--accent);color:var(--accent)}
+  .lv-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+
+  .pg-grid{display:flex;flex-direction:column;gap:12px}
+  .hzp{display:flex;align-items:stretch;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.05);transition:transform .25s,box-shadow .25s,border-color .25s}
+  .hzp:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(37,99,235,.10);border-color:rgba(37,99,235,.30)}
+  .hzp-img{position:relative;width:88px;height:88px;border-radius:12px;overflow:hidden;flex-shrink:0;background:var(--bg2)}
+  .hzp-img img{width:100%;height:100%;object-fit:cover}
+  .hzp-noimg{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#bfdbfe}
+  .hzp-cat-ic{transform:scale(1.3)}
+  .hzp-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
+  .hzp-open{background:rgba(22,163,74,.92)}
+  .hzp-rev{background:rgba(217,119,6,.92)}
+  .hzp-done{background:rgba(100,116,139,.88)}
+  .hzp-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+  .hzp-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .hzp:hover .hzp-title{color:var(--accent)}
+  .hzp-meta{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-size:12px;color:var(--muted);font-weight:500}
+  .hzp-cat{color:var(--accent);font-weight:700}
+  .hzp-side{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:8px;flex-shrink:0}
+  .hzp-price{font-family:'Cairo',sans-serif;font-size:17px;font-weight:800;color:#16a34a;line-height:1;white-space:nowrap;text-align:left}
+  .hzp-price span{font-size:10px;font-weight:600;color:var(--muted);margin-right:2px}
+  .hzp-bid{padding:8px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:800;font-family:'Tajawal',sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(37,99,235,.3);transition:all .2s}
+  .hzp-bid:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.4)}
+
+  .prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .pv{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 16px;cursor:pointer;transition:transform .3s,box-shadow .3s,border-color .3s;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+  .pv:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(37,99,235,.12);border-color:rgba(37,99,235,.30)}
+  .pv-av{width:66px;height:66px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-size:23px;font-weight:900;color:#fff;margin-bottom:12px;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:0 0 0 1px #dbeafe,0 6px 16px rgba(37,99,235,.25)}
+  .pv-av img{width:100%;height:100%;object-fit:cover}
+  .pv-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:5px}
+  .pv-city{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .pv-specs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+  .pv-spec{padding:4px 11px;border-radius:100px;font-size:10.5px;font-weight:700;background:#dbeafe;color:var(--accent2);border:1px solid rgba(37,99,235,.2)}
+  .pv-stars{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:6px;flex-wrap:wrap;font-size:13px}
+  .pv-stats{font-size:10px;color:var(--muted);margin-top:3px}
+  .pv-verified{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px}
+  .pv-tier{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+  .pv-seal{display:inline-flex;vertical-align:middle;margin:0 3px 2px 0}
+
+  .lv-more{text-align:center;margin-top:22px}
+  .btn-more{padding:12px 32px;background:var(--card);color:var(--accent);border:1px solid var(--border);border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.2s}
+  .btn-more:hover{border-color:var(--accent);box-shadow:0 6px 16px rgba(37,99,235,.12)}
+  .lv-empty{text-align:center;padding:50px 16px;color:var(--muted);font-size:14px}
+  .sk-card{background:var(--card);border:1px solid var(--border);border-radius:14px;background:linear-gradient(90deg,#eef4ff 25%,#dde9ff 50%,#eef4ff 75%);background-size:200%;animation:sk 1.4s infinite}
+  @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @media(max-width:768px){.live{padding:55px 20px}.prov-grid{grid-template-columns:repeat(2,1fr)}.hzp-img{width:74px;height:74px}}
+
+
+/* ===== شريط شخصي حسب الدور ===== */
+#home-personal{max-width:1180px;margin:24px auto 0;padding:0 20px}
+.ph-band{position:relative;overflow:hidden;border-radius:18px;padding:20px;background:#fff;border:1px solid #e2e8f0}
+.ph-net{position:absolute;top:0;left:0;width:55%;height:100%;opacity:.6;pointer-events:none}
+.ph-acc{position:absolute;top:18px;bottom:18px;right:0;width:5px;border-radius:0 4px 4px 0}
+.ph-greet{position:relative;z-index:1;display:flex;align-items:center;gap:13px}
+.ph-av{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;color:#fff;flex-shrink:0}
+.ph-hi{font-size:21px;font-weight:900;margin:0;color:#1e3a8a}
+.ph-sub{font-size:12.5px;color:#64748b;margin-top:2px}
+.ph-hl{display:inline-flex;align-items:center;gap:7px;margin-top:14px;background:#eff6ff;border:1px solid #dbeafe;border-radius:30px;padding:8px 15px;font-size:13px;font-weight:800;color:#1e40af;position:relative;z-index:1}
+.ph-dot{width:8px;height:8px;border-radius:50%;background:#F0A500;box-shadow:0 0 0 4px rgba(240,165,0,.18)}
+.ph-mrow{display:flex;gap:10px;margin:-24px 14px 14px;position:relative;z-index:2}
+.ph-mc{flex:1;min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:13px 12px;box-shadow:0 6px 18px rgba(30,58,138,.07)}
+.ph-mi{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.ph-mn{font-size:23px;font-weight:900;line-height:1;color:#1e3a8a}
+.ph-ml{font-size:11px;color:#64748b;font-weight:700;margin-top:3px}
+.ph-feat{background:#fff;border:2px solid #1d4ed8;border-radius:16px;padding:14px;position:relative;margin:0 0 12px}
+.ph-fb{position:absolute;top:-11px;right:14px;background:#1d4ed8;color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
+.ph-row{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.ph-tag{display:inline-block;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;margin-left:4px}
+.ph-tag.sky{background:#e0f2fe;color:#0369a1}
+.ph-tag.grn{background:#dcfce7;color:#15803d}
+.ph-cta{display:inline-flex;align-items:center;gap:6px;background:#1d4ed8;color:#fff;border:none;border-radius:11px;padding:10px 16px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap}
+.ph-cta.o{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.ph-sq{width:42px;height:42px;border-radius:50%;background:#dbeafe;color:#1e40af;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;overflow:hidden}
+.ph-sq img{width:100%;height:100%;object-fit:cover}
+.ph-qa{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.ph-qa-btn{flex:1;min-width:130px;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 10px;font-size:13px;font-weight:800;font-family:inherit;color:#1e3a8a;cursor:pointer;transition:border-color .2s,background .2s}
+.ph-qa-btn:hover{border-color:#93c5fd;background:#f8fbff}
+.ph-qa-btn.pri{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.ph-qa-btn.pri:hover{background:#1743b8}
+.ph-nudge{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:15px;margin-bottom:10px}
+.ph-nudge.done{border-color:#bae6fd;background:#f5fbff}
+.ph-nudge-top{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.ph-nudge-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-nudge-t{font-size:14px;font-weight:900;color:#1e3a8a}
+.ph-nudge-s{font-size:11.5px;color:#64748b;margin-top:1px}
+.ph-bar{height:8px;border-radius:20px;background:#eef2f7;overflow:hidden;margin-bottom:11px}
+.ph-bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,#3897f0,#1d4ed8);transition:width .5s}
+.ph-chks{display:flex;flex-wrap:wrap;gap:7px}
+.ph-chk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:20px}
+.ph-chk.ok{background:#dcfce7;color:#15803d}
+.ph-chk.no{background:#f1f5f9;color:#64748b}
+.ph-bidsum{flex:1;background:var(--b);color:var(--c);border-radius:11px;padding:9px;text-align:center;font-size:20px;font-weight:900;line-height:1}
+.ph-bidsum span{display:block;font-size:10.5px;font-weight:700;margin-top:3px;opacity:.85}
+.ph-inbox{display:flex;gap:8px;margin-bottom:10px}
+.ph-inbox-c{flex:1;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:11px 12px;font-family:inherit;font-size:12.5px;font-weight:800;color:#1e3a8a;cursor:pointer}
+.ph-inbox-c:hover{border-color:#93c5fd}
+.ph-inbox-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-inbox-t{flex:1;text-align:right}
+.ph-inbox-b{background:#ef4444;color:#fff;font-size:11px;font-weight:900;min-width:20px;height:20px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+@media(max-width:560px){.ph-inbox{flex-direction:column}}
+@media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
+
+/* ===== تحميل التطبيق ===== */
+.app-cta{margin:0 0 30px;padding:26px 20px;border-radius:18px;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);text-align:center}
+.app-cta-title{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:6px}
+.app-cta-sub{font-size:14px;color:#bfdbfe;margin-bottom:18px}
+.app-badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.store-badge{display:inline-flex;align-items:center;gap:11px;background:#0b1220;border:1px solid rgba(255,255,255,.18);border-radius:13px;padding:9px 18px;text-decoration:none;transition:transform .2s,box-shadow .2s;min-width:180px}
+.store-badge:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.28)}
+.store-badge svg{flex-shrink:0}
+.store-badge .sb-txt{text-align:right;line-height:1.15}
+.store-badge .sb-small{display:block;font-size:10.5px;color:#cbd5e1;font-weight:500}
+.store-badge .sb-big{display:block;font-size:16px;color:#fff;font-weight:800;font-family:'Cairo',sans-serif}
+@media(max-width:560px){.app-badges{flex-direction:column;align-items:center}.store-badge{width:100%;max-width:260px;justify-content:center}}
+</style>
+</head>
+<body>
+<!-- شاشة البداية المتحركة -->
+<div id="mnqSplash" aria-hidden="true">
+  <div class="mnq-splash-inner">
+    <svg class="mnq-splash-net" viewBox="0 0 200 120" fill="none">
+      <line class="mnq-ln" x1="30" y1="30" x2="90" y2="60"/>
+      <line class="mnq-ln" x2="90" y2="60" x1="150" y1="26" style="animation-delay:.12s"/>
+      <line class="mnq-ln" x1="150" y1="26" x2="175" y2="70" style="animation-delay:.24s"/>
+      <line class="mnq-ln" x1="90" y1="60" x2="60" y2="95" style="animation-delay:.18s"/>
+      <circle class="mnq-dot" cx="30" cy="30" r="4"/>
+      <circle class="mnq-dot" cx="90" cy="60" r="6" style="animation-delay:.15s"/>
+      <circle class="mnq-dot" cx="150" cy="26" r="4" style="animation-delay:.3s"/>
+      <circle class="mnq-dot mnq-dot-a" cx="60" cy="95" r="5" style="animation-delay:.25s"/>
+    </svg>
+    <div class="mnq-splash-logo">مناقصة</div>
+    <div class="mnq-splash-sub">MANAQASA</div>
+  </div>
+</div>
+<style>
+#mnqSplash{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
+#mnqSplash.mnq-hide{opacity:0;pointer-events:none}
+.mnq-splash-inner{text-align:center;animation:mnqPop .8s cubic-bezier(.2,.8,.2,1)}
+.mnq-splash-net{width:150px;height:90px;margin:0 auto 4px;display:block}
+.mnq-ln{stroke:#2563eb;stroke-width:1.5;stroke-dasharray:120;stroke-dashoffset:120;animation:mnqDraw .7s ease forwards;opacity:.55}
+.mnq-dot{fill:#1e3a8a;opacity:0;animation:mnqDotIn .4s ease forwards}
+.mnq-dot-a{fill:#0ea5e9}
+.mnq-splash-logo{font-family:'Cairo',sans-serif;font-size:34px;font-weight:900;color:#1e3a8a;line-height:1}
+.mnq-splash-sub{font-size:11px;letter-spacing:4px;color:#2563eb;font-weight:700;margin-top:3px}
+@keyframes mnqPop{0%{opacity:0;transform:scale(.75) translateY(12px)}60%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+@keyframes mnqDraw{to{stroke-dashoffset:0}}
+@keyframes mnqDotIn{0%{opacity:0;transform:scale(0)}100%{opacity:.9;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.mnq-splash-inner,.mnq-ln,.mnq-dot{animation:none}.mnq-ln{stroke-dashoffset:0}.mnq-dot{opacity:.9}}
+</style>
+<script>
+(function(){
+  function hideSplash(){ var s=document.getElementById('mnqSplash'); if(s){ s.classList.add('mnq-hide'); setTimeout(function(){ if(s&&s.parentNode) s.parentNode.removeChild(s); },600); } }
+  window.addEventListener('load', function(){ setTimeout(hideSplash, 1400); });
+  // ضمان الاختفاء حتى لو تأخّر التحميل
+  setTimeout(hideSplash, 3500);
+})();
+</script>
+<script>try{var _r=new URLSearchParams(location.search).get('ref');if(_r)localStorage.setItem('ref_src',String(_r).slice(0,40));}catch(e){}
+try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}
+function _themeIcon(){var dark=document.documentElement.getAttribute('data-theme')==='dark';var m='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>';var s='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';var els=document.querySelectorAll('.theme-ic');for(var i=0;i<els.length;i++)els[i].innerHTML=dark?s:m;}
+function toggleTheme(){var on=document.documentElement.getAttribute('data-theme')==='dark';if(on){document.documentElement.removeAttribute('data-theme');}else{document.documentElement.setAttribute('data-theme','dark');}try{localStorage.setItem('theme',on?'light':'dark');}catch(e){}_themeIcon();}
+document.addEventListener('DOMContentLoaded',_themeIcon);</script>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">مناقصة<span>.</span></div>
+  <div class="links">
+    <a href="#projects">المشاريع</a>
+    <a href="#providers">المزودون</a>
+    <a href="#providers" onclick="goAuthRole('provider');return false;">للأعمال</a>
+    <a href="https://wa.me/966594011313" target="_blank" rel="noopener noopener noreferrer">تواصل معنا</a>
+  </div>
+  <div class="nav-btns">
+    <button class="btn-ghost" onclick="toggleTheme()" aria-label="الوضع الليلي" style="padding:8px 11px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
+    <button class="btn-ghost" onclick="goLogin()">تسجيل الدخول</button>
+    <button class="btn-primary" onclick="mnqOpenChoose(event)">ابدأ الآن</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="home-personal" style="display:none"></section>
+<!-- شاشة التوجيه: عميل أو مزوّد (للزائر الجديد) -->
+<section id="mnqChoose" style="display:none">
+  <div class="mnq-ch-wrap">
+    <div class="mnq-ch-head">
+      <div class="mnq-ch-logo">مناقصة</div>
+      <div class="mnq-ch-q">وش تبي تسوي؟</div>
+      <div class="mnq-ch-sub">اختر وابدأ خلال ثوانٍ</div>
+    </div>
+    <button class="mnq-ch-card mnq-ch-client" onclick="mnqChooseGo('client')">
+      <div class="mnq-ch-ic">🔍</div>
+      <div class="mnq-ch-txt">
+        <div class="mnq-ch-title">عندي مشروع أو أحتاج خدمة</div>
+        <div class="mnq-ch-desc">انشر طلبك مرة، واستقبل عروض من عدة مزوّدين، واختر الأنسب</div>
+      </div>
+      <div class="mnq-ch-go">انشر طلبك ←</div>
+    </button>
+    <button class="mnq-ch-card mnq-ch-prov" onclick="mnqChooseGo('provider')">
+      <div class="mnq-ch-ic">🔧</div>
+      <div class="mnq-ch-txt">
+        <div class="mnq-ch-title">أقدّم خدمة وأبحث عن عملاء</div>
+        <div class="mnq-ch-desc">سجّل، اعرض أعمالك، واستقبل طلبات العملاء في تخصصك ومدينتك</div>
+      </div>
+      <div class="mnq-ch-go">سجّل كمزوّد ←</div>
+    </button>
+    <button class="mnq-ch-browse" onclick="mnqChooseBrowse()">أو تصفّح المنصة أولاً ↓</button>
+  </div>
+</section>
+<section class="hero">
+  <div class="hero-badge">🚀 مناقصة — وجهتك الأولى للمشاريع في السعودية</div>
+  <h1>احصل على <span class="highlight">أفضل سعر</span><br>لأي خدمة تحتاجها</h1>
+  <p>انشر طلبك واستقبل عروض أسعار من عشرات المزودين، قارن واختر الأفضل لك بكل سهولة وشفافية.</p>
+  <div class="hero-btns">
+    <button class="btn-primary btn-lg" onclick="goAuthRole('client')">انشر طلبك الآن</button>
+    <button class="btn-outline" onclick="goAuthRole('provider')">أنا مزود خدمة</button>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat-item">
+    <div class="stat-num">+2,500</div>
+    <div class="stat-label">مزود خدمة معتمد</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">+8,000</div>
+    <div class="stat-label">طلب مكتمل</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">%40</div>
+    <div class="stat-label">متوسط التوفير</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">4.9 ★</div>
+    <div class="stat-label">تقييم المستخدمين</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+  <div class="section-title">
+    <h2>كيف تعمل المنصة؟</h2>
+    <p>أربع خطوات بسيطة تفصلك عن أفضل سعر</p>
+  </div>
+  <div class="flow"><div class="flow-step"><div class="flow-node"><span class="flow-num">1</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></div><h3>انشر طلبك</h3><p>اكتب ما تحتاجه — المواصفات والموقع والميزانية.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">2</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><h3>استقبل العروض</h3><p>مزودون في تخصصك يرسلون عروض أسعار خلال ساعات.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">3</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 3v18M4 8h10M6 8l-2 5a3 3 0 006 0L8 8"/><path d="M18 3v18M14 12h8M16 12l-1.5 4a2.5 2.5 0 005 0L18 12"/></svg></div><h3>قارن واختر</h3><p>شاهد العروض جنباً إلى جنب مع التقييمات وسجل الأعمال.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">4</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3 7-7"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg></div><h3>تعامل مباشرة</h3><p>تواصل مع المزود المختار وأتمّ الاتفاق بحرية.</p></div></div>
+</section>
+
+<!-- SHOWCASE: مشاريع أُنجزت -->
+<section class="showcase" id="showcase" style="display:none">
+  <div class="section-title">
+    <h2>مشاريع أُنجزت عبر مناقصة</h2>
+    <p>أحدث المشاريع التي تمّت بنجاح بين العملاء والمزوّدين</p>
+  </div>
+  <div id="showcase-grid" style="max-width:1100px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px"></div>
+</section>
+<script>
+(function(){
+  var API='https://manaqasati-production.up.railway.app';
+  function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+  fetch(API+'/api/showcase').then(function(r){return r.ok?r.json():[];}).then(function(list){
+    if(!Array.isArray(list)||!list.length)return;
+    var grid=document.getElementById('showcase-grid');if(!grid)return;
+    grid.innerHTML=list.map(function(x){
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 2px 10px var(--glow)">'
+        +'<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,.12);color:#16a34a;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;margin-bottom:10px">✓ مكتمل</div>'
+        +'<div style="font-weight:800;color:var(--text);font-size:15px;margin-bottom:8px;line-height:1.5">'+esc(x.title)+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11.5px;color:var(--muted)">'
+        +(x.category?'<span style="background:var(--bg2);padding:3px 9px;border-radius:20px">'+esc(x.category)+'</span>':'')
+        +(x.city?'<span style="background:var(--bg2);padding:3px 9px;border-radius:20px">'+esc(x.city)+'</span>':'')
+        +(x.offers?'<span style="background:var(--bg2);padding:3px 9px;border-radius:20px">'+x.offers+' عرض</span>':'')
+        +'</div></div>';
     }).join('');
-    const html=`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>بوابة المندوب — مناقصة</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;color:#1e293b;background:#f1f5f9;padding:20px}.wrap{max-width:640px;margin:0 auto}.hd{background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border-radius:16px;padding:22px;margin-bottom:16px}.brand{font-family:Cairo,sans-serif;font-size:22px;font-weight:900}.brand span{color:#93c5fd}.wel{font-size:14px;margin-top:8px;opacity:.9}.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}.c{background:#fff;border-radius:13px;padding:15px 12px;text-align:center;border:1px solid #e2e8f0}.c .n{font-size:20px;font-weight:900}.c .l{font-size:11px;color:#64748b;margin-top:3px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:13px;overflow:hidden;border:1px solid #e2e8f0}th{background:#0f2a4f;color:#fff;font-size:11px;padding:10px;text-align:right;font-weight:700}td{border-bottom:1px solid #eef2f7;padding:12px 10px;font-size:12px;vertical-align:middle}.ft{text-align:center;font-size:11px;color:#94a3b8;margin-top:18px}</style></head><body><div class="wrap"><div class="hd"><div class="brand">مناقص<span>ة</span></div><div class="wel">أهلاً <strong>${e2(ag.name)}</strong> — هذي متابعة مشاريعك وعمولاتك</div></div><div class="cards"><div class="c"><div class="n" style="color:#b45309">${nPending}</div><div class="l">قيد الانتظار</div></div><div class="c"><div class="n" style="color:#1e40af">${totDue.toLocaleString('en-US')}</div><div class="l">مستحق (ر.س)</div></div><div class="c"><div class="n" style="color:#059669">${totPaid.toLocaleString('en-US')}</div><div class="l">مدفوع (ر.س)</div></div></div><table><thead><tr><th>المشروع</th><th style="text-align:center">الحالة</th><th style="text-align:left">العمولة</th></tr></thead><tbody>${items||'<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:26px">لا توجد مشاريع بعد</td></tr>'}</tbody></table><div class="ft">منصة مناقصة · manaqasa.com · العمولة تُستحق عند اعتماد عرض على المشروع</div></div></body></html>`;
-    res.set('Content-Type','text/html; charset=utf-8').send(html);
-  } catch(e) { console.error('agent portal:', e.message); res.status(500).send('خطأ'); }
-});
+    var sec=document.getElementById('showcase');
+    var _lu=null;try{_lu=JSON.parse(localStorage.getItem('user')||'null');}catch(e){}
+    if(sec&&!_lu)sec.style.display='block';
+  }).catch(function(){});
+})();
+</script>
 
-// الأدمن: رابط بوابة المندوب المرتبط بمشروع (لإرساله له)
-app.get('/api/admin/requests/:id/agent-link', requirePermission('requests.view'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const rq = (await pool.query('SELECT agent_id, agent_phone, agent_name FROM requests WHERE id=$1', [id])).rows[0];
-    if (!rq || !rq.agent_id) return res.status(404).json({ message: 'لا يوجد مندوب مرتبط بهذا المشروع' });
-    const ag = (await pool.query('SELECT token FROM agents WHERE id=$1', [rq.agent_id])).rows[0];
-    if (!ag) return res.status(404).json({ message: 'المندوب غير موجود' });
-    const phoneNorm = String(rq.agent_phone||'').replace(/\D/g,'').replace(/^0/,'966');
-    res.json({ ok: true, url: SITE_URL + '/agent/' + ag.token, phone_norm: phoneNorm, name: rq.agent_name });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
-});
+<!-- DEMO -->
+<section class="demo" id="try">
+  <div class="section-title">
+    <h2>جرّب المنصة</h2>
+    <p>شاهد كيف يعمل النظام بشكل مباشر</p>
+  </div>
+  <div class="demo-inner">
 
-// ═══ تقرير العروض (سيرفر) — قالب واحد يستخدمه الأدمن والعميل عبر رابط برمز آمن ═══
-function _renderOffersReportHTML(proj, bids) {
-  const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const unit = (u) => u==='meter'?' / للمتر':u==='unit'?' / للوحدة':'';
-  const rows = bids.map((b,i)=>{
-    const nm=e2(b.provider_business_name||b.provider_name||'مزود');
-    const rate=(Number(b.provider_rating)>0)?('★ '+b.provider_rating+' ('+(b.provider_reviews||0)+')'):'مزود جديد';
-    const meta=[b.provider_city,rate].filter(Boolean).map(e2).join(' · ');
-    const pr=(Number(b.price)>0)?(Number(b.price).toLocaleString('en-US')+' ر.س'+unit(b.price_unit)):'—';
-    const acc=b.status==='accepted'?' <span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:800">مقبول</span>':'';
-    return `<tr><td style="text-align:center;color:#94a3b8;font-weight:800">${i+1}</td><td><div style="font-weight:800;color:#0f2a4f">${nm}${acc}</div><div style="font-size:11px;color:#64748b">${meta}</div></td><td style="font-weight:900;color:#1e40af;white-space:nowrap">${pr}</td><td style="text-align:center;white-space:nowrap">${b.days?e2(b.days)+' يوم':'—'}</td><td style="font-size:11px;color:#475569;line-height:1.7">${e2(b.note||'')}${b.attachment_url?' <span style="color:#1e40af;font-weight:700">(مرفق ملف)</span>':''}</td></tr>`;
-  }).join('');
-  const today=new Date().toLocaleDateString('en-GB');
-  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تقرير العروض — ${e2(proj.title||'')}</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;color:#1e293b;padding:34px;background:#fff}.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:15px;margin-bottom:20px}.brand{font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:#0f2a4f}.brand span{color:#1e40af}.pbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:16px}.pbox h1{font-size:16px;color:#0f2a4f;margin-bottom:6px}.pmeta{font-size:12px;color:#64748b;line-height:1.9}.cnt{font-size:13px;font-weight:800;color:#1e40af;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#0f2a4f;color:#fff;font-size:11px;padding:9px;text-align:right;font-weight:700}td{border-bottom:1px solid #e2e8f0;padding:9px;font-size:12px;vertical-align:top}tr:nth-child(even) td{background:#fafbfc}.ft{margin-top:22px;padding-top:13px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between}.pb{position:fixed;top:16px;left:16px;background:#1e40af;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-family:Tajawal;font-size:14px;font-weight:800;cursor:pointer}@media print{.pb{display:none}body{padding:0}}</style></head><body><button class="pb" onclick="window.print()">حفظ PDF / طباعة</button><div class="hd"><div><div class="brand">مناقص<span>ة</span></div><div style="font-size:13px;color:#64748b;margin-top:2px">تقرير العروض المقدّمة على المشروع</div></div><div style="text-align:left;font-size:11px;color:#94a3b8">تاريخ التقرير<br>${today}</div></div><div class="pbox"><h1>${e2(proj.title||'—')}</h1><div class="pmeta">رقم المشروع: #${proj.id} · التصنيف: ${e2(proj.category||'—')} · المدينة: ${e2(proj.city||'—')}<br>العميل: ${e2(proj.client_name||'—')}</div></div><div class="cnt">عدد العروض المقدّمة: ${bids.length}</div><table><thead><tr><th style="width:28px">#</th><th>المزوّد</th><th>السعر</th><th style="text-align:center">المدة</th><th>ملاحظة العرض</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">لا توجد عروض بعد</td></tr>'}</tbody></table><div class="ft"><span>منصة مناقصة · manaqasa.com</span><span>تقرير رسمي</span></div></body></html>`;
-}
+    <!-- FORM -->
+    <div class="form-card">
+      <h3>🔍 انشر طلبك</h3>
+      <p class="sub">أخبرنا ماذا تحتاج وسنجلب لك أفضل العروض</p>
 
-async function _fetchReportData(id) {
-  const pr = (await pool.query(`SELECT r.id, r.title, r.category, r.city, u.name as client_name FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1`, [id])).rows[0];
-  if (!pr) return null;
-  const bids = (await pool.query(`SELECT b.price,b.days,b.note,b.status,COALESCE(b.price_unit,'total') as price_unit,b.attachment_url,u.name as provider_name,u.business_name as provider_business_name,u.city as provider_city,COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 ORDER BY (b.price IS NULL), b.price ASC`, [id])).rows;
-  return { pr, bids };
-}
+      <div class="tabs">
+        <button class="tab active" onclick="demoTab(this,'new')">طلب جديد</button>
+        <button class="tab" onclick="demoTab(this,'mine')">طلباتي</button>
+        <button class="tab" onclick="demoTab(this,'msgs')">الرسائل</button>
+      </div>
 
-// رابط عام برمز موقّع — يفتحه العميل بلا تسجيل
-app.get('/report/offers/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    let ok = false;
-    try { const p = jwt.verify(String(req.query.t||''), JWT_SECRET); if (p && p.purpose==='report' && String(p.rid)===String(id)) ok = true; } catch(e) {}
-    if (!ok) return res.status(403).set('Content-Type','text/html; charset=utf-8').send('<html dir="rtl"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:60px;color:#64748b">الرابط غير صالح أو منتهي</body></html>');
-    const data = await _fetchReportData(id);
-    if (!data) return res.status(404).send('المشروع غير موجود');
-    res.set('Content-Type','text/html; charset=utf-8').send(_renderOffersReportHTML(data.pr, data.bids));
-  } catch(e) { console.error('report render:', e.message); res.status(500).send('خطأ'); }
-});
+      <div id="demo-form">
+      <div class="form-group">
+        <label>الفئة</label>
+        <select id="d-cat">
+          <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس</option><option>كشف تسربات المياه</option><option>تنظيف خزانات</option><option>دهانات وديكور</option><option>تركيب مطابخ</option><option>تنسيق حدائق</option><option>زجاج ومرايا</option><option>بلاط ورخام</option><option>تركيب أثاث</option><option>أرضيات خشبية وباركيه</option><option>تنظيف سجاد وكنب</option><option>صيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option><option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option><option>حفر آبار ومضخات</option><option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>أخرى</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>عنوان الطلب</label>
+        <input type="text" id="d-title" oninput="demoPreview()" placeholder="مثال: تركيب مكيف سبليت 2 طن في غرفة النوم">
+      </div>
+      <div class="form-group">
+        <label>التفاصيل والمواصفات</label>
+        <textarea id="d-desc" placeholder="اذكر كل التفاصيل... المساحة، الطابق، أي تفاصيل مهمة للحصول على سعر دقيق"></textarea>
+      </div>
+      <div class="form-group">
+        <label>الموقع</label>
+        <input type="text" id="d-loc" placeholder="المدينة، الحي">
+      </div>
+      <button class="btn-primary" onclick="demoPublish()" style="width:100%; padding:14px; font-size:16px; border-radius:10px;">
+        🚀 انشر الطلب واستقبل العروض
+      </button>
+        <div id="demo-msg" style="display:none;margin-top:12px;font-size:13px;font-weight:700;text-align:center"></div>
+      </div>
+      <div id="demo-inline" style="display:none"></div>
+    </div>
 
-// الأدمن: يحصل على رابط التقرير (لفتحه/طباعته)
-app.get('/api/admin/requests/:id/report-link', requirePermission('requests.view'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const tok = jwt.sign({ rid: id, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
-    res.json({ ok: true, url: SITE_URL + '/report/offers/' + id + '?t=' + tok });
-  } catch(e) { res.status(500).json({ message: 'خطأ' }); }
-});
+    <!-- BIDS -->
+    <div class="bids-card">
+      <h3>📊 العروض المستلمة</h3>
+      <p class="sub" id="bids-sub">طلب: تركيب مكيف سبليت – الرياض</p>
 
-// الأدمن: إرسال التقرير للعميل (إيميل) + إرجاع الرابط لإرساله واتساب
-app.post('/api/admin/requests/:id/send-report', requirePermission('requests.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const pr = (await pool.query(`SELECT r.id,r.title,u.name as client_name,u.email as client_email,u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1`, [id])).rows[0];
-    if (!pr) return res.status(404).json({ message: 'المشروع غير موجود' });
-    const tok = jwt.sign({ rid: id, purpose: 'report' }, JWT_SECRET, { expiresIn: '60d' });
-    const link = SITE_URL + '/report/offers/' + id + '?t=' + tok;
-    const phoneNorm = String(pr.client_phone||'').replace(/\D/g,'').replace(/^0/,'966');
-    let emailed = false;
-    if (pr.client_email && !/@manaqasa\.local$/i.test(pr.client_email)) {
-      const title = '📋 عروض مشروعك جاهزة';
-      const body = `<p>عزيزي <strong>${eEsc(pr.client_name||'')}</strong>،</p><p>وصلتك عروض على مشروعك «${eEsc(pr.title||'')}». اضغط لعرض تقرير العروض كاملاً:</p>`;
-      sendEmail(pr.client_email, title, emailTpl(title, body, 'عرض تقرير العروض', link)).catch(()=>{});
-      emailed = true;
-    }
-    res.json({ ok: true, link, phone_norm: phoneNorm, emailed, client_name: pr.client_name });
-  } catch(e) { console.error('send-report:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
+      <div class="request-preview" id="demo-req-preview">
+        <div class="req-title">تركيب مكيف سبليت 2 طن في غرفة النوم</div>
+        <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">الرياض – حي النزهة · نُشر منذ 3 ساعات</div>
+        <div class="req-tags">
+          <span class="tag">تكييف</span>
+          <span class="tag">تركيب</span>
+          <span class="tag">2 طن</span>
+          <span class="tag">5 عروض</span>
+        </div>
+      </div>
 
-// ═══ #٥ تحكّم الأدمن: رابط دخول لأي مستخدم (يدخل الأدمن كحساب العميل — يُفتح في نافذة متخفية) ═══
-app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const u = (await pool.query('SELECT id, name, phone FROM users WHERE id=$1', [id])).rows[0];
-    if (!u) return res.status(404).json({ message: 'المستخدم غير موجود' });
-    const tok = await getMagicToken(u.id);
-    const phoneNorm = String(u.phone || '').replace(/\D/g, '').replace(/^0/, '966');
-    res.json({ ok: true, magic_link: SITE_URL + '/m/' + tok, phone_norm: phoneNorm, name: u.name });
-  } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+      <div class="bids-list" id="demo-bids-list">
+        <div class="bid-item best">
+          <div class="bid-provider">
+            <div class="avatar av2">م</div>
+            <div>
+              <div class="bid-name">مؤسسة الرائد للتكييف <span class="best-badge">الأفضل</span></div>
+              <div class="bid-rating"><span style="color:#F0A500">★★★★★</span> (4.9) · 120 عملية</div>
+            </div>
+          </div>
+          <div style="text-align:left">
+            <div class="price-num">450 ر.س</div>
+            <div class="price-label">شامل القطع والعمالة</div>
+            <button class="btn-choose">اختيار هذا العرض</button>
+          </div>
+        </div>
 
-app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id);
-    if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن تعديل حسابك' });
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const r = await pool.query(`UPDATE users SET is_active=NOT is_active WHERE id=$1 AND role!='admin' RETURNING id, name, is_active`, [uid]);
-    _userState.delete(uid);
-    if(r.rows.length) await logAdmin(req, r.rows[0].is_active?'activate_user':'ban_user', 'user', uid, r.rows[0].is_active?'تفعيل حساب':'إيقاف حساب');
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+        <div class="bid-item">
+          <div class="bid-provider">
+            <div class="avatar av1">أ</div>
+            <div>
+              <div class="bid-name">أحمد للصيانة والتكييف</div>
+              <div class="bid-rating"><span style="color:#F0A500">★★★★☆</span> (4.5) · 87 عملية</div>
+            </div>
+          </div>
+          <div style="text-align:left">
+            <div class="price-num">520 ر.س</div>
+            <div class="price-label">شامل الضمان سنة</div>
+            <button class="btn-choose">اختيار هذا العرض</button>
+          </div>
+        </div>
 
-app.put('/api/admin/users/:id/role', requirePermission('users.role'), async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id);
-    const { role } = req.body;
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    if (!['client','provider'].includes(role)) return res.status(400).json({ message: 'دور غير صالح' });
-    if (uid === req.user.id) return res.status(400).json({ message: 'لا يمكن تغيير دورك' });
-    // عند التحويل لمزود، ألغِ إسناده كمزود في مشاريع (تنظيف)
-    const r = await pool.query(`UPDATE users SET role=$1 WHERE id=$2 AND role!='admin' RETURNING id, name, role`, [role, uid]);
-    if (!r.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
-    await logAdmin(req, 'change_role', 'user', uid, 'تغيير الدور إلى '+role);
-    res.json(r.rows[0]);
-  } catch(e) { console.error('change role:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
+        <div class="bid-item">
+          <div class="bid-provider">
+            <div class="avatar av3">ب</div>
+            <div>
+              <div class="bid-name">برودة للتكييف والتبريد</div>
+              <div class="bid-rating"><span style="color:#F0A500">★★★★☆</span> (4.3) · 54 عملية</div>
+            </div>
+          </div>
+          <div style="text-align:left">
+            <div class="price-num">480 ر.س</div>
+            <div class="price-label">العمالة فقط</div>
+            <button class="btn-choose">اختيار هذا العرض</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-app.put('/api/admin/users/:id/badge', requirePermission('users.badge'), async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id); const { badge } = req.body;
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const r = await pool.query(`UPDATE users SET badge=$1 WHERE id=$2 AND role!='admin' RETURNING id,name,badge`, [badge, uid]);
-    await logAdmin(req, 'set_badge', 'user', uid, 'تغيير التوثيق إلى '+(badge||'بدون'));
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (badge && badge !== 'none') await notify(uid, '🏆 وسام جديد', `حصلت على وسام: ${badge}`, 'badge', null);
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+  </div>
+</section>
 
-app.put('/api/admin/users/:id/tier', requirePermission('users.badge'), async (req, res) => {
-  try {
-    const uid = parseInt(req.params.id); let { tier, locked, lock_only, auto } = req.body;
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    const cur = await pool.query("SELECT tier, tier_locked FROM users WHERE id=$1 AND role='provider'", [uid]);
-    if (!cur.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
-    const oldTier = cur.rows[0].tier || 'new';
+<!-- CATEGORIES -->
+<section class="categories">
+  <div class="section-title">
+    <h2>الفئات المتاحة</h2>
+    <p>من التكييف للحدادة، وجد ما تحتاج</p>
+  </div>
+  <div class="cats-grid">
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/></svg></div>
+      <div class="cat-name">تكييف وتبريد</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/></svg></div>
+      <div class="cat-name">حدادة ومعادن</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg></div>
+      <div class="cat-name">كهرباء</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2.7l5.7 5.6a8 8 0 11-11.4 0z"/></svg></div>
+      <div class="cat-name">سباكة</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="13" height="7" rx="1"/><path d="M16 6h3a1 1 0 011 1v3a1 1 0 01-1 1h-7v3"/><rect x="10" y="14" width="4" height="7" rx="1"/></svg></div>
+      <div class="cat-name">دهانات</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 7h2M9 11h2M9 15h2M13 7h2M13 11h2M13 15h2"/></svg></div>
+      <div class="cat-name">مقاولات</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18M12 3v18"/></svg></div>
+      <div class="cat-name">ألمنيوم وزجاج</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 11V7a2 2 0 012-2h10a2 2 0 012 2v4"/><path d="M3 13a2 2 0 012-2h14a2 2 0 012 2v4H3z"/><path d="M5 17v2M19 17v2"/></svg></div>
+      <div class="cat-name">أثاث وديكور</div>
+    </div>
+  </div>
+</section>
 
-    // فكّ التثبيت → رجوع تلقائي فوري حسب الصفقات
-    if (auto === true) {
-      const c = await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE assigned_provider_id=$1 AND status='completed'", [uid]);
-      const autoTier = tierFromCompleted(c.rows[0] && c.rows[0].n);
-      const r = await pool.query(`UPDATE users SET tier=$1, tier_locked=FALSE WHERE id=$2 AND role='provider' RETURNING id,name,tier,tier_locked`, [autoTier, uid]);
-      await logAdmin(req, 'set_tier', 'user', uid, 'إلغاء تثبيت المستوى (تلقائي: '+(TIER_LABELS[autoTier]||autoTier)+')');
-      return res.json(r.rows[0]);
-    }
-    // تثبيت المستوى الحالي فقط دون تغييره
-    if (lock_only === true) {
-      const r = await pool.query(`UPDATE users SET tier_locked=TRUE WHERE id=$2 AND role='provider' RETURNING id,name,tier,tier_locked`, [null, uid]);
-      await logAdmin(req, 'set_tier', 'user', uid, 'تثبيت المستوى الحالي ('+(TIER_LABELS[oldTier]||oldTier)+')');
-      return res.json(r.rows[0]);
-    }
 
-    const VALID = ['new','active','distinguished','expert'];
-    if (!VALID.includes(tier)) return res.status(400).json({ message: 'مستوى غير صالح' });
-    // ضبط يدوي للمستوى = يثبّته افتراضياً (إلا لو طُلب غير ذلك)
-    const willLock = (locked === false) ? false : true;
-    const r = await pool.query(`UPDATE users SET tier=$1, tier_locked=$2 WHERE id=$3 AND role='provider' RETURNING id,name,tier,tier_locked`, [tier, willLock, uid]);
-    await logAdmin(req, 'set_tier', 'user', uid, 'ضبط المستوى إلى '+(TIER_LABELS[tier]||tier)+(willLock?' (مثبّت)':''));
-    if ((TIER_RANK[tier]||0) > (TIER_RANK[oldTier]||0)) {
-      try { await notify(uid, 'تم ترقيتك لمستوى جديد', 'تمت ترقيتك إلى مستوى «'+(TIER_LABELS[tier]||tier)+'» — يظهر الآن للعملاء على عروضك.', 'tier_up', null); } catch(e){}
-    }
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+<!-- LIVE PROJECTS -->
+<section class="live" id="projects">
+  <div class="section-title">
+    <h2>أحدث المشاريع</h2>
+    <p id="lv-proj-sub">جاري التحميل...</p>
+  </div>
+  <div class="lv-bar">
+    <button class="lv-tab on" onclick="fStatus('all',this)">الكل</button>
+    <button class="lv-tab" onclick="fStatus('open',this)">مفتوح للعروض</button>
+    <button class="lv-tab" onclick="fStatus('done',this)">تم الترسية</button>
+  </div>
+  <div class="lv-row">
+    <input type="text" id="fq" class="lv-inp" placeholder="ابحث في المشاريع..." oninput="applyAll()">
+    <select id="fcat" class="lv-sel" onchange="applyAll()">
+      <option value="">كل التخصصات</option>
+      <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس</option><option>كشف تسربات المياه</option><option>تنظيف خزانات</option><option>دهانات وديكور</option><option>تركيب مطابخ</option><option>تنسيق حدائق</option><option>زجاج ومرايا</option><option>بلاط ورخام</option><option>تركيب أثاث</option><option>أرضيات خشبية وباركيه</option><option>تنظيف سجاد وكنب</option><option>صيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option><option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option><option>حفر آبار ومضخات</option><option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>أخرى</option>
+    </select>
+    <select id="fc" class="lv-sel" onchange="applyAll()">
+      <option value="">كل المدن</option>
+      <optgroup label="منطقة الرياض"><option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option></optgroup>
+      <optgroup label="منطقة مكة المكرمة"><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option></optgroup>
+      <optgroup label="منطقة المدينة المنورة"><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option></optgroup>
+      <optgroup label="منطقة القصيم"><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option></optgroup>
+      <optgroup label="المنطقة الشرقية"><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option></optgroup>
+      <optgroup label="منطقة عسير"><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option></optgroup>
+      <optgroup label="منطقة تبوك"><option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option></optgroup>
+      <optgroup label="منطقة حائل"><option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option></optgroup>
+      <optgroup label="منطقة الحدود الشمالية"><option>عرعر</option><option>طريف</option><option>رفحاء</option></optgroup>
+      <optgroup label="منطقة الجوف"><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option></optgroup>
+      <optgroup label="منطقة الباحة"><option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option></optgroup>
+      <optgroup label="منطقة جازان"><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option></optgroup>
+      <optgroup label="منطقة نجران"><option>نجران</option><option>شرورة</option></optgroup>
+    </select>
+    <button class="lv-cl" onclick="clearAll()">مسح</button>
+  </div>
+  <div class="pg-grid" id="grid"><div class="sk-card" style="height:90px"></div><div class="sk-card" style="height:90px"></div><div class="sk-card" style="height:90px"></div></div>
+  <div class="lv-more" id="lm" style="display:none"><button class="btn-more" onclick="showMore()">عرض المزيد</button></div>
+</section>
 
-app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req, res) => {
-  const uid = parseInt(req.params.id);
-  try {
-    if (!uid) return res.status(400).json({ message: 'معرف غير صحيح' });
-    if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكنك حذف حسابك' });
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
-    if (uid===req.user.id) return res.status(400).json({ message: 'لا يمكن حذف حسابك' });
-    const chk = await pool.query('SELECT id, name, email, role FROM users WHERE id=$1', [uid]);
-    if (!chk.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (chk.rows[0].role==='admin') return res.status(403).json({ message: 'لا يمكن حذف المديرين' });
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
-      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [uid]);
-      await client.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
-      await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [uid]);
-      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [uid]);
-      await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [uid]);
-      await client.query('DELETE FROM push_tokens WHERE user_id=$1', [uid]);
-      const urs = await client.query('SELECT id FROM requests WHERE client_id=$1', [uid]);
-      for (const r of urs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
-      await client.query('DELETE FROM requests WHERE client_id=$1', [uid]);
-      if (chk.rows[0].role==='provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
-      const del = await client.query('DELETE FROM users WHERE id=$1', [uid]);
-      if (del.rowCount===0) throw new Error('فشل الحذف');
-      await client.query('COMMIT');
-      _userState.delete(uid);
-      res.json({ ok: true, deleted_user: chk.rows[0] });
-    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} throw e; }
-    finally { client.release(); }
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+<!-- LIVE PROVIDERS -->
+<section class="live" id="providers" style="display:none">
+  <div class="section-title">
+    <h2>مزودو الخدمات</h2>
+    <p id="prov-count-lbl">جاري التحميل...</p>
+  </div>
+  <div class="lv-row">
+    <select id="pf-cat" class="lv-sel" onchange="filterProviders()">
+      <option value="">كل التخصصات</option>
+      <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس</option><option>كشف تسربات المياه</option><option>تنظيف خزانات</option><option>دهانات وديكور</option><option>تركيب مطابخ</option><option>تنسيق حدائق</option><option>زجاج ومرايا</option><option>بلاط ورخام</option><option>تركيب أثاث</option><option>أرضيات خشبية وباركيه</option><option>تنظيف سجاد وكنب</option><option>صيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option><option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option><option>حفر آبار ومضخات</option><option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>أخرى</option>
+    </select>
+    <select id="pf-city" class="lv-sel" onchange="filterProviders()">
+      <option value="">كل المدن</option>
+      <optgroup label="منطقة الرياض"><option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option></optgroup>
+      <optgroup label="منطقة مكة المكرمة"><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option></optgroup>
+      <optgroup label="منطقة المدينة المنورة"><option>المدينة المنورة</option><option>ينبع</option><option>العلا</option><option>الوجه</option><option>ضباء</option><option>أملج</option><option>المهد</option><option>بدر</option><option>خيبر</option></optgroup>
+      <optgroup label="منطقة القصيم"><option>بريدة</option><option>عنيزة</option><option>الرس</option><option>البكيرية</option><option>الأسياح</option><option>رياض الخبراء</option><option>عيون الجواء</option><option>النبهانية</option><option>الشماسية</option><option>البدائع</option><option>المذنب</option></optgroup>
+      <optgroup label="المنطقة الشرقية"><option>الدمام</option><option>الخبر</option><option>الظهران</option><option>الأحساء</option><option>القطيف</option><option>الجبيل</option><option>حفر الباطن</option><option>الخفجي</option><option>بقيق</option><option>النعيرية</option><option>رأس تنورة</option><option>صفوى</option><option>سيهات</option><option>العوامية</option></optgroup>
+      <optgroup label="منطقة عسير"><option>أبها</option><option>خميس مشيط</option><option>بيشة</option><option>النماص</option><option>محايل عسير</option><option>أحد رفيدة</option><option>سراة عبيدة</option><option>ظهران الجنوب</option><option>تثليث</option><option>بلقرن</option><option>رجال ألمع</option><option>المجاردة</option></optgroup>
+      <optgroup label="منطقة تبوك"><option>تبوك</option><option>تيماء</option><option>قيال</option><option>حقل</option></optgroup>
+      <optgroup label="منطقة حائل"><option>حائل</option><option>بقعاء</option><option>الشنان</option><option>الغزالة</option></optgroup>
+      <optgroup label="منطقة الحدود الشمالية"><option>عرعر</option><option>طريف</option><option>رفحاء</option></optgroup>
+      <optgroup label="منطقة الجوف"><option>سكاكا</option><option>دومة الجندل</option><option>القريات</option></optgroup>
+      <optgroup label="منطقة الباحة"><option>الباحة</option><option>بلجرشي</option><option>المندق</option><option>العقيق</option><option>قلوة</option><option>المخواة</option><option>غامد الزناد</option></optgroup>
+      <optgroup label="منطقة جازان"><option>جازان</option><option>صبيا</option><option>أبو عريش</option><option>صامطة</option><option>الدرب</option><option>ضمد</option><option>أحد المسارحة</option><option>العارضة</option><option>الريث</option><option>الحرث</option></optgroup>
+      <optgroup label="منطقة نجران"><option>نجران</option><option>شرورة</option></optgroup>
+    </select>
+    <select id="pf-sort" class="lv-sel" onchange="filterProviders()">
+      <option value="bump">الأحدث نشاطاً</option>
+      <option value="rating">الأعلى تقييماً</option>
+      <option value="projects">الأكثر إنجازاً</option>
+      <option value="verified">الموثّقون أولاً</option>
+    </select>
+    <button class="lv-cl" onclick="clearProvFilters()">مسح</button>
+  </div>
+  <div class="prov-grid" id="provGrid"><div class="sk-card" style="height:180px"></div><div class="sk-card" style="height:180px"></div><div class="sk-card" style="height:180px"></div><div class="sk-card" style="height:180px"></div></div>
+  <div class="lv-more"><button class="btn-more" id="prov-more" onclick="showMoreProv()" style="display:none">عرض المزيد</button></div>
+</section>
 
-app.get('/api/admin/providers', requirePermission('users.view'), async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
-    res.json(r.rows);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
 
-app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
-  try {
-    const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
-    const params = [];
-    if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
-    q += ' ORDER BY r.created_at DESC';
-    const r = await pool.query(q, params); res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status)})));
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+<!-- CTA -->
+<section class="cta">
+  <h2>جاهز تبدأ؟</h2>
+  <p>انشر أول طلب واحصل على عروض خلال ساعات</p>
+  <div class="hero-btns">
+    <button class="btn-primary btn-lg" onclick="mnqOpenChoose(event)">ابدأ الآن</button>
+    <button class="btn-outline" onclick="goAuthRole('provider')">أنا مزود خدمة – سجّلني</button>
+  </div>
+</section>
 
-app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); const { action, reason } = req.body;
-    if (!['approve','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
-    const newStatus = action==='approve' ? 'open' : 'rejected';
-    const r = await pool.query(`UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes) WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, reason||null, id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const row = r.rows[0];
-    const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
-    const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك';
-    const inAppBody = action==='approve' ? `مشروعك "${row.title}" متاح للعروض الآن` : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
-    await logAdmin(req, 'review_request', 'request', id, action==='approve'?'الموافقة على مشروع':'رفض مشروع');
-    await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
-    if (clientInfo.rows.length && clientInfo.rows[0].email) {
-      const body = action==='approve' ? `<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>` : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
-      sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, 'فتح المنصة', SITE_URL+'/dashboard-client.html')).catch(()=>{});
-    }
-    res.json(row);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+<!-- FOOTER -->
+<footer>
+  <div class="app-cta">
+    <div class="app-cta-title">حمّل تطبيق مناقصة</div>
+    <div class="app-cta-sub">تابع طلباتك وعروضك أينما كنت — على آيفون وأندرويد</div>
+    <div class="app-badges">
+      <a href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611" target="_blank" rel="noopener noopener noreferrer" class="store-badge" aria-label="حمّله من App Store">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M17.05 12.04c-.03-2.9 2.37-4.29 2.48-4.36-1.35-1.98-3.46-2.25-4.21-2.28-1.79-.18-3.5 1.05-4.41 1.05-.91 0-2.31-1.03-3.8-1-1.95.03-3.76 1.14-4.76 2.89-2.03 3.52-.52 8.73 1.45 11.59.96 1.4 2.11 2.97 3.61 2.91 1.45-.06 2-.94 3.75-.94 1.74 0 2.24.94 3.77.91 1.56-.03 2.55-1.42 3.5-2.83 1.1-1.62 1.56-3.2 1.58-3.28-.03-.02-3.03-1.17-3.06-4.62zM14.13 3.63c.8-.98 1.34-2.32 1.19-3.63-1.15.05-2.55.77-3.38 1.73-.74.85-1.39 2.23-1.22 3.51 1.29.1 2.6-.65 3.41-1.61z"/></svg>
+        <span class="sb-txt"><span class="sb-small">حمّله من</span><span class="sb-big">App Store</span></span>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=bs" target="_blank" rel="noopener noopener noreferrer" class="store-badge" aria-label="احصل عليه من Google Play">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l.1.1L13 12.6v-.2L3.7 2.2l-.1.1z" fill="#00d0ff"/><path d="M16.4 15.7l-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 2.1-.1-.1z" fill="#ffce00"/><path d="M16.5 15.6L13.3 12.4 3.6 22.1c.4.4 1 .4 1.7.1l11.2-6.6z" fill="#ff3b30"/><path d="M16.5 8.4L5.3 1.8C4.6 1.5 4 1.5 3.6 1.9l9.7 9.7 3.2-3.2z" fill="#00f076"/></svg>
+        <span class="sb-txt"><span class="sb-small">احصل عليه من</span><span class="sb-big">Google Play</span></span>
+      </a>
+    </div>
+  </div>
+  <div class="logo" style="margin-bottom: 16px; font-size: 20px;">مناقصة<span>.</span></div>
+  <p>© 2026 مناقصة – جميع الحقوق محفوظة</p>
+  <p style="margin-top: 8px;">
+    <a href="about.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">عن المنصة</a>
+    <a href="privacy.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">سياسة الخصوصية</a>
+    <a href="terms.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">شروط الاستخدام</a>
+    <a href="https://wa.me/966594011313" target="_blank" rel="noopener noopener noreferrer" style="color: var(--muted); text-decoration: none; margin: 0 12px;">تواصل معنا</a>
+  </p>
+</footer>
 
-app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 RETURNING id, client_id, assigned_provider_id, title`, [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const row = r.rows[0];
-    await logAdmin(req, 'complete_request', 'request', id, 'إنهاء مشروع: ' + (row.title||''));
-    await notify(row.client_id, 'مشروع مكتمل', `مشروعك "${row.title}" تم إنهاؤه`, 'request', id);
-    if (row.assigned_provider_id) await notify(row.assigned_provider_id, 'مشروع مكتمل', `المشروع "${row.title}" تم إنهاؤه`, 'request', id);
-    res.json(row);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
 
-app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes, agent_name, agent_phone, agent_pct } = req.body;
-    const agentName = (agent_name && String(agent_name).trim()) ? String(agent_name).trim() : null;
-    const agentPhone = (agent_phone && String(agent_phone).trim()) ? String(agent_phone).replace(/\D/g,'').replace(/^0/,'966') : null;
-    let agentPct = (agent_pct === '' || agent_pct == null) ? null : parseFloat(agent_pct);
-    if (agentPct != null && (!Number.isFinite(agentPct) || agentPct < 0 || agentPct > 100)) agentPct = null;
-    // ربط/إنشاء سجل مندوب خفيف
-    let agentId = null;
-    if (agentName) {
-      if (agentPct == null) agentPct = 1; // الافتراضي 1٪ من قيمة المشروع
-      let ag = null;
-      if (agentPhone) ag = (await pool.query('SELECT id FROM agents WHERE phone=$1 LIMIT 1', [agentPhone])).rows[0];
-      if (!ag) ag = (await pool.query('SELECT id FROM agents WHERE name=$1 AND (phone IS NULL OR phone=$2) LIMIT 1', [agentName, agentPhone])).rows[0];
-      if (ag) {
-        agentId = ag.id;
-        await pool.query('UPDATE agents SET name=$1, phone=COALESCE($2,phone), default_pct=$3 WHERE id=$4', [agentName, agentPhone, agentPct, agentId]);
-      } else {
-        const tok = crypto.randomBytes(8).toString('hex');
-        agentId = (await pool.query('INSERT INTO agents (name, phone, token, default_pct) VALUES ($1,$2,$3,$4) RETURNING id', [agentName, agentPhone, tok, agentPct])).rows[0].id;
-      }
-    }
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11 WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
-    res.json(r.rows[0]);
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+<script>
+var API='https://manaqasati-production.up.railway.app';
+// المصدر الموحّد للتخصصات — يعبّي قوائم التصنيف (مع احتياطي)
+(function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+  if(!d||!Array.isArray(d.categories)||!d.categories.length)return;
+  var opts=d.categories.map(function(c){return '<option>'+c+'</option>';}).join('');
+  function fill(id,keepFirst){ var sel=document.getElementById(id); if(!sel)return; var first=(keepFirst&&sel.options.length)?sel.options[0].outerHTML:''; sel.innerHTML=first+opts; }
+  fill('d-cat',false); fill('fcat',true); fill('pf-cat',true);
+}).catch(function(){}); })();
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+var ALL=[],CUR=[],PAGE=8,F_ST='all',F_CI='',F_Q='',F_CAT='';
+var PROV_ALL=[],PROV_PAGE=8,ALL_PROVS=[];
 
-// ═══ رابط دخول العميل (سحري) لأي مشروع — يُرسل للعميل ليدخل بدون كلمة مرور (يشمل المشاريع القديمة) ═══
-app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query('SELECT r.title, r.client_id, u.name AS client_name, u.phone AS client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
-    const row = r.rows[0];
-    const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
-    const magicTok = await getMagicToken(row.client_id);
-    res.json({ ok: true, magic_link: SITE_URL + '/m/' + magicTok, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
-  } catch(e) { console.error('admin magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (!id) return res.status(400).json({ message: 'معرف غير صحيح' });
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('DELETE FROM bids WHERE request_id=$1', [id]);
-      await client.query('DELETE FROM messages WHERE request_id=$1', [id]);
-      await client.query('DELETE FROM reviews WHERE request_id=$1', [id]);
-      await client.query('UPDATE reports SET request_id=NULL WHERE request_id=$1', [id]);
-      await client.query(`DELETE FROM notifications WHERE ref_id=$1 AND type='request'`, [id]);
-      const del = await client.query('DELETE FROM requests WHERE id=$1', [id]);
-      if (del.rowCount===0) { await client.query('ROLLBACK'); client.release(); return res.status(404).json({ message: 'غير موجود' }); }
-      await client.query('COMMIT');
-      client.release();
-      await logAdmin(req, 'delete_request', 'request', id, 'حذف مشروع');
-      res.json({ ok: true });
-    } catch(e) { try { await client.query('ROLLBACK'); client.release(); } catch(_){} throw e; }
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/admin/notify', requirePermission('broadcast.send'), async (req, res) => {
-  try {
-    const { user_id, user_ids, role, title, body, type, specialty, channel } = req.body;
-    if (!title||!body) return res.status(400).json({ message: 'العنوان والمحتوى مطلوبان' });
-    const ch = (channel==='email'||channel==='both'||channel==='app') ? channel : 'app';
-    const VALID = ['client','provider','admin']; let target = [];
-    if (Array.isArray(user_ids) && user_ids.length) { const ids=user_ids.map(Number).filter(Boolean); if(ids.length){const u=await pool.query('SELECT id, name, email FROM users WHERE id = ANY($1::int[]) AND is_active=TRUE',[ids]);target=u.rows;} }
-    else if (user_id) { const u=await pool.query('SELECT id, name, email FROM users WHERE id=$1',[user_id]);target=u.rows; }
-    else {
-      let q='SELECT id, name, email FROM users WHERE is_active=TRUE'; const p=[];
-      if (role&&VALID.includes(role)) { p.push(role); q+=` AND role=$${p.length}`; }
-      if (specialty&&specialty!=='الكل') { if(!role) q+=` AND role='provider'`; p.push(specialty); q+=` AND ((specialties IS NOT NULL AND $${p.length}::text=ANY(specialties)) OR (notify_categories IS NOT NULL AND $${p.length}::text=ANY(notify_categories)))`; }
-      target=(await pool.query(q,p)).rows;
-    }
-    const emailHtml = emailTpl(title, `<div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>`, 'فتح المنصة', SITE_URL);
-    let appCount=0, emailCount=0;
-    for (const u of target) {
-      if (ch==='app'||ch==='both') { await notify(u.id, title, body, type||'admin', null); appCount++; }
-      if ((ch==='email'||ch==='both') && u.email) { const ok=await sendEmail(u.email, title, emailHtml); if(ok) emailCount++; }
-    }
-    res.json({ ok:true, sent_count:target.length, app_count:appCount, email_count:emailCount, channel:ch });
-  } catch(e) { console.error('admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/users/search', requirePermission('users.view'), async (req, res) => {
-  try {
-    const q=(req.query.q||'').trim(); const role=req.query.role; const VALID=['client','provider','admin'];
-    let sql=`SELECT id, name, email, phone, role, city, profile_image, is_active FROM users WHERE is_active=TRUE`; const params=[];
-    if (role&&VALID.includes(role)) { params.push(role); sql+=` AND role=$${params.length}`; }
-    if (q) { params.push('%'+q+'%'); sql+=` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`; }
-    sql+=' ORDER BY name ASC LIMIT 50';
-    const r=await pool.query(sql, params); res.json(r.rows);
-  } catch(e) { console.error('/admin/users/search:', e); res.json([]); }
-});
-
-// صحة النظام (فحص شامل للأدمن)
-app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
-  const out = { db:{}, email:{}, push:{}, server:{}, data:{} };
-  // قاعدة البيانات + زمن الاستجابة
-  try { const t=Date.now(); await pool.query('SELECT 1'); out.db={ ok:true, latencyMs: Date.now()-t }; }
-  catch(e){ out.db={ ok:false, error:'تعذّر الاتصال بقاعدة البيانات' }; }
-  // الإيميل
-  out.email = { ok: !!RESEND_KEY, configured: !!RESEND_KEY, from: FROM_EMAIL||null };
-  // الإشعارات
-  try { const pt=await pool.query('SELECT COUNT(*)::int c, COUNT(DISTINCT user_id)::int u FROM push_tokens'); out.push={ ok: pt.rows[0].c>0, tokens: pt.rows[0].c, users: pt.rows[0].u }; }
-  catch(e){ out.push={ ok:false, tokens:0, users:0 }; }
-  // الخادم
-  const upMs = Date.now()-SERVER_START; const mem=process.memoryUsage();
-  out.server = { ok:true, uptimeSec: Math.floor(upMs/1000), node: process.version, memMB: Math.round(mem.rss/1048576) };
-  // بيانات سريعة
-  try {
-    const d=await Promise.all([
-      pool.query("SELECT COUNT(*)::int c FROM users"),
-      pool.query("SELECT COUNT(*)::int c FROM users WHERE role='provider'"),
-      pool.query("SELECT COUNT(*)::int c FROM requests"),
-      pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='open'"),
-      pool.query("SELECT COUNT(*)::int c FROM reports WHERE status='pending'").catch(()=>({rows:[{c:0}]})),
-      pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='completed'").catch(()=>({rows:[{c:0}]})),
-      pool.query("SELECT COUNT(*)::int c FROM bids").catch(()=>({rows:[{c:0}]})),
-      pool.query("SELECT COUNT(*)::int c FROM leads").catch(()=>({rows:[{c:0}]})),
-      pool.query("SELECT COUNT(*)::int c FROM messages").catch(()=>({rows:[{c:0}]}))
-    ]);
-    out.data = { users:d[0].rows[0].c, providers:d[1].rows[0].c, requests:d[2].rows[0].c, openRequests:d[3].rows[0].c, pendingReports:d[4].rows[0].c, completedRequests:d[5].rows[0].c, bids:d[6].rows[0].c, leads:d[7].rows[0].c, messages:d[8].rows[0].c };
-  } catch(e){ out.data={}; }
-  // التخزين والحجم
-  try {
-    const dbs = await pool.query("SELECT pg_database_size(current_database())::bigint b");
-    const att = await pool.query("SELECT COUNT(*)::int c FROM requests WHERE attachments IS NOT NULL AND attachments::text NOT IN ('[]','null','')").catch(()=>({rows:[{c:0}]}));
-    const img = await pool.query("SELECT COALESCE(SUM(COALESCE(array_length(images,1),0)),0)::int c FROM requests").catch(()=>({rows:[{c:0}]}));
-    const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
-    const dbMB = Math.round(Number(dbs.rows[0].b)/1048576*10)/10;
-    const r2Bytes = r2b.rows.length ? (Number(r2b.rows[0].value)||0) : 0;
-    const R2_CAP_MB = 10*1024, DB_CAP_MB = 1024; // مراجع قابلة للتعديل (R2 المجاني 10GB · حسب خطة Postgres)
-    out.storage = {
-      dbSizeMB: dbMB, dbCapMB: DB_CAP_MB, dbPct: Math.min(100, Math.round(dbMB/DB_CAP_MB*1000)/10),
-      r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
-      projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
-    };
-  } catch(e){ out.storage={}; }
-  out.allOk = out.db.ok && out.email.ok && out.server.ok;
-  res.json(out);
-});
-
-// صحة النظام (فحص شامل للأدمن) — نهاية
-app.get('/api/admin/email-status', requirePermission('settings.manage'), async (req, res) => {
-  const providersWithEmail=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email!=''`);
-  const providersTotal=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE`);
-  res.json({ resend_key_set:!!RESEND_KEY, resend_key_preview:RESEND_KEY?(RESEND_KEY.slice(0,6)+'…'+RESEND_KEY.slice(-4)):null, from_email:FROM_EMAIL, from_name:FROM_NAME, site_url:SITE_URL, providers_active:providersTotal.rows[0].cnt, providers_with_email:providersWithEmail.rows[0].cnt });
-});
-
-app.post('/api/admin/email-test', requirePermission('settings.manage'), async (req, res) => {
-  const { to } = req.body;
-  if (!to) return res.status(400).json({ ok:false, error: 'البريد الإلكتروني مطلوب' });
-  if (!RESEND_KEY) return res.json({ ok:false, stage:'config', error:'RESEND_KEY غير موجود في متغيرات البيئة' });
-  try {
-    const r=await fetch('https://api.resend.com/emails', { method:'POST', headers:{ 'Authorization':`Bearer ${RESEND_KEY}`, 'Content-Type':'application/json' }, body:JSON.stringify({ from:`${FROM_NAME} <${FROM_EMAIL}>`, to:[to], subject:'اختبار الإيميل — مناقصة', html:emailTpl('اختبار الإيميل يعمل','<p>هذا إيميل تجريبي.</p>','فتح المنصة',SITE_URL) }) });
-    const text=await r.text(); let parsed=null; try { parsed=JSON.parse(text); } catch(e){}
-    if (r.ok) return res.json({ ok:true, stage:'sent', message:`تم الإرسال إلى ${to}`, resend_id:parsed&&parsed.id });
-    return res.json({ ok:false, stage:'resend_api', error:(parsed&&(parsed.message||parsed.name))||text||'Unknown error', status_code:r.status });
-  } catch(e) { return res.json({ ok:false, stage:'network', error:e.message }); }
-});
-
-app.get('/api/admin/reviews', requirePermission('reviews.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/admin/reviews/:id', requirePermission('reviews.delete'), async (req, res) => {
-  try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/questions', requirePermission('questions.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/admin/questions/:id', requirePermission('questions.delete'), async (req, res) => {
-  try { const qid=parseInt(req.params.id); const r=await pool.query('DELETE FROM request_questions WHERE id=$1',[qid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_question','question',qid,'حذف سؤال'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══════════ هوية الأدمن الحالي + إدارة المشرفين ═══════════
-app.get('/api/admin/me', auth, adminOnly, loadAdmin, async (req, res) => {
-  res.json({
-    id: req.adminUser.id, name: req.adminUser.name, email: req.adminUser.email,
-    admin_role: req.adminUser.admin_role || 'super_admin',
-    admin_level: req.adminUser.admin_level || 0,
-    is_owner: req.adminUser.email === OWNER_EMAIL,
-    permissions: req.adminPerms
-  });
-});
-
-app.get('/api/admin/permissions-catalog', requirePermission('admins.manage'), async (req, res) => {
-  res.json({ all: ALL_PERMISSIONS, labels: PERM_LABELS, roles: ROLE_PERMISSIONS, role_labels: ROLE_LABELS, role_levels: ROLE_BASE_LEVEL });
-});
-
-app.get('/api/admin/admins', requirePermission('admins.manage'), async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT id, name, email, admin_role, admin_level, permissions, is_active, created_at FROM users WHERE role='admin' ORDER BY admin_level DESC, created_at ASC`);
-    res.json(r.rows.map(function(u){ return Object.assign(u, { is_owner: u.email===OWNER_EMAIL, role_label: ROLE_LABELS[u.admin_role]||u.admin_role||'أدمن', perms: effectivePermissions(Object.assign({role:'admin'},u)) }); }));
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/admin/admins', requirePermission('admins.manage'), async (req, res) => {
-  try {
-    const { mode, name, email, password, user_id, admin_role } = req.body || {};
-    const role = ROLE_PERMISSIONS[admin_role] ? admin_role : 'support';
-    let perms = Array.isArray(req.body.permissions) ? req.body.permissions.filter(function(x){ return ALL_PERMISSIONS.indexOf(x)>=0; }) : ROLE_PERMISSIONS[role];
-    if (role==='super_admin') perms = ['*'];
-    // مستوى العضو الجديد أقل من الفاعل دائماً (إلا المالك)
-    let lvl = ROLE_BASE_LEVEL[role] || 20;
-    const actorLvl = req.adminUser.admin_level || 0;
-    if (req.adminUser.email !== OWNER_EMAIL && lvl >= actorLvl) lvl = Math.max(1, actorLvl - 1);
-
-    if (mode === 'promote') {
-      let uid = parseInt(user_id) || 0;
-      if (!uid && email) { const f = await pool.query('SELECT id FROM users WHERE email=$1', [email]); if (f.rows.length) uid = f.rows[0].id; }
-      const ex = await pool.query('SELECT id, email, role FROM users WHERE id=$1', [uid]);
-      if (!ex.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود (تأكد من الإيميل)' });
-      if (ex.rows[0].email === OWNER_EMAIL) return res.status(403).json({ message: 'هذا المالك بالفعل' });
-      await pool.query(`UPDATE users SET role='admin', admin_role=$1, admin_level=$2, permissions=$3::jsonb WHERE id=$4`, [role, lvl, JSON.stringify(perms), uid]);
-      await logAdmin(req, 'add_admin', 'user', uid, 'ترقية مستخدم إلى ' + (ROLE_LABELS[role]||role));
-      return res.json({ ok: true, id: uid });
-    }
-    // إنشاء حساب إدارة جديد
-    if (!name || !email || !password) return res.status(400).json({ message: 'الاسم والإيميل وكلمة المرور مطلوبة' });
-    if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
-    const dup = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
-    if (dup.rows.length) return res.status(409).json({ message: 'الإيميل مستخدم مسبقاً' });
-    const hash = await bcrypt.hash(password, 10);
-    const ins = await pool.query(`INSERT INTO users (name, email, password, password_hash, role, admin_role, admin_level, permissions, is_active, created_at) VALUES ($1,$2,$3,$3,'admin',$4,$5,$6::jsonb,true,NOW()) RETURNING id`, [name, email, hash, role, lvl, JSON.stringify(perms)]);
-    await logAdmin(req, 'add_admin', 'user', ins.rows[0].id, 'إنشاء مشرف ' + (ROLE_LABELS[role]||role) + ' (' + email + ')');
-    res.json({ ok: true, id: ins.rows[0].id });
-  } catch(e) { console.error('add admin:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/admin/admins/:id', requirePermission('admins.manage'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const t = await pool.query('SELECT id, email, admin_level FROM users WHERE id=$1', [id]);
-    if (!t.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const target = t.rows[0];
-    if (target.email === OWNER_EMAIL) return res.status(403).json({ message: 'لا يمكن تعديل المالك' });
-    if (!canActOn(req.adminUser, target.admin_level)) return res.status(403).json({ message: 'لا يمكنك تعديل من هو برتبتك أو أعلى' });
-    const { admin_role } = req.body || {};
-    const role = ROLE_PERMISSIONS[admin_role] ? admin_role : null;
-    let perms = Array.isArray(req.body.permissions) ? req.body.permissions.filter(function(x){ return ALL_PERMISSIONS.indexOf(x)>=0; }) : null;
-    if (role === 'super_admin') perms = ['*'];
-    let lvl = role ? (ROLE_BASE_LEVEL[role] || 20) : target.admin_level;
-    const actorLvl = req.adminUser.admin_level || 0;
-    if (req.adminUser.email !== OWNER_EMAIL && lvl >= actorLvl) lvl = Math.max(1, actorLvl - 1);
-    const sets = [], vals = []; let i = 1;
-    if (role) { sets.push('admin_role=$'+i); vals.push(role); i++; sets.push('admin_level=$'+i); vals.push(lvl); i++; }
-    if (perms) { sets.push('permissions=$'+i+'::jsonb'); vals.push(JSON.stringify(perms)); i++; }
-    if (!sets.length) return res.json({ ok: true });
-    vals.push(id);
-    await pool.query('UPDATE users SET '+sets.join(', ')+' WHERE id=$'+i, vals);
-    await logAdmin(req, 'edit_admin', 'user', id, 'تعديل صلاحيات مشرف' + (role?(' إلى '+(ROLE_LABELS[role]||role)):''));
-    res.json({ ok: true });
-  } catch(e) { console.error('edit admin:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.delete('/api/admin/admins/:id', requirePermission('admins.manage'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (id === req.adminUser.id) return res.status(400).json({ message: 'لا يمكنك إزالة نفسك' });
-    const t = await pool.query('SELECT id, email, admin_level FROM users WHERE id=$1', [id]);
-    if (!t.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const target = t.rows[0];
-    if (target.email === OWNER_EMAIL) return res.status(403).json({ message: 'لا يمكن إزالة المالك' });
-    if (!canActOn(req.adminUser, target.admin_level)) return res.status(403).json({ message: 'لا يمكنك إزالة من هو برتبتك أو أعلى' });
-    // إزالة من الإدارة: تحويل إلى عميل عادي (الحساب يبقى)
-    await pool.query(`UPDATE users SET role='client', admin_role=NULL, admin_level=0, permissions=NULL WHERE id=$1`, [id]);
-    await logAdmin(req, 'remove_admin', 'user', id, 'إزالة مشرف من الإدارة');
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
-  try { const r = await pool.query('SELECT key, value FROM platform_settings'); const o={}; r.rows.forEach(function(x){ o[x.key]=x.value; }); res.json(o); }
-  catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-/* ═══════════ التسويق والبكسلات ═══════════ */
-const PIXEL_DEFAULTS = { metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'', metaOn:true, tiktokOn:true, snapOn:true, googleOn:true };
-async function getPixels(){
-  try { const raw = await getSetting('pixels', null); const p = raw ? JSON.parse(raw) : {}; return Object.assign({}, PIXEL_DEFAULTS, p); }
-  catch(e){ return Object.assign({}, PIXEL_DEFAULTS); }
-}
-
-// قراءة إعداد البكسلات (أدمن)
-app.get('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
-  try { res.json(await getPixels()); }
-  catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// حفظ إعداد البكسلات (أدمن)
-app.put('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
-  try {
-    const b = req.body || {};
-    const clean = {
-      metaPixelId: String(b.metaPixelId||'').trim().slice(0,64),
-      tiktokPixelId: String(b.tiktokPixelId||'').trim().slice(0,64),
-      snapPixelId: String(b.snapPixelId||'').trim().slice(0,64),
-      googleId: String(b.googleId||'').trim().slice(0,64),
-      metaOn: b.metaOn!==false, tiktokOn: b.tiktokOn!==false,
-      snapOn: b.snapOn!==false, googleOn: b.googleOn!==false
-    };
-    await setSetting('pixels', JSON.stringify(clean));
-    await logAdmin(req, 'update_pixels', 'settings', null, 'تحديث بكسلات التتبّع');
-    res.json({ ok:true, pixels:clean });
-  } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// عام: يقرأه track.js (المُعرّفات المفعّلة فقط)
-app.get('/api/pixels/public', async (req, res) => {
-  try {
-    const p = await getPixels();
-    res.set('Cache-Control','public, max-age=120');
-    res.json({
-      metaPixelId: p.metaOn ? p.metaPixelId : '',
-      tiktokPixelId: p.tiktokOn ? p.tiktokPixelId : '',
-      snapPixelId: p.snapOn ? p.snapPixelId : '',
-      googleId: p.googleOn ? p.googleId : ''
-    });
-  } catch(e){ res.json({ metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'' }); }
-});
-
-// إعدادات التذكيرات والبطاقة (أدمن) — قراءة
-const REMINDER_DEFAULTS = { offersDays:2, dealDays:5, reviewDays:1, profileDays:1,
-  offersOn:true, dealOn:true, reviewOn:true, profileOn:true,
-  nudgeDelaySec:20, nudgeSnoozeDays:3 };
-async function getReminderCfg(){
-  const g = async (k,d)=> { const v = await getSetting(k, null); return v==null? d : v; };
-  return {
-    offersDays: parseInt(await g('rem_offers_days','2'))||2,
-    dealDays: parseInt(await g('rem_deal_days','5'))||5,
-    reviewDays: parseInt(await g('rem_review_days','1'))||1,
-    profileDays: parseInt(await g('rem_profile_days','1'))||1,
-    offersOn: (await g('rem_offers_on','1'))!=='0',
-    dealOn: (await g('rem_deal_on','1'))!=='0',
-    reviewOn: (await g('rem_review_on','1'))!=='0',
-    profileOn: (await g('rem_profile_on','1'))!=='0',
-    nudgeDelaySec: parseInt(await g('nudge_delay_sec','20'))||20,
-    nudgeSnoozeDays: parseInt(await g('nudge_snooze_days','3'))||3,
-    lcCloseOn: (await g('lc_close_on','1'))!=='0',
-    lcCloseDays: parseInt(await g('lc_close_days','20'))||20,
-    lcCloseWarn: parseInt(await g('lc_close_warn','2'))||2,
-    lcConfirmOn: (await g('lc_confirm_on','1'))!=='0',
-    lcConfirmDays: parseInt(await g('lc_confirm_days','20'))||20,
-    lcConfirmGrace: parseInt(await g('lc_confirm_grace','3'))||3,
-    reactInactiveOn: (await g('react_inactive_on','1'))!=='0',
-    reactInactiveDays: parseInt(await g('react_inactive_days','30'))||30,
-    reactNobidsOn: (await g('react_nobids_on','1'))!=='0',
-    reactNobidsDays: parseInt(await g('react_nobids_days','21'))||21,
-    qNooffersOn: (await g('q_nooffers_on','1'))!=='0',
-    qNooffersDays: parseInt(await g('q_nooffers_days','3'))||3,
-    qLowRatingOn: (await g('q_lowrating_on','1'))!=='0',
-    qLowRatingThreshold: parseFloat(await g('q_lowrating_threshold','3.0'))||3.0,
-    qLowRatingMin: parseInt(await g('q_lowrating_min','3'))||3,
-    adminSummaryOn: (await g('admin_summary_on','1'))!=='0',
-    adminAnomalyOn: (await g('admin_anomaly_on','1'))!=='0',
-    adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15,
-    matchNotifyOn: (await g('match_notify_on','1'))!=='0',
-    qaAnswerOn: (await g('qa_answer_on','1'))!=='0',
-    qaAnswerDays: parseInt(await g('qa_answer_days','2'))||2,
-    bidFollowupOn: (await g('bid_followup_on','1'))!=='0',
-    bidFollowupDays: parseInt(await g('bid_followup_days','7'))||7
+function catSvg(cat,size){
+  size=size||16;
+  // نفس أيقونات قسم "الفئات المتاحة" — مطابقة ذكية بالكلمة المفتاحية لتغطية كل صيغ التخصص
+  var IC={
+    ac:'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
+    power:'<path d="M13 2L3 14h7v8l10-12h-7z"/>',
+    plumb:'<path d="M12 2.7l5.7 5.6a8 8 0 11-11.4 0z"/>',
+    carp:'<path d="M3 21l3-3m0 0l9-9 3 3-9 9zm12-12l3-3-3-3-3 3"/>',
+    clean:'<path d="M3 21l6-6m2-7l4 4M14 4l6 6-9 9H5v-6z"/>',
+    move:'<rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7M5.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM18.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>',
+    metal:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94z"/>',
+    alum:'<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18M12 3v18"/>',
+    pool:'<path d="M2 12h20M2 17h20M5 7l3 3M12 6l3 3M2 7c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2"/>',
+    cam:'<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
+    net:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/>',
+    shade:'<path d="M3 18h18M5 18l7-12 7 12M12 6V3"/>',
+    insul:'<path d="M14 4v10.5a4 4 0 11-4 0V4a2 2 0 014 0z"/>',
+    pest:'<circle cx="12" cy="12" r="4"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
+    build:'<path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 7h2M9 11h2M9 15h2M13 7h2M13 11h2M13 15h2"/>',
+    gypsum:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/>',
+    paint:'<rect x="3" y="3" width="13" height="7" rx="1"/><path d="M16 6h3a1 1 0 011 1v3a1 1 0 01-1 1h-7v3"/><rect x="10" y="14" width="4" height="7" rx="1"/>',
+    furniture:'<path d="M5 11V7a2 2 0 012-2h10a2 2 0 012 2v4"/><path d="M3 13a2 2 0 012-2h14a2 2 0 012 2v4H3z"/><path d="M5 17v2M19 17v2"/>'
   };
+  var c=cat||'', d;
+  if(/تكييف|تبريد|مكيف/.test(c)) d=IC.ac;
+  else if(/كهرب/.test(c)) d=IC.power;
+  else if(/سباك|صحي/.test(c)) d=IC.plumb;
+  else if(/نجار|خشب/.test(c)) d=IC.carp;
+  else if(/تنظيف|نظاف/.test(c)) d=IC.clean;
+  else if(/نقل|عفش/.test(c)) d=IC.move;
+  else if(/حداد|معادن|لحام/.test(c)) d=IC.metal;
+  else if(/ألمنيوم|المنيوم|زجاج/.test(c)) d=IC.alum;
+  else if(/مسبح|مسابح/.test(c)) d=IC.pool;
+  else if(/كامير|مراقب/.test(c)) d=IC.cam;
+  else if(/شبك|إنترنت|انترنت/.test(c)) d=IC.net;
+  else if(/مظل|ساتر|سواتر/.test(c)) d=IC.shade;
+  else if(/عزل/.test(c)) d=IC.insul;
+  else if(/مكافح|حشر/.test(c)) d=IC.pest;
+  else if(/جبس|طباشير/.test(c)) d=IC.gypsum;
+  else if(/دهان|صبغ|بويه/.test(c)) d=IC.paint;
+  else if(/أثاث|اثاث|ديكور|موبيليا/.test(c)) d=IC.furniture;
+  else if(/مقاول|بناء|إنشاء|انشاء|ترميم/.test(c)) d=IC.build;
+  else d='<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>';
+  return '<svg width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle">'+d+'</svg>';
 }
-app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
-  try { res.json(await getReminderCfg()); } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
-});
-app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
-  try {
-    const b = req.body||{};
-    const num=(v,d)=>{ v=parseInt(v); return isNaN(v)||v<0? d : Math.min(v,3650); };
-    await setSetting('rem_offers_days', String(num(b.offersDays,2)));
-    await setSetting('rem_deal_days', String(num(b.dealDays,5)));
-    await setSetting('rem_review_days', String(num(b.reviewDays,1)));
-    await setSetting('rem_profile_days', String(num(b.profileDays,1)));
-    await setSetting('rem_offers_on', b.offersOn===false?'0':'1');
-    await setSetting('rem_deal_on', b.dealOn===false?'0':'1');
-    await setSetting('rem_review_on', b.reviewOn===false?'0':'1');
-    await setSetting('rem_profile_on', b.profileOn===false?'0':'1');
-    await setSetting('nudge_delay_sec', String(num(b.nudgeDelaySec,20)));
-    await setSetting('nudge_snooze_days', String(num(b.nudgeSnoozeDays,3)));
-    await setSetting('lc_close_on', b.lcCloseOn===false?'0':'1');
-    await setSetting('lc_close_days', String(num(b.lcCloseDays,20)));
-    await setSetting('lc_close_warn', String(num(b.lcCloseWarn,2)));
-    await setSetting('lc_confirm_on', b.lcConfirmOn===false?'0':'1');
-    await setSetting('lc_confirm_days', String(num(b.lcConfirmDays,20)));
-    await setSetting('lc_confirm_grace', String(num(b.lcConfirmGrace,3)));
-    await setSetting('react_inactive_on', b.reactInactiveOn===false?'0':'1');
-    await setSetting('react_inactive_days', String(num(b.reactInactiveDays,30)));
-    await setSetting('react_nobids_on', b.reactNobidsOn===false?'0':'1');
-    await setSetting('react_nobids_days', String(num(b.reactNobidsDays,21)));
-    await setSetting('q_nooffers_on', b.qNooffersOn===false?'0':'1');
-    await setSetting('q_nooffers_days', String(num(b.qNooffersDays,3)));
-    await setSetting('q_lowrating_on', b.qLowRatingOn===false?'0':'1');
-    { let t=parseFloat(b.qLowRatingThreshold); if(isNaN(t)||t<0)t=3.0; if(t>5)t=5; await setSetting('q_lowrating_threshold', String(t)); }
-    await setSetting('q_lowrating_min', String(num(b.qLowRatingMin,3)));
-    await setSetting('admin_summary_on', b.adminSummaryOn===false?'0':'1');
-    await setSetting('admin_anomaly_on', b.adminAnomalyOn===false?'0':'1');
-    await setSetting('admin_anomaly_threshold', String(num(b.adminAnomalyThreshold,15)));
-    await setSetting('match_notify_on', b.matchNotifyOn===false?'0':'1');
-    await setSetting('qa_answer_on', b.qaAnswerOn===false?'0':'1');
-    await setSetting('qa_answer_days', String(num(b.qaAnswerDays,2)));
-    await setSetting('bid_followup_on', b.bidFollowupOn===false?'0':'1');
-    await setSetting('bid_followup_days', String(num(b.bidFollowupDays,7)));
-    await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
-    res.json({ ok:true });
-  } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
-});
-// عام: تقرأه لوحة المزوّد لإعداد البطاقة العائمة
-app.get('/api/nudge-config', async (req,res)=>{
-  try {
-    res.set('Cache-Control','public, max-age=120');
-    res.json({
-      delaySec: parseInt(await getSetting('nudge_delay_sec','20'))||20,
-      snoozeDays: parseInt(await getSetting('nudge_snooze_days','3'))||3
-    });
-  } catch(e){ res.json({ delaySec:20, snoozeDays:3 }); }
-});
-
-// إحصائيات بفلاتر زمنية (يوم/أسبوع/شهر/سنة/الكل)
-// إحصائيات خصوصية السعر — تساعد على قرار: هل نجعل الإظهار العام هو الافتراضي؟
-
-// ═══ المزوّدون بملفات ناقصة — تذكيرهم يرفع جودة المنصة ويزيد فرصهم ═══
-app.get('/api/admin/incomplete-providers', requirePermission('users.view'), async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT id, name, phone, city, business_name, bio, specialties, profile_image,
-             experience_years, created_at, last_seen_at,
-             (SELECT COUNT(*) FROM bids WHERE provider_id=users.id)::int AS bids_count,
-             (
-               (CASE WHEN COALESCE(specialties,'{}')='{}' OR array_length(specialties,1) IS NULL THEN 0 ELSE 1 END) +
-               (CASE WHEN COALESCE(bio,'')='' THEN 0 ELSE 1 END) +
-               (CASE WHEN COALESCE(profile_image,'')='' THEN 0 ELSE 1 END) +
-               (CASE WHEN COALESCE(business_name,'')='' THEN 0 ELSE 1 END) +
-               (CASE WHEN COALESCE(city,'')='' THEN 0 ELSE 1 END)
-             ) AS filled
-      FROM users
-      WHERE role='provider' AND is_active=TRUE
-      ORDER BY filled ASC, created_at DESC
-      LIMIT 200`);
-    const rows = r.rows.map(u => {
-      const missing = [];
-      if (!u.specialties || !u.specialties.length) missing.push('التخصصات');
-      if (!u.bio) missing.push('نبذة عن خبرتك');
-      if (!u.profile_image) missing.push('صورة الملف');
-      if (!u.business_name) missing.push('اسم النشاط');
-      if (!u.city) missing.push('المدينة');
-      return { ...u, missing, pct: Math.round((u.filled / 5) * 100) };
-    }).filter(u => u.missing.length > 0);
-    res.json({ total: rows.length, providers: rows });
-  } catch(e) { console.error('incomplete-providers:', e.message); res.json({ total: 0, providers: [] }); }
-});
-
-// إرسال تذكير لمزوّد (إشعار داخل المنصة)
-app.post('/api/admin/remind-provider/:id', requirePermission('users.edit'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const u = await pool.query("SELECT name, role FROM users WHERE id=$1 AND role='provider'", [id]);
-    if (!u.rows.length) return res.status(404).json({ message: 'المزوّد غير موجود' });
-    const missing = Array.isArray(req.body.missing) ? req.body.missing.slice(0,6).join('، ') : '';
-    await notify(id, 'أكمل ملفك ليصلك عملاء 🎯',
-      'ملفك الحالي ناقص' + (missing ? ` (${eEsc(missing)})` : '') +
-      ' — المزوّدون بملف مكتمل يحصلون على عروض أكثر بكثير. أكمله الآن من «ملفي الشخصي».',
-      'profile_incomplete', null);
-    res.json({ ok: true });
-  } catch(e) { console.error('remind-provider:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
-});
-
-app.get('/api/admin/price-visibility', requirePermission('analytics.view'), async (req, res) => {
-  try {
-    const r = await pool.query(`
-      SELECT COALESCE(price_visibility,'client') AS vis,
-             COUNT(*)::int AS n,
-             COUNT(*) FILTER (WHERE status='accepted')::int AS accepted,
-             ROUND(AVG(price)::numeric,0)::float AS avg_price
-      FROM bids
-      GROUP BY 1`);
-    const rows = r.rows;
-    const total = rows.reduce((a,x)=>a+x.n,0);
-    const pub = rows.find(x=>x.vis==='public') || { n:0, accepted:0, avg_price:0 };
-    const cli = rows.find(x=>x.vis==='client') || { n:0, accepted:0, avg_price:0 };
-    // آخر 30 يوماً (لرصد تغيّر السلوك)
-    const recent = await pool.query(`
-      SELECT COALESCE(price_visibility,'client') AS vis, COUNT(*)::int AS n
-      FROM bids WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY 1`);
-    res.json({
-      total,
-      public: { count: pub.n, accepted: pub.accepted, avg_price: pub.avg_price, pct: total? Math.round(pub.n*100/total):0,
-                win_rate: pub.n? Math.round(pub.accepted*100/pub.n):0 },
-      client: { count: cli.n, accepted: cli.accepted, avg_price: cli.avg_price, pct: total? Math.round(cli.n*100/total):0,
-                win_rate: cli.n? Math.round(cli.accepted*100/cli.n):0 },
-      last30: recent.rows
-    });
-  } catch(e) { console.error('price-visibility:', e.message); res.json({ total:0 }); }
-});
-
-app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (req, res) => {
-  try {
-    const map = { day:'1 day', week:'7 days', month:'30 days', year:'365 days' };
-    const period = String(req.query.period||'week');
-    const intv = map[period]; // undefined => all
-    const cond = intv ? ` AND created_at > NOW() - INTERVAL '${intv}'` : '';
-    const q = (sql)=>pool.query(sql);
-    const [projects, providers, clients, bids] = await Promise.all([
-      q(`SELECT COUNT(*) c FROM requests WHERE 1=1${cond}`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='provider'${cond}`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='client'${cond}`),
-      q(`SELECT COUNT(*) c FROM bids WHERE 1=1${cond}`)
-    ]);
-    const n = r => parseInt(r.rows[0].c)||0;
-    res.json({ period, projects:n(projects), providers:n(providers), clients:n(clients), bids:n(bids) });
-  } catch(e){ console.error('/stats-range:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// سلاسل زمنية للأدمن (نمو يومي عبر مدة)
-app.get('/api/admin/analytics-series', requirePermission('analytics.view'), async (req, res) => {
-  try {
-    let days = parseInt(req.query.days) || 30;
-    days = Math.min(Math.max(days, 7), 90);
-    const series = async (table, where) => {
-      const r = await pool.query(
-        `SELECT to_char(d::date,'YYYY-MM-DD') AS day,
-                COALESCE(cnt,0)::int AS c
-         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
-         LEFT JOIN (
-           SELECT created_at::date AS cd, COUNT(*) cnt FROM ${table}
-           WHERE created_at > NOW()::date - $1::int ${where||''}
-           GROUP BY created_at::date
-         ) t ON t.cd = d::date
-         ORDER BY d`, [days]);
-      return r.rows;
-    };
-    const [projects, clients, providers, bids, completed] = await Promise.all([
-      series('requests', "AND (category IS DISTINCT FROM 'direct')"),
-      series('users', "AND role='client'"),
-      series('users', "AND role='provider'"),
-      series('bids', ''),
-      pool.query(
-        `SELECT to_char(d::date,'YYYY-MM-DD') AS day, COALESCE(cnt,0)::int AS c
-         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
-         LEFT JOIN (SELECT completed_at::date cd, COUNT(*) cnt FROM requests WHERE completed_at > NOW()::date - $1::int GROUP BY completed_at::date) t ON t.cd=d::date
-         ORDER BY d`, [days]).then(r=>r.rows)
-    ]);
-    res.json({ days, labels: projects.map(x=>x.day),
-      projects: projects.map(x=>x.c), clients: clients.map(x=>x.c),
-      providers: providers.map(x=>x.c), bids: bids.map(x=>x.c), completed: completed.map(x=>x.c) });
-  } catch(e){ console.error('/analytics-series:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-// إحصائيات تسويقية داخلية (من قاعدة البيانات — دقيقة)
-app.get('/api/admin/marketing-stats', requirePermission('analytics.view'), async (req, res) => {
-  try {
-    const q = (sql)=>pool.query(sql);
-    const [regTotal, regClient, regProvider, reg7Client, reg7Provider, reg1, projTotal, proj7, bidsTotal, cities] = await Promise.all([
-      q(`SELECT COUNT(*) c FROM users WHERE role IN ('client','provider')`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='client'`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='provider'`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) c FROM users WHERE role IN ('client','provider') AND created_at > NOW() - INTERVAL '1 day'`),
-      q(`SELECT COUNT(*) c FROM requests`),
-      q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) c FROM bids`),
-      q(`SELECT city, COUNT(*) c FROM users WHERE city IS NOT NULL AND city<>'' GROUP BY city ORDER BY c DESC LIMIT 6`)
-    ]);
-    const n = r => parseInt(r.rows[0].c)||0;
-    const clients = n(regClient), providers = n(regProvider), projects = n(projTotal), bids = n(bidsTotal);
-    res.json({
-      registrations:{ total:n(regTotal), clients, providers, last24h:n(reg1), last7Clients:n(reg7Client), last7Providers:n(reg7Provider) },
-      projects:{ total:projects, last7:n(proj7) },
-      bids:{ total:bids },
-      conversion:{ projectsPerClient: clients? +(projects/clients).toFixed(2):0, bidsPerProject: projects? +(bids/projects).toFixed(2):0 },
-      topCities: cities.rows.map(x=>({ city:x.city, count:parseInt(x.c)||0 }))
-    });
-  } catch(e){ console.error('/marketing-stats:', e); res.status(500).json({ message:'حدث خطأ' }); }
-});
-
-app.put('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
-  try {
-    const allowed = ['review_minutes'];
-    const updates = req.body || {};
-    const done = [];
-    for (const k of Object.keys(updates)) {
-      if (!allowed.includes(k)) continue;
-      let v = updates[k];
-      if (k === 'review_minutes') v = String(Math.max(0, Math.min(1440, parseInt(v) || 0)));
-      await setSetting(k, v); done.push(k + '=' + v);
-    }
-    if (done.length) await logAdmin(req, 'update_settings', 'settings', null, 'تعديل الإعدادات: ' + done.join(', '));
-    res.json({ ok: true, updated: done });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req, res) => {
-  try {
-    const q = (sql) => pool.query(sql).then(r => +r.rows[0].count).catch(() => 0);
-    const one = (sql, def) => pool.query(sql).then(r => r.rows[0] || def).catch(() => def);
-    const many = (sql) => pool.query(sql).then(r => r.rows).catch(() => []);
-
-    const [totalReq, totalBids, completedDeals, acceptedBids, needReview, needReports, needVerify, needQ] = await Promise.all([
-      q('SELECT COUNT(*) FROM requests'),
-      q('SELECT COUNT(*) FROM bids'),
-      q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
-      q(`SELECT COUNT(*) FROM bids WHERE status='accepted'`),
-      q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
-      q(`SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL`),
-      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق'))`),
-      q(`SELECT COUNT(*) FROM request_questions WHERE answer IS NULL OR answer=''`)
-    ]);
-
-    const rev = await one(`SELECT COALESCE(SUM(price),0)::float as total, COALESCE(AVG(price),0)::float as avg, COUNT(*)::int as deals FROM bids WHERE status='accepted'`, { total: 0, avg: 0, deals: 0 });
-    const thisMonth = await one(`SELECT
-        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as requests,
-        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as bids,
-        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)) as revenue`, {});
-    const lastMonth = await one(`SELECT
-        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as requests,
-        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as bids,
-        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE)) as revenue`, {});
-
-    const topEarners = await many(`SELECT u.id, u.name, COALESCE(SUM(b.price),0)::float as earnings, COUNT(b.id)::int as deals
-      FROM users u JOIN bids b ON b.provider_id=u.id AND b.status='accepted'
-      WHERE u.role='provider' GROUP BY u.id, u.name ORDER BY earnings DESC LIMIT 6`);
-    const topActive = await many(`SELECT u.id, u.name, COUNT(b.id)::int as bids
-      FROM users u JOIN bids b ON b.provider_id=u.id WHERE u.role='provider'
-      GROUP BY u.id, u.name ORDER BY bids DESC LIMIT 6`);
-    const byCity = await many(`SELECT COALESCE(NULLIF(city,''),'غير محدد') as city, COUNT(*)::int as n FROM requests GROUP BY city ORDER BY n DESC LIMIT 8`);
-    const byCat = await many(`SELECT COALESCE(NULLIF(category,''),'غير محدد') as category, COUNT(*)::int as n FROM requests GROUP BY category ORDER BY n DESC LIMIT 8`);
-    const revMonthly = await many(`SELECT to_char(date_trunc('month',created_at),'YYYY-MM') as period, COALESCE(SUM(price),0)::float as revenue, COUNT(*)::int as deals
-      FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '5 months'
-      GROUP BY period ORDER BY period`);
-    const tierRows = await many(`SELECT COALESCE(NULLIF(tier,''),'new') as tier, COUNT(*)::int as n FROM users WHERE role='provider' GROUP BY tier`);
-    const tierMap = { new:0, active:0, distinguished:0, expert:0 };
-    tierRows.forEach(function(r){ if(tierMap[r.tier]!=null) tierMap[r.tier]=r.n; });
-    const byTier = [
-      { key:'new', label:'مزود جديد', n:tierMap.new },
-      { key:'active', label:'مزود نشط', n:tierMap.active },
-      { key:'distinguished', label:'مزود مميّز', n:tierMap.distinguished },
-      { key:'expert', label:'خبير معتمد', n:tierMap.expert }
-    ];
-
-    res.json({
-      revenue: { total: rev.total, avg: rev.avg, deals: rev.deals },
-      funnel: { requests: totalReq, bids: totalBids, accepted: acceptedBids, completed: completedDeals },
-      this_month: thisMonth, last_month: lastMonth,
-      top_earners: topEarners, top_active: topActive,
-      by_city: byCity, by_category: byCat,
-      by_tier: byTier,
-      revenue_monthly: revMonthly,
-      needs_action: { review: needReview, reports: needReports, verify: needVerify, questions: needQ }
-    });
-  } catch(e) { console.error('analytics:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/reports', requirePermission('reports.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.put('/api/admin/reports/:id', requirePermission('reports.resolve'), async (req, res) => {
-  try {
-    const id=parseInt(req.params.id); const { action, admin_note } = req.body;
-    const map = { warn:'warned', ban:'resolved', ignore:'ignored', resolve:'resolved' };
-    const newStatus = map[action]; if (!newStatus) return res.status(400).json({ message:'إجراء غير صحيح' });
-    const r=await pool.query('SELECT reported_id FROM reports WHERE id=$1',[id]); if (!r.rows.length) return res.status(404).json({ message:'غير موجود' });
-    const reportedId=r.rows[0].reported_id;
-    await pool.query('UPDATE reports SET status=$1, admin_note=$2 WHERE id=$3',[newStatus, admin_note||null, id]);
-    if (reportedId) {
-      if (action==='ban') { await pool.query(`UPDATE users SET is_active=FALSE WHERE id=$1 AND role!='admin'`,[reportedId]); _userState.delete(reportedId); await notify(reportedId,'تم إيقاف حسابك',`تم إيقاف حسابك${admin_note?': '+admin_note:''}`, 'system', null); }
-      else if (action==='warn') await notify(reportedId,'تحذير',`تلقيت تحذيراً${admin_note?': '+admin_note:''}`, 'system', null);
-    }
-    await logAdmin(req, 'resolve_report', 'report', id, 'معالجة بلاغ: ' + action);
-    res.json({ ok:true, status:newStatus });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.get('/api/admin/search', requirePermission('users.view'), async (req, res) => {
-  try {
-    const { q } = req.query; if (!q||q.length<2) return res.json({ requests:[], users:[] });
-    const p='%'+q+'%';
-    const [reqs,users]=await Promise.all([pool.query(`SELECT r.id, r.title, r.status, u.name as client_name FROM requests r LEFT JOIN users u ON r.client_id=u.id WHERE r.title ILIKE $1 OR r.description ILIKE $1 OR r.project_number ILIKE $1 ORDER BY r.created_at DESC LIMIT 20`,[p]),pool.query(`SELECT id, name, email, role FROM users WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1 ORDER BY created_at DESC LIMIT 20`,[p])]);
-    res.json({ requests:reqs.rows.map(r=>({...r,status:normalizeStatus(r.status)})), users:users.rows });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-app.post('/api/admin/push-test', requirePermission('settings.manage'), async (req, res) => {
-  try { const targetId=req.body.user_id||req.user.id; await sendPush(targetId,'اختبار الإشعارات','هذا إشعار تجريبي من منصة مناقصة!','/', 'test', null); res.json({ ok:true, message:'تم إرسال الإشعار التجريبي' }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
-
-// ═══ بناء استعلام الفلاتر للرسائل الجماعية ═══
-function buildBroadcastQuery(filters) {
-  const conds = ['is_active = TRUE'];
-  const params = [];
-  let i = 1;
-  // الفئة: client / provider / all
-  if (filters.target === 'client') conds.push(`role = 'client'`);
-  else if (filters.target === 'provider') conds.push(`role = 'provider'`);
-  else conds.push(`role IN ('client','provider')`);
-  // التخصص (للمزودين)
-  if (filters.specialty) {
-    params.push(filters.specialty);
-    conds.push(`$${i} = ANY(specialties)`); i++;
+function ago(d){
+  if(!d)return'';
+  var s=(Date.now()-new Date(d))/1000;
+  if(s<60)return'الآن';
+  if(s<3600)return Math.floor(s/60)+' د';
+  if(s<86400)return Math.floor(s/3600)+' س';
+  return Math.floor(s/86400)+' يوم';
+}
+function getUser(){
+  try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return (t&&u)?u:null;}catch(e){return null;}
+}
+function handleBidClick(reqId){
+  var u=getUser();
+  if(u){var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';location.href=dash+'?bid='+reqId;return;}
+  // الزائر: يُوجّه لصفحة المشروع أولاً (يشوف التفاصيل ويتحمّس)، والتسجيل يُطلب عند تقديم العرض هناك
+  var r=null; try{ r=(typeof ALL!=='undefined'&&ALL)?ALL.filter(function(x){return x.id===reqId;})[0]:null; }catch(e){}
+  var slug=r?_reqSlug(r):('m-'+reqId);
+  location.href='/project/'+slug+'?id='+reqId;
+}
+function card(p){
+  var isOpen=p.status==='open';
+  var isRev=p.status==='pending_review'||p.status==='review';
+  var isDone=p.status==='completed'||p.status==='in_progress'||p.status==='done';
+  var badgeCls=isOpen?'hzp-open':(isRev?'hzp-rev':'hzp-done');
+  var badgeTxt=isOpen?'مفتوح':(isRev?'قيد المراجعة':'مغلق');
+  var img=null;var _imgs=[p.thumbnail,p.images&&p.images[0],p.image_url];for(var _ii=0;_ii<_imgs.length;_ii++){if(isImg(_imgs[_ii])){img=_imgs[_ii];break;}}
+  var catIcon=catSvg(p.category,32);
+  var bidN=parseInt(p.bid_count)||0;
+  var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
+  var imgBox=img
+    ? '<div class="hzp-img"><img src="'+img+'" loading="lazy"><span class="hzp-badge '+badgeCls+'">'+badgeTxt+'</span></div>'
+    : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">'+catIcon+'</span><span class="hzp-badge '+badgeCls+'">'+badgeTxt+'</span></div>';
+  return '<div class="hzp" data-slug="'+projSlug+'" onclick="goProject(this)">'
+    +imgBox
+    +'<div class="hzp-body">'
+      +'<div class="hzp-title">'+p.title+'</div>'
+      +'<div class="hzp-meta">'
+        +(p.category?'<span class="hzp-cat">'+p.category+'</span>':'')
+        +(p.city?'<span>'+p.city+'</span>':'')
+        +'<span>'+bidN+' '+(bidN===1?'عرض':'عروض')+'</span>'
+        +'<span>'+ago(p.created_at)+'</span>'
+      +'</div>'
+    +'</div>'
+    +'<div class="hzp-side">'
+      +'<div class="hzp-price">'+(p.budget_max?Number(p.budget_max).toLocaleString('en-US')+'<span>ر.س</span>':'<span style="font-size:12px;color:var(--muted)">حسب العرض</span>')+'</div>'
+      +(isOpen?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" class="hzp-bid">تقديم عرض</button>':'')
+    +'</div>'
+  +'</div>';
+}
+function render(list){
+  var g=document.getElementById('grid');
+  if(!list.length){g.innerHTML='<div class="lv-empty">لا توجد مشاريع — جرّب فلتراً مختلفاً</div>';document.getElementById('lm').style.display='none';return;}
+  g.innerHTML=list.slice(0,PAGE).map(card).join('');
+  document.getElementById('lm').style.display=list.length>PAGE?'block':'none';
+}
+function fStatus(s,btn){F_ST=s;document.querySelectorAll('.lv-tab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');applyAll();}
+function applyAll(){
+  F_Q=(document.getElementById('fq')||{value:''}).value.toLowerCase();
+  F_CI=(document.getElementById('fc')||{value:''}).value;
+  F_CAT=(document.getElementById('fcat')||{value:''}).value;
+  PAGE=8;
+  CUR=ALL.filter(function(p){
+    if(F_ST==='open'&&p.status!=='open')return false;
+    if(F_ST==='done'&&p.status!=='completed'&&p.status!=='in_progress'&&p.status!=='done')return false;
+    if(F_CAT&&!(p.category||'').includes(F_CAT))return false;
+    if(F_CI&&p.city!==F_CI)return false;
+    if(F_Q&&!p.title.toLowerCase().includes(F_Q))return false;
+    return true;
+  });
+  render(CUR);
+}
+function clearAll(){
+  F_ST='all';F_CI='';F_Q='';F_CAT='';
+  document.querySelectorAll('.lv-tab').forEach(function(b,i){b.classList.toggle('on',i===0);});
+  var fq=document.getElementById('fq');if(fq)fq.value='';
+  var fc=document.getElementById('fc');if(fc)fc.value='';
+  var fcat=document.getElementById('fcat');if(fcat)fcat.value='';
+  CUR=ALL;PAGE=8;render(CUR);
+}
+function showMore(){PAGE+=8;render(CUR);}
+function starRating(avg,count,size){
+  avg=parseFloat(avg)||0;count=parseInt(count)||0;size=size||13;
+  var s='<span style="display:inline-flex;align-items:center;gap:1px;direction:ltr">';
+  for(var i=1;i<=5;i++){
+    var fill;
+    if(avg>=i)fill='#F0A500';
+    else if(avg>=i-0.5)fill='url(#half'+size+')';
+    else fill='#D9DCE1';
+    s+='<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" style="display:inline-block"><defs><linearGradient id="half'+size+'"><stop offset="50%" stop-color="#F0A500"/><stop offset="50%" stop-color="#D9DCE1"/></linearGradient></defs><polygon fill="'+fill+'" points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
   }
-  // المدينة
-  if (filters.city) {
-    params.push(filters.city);
-    conds.push(`city = $${i}`); i++;
+  s+='</span>';
+  if(avg>0)s+='<span style="font-size:'+(size-1)+'px;font-weight:800;color:#1e3a8a;margin-right:5px">'+avg.toFixed(1)+'</span>';
+  s+='<span style="font-size:'+(size-2)+'px;color:#64748b;margin-right:3px">('+count+')</span>';
+  return s;
+}
+function provTierPill(t){
+  if(!t||t==='new')return '';
+  var M={active:['مزود نشط','#9a6a2e','#f6ead9','#e6cfae'],distinguished:['مزود مميّز','#5b6b7d','#eceff3','#cfd6df'],expert:['خبير معتمد','#97710d','#fdf1cf','#ecd58a']};
+  var m=M[t];if(!m)return '';
+  return '<span class="pv-tier" style="background:'+m[2]+';color:'+m[1]+';border:1px solid '+m[3]+'"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>'+m[0]+'</span>';
+}
+function provCard(p){
+  var avg=parseFloat(p.avg_rating)||0;
+  var initials=(p.business_name||p.name||'م')[0];
+  var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
+  var isVerified=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseInt(p.review_count||p.reviews_count)||0)>=3);
+  var vseal=isVerified?'<span class="pv-seal" title="موثّق"><svg width="15" height="15" viewBox="-2 -2 28 28" aria-label="موثّق"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
+  var avHtml=isImg(p.profile_image)?'<img src="'+p.profile_image+'" loading="lazy">':initials;
+  var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
+  return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
+    +'<div class="pv-av">'+avHtml+'</div>'
+    +'<div class="pv-name">'+(p.business_name||p.name||'—')+vseal+'</div>'
+    +provTierPill(p.tier)
+    +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+p.city+'</div>':'')
+    +(specs?'<div class="pv-specs">'+specs+'</div>':'')
+    +'<div class="pv-stars">'+starRating(avg,p.review_count||p.reviews_count||0,12)+'</div>'
+    +(p.completed_projects>0?'<div class="pv-stats">'+p.completed_projects+' مشروع منجز</div>':'')
+    +'</div>';
+}
+async function loadProviders(){
+  try{
+    var r=await fetch(API+'/api/providers');var d=await r.json();
+    if(!Array.isArray(d)||!d.length)return;
+    ALL_PROVS=d;
+    var sec=document.getElementById('providers');if(sec)sec.style.display='block';
+    renderProviders(ALL_PROVS);
+  }catch(e){}
+}
+function renderProviders(list){
+  var g=document.getElementById('provGrid');var lbl=document.getElementById('prov-count-lbl');
+  if(!g)return;
+  if(lbl)lbl.textContent=list.length+' مزود متاح';
+  if(!list.length){g.innerHTML='<div class="lv-empty" style="grid-column:1/-1">لا يوجد مزودون بهذه الفلاتر</div>';return;}
+  PROV_ALL=list;
+  g.innerHTML=list.slice(0,PROV_PAGE).map(provCard).join('');
+  var pm=document.getElementById('prov-more');if(pm)pm.style.display=list.length>PROV_PAGE?'block':'none';
+}
+function showMoreProv(){PROV_PAGE+=8;renderProviders(PROV_ALL);}
+function filterProviders(){
+  PROV_PAGE=8;
+  var cat=(document.getElementById('pf-cat')||{value:''}).value;
+  var city=(document.getElementById('pf-city')||{value:''}).value;
+  var sort=(document.getElementById('pf-sort')||{value:'bump'}).value;
+  var filtered=ALL_PROVS.filter(function(p){
+    if(cat&&!(p.specialties||[]).some(function(s){return s===cat;}))return false;
+    if(city&&p.city!==city)return false;
+    return true;
+  });
+  filtered=filtered.slice().sort(function(a,b){
+    if(sort==='rating')return (parseFloat(b.avg_rating)||0)-(parseFloat(a.avg_rating)||0);
+    if(sort==='projects')return (parseInt(b.completed_projects)||0)-(parseInt(a.completed_projects)||0);
+    if(sort==='verified'){
+      var av=(a.badge==='verified'||a.badge==='موثق')||!!(a.profile_image&&a.bio&&(a.specialties||[]).length>0&&(parseInt(a.review_count||a.reviews_count)||0)>=3);
+      var bv=(b.badge==='verified'||b.badge==='موثق')||!!(b.profile_image&&b.bio&&(b.specialties||[]).length>0&&(parseInt(b.review_count||b.reviews_count)||0)>=3);
+      return (bv?1:0)-(av?1:0);
+    }
+    return 0;
+  });
+  renderProviders(filtered);
+}
+function clearProvFilters(){
+  var c=document.getElementById('pf-cat');if(c)c.value='';
+  var ci=document.getElementById('pf-city');if(ci)ci.value='';
+  var cs=document.getElementById('pf-sort');if(cs)cs.value='bump';
+  renderProviders(ALL_PROVS);
+}
+async function load(){
+  try{
+    var r=await fetch(API+'/api/requests');var d=await r.json();
+    ALL=Array.isArray(d)?d:[];CUR=ALL;
+    var open=ALL.filter(function(p){return p.status==='open';}).length;
+    var sub=document.getElementById('lv-proj-sub');if(sub)sub.textContent=ALL.length+' مشروع متاح، '+open+' مفتوح للعروض الآن';
+    render(ALL);
+  }catch(e){
+    var g=document.getElementById('grid');
+    if(g)g.innerHTML='<div class="lv-empty">تعذّر تحميل المشاريع — تحقق من الاتصال</div>';
   }
-  // الموثّقون فقط
-  if (filters.verifiedOnly) conds.push(`badge = 'verified'`);
-  return { where: conds.join(' AND '), params };
 }
-
-// ═══ معاينة عدد المستلمين ═══
-app.post('/api/admin/broadcast/count', requirePermission('broadcast.send'), async (req, res) => {
-  try {
-    const { where, params } = buildBroadcastQuery(req.body || {});
-    const r = await pool.query(`SELECT COUNT(*)::int as n FROM users WHERE ${where}`, params);
-    res.json({ count: r.rows[0].n });
-  } catch(e) { console.error('broadcast count:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ إرسال رسالة جماعية مع فلاتر (تخصص + مدينة + موثّق) ═══
-app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req, res) => {
-  try {
-    const { title, message, channels } = req.body;
-    if (!title || !message) return res.status(400).json({ message: 'العنوان والرسالة مطلوبان' });
-    const { where, params } = buildBroadcastQuery(req.body || {});
-    const users = await pool.query(`SELECT id, email, name FROM users WHERE ${where}`, params);
-    const ch = channels || { app: true, email: false };
-    let sent = 0;
-    for (const u of users.rows) {
-      try {
-        if (ch.app) await notify(u.id, title, message, 'admin', null);
-        if (ch.email && u.email) {
-          await sendEmail(u.email, title, emailTpl(title, '<p>'+message.replace(/\n/g,'<br>')+'</p>', 'فتح التطبيق', 'https://manaqasa.com'));
-        }
-        sent++;
-      } catch(e) {}
-    }
-    await logAdmin(req, 'broadcast', null, null, 'رسالة جماعية: '+(title||'')+' ('+sent+' مستلم)');
-    res.json({ ok: true, total: sent });
-  } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
-});
-
-// ═══ OG / SITEMAP / ROBOTS ═══
-app.get('/og/project/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query("SELECT title, category, city FROM requests WHERE id=$1", [id]);
-    if (!r.rows.length) return res.status(404).end();
-    const p = r.rows[0];
-    const esc = s => String(s==null?'':s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-    const words = String(p.title||'مشروع').slice(0,80).split(/\s+/);
-    let l1='', l2='';
-    words.forEach(function(w){ if(!l2 && (l1+' '+w).trim().length<=32) l1=(l1+' '+w).trim(); else l2=(l2+' '+w).trim(); });
-    l2 = l2.slice(0,38);
-    const cat = esc(p.category||'مشروع');
-    const city = esc(p.city||'السعودية');
-    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><rect x="410" y="150" width="380" height="56" rx="28" fill="rgba(201,146,10,0.18)" stroke="#C9920A" stroke-width="1.5"/><text x="600" y="188" font-family="Arial" font-size="30" fill="#C9920A" text-anchor="middle">${cat}</text><text x="600" y="315" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l1)}</text>${l2?`<text x="600" y="388" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l2)}</text>`:''}<text x="600" y="478" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.7)" text-anchor="middle">${city}</text><text x="600" y="558" font-family="Arial" font-size="32" font-weight="bold" fill="#7dd3fc" text-anchor="middle">قدّم عرضك الآن</text><text x="600" y="598" font-family="Arial" font-size="20" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
-  } catch(e) { res.status(500).end(); }
-});
-
-app.get('/og/pro/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT name, business_name, city, specialties, avg_rating, review_count FROM users LEFT JOIN LATERAL (SELECT COALESCE(AVG(rating),0)::float as avg_rating, COUNT(*)::int as review_count FROM reviews WHERE reviewed_id=users.id) rv ON true WHERE id=$1 AND role='provider'`, [id]);
-    if (!r.rows.length) return res.status(404).send('Not found');
-    const p=r.rows[0]; const name=p.business_name||p.name||'مزود'; const city=p.city||'السعودية';
-    const specs=(p.specialties||[]).slice(0,2).join(' · '); const avg=parseFloat(p.avg_rating)||0;
-    const stars='★';
-    const svg=`<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text><text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text><text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">${city}</text>${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}<text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
-  } catch(e) { res.status(500).send('error'); }
-});
-
-app.get('/sitemap.xml', async (req, res) => {
-  try {
-    const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE ORDER BY created_at DESC`);
-    const now=new Date().toISOString().split('T')[0];
-    let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
-    xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
-    SEO_CATS.forEach(cat=>SEO_CITIES.forEach(city=>{ xml+=`\n  <url><loc>${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`; }));
-    for (const p of providers.rows) {
-      const slug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
-      const lastmod=p.created_at?p.created_at.toISOString().split('T')[0]:now;
-      xml+=`\n  <url><loc>${SITE_URL}/pro/${slug}</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>${lastmod}</lastmod></url>`;
-    }
-    const requests=await pool.query(`SELECT r.id, r.title, r.updated_at FROM requests r WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 500`);
-    for (const r of requests.rows) {
-      const slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;
-      const lastmod=r.updated_at?r.updated_at.toISOString().split('T')[0]:now;
-      xml+=`\n  <url><loc>${SITE_URL}/project/${slug}</loc><changefreq>daily</changefreq><priority>0.8</priority><lastmod>${lastmod}</lastmod></url>`;
-    }
-    xml+='\n</urlset>';
-    res.header('Content-Type','application/xml'); res.send(xml);
-  } catch(e) { console.error('sitemap:', e.message); res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'); }
-});
-
-app.get('/robots.txt', (req, res) => {
-  res.type('text/plain');
-  res.send(`User-agent: *\nAllow: /\nAllow: /pro/\nAllow: /dalil\nDisallow: /dashboard-admin.html\nDisallow: /dashboard-client.html\nDisallow: /dashboard-provider.html\nSitemap: ${SITE_URL}/sitemap.xml`);
-});
-
-// ═══ WEBSOCKET + CLOUDINARY ═══
-const http = require('http');
-const WebSocket = require('ws');
-const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
-  if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
-  // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
-  const m = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
-  if (!m) return null;
-  const ctype = String(m[1]).toLowerCase().trim();
-  // مسموح: صورة/PDF عبر MIME، أو ملف فني/مكتبي عبر امتداد الاسم (تحميل فقط)
-  const fe = String(filename||'').toLowerCase().match(/\.([a-z0-9]+)$/);
-  const extAllowed = !!(fe && UPLOAD_EXT_TYPES[fe[1]]);
-  if (!UPLOAD_TYPES[ctype] && !extAllowed) { console.warn('رفض رفع نوع غير مسموح:', ctype, filename||''); return null; }
-  if (Buffer.byteLength(m[2], 'base64') > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم كبير'); return null; }
-  // جرّب R2 أولاً (نمرّر الاسم ليحدّد الامتداد الصحيح للملفات الفنية)
-  if (r2Client) {
-    const url = await uploadToR2(base64Data, folder.replace('manaqasa/','').replace('manaqasa','img'), filename);
-    if (url && url.startsWith('http')) {
-      const _sz = Buffer.byteLength(m[2], 'base64');
-      pool.query(`INSERT INTO platform_settings (key,value,updated_at) VALUES ('r2_bytes',$1::text,NOW()) ON CONFLICT (key) DO UPDATE SET value=(COALESCE(platform_settings.value,'0')::bigint + $1::bigint)::text, updated_at=NOW()`, [_sz]).catch(()=>{});
-      console.log('✅ R2 upload:', url);
-      return url;
-    }
-  }
-  // fallback: Cloudinary (صور فقط) — لا ينطبق على PDF أو الملفات الفنية
-  if (ctype === 'application/pdf' || extAllowed) return null;
-  try {
-    const result = await cloudinary.uploader.upload(base64Data, { folder, transformation: [{ quality: 'auto', fetch_format: 'auto' }], resource_type: 'image' });
-    console.log('✅ Cloudinary upload:', result.secure_url);
-    return result.secure_url;
-  } catch(e) { console.error('upload error:', e.message); return null; }
-}
-
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-const _wsClients = new Map();
-
-function wsBroadcast(userId, data) {
-  const conns = _wsClients.get(String(userId));
-  if (!conns) return;
-  const msg = JSON.stringify(data);
-  conns.forEach(ws => { if (ws.readyState === WebSocket.OPEN) ws.send(msg); });
-}
-
-wss.on('connection', (ws, req) => {
-  let userId = null;
-  ws.on('message', (raw) => {
-    try {
-      const msg = JSON.parse(raw);
-      if (msg.type === 'auth' && msg.token) {
-        const decoded = jwt.verify(msg.token, JWT_SECRET);
-        userId = String(decoded.id);
-        if (!_wsClients.has(userId)) _wsClients.set(userId, new Set());
-        _wsClients.get(userId).add(ws);
-        ws.send(JSON.stringify({ type: 'connected', userId }));
+function goProject(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/project/'+slug+(id?'?id='+id:'');}
+function goProv(el){var slug=el.getAttribute('data-slug')||'';var nums=slug.match(/\d+/g);var id=nums?nums[nums.length-1]:'';location.href='/pro/'+slug+(id?'?id='+id:'');}
+// مزامنة واجهة الدخول (بدون إخراج المستخدم من الصفحة)
+function syncAuthUI(){
+  try{
+    var u=getUser();
+    if(!u) return;
+    var btns=document.querySelectorAll('nav .nav-btns button');
+    btns.forEach(function(b){
+      var t=(b.textContent||'').trim();
+      var oc=(b.getAttribute('onclick')||'');
+      if(oc.indexOf('goLogin')>-1){ // زر تسجيل الدخول → لوحة التحكم
+        b.textContent='لوحة التحكم';
+        b.setAttribute('onclick', "location.href='"+(u.role==='provider'?'dashboard-provider.html':'dashboard-client.html')+"'");
+      } else if(oc.indexOf("goAuthRole('client')")>-1 && t.indexOf('ابدأ')>-1){ // ابدأ مجاناً → إخفاء للمسجّل
+        b.style.display='none';
       }
-    } catch(e) {}
-  });
-  ws.on('close', () => {
-    if (userId && _wsClients.has(userId)) {
-      _wsClients.get(userId).delete(ws);
-      if (_wsClients.get(userId).size === 0) _wsClients.delete(userId);
-    }
-  });
-  ws.on('error', () => {});
-});
-
-// ═══ START ═══
-// ═══ catch-all 404 ═══
-app.get('/404.html', (req, res) => res.sendFile(__dirname + '/404.html'));
-app.use((req, res) => {
-  // طلبات API ترجع JSON، الصفحات ترجع 404.html
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ message: 'المسار غير موجود' });
+    });
+  }catch(e){}
+}
+syncAuthUI();
+// ===== أزرار حسب الدور =====
+function _scrollTo(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+function goAuthRole(role){
+  if(window.track){ track(role==='provider'?'IntentProvider':'IntentClient'); if(role==='client')track('StartPost'); }
+  var u=getUser();
+  if(u){
+    // مسجّل أصلاً → ابقَ في الصفحة وانتقل للقسم المناسب
+    if(role==='client'){ u.role==='client' ? _scrollTo('try') : _scrollTo('providers'); }
+    else { u.role==='provider' ? _scrollTo('projects') : _scrollTo('providers'); }
+    return;
   }
-  res.status(404).sendFile(__dirname + '/404.html');
-});
+  try{sessionStorage.setItem('auth_mode','register');sessionStorage.setItem('auth_role',role);}catch(e){}
+  location.href='auth.html';
+}
+function goLogin(){
+  var u=getUser();
+  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
+  try{sessionStorage.setItem('auth_mode','login');}catch(e){}
+  location.href='auth.html';
+}
 
-server.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
-  console.log('🚀 Endpoints ready: auth, profiles, requests, bids, messages, reviews, questions, reports, favorites, providers, notifications, push, admin, account-deletion');
-  console.log('📧 Full email notifications enabled');
-  console.log('🔔 Web Push: ' + (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY ? 'ENABLED ✅' : 'DISABLED'));
-  console.log('📱 Native Push (iOS/Android via Expo): ENABLED ✅');
-  console.log('⬆️  Bump system: ENABLED ✅');
-  console.log('❓ Questions & Clarifications: ENABLED ✅');
-  console.log('✅ FIX: /api/client/conversations — messages from provider now visible to client');
-});
+// ===== بطاقة "انشر طلبك" التفاعلية =====
+function demoPreview(){
+  var t=(document.getElementById('d-title')||{value:''}).value.trim();
+  var rt=document.querySelector('#demo-req-preview .req-title');
+  if(rt) rt.textContent=t||'تركيب مكيف سبليت 2 طن في غرفة النوم';
+}
+function _val(id){var e=document.getElementById(id);return e?(e.value||'').trim():'';}
+function _authHdr(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('token')||'')};}
+function demoMsg(t,kind){
+  var el=document.getElementById('demo-msg');if(!el)return;
+  el.style.display='block';el.textContent=t;
+  el.style.color=kind==='ok'?'#16a34a':kind==='err'?'#dc2626':'#3b82f6';
+}
+function demoTab(btn,which){
+  document.querySelectorAll('.form-card .tab').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  var form=document.getElementById('demo-form'), inline=document.getElementById('demo-inline');
+  if(which==='new'){ if(form)form.style.display=''; if(inline)inline.style.display='none'; return; }
+  var u=getUser();
+  if(!u){ goLogin(); return; }                          // غير مسجّل → تسجيل الدخول (عنده حساب أصلاً)
+  if(form)form.style.display='none';
+  if(inline){ inline.style.display='block'; inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">جاري التحميل...</div>'; }
+  if(which==='mine') renderMyRequestsInline();
+  else renderMyMessagesInline();
+}
+function _myReqRow(r){
+  var n=parseInt(r.bid_count)||0;
+  var slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;
+  var st=r.status==='open'?'<span class="tag">مفتوح</span>':'<span class="tag" style="background:#e2e8f0;color:#475569;border-color:#cbd5e1">'+(r.status==='completed'?'مكتمل':'مغلق')+'</span>';
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+r.id+'\'" style="cursor:pointer">'
+    +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:6px">'+(r.title||'')+'</div>'
+    +'<div class="req-tags">'+(r.category?'<span class="tag">'+r.category+'</span>':'')+(r.city?'<span class="tag">'+r.city+'</span>':'')+st+'</div></div>'
+    +'<div style="text-align:left"><div class="price-num">'+n+'</div><div class="price-label">'+(n===1?'عرض':'عروض')+'</div></div>'
+  +'</div>';
+}
+function renderMyRequestsInline(){
+  var inline=document.getElementById('demo-inline');if(!inline)return;
+  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      if(!Array.isArray(reqs)||!reqs.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما عندك طلبات بعد — أنشئ أول طلب من تبويب «طلب جديد»</div>'; return; }
+      inline.innerHTML='<div class="bids-list">'+reqs.map(_myReqRow).join('')+'</div>';
+    }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
+}
+function _convRow(c){
+  var other=(c.provider_name||c.client_name||'مستخدم');
+  var last=c.last_message||'ابدأ المحادثة';
+  var unread=parseInt(c.unread)||0;
+  var slug=encodeURIComponent((c.request_title||'محادثة').replace(/\s+/g,'-').substring(0,40))+'-'+c.request_id;
+  var initials=(String(other).trim().charAt(0)||'?');
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+c.request_id+'\'" style="cursor:pointer">'
+    +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:var(--card2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">'+_esc(initials)+'</div>'
+      +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:3px">'+_esc(other)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px">'+_esc(last)+'</div></div>'
+    +'</div>'
+    +'<div style="text-align:left;flex-shrink:0">'
+      +(unread>0
+        ?'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:20px;background:#ef4444;color:#fff;font-size:12px;font-weight:800">'+unread+'</span>'
+        :'<span style="font-size:11px;color:var(--muted)">'+(c.last_time?req_ago(c.last_time):'')+'</span>')
+    +'</div>'
+  +'</div>';
+}
+function renderMyMessagesInline(){
+  var inline=document.getElementById('demo-inline');if(!inline)return;
+  var u=getUser(); if(!u){ inline.innerHTML=''; return; }
+  var ep=(u.role==='provider')?'/api/provider/conversations':'/api/client/conversations';
+  fetch(API+ep,{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(list){
+      list=Array.isArray(list)?list:[];
+      if(!list.length){ inline.innerHTML='<div style="text-align:center;padding:26px;color:var(--muted);font-size:13px">ما فيه محادثات بعد — تبدأ عند التواصل حول طلب</div>'; return; }
+      inline.innerHTML='<div class="bids-list">'+list.map(_convRow).join('')+'</div>';
+    }).catch(function(){ inline.innerHTML='<div style="text-align:center;padding:26px;color:#dc2626;font-size:13px">تعذّر التحميل</div>'; });
+}
+function demoPublish(){
+  var u=getUser();
+  var cat=_val('d-cat'), title=_val('d-title'), desc=_val('d-desc'), loc=_val('d-loc');
+  if(!u){
+    try{ localStorage.setItem('manaqasa_new_request_draft', JSON.stringify({category:cat,title:title,description:desc,location:loc})); }catch(e){}
+    goAuthRole('client'); return;
+  }
+  if(u.role!=='client'){ demoMsg('النشر متاح لحسابات العملاء فقط','err'); return; }
+  if(!title){ demoMsg('أدخل عنوان الطلب أولاً','err'); return; }
+  var body={title:title,description:desc,category:cat,city:loc};
+  demoMsg('جاري النشر...','info');
+  fetch(API+'/api/requests',{method:'POST',headers:_authHdr(),body:JSON.stringify(body)})
+    .then(function(r){return r.ok?r.json():Promise.reject();})
+    .then(function(){
+      demoMsg('تم نشر طلبك بنجاح ✓ تابع العروض في «طلباتي»','ok');
+      var tt=document.getElementById('d-title'); if(tt)tt.value='';
+      var dd=document.getElementById('d-desc'); if(dd)dd.value='';
+      var ll=document.getElementById('d-loc'); if(ll)ll.value='';
+      demoPreview();
+      load(); 
+      initDemoBids();
+    })
+    .catch(function(){ demoMsg('تعذّر النشر، حاول مرة أخرى','err'); });
+}
 
-process.on('uncaughtException',  (e) => console.error('Uncaught:', e));
-process.on('unhandledRejection', (r) => console.error('Unhandled:', r));
+// ===== الصفحة الرئيسية كانعكاس للوحة المستخدم =====
+function _esc(t){return (t==null?'':String(t)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _stars5(avg){avg=Math.round(parseFloat(avg)||0);var o='';for(var i=1;i<=5;i++)o+=(i<=avg?'\u2605':'\u2606');return o;}
+function _initials(n){return (n||'\u0645').trim().charAt(0)||'\u0645';}
+function _reqSlug(r){return encodeURIComponent((r.title||'\u0645\u0634\u0631\u0648\u0639').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;}
+function _openReq(r){location.href='/project/'+_reqSlug(r)+'?id='+r.id;}
+
+function initPersonalHome(){ return; }  // التوجيه صار مبكراً في <head>
+
+// (النسخة الشخصية القديمة — لم تعد تُستخدم، أبقيناها للتوافق)
+function initPersonalHomeOld(){
+  var u=getUser(); if(!u) return;
+  var hero=document.querySelector('.hero');
+  var host=document.getElementById('home-personal');
+  if(!host) return;
+  if(hero) hero.style.display='none';
+  ['.stats','.how','.categories','.cta','.showcase','.demo','#try','#projects','#showcase'].forEach(function(sel){
+    document.querySelectorAll(sel).forEach(function(el){el.style.display='none';});
+  });
+  host.style.display='block';
+  host.innerHTML='<div class="ph-band"><div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">\u2026</div><div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b \u0628\u0643</h3><div class="ph-sub">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0644\u0648\u062d\u062a\u0643...</div></div></div></div>';
+  var _prov=document.getElementById('providers');
+  if(u.role==='provider'){
+    if(_prov)_prov.style.display='none';
+    var t=document.getElementById('try'); if(t)t.style.display='none';
+    renderProviderHome(u);
+  } else {
+    if(_prov){_prov.style.display='block'; if(typeof loadProviders==='function'){try{loadProviders();}catch(e){}}}
+    renderClientHome(u);
+  }
+}
+
+// ---------- العميل ----------
+function renderClientHome(u){
+  var host=document.getElementById('home-personal');
+  var name=u.name||u.business_name||'\u0628\u0643';
+  fetch(API+'/api/requests/my',{headers:_authHdr(),cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      reqs=Array.isArray(reqs)?reqs:[];
+      var active=reqs.filter(function(x){return x.status==='open';}).length;
+      var offers=reqs.reduce(function(a,x){return a+(parseInt(x.bid_count)||0);},0);
+      var done=reqs.filter(function(x){return x.status==='completed';}).length;
+      var band=''
+        +'<div class="ph-band"><span class="ph-acc" style="background:#1d4ed8"></span>'
+        +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>'
+        +'<div class="ph-greet"><div class="ph-av" style="background:#1d4ed8">'+_esc(_initials(name))+'</div>'
+        +'<div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b '+_esc(name)+'</h3><div class="ph-sub">\u0625\u0644\u064a\u0643 \u0645\u0644\u062e\u0651\u0635 \u0646\u0634\u0627\u0637\u0643 \u0639\u0644\u0649 \u0627\u0644\u0645\u0646\u0635\u0629 \u0627\u0644\u064a\u0648\u0645</div></div></div>'
+        +(offers>0?'<div class="ph-hl"><span class="ph-dot"></span> \u0644\u062f\u064a\u0643 <b style="color:#b45309;margin:0 3px">'+offers+' \u0639\u0631\u0636</b> \u0639\u0644\u0649 \u0637\u0644\u0628\u0627\u062a\u0643</div>':'<div class="ph-hl"><span class="ph-dot"></span> \u0627\u0628\u062f\u0623 \u0628\u0646\u0634\u0631 \u0623\u0648\u0644 \u0637\u0644\u0628 \u0648\u0627\u0633\u062a\u0642\u0628\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</div>')
+        +'</div>'
+        +'<div class="ph-mrow">'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#dbeafe;color:#1d4ed8"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ph-mn">'+active+'</div><div class="ph-ml">\u0637\u0644\u0628\u0627\u062a \u0646\u0634\u0637\u0629</div></div>'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn">'+offers+'</div><div class="ph-ml">\u0639\u0631\u0648\u0636 \u0645\u0633\u062a\u0644\u0645\u0629</div></div>'
+        +'<div class="ph-mc"><div class="ph-mi" style="background:#dcfce7;color:#16a34a"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">\u0645\u0643\u062a\u0645\u0644\u0629</div></div>'
+        +'</div>';
+      host.innerHTML=band+'<div id="ph-inbox"></div>'+'<div id="ph-feat-slot"></div>'+_phProjects(reqs)+_phQuick('client');
+      _phInbox();
+      var withB=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
+      if(!withB.length) return;
+      var req=withB[0];
+      fetch(API+'/api/requests/'+req.id+'/bids',{headers:_authHdr(),cache:'no-store'})
+        .then(function(r){return r.ok?r.json():[];})
+        .then(function(bids){
+          if(!Array.isArray(bids)||!bids.length) return;
+          var best=bids.slice().sort(function(a,b){var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;if(rb!==ra)return rb-ra;return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);})[0];
+          var nm=best.provider_business_name||best.provider_name||'\u0645\u0632\u0648\u062f';
+          var price=best.price?Number(best.price).toLocaleString('en-US'):'\u2014';
+          var slot=document.getElementById('ph-feat-slot'); if(!slot)return;
+          slot.innerHTML='<div class="ph-feat"><span class="ph-fb">\u0623\u0641\u0636\u0644 \u0639\u0631\u0636 \u0639\u0644\u0649 \u0637\u0644\u0628\u0643</span>'
+            +'<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:10px">'+_esc(req.title||'')+(req.city?' \u2014 '+_esc(req.city):'')+'</div>'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+            +'<div style="display:flex;align-items:center;gap:9px"><div class="ph-sq">'+_esc(_initials(nm))+'</div>'
+            +'<div><div style="font-size:14px;font-weight:900;color:#1e3a8a">'+_esc(nm)+'</div>'
+            +'<div style="font-size:12px;color:#F0A500;margin-top:2px">'+_stars5(best.provider_rating)+' <span style="color:#3b82f6">'+(best.provider_rating?parseFloat(best.provider_rating).toFixed(1):'\u2014')+' \u00b7 '+(parseInt(best.provider_reviews)||0)+' \u062a\u0642\u064a\u064a\u0645</span></div></div></div>'
+            +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#16a34a">'+price+' <span style="font-size:12px">\u0631.\u0633</span></div>'+(best.days?'<div style="font-size:11px;color:#64748b">\u062e\u0644\u0627\u0644 '+best.days+' \u064a\u0648\u0645</div>':'')+'</div>'
+            +'</div>'
+            +'<div style="display:flex;gap:8px;margin-top:13px"><button class="ph-cta" style="flex:1;justify-content:center" onclick="_scrollTo(\'try\')">\u0639\u0631\u0636 \u0643\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</button><button class="ph-cta o" style="flex:1;justify-content:center" onclick="_openReq({id:'+req.id+'})">\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628</button></div>'
+            +'</div>';
+        }).catch(function(){});
+    }).catch(function(){});
+}
+
+// ---------- المزود ----------
+function renderProviderHome(u){
+  var host=document.getElementById('home-personal');
+  var pid=u.id||u._id||u.provider_id;
+  Promise.all([
+    fetch(API+'/api/providers',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+    fetch(API+'/api/requests',{cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+    fetch(API+'/api/provider/bids',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+  ]).then(function(res){
+    var provs=Array.isArray(res[0])?res[0]:(res[0]&&res[0].providers)||[];
+    var reqs=Array.isArray(res[1])?res[1]:(res[1]&&res[1].requests)||[];
+    var myBids=Array.isArray(res[2])?res[2]:[];
+    var me=provs.filter(function(p){return String(p.id)===String(pid);})[0]||{};
+    var name=me.business_name||u.business_name||u.name||'\u0628\u0643';
+    var specs=(me.specialties&&me.specialties.length?me.specialties:(u.specialties||[]));
+    var rating=parseFloat(me.avg_rating)||0;
+    var doneN=parseInt(me.completed_projects)||0;
+    var open=reqs.filter(function(r){return (r.status||'open')==='open';});
+    var match= specs.length ? open.filter(function(r){return specs.some(function(sp){return (r.category||'').indexOf(sp)>=0||sp.indexOf(r.category||'')>=0;});}) : open;
+    match.sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
+    var matchN=match.length;
+    var av=me.profile_image?('<img src="'+me.profile_image+'">'):_esc(_initials(name));
+    var band=''
+      +'<div class="ph-band"><span class="ph-acc" style="background:#0ea5e9"></span>'
+      +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="12" y1="32" x2="95" y2="55" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="185" y2="26" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="145" y2="96" stroke="#fde68a" stroke-width="1.2"/><circle cx="95" cy="55" r="4.5" fill="#7dd3fc"/><circle cx="185" cy="26" r="3.5" fill="#bae6fd"/><circle cx="145" cy="96" r="3.5" fill="#F0A500"/></svg>'
+      +'<div class="ph-greet"><div class="ph-av" style="background:#0ea5e9;overflow:hidden">'+av+'</div>'
+      +'<div><h3 class="ph-hi">\u0623\u0647\u0644\u0627\u064b '+_esc(name)+'</h3><div class="ph-sub">\u0641\u0631\u0635 \u062c\u062f\u064a\u062f\u0629 \u062a\u0646\u0627\u0633\u0628 \u062a\u062e\u0635\u0635\u0643 \u062a\u0646\u062a\u0638\u0631 \u0639\u0631\u0636\u0643</div></div></div>'
+      +(matchN>0?'<div class="ph-hl"><span class="ph-dot"></span> <b style="color:#b45309;margin:0 3px">'+matchN+' \u0637\u0644\u0628</b> \u062a\u0646\u0627\u0633\u0628 \u062a\u062e\u0635\u0635\u0643 \u0627\u0644\u0622\u0646</div>':'<div class="ph-hl"><span class="ph-dot"></span> \u062a\u0635\u0641\u0651\u062d \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0627\u0644\u0645\u062a\u0627\u062d\u0629 \u0648\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643</div>')
+      +'</div>'
+      +'<div class="ph-mrow">'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#e0f2fe;color:#0284c7"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></div><div class="ph-mn">'+matchN+'</div><div class="ph-ml">\u0637\u0644\u0628\u0627\u062a \u062a\u0646\u0627\u0633\u0628\u0643</div></div>'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#fef3c7;color:#F0A500"><svg width="17" height="17" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div><div class="ph-mn" style="color:#b45309">'+(rating?rating.toFixed(1):'\u2014')+'</div><div class="ph-ml">\u062a\u0642\u064a\u064a\u0645\u0643</div></div>'
+      +'<div class="ph-mc"><div class="ph-mi" style="background:#dbeafe;color:#1d4ed8"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="ph-mn">'+doneN+'</div><div class="ph-ml">\u0645\u0634\u0627\u0631\u064a\u0639 \u0645\u0646\u062c\u0632\u0629</div></div>'
+      +'</div>';
+    var body='';
+    if(match.length){
+      var f=match[0];
+      var fb=parseInt(f.bid_count)||0;
+      body+='<div class="ph-feat"><span class="ph-fb">\u0623\u0641\u0636\u0644 \u0641\u0631\u0635\u0629 \u0644\u0643</span>'
+        +'<div style="font-size:15px;font-weight:900;color:#1e3a8a">'+_esc(f.title||'')+'</div>'
+        +'<div style="margin-top:7px"><span class="ph-tag">'+_esc(f.category||'')+'</span>'+(f.city?'<span class="ph-tag sky">'+_esc(f.city)+'</span>':'')+(f.budget_max?'<span class="ph-tag grn">\u0645\u064a\u0632\u0627\u0646\u064a\u0629 '+Number(f.budget_max).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div>'
+        +'<div style="font-size:11px;color:#94a3b8;margin-top:7px">'+(req_ago(f.created_at))+(fb?' \u00b7 '+fb+' \u0639\u0631\u0636':' \u00b7 \u0644\u0627 \u0639\u0631\u0648\u0636 \u0628\u0639\u062f \u2014 \u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0642\u062f\u0651\u0645')+'</div>'
+        +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:13px" onclick="_openReq({id:'+f.id+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643 \u0627\u0644\u0622\u0646</button>'
+        +'</div>';
+      match.slice(1,4).forEach(function(r){
+        body+='<div class="ph-row"><div style="min-width:0"><div style="font-size:13.5px;font-weight:800;color:#1e3a8a">'+_esc(r.title||'')+'</div><div style="margin-top:5px"><span class="ph-tag">'+_esc(r.category||'')+'</span>'+(r.city?'<span class="ph-tag sky">'+_esc(r.city)+'</span>':'')+'</div></div>'
+          +'<button class="ph-cta o" onclick="_openReq({id:'+r.id+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636</button></div>';
+      });
+    } else {
+      body+='<div class="ph-row" style="justify-content:center;color:var(--muted);font-size:13px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0641\u062a\u0648\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b \u2014 \u062a\u0635\u0641\u0651\u062d \u0643\u0644 \u0627\u0644\u0645\u0634\u0627\u0631\u064a\u0639 \u0623\u062f\u0646\u0627\u0647</div>';
+    }
+    host.innerHTML=band+'<div id="ph-inbox"></div>'+_phNudge(me,specs)+_phBids(myBids)+body+_phQuick('provider');
+    _phInbox();
+  }).catch(function(){});
+}
+function _phBids(bids){
+  bids=Array.isArray(bids)?bids:[];
+  if(!bids.length) return '';
+  var acc=bids.filter(function(b){return b.status==='accepted';}).length;
+  var pen=bids.filter(function(b){return !b.status||b.status==='pending';}).length;
+  var rej=bids.filter(function(b){return b.status==='rejected';}).length;
+  var M={accepted:['\u0645\u0642\u0628\u0648\u0644','#dcfce7','#15803d'],pending:['\u0642\u064a\u062f \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629','#fef3c7','#b45309'],rejected:['\u0645\u0631\u0641\u0648\u0636','#f1f5f9','#64748b']};
+  var rows=bids.slice(0,3).map(function(b){
+    var m=M[b.status]||M.pending;
+    return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
+      +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>'+(b.price?'<span style="font-size:11px;color:#64748b">'+Number(b.price).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div></div>'
+      +'<button class="ph-cta o" onclick="_openReq({id:'+b.request_id+'})">\u0627\u0644\u0645\u0634\u0631\u0648\u0639</button></div>';
+  }).join('');
+  return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0639\u0631\u0648\u0636\u064a</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:9px">'
+    +'<div class="ph-bidsum" style="--c:#15803d;--b:#dcfce7">'+acc+'<span>\u0645\u0642\u0628\u0648\u0644</span></div>'
+    +'<div class="ph-bidsum" style="--c:#b45309;--b:#fef3c7">'+pen+'<span>\u0642\u064a\u062f \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629</span></div>'
+    +'<div class="ph-bidsum" style="--c:#64748b;--b:#f1f5f9">'+rej+'<span>\u0645\u0631\u0641\u0648\u0636</span></div>'
+    +'</div>'+rows+'</div>';
+}
+function _phProjects(reqs){
+  reqs=Array.isArray(reqs)?reqs:[];
+  var dead=['completed','cancelled','canceled','closed','rejected','deleted'];
+  var act=reqs.filter(function(x){return dead.indexOf(x.status)<0;});
+  if(!act.length) return '';
+  var M={open:['\u0645\u0641\u062a\u0648\u062d','#e0f2fe','#0369a1'],in_progress:['\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630','#fef3c7','#b45309'],assigned:['\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630','#fef3c7','#b45309']};
+  var rows=act.slice(0,3).map(function(r){
+    var bc=parseInt(r.bid_count)||0;
+    var m=M[r.status]||['\u0646\u0634\u0637','#e0f2fe','#0369a1'];
+    return '<div class="ph-row"><div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(r.title||'\u0645\u0634\u0631\u0648\u0639')+'</div>'
+      +'<div style="margin-top:5px;display:flex;align-items:center;gap:6px"><span class="ph-chk" style="background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span><span style="font-size:11px;color:#64748b">'+bc+' \u0639\u0631\u0636</span></div></div>'
+      +'<button class="ph-cta'+(bc>0?'':' o')+'" onclick="_openReq({id:'+r.id+'})">'+(bc>0?'\u0631\u0627\u062c\u0639 \u0627\u0644\u0639\u0631\u0648\u0636':'\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644')+'</button></div>';
+  }).join('');
+  return '<div style="margin:4px 0 10px"><div style="font-size:13px;font-weight:900;color:#1e3a8a;margin:2px 2px 9px">\u0645\u0634\u0627\u0631\u064a\u0639\u064a \u0627\u0644\u0646\u0634\u0637\u0629</div>'+rows+'</div>';
+}
+function _phInbox(){
+  var host=document.getElementById('ph-inbox'); if(!host) return;
+  Promise.all([
+    fetch(API+'/api/messages/unread-count',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():{count:0};}).catch(function(){return {count:0};}),
+    fetch(API+'/api/notifications/unread-count',{headers:_authHdr(),cache:'no-store'}).then(function(r){return r.ok?r.json():{count:0};}).catch(function(){return {count:0};})
+  ]).then(function(res){
+    var m=parseInt(res[0]&&res[0].count)||0, n=parseInt(res[1]&&res[1].count)||0;
+    if(!m&&!n){host.innerHTML='';return;}
+    host.innerHTML='<div class="ph-inbox">'
+      +'<button class="ph-inbox-c" onclick="goLogin()"><span class="ph-inbox-ic" style="background:#dbeafe;color:#1d4ed8"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><span class="ph-inbox-t">\u0631\u0633\u0627\u0626\u0644 \u063a\u064a\u0631 \u0645\u0642\u0631\u0648\u0621\u0629</span>'+(m?'<span class="ph-inbox-b">'+m+'</span>':'')+'</button>'
+      +'<button class="ph-inbox-c" onclick="goLogin()"><span class="ph-inbox-ic" style="background:#fef3c7;color:#b45309"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg></span><span class="ph-inbox-t">\u0625\u0634\u0639\u0627\u0631\u0627\u062a \u062c\u062f\u064a\u062f\u0629</span>'+(n?'<span class="ph-inbox-b">'+n+'</span>':'')+'</button>'
+      +'</div>';
+  }).catch(function(){});
+}
+function _phBump(btn){
+  if(!btn||btn.disabled) return;
+  var orig=btn.innerHTML; btn.disabled=true; btn.style.opacity='.7';
+  fetch(API+'/api/provider/bump',{method:'PUT',headers:_authHdr()})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};},function(){return {ok:r.ok,d:{}};});})
+    .then(function(x){
+      var msg=(x.d&&x.d.message)?x.d.message:(x.ok?'\u062a\u0645 \u0627\u0644\u062a\u062d\u062f\u064a\u062b':'\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b');
+      btn.textContent=msg;
+      if(x.ok){btn.style.background='#dcfce7';btn.style.color='#15803d';btn.style.borderColor='#bbf7d0';}
+      else{btn.style.background='#fef3c7';btn.style.color='#b45309';btn.style.borderColor='#fde68a';}
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='';btn.style.background='';btn.style.color='';btn.style.borderColor='';},4500);
+    }).catch(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='';});
+}
+function _phQuick(role){
+  if(role==='client'){
+    return '<div class="ph-qa">'
+      +'<button class="ph-qa-btn pri" onclick="location.href=\'dashboard-client.html\'"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>\u0627\u0646\u0634\u0631 \u0645\u0634\u0631\u0648\u0639\u0627\u064b \u062c\u062f\u064a\u062f\u0627\u064b</button>'
+      +'<button class="ph-qa-btn" onclick="goLogin()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>\u0644\u0648\u062d\u062a\u064a</button>'
+      +'<button class="ph-qa-btn" onclick="_scrollTo(\'providers\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="18" cy="8" r="3"/></svg>\u062a\u0635\u0641\u0651\u062d \u0627\u0644\u0645\u0632\u0648\u062f\u064a\u0646</button>'
+      +'</div>';
+  }
+  return '<div class="ph-qa">'
+    +'<button class="ph-qa-btn pri" onclick="_scrollTo(\'projects\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>\u062a\u0635\u0641\u0651\u062d \u0627\u0644\u0641\u0631\u0635</button>'
+    +'<button class="ph-qa-btn" onclick="goLogin()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>\u0644\u0648\u062d\u062a\u064a</button>'
+    +'<button class="ph-qa-btn" onclick="_phBump(this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 11-2.1-9.4L23 10"/></svg>\u062d\u062f\u0651\u062b \u0638\u0647\u0648\u0631\u064a</button>'
+    +'</div>';
+}
+function _phNudge(me,specs){
+  var img=!!me.profile_image, bio=!!(me.bio&&String(me.bio).trim()), sp=(specs&&specs.length>0);
+  var rc=parseInt(me.review_count||me.reviews_count)||0, rev=rc>=3;
+  var badge=(me.badge==='verified'||me.badge==='\u0645\u0648\u062b\u0642');
+  var vrf=badge||(img&&bio&&sp&&rev);
+  var seal='<svg width="18" height="18" viewBox="-2 -2 28 28"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if(vrf){
+    return '<div class="ph-nudge done"><div class="ph-nudge-top"><div class="ph-nudge-ic" style="background:#e0f2fe">'+seal+'</div>'
+      +'<div><div class="ph-nudge-t">\u0645\u0644\u0641\u0643 \u0645\u0648\u062b\u0651\u0642</div><div class="ph-nudge-s">\u062e\u062a\u0645 \u0627\u0644\u062a\u0648\u062b\u064a\u0642 \u064a\u0638\u0647\u0631 \u0644\u0644\u0639\u0645\u0644\u0627\u0621 \u0628\u062c\u0627\u0646\u0628 \u0627\u0633\u0645\u0643</div></div></div></div>';
+  }
+  var items=[['\u0635\u0648\u0631\u0629 \u0627\u0644\u0645\u0644\u0641',img],['\u0646\u0628\u0630\u0629 \u062a\u0639\u0631\u064a\u0641\u064a\u0629',bio],['\u0627\u0644\u062a\u062e\u0635\u0635\u0627\u062a',sp],['\u0663 \u062a\u0642\u064a\u064a\u0645\u0627\u062a',rev]];
+  var okN=items.filter(function(x){return x[1];}).length;
+  var pct=Math.round(okN/items.length*100);
+  var chks=items.map(function(x){return '<span class="ph-chk '+(x[1]?'ok':'no')+'">'+(x[1]?'\u2713':'\u25cb')+' '+x[0]+'</span>';}).join('');
+  return '<div class="ph-nudge"><div class="ph-nudge-top"><div class="ph-nudge-ic" style="background:#fef3c7;color:#b45309"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg></div>'
+    +'<div><div class="ph-nudge-t">\u0623\u0643\u0645\u0644 \u0645\u0644\u0641\u0643 \u0644\u064a\u0638\u0647\u0631 \u062e\u062a\u0645 \u0627\u0644\u062a\u0648\u062b\u064a\u0642</div><div class="ph-nudge-s">\u0627\u0643\u062a\u0645\u0627\u0644 \u0627\u0644\u0645\u0644\u0641 '+pct+'\u066a \u2014 \u0627\u0644\u0645\u0644\u0641\u0627\u062a \u0627\u0644\u0645\u0648\u062b\u0651\u0642\u0629 \u062a\u0643\u0633\u0628 \u062b\u0642\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621</div></div></div>'
+    +'<div class="ph-bar"><div class="ph-bar-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="ph-chks">'+chks+'</div>'
+    +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:12px" onclick="goLogin()">\u0623\u0643\u0645\u0644 \u0645\u0644\u0641\u064a \u0627\u0644\u0622\u0646</button></div>';
+}
+function req_ago(d){ if(typeof ago==='function'){try{return '\u0645\u0646\u0630 '+ago(d);}catch(e){}} return '\u062d\u062f\u064a\u062b\u0627\u064b'; }
+
+// ===== العروض المستلمة الحقيقية (للعميل المسجّل) =====
+function _demoStars(avg){
+  avg=Math.round(parseFloat(avg)||0);
+  var s='';for(var i=1;i<=5;i++){s+=(i<=avg?'★':'☆');}
+  return '<span style="color:#F0A500">'+s+'</span>';
+}
+function _realBidRow(b,best){
+  var name=(b.provider_business_name||b.provider_name||'مزود');
+  var rating=parseFloat(b.provider_rating||0);
+  var reviews=parseInt(b.provider_reviews||0);
+  var price=b.price?Number(b.price).toLocaleString('en-US'):'—';
+  return '<div class="bid-item'+(best?' best':'')+'">'
+    +'<div class="bid-provider">'
+      +'<div class="avatar av2">'+name.charAt(0)+'</div>'
+      +'<div><div class="bid-name">'+name+(best?' <span class="best-badge">الأفضل</span>':'')+'</div>'
+      +'<div class="bid-rating">'+_demoStars(rating)+' <span style="color:#3b82f6">('+(rating?rating.toFixed(1):'—')+') · '+reviews+' تقييم</span></div></div>'
+    +'</div>'
+    +'<div style="text-align:left"><div class="price-num">'+price+' ر.س</div>'
+    +(b.days?'<div class="price-label">خلال '+b.days+' يوم</div>':'')
+    +'</div></div>';
+}
+function initDemoBids(){
+  var u=getUser();
+  if(!u || u.role!=='client') return; // غير مسجّل أو ليس عميلاً → يبقى المثال التوضيحي
+  var tok=localStorage.getItem('token'); if(!tok) return;
+  fetch(API+'/api/requests/my',{headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},cache:'no-store'})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(reqs){
+      if(!Array.isArray(reqs)||!reqs.length) return;
+      // اختر أحدث طلب له عروض إن وُجد، وإلا الأحدث
+      var withBids=reqs.filter(function(x){return (parseInt(x.bid_count)||0)>0;});
+      var req=(withBids[0]||reqs[0]);
+      var sub=document.getElementById('bids-sub');
+      if(sub) sub.textContent='طلبك: '+(req.title||'')+(req.city?' – '+req.city:'');
+      var pv=document.getElementById('demo-req-preview');
+      if(pv){
+        pv.innerHTML='<div class="req-title">'+(req.title||'')+'</div>'
+          +'<div style="color:var(--muted);font-size:13px;margin-top:4px">'+(req.city||'')+(req.created_at?' · نُشر '+ago(req.created_at):'')+'</div>'
+          +'<div class="req-tags">'+(req.category?'<span class="tag">'+req.category+'</span>':'')+'<span class="tag">'+((parseInt(req.bid_count)||0))+' عروض</span></div>';
+      }
+      var list=document.getElementById('demo-bids-list');
+      if(!list) return;
+      fetch(API+'/api/requests/'+req.id+'/bids',{headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},cache:'no-store'})
+        .then(function(r){return r.ok?r.json():[];})
+        .then(function(bids){
+          if(!Array.isArray(bids)||!bids.length){
+            list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">لا توجد عروض على هذا الطلب بعد — سيصلك إشعار عند وصول أول عرض</div>';
+            return;
+          }
+          // الأفضل = أعلى تقييم ثم الأقل سعراً
+          var sorted=bids.slice().sort(function(a,b){
+            var ra=parseFloat(a.provider_rating)||0, rb=parseFloat(b.provider_rating)||0;
+            if(rb!==ra)return rb-ra;
+            return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);
+          });
+          var bestId=sorted[0]&&sorted[0].id;
+          list.innerHTML=bids.map(function(b){return _realBidRow(b,b.id===bestId);}).join('');
+        }).catch(function(){});
+    }).catch(function(){});
+}
+initDemoBids();
+
+load();
+loadProviders();
+initPersonalHome();
+</script>
+<script>
+(function(){
+  // شاشة التوجيه تظهر للزائر الجديد فقط (مو للمسجّل، ولا للقادم برابط قسم محدد)
+  function hasToken(){ try{ return !!localStorage.getItem('token'); }catch(e){ return false; } }
+  var gate=document.getElementById('mnqChoose');
+  if(!gate) return;
+  // ── تعريف دوال البوابة أولاً (قبل أي شرط أو خروج) ──
+  window.mnqChooseGo=function(role){
+    if(role==='client'){ location.href='/post'; return; }
+    if(typeof goAuthRole==='function'){ goAuthRole(role); }
+    else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
+  };
+  window.mnqChooseBrowse=function(){
+    try{ sessionStorage.setItem('mnq_browsing','1'); }catch(e){}   // لا تُفرض البوابة مجدداً هذه الجلسة
+    gate.style.display='none';
+    document.body.style.overflow='';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  window.mnqReopenChoose=function(){
+    gate.style.display='flex';
+    document.body.style.overflow='hidden';
+    var fab=document.getElementById('mnqBackToChoose');
+    if(fab) fab.style.display='none';
+    window.scrollTo({top:0,behavior:'auto'});
+  };
+
+
+  // توجيه ذكي حسب مصدر الحملة — يطابق وعد الإعلان مباشرة
+  // فيديو تيك توك يقول "اعرض مشروعك" → نوجّه زائره فوراً لمسار العميل (بلا تشتيت)
+  var _params, _src='';
+  try{ _params=new URLSearchParams(location.search); _src=(_params.get('src')||_params.get('utm_source')||'').toLowerCase(); }catch(e){}
+  if(!hasToken() && (_src==='tiktok' || _src==='tt' || _params && _params.get('post')==='1')){
+    // مباشرة لصفحة نشر الطلب — يكمّل وعد الفيديو (اعرض مشروعك)، والتسجيل يجي بعد التعبئة
+    location.href='/post'; return;
+  }
+
+  // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
+  if(hasToken() || location.hash){ gate.style.display='none'; return; }
+  // ولا نعرضها للزائر الذي بدأ يستكشف فعلاً (اختار "تصفّح"، أو رجع من صفحة داخلية
+  // مثل مشروع/ملف مزوّد) — إعادة فرض الاختيار عليه تقطع فضوله وتطرده
+  var _browsing=false;
+  try{ _browsing = sessionStorage.getItem('mnq_browsing')==='1'; }catch(e){}
+  var _ref=document.referrer||'';
+  var _sameSite = _ref && _ref.indexOf(location.origin)===0;
+  var _fromInner = _sameSite && /\/(pro|project|dalil|chat|post)\b/.test(_ref);
+  if(_browsing || _fromInner){
+    gate.style.display='none';
+    var _fab=document.getElementById('mnqBackToChoose');
+    if(_fab) _fab.style.display='flex';   // يبقى زر "عميل أو مزوّد؟" متاحاً لمن يريده
+    return;
+  }
+  // لا نعرض البوابة تلقائياً — الزائر يتصفّح بحرية.
+  // تظهر فقط عند نيّة التسجيل (زر «ابدأ مجاناً») ليختار دوره حينها.
+  gate.style.display='none';
+  var _f0=document.getElementById('mnqBackToChoose'); if(_f0)_f0.style.display='flex';
+  // ملاحظة: نُكمل تعريف الدوال أدناه — لا نخرج هنا وإلا لن تُعرَّف أزرار البوابة.
+  
+})();
+</script>
+
+<button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="العودة للأعلى" style="position:fixed;bottom:22px;left:22px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:900;transition:opacity .25s,transform .25s;opacity:0">
+  <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+<script>
+(function(){
+  var btn=document.getElementById('toTopBtn');
+  if(!btn)return;
+  function toggle(){
+    if(window.scrollY>400){ btn.style.display='flex'; requestAnimationFrame(function(){btn.style.opacity='1';btn.style.transform='translateY(0)';}); }
+    else { btn.style.opacity='0';btn.style.transform='translateY(10px)'; setTimeout(function(){ if(window.scrollY<=400)btn.style.display='none'; },250); }
+  }
+  window.addEventListener('scroll',toggle,{passive:true});
+  toggle();
+})();
+</script>
+
+<!-- زر العودة لشاشة الخيارين (يظهر بعد التصفّح) -->
+<button id="mnqBackToChoose" onclick="mnqReopenChoose()" style="display:none;position:fixed;bottom:22px;right:22px;align-items:center;gap:8px;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;border-radius:26px;padding:12px 20px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13.5px;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;z-index:900">
+  <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  عميل أو مزوّد؟
+</button>
+
+<script>
+// فتح بوابة الاختيار عند نيّة التسجيل (لا عند الدخول للموقع)
+window.mnqOpenChoose=function(e){
+  if(e&&e.preventDefault)e.preventDefault();
+  var g=document.getElementById('mnqChoose');
+  if(g){ g.style.display='flex'; document.body.style.overflow='hidden'; }
+  else location.href='auth.html';
+  return false;
+};
+</script>
+</body>
+</html>
