@@ -277,7 +277,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     const r = await pool.query(`
       SELECT r.id, r.title, r.description, r.category, r.city, r.district, r.client_id,
         r.budget_max, r.geo_lat, r.geo_lng,
-        r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.attachments,
+        r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.close_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
         json_build_object('id', u.id, 'name', split_part(u.name,' ',1), 'city', u.city,
           'badge', u.badge,
@@ -1087,13 +1087,25 @@ async function runReminders(){
       // الإغلاق الفعلي
       const cl = await pool.query(
         `UPDATE requests SET status='closed_auto'
-         WHERE status='open' AND assigned_provider_id IS NULL
+         WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL
            AND created_at <= NOW() - ($1 || ' days')::interval
          RETURNING id, client_id, title`, [String(closeDays)]);
       for(const x of cl.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
       }
       if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
+    }
+    // ب) مشاريع لها تاريخ إغلاق خاص حدّده صاحبها (close_at) — مستقلة عن الإعداد العام
+    {
+      const clC = await pool.query(
+        `UPDATE requests SET status='closed_auto'
+         WHERE status='open' AND assigned_provider_id IS NULL
+           AND close_at IS NOT NULL AND close_at <= NOW()
+         RETURNING id, client_id, title`);
+      for(const x of clC.rows){
+        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً عند انتهاء المدة التي حددتها`, 'request', x.id); }catch(e){}
+      }
+      if(clC.rows.length) console.log(`[lifecycle] أُغلق ${clC.rows.length} مشروع (تاريخ خاص)`);
     }
 
     // ب) مشروع اختير مزوّده ولم يُتمّ: طلب تأكيد (موافقة ضمنية)
@@ -1444,6 +1456,7 @@ async function setupDatabase() {
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
@@ -2197,6 +2210,8 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
     }
     const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
+    const _pxCd = parseInt(req.body.close_days)||0;
+    const pxCloseAt = _pxCd>0 ? new Date(Date.now()+_pxCd*86400000) : null;
     const pxLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
     if (!client_name || !client_phone || !title || !category || !city)
       return res.status(400).json({ message: 'الاسم والجوال والعنوان والتصنيف والمدينة مطلوبة' });
@@ -2221,9 +2236,9 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     }
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'open',NOW()) RETURNING id, title`,
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'open',NOW()) RETURNING id, title`,
       [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
-       pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null]);
+       pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null, pxCloseAt]);
     await client.query('COMMIT');
 
     // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
@@ -2256,6 +2271,8 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const district = (req.body.district||'').toString().trim().slice(0,80) || null;
     const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const gLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
+    const _cd = parseInt(req.body.close_days)||0;
+    const closeAt = _cd>0 ? new Date(Date.now()+_cd*86400000) : null;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
     const rawImages = req.body.images || [];
     const images_arr = Array.isArray(rawImages) ? rawImages : [];
@@ -2279,7 +2296,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       if (!processedAttachments.length) processedAttachments = null;
     }
     const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng]);
+    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
@@ -2333,6 +2350,11 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
+    if (req.body.close_days !== undefined) {
+      const _cd = parseInt(req.body.close_days)||0;
+      if (_cd>0) { sets.push('close_at = created_at + ($'+i+" || ' days')::interval"); params.push(String(_cd)); i++; }
+      else { sets.push('close_at = NULL'); }
+    }
     if (Array.isArray(attachments)) {
       const atts = []; const _attDbg = [];
       for (const a of attachments.slice(0, 3)) {
@@ -4124,7 +4146,10 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
         agentId = (await pool.query('INSERT INTO agents (name, phone, token, default_pct) VALUES ($1,$2,$3,$4) RETURNING id', [agentName, agentPhone, tok, agentPct])).rows[0].id;
       }
     }
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11 WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
+    let _closeClause='';
+    const _cd=parseInt(req.body.close_days);
+    if (req.body.close_days!==undefined && !isNaN(_cd)) { _closeClause = _cd>0 ? (", close_at = created_at + '"+_cd+" days'::interval") : ', close_at = NULL'; }
+    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11${_closeClause} WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
     res.json(r.rows[0]);
