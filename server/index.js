@@ -541,16 +541,6 @@ app.get('/dalil/:cat/:city', async (req, res) => {
 });
 
 // خريطة الموقع (Sitemap) — يساعد قوقل يكتشف صفحات SEO
-app.get('/sitemap.xml', (req, res) => {
-  const urls = [`${SITE_URL}/`, `${SITE_URL}/dalil`];
-  SEO_CATS.forEach(cat => SEO_CITIES.forEach(city => urls.push(`${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`)));
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    urls.map(u => `  <url><loc>${u}</loc><changefreq>weekly</changefreq></url>`).join('\n') +
-    `\n</urlset>`;
-  res.set('Content-Type','application/xml; charset=utf-8').send(xml);
-});
-
-
 // ═══ الكرت الرقمي للمستهدف (leads) — عام، غير مفهرس (noindex) ═══
 function genCardToken(){ return crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12); }
 
@@ -4898,6 +4888,8 @@ app.get('/sitemap.xml', async (req, res) => {
     const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE ORDER BY created_at DESC`);
     const now=new Date().toISOString().split('T')[0];
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
+    xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+    SEO_CATS.forEach(cat=>SEO_CITIES.forEach(city=>{ xml+=`\n  <url><loc>${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`; }));
     for (const p of providers.rows) {
       const slug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
       const lastmod=p.created_at?p.created_at.toISOString().split('T')[0]:now;
