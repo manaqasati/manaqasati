@@ -3170,6 +3170,10 @@ app.delete('/api/push-token', auth, async (req, res) => {
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
 // ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/أدمن/رئيسية) ═══
 const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','أخرى'];
+app.get('/api/support-contact', async (req, res) => {
+  try { const num = await getSetting('support_whatsapp', '0594011313'); res.set('Cache-Control','public, max-age=120'); res.json({ whatsapp: String(num||'').trim() }); }
+  catch(e){ res.json({ whatsapp: '0594011313' }); }
+});
 app.get('/api/version', (req, res) => { res.json({ version: 'edit-geo-atts-30mb-v3', features: ['edit_geo','edit_attachments','dwg_30mb','provider_location','categories_fixed'], ts: '2026-08-14' }); });
 app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-age=300'); res.json({ categories: CATEGORIES }); });
 
@@ -4684,7 +4688,7 @@ app.get('/api/admin/marketing-stats', requirePermission('analytics.view'), async
 
 app.put('/api/admin/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
-    const allowed = ['review_minutes'];
+    const allowed = ['review_minutes','support_whatsapp'];
     const updates = req.body || {};
     const done = [];
     for (const k of Object.keys(updates)) {
