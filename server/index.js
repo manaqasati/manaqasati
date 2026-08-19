@@ -4153,7 +4153,13 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
     }
     let _closeClause='';
     const _cd=parseInt(req.body.close_days);
-    if (req.body.close_days!==undefined && !isNaN(_cd)) { _closeClause = _cd>0 ? (", close_at = created_at + '"+_cd+" days'::interval") : ', close_at = NULL'; }
+    if (req.body.close_days!==undefined && !isNaN(_cd)) {
+      if (_cd>0) {
+        _closeClause = ", close_at = created_at + '"+_cd+" days'::interval";
+        const _st = await pool.query("SELECT status, assigned_provider_id FROM requests WHERE id=$1", [id]);
+        if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { _closeClause += ", status='open'"; }
+      } else { _closeClause = ', close_at = NULL'; }
+    }
     const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11${_closeClause} WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
