@@ -1283,6 +1283,7 @@ async function loadProviders(){
   try{
     var r=await fetch(API+'/api/providers');var d=await r.json();
     if(!Array.isArray(d)||!d.length)return;
+    window._provTotal=parseInt(r.headers.get('X-Total-Count'))||d.length;
     ALL_PROVS=d;
     var sec=document.getElementById('providers');if(sec)sec.style.display='block';
     renderProviders(ALL_PROVS);
@@ -1291,7 +1292,7 @@ async function loadProviders(){
 function renderProviders(list){
   var g=document.getElementById('provGrid');var lbl=document.getElementById('prov-count-lbl');
   if(!g)return;
-  if(lbl)lbl.textContent=list.length+' مزود متاح';
+  if(lbl)lbl.textContent=(window._provTotal||list.length)+' مزود متاح';
   if(!list.length){g.innerHTML='<div class="lv-empty" style="grid-column:1/-1">لا يوجد مزودون بهذه الفلاتر</div>';return;}
   PROV_ALL=list;
   g.innerHTML=list.slice(0,PROV_PAGE).map(provCard).join('');
