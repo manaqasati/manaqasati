@@ -3086,18 +3086,20 @@ app.delete('/api/favorites/:providerId', auth, async (req, res) => {
 app.get('/api/providers', async (req, res) => {
   try {
     const { category, city, specialty, q: searchQ } = req.query;
-    let q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects FROM users WHERE role='provider' AND is_active=TRUE`;
+    let base = `FROM users WHERE role='provider' AND is_active=TRUE`;
     const params = [];
-    // بحث نصّي بالاسم أو اسم النشاط أو التخصص (لبدء محادثة جديدة)
     if (searchQ) {
       params.push(`%${String(searchQ).trim()}%`);
-      q += ` AND (name ILIKE $${params.length} OR COALESCE(business_name,'') ILIKE $${params.length} OR array_to_string(COALESCE(specialties,'{}'),' ') ILIKE $${params.length})`;
+      base += ` AND (name ILIKE $${params.length} OR COALESCE(business_name,'') ILIKE $${params.length} OR array_to_string(COALESCE(specialties,'{}'),' ') ILIKE $${params.length})`;
     }
-    if (category) { params.push(category); q += ` AND $${params.length}=ANY(specialties)`; }
-    if (specialty){ params.push(specialty); q += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
-    if (city)     { params.push(`%${city}%`); q += ` AND city ILIKE $${params.length}`; }
-    q += ` ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 100`;
+    if (category) { params.push(category); base += ` AND $${params.length}=ANY(specialties)`; }
+    if (specialty){ params.push(specialty); base += ` AND $${params.length}=ANY(COALESCE(specialties,'{}'))`; }
+    if (city)     { params.push(`%${city}%`); base += ` AND city ILIKE $${params.length}`; }
+    const countR = await pool.query(`SELECT COUNT(*)::int c ${base}`, params);
+    const total = countR.rows[0] ? countR.rows[0].c : 0;
+    const q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
     const r = await pool.query(q, params);
+    res.set('X-Total-Count', String(total));
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
   } catch(e) { console.error('GET /api/providers:', e); res.json([]); }
 });
