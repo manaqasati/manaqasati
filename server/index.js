@@ -2058,8 +2058,7 @@ app.get('/api/provider/conversations', auth, async (req, res) => {
         (SELECT created_at FROM messages WHERE ((sender_id=$1 AND receiver_id=r.client_id) OR (sender_id=r.client_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_time,
         (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=r.client_id AND is_read=FALSE) as unread
       FROM requests r JOIN users u ON u.id=r.client_id
-      WHERE (r.assigned_provider_id=$1 OR EXISTS(SELECT 1 FROM messages m2 WHERE m2.request_id=r.id AND m2.sender_id=$1))
-        AND EXISTS(SELECT 1 FROM messages WHERE request_id=r.id)
+      WHERE EXISTS(SELECT 1 FROM messages m2 WHERE (m2.sender_id=$1 AND m2.receiver_id=r.client_id) OR (m2.sender_id=r.client_id AND m2.receiver_id=$1))
       ORDER BY r.client_id, last_time DESC NULLS LAST
     `, [req.user.id]);
     res.json(r.rows);
