@@ -447,6 +447,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <button onclick="toggleTheme()" aria-label="الوضع الليلي" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;padding:7px;border-radius:8px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
       <button onclick="history.length>1?history.back():location.href='/'" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;padding:7px 10px;border-radius:8px;display:flex;align-items:center;font-family:Tajawal,sans-serif"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
       <div class="topbar-title" id="pageTitle">الرئيسية</div>
+      <a id="switchDash" href="/dashboard-client.html" title="التبديل إلى لوحة العميل" style="display:none;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 12px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:800;text-decoration:none;margin-right:8px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>لوحة العميل</a>
     </div>
     <button class="btn-new" onclick="gotoPage('browse')">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -720,6 +721,7 @@ function _setAvatar(img){
   var ma=_el('mobAv');if(ma)ma.textContent=(_me.name||'م')[0];
   var cached=localStorage.getItem('pav_'+_me.id);if(cached)_setAvatar(cached);
   _api('/api/provider/profile').then(function(p){
+    try{ if(p&&p.can_request){ var _sb=document.getElementById('switchDash'); if(_sb)_sb.style.display='flex'; } }catch(e){}
     if(p&&p.profile_image){localStorage.setItem('pav_'+_me.id,p.profile_image);_setAvatar(p.profile_image);}
   });
 })();
