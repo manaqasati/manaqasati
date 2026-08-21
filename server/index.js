@@ -1546,6 +1546,31 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
     try { await pool.query("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
+    // توحيد التخصصات الإنجليزية القديمة إلى العربية (مرة واحدة، آمن عبر array_replace)
+    try {
+      const _specMap = {
+        'Aluminum':'ألمنيوم','Cooling and air conditioning':'تبريد وتكييف','Air conditioning':'تبريد وتكييف',
+        'Electricity':'كهرباء','Electrical':'كهرباء','Plumbing':'سباكة','Carpentry':'نجارة','Cleaning':'تنظيف',
+        'Furniture moving':'نقل عفش','Blacksmithing':'حدادة','Metalwork':'حدادة','Aluminium':'ألمنيوم',
+        'Swimming pools':'مسابح','Surveillance cameras':'كاميرات مراقبة','Cameras':'كاميرات مراقبة',
+        'Networks and internet':'شبكات وإنترنت','Networks':'شبكات وإنترنت','Umbrellas and barriers':'مظلات وسواتر',
+        'Thermal insulation':'عزل حراري','Insulation':'عزل حراري','Pest control':'مكافحة حشرات',
+        'Building':'بناء','Construction':'بناء','Gypsum':'جبس','Water leak detection':'كشف تسربات المياه',
+        'Tank cleaning':'تنظيف خزانات','Painting and decoration':'دهانات وديكور','Painting':'دهانات وديكور',
+        'Kitchen installation':'تركيب مطابخ','Landscaping':'تنسيق حدائق','Glass and mirrors':'زجاج ومرايا',
+        'Tiles and marble':'بلاط ورخام','Tiling':'بلاط ورخام','Furniture installation':'تركيب أثاث',
+        'Furniture assembly':'تركيب أثاث','Parquet':'أرضيات خشبية وباركيه','Wooden floors':'أرضيات خشبية وباركيه',
+        'Carpet cleaning':'تنظيف سجاد وكنب','Elevator maintenance':'صيانة مصاعد',
+        'Automatic doors and gates':'أبواب وبوابات أوتوماتيكية','Doors and gates':'أبواب وبوابات أوتوماتيكية',
+        'Building facades cleaning':'تنظيف واجهات المباني','Facade cleaning':'تنظيف واجهات المباني',
+        'Restoration of buildings':'ترميم مبانٍ','Restoration':'ترميم مبانٍ','Well drilling':'حفر آبار ومضخات',
+        'Cladding':'كلادينج وواجهات','Cladding and facades':'كلادينج وواجهات','Solar systems':'أنظمة شمسية',
+        'Waterproofing':'عوازل مائية','Heavy equipment':'معدات ثقيلة','General maintenance':'صيانة عامة'
+      };
+      for (const en of Object.keys(_specMap)) {
+        await pool.query("UPDATE users SET specialties = array_replace(specialties, $1, $2) WHERE $1 = ANY(specialties)", [en, _specMap[en]]);
+      }
+    } catch(e){ console.error('spec migration:', e.message); }
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
     try {
       // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
