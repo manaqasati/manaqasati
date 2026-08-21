@@ -1903,7 +1903,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
 // ═══ PROFILES ═══
 app.post('/api/me/enable-provider', auth, async (req, res) => {
   try {
-    const specs = Array.isArray(req.body.specialties) ? req.body.specialties.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,10) : [];
+    const specs = Array.isArray(req.body.specialties) ? req.body.specialties.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,5) : [];
     const city = String(req.body.city||'').trim().slice(0,100);
     const bio = String(req.body.bio||'').trim().slice(0,1000);
     if (!specs.length) return res.status(400).json({ message: 'اختر تخصصاً واحداً على الأقل' });
