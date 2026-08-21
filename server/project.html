@@ -298,7 +298,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <span style="flex:1;color:#64748b;font-size:12px">جارٍ التسجيل...</span>
       <button onclick="pStopRec(true)" title="إرسال" style="width:38px;height:38px;background:#1e3a8a;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="transform:scaleX(-1)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
     </div>
-    <style>@keyframes precpulse{0%,100%{opacity:1}50%{opacity:.3}}</style>
+    <style>@keyframes precpulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pvoicep{display:flex;align-items:center;gap:8px;min-width:190px;max-width:220px}
+.pvoicep .pvp-btn{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;background:#1e3a8a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.pvoicep.me .pvp-btn{background:#fff;color:#1e3a8a}
+.pvoicep .pvp-wave{flex:1;display:flex;align-items:center;gap:2px;height:28px}
+.pvoicep .pvp-wave i{flex:1;min-width:2px;border-radius:2px;background:#bcd0f0}
+.pvoicep.me .pvp-wave i{background:rgba(255,255,255,.4)}
+.pvoicep .pvp-wave i.on{background:#1e3a8a}
+.pvoicep.me .pvp-wave i.on{background:#fff}
+.pvoicep .pvp-t{flex-shrink:0;font-size:10px;opacity:.7;min-width:28px}</style>
   </div>
 </div>
 
@@ -933,7 +942,7 @@ function renderMsgs(wrap){
   wrap.innerHTML=_chatMsgs.map(function(m){
     var isMe=u&&String(m.sender_id)===String(u.id);
     return '<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isMe?'#1e3a8a':'#fff')+';color:'+(isMe?'#fff':'#1e293b')+';align-self:'+(isMe?'flex-end':'flex-start')+';font-size:13px;line-height:1.6;border:1px solid #e6eefb">'
-      +(m.attachment_url?((m.attachment_type||'').indexOf('audio')===0?'<audio controls preload="metadata" src="'+esc(m.attachment_url)+'" style="max-width:200px;height:40px;display:block;margin-bottom:'+(m.content?'6px':'0')+'"></audio>':((m.attachment_type||'').indexOf('image')===0?'<img src="'+esc(m.attachment_url)+'" onclick="openViewer(this.src)" style="max-width:170px;border-radius:8px;display:block;cursor:pointer;margin-bottom:'+(m.content?'6px':'0')+'">':'<a href="'+esc(m.attachment_url)+'" target="_blank" style="color:inherit;text-decoration:underline">📎 مرفق</a>')):'')
+      +(m.attachment_url?((m.attachment_type||'').indexOf('audio')===0?pVpHtml(m.attachment_url,m.waveform,isMe):((m.attachment_type||'').indexOf('image')===0?'<img src="'+esc(m.attachment_url)+'" onclick="openViewer(this.src)" style="max-width:170px;border-radius:8px;display:block;cursor:pointer;margin-bottom:'+(m.content?'6px':'0')+'">':'<a href="'+esc(m.attachment_url)+'" target="_blank" style="color:inherit;text-decoration:underline">📎 مرفق</a>')):'')
       +esc(m.content)
       +'<div style="font-size:10px;opacity:.45;margin-top:3px">'+ago(m.created_at)+'</div>'
       +'</div>';
@@ -941,6 +950,39 @@ function renderMsgs(wrap){
   wrap.scrollTop=wrap.scrollHeight;
 }
 
+function pExtractWaveform(blob,cb){
+  try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC){cb('');return;}
+    var ac=new AC(),fr=new FileReader();
+    fr.onload=function(e){ ac.decodeAudioData(e.target.result,function(buf){
+      var data=buf.getChannelData(0),N=40,block=Math.max(1,Math.floor(data.length/N)),peaks=[];
+      for(var i=0;i<N;i++){ var st=i*block,sum=0; for(var j=0;j<block;j++){ var v=data[st+j]||0; sum+=v*v; } peaks.push(Math.sqrt(sum/block)); }
+      var mx=Math.max.apply(null,peaks)||1; try{ac.close();}catch(_){}
+      cb(peaks.map(function(x){return Math.round(x/mx*100);}).join(','));
+    },function(){ try{ac.close();}catch(_){}; cb(''); }); };
+    fr.readAsArrayBuffer(blob);
+  }catch(e){ cb(''); }
+}
+function pVpHtml(url,wave,isMe){
+  var bars=String(wave||'').split(',').filter(function(x){return x!==''&&!isNaN(x);});
+  if(bars.length<6) bars='15,35,55,25,45,70,40,60,30,50,65,45,35,55,70,50,40,30,45,60,35,50,40,55,30,45,60,40,50,35,45,60,50,35,40,55,45,30,40,50'.split(',');
+  var barsHtml=bars.map(function(hh){return '<i style="height:'+Math.max(12,parseInt(hh))+'%"></i>';}).join('');
+  return '<div class="pvoicep'+(isMe?' me':'')+'" data-url="'+esc(url)+'" onclick="pVpToggle(this,event)"><button class="pvp-btn" type="button">▶</button><div class="pvp-wave">'+barsHtml+'</div><span class="pvp-t">0:00</span></div>';
+}
+var _pvpAudio=null,_pvpCur=null;
+function pVpToggle(el,ev){ if(ev)ev.stopPropagation(); var url=el.getAttribute('data-url');
+  if(_pvpCur&&_pvpCur!==el)_pVpStop(_pvpCur);
+  if(el.classList.contains('playing')){ if(_pvpAudio)_pvpAudio.pause(); return; }
+  if(!_pvpAudio||_pvpCur!==el){ if(_pvpAudio){try{_pvpAudio.pause();}catch(_){}} _pvpAudio=new Audio(url); _pvpCur=el;
+    _pvpAudio.onended=function(){ _pVpStop(el); };
+    _pvpAudio.ontimeupdate=function(){ _pVpProg(el,_pvpAudio.currentTime,_pvpAudio.duration||0); }; }
+  el.classList.add('playing'); el.querySelector('.pvp-btn').textContent='⏸'; _pvpAudio.play().catch(function(){});
+}
+function _pVpStop(el){ el.classList.remove('playing'); var b=el.querySelector('.pvp-btn'); if(b)b.textContent='▶'; _pVpProg(el,0,0); }
+function _pVpProg(el,cur,dur){ var pct=dur>0?(cur/dur):0,bars=el.querySelectorAll('.pvp-wave i');
+  for(var i=0;i<bars.length;i++){ bars[i].classList.toggle('on',(i/bars.length)<=pct); }
+  var t=el.querySelector('.pvp-t'); if(t){ var sec=Math.floor(cur||0); t.textContent=Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2); }
+  if(el.classList.contains('playing')&&_pvpAudio&&_pvpAudio.paused){ el.classList.remove('playing'); var b=el.querySelector('.pvp-btn'); if(b)b.textContent='▶'; }
+}
 var _pRec=null,_pChunks=[],_pTimer=null,_pStart=0,_pStream=null,_pPendAttach=null;
 function pToggleSendMic(){
   var hasText=((document.getElementById('chat-input')||{}).value||'').trim().length>0;
@@ -981,9 +1023,11 @@ function pStopRec(send){
     if(dur<1){ alert('التسجيل قصير جداً'); return; }
     var blob=new Blob(_pChunks,{type:(_pChunks[0]&&_pChunks[0].type)||'audio/webm'});
     var ext=(blob.type.indexOf('mp4')>=0)?'m4a':'webm';
-    var rd=new FileReader();
-    rd.onload=function(e){ _pPendAttach={data:e.target.result,type:blob.type||'audio/webm',name:'voice-'+dur+'s.'+ext}; sendChatMsg(); };
-    rd.readAsDataURL(blob);
+    pExtractWaveform(blob,function(wf){
+      var rd=new FileReader();
+      rd.onload=function(e){ _pPendAttach={data:e.target.result,type:blob.type||'audio/webm',name:'voice-'+dur+'s.'+ext,waveform:wf}; sendChatMsg(); };
+      rd.readAsDataURL(blob);
+    });
   };
   try{ _pRec.stop(); }catch(e){ pRecCleanup(); }
 }
@@ -995,7 +1039,7 @@ async function sendChatMsg(){
   if(!_chatReceiver){alert('تعذر تحديد المستلم');return;}
   inp.value=''; pToggleSendMic();
   var payload={request_id:_chatReqId,receiver_id:_chatReceiver,content:msg};
-  if(att){payload.attachment_url=att.data;payload.attachment_type=att.type;payload.attachment_name=att.name;}
+  if(att){payload.attachment_url=att.data;payload.attachment_type=att.type;payload.attachment_name=att.name;if(att.waveform)payload.waveform=att.waveform;}
   try{
     var r=await fetch(API+'/api/messages',{
       method:'POST',
