@@ -9,7 +9,7 @@
     var t=localStorage.getItem('token');
     var u=JSON.parse(localStorage.getItem('user')||'{}');
     if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/auth.html'); return; }
-    if(u.role==='provider'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-provider.html'); return; }
+    if(u.role==='provider' && !u.can_request){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-provider.html'); return; }
     if(u.role==='admin'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-admin.html'); return; }
   }catch(e){}
 })();
@@ -3033,6 +3033,7 @@ function fmtIns(id,kind){
 </div>
 <script>
 function _bpProfileState(p){
+  try{ var _u=JSON.parse(localStorage.getItem('user')||'{}'); if(p){ _u.can_provide=!!p.can_provide; localStorage.setItem('user',JSON.stringify(_u)); } }catch(e){}
   var box=document.getElementById('becomeProvBox'); if(!box)return; box.style.display='block';
   var canP=p&&p.can_provide;
   var b1=document.getElementById('becomeProvBtn'), b2=document.getElementById('gotoProvBtn');
@@ -3069,13 +3070,13 @@ function submitBecomeProv(btn){
   btn.disabled=true; btn.textContent='جارٍ التفعيل...';
   jFetch('/api/me/enable-provider',{method:'POST',body:JSON.stringify({specialties:specs,city:city,bio:bio})}).then(function(r){
     btn.disabled=false; btn.textContent='تفعيل الآن';
-    if(r&&r.ok){ if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success'); closeBecomeProv(); setTimeout(function(){ location.href='/dashboard-provider.html'; },900); }
+    if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=true;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success'); closeBecomeProv(); setTimeout(function(){ location.href='/dashboard-provider.html'; },900); }
     else if(typeof showToast==='function')showToast((r&&r.message)||'تعذّر التفعيل','error');
   }).catch(function(){ btn.disabled=false; btn.textContent='تفعيل الآن'; if(typeof showToast==='function')showToast('تعذّر التفعيل','error'); });
 }
 </script>
 <script>
-function _initSwitchDash(){ try{ jFetch('/api/client/profile').then(function(p){ if(p&&p.can_provide){ var b=document.getElementById('switchDash'); if(b)b.style.display='flex'; } }).catch(function(){}); }catch(e){} }
+function _initSwitchDash(){ try{ jFetch('/api/client/profile').then(function(p){ if(p){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=!!p.can_provide;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(p.can_provide){ var b=document.getElementById('switchDash'); if(b)b.style.display='flex'; } } }).catch(function(){}); }catch(e){} }
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(_initSwitchDash,600); });
 </script></body>
 </html>
