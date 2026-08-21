@@ -3043,9 +3043,14 @@ function _bpProfileState(p){
 function openBecomeProv(){
   var m=document.getElementById('becomeProvModal'); m.style.display='flex';
   var wrap=document.getElementById('bpSpecs');
-  if(!wrap.children.length){
-    var cats=(window.CATEGORIES||['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','حدادة','ألمنيوم','بناء','دهانات وديكور','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','أخرى']);
+  var _renderCats=function(cats){
     wrap.innerHTML=cats.map(function(c){return '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;background:#f1f5f9;padding:6px 11px;border-radius:20px;cursor:pointer"><input type="checkbox" value="'+String(c).replace(/"/g,'')+'" style="accent-color:var(--p,#1d4ed8)">'+c+'</label>';}).join('');
+  };
+  if(!wrap.children.length){
+    var _fallback=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','حدادة','ألمنيوم','بناء','دهانات وديكور','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','أخرى'];
+    fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+      var list=(d&&(d.categories||d))||[]; _renderCats((Array.isArray(list)&&list.length)?list:_fallback);
+    }).catch(function(){ _renderCats(_fallback); });
   }
   var cs=document.getElementById('bpCity');
   if(cs && !cs.options.length && typeof fillCitySelect==='function')fillCitySelect(cs);
