@@ -1393,8 +1393,16 @@ function optionalAuth(req, res, next) {
   next();
 }
 function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
-function clientOnly(req, res, next) { if (req.user.role !== 'client') return res.status(403).json({ message: 'للعملاء فقط' }); next(); }
-function providerOnly(req, res, next) { if (req.user.role !== 'provider') return res.status(403).json({ message: 'لمزودي الخدمة فقط' }); next(); }
+async function clientOnly(req, res, next) {
+  if (req.user.role === 'client' || req.user.role === 'admin') return next();
+  try { const r = await pool.query('SELECT can_request FROM users WHERE id=$1', [req.user.id]); if (r.rows[0] && r.rows[0].can_request) return next(); } catch(e){}
+  return res.status(403).json({ message: 'للعملاء فقط' });
+}
+async function providerOnly(req, res, next) {
+  if (req.user.role === 'provider' || req.user.role === 'admin') return next();
+  try { const r = await pool.query('SELECT can_provide FROM users WHERE id=$1', [req.user.id]); if (r.rows[0] && r.rows[0].can_provide) return next(); } catch(e){}
+  return res.status(403).json({ message: 'لمزودي الخدمة فقط' });
+}
 
 // ═══ DATABASE SETUP ═══
 async function setupDatabase() {
@@ -1534,6 +1542,10 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level INTEGER DEFAULT 0'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_role VARCHAR(40)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_provide BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
+    try { await pool.query("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
     try {
       // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
@@ -1889,9 +1901,27 @@ app.delete('/api/account/delete', auth, async (req, res) => {
 });
 
 // ═══ PROFILES ═══
+app.post('/api/me/enable-provider', auth, async (req, res) => {
+  try {
+    const specs = Array.isArray(req.body.specialties) ? req.body.specialties.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,10) : [];
+    const city = String(req.body.city||'').trim().slice(0,100);
+    const bio = String(req.body.bio||'').trim().slice(0,1000);
+    if (!specs.length) return res.status(400).json({ message: 'اختر تخصصاً واحداً على الأقل' });
+    if (!city) return res.status(400).json({ message: 'أدخل مدينتك' });
+    await pool.query(
+      "UPDATE users SET can_provide=TRUE, specialties=$1, city=COALESCE(NULLIF($2,''),city), bio=COALESCE(NULLIF($3,''),bio), notify_categories=COALESCE(notify_categories,$1) WHERE id=$4",
+      [specs, city, bio, req.user.id]
+    );
+    res.json({ ok: true, message: 'تم تفعيل تقديم العروض' });
+  } catch(e){ console.error('enable-provider:', e.message); res.status(500).json({ message: 'تعذّر التفعيل' }); }
+});
+app.post('/api/me/enable-request', auth, async (req, res) => {
+  try { await pool.query('UPDATE users SET can_request=TRUE WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
+  catch(e){ res.status(500).json({ message: 'تعذّر التفعيل' }); }
+});
 app.get('/api/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,created_at FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,role,specialties,notify_categories,bio,city,badge,is_active,experience_years,portfolio_images,profile_image,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,COALESCE(can_provide,FALSE) as can_provide,COALESCE(can_request,FALSE) as can_request,created_at FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     // خصوصية الموقع: الإحداثيات الدقيقة وجوال العميل للمالك أو المزوّد المعتمد فقط
     const row = r.rows[0];
@@ -1936,7 +1966,7 @@ app.put('/api/profile', auth, async (req, res) => {
 
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
