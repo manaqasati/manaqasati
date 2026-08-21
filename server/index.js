@@ -1461,6 +1461,7 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS waveform TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_req ON messages(request_id, created_at)`);
@@ -2901,7 +2902,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
 
 app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
   try {
-    const { request_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to } = req.body;
+    const { request_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, waveform } = req.body;
     if (!request_id || !receiver_id) return res.status(400).json({ message: 'البيانات ناقصة' });
     const msgText = String(content || '').trim();
     // يُسمح برسالة بلا نص إن كان فيها مرفق
@@ -2918,9 +2919,9 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
       try { const up = await uploadToCloud(attUrl, 'manaqasa/chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
     }
     const r = await pool.query(
-      `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
-      [request_id, req.user.id, receiver_id, msgText, attUrl, attachment_type || null, attachment_name || null, reply_to || null]
+      `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, waveform, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING *`,
+      [request_id, req.user.id, receiver_id, msgText, attUrl, attachment_type || null, attachment_name || null, reply_to || null, (typeof waveform==='string'?waveform.slice(0,300):null)]
     );
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
