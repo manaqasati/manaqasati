@@ -13,7 +13,7 @@
     var ref=document.referrer||'';
     if(ref && ref.indexOf(location.origin)===0 && /(project|pro|chat|dalil|post|auth)/.test(ref)) return;
     var p=new URLSearchParams(location.search); if(p.get('src')||p.get('post')) return;
-    var d = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
+    var d = _dashFor(u);
     document.documentElement.style.visibility='hidden';
     location.replace(d);
   }catch(e){}
@@ -1171,9 +1171,11 @@ function ago(d){
 function getUser(){
   try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return (t&&u)?u:null;}catch(e){return null;}
 }
+function effRole(u){ if(!u)return null; if(u.role==='admin')return 'admin'; var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
+function _dashFor(u){ return effRole(u)==='provider'?'/dashboard-provider.html':(effRole(u)==='admin'?'/dashboard-admin.html':'/dashboard-client.html'); }
 function handleBidClick(reqId){
   var u=getUser();
-  if(u){var dash=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html';location.href=dash+'?bid='+reqId;return;}
+  if(u){var dash=effRole(u)==='provider'?'dashboard-provider.html':'dashboard-client.html';location.href=dash+'?bid='+reqId;return;}
   // الزائر: يُوجّه لصفحة المشروع أولاً (يشوف التفاصيل ويتحمّس)، والتسجيل يُطلب عند تقديم العرض هناك
   var r=null; try{ r=(typeof ALL!=='undefined'&&ALL)?ALL.filter(function(x){return x.id===reqId;})[0]:null; }catch(e){}
   var slug=r?_reqSlug(r):('m-'+reqId);
@@ -1352,7 +1354,7 @@ function syncAuthUI(){
       var oc=(b.getAttribute('onclick')||'');
       if(oc.indexOf('goLogin')>-1){ // زر تسجيل الدخول → لوحة التحكم
         b.textContent='لوحة التحكم';
-        b.setAttribute('onclick', "location.href='"+(u.role==='provider'?'dashboard-provider.html':'dashboard-client.html')+"'");
+        b.setAttribute('onclick', "location.href='"+(effRole(u)==='provider'?'dashboard-provider.html':'dashboard-client.html')+"'");
       } else if(oc.indexOf("goAuthRole('client')")>-1 && t.indexOf('ابدأ')>-1){ // ابدأ مجاناً → إخفاء للمسجّل
         b.style.display='none';
       }
@@ -1376,7 +1378,7 @@ function goAuthRole(role){
 }
 function goLogin(){
   var u=getUser();
-  if(u){ location.href=u.role==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
+  if(u){ location.href=effRole(u)==='provider'?'dashboard-provider.html':'dashboard-client.html'; return; }
   try{sessionStorage.setItem('auth_mode','login');}catch(e){}
   location.href='auth.html';
 }
