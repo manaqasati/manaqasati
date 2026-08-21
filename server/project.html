@@ -367,6 +367,7 @@ function ph966(p){if(!p)return'';var n=String(p).replace(/[^0-9]/g,'');if(n.star
 function mkStars(n){var s='';for(var i=1;i<=5;i++){var f=i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)';s+='<svg width="12" height="12" fill="'+f+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}return s;}
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
 function getUser(){try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return(t&&u)?u:null;}catch(e){return null;}}
+function effRole(u){ if(!u)return null; var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
 function getToken(){return localStorage.getItem('token')||'';}
 
 
@@ -386,7 +387,7 @@ function getReqId(){
   var u=getUser();
   var btn=document.getElementById('navBtn');
   if(u&&btn){
-    var dash=u.role==='provider'?'/dashboard-provider.html':'/dashboard-client.html';
+    var dash=effRole(u)==='provider'?'/dashboard-provider.html':'/dashboard-client.html';
     btn.textContent='لوحة التحكم';
     btn.onclick=function(){location.href=dash;};  // مسار نظيف بدون hash
     btn.style.background='var(--p2)';
@@ -575,7 +576,7 @@ function render(){
 
   var u=getUser();
   var isOwner=u&&u.role==='client'&&(String(u.id)===String(req.client_id)||String(u.id)===String(req.client&&req.client.id));
-  var isProvider=u&&u.role==='provider';
+  var isProvider=u&&effRole(u)==='provider';
   var client=req.client||{};
   var clientPhone=ph966(client.phone||req.client_phone||'');
   var clientName=esc(client.name||req.client_name||'صاحب المشروع');
@@ -766,7 +767,7 @@ function render(){
     h+='</div>';
     h+='<div id="bids-list"></div>';
   }
-  if(req.status==='open'&&!isOwner&&(!u||u.role==='provider')){
+  if(req.status==='open'&&!isOwner&&(!u||effRole(u)==='provider'||u.can_provide)){
     h+='<div class="bid-cta"><div class="bid-cta-txt">هل أنت مزوّد خدمة؟ قدّم عرضك الآن وتواصل مع العميل مباشرة</div><button class="bid-cta-btn" onclick="openBid()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>قدّم عرضك الآن</button></div>';
   }
   h+='</div></div>';
@@ -828,7 +829,7 @@ function _useBidTemplate(){var t=document.getElementById('bid-note');if(!t)retur
 function openBid(){
   var u=getUser();
   if(!u){goLogin();return;}
-  if(u.role!=='provider'){alert('هذا الزر للمزودين فقط — يرجى تسجيل الدخول كمزود');return;}
+  if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
   document.getElementById('bidOverlay').classList.add('on');
   document.body.style.overflow='hidden';
 }
