@@ -354,6 +354,12 @@ tbody tr:hover{background:var(--bg)}
 .fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
+.ms{position:relative;display:inline-block}
+.ms-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:8px 12px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:600;color:var(--text2,#334155);cursor:pointer;white-space:nowrap}
+.ms-panel{display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:60;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.14);padding:6px;max-height:280px;overflow-y:auto;min-width:200px}
+.ms-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.ms-item:hover{background:var(--bg,#f1f5f9)}
+.ms-item input{accent-color:var(--p,#1d4ed8);width:15px;height:15px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -435,8 +441,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="card-head"><h3>إدارة المستخدمين</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث..." oninput="filterUsers()"></div><button class="act-btn ab-default" onclick="openBroadcast()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>رسالة جماعية</button><button class="act-btn ab-default" onclick="exportUsers()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير Excel</button></div></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterRole('all',this)">الكل</button><button class="ftab" onclick="filterRole('client',this)">العملاء</button><button class="ftab" onclick="filterRole('provider',this)">المزودون</button></div>
         <div class="ufilters" id="user-filters">
-          <select id="uf-city" onchange="renderUsers()"><option value="">كل المدن</option></select>
-          <select id="uf-spec" onchange="renderUsers()"><option value="">كل التخصصات</option></select>
+          <div class="ms" id="ms-city"><button type="button" class="ms-btn" onclick="msToggle('city')"><span id="ms-city-lbl">كل المدن</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-city-panel"></div></div>
+          <div class="ms" id="ms-spec"><button type="button" class="ms-btn" onclick="msToggle('spec')"><span id="ms-spec-lbl">كل التخصصات</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-spec-panel"></div></div>
           <select id="uf-status" onchange="renderUsers()"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
           <select id="uf-badge" onchange="renderUsers()"><option value="">كل الألقاب</option></select>
           <button class="act-btn ab-default" onclick="resetUserFilters()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>مسح الفلاتر</button>
@@ -889,16 +895,16 @@ function loadUsers(){
 function filterRole(role,el){_roleFilter=role;document.querySelectorAll('#page-users .ftab').forEach(function(t){t.classList.remove('on');});if(el)el.classList.add('on');renderUsers();}
 function filterUsers(){_searchTerm=document.getElementById('user-search').value.toLowerCase();renderUsers();}
 function getFilteredUsers(){
-  var ci=(document.getElementById('uf-city')||{}).value||'';
-  var sp=(document.getElementById('uf-spec')||{}).value||'';
+  var ci=msVals('city');
+  var sp=msVals('spec');
   var stt=(document.getElementById('uf-status')||{}).value||'';
   var bd=(document.getElementById('uf-badge')||{}).value||'';
   return (_allUsers||[]).filter(function(u){
     if(u.role==='admin')return false;
     if(_roleFilter!=='all'&&u.role!==_roleFilter)return false;
     if(_searchTerm&&!(u.name||'').toLowerCase().includes(_searchTerm)&&!(u.email||'').toLowerCase().includes(_searchTerm)&&!String(u.phone||'').includes(_searchTerm))return false;
-    if(ci&&u.city!==ci)return false;
-    if(sp){var arr=(u.specialties||[]).concat(u.notify_categories||[]);if(arr.indexOf(sp)<0)return false;}
+    if(ci.length&&ci.indexOf(u.city)<0)return false;
+    if(sp.length){var _a=(u.specialties||[]).concat(u.notify_categories||[]);if(!sp.some(function(x){return _a.indexOf(x)>=0;}))return false;}
     if(stt==='active'&&!u.is_active)return false;
     if(stt==='banned'&&u.is_active)return false;
     if(bd){if(bd==='none'){if(u.badge&&u.badge!=='none')return false;}else if(u.badge!==bd)return false;}
@@ -928,43 +934,52 @@ function renderUsers(){
   }).join('')+'</tbody></table>';
   updateSelBar();
 }
+var _MS={};
+function msSetup(key,labelAll,opts,cb){ _MS[key]={sel:(_MS[key]&&_MS[key].sel)||[],opts:opts||[],labelAll:labelAll,cb:cb}; msRender(key); }
+function msRender(key){
+  var m=_MS[key],panel=document.getElementById('ms-'+key+'-panel'); if(!m||!panel)return;
+  panel.innerHTML=m.opts.map(function(o,i){return '<label class="ms-item"><input type="checkbox" data-i="'+i+'"'+(m.sel.indexOf(o)>=0?' checked':'')+'><span>'+esc(o)+'</span></label>';}).join('')||'<div style="padding:8px;color:var(--muted);font-size:12px">لا خيارات</div>';
+  panel.querySelectorAll('input').forEach(function(inp){ inp.onchange=function(){ var o=m.opts[+inp.getAttribute('data-i')]; var k=m.sel.indexOf(o); if(inp.checked){if(k<0)m.sel.push(o);}else{if(k>=0)m.sel.splice(k,1);} msLabel(key); if(m.cb)m.cb(); }; });
+  msLabel(key);
+}
+function msLabel(key){ var m=_MS[key],l=document.getElementById('ms-'+key+'-lbl'); if(m&&l)l.textContent=m.sel.length?(m.sel.length+' محدّد'):m.labelAll; }
+function msToggle(key){ var p=document.getElementById('ms-'+key+'-panel'); if(!p)return; var open=p.style.display==='block'; document.querySelectorAll('.ms-panel').forEach(function(x){x.style.display='none';}); p.style.display=open?'none':'block'; }
+function msVals(key){ return (_MS[key]&&_MS[key].sel)||[]; }
+function msClear(key){ if(_MS[key]){_MS[key].sel=[];msRender(key);} }
+document.addEventListener('click',function(e){ if(!e.target.closest('.ms')){ document.querySelectorAll('.ms-panel').forEach(function(x){x.style.display='none';}); } });
 function fillUserFilters(){
-  var cities={},specs={};
+  var cityset={},specset={}, _isAr=function(x){return /[\u0600-\u06FF]/.test(x);};
   (_allUsers||[]).forEach(function(u){
     if(u.role==='admin')return;
-    if(u.city)cities[u.city]=1;
-    (u.specialties||[]).concat(u.notify_categories||[]).forEach(function(sp){if(sp)specs[sp]=1;});
+    if(u.city)cityset[u.city]=1;
+    (u.specialties||[]).concat(u.notify_categories||[]).forEach(function(sp){if(sp&&_isAr(sp))specset[sp]=1;});
   });
-  var cSel=document.getElementById('uf-city');
-  if(cSel&&cSel.options.length<=1){Object.keys(cities).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cSel.appendChild(o);});}
-  var spSel=document.getElementById('uf-spec');
-  if(spSel&&spSel.options.length<=1){
-    // اعرض العربي الموحّد فقط (يتجاهل الإنجليزي القديم)
-    var _isAr=function(x){return /[\u0600-\u06FF]/.test(x);};
-    var _cur=Object.keys(specs).filter(_isAr);
-    fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
-      var canon=(d&&(d.categories||d))||[]; var set={}; canon.forEach(function(c){set[c]=1;}); _cur.forEach(function(c){set[c]=1;});
-      var list=Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');});
-      if(spSel.options.length<=1){ list.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;spSel.appendChild(o);}); }
-    }).catch(function(){ _cur.sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;spSel.appendChild(o);}); });
-  }
+  var baseCities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','الرس','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء','حفر الباطن','الخرج','المجمعة','الزلفي','شقراء','الدوادمي','القويعية','وادي الدواسر','بيشة','محايل عسير','صبيا','أبو عريش','الليث','القنفذة','رابغ','ضباء','الوجه','تيماء','دومة الجندل','طريف'];
+  var citySet2={}; baseCities.forEach(function(c){citySet2[c]=1;}); Object.keys(cityset).forEach(function(c){citySet2[c]=1;});
+  var cityOpts=Object.keys(citySet2).sort(function(a,b){return a.localeCompare(b,'ar');});
+  msSetup('city','كل المدن',cityOpts,renderUsers);
+  fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+    var canon=(d&&(d.categories||d))||[]; var set={}; canon.forEach(function(c){set[c]=1;}); Object.keys(specset).forEach(function(c){set[c]=1;});
+    msSetup('spec','كل التخصصات',Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');}),renderUsers);
+  }).catch(function(){ msSetup('spec','كل التخصصات',Object.keys(specset).sort(),renderUsers); });
   var bSel=document.getElementById('uf-badge');
   if(bSel&&bSel.options.length<=1){(typeof BADGE_CATALOG!=='undefined'?BADGE_CATALOG:[]).forEach(function(b){var o=document.createElement('option');o.value=b.key;o.textContent=b.label;bSel.appendChild(o);});var no=document.createElement('option');no.value='none';no.textContent='بدون لقب';bSel.appendChild(no);}
 }
-function resetUserFilters(){['uf-city','uf-spec','uf-status','uf-badge'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
+function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
 function applyUserFiltersFromHash(){
   var ps=_parseHashParams();
-  [['city','uf-city'],['spec','uf-spec'],['status','uf-status'],['badge','uf-badge']].forEach(function(m){
+  [['status','uf-status'],['badge','uf-badge']].forEach(function(m){
     var e=document.getElementById(m[1]); if(e&&ps[m[0]]!=null){ e.value=ps[m[0]]; }
   });
+  ['city','spec'].forEach(function(k){ if(ps[k]!=null&&_MS[k]){ String(ps[k]).split(',').forEach(function(x){ x=x.trim(); if(x&&_MS[k].opts.indexOf(x)<0)_MS[k].opts.push(x); if(x&&_MS[k].sel.indexOf(x)<0)_MS[k].sel.push(x); }); msRender(k); } });
   var srch=document.getElementById('user-search'); if(srch&&ps.q!=null){ srch.value=ps.q; _searchTerm=(ps.q||'').toLowerCase(); }
 }
 function syncUserFiltersToHash(){
   if(window._skipHash)return;
   var v=function(id){return (document.getElementById(id)||{}).value||'';};
   var parts=[];
-  if(v('uf-city'))parts.push('city='+encodeURIComponent(v('uf-city')));
-  if(v('uf-spec'))parts.push('spec='+encodeURIComponent(v('uf-spec')));
+  if(msVals('city').length)parts.push('city='+encodeURIComponent(msVals('city').join(',')));
+  if(msVals('spec').length)parts.push('spec='+encodeURIComponent(msVals('spec').join(',')));
   if(v('uf-status'))parts.push('status='+encodeURIComponent(v('uf-status')));
   if(v('uf-badge'))parts.push('badge='+encodeURIComponent(v('uf-badge')));
   var q=((document.getElementById('user-search')||{}).value||'').trim();
