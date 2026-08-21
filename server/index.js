@@ -29,7 +29,8 @@ if (process.env.R2_ACCESS_KEY && process.env.R2_SECRET_KEY && process.env.R2_END
 // أنواع الملفات المسموحة فقط — يمنع رفع HTML/SVG قابل للتنفيذ (XSS مخزّن)
 const UPLOAD_TYPES = {
   'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp',
-  'image/gif':'gif', 'image/heic':'heic', 'application/pdf':'pdf'
+  'image/gif':'gif', 'image/heic':'heic', 'application/pdf':'pdf',
+  'audio/webm':'webm', 'audio/ogg':'ogg', 'audio/mp4':'m4a', 'audio/mpeg':'mp3', 'audio/wav':'wav', 'audio/x-m4a':'m4a', 'audio/aac':'aac'
 };
 // ملفات فنية/مكتبية تُحمَّل فقط (غير قابلة للتنفيذ في المتصفح) — تُقبل بالامتداد
 const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, csv:1, rvt:1, pptx:1, ppt:1 };
@@ -2912,10 +2913,14 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
       [req.user.id, receiver_id]
     );
     if (blk.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال الرسالة (الحساب محظور)' });
+    let attUrl = attachment_url || null;
+    if (attUrl && String(attUrl).startsWith('data:')) {
+      try { const up = await uploadToCloud(attUrl, 'manaqasa/chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
+    }
     const r = await pool.query(
       `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
-      [request_id, req.user.id, receiver_id, msgText, attachment_url || null, attachment_type || null, attachment_name || null, reply_to || null]
+      [request_id, req.user.id, receiver_id, msgText, attUrl, attachment_type || null, attachment_name || null, reply_to || null]
     );
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
