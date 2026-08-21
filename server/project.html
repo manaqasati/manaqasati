@@ -286,10 +286,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div id="chat-msgs-wrap" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#f0f5ff;min-height:200px;max-height:50vh">
       <div style="text-align:center;color:#64748b;font-size:12px;padding:20px">جاري التحميل...</div>
     </div>
-    <div style="padding:12px;border-top:1px solid #e6eefb;display:flex;gap:8px;background:#fff">
-      <input id="chat-input" placeholder="اكتب رسالتك..." style="flex:1;padding:11px 13px;border:1.5px solid #e6eefb;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}">
-      <button onclick="sendChatMsg()" style="padding:11px 18px;background:#1e3a8a;color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer">إرسال</button>
+    <div id="pInputRow" style="padding:12px;border-top:1px solid #e6eefb;display:flex;gap:8px;background:#fff;align-items:center">
+      <input id="chat-input" placeholder="اكتب رسالتك..." style="flex:1;padding:11px 13px;border:1.5px solid #e6eefb;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none" oninput="pToggleSendMic()" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg();}">
+      <button id="pSendBtn" onclick="sendChatMsg()" style="display:none;padding:11px 18px;background:#1e3a8a;color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;cursor:pointer">إرسال</button>
+      <button id="pMicBtn" onclick="pStartRec()" title="رسالة صوتية" style="width:42px;height:42px;flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg></button>
     </div>
+    <div id="pRecBar" style="display:none;padding:12px;border-top:1px solid #e6eefb;background:#fff;align-items:center;gap:10px">
+      <button onclick="pCancelRec()" title="إلغاء" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:18px">🗑️</button>
+      <span style="width:10px;height:10px;border-radius:50%;background:#dc2626;animation:precpulse 1s infinite"></span>
+      <span id="pRecTime" style="font-weight:800;color:#1e293b;font-size:13px">0:00</span>
+      <span style="flex:1;color:#64748b;font-size:12px">جارٍ التسجيل...</span>
+      <button onclick="pStopRec(true)" title="إرسال" style="width:38px;height:38px;background:#1e3a8a;color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="transform:scaleX(-1)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+    </div>
+    <style>@keyframes precpulse{0%,100%{opacity:1}50%{opacity:.3}}</style>
   </div>
 </div>
 
@@ -924,6 +933,7 @@ function renderMsgs(wrap){
   wrap.innerHTML=_chatMsgs.map(function(m){
     var isMe=u&&String(m.sender_id)===String(u.id);
     return '<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isMe?'#1e3a8a':'#fff')+';color:'+(isMe?'#fff':'#1e293b')+';align-self:'+(isMe?'flex-end':'flex-start')+';font-size:13px;line-height:1.6;border:1px solid #e6eefb">'
+      +(m.attachment_url?((m.attachment_type||'').indexOf('audio')===0?'<audio controls preload="metadata" src="'+esc(m.attachment_url)+'" style="max-width:200px;height:40px;display:block;margin-bottom:'+(m.content?'6px':'0')+'"></audio>':((m.attachment_type||'').indexOf('image')===0?'<img src="'+esc(m.attachment_url)+'" onclick="openViewer(this.src)" style="max-width:170px;border-radius:8px;display:block;cursor:pointer;margin-bottom:'+(m.content?'6px':'0')+'">':'<a href="'+esc(m.attachment_url)+'" target="_blank" style="color:inherit;text-decoration:underline">📎 مرفق</a>')):'')
       +esc(m.content)
       +'<div style="font-size:10px;opacity:.45;margin-top:3px">'+ago(m.created_at)+'</div>'
       +'</div>';
@@ -931,17 +941,66 @@ function renderMsgs(wrap){
   wrap.scrollTop=wrap.scrollHeight;
 }
 
+var _pRec=null,_pChunks=[],_pTimer=null,_pStart=0,_pStream=null,_pPendAttach=null;
+function pToggleSendMic(){
+  var hasText=((document.getElementById('chat-input')||{}).value||'').trim().length>0;
+  var sb=document.getElementById('pSendBtn'), mb=document.getElementById('pMicBtn');
+  if(sb)sb.style.display=hasText?'block':'none';
+  if(mb)mb.style.display=hasText?'none':'flex';
+}
+function pStartRec(){
+  if(!navigator.mediaDevices||!window.MediaRecorder){ alert('التسجيل الصوتي غير مدعوم في متصفحك'); return; }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    _pStream=stream; _pChunks=[];
+    var mime=(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/webm'))?'audio/webm':((MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/mp4'))?'audio/mp4':'');
+    try{ _pRec=new MediaRecorder(stream, mime?{mimeType:mime}:undefined); }catch(e){ _pRec=new MediaRecorder(stream); }
+    _pRec.ondataavailable=function(e){ if(e.data&&e.data.size>0)_pChunks.push(e.data); };
+    _pRec.start(); _pStart=Date.now();
+    var ir=document.getElementById('pInputRow'), rb=document.getElementById('pRecBar');
+    if(ir)ir.style.display='none'; if(rb)rb.style.display='flex';
+    _pTimer=setInterval(function(){
+      var sec=Math.floor((Date.now()-_pStart)/1000);
+      var t=document.getElementById('pRecTime'); if(t)t.textContent=Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2);
+      if(sec>=300) pStopRec(true);
+    },300);
+  }).catch(function(){ alert('تعذّر الوصول للميكروفون — فعّل الإذن'); });
+}
+function pRecCleanup(){
+  clearInterval(_pTimer); _pTimer=null;
+  if(_pStream){ _pStream.getTracks().forEach(function(t){t.stop();}); _pStream=null; }
+  var ir=document.getElementById('pInputRow'), rb=document.getElementById('pRecBar');
+  if(rb)rb.style.display='none'; if(ir)ir.style.display='flex';
+}
+function pCancelRec(){ try{ if(_pRec&&_pRec.state!=='inactive'){ _pRec.onstop=function(){}; _pRec.stop(); } }catch(e){} pRecCleanup(); }
+function pStopRec(send){
+  if(!_pRec||_pRec.state==='inactive'){ pRecCleanup(); return; }
+  var dur=Math.floor((Date.now()-_pStart)/1000);
+  _pRec.onstop=function(){
+    pRecCleanup();
+    if(!send||!_pChunks.length) return;
+    if(dur<1){ alert('التسجيل قصير جداً'); return; }
+    var blob=new Blob(_pChunks,{type:(_pChunks[0]&&_pChunks[0].type)||'audio/webm'});
+    var ext=(blob.type.indexOf('mp4')>=0)?'m4a':'webm';
+    var rd=new FileReader();
+    rd.onload=function(e){ _pPendAttach={data:e.target.result,type:blob.type||'audio/webm',name:'voice-'+dur+'s.'+ext}; sendChatMsg(); };
+    rd.readAsDataURL(blob);
+  };
+  try{ _pRec.stop(); }catch(e){ pRecCleanup(); }
+}
 async function sendChatMsg(){
   var inp=document.getElementById('chat-input');
   var msg=(inp.value||'').trim();
-  if(!msg||!_chatReqId)return;
+  var att=_pPendAttach; _pPendAttach=null;
+  if((!msg&&!att)||!_chatReqId)return;
   if(!_chatReceiver){alert('تعذر تحديد المستلم');return;}
-  inp.value='';
+  inp.value=''; pToggleSendMic();
+  var payload={request_id:_chatReqId,receiver_id:_chatReceiver,content:msg};
+  if(att){payload.attachment_url=att.data;payload.attachment_type=att.type;payload.attachment_name=att.name;}
   try{
     var r=await fetch(API+'/api/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({request_id:_chatReqId,receiver_id:_chatReceiver,content:msg})
+      body:JSON.stringify(payload)
     });
     if(!r.ok){throw new Error('HTTP '+r.status);}
     var m=await r.json();
