@@ -11,6 +11,7 @@
     if(u.role==='client' && !u.can_provide){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-client.html'); return; }
     if(u.role==='admin'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-admin.html'); return; }
   }catch(e){}
+  try{ localStorage.setItem('activeMode','provider'); }catch(e){}
 })();
 </script>
 
