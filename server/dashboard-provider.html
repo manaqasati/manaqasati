@@ -8,7 +8,7 @@
     var t=localStorage.getItem('token');
     var u=JSON.parse(localStorage.getItem('user')||'{}');
     if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/auth.html'); return; }
-    if(u.role==='client'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-client.html'); return; }
+    if(u.role==='client' && !u.can_provide){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-client.html'); return; }
     if(u.role==='admin'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-admin.html'); return; }
   }catch(e){}
 })();
@@ -545,7 +545,7 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
-if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'){location.replace(_me.role==='client'?'/dashboard-client.html':_me.role==='admin'?'/dashboard-admin.html':'/auth.html');}
+if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
 // حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
 window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
 var _myId=_me.id||null;
@@ -695,7 +695,7 @@ function enableRequestRole(btn){
   if(!confirm('تفعيل نشر المشاريع؟ ستقدر تنشر مشاريعك وتستقبل عروضاً من نفس الحساب.'))return;
   btn.disabled=true; var _t=btn.textContent; btn.textContent='جارٍ التفعيل...';
   _api('/api/me/enable-request',{method:'POST',body:JSON.stringify({})}).then(function(r){
-    if(r&&r.ok){ showToast('تم التفعيل! تقدر تنشر مشاريع الآن','success'); setTimeout(function(){ location.href='/dashboard-client.html'; },900); }
+    if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_request=true;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} showToast('تم التفعيل! تقدر تنشر مشاريع الآن','success'); setTimeout(function(){ location.href='/dashboard-client.html'; },900); }
     else { btn.disabled=false; btn.textContent=_t; showToast((r&&r.message)||'تعذّر التفعيل','error'); }
   }).catch(function(){ btn.disabled=false; btn.textContent=_t; showToast('تعذّر التفعيل','error'); });
 }
@@ -730,6 +730,7 @@ function _setAvatar(img){
   var cached=localStorage.getItem('pav_'+_me.id);if(cached)_setAvatar(cached);
   _api('/api/provider/profile').then(function(p){
     try{ if(p&&p.can_request){ var _sb=document.getElementById('switchDash'); if(_sb)_sb.style.display='flex'; } }catch(e){}
+    try{ var _u=JSON.parse(localStorage.getItem('user')||'{}'); if(p){ _u.can_request=!!p.can_request; _u.can_provide=true; localStorage.setItem('user',JSON.stringify(_u)); } }catch(e){}
     if(p&&p.profile_image){localStorage.setItem('pav_'+_me.id,p.profile_image);_setAvatar(p.profile_image);}
   });
 })();
