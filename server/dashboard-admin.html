@@ -938,7 +938,16 @@ function fillUserFilters(){
   var cSel=document.getElementById('uf-city');
   if(cSel&&cSel.options.length<=1){Object.keys(cities).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;cSel.appendChild(o);});}
   var spSel=document.getElementById('uf-spec');
-  if(spSel&&spSel.options.length<=1){Object.keys(specs).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;spSel.appendChild(o);});}
+  if(spSel&&spSel.options.length<=1){
+    // اعرض العربي الموحّد فقط (يتجاهل الإنجليزي القديم)
+    var _isAr=function(x){return /[\u0600-\u06FF]/.test(x);};
+    var _cur=Object.keys(specs).filter(_isAr);
+    fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
+      var canon=(d&&(d.categories||d))||[]; var set={}; canon.forEach(function(c){set[c]=1;}); _cur.forEach(function(c){set[c]=1;});
+      var list=Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');});
+      if(spSel.options.length<=1){ list.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;spSel.appendChild(o);}); }
+    }).catch(function(){ _cur.sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;spSel.appendChild(o);}); });
+  }
   var bSel=document.getElementById('uf-badge');
   if(bSel&&bSel.options.length<=1){(typeof BADGE_CATALOG!=='undefined'?BADGE_CATALOG:[]).forEach(function(b){var o=document.createElement('option');o.value=b.key;o.textContent=b.label;bSel.appendChild(o);});var no=document.createElement('option');no.value='none';no.textContent='بدون لقب';bSel.appendChild(no);}
 }
