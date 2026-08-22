@@ -1388,12 +1388,13 @@ function _wTab(tab,btn){
   if(bw)bw.style.display=tab==='bids'?'':'none';if(pw)pw.style.display=tab==='projs'?'':'none';
 }
 // تعديل عرض قائم (متاح ما دام لم يُقبل أو يُرفض)
-function _editBid(id,price,days,note){
+function _editBid(id,price,days,note,pvis){
   var fin='padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;width:100%;box-sizing:border-box';
   var body='<div style="display:flex;flex-direction:column;gap:12px">'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">السعر (ر.س)</label><input id="eb-price" type="number" inputmode="numeric" value="'+(price||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">مدة التنفيذ (أيام)</label><input id="eb-days" type="number" inputmode="numeric" value="'+(days||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ملاحظة للعميل</label><textarea id="eb-note" rows="3" style="'+fin+';resize:vertical">'+_esc(note||'')+'</textarea></div>'
+    +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ظهور السعر</label><select id="eb-pvis" style="'+fin+';cursor:pointer"><option value="client"'+(pvis!=='public'?' selected':'')+'>خاص بصاحب المشروع فقط</option><option value="public"'+(pvis==='public'?' selected':'')+'>ظاهر للجميع</option></select></div>'
     +'<div style="font-size:11.5px;color:var(--muted);background:var(--bg);padding:9px 11px;border-radius:9px;line-height:1.6">💡 تعديل سعرك أو مدتك يرفع فرصتك — العميل يشوف العرض المحدّث فوراً.</div>'
     +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button>'
@@ -1407,7 +1408,8 @@ async function _saveBidEdit(id){
   var note=((_el('eb-note')||{}).value||'').trim();
   if(!price||price<=0){ if(typeof showToast==='function')showToast('أدخل سعراً صحيحاً','error'); if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';} return; }
   try{
-    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify({price:price,days:days||null,note:note||null})});
+    var _pv=((_el('eb-pvis')||{}).value==='public')?'public':'client';
+    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify({price:price,days:days||null,note:note||null,price_visibility:_pv})});
     if(!r||r.message)throw new Error();
     closeModal();
     if(typeof showToast==='function')showToast('تم تحديث عرضك ✓','success');
@@ -1434,7 +1436,7 @@ function _renderBids(list){
     h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view">عرض المشروع</button>';
     if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
     if(!isAcc&&!isRej){
-      h+='<button onclick="_editBid('+b.id+','+(b.price||0)+','+(b.days||0)+',\''+String(b.note||'').replace(/'/g,"\\'").replace(/\n/g,' ')+'\')" class="ca-btn ca-view">تعديل العرض</button>';
+      h+='<button onclick="_editBid('+b.id+','+(b.price||0)+','+(b.days||0)+',\''+String(b.note||'').replace(/'/g,"\\'").replace(/\n/g,' ')+'\',\''+(b.price_visibility||'client')+'\')" class="ca-btn ca-view">تعديل العرض</button>';
       h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del">سحب</button>';
     }
     h+='</div></div>';
