@@ -1935,28 +1935,20 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
         COALESCE(u.name,'عميل') AS client_name, u.phone AS client_phone,
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
       FROM requests r JOIN users u ON u.id=r.client_id`;
-    // 1) وصول عروض (عمر < 5 أيام) 2) تأخر الاختيار (>= 5 أيام) — كلاهما status=open وله عروض
-    const few = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2
-        ORDER BY r.created_at DESC LIMIT 200`);
-    const offers = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3
-        AND r.created_at > NOW() - INTERVAL '5 days' ORDER BY r.created_at DESC LIMIT 200`);
-    const delayed = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3
-        AND r.created_at <= NOW() - INTERVAL '5 days' ORDER BY r.created_at ASC LIMIT 200`);
-    // 3) قيد التنفيذ (اختار مزوّداً، >= 7 أيام، لم يكتمل)
-    const executing = await pool.query(base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL
-        AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 200`);
-    // 4) اكتمل ولم يُقيّم العميل
-    const review = await pool.query(base + ` WHERE r.status='completed'
-        AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)
-        ORDER BY COALESCE(r.completed_at, r.updated_at) DESC LIMIT 200`);
+    const run = async (label, sql) => { try { return (await pool.query(sql)).rows; } catch(e){ console.error('[followups '+label+']', e.message); return []; } };
+    const few = await run('few', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2 ORDER BY r.created_at DESC LIMIT 200`);
+    const offers = await run('offers', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at > NOW() - INTERVAL '5 days' ORDER BY r.created_at DESC LIMIT 200`);
+    const delayed = await run('delayed', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days' ORDER BY r.created_at ASC LIMIT 200`);
+    const executing = await run('executing', base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 200`);
+    const review = await run('review', base + ` WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id) ORDER BY r.created_at DESC LIMIT 200`);
     const tag = (rows, stage) => rows.map(x => ({ ...x, stage }));
     res.json({
-      few: tag(few.rows, 'few'),
-      offers: tag(offers.rows, 'offers'),
-      delayed: tag(delayed.rows, 'delayed'),
-      executing: tag(executing.rows, 'executing'),
-      review: tag(review.rows, 'review'),
-      counts: { few: few.rows.length, offers: offers.rows.length, delayed: delayed.rows.length, executing: executing.rows.length, review: review.rows.length }
+      few: tag(few, 'few'),
+      offers: tag(offers, 'offers'),
+      delayed: tag(delayed, 'delayed'),
+      executing: tag(executing, 'executing'),
+      review: tag(review, 'review'),
+      counts: { few: few.length, offers: offers.length, delayed: delayed.length, executing: executing.length, review: review.length }
     });
   } catch(e){ console.error('followups:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
