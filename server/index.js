@@ -3904,6 +3904,20 @@ app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, 
   } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
+app.get('/api/admin/duplicates', requirePermission('users.view'), async (req, res) => {
+  try {
+    const memberJson = `json_agg(json_build_object('id',id,'name',name,'email',email,'phone',phone,'role',role,'created_at',created_at,'is_active',is_active,'requests',(SELECT COUNT(*) FROM requests WHERE client_id=u.id),'bids',(SELECT COUNT(*) FROM bids WHERE provider_id=u.id)) ORDER BY created_at ASC)`;
+    const byEmail = await pool.query(
+      `SELECT LOWER(TRIM(email)) AS key, ${memberJson} AS members, COUNT(*)::int AS c
+       FROM users u WHERE email IS NOT NULL AND TRIM(email)<>'' AND role<>'admin' AND email NOT LIKE 'proxy_%@manaqasa.local'
+       GROUP BY LOWER(TRIM(email)) HAVING COUNT(*)>1 ORDER BY COUNT(*) DESC LIMIT 200`);
+    const byPhone = await pool.query(
+      `SELECT RIGHT(regexp_replace(phone,'[^0-9]','','g'),9) AS key, ${memberJson} AS members, COUNT(*)::int AS c
+       FROM users u WHERE phone IS NOT NULL AND LENGTH(regexp_replace(phone,'[^0-9]','','g'))>=9 AND role<>'admin'
+       GROUP BY RIGHT(regexp_replace(phone,'[^0-9]','','g'),9) HAVING COUNT(*)>1 ORDER BY COUNT(*) DESC LIMIT 200`);
+    res.json({ byEmail: byEmail.rows, byPhone: byPhone.rows, counts:{ email: byEmail.rows.length, phone: byPhone.rows.length } });
+  } catch(e){ console.error('duplicates:', e.message); res.status(500).json({ message: 'تعذّر الفحص' }); }
+});
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
