@@ -488,6 +488,7 @@ function _miniMetrics(price,days,rating){
   h+='</div>';
   return h;
 }
+function _maskNums(t){ return String(t).replace(/[0-9\u0660-\u0669\u06F0-\u06F9]{3,}/g,'🔒'); }
 function _bidCard(b,isBest,isOwner,reqStatus){
   var avg=_bidRating(b);
   var name=b.provider_name||'مزود';
@@ -521,7 +522,8 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   h+='</div>';
   // note
   var note=b.proposal||b.note||'';
-  if(note)h+='<div class="bid-note" style="margin-top:11px;margin-bottom:0">'+esc(note)+(b.note_truncated?'…':'')+'</div>';if(b.note_locked)h+='<div style="margin-top:7px;font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:5px">🔒 التفاصيل الكاملة والسعر تظهر لصاحب المشروع فقط</div>';
+  var _maskNote=(!isOwner && !(price>0));
+  if(note)h+='<div class="bid-note" style="margin-top:11px;margin-bottom:0">'+esc(_maskNote?_maskNums(note):note)+(b.note_truncated?'…':'')+'</div>';if(b.note_locked)h+='<div style="margin-top:7px;font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:5px">🔒 التفاصيل الكاملة والسعر تظهر لصاحب المشروع فقط</div>';
   if(b.attachment_url)h+='<a href="'+b.attachment_url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;font-weight:800;color:var(--p);background:var(--p-light);padding:8px 13px;border-radius:9px;text-decoration:none">📎 عرض السعر (ملف مرفق)</a>';
   if(isCheap)h+='<div class="bid-cheap2"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> أقل سعر</div>';
   // actions
