@@ -2121,6 +2121,7 @@ function loadProfile(){
     document.getElementById('prof-name').value=p.name||'';
     document.getElementById('prof-phone').value=p.phone||'';
     var emEl=document.getElementById('prof-email');if(emEl)emEl.value=p.email||'';
+    window._loadedEmail=(p.email||'').trim();
     var ctEl=document.getElementById('prof-city');if(ctEl){if(!ctEl.options.length)fillCitySelect(ctEl);ctEl.value=p.city||'';}
     document.getElementById('profNameDisp').textContent=p.name||'—';
   }).catch(function(){});
@@ -2149,13 +2150,17 @@ function saveClientProfile(btn){
   if(!name){showToast('الاسم مطلوب','error');return;}
   if(email&&(!email.includes('@')||!email.includes('.'))){showToast('بريد إلكتروني غير صحيح','error');return;}
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone,email:email,city:city})},hdr()))
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+  var _body={name:name,phone:phone,city:city};
+  if(email!==(window._loadedEmail||''))_body.email=email; // نرسل البريد فقط إذا تغيّر
+  var _msg='';
+  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify(_body)},hdr()))
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){_msg=(d&&d.message)||'';throw new Error();} return d; }); })
     .then(function(p){
       showToast('تم الحفظ','success');
+      if(email)window._loadedEmail=email;
       if(p&&p.name){user.name=p.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=p.name;document.getElementById('profNameDisp').textContent=p.name;}
     })
-    .catch(function(){showToast('تعذّر الحفظ — تحقّق من اتصالك','error');})
+    .catch(function(){showToast(_msg||'تعذّر الحفظ، حاول مرة أخرى','error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function changeClientPw(){
