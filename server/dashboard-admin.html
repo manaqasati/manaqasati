@@ -2130,8 +2130,9 @@ var _ORT='provider', _OQ=[], _OQi=0, _OSearch=[];
 var _OSTAT={new:'لم يُتواصل',contacted:'أُرسلت',replied:'ردّ',interested:'مهتم',converted:'سجّل ✅',rejected:'رفض',followup:'متابعة'};
 
 /* ═══════════ متابعة العملاء (تذكير واتساب حسب المرحلة) ═══════════ */
-var _fuData=null, _fuTab='offers';
+var _fuData=null, _fuTab='few';
 var FU_TABS=[
+  {k:'few',      label:'عروض قليلة',  color:'#0891b2', icon:'🆕'},
   {k:'offers',   label:'وصول عروض',   color:'#2563eb', icon:'📥'},
   {k:'delayed',  label:'تأخر الاختيار',color:'#d97706', icon:'⏳'},
   {k:'executing',label:'قيد التنفيذ',  color:'#7c3aed', icon:'🛠️'},
@@ -2140,6 +2141,15 @@ var FU_TABS=[
 function _fuTmpl(stage, p){
   var name=p.client_name||'', title=p.title||'', n=p.bid_count||0;
   var link='https://manaqasa.com/project/'+p.id;
+  if(stage==='few'){
+    var line = (n===0)
+      ? 'مشروعك «'+title+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو ملفات أو مخططات متاحة لديك لمساعدة المزوّدين على التسعير بشكل أفضل.'
+      : 'مشروعك «'+title+'» استقبل '+(n===1?'عرضًا واحدًا':'عرضين')+' فقط حتى الآن. إضافة تفاصيل أو ملفات أو مخططات أوضح تجذب عروضًا أكثر وأدق.';
+    return 'السلام عليكم '+name+' 👋\n'+
+      'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\n'+
+      line+'\n'+
+      '🔗 تحديث المشروع:\n'+link;
+  }
   if(stage==='offers')
     return 'السلام عليكم '+name+' 👋\n'+
       'وصلك '+n+' عروض على مشروعك «'+title+'».\n'+
@@ -2199,7 +2209,7 @@ function renderFollowups(){
   else body=rows.map(function(p){
     var days=_fuDays(p);
     var rem = p.reminder_at ? ('📩 آخر تذكير: '+_fuAgo(p.reminder_at)) : '<span style="color:#94a3b8">📭 لم يُرسل تذكير بعد</span>';
-    var stageWord=(_fuTab==='executing'?'في التنفيذ':(_fuTab==='review'?'منذ الاكتمال':'في هذه المرحلة'));
+    var stageWord=(_fuTab==='executing'?'في التنفيذ':(_fuTab==='review'?'منذ الاكتمال':(_fuTab==='few'?'منذ النشر':'في هذه المرحلة')));
     return '<div style="background:var(--card);border:1px solid var(--border);border-right:4px solid '+tcolor+';border-radius:14px;padding:15px 17px;margin-bottom:11px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
       +'<div style="flex:1;min-width:200px">'
