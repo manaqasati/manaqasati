@@ -3756,6 +3756,28 @@ app.get('/api/admin/logs', requirePermission('logs.view'), async (req, res) => {
   } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
+app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (req, res) => {
+  try {
+    const q = (sql) => pool.query(sql).then(r => parseInt((r.rows[0]&&(r.rows[0].count||r.rows[0].c))||0)).catch(()=>0);
+    const [projToday, bidsToday, provToday, cliToday, pendReview, openProj, inProg, fuFew, fuDelayed, fuReview] = await Promise.all([
+      q("SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')"),
+      q("SELECT COUNT(*) FROM requests WHERE status='open'"),
+      q("SELECT COUNT(*) FROM requests WHERE status='in_progress'"),
+      q("SELECT COUNT(*) FROM requests r WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2"),
+      q("SELECT COUNT(*) FROM requests r WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days'"),
+      q("SELECT COUNT(*) FROM requests r WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)")
+    ]);
+    res.json({
+      today: { projects: projToday, bids: bidsToday, providers: provToday, clients: cliToday },
+      pending: { review: pendReview, open: openProj, in_progress: inProg },
+      followup: { few: fuFew, delayed: fuDelayed, review: fuReview, total: fuFew+fuDelayed+fuReview }
+    });
+  } catch(e){ console.error('daily-report:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
+});
 app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count);
