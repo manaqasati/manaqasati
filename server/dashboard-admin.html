@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-users">
       <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button onclick="openIncomplete()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 10px rgba(217,119,6,.25)">⚠️ مزوّدون بملفات ناقصة</button></div>
       <div class="card">
-        <div class="card-head"><h3>إدارة المستخدمين</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث..." oninput="filterUsers()"></div><button class="act-btn ab-default" onclick="openBroadcast()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>رسالة جماعية</button><button class="act-btn ab-default" onclick="exportUsers()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير Excel</button></div></div>
+        <div class="card-head"><h3>إدارة المستخدمين</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="user-search" placeholder="ابحث..." oninput="filterUsers()"></div><button class="act-btn ab-default" onclick="openBroadcast()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>رسالة جماعية</button><button class="act-btn ab-default" onclick="openDuplicates()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>الحسابات المكرّرة</button><button class="act-btn ab-default" onclick="exportUsers()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>تصدير Excel</button></div></div>
         <div class="filter-tabs"><button class="ftab on" onclick="filterRole('all',this)">الكل</button><button class="ftab" onclick="filterRole('client',this)">العملاء</button><button class="ftab" onclick="filterRole('provider',this)">المزودون</button></div>
         <div class="ufilters" id="user-filters">
           <div class="ms" id="ms-city"><button type="button" class="ms-btn" onclick="msToggle('city')"><span id="ms-city-lbl">كل المدن</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-city-panel"></div></div>
@@ -1276,6 +1276,40 @@ function _downloadXlsx(headers,rows,opts){
 }
 function _badgeLabel(key){ if(!key||key==='none')return '—'; var m=(typeof badgeMeta==='function')?badgeMeta(key):null; return m?m.label:key; }
 function _xlBorder(){var b={style:'thin',color:{rgb:'D9E2F0'}};return {top:b,bottom:b,left:b,right:b};}
+function openDuplicates(){
+  var m=document.getElementById('dupModal'); if(!m){
+    m=document.createElement('div'); m.id='dupModal'; m.className='modal-overlay';
+    m.innerHTML='<div class="modal" style="max-width:640px"><div class="modal-head"><h3>الحسابات المكرّرة</h3><button class="modal-x" onclick="closeModal(\'dupModal\')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id="dupBody" style="padding:6px 2px"><div class="loading"><div class="spinner"></div>جاري الفحص...</div></div></div>';
+    document.body.appendChild(m);
+  }
+  m.classList.add('on'); document.body.style.overflow='hidden';
+  _api('/api/admin/duplicates').then(renderDuplicates).catch(function(){ var b=document.getElementById('dupBody'); if(b)b.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted)">تعذّر الفحص</div>'; });
+}
+function _dupGroup(g, keyLabel){
+  var members=(g.members||[]).map(function(u){
+    var roleAr=u.role==='provider'?'مزوّد':(u.role==='client'?'عميل':u.role);
+    var act=(u.requests||0)+(u.bids||0);
+    var when=u.created_at?new Date(u.created_at).toLocaleDateString('ar-SA'):'';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;margin-top:7px">'
+      +'<div style="min-width:0"><div style="font-weight:800;font-size:13px">'+esc(u.name||'—')+' <span style="font-size:11px;color:var(--muted);font-weight:600">('+roleAr+')</span></div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(u.email||'')+(u.phone?' · '+esc(u.phone):'')+'</div>'
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px">أُنشئ '+when+' · '+act+' نشاط'+(u.is_active===false?' · <span style="color:#dc2626">موقوف</span>':'')+'</div></div>'
+      +'<button onclick="closeModal(\'dupModal\');openUserModal('+u.id+')" style="flex-shrink:0;background:var(--p);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;cursor:pointer">إدارة</button>'
+      +'</div>';
+  }).join('');
+  return '<div style="background:var(--card);border:1px solid var(--border);border-right:4px solid #d97706;border-radius:12px;padding:12px 14px;margin-bottom:11px">'
+    +'<div style="font-size:12.5px;font-weight:800;color:#b45309">⚠️ '+keyLabel+': '+esc(g.key||'')+' <span style="color:var(--muted);font-weight:600">('+g.c+' حسابات)</span></div>'
+    +members+'</div>';
+}
+function renderDuplicates(d){
+  var b=document.getElementById('dupBody'); if(!b)return;
+  var em=(d&&d.byEmail)||[], ph=(d&&d.byPhone)||[];
+  if(!em.length&&!ph.length){ b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">✅ لا توجد حسابات مكرّرة</div>'; return; }
+  var h='<div style="font-size:12px;color:var(--muted);margin:2px 2px 12px;line-height:1.6">حسابات تشترك في نفس البريد أو نفس رقم الجوال. راجعها وادمج/أوقف المكرّر عبر «إدارة».</div>';
+  if(ph.length)h+='<div style="font-weight:900;font-size:13px;margin:4px 0 8px">📱 مكرّر بالجوال ('+ph.length+')</div>'+ph.map(function(g){return _dupGroup(g,'الجوال');}).join('');
+  if(em.length)h+='<div style="font-weight:900;font-size:13px;margin:14px 0 8px">📧 مكرّر بالبريد ('+em.length+')</div>'+em.map(function(g){return _dupGroup(g,'البريد');}).join('');
+  b.innerHTML=h;
+}
 function exportUsers(){
   var list=getFilteredUsers();
   if(!list.length){toast('لا توجد بيانات للتصدير','error');return;}
