@@ -1466,6 +1466,8 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
@@ -1926,6 +1928,42 @@ app.delete('/api/account/delete', auth, async (req, res) => {
 });
 
 // ═══ PROFILES ═══
+app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const base = `SELECT r.id, r.title, r.status, r.created_at, r.assigned_at, r.completed_at, r.close_at,
+        r.reminder_at, r.reminder_stage, r.client_id,
+        COALESCE(u.name,'عميل') AS client_name, u.phone AS client_phone,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
+      FROM requests r JOIN users u ON u.id=r.client_id`;
+    // 1) وصول عروض (عمر < 5 أيام) 2) تأخر الاختيار (>= 5 أيام) — كلاهما status=open وله عروض
+    const offers = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>0
+        AND r.created_at > NOW() - INTERVAL '5 days' ORDER BY r.created_at DESC LIMIT 200`);
+    const delayed = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>0
+        AND r.created_at <= NOW() - INTERVAL '5 days' ORDER BY r.created_at ASC LIMIT 200`);
+    // 3) قيد التنفيذ (اختار مزوّداً، >= 7 أيام، لم يكتمل)
+    const executing = await pool.query(base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL
+        AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 200`);
+    // 4) اكتمل ولم يُقيّم العميل
+    const review = await pool.query(base + ` WHERE r.status='completed'
+        AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)
+        ORDER BY COALESCE(r.completed_at, r.updated_at) DESC LIMIT 200`);
+    const tag = (rows, stage) => rows.map(x => ({ ...x, stage }));
+    res.json({
+      offers: tag(offers.rows, 'offers'),
+      delayed: tag(delayed.rows, 'delayed'),
+      executing: tag(executing.rows, 'executing'),
+      review: tag(review.rows, 'review'),
+      counts: { offers: offers.rows.length, delayed: delayed.rows.length, executing: executing.rows.length, review: review.rows.length }
+    });
+  } catch(e){ console.error('followups:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
+});
+app.post('/api/admin/requests/:id/mark-reminded', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const stage = String(req.body.stage||'').slice(0,20);
+    await pool.query('UPDATE requests SET reminder_at=NOW(), reminder_stage=$1 WHERE id=$2', [stage, parseInt(req.params.id)]);
+    res.json({ ok: true });
+  } catch(e){ res.status(500).json({ message: 'تعذّر التسجيل' }); }
+});
 app.post('/api/me/enable-provider', auth, async (req, res) => {
   try {
     const specs = Array.isArray(req.body.specialties) ? req.body.specialties.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,5) : [];
