@@ -1936,9 +1936,11 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
       FROM requests r JOIN users u ON u.id=r.client_id`;
     // 1) وصول عروض (عمر < 5 أيام) 2) تأخر الاختيار (>= 5 أيام) — كلاهما status=open وله عروض
-    const offers = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>0
+    const few = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2
+        ORDER BY r.created_at DESC LIMIT 200`);
+    const offers = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3
         AND r.created_at > NOW() - INTERVAL '5 days' ORDER BY r.created_at DESC LIMIT 200`);
-    const delayed = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>0
+    const delayed = await pool.query(base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3
         AND r.created_at <= NOW() - INTERVAL '5 days' ORDER BY r.created_at ASC LIMIT 200`);
     // 3) قيد التنفيذ (اختار مزوّداً، >= 7 أيام، لم يكتمل)
     const executing = await pool.query(base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL
@@ -1949,11 +1951,12 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
         ORDER BY COALESCE(r.completed_at, r.updated_at) DESC LIMIT 200`);
     const tag = (rows, stage) => rows.map(x => ({ ...x, stage }));
     res.json({
+      few: tag(few.rows, 'few'),
       offers: tag(offers.rows, 'offers'),
       delayed: tag(delayed.rows, 'delayed'),
       executing: tag(executing.rows, 'executing'),
       review: tag(review.rows, 'review'),
-      counts: { offers: offers.rows.length, delayed: delayed.rows.length, executing: executing.rows.length, review: review.rows.length }
+      counts: { few: few.rows.length, offers: offers.rows.length, delayed: delayed.rows.length, executing: executing.rows.length, review: review.rows.length }
     });
   } catch(e){ console.error('followups:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
