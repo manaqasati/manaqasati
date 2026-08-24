@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page on" id="page-dashboard">
       <div id="dash-hero"></div>
       <div id="dash-kpis"></div>
+      <div id="daily-report"></div>
       <div id="needs-action"></div>
       <div class="dash-2col">
         <div class="card card-accent"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="showPage('users',document.querySelectorAll('.ni')[2])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
@@ -800,7 +801,7 @@ function showPage(pg,el){
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
-  if(pg==='dashboard'){loadDashboard();loadNeedsAction();}
+  if(pg==='dashboard'){loadDashboard();loadNeedsAction();loadDailyReport();}
   if(pg==='analytics')loadAnalytics();
   if(pg==='settings')loadSettings();
   if(pg==='marketing')loadMarketing();
@@ -836,6 +837,27 @@ function _dashStChip(st){
   var m={open:['مفتوح','var(--green)','var(--green-l)'],in_progress:['جارٍ','var(--p)','var(--p-light)'],completed:['مكتمل','var(--star)','var(--gold-l)'],done:['مكتمل','var(--star)','var(--gold-l)'],pending_review:['مراجعة','var(--amber)','var(--amber-l)'],review:['مراجعة','var(--amber)','var(--amber-l)']};
   var x=m[st]||['—','var(--muted)','var(--bg)'];
   return '<span style="font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;background:'+x[2]+';color:'+x[1]+'">'+x[0]+'</span>';
+}
+function loadDailyReport(){
+  var box=document.getElementById('daily-report'); if(!box)return;
+  fetch(API+'/api/admin/daily-report',hdr()).then(function(r){return r.json();}).then(function(d){
+    var t=d.today||{}, p=d.pending||{}, f=d.followup||{};
+    var chip=function(label,val,color){ return '<div style="flex:1;min-width:110px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:center"><div style="font-size:23px;font-weight:900;color:'+(color||'var(--p)')+';line-height:1">'+val+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">'+label+'</div></div>'; };
+    var h='<div class="card card-accent" style="margin-bottom:16px"><div class="card-head"><h3>📅 تقرير اليوم</h3><span style="font-size:11px;color:var(--muted)">'+new Date().toLocaleDateString('ar-SA')+'</span></div><div style="padding:14px">';
+    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">نشاط اليوم</div>';
+    h+='<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">'
+      +chip('مشاريع جديدة',t.projects||0,'#2563eb')+chip('عروض جديدة',t.bids||0,'#059669')
+      +chip('مزودون جدد',t.providers||0,'#7c3aed')+chip('عملاء جدد',t.clients||0,'#d97706')+'</div>';
+    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">يحتاج انتباهك</div>';
+    h+='<div style="display:flex;gap:9px;flex-wrap:wrap">';
+    var pr=(p.review||0);
+    h+='<div onclick="showPage(\'requests\',document.querySelectorAll(\'.ni\')[3])" style="flex:1;min-width:130px;cursor:pointer;background:'+(pr>0?'#fef3c7':'var(--card)')+';border:1px solid '+(pr>0?'#fcd34d':'var(--border)')+';border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:#b45309;line-height:1">'+pr+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">مشاريع بانتظار المراجعة</div></div>';
+    var ft=(f.total||0);
+    h+='<div onclick="showPage(\'followup\',[].filter.call(document.querySelectorAll(\'.ni\'),function(x){return /متابعة العملاء/.test(x.textContent);})[0])" style="flex:1;min-width:130px;cursor:pointer;background:'+(ft>0?'#dbeafe':'var(--card)')+';border:1px solid '+(ft>0?'#93c5fd':'var(--border)')+';border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:#1d4ed8;line-height:1">'+ft+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">عملاء ينتظرون متابعة ←</div></div>';
+    h+='<div style="flex:1;min-width:130px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:var(--text);line-height:1">'+(p.open||0)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">مشاريع مفتوحة للعروض</div></div>';
+    h+='</div></div></div>';
+    box.innerHTML=h;
+  }).catch(function(){ box.innerHTML=''; });
 }
 function loadDashboard(){
   fetch(API+'/api/admin/stats',hdr()).then(function(r){return r.json();}).then(function(s){
