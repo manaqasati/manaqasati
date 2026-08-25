@@ -28,7 +28,7 @@
   --green:#16a34a;--red:#dc2626;--tick:#53bdeb;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;height:100%;overflow:hidden}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
 /* ═══ الهيكل: شاشة كاملة ثابتة ═══ */
@@ -64,7 +64,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 
 /* ═══ المحادثة ═══ */
 #msgs{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:3px;background:var(--bg)}
-.bub{max-width:78%;padding:9px 13px;font-size:14px;line-height:1.65;word-break:break-word;overflow-wrap:anywhere;position:relative}
+.bub{max-width:78%;padding:10px 13px;font-size:14.5px;font-weight:500;line-height:1.72;word-break:break-word;overflow-wrap:anywhere;position:relative}
 
 .me{align-self:flex-start;background:var(--p);color:#fff;border-radius:16px 16px 16px 5px}
 .you{align-self:flex-end;background:var(--white);border:1px solid var(--border);border-radius:16px 16px 5px 16px}
