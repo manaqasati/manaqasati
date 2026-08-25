@@ -24,7 +24,7 @@
 <style>
 :root{--p:#1e3a8a;--p2:#1e40af;--p3:#172554;--gold:#1d4ed8;--gold-d:#1e40af;--gold-l:#eff4ff;--gold-soft:#bfdbfe;--text:#1e293b;--text2:#374151;--muted:#64748b;--hint:#94a3b8;--border:#e6eefb;--bg:#f0f5ff;--white:#FFFFFF;--green:#16A34A;--green-l:#DCFCE7;--red:#DC2626;--sky:#0ea5e9;--star:#F0A500;--shadow:0 2px 8px rgba(37,99,235,.05);--shadow-md:0 4px 16px rgba(37,99,235,.1);}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 /* NAV */
 .nav{background:var(--p3);height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--sky)}
 .back-btn{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.78);font-size:13px;font-weight:700;border:none;background:none;font-family:inherit;cursor:pointer;padding:6px 10px;border-radius:8px}
@@ -76,7 +76,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .proj-title{font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;color:var(--p);line-height:1.3;margin-bottom:8px}
 .cat-badge{display:inline-flex;align-items:center;gap:5px;background:var(--gold-l);border:1px solid var(--gold-soft);color:var(--p);font-size:12px;font-weight:800;padding:4px 12px;border-radius:20px;margin-bottom:8px}
 .info-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
-.desc-text{font-size:14.5px;line-height:1.95;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);white-space:pre-wrap;word-wrap:break-word}
+.desc-text{font-size:15.5px;line-height:1.9;font-weight:500;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);white-space:pre-wrap;word-wrap:break-word}
 /* STATUS */
 .st{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;margin-bottom:8px}
 .st::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
@@ -120,7 +120,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .bid-price-unit{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px}
 .bid-days{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
 .bid-body{padding:13px 15px}
-.bid-note{font-size:12px;color:var(--text2);background:var(--bg);padding:10px 12px;border-radius:9px;border-right:3px solid var(--p);line-height:1.8;margin-bottom:11px}
+.bid-note{font-size:13.5px;font-weight:500;color:var(--text);background:var(--bg);padding:11px 13px;border-radius:9px;border-right:3px solid var(--p);line-height:1.85;margin-bottom:11px}
 .bid-note-empty{font-size:12px;color:var(--hint);font-style:italic;margin-bottom:11px}
 .bid-actions{display:flex;gap:7px;flex-wrap:wrap}
 .bid-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 13px;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;border:none;font-family:inherit;transition:.15s}
