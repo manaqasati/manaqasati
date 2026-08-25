@@ -380,6 +380,8 @@ function getReqId(){
   if(nums&&nums.length)return parseInt(nums[nums.length-1]);
   var p=new URLSearchParams(location.search);
   if(p.get('id'))return parseInt(p.get('id'));
+  var m=(location.pathname||'').match(/(\d+)\/?$/);
+  if(m)return parseInt(m[1]);
   return null;
 }
 
@@ -1064,8 +1066,10 @@ function openViewer(src){
 }
 
 function shareProject(){
-  if(navigator.share){navigator.share({title:_req&&_req.title||'مشروع',url:location.href});}
-  else{navigator.clipboard&&navigator.clipboard.writeText(location.href).then(function(){alert('تم نسخ الرابط');});}
+  var _id=(_req&&_req.id)||getReqId();
+  var _url=_id?(location.origin+'/project/'+_id):location.href;
+  if(navigator.share){navigator.share({title:_req&&_req.title||'مشروع',url:_url});}
+  else{navigator.clipboard&&navigator.clipboard.writeText(_url).then(function(){alert('تم نسخ الرابط');});}
 }
 
 // ═══ OWNER BID ACTIONS ═══
