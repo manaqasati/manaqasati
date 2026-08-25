@@ -177,9 +177,10 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .sort-tab{font-size:10px;font-weight:700;color:var(--muted);background:none;border:none;padding:5px 10px;border-radius:7px;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s}
 .sort-tab.on{color:#fff;background:var(--p);font-weight:800}
 /* NEW BID CARD */
-.bid-x{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px;margin-bottom:9px;position:relative}
+.bid-x{position:relative;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px;margin-bottom:9px;position:relative}
 .bid-x:last-child{margin-bottom:0}
 .bid-x-accepted{border:2px solid var(--green)!important;box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.bid-stamp{position:absolute;top:12px;left:12px;width:68px;height:68px;border-radius:50%;border:3px double var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:11px;line-height:1.25;transform:rotate(-12deg);background:rgba(255,255,255,.92);z-index:3;pointer-events:none;box-shadow:0 2px 8px rgba(34,197,94,.2)}
 .bid-x-rejected{opacity:.5}
 .bid-accepted-banner{background:var(--green-l,#f0fdf4);border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
 .bid-x-best{border:2px solid var(--p);box-shadow:0 4px 16px rgba(30,58,138,.12)}
@@ -508,6 +509,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
 
   var isAcc=b.status==='accepted',isRej=b.status==='rejected';
   var h='<div class="bid-x'+((isBest&&!isAcc&&!isRej&&isOwner)?' bid-x-best':'')+(isAcc?' bid-x-accepted':'')+(isRej?' bid-x-rejected':'')+'">';
+  if(isAcc)h+='<span class="bid-stamp">تمت<br>الترسية</span>';
   if(isAcc)h+='<div class="bid-x-badge" style="background:var(--green)">✓ العرض المقبول</div>'; else if(isBest&&!isRej&&isOwner)h+='<div class="bid-x-badge">الأفضل</div>';
   h+='<div style="display:flex;align-items:flex-start;gap:11px">';
   h+=provImg?'<div class="bid-x-av"><img src="'+provImg+'" loading="lazy" alt="'+esc(name)+'"></div>':'<div class="bid-x-av">'+esc(name.charAt(0))+'</div>';
