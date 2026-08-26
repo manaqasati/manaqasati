@@ -1306,7 +1306,6 @@ function riCard(r,actions){
       +'<div class="hzp-meta">'
         +(r.category?'<span class="hzp-cat">'+esc(r.category)+'</span>':'')
         +(r.city?'<span>'+esc(r.city)+'</span>':'')
-        +(r.budget_max?'<span>'+fmtN(r.budget_max)+' ر.س</span>':'')
         +'<span'+(open&&bidCount>0?' class="hzp-bidsN"':'')+'>'+bidCount+' '+(bidCount===1?'عرض':'عروض')+'</span>'
         +'<span>'+timeAgo(r.created_at)+'</span>'
       +'</div>'
@@ -1315,9 +1314,8 @@ function riCard(r,actions){
     +'</div>'
     +'<div class="hzp-side">'
       +stTag(r.status)
-      +(actions&&(open||rev)?'<div class="hzp-acts">'
-        +(open?'<button class="ri-icon-btn" title="تعديل" onclick="openEditReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></button>':'')
-        +'<button class="ri-icon-btn danger" title="حذف" onclick="deleteReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>'
+      +(actions&&open?'<div class="hzp-acts">'
+        +'<button class="ri-icon-btn" title="تعديل" onclick="openEditReq('+r.id+',event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></button>'
       +'</div>':'')
     +'</div>'
   +'</div>';
@@ -1537,7 +1535,6 @@ function openDetail(id,e){
       +'<div class="rdh-meta">'
       +(req.category?'<span>'+tag+' '+esc(req.category)+'</span>':'')
       +(req.city?'<span>'+pin+' '+esc(req.city)+'</span>':'')
-      +(req.budget_max?'<span>'+money+' '+fmtN(req.budget_max)+' ر.س</span>':'')
       +(req.deadline?'<span>'+cal+' '+fmtDate(req.deadline)+'</span>':'')
       +'</div>'
       +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
@@ -1718,13 +1715,18 @@ function loadActions(id){
     } else {
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
-    // إدارة الطلب: تعديل (للطلب المفتوح) + حذف (مع تأكيد)
-    var _canEdit=(req.status==='open'), _canReopen=(req.status==='closed_auto'||req.status==='expired');
-    h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة الطلب</h3></div>'
-      +((_canEdit||_canReopen)?'<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>'+(_canReopen?'تمديد المدة وإعادة الفتح':'تعديل الطلب')+'</button>':'')
-      +(_canEdit?'<button class="btn-sm" onclick="openCloseModalC('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fed7aa;color:#ea580c;font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M18.36 6.64A9 9 0 1120.77 15"/><line x1="12" y1="2" x2="12" y2="12"/></svg>إغلاق المشروع</button>':'')
-      +'<button class="btn-sm" onclick="deleteReq('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fecaca;color:#dc2626;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>حذف الطلب</button>'
-      +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+(_canReopen?'مدّد مدة استقبال العروض ليُعاد فتح مشروعك ويستقبل عروضاً جديدة.':(_canEdit?'تقدر تعدّل التفاصيل والتصنيف والموقع والملفات، أو تحذف الطلب نهائياً.':'الحذف نهائي ولا يمكن التراجع عنه.'))+'</p></div>';
+    // إدارة الطلب: تعديل + إغلاق (للطلب المفتوح فقط). إعادة فتح الطلب المُغلق تتم من زر "إعادة نشر الطلب" أعلاه — زر واحد فقط.
+    var _canEdit=(req.status==='open');
+    var _mgmtBtns='';
+    if(_canEdit){
+      _mgmtBtns+='<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل الطلب</button>';
+      _mgmtBtns+='<button class="btn-sm" onclick="openCloseModalC('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fed7aa;color:#ea580c;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M18.36 6.64A9 9 0 1120.77 15"/><line x1="12" y1="2" x2="12" y2="12"/></svg>إغلاق المشروع</button>';
+    }
+    if(_mgmtBtns){
+      var _mgmtHint='تقدر تعدّل تفاصيل الطلب طالما هو مفتوح، أو تُغلق المشروع عند إيجاد المزوّد المناسب أو الاستغناء عنه.';
+      h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة الطلب</h3></div>'+_mgmtBtns
+        +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+_mgmtHint+'</p></div>';
+    }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
   }).catch(function(){if(el)el.innerHTML=errH(function(){loadActions(curRequestId);});});
 }
@@ -2118,14 +2120,6 @@ function submitEditReq(){
   xhr.ontimeout=function(){ btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('انتهت المهلة — الملف كبير أو الاتصال بطيء','error'); };
   xhr.timeout=180000;
   xhr.send(JSON.stringify(body));
-}
-function deleteReq(id,e){
-  if(e)e.stopPropagation();
-  if(!confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟'))return;
-  fetch(API+'/api/requests/'+id,Object.assign({method:'DELETE'},hdr()))
-    .then(function(r){return r.json();})
-    .then(function(r){if(r.ok||r.id){showToast('تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
-    .catch(function(){showToast('تعذّر الحذف — تحقّق من اتصالك','error');});
 }
 function openImgFull(src){var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
 
