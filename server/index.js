@@ -166,7 +166,7 @@ setInterval(() => {
   for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
 }, 600000);
 
-// نشر الطلبات قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
+// نشر المشاريع قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
 async function notifyMatchingProviders(request){
   try{
     if(!request || !request.id) return;
@@ -476,10 +476,10 @@ const INTENT_PAGES = {
       { q: 'كيف أبدأ باستخدام المنصة؟', a: 'اطرح مشروعك بإضافة تفاصيله، وستصلك عروض المقاولين المهتمين لتقارن وتختار.' }
     ]
   },
-  'طلب-عروض-اسعار-مقاولات': {
-    kw: 'طلب عروض أسعار مقاولات',
+  'مشروع-عروض-اسعار-مقاولات': {
+    kw: 'مشروع عروض أسعار مقاولات',
     h1: 'اطلب عروض أسعار من المقاولين',
-    title: 'طلب عروض أسعار مقاولات | احصل على أفضل عروض التنفيذ',
+    title: 'مشروع عروض أسعار مقاولات | احصل على أفضل عروض التنفيذ',
     meta: 'اطلب عروض أسعار لمشروعك من المقاولين المهتمين وقارن بين الأسعار والخبرات والمدة قبل اختيار المقاول.',
     heroSub: 'اطلب عروض أسعار لمشروعك من عدة مقاولين — وقارن الأسعار والمدة والخبرة قبل الاختيار.',
     intro: 'تريد معرفة أسعار تنفيذ مشروعك؟ اطلب عروض أسعار من المقاولين عبر منصة مناقصة. أضف تفاصيل مشروعك، ويقدّم لك المقاولون المهتمون عروض أسعارهم، فتقارن بينها من حيث السعر والخبرة والمدة وتختار الأنسب — بدل الاتصال على كل مقاول ومساومته.',
@@ -536,19 +536,19 @@ app.get('/dalil', (req, res) => {
     const links = SEO_CITIES.slice(0,8).map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(city)}</a>`).join('');
     return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px;margin-bottom:12px"><h2 style="font-size:16px;color:#1e3a8a;margin:0 0 9px">${seoEsc(cat)}</h2><div>${links}</div></div>`;
   }).join('');
-  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر طلبك واستقبل عروضاً مجاناً."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/">انشر طلبك مجاناً</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
+  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر مشروعك واستقبل عروضاً مجاناً."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/">انشر مشروعك مجاناً</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
 });
 
 // مولّدات محتوى غني لصفحات SEO — يجعل كل صفحة قيّمة لقوقل حتى بلا مزوّدين
 function seoRichIntro(cat, city){
-  return `تُعدّ خدمات ${cat} في ${city} من أكثر الخدمات طلباً، نظراً لحاجة المنازل والمنشآت إليها بشكل متكرر. سواء كنت تبحث عن تنفيذ جديد أو صيانة أو إصلاح عاجل، فإن اختيار مزوّد ${cat} المناسب في ${city} يوفّر عليك الوقت والتكلفة ويضمن جودة العمل. عبر منصة مناقصة، تنشر طلبك مرة واحدة ويصلك عدة عروض من مزوّدين في ${city} تقارن بينها وتختار الأنسب سعراً وجودة، بدلاً من الاتصال على كل مزوّد على حدة والمساومة معه.`;
+  return `تُعدّ خدمات ${cat} في ${city} من أكثر الخدمات مشروعاً، نظراً لحاجة المنازل والمنشآت إليها بشكل متكرر. سواء كنت تبحث عن تنفيذ جديد أو صيانة أو إصلاح عاجل، فإن اختيار مزوّد ${cat} المناسب في ${city} يوفّر عليك الوقت والتكلفة ويضمن جودة العمل. عبر منصة مناقصة، تنشر مشروعك مرة واحدة ويصلك عدة عروض من مزوّدين في ${city} تقارن بينها وتختار الأنسب سعراً وجودة، بدلاً من الاتصال على كل مزوّد على حدة والمساومة معه.`;
 }
 function seoRichFaq(cat, city){
   const faqs = [
-    { q: `كم تكلفة ${cat} في ${city}؟`, a: `تختلف تكلفة ${cat} في ${city} حسب حجم العمل ونوعه والمواد المستخدمة. أفضل طريقة لمعرفة السعر المناسب هي نشر طلبك على مناقصة واستقبال عدة عروض أسعار من مزوّدين مختلفين، ثم المقارنة بينها لاختيار الأنسب.` },
+    { q: `كم تكلفة ${cat} في ${city}؟`, a: `تختلف تكلفة ${cat} في ${city} حسب حجم العمل ونوعه والمواد المستخدمة. أفضل طريقة لمعرفة السعر المناسب هي نشر مشروعك على مناقصة واستقبال عدة عروض أسعار من مزوّدين مختلفين، ثم المقارنة بينها لاختيار الأنسب.` },
     { q: `كيف أختار أفضل مزوّد ${cat} في ${city}؟`, a: `ابحث عن مزوّد لديه تقييمات جيدة وأعمال سابقة موثّقة، والتزام بالمواعيد، وشفافية في التسعير. عبر مناقصة يمكنك رؤية تقييمات المزوّدين ومقارنة عروضهم قبل اتخاذ القرار.` },
-    { q: `كم يستغرق تنفيذ خدمة ${cat}؟`, a: `تعتمد المدة على طبيعة العمل وحجمه. عند نشر طلبك، حدّد التفاصيل بدقة ليقدّم لك المزوّدون تقديراً واقعياً للمدة والتكلفة.` },
-    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر الطلب وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة (3% من قيمة العقد) على مزوّد الخدمة فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
+    { q: `كم يستغرق تنفيذ خدمة ${cat}؟`, a: `تعتمد المدة على طبيعة العمل وحجمه. عند نشر مشروعك، حدّد التفاصيل بدقة ليقدّم لك المزوّدون تقديراً واقعياً للمدة والتكلفة.` },
+    { q: `هل النشر على مناقصة مجاني؟`, a: `نعم، نشر المشروع وتصفّح العروض مجاني تماماً. تُطبّق رسوم خدمة (3% من قيمة العقد) على مزوّد الخدمة فقط عند اتفاقه مع مزوّد واختيار عرضه.` }
   ];
   let h = '<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:20px;margin-bottom:14px">';
   faqs.forEach(f => {
@@ -559,7 +559,7 @@ function seoRichFaq(cat, city){
 }
 function seoRichTips(cat){
   const tips = [
-    'حدّد احتياجك بوضوح واكتب تفاصيل دقيقة عند نشر الطلب.',
+    'حدّد احتياجك بوضوح واكتب تفاصيل دقيقة عند نشر المشروع.',
     'قارن بين عدة عروض ولا تعتمد على عرض واحد فقط.',
     'اطّلع على تقييمات المزوّد وأعماله السابقة قبل الاتفاق.',
     'اتفق على التفاصيل والسعر والمدة كتابياً قبل بدء العمل.'
@@ -598,7 +598,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     } catch(e){ providers = []; }
 
     const title = `${cat} في ${city} — أفضل المزوّدين وعروض الأسعار | مناقصة`;
-    const desc = `تبحث عن ${cat} في ${city}؟ تصفّح مزوّدين موثوقين، أو انشر طلبك مجاناً على مناقصة واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب.`;
+    const desc = `تبحث عن ${cat} في ${city}؟ تصفّح مزوّدين موثوقين، أو انشر مشروعك مجاناً على مناقصة واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب.`;
     const canonical = `${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`;
 
     const provCards = providers.length ? providers.map(p => {
@@ -607,7 +607,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
       const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
       return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a></h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
-    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b">لا يوجد مزوّدون مسجّلون بعد في ${seoEsc(cat)} بـ${seoEsc(city)}. <strong>كن أول من يستفيد:</strong> انشر طلبك وسنوصّلك بمزوّدين مناسبين.</p>`;
+    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b">لا يوجد مزوّدون مسجّلون بعد في ${seoEsc(cat)} بـ${seoEsc(city)}. <strong>كن أول من يستفيد:</strong> انشر مشروعك وسنوصّلك بمزوّدين مناسبين.</p>`;
 
     const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
     const otherCats = SEO_CATS.filter(c=>c!==cat).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(c)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:12.5px">${seoEsc(c)} ${seoEsc(city)}</a>`).join('');
@@ -631,7 +631,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       }]
     };
 
-    const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر طلبك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر طلبك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر طلبك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر طلبك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر طلبك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر طلبك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
+    const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>تصفّح أفضل مزوّدي ${seoEsc(cat)} في ${seoEsc(city)}، أو انشر مشروعك مجاناً واستقبل عروض أسعار من عدة مزوّدين واختر الأنسب لك.</p><a class="cta" href="/">📝 انشر مشروعك مجاناً</a></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر مشروعك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك — مجاناً.</div><a href="/" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
     _dalilCache.set(_ck, { html: _pageHtml, exp: Date.now() + _DALIL_TTL });
     res.set('Content-Type','text/html; charset=utf-8').send(_pageHtml);
   } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
@@ -751,7 +751,7 @@ app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), asyn
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
 
-// ═══ كراسة المشروع (Brief) — توليد الطلب ═══
+// ═══ كراسة المشروع (Brief) — توليد المشروع ═══
 // (أدمن) اقتراح مزودين مطابقين لمشروع من قائمة الاستقطاب
 app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manage'), async (req, res) => {
   try{
@@ -1205,11 +1205,11 @@ async function runReminders(){
       if(clC.rows.length) console.log(`[lifecycle] أُغلق ${clC.rows.length} مشروع (تاريخ خاص)`);
     }
 
-    // ب) مشروع اختير مزوّده ولم يُتمّ: طلب تأكيد (موافقة ضمنية)
+    // ب) مشروع اختير مزوّده ولم يُتمّ: مشروع تأكيد (موافقة ضمنية)
     if((await getSetting('lc_confirm_on','1'))!=='0'){
       const confirmDays = Math.max(1, parseInt(await getSetting('lc_confirm_days','20'))||20);
       const graceDays   = Math.max(1, parseInt(await getSetting('lc_confirm_grace','3'))||3);
-      // 1) اطلب التأكيد (مرّة)، وسجّل وقت الطلب
+      // 1) اطلب التأكيد (مرّة)، وسجّل وقت المشروع
       const ask = await pool.query(
         `SELECT id, client_id, title FROM requests
          WHERE assigned_provider_id IS NOT NULL AND completed_at IS NULL
@@ -1278,7 +1278,7 @@ async function runReminders(){
     }
 
     /* ═══ المرحلة ٣: جودة وثقة ═══ */
-    // هـ) طلب لم يصله أي عرض بعد مدة → نصيحة تحسين الوصف للعميل
+    // هـ) مشروع لم يصله أي عرض بعد مدة → نصيحة تحسين الوصف للعميل
     if((await getSetting('q_nooffers_on','1'))!=='0'){
       const noDays = Math.max(1, parseInt(await getSetting('q_nooffers_days','3'))||3);
       const noOffers = await pool.query(
@@ -1289,8 +1289,8 @@ async function runReminders(){
       for(const x of noOffers.rows){
         await _remindOnce(x.client_id, 'no_offers', x.id,
           'لم تصلك عروض بعد 💡', `حسّن وصف "${eEsc(x.title)}" (تفاصيل، ميزانية، صور) لجذب عروض أفضل`,
-          'اجعل طلبك يجذب العروض', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — الطلبات الواضحة تحصل على عروض أسرع وأفضل.</p>`,
-          'تحسين الطلب', SITE_URL+'/dashboard-client.html');
+          'اجعل مشروعك يجذب العروض', `<p>مشروعك "<strong>${eEsc(x.title)}</strong>" لم تصله عروض حتى الآن.</p><p>أضف تفاصيل أوضح، ميزانية تقديرية، وصوراً — المشاريع الواضحة تحصل على عروض أسرع وأفضل.</p>`,
+          'تحسين المشروع', SITE_URL+'/dashboard-client.html');
       }
     }
     // و) مزوّد تقييمه منخفض → تنبيه لطيف لتحسين الخدمة
@@ -1353,7 +1353,7 @@ async function runReminders(){
       for(const x of qs.rows){
         await _remindOnce(x.client_id, 'answer_q', x.rid,
           'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${eEsc(x.title)}" — ردّك يساعدك تحصل على عروض أدق`,
-          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>الرد السريع يوضّح طلبك ويجذب عروضاً أفضل.</p>`,
+          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>الرد السريع يوضّح مشروعك ويجذب عروضاً أفضل.</p>`,
           'الرد على الأسئلة', SITE_URL+'/dashboard-client.html');
       }
     }
@@ -1482,7 +1482,7 @@ function auth(req, res, next) {
     next();
   }).catch(() => next());
 }
-// مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض الطلب
+// مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض المشروع
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (token) { try { req.user = jwt.verify(token, JWT_SECRET); } catch(e) {} }
@@ -1853,7 +1853,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
         ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
         : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
       await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! نحن سعداء بانضمامك إلينا.`, 'welcome', null);
-      if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر طلبك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
+      if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر مشروعك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
     } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1906,7 +1906,7 @@ app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) =
     if (realEmail) {
       const link = SITE_URL + '/auth.html?reset=' + token;
       const title = '🔐 إعادة تعيين كلمة المرور';
-      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا طلب لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
+      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا مشروع لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
       sendEmail(u.email, title, emailTpl(title, body, 'إعادة تعيين كلمة المرور', link)).catch(()=>{});
     }
     return res.json(generic);
@@ -2392,7 +2392,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
 
 
 // ═══ النشر بالوكالة: الإدارة تنشر مشروعاً نيابة عن عميل (بتوكيله) ═══
-// يحلّ مشكلة الطلب: نتواصل مع إدارات الأملاك، نأخذ تفاصيل مشروعهم، وننشره لهم.
+// يحلّ مشكلة المشروع: نتواصل مع إدارات الأملاك، نأخذ تفاصيل مشروعهم، وننشره لهم.
 app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2523,7 +2523,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         const cityHint = newReq.city ? ` في ${newReq.city}` : '';
         const nTitle = '🆕 مشروع جديد في تخصصك';
         const nBody = `${eEsc(newReq.title)}${cityHint} — اطّلع وقدّم عرضك`;
-        const emailBody = `<p>وصلنا طلب مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${eEsc(newReq.title)}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
+        const emailBody = `<p>وصلنا مشروع مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${eEsc(newReq.title)}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
         for (const p of provs.rows) {
           await notify(p.id, nTitle, nBody, 'new_request', newReq.id);
           if (p.email) sendEmail(p.email, nTitle, emailTpl(nTitle, emailBody, 'فتح المشروع الآن', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
@@ -2541,7 +2541,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const { title, description, category, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
     const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)', 'category=$3', 'city=$4', 'address=$5', 'budget_max=$6', 'deadline=$7'];
     const params = [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null];
@@ -2584,7 +2584,8 @@ app.delete('/api/requests/:id', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
+    // حذف المشروع: الإدارة فقط. صاحب المشروع لا يحذف — له الإغلاق (رجعي) بدلاً من الحذف النهائي.
+    if (req.user.role !== 'admin') return res.status(403).json({ message: 'حذف المشروع متاح للإدارة فقط. تقدر تُغلق مشروعك بدلاً من ذلك.' });
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -2604,7 +2605,7 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (!image) return res.status(400).json({ message: 'لا توجد صورة' });
     const own = await pool.query('SELECT client_id, images FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const current = own.rows[0].images || [];
     if (current.length >= 10) return res.status(400).json({ message: 'الحد الأقصى 10 صور' });
     current.push(image);
@@ -2619,7 +2620,7 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     if (!data) return res.status(400).json({ message: 'لا توجد بيانات' });
     const own = await pool.query('SELECT client_id, attachments FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const current = own.rows[0].attachments || [];
     if (current.length >= 3) return res.status(400).json({ message: 'الحد الأقصى 3 ملفات' });
     if (typeof data === 'string' && data.length > 14000000) return res.status(400).json({ message: 'حجم الملف كبير (الحد 10MB)' });
@@ -2674,7 +2675,7 @@ app.put('/api/requests/:id/not-done', auth, clientOnly, async (req, res) => {
       `UPDATE requests SET confirm_requested_at=NULL, assigned_at=NOW()
        WHERE id=$1 AND client_id=$2 AND completed_at IS NULL
        RETURNING id`, [id, req.user.id]);
-    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو ليس طلبك' });
+    if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو ليس مشروعك' });
     // امسح سجل التذكير حتى يُعاد لاحقاً
     try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('complete_deal')`, [id]); }catch(e){}
     res.json({ ok:true });
@@ -2694,7 +2695,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليست طلبك' });
+    if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
@@ -2732,9 +2733,9 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
     const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
-    if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'الطلب غير مفتوح للعروض' });
+    if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'المشروع غير مفتوح للعروض' });
     const existing = await pool.query('SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
     let row; let isUpdate = false;
     if (existing.rows.length) {
@@ -2812,7 +2813,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     const bidId = parseInt(req.params.id);
     const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
+    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
     const acceptedBid = bid.rows[0];
     const client = await pool.connect();
     try {
@@ -2854,7 +2855,7 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     const bidId = parseInt(req.params.id);
     const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس طلبك' });
+    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
     await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
     const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
     await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, 'bid_rejected', bid.rows[0].request_id);
@@ -2980,7 +2981,7 @@ app.get('/api/messages/unread-count', auth, async (req, res) => {
 app.post('/api/blocks/:userId', auth, async (req, res) => {
   try {
     const target = parseInt(req.params.userId);
-    if (!target || target === req.user.id) return res.status(400).json({ message: 'طلب غير صالح' });
+    if (!target || target === req.user.id) return res.status(400).json({ message: 'مشروع غير صالح' });
     await pool.query('INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, target]);
     res.json({ ok: true, blocked: true });
   } catch(e) { console.error('block:', e.message); res.status(500).json({ message: 'تعذّر الحظر' }); }
@@ -3154,7 +3155,7 @@ app.get('/api/reviews/user/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// هل قيّم المستخدم هذا الطلب؟
+// هل قيّم المستخدم هذا المشروع؟
 app.get('/api/requests/:id/my-review', auth, async (req, res) => {
   try {
     const rid = parseInt(req.params.id);
@@ -3169,7 +3170,7 @@ app.post('/api/reviews', auth, async (req, res) => {
     if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
     const reqRow = await pool.query('SELECT status, title, client_id, assigned_provider_id FROM requests WHERE id=$1', [request_id]);
-    if (!reqRow.rows.length) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
     // منع التقييمات الوهمية: المُقيِّم لازم يكون طرفاً في المشروع، والمُقيَّم هو الطرف الآخر
     {
@@ -3247,7 +3248,7 @@ app.post('/api/requests/:id/questions', rateLimiter(20, 600000), auth, async (re
   } catch(e) { console.error('POST /questions:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// POST: رد صاحب الطلب على سؤال (المالك فقط)
+// POST: رد صاحب المشروع على سؤال (المالك فقط)
 app.post('/api/requests/:id/questions/:qid/answer', auth, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
@@ -3256,12 +3257,12 @@ app.post('/api/requests/:id/questions/:qid/answer', auth, async (req, res) => {
     if (!answer) return res.status(400).json({ message: 'نص الرد مطلوب' });
     const reqRow = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
-    if (String(reqRow.rows[0].client_id) !== String(req.user.id)) return res.status(403).json({ message: 'صاحب الطلب فقط يمكنه الرد' });
+    if (String(reqRow.rows[0].client_id) !== String(req.user.id)) return res.status(403).json({ message: 'صاحب المشروع فقط يمكنه الرد' });
     const upd = await pool.query(`UPDATE request_questions SET answer=$1, answered_at=NOW() WHERE id=$2 AND request_id=$3 RETURNING *`, [answer, qid, requestId]);
     if (!upd.rows.length) return res.status(404).json({ message: 'السؤال غير موجود' });
     const askerId = upd.rows[0].asker_id;
     if (askerId && String(askerId) !== String(req.user.id)) {
-      await notify(askerId, '💬 تم الرد على سؤالك', `ردّ صاحب الطلب على سؤالك في "${reqRow.rows[0].title}".`, 'question_answered', requestId);
+      await notify(askerId, '💬 تم الرد على سؤالك', `ردّ صاحب المشروع على سؤالك في "${reqRow.rows[0].title}".`, 'question_answered', requestId);
     }
     res.json(upd.rows[0]);
   } catch(e) { console.error('POST /answer:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3554,7 +3555,7 @@ app.get('/api/admin/leads', requirePermission('outreach.manage'), async (req, re
   } catch(e){ console.error('leads list:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
 });
 
-// طابور الصيد: التالي (غير متواصل معه) + مطابقة طلب حقيقي
+// طابور الصيد: التالي (غير متواصل معه) + مطابقة مشروع حقيقي
 app.get('/api/admin/leads/queue', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const type = req.query.type === 'client' ? 'client' : 'provider';
@@ -3564,7 +3565,7 @@ app.get('/api/admin/leads/queue', requirePermission('outreach.manage'), async (r
        AND (followup_at IS NULL OR followup_at <= NOW())
        ORDER BY score DESC, created_at ASC LIMIT 25`, [type]);
     const leads = r.rows;
-    // مطابقة كل مزوّد بأقرب طلب مفتوح في تخصصه/مدينته
+    // مطابقة كل مزوّد بأقرب مشروع مفتوح في تخصصه/مدينته
     if(type === 'provider' && leads.length){
       for(const l of leads){
         try {
@@ -3622,7 +3623,7 @@ app.delete('/api/admin/leads/:id', requirePermission('outreach.manage'), async (
   catch(e){ res.status(500).json({ message:'تعذّر الحذف' }); }
 });
 
-// حذف جماعي بطلب واحد — سريع وموثوق (بدل مئات الطلبات المتتالية)
+// حذف جماعي بطلب واحد — سريع وموثوق (بدل مئات المشاريع المتتالية)
 app.post('/api/admin/leads/delete-by-filter', requirePermission('outreach.manage'), async (req, res) => {
   try {
     const { where, v } = buildLeadFilter(req.body || {});
@@ -3739,7 +3740,7 @@ app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (r
       FROM leads`);
     const t = tot.rows[0];
     const sent = (t.contacted||0) + (t.replied||0) + (t.converted||0) + (t.rejected||0);
-    // مقاييس الطلب — الرقم اللي يهم فعلاً
+    // مقاييس المشروع — الرقم اللي يهم فعلاً
     let dem = { req_today:0, req_week:0, req_month:0, req_open:0 };
     try{
       const rq = await pool.query(`SELECT
@@ -3761,7 +3762,7 @@ app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (r
   } catch(e){ console.error('leads stats:', e); res.status(500).json({ message:'تعذّر الجلب' }); }
 });
 
-// خريطة الفجوات: طلبات مفتوحة بلا تغطية مزودين كافية
+// خريطة الفجوات: مشاريع مفتوحة بلا تغطية مزودين كافية
 // ═══ محرّك الاستقطاب: ذكاء Claude ═══
 async function callClaude(system, user, maxTokens){
   const key = process.env.ANTHROPIC_API_KEY;
@@ -3794,9 +3795,9 @@ app.post('/api/admin/leads/:id/gen-message', requirePermission('outreach.manage'
       const m = await pool.query(`SELECT title,category,city,budget_max FROM requests WHERE status='open' AND ($1::text IS NULL OR city=$1) AND ($2::text IS NULL OR category=$2) ORDER BY created_at DESC LIMIT 1`, [l.city||null, l.category||null]);
       matched = m.rows[0] || null;
     }
-    const sys = 'أنت خبير تسويق سعودي لمنصة «مناقصة» (منصة تربط العملاء بمزودي الخدمات). اكتب رسالة واتساب قصيرة (٣-٤ أسطر) بلهجة سعودية مهذبة واحترافية لدعوة منشأة للانضمام. الرسالة تعطي قيمة قبل الطلب، شخصية، وتنتهي بسؤال بسيط. لا تكتب أي شيء غير الرسالة نفسها. ضمّن الرابط https://www.manaqasa.com';
+    const sys = 'أنت خبير تسويق سعودي لمنصة «مناقصة» (منصة تربط العملاء بمزودي الخدمات). اكتب رسالة واتساب قصيرة (٣-٤ أسطر) بلهجة سعودية مهذبة واحترافية لدعوة منشأة للانضمام. الرسالة تعطي قيمة قبل المشروع، شخصية، وتنتهي بسؤال بسيط. لا تكتب أي شيء غير الرسالة نفسها. ضمّن الرابط https://www.manaqasa.com';
     let usr = 'نوع المستهدف: '+(l.lead_type==='client'?'عميل محتمل (شركة تحتاج خدمات)':'مزوّد خدمة')+'\nالاسم: '+l.name+'\nالتخصص: '+(l.category||'غير محدد')+'\nالمدينة: '+(l.city||'غير محدد')+'\nالتقييم: '+(l.rating||'—');
-    if(matched) usr += '\n\nيوجد طلب حقيقي مطابق يمكن ذكره كطُعم: «'+matched.title+'»'+(matched.budget_max?' بميزانية '+matched.budget_max+' ريال':'')+' في '+(matched.city||'')+'. اذكره لجذبه.';
+    if(matched) usr += '\n\nيوجد مشروع حقيقي مطابق يمكن ذكره كطُعم: «'+matched.title+'»'+(matched.budget_max?' بميزانية '+matched.budget_max+' ريال':'')+' في '+(matched.city||'')+'. اذكره لجذبه.';
     const msg = await callClaude(sys, usr, 300);
     if(!msg) return res.json({ message:null, fallback:true });
     res.json({ message: msg });
@@ -5316,7 +5317,7 @@ wss.on('connection', (ws, req) => {
 // ═══ catch-all 404 ═══
 app.get('/404.html', (req, res) => res.sendFile(__dirname + '/404.html'));
 app.use((req, res) => {
-  // طلبات API ترجع JSON، الصفحات ترجع 404.html
+  // مشاريع API ترجع JSON، الصفحات ترجع 404.html
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ message: 'المسار غير موجود' });
   }
