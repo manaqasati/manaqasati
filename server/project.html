@@ -458,7 +458,7 @@ function _sortedBids(mode){
   return arr;
 }
 function _stepper(status){
-  var steps=['نشر الطلب','مراجعة الفريق','استقبال العروض','اختيار المزود','إتمام الصفقة'];
+  var steps=['نشر المشروع','مراجعة الفريق','استقبال العروض','اختيار المزود','إتمام الصفقة'];
   var active=2; // open -> استقبال العروض
   if(status==='in_progress')active=3;
   else if(status==='completed'||status==='done')active=5; // all done
@@ -1173,7 +1173,7 @@ function renderQuestions(qs){
         +'<div><div class="q-name">'+esc(nm)+((q.asker_role==='provider'||q.role==='provider')?'<span class="q-tag">مزود</span>':'')+'</div><div class="q-time">'+ago(q.created_at)+'</div></div></div>'
         +'<div class="q-text">'+esc(q.question||q.body||q.text||'')+'</div>'
         +(ans
-            ?'<div class="q-answer"><div class="q-answer-lbl">ردّ صاحب الطلب:</div>'+esc(ans)+'</div>'
+            ?'<div class="q-answer"><div class="q-answer-lbl">ردّ صاحب المشروع:</div>'+esc(ans)+'</div>'
             :(isOwner
                 ?'<div class="q-reply" style="margin-top:9px;margin-right:14px"><textarea id="ans-input-'+q.id+'" class="q-textarea" style="min-height:54px" placeholder="اكتب ردّك على هذا السؤال..."></textarea><button class="btn-ask" style="margin-top:7px" onclick="submitAnswer('+q.id+')">إرسال الرد</button></div>'
                 :''))
@@ -1188,7 +1188,7 @@ function renderQuestions(qs){
   var tq=document.getElementById('tab-qa');
   if(tq)tq.textContent=qs.length?('الأسئلة والتوضيحات · '+qs.length):'الأسئلة والتوضيحات';
 }
-// نداء الرد على سؤال (صاحب الطلب فقط) — عدّله لو اختلف في باك-إندك
+// نداء الرد على سؤال (صاحب المشروع فقط) — عدّله لو اختلف في باك-إندك
 var ANSWER_EP=function(rid,qid){return '/api/requests/'+rid+'/questions/'+qid+'/answer';};
 function submitAnswer(qid){
   var u=getUser();
