@@ -1565,6 +1565,9 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason VARCHAR(60)`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason_note TEXT`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
@@ -4363,6 +4366,30 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const reason = String(req.body.reason||'').slice(0,60);
+    const note = String(req.body.note||'').slice(0,500);
+    const REASONS = ['chose_outside','price_high','postponed','no_suitable_offers','other'];
+    if (!REASONS.includes(reason)) return res.status(400).json({ message: 'سبب غير صحيح' });
+    const r = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
+    if (r.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليست لك صلاحية' });
+    if (['completed','in_progress','assigned'].includes(r.rows[0].status)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
+    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW() WHERE id=$3", [reason, note||null, id]);
+    res.json({ ok: true });
+  } catch(e){ console.error('close-by-owner:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
+});
+app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const agg = await pool.query(`SELECT close_reason, COUNT(*)::int AS c FROM requests WHERE close_reason IS NOT NULL GROUP BY close_reason ORDER BY c DESC`);
+    const list = await pool.query(`SELECT r.id, r.title, r.close_reason, r.close_reason_note, r.closed_at, COALESCE(u.name,'عميل') AS client_name,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL ORDER BY r.closed_at DESC NULLS LAST LIMIT 300`);
+    res.json({ summary: agg.rows, list: list.rows });
+  } catch(e){ console.error('close-reasons:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
+});
 app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
