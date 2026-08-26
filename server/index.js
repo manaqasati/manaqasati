@@ -2841,8 +2841,8 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       }
       const rejected = await pool.query(`SELECT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected'`, [acceptedBid.request_id, bidId]);
       for (const rej of rejected.rows) {
-        await notify(rej.provider_id, '😔 لم يُقبل عرضك', `اختار العميل عرضاً آخر على "${eEsc(acceptedBid.title)}".`, 'bid_rejected', acceptedBid.request_id);
-        if (rej.email) sendEmail(rej.email, `📋 لم يُقبل عرضك على "${eEsc(acceptedBid.title)}"`, emailTpl('لم يُقبل عرضك', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر. لا تيأس!</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        await notify(rej.provider_id, 'رست على مزوّد آخر هالمرة', `اختار العميل عرضاً آخر على «${eEsc(acceptedBid.title)}». نصيحة للمرّة الجاية: قدّم سعراً منافساً مع إبراز جودتك وخبرتك، وردّ بسرعة — فرص جديدة تنتظرك.`, 'bid_rejected', acceptedBid.request_id);
+        if (rej.email) sendEmail(rej.email, `تحديث عرضك على «${eEsc(acceptedBid.title)}»`, emailTpl('رست على مزوّد آخر هالمرة', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر على «${eEsc(acceptedBid.title)}» — لا بأس، فرص كثيرة قادمة.</p><div style="background:#f0f6ff;border:1px solid #cdddf9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-weight:800;color:#1e40af;margin-bottom:8px">لتزيد فرص قبولك المرّة الجاية:</div><ul style="margin:0;padding-right:18px;color:#334155;line-height:2;font-size:14px"><li>قدّم <strong>سعراً منافساً</strong> يوازن بين القيمة والجودة</li><li>أبرز <strong>خبرتك وأعمالك السابقة</strong> في وصف العرض</li><li><strong>بادر بسرعة</strong> — العروض المبكرة تلفت انتباه العميل</li><li>أضف <strong>تفاصيل واضحة</strong> عن المدة وما يشمله العرض</li></ul></div>`, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
       await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
       res.json({ ok: true });
@@ -4374,11 +4374,23 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const note = String(req.body.note||'').slice(0,500);
     const REASONS = ['chose_outside','price_high','postponed','no_suitable_offers','other'];
     if (!REASONS.includes(reason)) return res.status(400).json({ message: 'سبب غير صحيح' });
-    const r = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
+    const r = await pool.query('SELECT client_id, status, title FROM requests WHERE id=$1', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (r.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليست لك صلاحية' });
     if (['completed','in_progress','assigned'].includes(r.rows[0].status)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
+    const _wasOpen = (r.rows[0].status === 'open');
+    const _projTitle = r.rows[0].title || 'مشروع';
     await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW() WHERE id=$3", [reason, note||null, id]);
+    // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
+    if (_wasOpen) {
+      try {
+        const bidders = await pool.query(`SELECT DISTINCT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1`, [id]);
+        for (const bp of bidders.rows) {
+          await notify(bp.provider_id, 'أُغلق المشروع', `أُغلق مشروع «${eEsc(_projTitle)}» ولم يعد يستقبل عروضاً. نشكر لك وقتك وعرضك.`, 'request_closed', id);
+          if (bp.email) sendEmail(bp.email, `أُغلق مشروع «${eEsc(_projTitle)}»`, emailTpl('أُغلق المشروع', `<p>عزيزي <strong>${eEsc(bp.name||'')}</strong>،</p><p>أُغلق مشروع «${eEsc(_projTitle)}» ولم يعد يستقبل عروضاً. نشكر لك وقتك وعرضك — وتجد مشاريع جديدة بانتظارك.</p>`, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        }
+      } catch(e){ console.error('close-notify:', e.message); }
+    }
     res.json({ ok: true });
   } catch(e){ console.error('close-by-owner:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
 });
