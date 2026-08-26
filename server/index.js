@@ -435,6 +435,101 @@ function seoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/<
 function seoStars(n){ n=Math.round(n||0); let h=''; for(let i=1;i<=5;i++) h+= (i<=n?'★':'☆'); return h; }
 
 // دليل رئيسي (هَب للربط الداخلي)
+// ═══════════════ صفحات نية البحث (Intent Landing Pages) ═══════════════
+const INTENT_PAGES = {
+  'طرح-مشروع-للمقاولين': {
+    kw: 'طرح مشروع للمقاولين',
+    h1: 'اطرح مشروعك واحصل على عروض من المقاولين',
+    title: 'طرح مشروع للمقاولين | اطرح مشروعك واحصل على عروض',
+    meta: 'لديك مشروع؟ اطرحه للمقاولين واستقبل عروض الأسعار من المقاولين المهتمين، ثم قارن بينها واختر الأنسب.',
+    heroSub: 'أضف تفاصيل مشروعك مرة واحدة، ويصلك عدة عروض من مقاولين مهتمين — قارن واختر الأنسب.',
+    intro: 'لديك مشروع وتبحث عن المقاول المناسب؟ مع منصة مناقصة يمكنك طرح تفاصيل مشروعك بسهولة، واستقبال عروض المقاولين المهتمين، ثم مقارنة العروض واختيار الأنسب لمشروعك — بدلاً من الاتصال على كل مقاول على حدة والمساومة معه.',
+    faq: [
+      { q: 'كيف أطرح مشروعي للمقاولين؟', a: 'أضف تفاصيل مشروعك (الوصف، الموقع، المواصفات) على منصة مناقصة، وسيطّلع عليه المقاولون المهتمون ويقدّمون عروضهم مباشرة.' },
+      { q: 'هل طرح المشروع يكلّفني شيئاً؟', a: 'طرح مشروعك واستقبال العروض ومقارنتها لا يتطلب أي رسوم — تضيف مشروعك وتستقبل العروض وتختار الأنسب لك.' },
+      { q: 'كم عرضاً سأستقبل؟', a: 'يعتمد على نوع المشروع وموقعه ووضوح تفاصيله. كلما كانت التفاصيل والمواصفات أوضح، زادت جودة العروض وعددها.' }
+    ]
+  },
+  'ابحث-عن-مقاول': {
+    kw: 'أبحث عن مقاول',
+    h1: 'تبحث عن مقاول؟ اطرح مشروعك',
+    title: 'أبحث عن مقاول | احصل على عروض لمشروعك',
+    meta: 'تبحث عن مقاول لمشروعك؟ أضف تفاصيل المشروع واستقبل عروضاً من المقاولين المناسبين وقارن بينها.',
+    heroSub: 'بدلاً من البحث عن المقاول بنفسك، اطرح مشروعك ودع المقاولين المناسبين يصلونك بعروضهم.',
+    intro: 'تبحث عن مقاول موثوق لمشروعك؟ بدل الاتصال على كل مقاول والسؤال عن السعر، اطرح مشروعك على منصة مناقصة مرة واحدة، ويصلك عدة عروض من مقاولين مهتمين، فتقارن الأسعار والخبرة والمدة وتختار الأنسب.',
+    faq: [
+      { q: 'كيف أجد المقاول المناسب لمشروعي؟', a: 'اطرح مشروعك على مناقصة، واستقبل عروضاً من عدة مقاولين، ثم قارن بين تقييماتهم وأعمالهم السابقة وأسعارهم لاختيار الأنسب.' },
+      { q: 'كيف أتأكد أن المقاول مناسب؟', a: 'راجع تقييمات المقاول وأعماله السابقة على المنصة، والتزامه بالمواعيد، ووضوح عرضه، قبل اتخاذ القرار.' },
+      { q: 'هل أستطيع مقارنة أكثر من مقاول؟', a: 'نعم، تستقبل عدة عروض على مشروعك وتقارن بينها جنباً إلى جنب لاختيار الأنسب سعراً وجودة.' }
+    ]
+  },
+  'منصة-مقاولات': {
+    kw: 'منصة مقاولات',
+    h1: 'منصة مقاولات تربط أصحاب المشاريع بالمقاولين',
+    title: 'منصة مقاولات في السعودية | اطرح مشروعك واحصل على عروض',
+    meta: 'منصة مقاولات سعودية تربط أصحاب المشاريع بالمقاولين. اطرح مشروعك واستقبل عروض الأسعار وقارن بين المقاولين.',
+    heroSub: 'منصة سعودية تربط أصحاب المشاريع بالمقاولين — اطرح مشروعك واستقبل عروضاً وقارن واختر.',
+    intro: 'منصة مناقصة هي منصة مقاولات سعودية تربط أصحاب المشاريع بالمقاولين ومقدّمي الخدمات. تتيح لك طرح مشروعك واستقبال عروض المقاولين المهتمين ومقارنة الأسعار والخبرات، لتختار المقاول الأنسب لتنفيذ أعمالك بكل سهولة.',
+    faq: [
+      { q: 'ما هي منصة مناقصة؟', a: 'منصة سعودية تربط أصحاب المشاريع بالمقاولين ومقدّمي الخدمات، تتيح طرح المشاريع واستقبال العروض ومقارنتها واختيار الأنسب.' },
+      { q: 'ما أنواع المشاريع التي تدعمها المنصة؟', a: 'مشاريع المقاولات العامة، البنية التحتية، الطرق، المياه والصرف الصحي، الكهرباء، المباني، التشطيبات، والمشاريع التجارية والصناعية.' },
+      { q: 'كيف أبدأ باستخدام المنصة؟', a: 'اطرح مشروعك بإضافة تفاصيله، وستصلك عروض المقاولين المهتمين لتقارن وتختار.' }
+    ]
+  },
+  'طلب-عروض-اسعار-مقاولات': {
+    kw: 'طلب عروض أسعار مقاولات',
+    h1: 'اطلب عروض أسعار من المقاولين',
+    title: 'طلب عروض أسعار مقاولات | احصل على أفضل عروض التنفيذ',
+    meta: 'اطلب عروض أسعار لمشروعك من المقاولين المهتمين وقارن بين الأسعار والخبرات والمدة قبل اختيار المقاول.',
+    heroSub: 'اطلب عروض أسعار لمشروعك من عدة مقاولين — وقارن الأسعار والمدة والخبرة قبل الاختيار.',
+    intro: 'تريد معرفة أسعار تنفيذ مشروعك؟ اطلب عروض أسعار من المقاولين عبر منصة مناقصة. أضف تفاصيل مشروعك، ويقدّم لك المقاولون المهتمون عروض أسعارهم، فتقارن بينها من حيث السعر والخبرة والمدة وتختار الأنسب — بدل الاتصال على كل مقاول ومساومته.',
+    faq: [
+      { q: 'كيف أطلب عرض سعر من مقاول؟', a: 'أضف تفاصيل مشروعك على مناقصة، وسيقدّم المقاولون المهتمون عروض أسعارهم لتقارن بينها وتختار.' },
+      { q: 'لماذا تختلف أسعار المقاولين لنفس المشروع؟', a: 'تختلف الأسعار حسب الخبرة والمواد المستخدمة وحجم العمل ومدة التنفيذ. مقارنة عدة عروض تساعدك على معرفة السعر العادل.' },
+      { q: 'كم تكلفة الحصول على عروض الأسعار؟', a: 'تضيف مشروعك وتستقبل عروض الأسعار وتقارن بينها لاختيار الأنسب لك.' }
+    ]
+  },
+  'مقاولين-السعودية': {
+    kw: 'مقاولين السعودية',
+    h1: 'مقاولين في السعودية لتنفيذ مشروعك',
+    title: 'مقاولين السعودية | ابحث عن مقاول لمشروعك',
+    meta: 'ابحث عن مقاولين في السعودية لتنفيذ مشاريعك، اطرح مشروعك واستقبل عروض المقاولين وقارن بينها.',
+    heroSub: 'مقاولون في مختلف مناطق السعودية — اطرح مشروعك وتصلك عروضهم لتختار الأنسب.',
+    intro: 'تبحث عن مقاولين في السعودية لتنفيذ مشروعك؟ منصة مناقصة تجمع مقاولين ومقدّمي خدمات في مختلف المناطق. اطرح مشروعك مرة واحدة، ويصلك عدة عروض من مقاولين مناسبين، فتقارن الأسعار والتقييمات وتختار الأنسب لتنفيذ أعمالك.',
+    faq: [
+      { q: 'كيف أجد مقاولين في السعودية؟', a: 'اطرح مشروعك على مناقصة، وسيصلك عروض من مقاولين في منطقتك، فتقارن بينها وتختار المناسب.' },
+      { q: 'هل تغطي المنصة كل مناطق السعودية؟', a: 'المنصة تخدم أصحاب المشاريع في مختلف مناطق المملكة، ويتزايد عدد المقاولين المسجّلين باستمرار.' },
+      { q: 'كيف أختار مقاولاً موثوقاً؟', a: 'راجع تقييمات المقاول وأعماله السابقة والتزامه بالمواعيد ووضوح عرضه قبل اتخاذ قرارك.' }
+    ]
+  }
+};
+const INTENT_CITIES = ['سكاكا','الجوف','حائل','عرعر','بريدة','عنيزة','القريات','دومة الجندل'];
+function renderIntentPage(slug) {
+  const c = INTENT_PAGES[slug];
+  if (!c) return null;
+  const canonical = `${SITE_URL}/${encodeURIComponent(slug)}`;
+  const others = Object.keys(INTENT_PAGES).filter(k => k !== slug).map(k =>
+    `<a href="/${encodeURIComponent(k)}" style="display:inline-block;margin:3px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:13px">${seoEsc(INTENT_PAGES[k].h1.length>34?INTENT_PAGES[k].kw:INTENT_PAGES[k].kw)}</a>`).join('');
+  const cityLinks = INTENT_CITIES.map(city =>
+    `<a href="/dalil/${seoSlug('تشطيبات ومقاولات عامة')}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:6px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:13px">مقاولين ${seoEsc(city)}</a>`).join('');
+  const faqHtml = c.faq.map(f =>
+    `<div style="background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:15px 17px;margin-bottom:10px"><div style="font-weight:800;color:#1e3a8a;margin-bottom:6px">${seoEsc(f.q)}</div><div style="color:#334155;font-size:14.5px">${seoEsc(f.a)}</div></div>`).join('');
+  const schema = [
+    { '@context':'https://schema.org','@type':'Service', name:c.kw, provider:{'@type':'Organization',name:'مناقصة',url:SITE_URL}, areaServed:{'@type':'Country',name:'المملكة العربية السعودية'}, description:c.meta },
+    { '@context':'https://schema.org','@type':'FAQPage', mainEntity:c.faq.map(f=>({'@type':'Question',name:f.q,acceptedAnswer:{'@type':'Answer',text:f.a}})) },
+    { '@context':'https://schema.org','@type':'BreadcrumbList', itemListElement:[{'@type':'ListItem',position:1,name:'مناقصة',item:SITE_URL},{'@type':'ListItem',position:2,name:c.kw,item:canonical}] }
+  ];
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(c.title)}</title><meta name="description" content="${seoEsc(c.meta)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(c.title)}"><meta property="og:description" content="${seoEsc(c.meta)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><meta property="og:image" content="${SITE_URL}/og-default.png"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85;-webkit-font-smoothing:antialiased}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:30px 24px;margin-bottom:22px}.hero h1{margin:0 0 10px;font-size:25px;line-height:1.35}.hero p{margin:0;opacity:.93;font-size:15px}.cta{display:inline-block;margin-top:18px;background:#fff;color:#1e3a8a;padding:14px 32px;border-radius:12px;font-weight:900;text-decoration:none;font-size:15.5px}.cta2{display:inline-block;margin-top:18px;margin-right:8px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);padding:14px 26px;border-radius:12px;font-weight:800;text-decoration:none;font-size:14.5px}h2{color:#1e3a8a;font-size:19px;margin:28px 0 13px}a{color:#1e40af}.nav{background:#172554;padding:13px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.steps{display:grid;gap:11px}.step{background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:15px 17px}.step b{color:#1e3a8a}.li{background:#fff;border:1px solid #e6eefb;border-radius:10px;padding:11px 15px;margin-bottom:8px;font-size:14.5px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:8px 18px;border-radius:9px;font-size:13px">اطرح مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(c.h1)}</h1><p>${seoEsc(c.heroSub)}</p><a class="cta" href="/post">📝 اطرح مشروعك الآن</a><a class="cta2" href="/dalil">أبحث عن مقاول</a></div><p style="font-size:15.5px">${seoEsc(c.intro)}</p><h2>كيف تعمل منصة مناقصة؟</h2><div class="steps"><div class="step"><b>1. أضف مشروعك</b> — أدخل تفاصيل المشروع والموقع والمواصفات المطلوبة.</div><div class="step"><b>2. استقبل عروض المقاولين</b> — يطّلع المقاولون المهتمون على مشروعك ويقدّمون عروضهم.</div><div class="step"><b>3. قارن العروض</b> — قارن بين الأسعار والخبرة والمدة والتفاصيل المقدّمة.</div><div class="step"><b>4. اختر المقاول المناسب</b> — اختر العرض الأنسب لتنفيذ مشروعك مباشرة.</div></div><h2>ما المشاريع التي يمكن طرحها؟</h2><div class="li">المقاولات العامة والمباني</div><div class="li">البنية التحتية والطرق</div><div class="li">المياه والصرف الصحي</div><div class="li">الأعمال الكهربائية والسباكة</div><div class="li">التشطيبات والديكور</div><div class="li">المشاريع التجارية والصناعية</div><div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:24px;text-align:center;color:#fff;margin:26px 0"><div style="font-size:18px;font-weight:900;margin-bottom:8px">لديك مشروع؟</div><div style="font-size:14px;opacity:.92;margin-bottom:16px">اطرح مشروعك على مناقصة واستقبل عروض المقاولين — قارن واختر الأنسب.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:11px;font-weight:900;text-decoration:none">اطرح مشروعك الآن</a></div><h2>لماذا تطرح مشروعك في مناقصة؟</h2><div class="li">الوصول إلى عدد أكبر من المقاولين</div><div class="li">استقبال عروض متعددة ومقارنة الأسعار</div><div class="li">توفير الوقت والوصول لمقاولين متخصصين</div><div class="li">تسهيل عملية الاختيار باطمئنان</div><h2>أسئلة شائعة</h2>${faqHtml}<h2>خدمات ذات صلة</h2><div>${others}</div><h2>مقاولين حسب المدينة</h2><div>${cityLinks}</div><p class="foot">مناقصة — لديك مشروع؟ اطرحه واستقبل عروض المقاولين · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
+}
+app.get(/^\/(طرح-مشروع-للمقاولين|ابحث-عن-مقاول|منصة-مقاولات|طلب-عروض-اسعار-مقاولات|مقاولين-السعودية)$/, (req, res) => {
+  try {
+    const slug = decodeURIComponent(req.path.replace(/^\//, ''));
+    const html = renderIntentPage(slug);
+    if (!html) return res.status(404).send('غير موجود');
+    res.set('Content-Type','text/html; charset=utf-8').send(html);
+  } catch(e){ console.error('intent page:', e.message); res.status(500).send('خطأ'); }
+});
+
 app.get('/dalil', (req, res) => {
   const cards = SEO_CATS.map(cat => {
     const links = SEO_CITIES.slice(0,8).map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(city)}</a>`).join('');
@@ -5080,6 +5175,7 @@ app.get('/sitemap.xml', async (req, res) => {
     const now=new Date().toISOString().split('T')[0];
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
     xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+    Object.keys(INTENT_PAGES).forEach(sl=>{ xml+=`\n  <url><loc>${SITE_URL}/${encodeURIComponent(sl)}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`; });
     SEO_CATS.forEach(cat=>SEO_CITIES.forEach(city=>{ xml+=`\n  <url><loc>${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`; }));
     for (const p of providers.rows) {
       const slug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
