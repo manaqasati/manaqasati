@@ -820,10 +820,10 @@ function _renderHome(data){
       +'<div style="min-width:0"><div class="ph-hi">أهلاً، '+_esc(firstName)+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</div><div class="ph-sub">فرص جديدة تناسب تخصصك تنتظر عرضك</div></div>'
       +'<span class="ph-rate"><span style="color:#F0A500">★</span>'+rat+'</span>'
     +'</div>'
-    +'<div class="ph-hl"><span class="ph-dot"></span> '+(newCount>0?('<b>'+newCount+(newCount===1?' طلب':' طلبات')+'</b>'+(matchedBySpec?' تناسب تخصصك الآن':' متاحة الآن')):'تصفّح الطلبات الجديدة المتاحة الآن')+'</div>'
+    +'<div class="ph-hl"><span class="ph-dot"></span> '+(newCount>0?('<b>'+newCount+(newCount===1?' مشروع':' مشاريع')+'</b>'+(matchedBySpec?' تناسب تخصصك الآن':' متاحة الآن')):'تصفّح المشاريع الجديدة المتاحة الآن')+'</div>'
   +'</div>';
   html+='<div class="ph-mrow">'
-    +'<div class="ph-mc"><div class="ph-mi blue"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></div><div class="ph-mn">'+newCount+'</div><div class="ph-ml">طلبات تناسبك</div></div>'
+    +'<div class="ph-mc"><div class="ph-mi blue"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></div><div class="ph-mn">'+newCount+'</div><div class="ph-ml">مشاريع تناسبك</div></div>'
     +'<div class="ph-mc"><div class="ph-mi sky"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><div class="ph-mn">'+_myBids.length+'</div><div class="ph-ml">عروضي</div></div>'
     +'<div class="ph-mc"><div class="ph-mi gold"><svg width="17" height="17" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg></div><div class="ph-mn">'+rat+'</div><div class="ph-ml">تقييمي</div></div>'
     +'<div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn">'+done+'</div><div class="ph-ml">منجزة</div></div>'
@@ -872,8 +872,8 @@ function _renderHome(data){
     var _fbids=parseInt(featured.bid_count||0);
     var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
     html+='<div class="ph-feat">'
-      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'طلب متاح')+'</span>'
-      +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'طلب جديد')+'</div>'
+      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'مشروع متاح')+'</span>'
+      +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'مشروع جديد')+'</div>'
       +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
         +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
         +(featured.city?'<span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:20px">'+_esc(featured.city)+'</span>':'')
@@ -885,12 +885,12 @@ function _renderHome(data){
     +'</div>';
   }
 
-  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(matchedBySpec?'طلبات في تخصصك':'أحدث الطلبات المتاحة')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
+  html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(matchedBySpec?'مشاريع في تخصصك':'أحدث المشاريع المتاحة')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   var _listPool=pool.slice(featured?1:0,featured?5:4);
   if(_listPool.length){
     html+=_renderBrowseList(_listPool);
   }else{
-    html+='<div style="text-align:center;padding:22px 14px"><div style="width:48px;height:48px;background:var(--p-light);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px;font-size:22px">🔍</div><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">ما فيه طلبات جديدة الآن</div><div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">'+(matchedBySpec?'تابع لاحقاً، تجيك إشعارات بالطلبات الجديدة في تخصصك':'تابع لاحقاً أو وسّع تخصصاتك من ملفك')+'</div><button onclick="gotoPage(&quot;browse&quot;)" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تصفّح كل المشاريع</button></div>';
+    html+='<div style="text-align:center;padding:22px 14px"><div style="width:48px;height:48px;background:var(--p-light);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px;font-size:22px">🔍</div><div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">ما فيه مشاريع جديدة الآن</div><div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">'+(matchedBySpec?'تابع لاحقاً، تجيك إشعارات بالمشاريع الجديدة في تخصصك':'تابع لاحقاً أو وسّع تخصصاتك من ملفك')+'</div><button onclick="gotoPage(&quot;browse&quot;)" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif">تصفّح كل المشاريع</button></div>';
   }
   html+='</div>';
 
@@ -1299,7 +1299,7 @@ async function _viewProj(id){
   body+='</div></div>';
   if(imgs.length){body+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">';imgs.forEach(function(img){body+='<div style="border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer" onclick="openImgFull(this.dataset.s)" data-s="'+img+'"><img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover"></div>';});body+='</div>';}
   if(r.description)body+='<div style="background:var(--bg);border-right:3px solid var(--border);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--text2);white-space:pre-wrap;word-wrap:break-word">'+_esc(r.description)+'</div>';
-  body+='<div style="background:var(--bg);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب الطلب</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div></div>';
+  body+='<div style="background:var(--bg);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الميزانية</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fpr(r.budget_max)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--muted)">الموعد النهائي</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_fdt(r.deadline)+'</span></div><div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--muted)">صاحب المشروع</span><span style="font-size:11px;font-weight:700;color:var(--p)">'+_esc(r.client_name||'—')+'</span></div></div>';
   _el('mBd').innerHTML=body;
   _loadProjQuestions(id);
   var cname=_esc(r.client_name||'العميل').replace(/'/g,'');var ctitle=_esc(r.title||'').replace(/'/g,'');
@@ -2266,15 +2266,15 @@ function _loadProjQuestions(id){
         html+='<div style="background:var(--bg);border:1px solid var(--border);'+(isMine?'border-right:3px solid var(--p);':'')+'border-radius:10px;padding:11px 13px;margin-bottom:9px">';
         html+='<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px">'+_esc(nm)+(isMine?' <span style="font-size:9px;color:var(--p);background:var(--p-light);padding:1px 6px;border-radius:10px">سؤالك</span>':'')+' <span style="font-size:10px;color:var(--muted);font-weight:600">'+timeAgoP(q.created_at)+'</span></div>';
         html+='<div style="font-size:12.5px;color:var(--text);line-height:1.6">'+_esc(q.body||'')+'</div>';
-        if(ans){ html+='<div style="background:var(--gold-l);border-radius:8px;padding:9px 11px;margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold-d);margin-bottom:2px">رد صاحب الطلب:</div><div style="font-size:12.5px;color:var(--text)">'+_esc(ans)+'</div></div>'; }
-        else { html+='<div style="font-size:11px;color:var(--muted);margin-top:6px">بانتظار رد صاحب الطلب…</div>'; }
+        if(ans){ html+='<div style="background:var(--gold-l);border-radius:8px;padding:9px 11px;margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold-d);margin-bottom:2px">رد صاحب المشروع:</div><div style="font-size:12.5px;color:var(--text)">'+_esc(ans)+'</div></div>'; }
+        else { html+='<div style="font-size:11px;color:var(--muted);margin-top:6px">بانتظار رد صاحب المشروع…</div>'; }
         html+='</div>';
       });
     } else {
       html+='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">لا توجد أسئلة بعد — كن أول من يسأل.</div>';
     }
     // صندوق طرح سؤال
-    html+='<textarea id="prov-q-input-'+id+'" placeholder="اطرح سؤالاً لصاحب الطلب..." style="width:100%;min-height:48px;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>';
+    html+='<textarea id="prov-q-input-'+id+'" placeholder="اطرح سؤالاً لصاحب المشروع..." style="width:100%;min-height:48px;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>';
     html+='<button onclick="_provAskQuestion('+id+')" style="margin-top:6px;background:var(--p);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer">إرسال السؤال</button>';
     if(slot) slot.innerHTML=html;
     // عند فتح المشروع، علّم ردوده كمقروءة
@@ -2328,7 +2328,7 @@ function _paintProvAnsNudge(total,topReq,qids){
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   slot.innerHTML='<div class="nudge" style="border-right-color:var(--green);margin-bottom:8px" onclick="_provOpenAnswers()">'
     +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
-    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'رد جديد على سؤالك':'ردود جديدة على أسئلتك')+'</div><div class="nudge-s">صاحب الطلب ردّ — اضغط لقراءة الرد</div></div>'
+    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'رد جديد على سؤالك':'ردود جديدة على أسئلتك')+'</div><div class="nudge-s">صاحب المشروع ردّ — اضغط لقراءة الرد</div></div>'
     +'<div class="nudge-cta" style="color:var(--green)">قراءة '+chev+'</div></div>';
 }
 function _provOpenAnswers(){
