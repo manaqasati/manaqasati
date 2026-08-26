@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div class="fld"><label>الميزانية (ر.س)</label><input id="re-budget" type="number"></div>
       <div class="fld"><label>مندوب (اختياري)</label><input id="re-agent-name" placeholder="اسم المندوب الذي جلب المشروع"></div><div class="fld"><label>جوال المندوب</label><input id="re-agent-phone" placeholder="05xxxxxxxx (لرابط المتابعة)"></div><div class="fld"><label>نسبة المندوب %</label><input id="re-agent-pct" type="number" min="0" max="100" step="0.5" placeholder="مثال: 5" oninput="_updAgentDue()"><div id="re-agent-due" style="font-size:12px;font-weight:700;color:var(--p);margin-top:7px"></div><button type="button" onclick="sendAgentLink(_editReqId)" style="margin-top:9px;background:#0f2a4f;color:#fff;border:none;padding:9px 15px;border-radius:9px;font-family:Tajawal;font-size:12px;font-weight:800;cursor:pointer">رابط تتبّع المندوب</button></div><div class="fld"><label>مدة استقبال العروض</label><select id="re-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div><div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
     </div>
-    <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
+    <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" id="re-close" onclick="closeReqAdmin()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">إغلاق المشروع</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
   </div>
 </div>
 
@@ -1640,6 +1640,14 @@ function openReqEdit(id){
   window._reStatus=r.status||'';
   _updAgentDue();
   document.getElementById('reqModal').classList.add('show');
+}
+function closeReqAdmin(){
+  if(!_editReqId)return;
+  if(!confirm('إغلاق هذا المشروع؟ سيتوقف استقبال العروض (استخدمه إذا اختار العميل من خارج المنصة).'))return;
+  fetch(API+'/api/admin/requests/'+_editReqId+'/close',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){toast('تم إغلاق المشروع','success');closeModal('reqModal');loadRequests();}
+    else toast((d&&d.message)||'تعذّر الإغلاق','error');
+  }).catch(function(){toast('تعذّر الإغلاق','error');});
 }
 function saveReqEdit(){
   if(!_editReqId)return;
