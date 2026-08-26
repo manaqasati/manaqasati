@@ -392,6 +392,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="nav-label">النمو</div>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
+    <button class="ni" onclick="showPage('closereasons',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>أسباب الإغلاق</button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
     <div class="nav-label">النظام</div>
     <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
@@ -542,6 +543,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-followup">
       <div id="followup-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+    </div>
+
+    <div class="page" id="page-closereasons">
+      <div id="closereasons-body"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
     <div class="page" id="page-marketing">
@@ -797,7 +802,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],agents:['المناديب','المناديب وعمولاتهم على المشاريع']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -808,6 +813,7 @@ function showPage(pg,el){
   if(pg==='outreach')loadOutreach();
   if(pg==='health')loadHealth();
   if(pg==='followup')loadFollowups();
+  if(pg==='closereasons')loadCloseReasons();
   if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
@@ -2280,6 +2286,37 @@ function _fuWa(id, stage){
 function _fuAgo(iso){
   if(!iso)return ''; var d=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
   if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; return 'قبل '+d+' يوم';
+}
+var CR_LABELS={chose_outside:'اختار من خارج المنصة',price_high:'الأسعار أعلى من الميزانية',postponed:'أجّل/ألغى المشروع',no_suitable_offers:'لا عروض مناسبة',other:'سبب آخر'};
+var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2'};
+function loadCloseReasons(){
+  var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })
+    .catch(function(){ if(b)b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function renderCloseReasons(d){
+  var b=document.getElementById('closereasons-body'); if(!b)return;
+  var sum=(d&&d.summary)||[], list=(d&&d.list)||[];
+  var total=sum.reduce(function(a,x){return a+(x.c||0);},0);
+  if(!total){ b.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">لا توجد مشاريع مُغلقة بأسباب بعد</div>'; return; }
+  var leak=(sum.filter(function(x){return x.close_reason==='chose_outside';})[0]||{}).c||0;
+  var h='<div style="display:flex;gap:11px;flex-wrap:wrap;margin-bottom:18px">';
+  h+='<div style="flex:1;min-width:150px;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:15px"><div style="font-size:24px;font-weight:900;color:var(--p)">'+total+'</div><div style="font-size:12px;color:var(--muted);margin-top:3px">إجمالي المشاريع المُغلقة</div></div>';
+  h+='<div style="flex:1;min-width:150px;background:#fef2f2;border:1px solid #fecaca;border-radius:13px;padding:15px"><div style="font-size:24px;font-weight:900;color:#dc2626">'+leak+' <span style="font-size:14px">('+(total?Math.round(leak/total*100):0)+'%)</span></div><div style="font-size:12px;color:#b91c1c;margin-top:3px">اختاروا من خارج المنصة (تسريب)</div></div>';
+  h+='</div>';
+  h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:18px"><div style="font-weight:900;font-size:14px;margin-bottom:12px">توزيع الأسباب</div>';
+  sum.forEach(function(x){
+    var pct=total?Math.round(x.c/total*100):0; var lbl=CR_LABELS[x.close_reason]||x.close_reason; var col=CR_COLORS[x.close_reason]||'#64748b';
+    h+='<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:4px"><span>'+esc(lbl)+'</span><span style="color:var(--muted)">'+x.c+' ('+pct+'%)</span></div><div style="height:9px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:6px"></div></div></div>';
+  });
+  h+='</div>';
+  h+='<div style="font-weight:900;font-size:14px;margin-bottom:10px">آخر المشاريع المُغلقة</div>';
+  h+=list.map(function(p){
+    var lbl=CR_LABELS[p.close_reason]||p.close_reason; var col=CR_COLORS[p.close_reason]||'#64748b';
+    var when=p.closed_at?new Date(p.closed_at).toLocaleDateString('ar-SA'):'';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض · '+when+'</div>'+(p.close_reason_note?'<div style="font-size:11.5px;color:var(--text2);margin-top:4px;font-style:italic">"'+esc(p.close_reason_note)+'"</div>':'')+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
+  }).join('');
+  b.innerHTML=h;
 }
 function loadFollowups(){
   var b=document.getElementById('followup-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
