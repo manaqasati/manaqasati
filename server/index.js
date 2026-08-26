@@ -5183,10 +5183,10 @@ app.get('/sitemap.xml', async (req, res) => {
       const lastmod=p.created_at?p.created_at.toISOString().split('T')[0]:now;
       xml+=`\n  <url><loc>${SITE_URL}/pro/${slug}</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>${lastmod}</lastmod></url>`;
     }
-    const requests=await pool.query(`SELECT r.id, r.title, r.updated_at FROM requests r WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 500`);
+    const requests=await pool.query(`SELECT r.id, r.title, r.created_at FROM requests r WHERE r.status='open' ORDER BY r.created_at DESC LIMIT 500`);
     for (const r of requests.rows) {
       const slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;
-      const lastmod=r.updated_at?r.updated_at.toISOString().split('T')[0]:now;
+      const lastmod=r.created_at?r.created_at.toISOString().split('T')[0]:now;
       xml+=`\n  <url><loc>${SITE_URL}/project/${slug}</loc><changefreq>daily</changefreq><priority>0.8</priority><lastmod>${lastmod}</lastmod></url>`;
     }
     xml+='\n</urlset>';
