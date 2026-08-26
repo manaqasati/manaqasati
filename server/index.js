@@ -1468,6 +1468,7 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
@@ -1936,9 +1937,19 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
       FROM requests r JOIN users u ON u.id=r.client_id`;
     const run = async (label, sql) => { try { return (await pool.query(sql)).rows; } catch(e){ console.error('[followups '+label+']', e.message); return []; } };
-    const few = await run('few', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2 ORDER BY r.created_at DESC LIMIT 200`);
-    const offers = await run('offers', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at > NOW() - INTERVAL '5 days' ORDER BY r.created_at DESC LIMIT 200`);
-    const delayed = await run('delayed', base + ` WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days' ORDER BY r.created_at ASC LIMIT 200`);
+    // كل بطاقة تظهر في مرحلتها اليدوية إن وُجدت، وإلا في المرحلة المحسوبة تلقائياً
+    const few = await run('few', base + ` WHERE r.status='open' AND (
+        (r.followup_stage='few') OR
+        (r.followup_stage IS NULL AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2)
+      ) ORDER BY r.created_at DESC LIMIT 200`);
+    const offers = await run('offers', base + ` WHERE r.status='open' AND (
+        (r.followup_stage='offers') OR
+        (r.followup_stage IS NULL AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at > NOW() - INTERVAL '5 days')
+      ) ORDER BY r.created_at DESC LIMIT 200`);
+    const delayed = await run('delayed', base + ` WHERE r.status='open' AND (
+        (r.followup_stage='delayed') OR
+        (r.followup_stage IS NULL AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days')
+      ) ORDER BY r.created_at ASC LIMIT 200`);
     const executing = await run('executing', base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 200`);
     const review = await run('review', base + ` WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id) ORDER BY r.created_at DESC LIMIT 200`);
     const tag = (rows, stage) => rows.map(x => ({ ...x, stage }));
@@ -3756,6 +3767,15 @@ app.get('/api/admin/logs', requirePermission('logs.view'), async (req, res) => {
   } catch(e) { console.error('admin logs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
+app.post('/api/admin/requests/:id/followup-stage', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const allowed = ['few','offers','delayed',''];
+    let st = String(req.body.stage||'').trim();
+    if (!allowed.includes(st)) return res.status(400).json({ message: 'مرحلة غير صحيحة' });
+    await pool.query('UPDATE requests SET followup_stage=$1 WHERE id=$2', [st||null, parseInt(req.params.id)]);
+    res.json({ ok: true });
+  } catch(e){ console.error('followup-stage:', e.message); res.status(500).json({ message: 'تعذّر النقل' }); }
+});
 app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => parseInt((r.rows[0]&&(r.rows[0].count||r.rows[0].c))||0)).catch(()=>0);
