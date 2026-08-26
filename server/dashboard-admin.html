@@ -2237,6 +2237,27 @@ function _fuDays(p){
   if(!base) return 0;
   return Math.max(0, Math.floor((Date.now()-new Date(base).getTime())/86400000));
 }
+function _fuMoveMenu(ev, id){
+  ev.stopPropagation();
+  document.querySelectorAll('.fu-move-pop').forEach(function(x){x.remove();});
+  var opts=[['few','\ud83c\udd95 عروض قليلة'],['offers','\ud83d\udce5 وصول عروض'],['delayed','\u23f3 تأخر الاختيار']].filter(function(o){return o[0]!==_fuTab;});
+  var pop=document.createElement('div'); pop.className='fu-move-pop';
+  pop.style.cssText='position:fixed;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;min-width:175px';
+  var html='<div style="font-size:11px;color:var(--muted);padding:5px 9px">نقل إلى:</div>';
+  opts.forEach(function(o){ html+='<button onclick="_fuMove('+id+',\''+o[0]+'\')" style="display:block;width:100%;text-align:right;background:none;border:none;padding:9px 11px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer">'+o[1]+'</button>'; });
+  html+='<button onclick="_fuMove('+id+',\'\')" style="display:block;width:100%;text-align:right;background:none;border:none;padding:9px 11px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;color:var(--muted);cursor:pointer;border-top:1px solid var(--border);margin-top:3px">\u21ba إرجاع للتلقائي</button>';
+  pop.innerHTML=html; document.body.appendChild(pop);
+  var r=ev.target.getBoundingClientRect();
+  pop.style.top=(r.bottom+6)+'px'; pop.style.right=Math.max(8,(window.innerWidth-r.right))+'px';
+  setTimeout(function(){ document.addEventListener('click', function _c(){ pop.remove(); document.removeEventListener('click',_c); }); }, 10);
+}
+function _fuMove(id, stage){
+  document.querySelectorAll('.fu-move-pop').forEach(function(x){x.remove();});
+  fetch(API+'/api/admin/requests/'+id+'/followup-stage',Object.assign({method:'POST',body:JSON.stringify({stage:stage})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ toast(stage?'تم نقل المشروع':'رجع للتلقائي','success'); loadFollowups(); }
+    else toast((d&&d.message)||'تعذّر النقل','error');
+  }).catch(function(){ toast('تعذّر النقل','error'); });
+}
 function _fuWa(id, stage){
   var p=(_fuData&&_fuData[stage]||[]).filter(function(x){return x.id===id;})[0]; if(!p)return;
   if(!p.client_phone){ toast('لا يوجد رقم جوال لهذا العميل','error'); return; }
@@ -2281,6 +2302,7 @@ function renderFollowups(){
       +'</div>'
       +'<div style="display:flex;gap:7px;flex-shrink:0">'
       +'<button onclick="_fuWa('+p.id+',\''+_fuTab+'\')" style="display:flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer"><svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 01-3.2-2.8c-.1-.2 0-.4.1-.5l.4-.5.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3a3 3 0 00-.9 2.2c0 1.3 1 2.6 1.1 2.8.1.2 1.9 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.4-.6 1.6-1.2.2-.6.2-1.1.1-1.2l-.4-.2z"/></svg>واتساب</button>'
+      +((_fuTab==='few'||_fuTab==='offers'||_fuTab==='delayed')?'<button onclick="_fuMoveMenu(event,'+p.id+')" title="نقل لمرحلة أخرى" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer">↔ نقل</button>':'')
       +'<button onclick="location.href=\'/project/\'+'+p.id+'" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer">عرض</button>'
       +'</div></div></div>';
   }).join('');
