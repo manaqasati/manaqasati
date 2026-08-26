@@ -343,7 +343,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .stat-grid .sc:nth-child(3){animation-delay:.16s}
   .stat-grid .sc:nth-child(4){animation-delay:.22s}
 
-  /* دخول عناصر الطلبات والعروض بالتتابع عند كل تحميل */
+  /* دخول عناصر المشاريع والعروض بالتتابع عند كل تحميل */
   .ri{animation:upIn .5s var(--ease-out) both}
   .ri:nth-child(1){animation-delay:.03s}
   .ri:nth-child(2){animation-delay:.08s}
@@ -379,7 +379,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 
 /* ملمس ضغط الأزرار (خفيف، يعمل دائماً) */
 .btn-p:active,.btn-new:active,.btn-agree:active,.btn-sm:active,.hero-btn:active,.btn-s:active,.chat-send:active{transform:translateY(0) scale(.97)}
-/* ===== كرت الطلب: حالة + خطوة تالية واحدة ===== */
+/* ===== كرت المشروع: حالة + خطوة تالية واحدة ===== */
 .ri-next{font-size:11.5px;color:var(--p);font-weight:700;margin-top:8px;display:flex;align-items:center;gap:5px;line-height:1.45}
 .ri-next.wait{color:var(--muted);font-weight:600}
 .ri-next svg{flex-shrink:0}
@@ -431,7 +431,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .ph-feat-cta{width:100%;margin-top:13px;border:none;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border-radius:11px;padding:11px;font-size:13px;font-weight:800;font-family:'Tajawal',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(29,78,216,.28)}
 @media(max-width:560px){.ph-mrow{flex-wrap:wrap}.ph-mc{flex:1 1 28%}}
 @media(max-width:768px){.ph-band{border-radius:14px;padding:16px}.ph-hi{font-size:18px}}
-/* ===== صفوف الطلبات الأفقية (مستنتجة من الصفحة التسويقية) ===== */
+/* ===== صفوف المشاريع الأفقية (مستنتجة من الصفحة التسويقية) ===== */
 .hzp{display:flex;align-items:center;gap:14px;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow);transition:transform .2s var(--ease),box-shadow .2s,border-color .2s}
 .hzp:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--p-mid)}
 .hzp-ic{width:60px;height:60px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -469,7 +469,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .nudge-cta{flex-shrink:0;font-size:11.5px;font-weight:800;color:var(--p);display:flex;align-items:center;gap:3px;white-space:nowrap}
 .card{margin-bottom:20px}
 @media (prefers-reduced-motion: no-preference){.nudge{animation:upIn .45s var(--ease-out) both}}
-/* ===== الإخفاء التدريجي في "طلب جديد" ===== */
+/* ===== الإخفاء التدريجي في "مشروع جديد" ===== */
 .extra-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;color:var(--p);cursor:pointer;margin-top:2px;transition:all .15s}
 .extra-toggle:hover{border-color:var(--p-mid);background:var(--p-light)}
 .extra-toggle .et-left{display:flex;align-items:center;gap:7px}
@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
     <button class="ni" onclick="show('requests',this,'requests')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-      طلباتي
+      مشاريعي
     </button>
     <button class="ni" onclick="location.href='/chat'">
       <div class="ni-ic" style="position:relative"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="ni-badge" id="chatBadge" style="display:none">0</span></div>
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </div>
     <button class="btn-new" onclick="show('new',null,'new')">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      طلب جديد
+      مشروع جديد
     </button>
   </div>
 
@@ -626,10 +626,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
             <div class="ph-sub">إليك ملخّص نشاطك على المنصة اليوم</div>
           </div>
         </div>
-        <div class="ph-hl" id="phHl"><span class="ph-dot"></span> ابدأ بنشر أول طلب واستقبل العروض</div>
+        <div class="ph-hl" id="phHl"><span class="ph-dot"></span> ابدأ بنشر أول مشروع واستقبل العروض</div>
       </div>
       <div class="ph-mrow">
-        <div class="ph-mc"><div class="ph-mi blue"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ph-mn" id="s-open">0</div><div class="ph-ml">طلبات نشطة</div></div>
+        <div class="ph-mc"><div class="ph-mi blue"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ph-mn" id="s-open">0</div><div class="ph-ml">مشاريع نشطة</div></div>
         <div class="ph-mc"><div class="ph-mi sky"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg></div><div class="ph-mn" id="s-offers">0</div><div class="ph-ml">عروض مستلمة</div></div>
         <div class="ph-mc"><div class="ph-mi grn"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="ph-mn" id="s-done">0</div><div class="ph-ml">مكتملة</div></div>
       </div>
@@ -637,7 +637,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div class="nudges" id="ph-nudges"></div>
       <div id="ph-feat-slot"></div>
       <div class="card card-accent">
-        <div class="ch"><h3>آخر الطلبات</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
+        <div class="ch"><h3>آخر المشاريع</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
         <div id="home-reqs"></div>
       </div>
     </div>
@@ -646,7 +646,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-requests">
       <div class="card card-accent">
         <div class="ch">
-          <h3>طلباتي</h3>
+          <h3>مشاريعي</h3>
           <button class="btn-new" onclick="show('new',null,'new')" style="font-size:12px;padding:8px 14px">+ جديد</button>
         </div>
         <div id="all-reqs"></div>
@@ -656,9 +656,9 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <!-- NEW REQUEST -->
     <div class="page" id="page-new">
       <div class="card card-accent">
-        <div class="ch"><h3>طلب جديد</h3></div>
+        <div class="ch"><h3>مشروع جديد</h3></div>
         <div id="new-msg" class="alert"></div>
-        <p style="font-size:12.5px;color:var(--muted);margin:-2px 0 16px;line-height:1.7">💡 كل ما وصفت طلبك بتفاصيل أكثر (المكان، المقاسات، الكمية، الوقت المناسب)، وصلتك عروض أدقّ وأسرع — والمزوّد يفهم احتياجك من أول نظرة.</p>
+        <p style="font-size:12.5px;color:var(--muted);margin:-2px 0 16px;line-height:1.7">💡 كل ما وصفت مشروعك بتفاصيل أكثر (المكان، المقاسات، الكمية، الوقت المناسب)، وصلتك عروض أدقّ وأسرع — والمزوّد يفهم احتياجك من أول نظرة.</p>
         <div class="form-grid">
           <div class="fg ff">
             <label>التصنيف <span style="color:var(--red)">*</span></label>
@@ -688,12 +688,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
             <input type="text" id="n-cat-other" placeholder="اكتب التصنيف">
           </div>
           <div class="fg ff">
-            <label>عنوان الطلب <span style="color:var(--red)">*</span></label>
+            <label>عنوان المشروع <span style="color:var(--red)">*</span></label>
             <input type="text" id="n-title" placeholder="مثال: تركيب مكيف غرفة نوم">
           </div>
           <div class="fg ff">
             <label>التفاصيل <span style="color:var(--red)">*</span></label>
-            <textarea id="n-desc" placeholder="اشرح الطلب بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر طلبك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
+            <textarea id="n-desc" placeholder="اشرح المشروع بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر مشروعك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
           </div>
           <div class="fg ff">
             <label>المدينة <span style="color:var(--red)">*</span></label>
@@ -740,7 +740,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           </div>
         </div>
         <div class="form-btns">
-          <button class="btn-p" id="submitBtn" onclick="submitReq()">نشر الطلب</button>
+          <button class="btn-p" id="submitBtn" onclick="submitReq()">نشر المشروع</button>
           <button class="btn-s" onclick="show('home',null,'home')">إلغاء</button>
         </div>
       </div>
@@ -821,7 +821,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 <div class="bnav">
   <div class="bnav-inner">
     <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div><span class="bt">الرئيسية</span></button>
-    <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">طلباتي</span></button>
+    <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">مشاريعي</span></button>
     <button class="bni-fab" onclick="show('new',null,'new')"><div class="fab-circle"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="fab-label">جديد</span></button>
     <button class="bni" id="bn-chat" onclick="location.href='/chat'"><div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bni-badge" id="bn-chat-badge">0</span></div><span class="bt">محادثات</span></button>
     <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="bt">حسابي</span></button>
@@ -832,7 +832,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 <div class="overlay" id="editReqOverlay">
   <div class="modal">
     <div class="modal-drag"></div>
-    <div class="modal-head"><h3>تعديل الطلب</h3><button class="modal-x" onclick="closeEditReq()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-head"><h3>تعديل المشروع</h3><button class="modal-x" onclick="closeEditReq()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div id="edit-msg" class="alert"></div>
       <div class="fg" style="margin-bottom:12px"><label>العنوان</label><input type="text" id="e-title"></div>
@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 // INIT
 // ═══════════════════════════════════
 var API='https://manaqasati-production.up.railway.app';
-// المصدر الموحّد: حدّث تصنيفات نموذج الطلب من السيرفر (مع احتياطي)
+// المصدر الموحّد: حدّث تصنيفات نموذج المشروع من السيرفر (مع احتياطي)
 (function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
   var sel=document.getElementById('n-cat');
   if(sel&&d&&Array.isArray(d.categories)&&d.categories.length){ var cur=sel.value; sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+c+'</option>';}).join(''); if(cur)sel.value=cur; }
@@ -911,7 +911,7 @@ var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 if(!token||!user.id){location.href='/auth.html';}
 
-// ═══ إرسال مسودّة الطلب تلقائياً بعد التسجيل (تدفّق: انشر أولاً ← سجّل ← يُرسل) ═══
+// ═══ إرسال مسودّة المشروع تلقائياً بعد التسجيل (تدفّق: انشر أولاً ← سجّل ← يُرسل) ═══
 (function(){
   try{
     var qp=new URLSearchParams(location.search);
@@ -922,7 +922,7 @@ if(!token||!user.id){location.href='/auth.html';}
     if(!draft||!draft.title||!draft.category){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
     // نظّف المسودّة فوراً لمنع الإرسال المكرّر
     try{ sessionStorage.removeItem('mnq_req_draft'); }catch(e){}
-    // جسم الطلب — نفس شكل submitReq بالضبط
+    // جسم المشروع — نفس شكل submitReq بالضبط
     var body={ title:String(draft.title).slice(0,200), description:String(draft.description||'').slice(0,4000), category:draft.category, city:draft.city||null };
     if(draft.budget_max) body.budget_max=Number(draft.budget_max)||undefined;
     if(draft.deadline) body.deadline=draft.deadline;
@@ -931,15 +931,15 @@ if(!token||!user.id){location.href='/auth.html';}
       .then(function(res){
         if(res.ok && res.d && res.d.id){
           if(window.track) track('StartPost');
-          showToast('تم نشر طلبك بنجاح! 🎉','success');
+          showToast('تم نشر مشروعك بنجاح! 🎉','success');
           // نظّف الرابط
           try{ history.replaceState(null,'','/dashboard-client.html'); }catch(e){}
           setTimeout(function(){ if(typeof loadHome==='function') loadHome(); },400);
         } else {
-          showToast((res.d&&res.d.message)||'تعذّر نشر الطلب، حاول من جديد','error');
+          showToast((res.d&&res.d.message)||'تعذّر نشر المشروع، حاول من جديد','error');
         }
       })
-      .catch(function(){ showToast('تعذّر نشر الطلب، تأكّد من اتصالك','error'); });
+      .catch(function(){ showToast('تعذّر نشر المشروع، تأكّد من اتصالك','error'); });
   }catch(e){}
 })();
 
@@ -1074,7 +1074,7 @@ function applyAvatar(img){
 // ═══════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════
-var _pageTitles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'حسابي',chat:'المحادثات'};
+var _pageTitles={home:'الرئيسية',requests:'مشاريعي',new:'مشروع جديد',notifs:'الإشعارات',detail:'تفاصيل المشروع',profile:'حسابي',chat:'المحادثات'};
 var curRequestId=null;
 function show(pg,el,key){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
@@ -1168,7 +1168,7 @@ function renderClientQuestions(qs,id){
   var pending=qs.filter(_cqPending).length;
   var cnt=document.getElementById('cq-count');
   if(cnt){ cnt.textContent=qs.length; cnt.style.background=pending>0?'var(--red)':''; cnt.style.color=pending>0?'#fff':''; }
-  if(!qs.length){ el.innerHTML=emptyH('لا توجد أسئلة','عندما يسأل مزوّد عن هذا الطلب سيظهر هنا'); return; }
+  if(!qs.length){ el.innerHTML=emptyH('لا توجد أسئلة','عندما يسأل مزوّد عن هذا المشروع سيظهر هنا'); return; }
   var headTxt = pending>0 ? '<div style="font-size:12px;font-weight:800;color:var(--red);margin:0 2px 11px;display:flex;align-items:center;gap:5px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>لديك '+pending+' '+(pending===1?'سؤال':'أسئلة')+' بانتظار ردّك</div>' : '';
   el.innerHTML = headTxt + qs.map(function(q){
     var nm=q.asker_name||'مزود';
@@ -1196,7 +1196,7 @@ function cqSubmitAnswer(qid){
     .catch(function(){ showToast('تعذّر إرسال الرد','error'); });
 }
 function openQuestionsTab(id,ev){
-  _markReqQuestionsSeen(id);          // علّم أسئلة هذا الطلب كمُشاهَدة → يختفي النبيه
+  _markReqQuestionsSeen(id);          // علّم أسئلة هذا المشروع كمُشاهَدة → يختفي النبيه
   var slot=document.getElementById('ph-q-nudge'); if(slot)slot.innerHTML='';
   openDetail(id,ev);
   setTimeout(function(){
@@ -1219,7 +1219,7 @@ function paintQBadge(id,pn){
 }
 function scanQuestions(all,doNudge){
   all=all||[];
-  // نفحص أحدث 8 طلبات فقط (كان 30 = حتى 30 طلب شبكة متزامن يسبب بطئاً ملموساً)
+  // نفحص أحدث 8 مشاريع فقط (كان 30 = حتى 30 مشروع شبكة متزامن يسبب بطئاً ملموساً)
   var cand=all.slice(0,8);
   if(!cand.length){ if(doNudge){ paintQNudge(0,null); } return; }
   var total=0, topReq=null, topN=0, done=0;
@@ -1227,7 +1227,7 @@ function scanQuestions(all,doNudge){
     jFetch('/api/requests/'+r.id+'/questions').then(function(qs){
       var pn=Array.isArray(qs)?qs.filter(_cqPending).length:0;
       paintQBadge(r.id,pn);
-      // النبيه العلوي يتجاهل الطلبات التي اطّلع عليها المستخدم (حتى لو لم يجب)
+      // النبيه العلوي يتجاهل المشاريع التي اطّلع عليها المستخدم (حتى لو لم يجب)
       if(pn>0 && !_isReqQSeen(r.id)){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
     }).catch(function(){ paintQBadge(r.id,0); }).then(function(){
       done++;
@@ -1242,7 +1242,7 @@ function paintQNudge(total,topReq){
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   slot.innerHTML='<div class="nudge" style="border-right-color:var(--red);margin-bottom:8px" onclick="openQuestionsTab('+topReq.id+',event)">'
     +'<div class="nudge-ic" style="background:var(--red-l);color:var(--red)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>'
-    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'سؤال':'أسئلة')+' بانتظار ردّك</div><div class="nudge-s">مزوّدون يسألون عن طلباتك — ردّ عليهم لتسريع العروض</div></div>'
+    +'<div class="nudge-body"><div class="nudge-t">'+total+' '+(total===1?'سؤال':'أسئلة')+' بانتظار ردّك</div><div class="nudge-s">مزوّدون يسألون عن مشاريعك — ردّ عليهم لتسريع العروض</div></div>'
     +'<div class="nudge-cta" style="color:var(--red)">رد '+chev+'</div></div>';
 }
 
@@ -1253,10 +1253,10 @@ function paintQNudge(total,topReq){
 function emptyReqsH(){
   return '<div class="empty-teach">'
     +'<div class="et-ic"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>'
-    +'<h4>ابدأ أول طلب لك</h4>'
-    +'<p>انشر طلبك، استقبل عروضاً من مزودين موثوقين، واختر الأنسب — كل شيء في مكان واحد.</p>'
-    +'<div class="et-steps"><span><b>1</b> انشر الطلب</span><span><b>2</b> قارن العروض</span><span><b>3</b> اختر ونفّذ</span></div>'
-    +'<button class="et-cta" onclick="show(\'new\',null,\'new\')">+ طلب جديد</button>'
+    +'<h4>ابدأ أول مشروع لك</h4>'
+    +'<p>انشر مشروعك، استقبل عروضاً من مزودين موثوقين، واختر الأنسب — كل شيء في مكان واحد.</p>'
+    +'<div class="et-steps"><span><b>1</b> انشر المشروع</span><span><b>2</b> قارن العروض</span><span><b>3</b> اختر ونفّذ</span></div>'
+    +'<button class="et-cta" onclick="show(\'new\',null,\'new\')">+ مشروع جديد</button>'
   +'</div>';
 }
 
@@ -1291,7 +1291,7 @@ function riCard(r,actions){
   var icCls=open?'s-open':prog?'s-prog':done?'s-done':rev?'s-rev':'s-prog';
   var bolt='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
   var clock='<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>';
-  // الخطوة التالية حسب حالة الطلب
+  // الخطوة التالية حسب حالة المشروع
   var nextTxt='',nextWait=false;
   if(open&&bidCount>0){nextTxt='استعرض العروض واختر الأنسب';}
   else if(open){nextTxt='ننتظر وصول أول عرض';nextWait=true;}
@@ -1384,13 +1384,13 @@ function _paintHome(all){
   if(sd)sd.textContent=doneN;
   if(sof)sof.textContent=offers;
   var hl=document.getElementById('phHl');
-  if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?('لديك <b>'+offers+' عرض</b> جديد على طلباتك'):(all.length>0?('طلباتك بانتظار وصول العروض — <b>'+openN+'</b> طلب نشط'):'ابدأ بنشر أول طلب واستقبل العروض'));
+  if(hl)hl.innerHTML='<span class="ph-dot"></span> '+(offers>0?('لديك <b>'+offers+' عرض</b> جديد على مشاريعك'):(all.length>0?('مشاريعك بانتظار وصول العروض — <b>'+openN+'</b> مشروع نشط'):'ابدأ بنشر أول مشروع واستقبل العروض'));
   if(el)el.innerHTML=all.length?all.slice(0,5).map(function(r){return riCard(r,false);}).join(''):emptyReqsH();
   renderNudges(all);
   renderQuestionNudge(all);
   renderBestOffer(all);
 }
-// شريط النبيهات الذكية — مستنتج من حالة طلبات العميل ورسائله
+// شريط النبيهات الذكية — مستنتج من حالة مشاريع العميل ورسائله
 // تتبّع "العروض المُشاهَدة" — النبيه يختفي بمجرّد الاطّلاع عليها
 function _offSeenKey(){ try{ return 'mnq_off_seen_'+(user.id||''); }catch(e){ return 'mnq_off_seen'; } }
 function _getOffSeen(){ try{ return JSON.parse(localStorage.getItem(_offSeenKey())||'{}'); }catch(e){ return {}; } }
@@ -1412,7 +1412,7 @@ function _hasUnseenOffers(r){
 function renderNudges(all){
   var slot=document.getElementById('ph-nudges');if(!slot)return;
   all=all||[];
-  // النبيه يظهر فقط للطلبات التي فيها عروض لم يطّلع عليها بعد
+  // النبيه يظهر فقط للمشاريع التي فيها عروض لم يطّلع عليها بعد
   var openBid=all.filter(function(r){return r.status==='open'&&(parseInt(r.bid_count)||0)>0&&_hasUnseenOffers(r);});
   var totalOffers=openBid.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
   var inProg=all.filter(function(r){return r.status==='in_progress';});
@@ -1422,7 +1422,7 @@ function renderNudges(all){
   if(totalOffers>0){
     reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="_markOffersSeen(window._allMyReqs||[]);show(\'requests\',null,\'requests\')">'
       +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
-      +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'طلب':'طلبات')+' — راجعها واختر الأنسب</div></div>'
+      +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'مشروع':'مشاريع')+' — راجعها واختر الأنسب</div></div>'
       +'<div class="nudge-cta">عرض '+chev+'</div></div>');
   }
   inProg.slice(0,2).forEach(function(r){
@@ -1453,14 +1453,14 @@ function renderNudges(all){
     paint(msgItem);
   }).catch(function(){paint(null);});
 }
-// بطاقة "أفضل عرض على طلبك" — تُستنتج من أحدث طلب له عروض
+// بطاقة "أفضل عرض على مشروعك" — تُستنتج من أحدث مشروع له عروض
 function _boSeenKey(){ try{ return 'mnq_bo_seen_'+(user.id||''); }catch(e){ return 'mnq_bo_seen'; } }
 function _getBOSeen(){ try{ return JSON.parse(localStorage.getItem(_boSeenKey())||'{}'); }catch(e){ return {}; } }
 function _markBestOfferSeen(reqId){ try{ var s=_getBOSeen(); s[reqId]=Date.now(); localStorage.setItem(_boSeenKey(),JSON.stringify(s)); var slot=document.getElementById('ph-feat-slot'); if(slot)slot.innerHTML=''; }catch(e){} }
 function _isBestOfferSeen(reqId){ var s=_getBOSeen(); return !!s[reqId]; }
 function renderBestOffer(all){
   var slot=document.getElementById('ph-feat-slot');if(!slot)return;
-  // تجاهل الطلبات التي اطّلع عليها المستخدم (شاف العرض) — البطاقة تختفي بعد المشاهدة
+  // تجاهل المشاريع التي اطّلع عليها المستخدم (شاف العرض) — البطاقة تختفي بعد المشاهدة
   var withB=(all||[]).filter(function(r){return (parseInt(r.bid_count)||0)>0 && !_isBestOfferSeen(r.id);});
   if(!withB.length){slot.innerHTML='';return;}
   var req=withB[0];
@@ -1478,7 +1478,7 @@ function renderBestOffer(all){
     var price=best.price?fmtN(best.price):'—';
     var avHtml=isImg(best.provider_image)?'<img loading="lazy" src="'+best.provider_image+'">':esc(nm.charAt(0));
     slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">'
-      +'<span class="ph-fb">أفضل عرض على طلبك</span>'
+      +'<span class="ph-fb">أفضل عرض على مشروعك</span>'
       +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
         +'<div style="display:flex;align-items:center;gap:9px">'
@@ -1512,7 +1512,7 @@ function loadReqs(){
 function openDetail(id,e){
   if(e)e.stopPropagation();
   curRequestId=id;
-  // اطّلع على الطلب ⇒ عروضه تُعدّ مُشاهَدة (يختفي نبيه "لديك عرض جديد")
+  // اطّلع على المشروع ⇒ عروضه تُعدّ مُشاهَدة (يختفي نبيه "لديك عرض جديد")
   try{
     var r=(window._allMyReqs||[]).filter(function(x){return String(x.id)===String(id);})[0];
     if(r&&(parseInt(r.bid_count)||0)>0){
@@ -1686,20 +1686,20 @@ function loadActions(id){
     if(req.status==='in_progress'){
       var _asked=!!req.confirm_requested_at;
       if(_asked){
-        // النظام طلب التأكيد — بطاقة واضحة بزرّين
+        // النظام مشروع التأكيد — بطاقة واضحة بزرّين
         h='<div class="card" style="border:2px solid var(--p);background:var(--p-l)"><div class="ch"><h3>هل تمّ تنفيذ مشروعك؟</h3></div>'
           +'<p style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.7">أكّد حالة مشروعك. إن لم ترد، سيُعتبر منتهياً تلقائياً — وتقدر تعترض باختيار «لم يتم بعد».</p>'
           +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:14px;margin-bottom:9px">'+check+' نعم، تم التنفيذ</button>'
           +'<button class="btn-sm" onclick="markNotDone('+id+')" style="width:100%;padding:12px;background:#fff;border:1px solid var(--border);color:var(--muted)">لم يتم بعد</button></div>';
       } else {
-        h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
-          +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال الطلب ثم يمكنك تقييمه.</p>'
-          +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل الطلب</button></div>';
+        h='<div class="card"><div class="ch"><h3>إجراءات المشروع</h3></div>'
+          +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال المشروع ثم يمكنك تقييمه.</p>'
+          +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل المشروع</button></div>';
       }
     } else if(req.status==='completed'||req.status==='done'){
       // مكتمل: أظهر زر التقييم
-      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
-        +'<div style="text-align:center;padding:10px 0 16px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:14px;font-weight:800">'+check+' الطلب مكتمل</div></div>'
+      h='<div class="card"><div class="ch"><h3>إجراءات المشروع</h3></div>'
+        +'<div style="text-align:center;padding:10px 0 16px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:14px;font-weight:800">'+check+' المشروع مكتمل</div></div>'
         +'<button class="btn-sm bs-p" id="rate-action-btn" onclick="openRate('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff;margin-bottom:9px">'+star+' تقييم المزود</button>'
         +'<button class="btn-sm" onclick="shareAchievement('+id+')" style="width:100%;padding:12px;background:var(--white);border:1px solid var(--border);color:var(--text2);font-weight:800"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>شارك تجربتك</button></div>';
       // تحقق إذا قيّم مسبقاً
@@ -1708,23 +1708,23 @@ function loadActions(id){
         if(rv&&rv.id&&btn){btn.outerHTML='<div style="text-align:center;padding:12px;background:var(--green-l);border-radius:10px;color:var(--green);font-size:13px;font-weight:700">'+check+' تم تقييم المزود</div>';}
       }).catch(function(){});
     } else if(req.status==='closed_auto'||req.status==='cancelled'||req.status==='expired'){
-      h='<div class="card"><div class="ch"><h3>إجراءات الطلب</h3></div>'
-        +'<div style="text-align:center;padding:8px 0 14px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:700">هذا الطلب مُغلق</div></div>'
+      h='<div class="card"><div class="ch"><h3>إجراءات المشروع</h3></div>'
+        +'<div style="text-align:center;padding:8px 0 14px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:700">هذا المشروع مُغلق</div></div>'
         +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;text-align:center">تقدر تعيد نشره ليظهر للمزوّدين من جديد وتستقبل عروضاً.</p>'
-        +'<button class="btn-sm bs-p" onclick="repostReq('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>إعادة نشر الطلب</button></div>';
+        +'<button class="btn-sm bs-p" onclick="repostReq('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>إعادة نشر المشروع</button></div>';
     } else {
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
-    // إدارة الطلب: تعديل + إغلاق (للطلب المفتوح فقط). إعادة فتح الطلب المُغلق تتم من زر "إعادة نشر الطلب" أعلاه — زر واحد فقط.
+    // إدارة المشروع: تعديل + إغلاق (للمشروع المفتوح فقط). إعادة فتح المشروع المُغلق تتم من زر "إعادة نشر المشروع" أعلاه — زر واحد فقط.
     var _canEdit=(req.status==='open');
     var _mgmtBtns='';
     if(_canEdit){
-      _mgmtBtns+='<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل الطلب</button>';
+      _mgmtBtns+='<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل المشروع</button>';
       _mgmtBtns+='<button class="btn-sm" onclick="openCloseModalC('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fed7aa;color:#ea580c;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M18.36 6.64A9 9 0 1120.77 15"/><line x1="12" y1="2" x2="12" y2="12"/></svg>إغلاق المشروع</button>';
     }
     if(_mgmtBtns){
-      var _mgmtHint='تقدر تعدّل تفاصيل الطلب طالما هو مفتوح، أو تُغلق المشروع عند إيجاد المزوّد المناسب أو الاستغناء عنه.';
-      h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة الطلب</h3></div>'+_mgmtBtns
+      var _mgmtHint='تقدر تعدّل تفاصيل المشروع طالما هو مفتوح، أو تُغلق المشروع عند إيجاد المزوّد المناسب أو الاستغناء عنه.';
+      h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة المشروع</h3></div>'+_mgmtBtns
         +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+_mgmtHint+'</p></div>';
     }
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
@@ -1751,15 +1751,15 @@ function loadTimeline(id){
     .catch(function(){el.innerHTML=emptyH('لا توجد أنشطة','');});
 }
 function shareAchievement(id){
-  var msg='✅ أنجزت مشروعي عبر منصة مناقصة بأفضل سعر!\nانشر طلبك واستقبل عروضاً من عدة مزودين واختر الأنسب:\nhttps://www.manaqasa.com';
+  var msg='✅ أنجزت مشروعي عبر منصة مناقصة بأفضل سعر!\nانشر مشروعك واستقبل عروضاً من عدة مزودين واختر الأنسب:\nhttps://www.manaqasa.com';
   if(navigator.share){navigator.share({title:'مناقصة',text:msg,url:'https://www.manaqasa.com'}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){showToast('تم نسخ رسالة المشاركة','success');});}
 }
 function repostReq(id){
-  if(!confirm('إعادة نشر هذا الطلب ليستقبل عروضاً جديدة؟'))return;
+  if(!confirm('إعادة نشر هذا المشروع ليستقبل عروضاً جديدة؟'))return;
   fetch(API+'/api/requests/'+id+'/repost',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
-    .then(function(d){ if(d&&d.ok){showToast('تم إعادة نشر الطلب','success');loadActions(id);loadHome();if(window.track)track('StartPost');} else showToast((d&&d.message)||'تعذر إعادة النشر','error'); })
+    .then(function(d){ if(d&&d.ok){showToast('تم إعادة نشر المشروع','success');loadActions(id);loadHome();if(window.track)track('StartPost');} else showToast((d&&d.message)||'تعذر إعادة النشر','error'); })
     .catch(function(){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');});
 }
 function markNotDone(id){
@@ -1769,7 +1769,7 @@ function markNotDone(id){
     .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function markDone(id){
-  if(!confirm('هل تؤكد إتمام هذا الطلب؟'))return;
+  if(!confirm('هل تؤكد إتمام هذا المشروع؟'))return;
   fetch(API+'/api/requests/'+id+'/complete',Object.assign({method:'PUT'},hdr()))
     .then(function(r){
       if(!r.ok){
@@ -1778,7 +1778,7 @@ function markDone(id){
       }
       return r;
     })
-    .then(function(){showToast('تم تحديث حالة الطلب','success');loadBids(id);loadActions(id);loadHome();})
+    .then(function(){showToast('تم تحديث حالة المشروع','success');loadBids(id);loadActions(id);loadHome();})
     .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function openRate(reqId){
@@ -1919,9 +1919,9 @@ function _reqDraftNudge(){
   if(document.getElementById('draftNudge'))return;
   var el=document.createElement('div');el.id='draftNudge';
   el.style.cssText='background:linear-gradient(135deg,#eff6ff,#e0edff);border:1px solid #bfdbfe;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
-  el.innerHTML='<div style="flex:1;min-width:160px"><div style="font-weight:800;color:#1e3a8a;font-size:14px;margin-bottom:2px">لديك طلب لم يكتمل ✍️</div>'
+  el.innerHTML='<div style="flex:1;min-width:160px"><div style="font-weight:800;color:#1e3a8a;font-size:14px;margin-bottom:2px">لديك مشروع لم يكتمل ✍️</div>'
     +'<div style="font-size:12px;color:#64748b">"'+String(d.t).replace(/</g,"&lt;").slice(0,40)+'" — أكمل نشره لتصلك العروض</div></div>'
-    +'<div style="display:flex;gap:8px"><button onclick="show(\'new\',null,\'new\')" style="background:#1d4ed8;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:Tajawal">أكمل الطلب</button>'
+    +'<div style="display:flex;gap:8px"><button onclick="show(\'new\',null,\'new\')" style="background:#1d4ed8;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:Tajawal">أكمل المشروع</button>'
     +'<button onclick="_clearReqDraft();var n=document.getElementById(\'draftNudge\');if(n)n.remove();" style="background:transparent;border:none;color:#94a3b8;font-size:12px;cursor:pointer;font-family:Tajawal">تجاهل</button></div>';
   host.insertBefore(el, host.firstChild);
 }
@@ -1984,8 +1984,8 @@ function submitReq(){
   var cityErr=document.getElementById('city-err');
   var err='';
   if(!cat)err='يرجى اختيار التصنيف';
-  else if(!title)err='يرجى كتابة عنوان الطلب';
-  else if(!desc)err='يرجى كتابة تفاصيل الطلب';
+  else if(!title)err='يرجى كتابة عنوان المشروع';
+  else if(!desc)err='يرجى كتابة تفاصيل المشروع';
   else if(!city){err='يرجى اختيار المدينة';document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
@@ -2027,14 +2027,14 @@ function acceptAgree(){
         _reqFiles=[];renderFileList();
         ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
         if(msg)msg.className='alert';
-        showToast('تم نشر الطلب','success');
+        showToast('تم نشر المشروع','success');
         if(window.track)track('Lead');
         _clearReqDraft();
         loadHome();loadReqs();show('requests',null,'requests');
       }else{if(msg){msg.textContent=r.message||'حدث خطأ';msg.className='alert err';}}
     })
     .catch(function(e){if(msg){msg.textContent=''+e.message;msg.className='alert err';}})
-    .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر الطلب';}});
+    .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر المشروع';}});
 }
 
 // ═══════════════════════════════════
@@ -2058,7 +2058,7 @@ function openEditReq(id,e){
     _editAttRender();
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
-  }).catch(function(){showToast('تعذّر تحميل الطلب — حدّث الصفحة','error');});
+  }).catch(function(){showToast('تعذّر تحميل المشروع — حدّث الصفحة','error');});
 }
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
 var _editGeo={lat:null,lng:null}; var _editAtts=[];
@@ -2210,7 +2210,7 @@ function changeClientPw(){
 function urlBase64ToUint8Array(b){var p='='.repeat((4-b.length%4)%4),s=(b+p).replace(/-/g,'+').replace(/_/g,'/'),d=window.atob(s),o=new Uint8Array(d.length);for(var i=0;i<d.length;i++)o[i]=d.charCodeAt(i);return o;}
 async function isPushActive(){if(!('serviceWorker' in navigator&&'PushManager' in window))return false;try{var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();return!!sub;}catch(e){return false;}}
 async function updatePushToggleUI(){
-  // طلب إذن الإشعارات تلقائياً (مرة واحدة، بصمت) — الإشعارات مفعّلة افتراضياً
+  // مشروع إذن الإشعارات تلقائياً (مرة واحدة، بصمت) — الإشعارات مفعّلة افتراضياً
   try{
     if(!('serviceWorker' in navigator&&'PushManager' in window))return;
     if(!('Notification' in window))return;
@@ -2279,7 +2279,7 @@ function loadNotifs(){
   el.innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/notifications',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(ns){
     var notifs=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[];
-    if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات بعد','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');return;}
+    if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات بعد','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على مشروعك');return;}
     el.innerHTML=notifs.map(function(n){
       var mt=notifMeta(n.type);
       return'<div class="notif-item'+(n.is_read?'':' unread')+'" id="notif-'+n.id+'">'
@@ -2327,7 +2327,7 @@ function deleteAllNotifs(){
   if(!confirm('حذف كل الإشعارات نهائياً؟'))return;
   fetch(API+'/api/notifications',Object.assign({method:'DELETE'},hdr())).then(function(r){
     if(!r.ok)throw new Error();
-    var el=document.getElementById('notifs-list'); if(el)el.innerHTML=emptyH('لا توجد إشعارات','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');
+    var el=document.getElementById('notifs-list'); if(el)el.innerHTML=emptyH('لا توجد إشعارات','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على مشروعك');
     ['notifBadge','mob-notif-badge'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';});
     showToast('تم حذف كل الإشعارات','success');
   }).catch(function(){showToast('تعذّر الحذف، حاول مجدداً','error');});
@@ -2897,7 +2897,7 @@ function gotoMessagesAndOpen(reqId,provId,provName){
       </div>
       <div class="agree-sec">
         <div class="agree-sec-t">ما المطلوب منك؟</div>
-        <p>أن تصف طلبك بوضوح، وتؤكّد إتمام العمل عند اكتماله ليصل التقييم لصاحبه.</p>
+        <p>أن تصف مشروعك بوضوح، وتؤكّد إتمام العمل عند اكتماله ليصل التقييم لصاحبه.</p>
       </div>
       <div class="agree-summary">
         <div class="agree-sum-row"><span class="agree-sum-ic"><svg width="15" height="15" fill="none" stroke="var(--p)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><span>العروض تصلك خلال <strong>ساعات</strong></span></div>
@@ -2905,11 +2905,11 @@ function gotoMessagesAndOpen(reqId,provId,provName){
       </div>
       <label class="agree-check">
         <input type="checkbox" id="agreeCheck" onchange="document.getElementById('agreeBtn').disabled=!this.checked">
-        <span>أوافق على شروط الاستخدام وأتعهد بوصف طلبي بدقة والتعامل باحترام مع المزوّدين</span>
+        <span>أوافق على شروط الاستخدام وأتعهد بوصف مشروعي بدقة والتعامل باحترام مع المزوّدين</span>
       </label>
     </div>
     <div class="agree-foot">
-      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر طلبي</button>
+      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر مشروعي</button>
       <button class="btn-back" onclick="closeAgree()">رجوع</button>
     </div>
   </div>
