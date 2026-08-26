@@ -965,6 +965,43 @@ function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
+function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
+  window._closeReqId=id;
+  var d=document.createElement('div'); d.id='closeModalOvC';
+  d.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#fff;width:100%;max-width:440px;border-radius:18px;padding:22px;font-family:Tajawal,sans-serif">'
+    +'<div style="font-size:17px;font-weight:900;color:#0f2a4f;margin-bottom:4px">إغلاق المشروع</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">قبل الإغلاق، هل اخترت مزوّداً من مناقصة؟</div>'
+    +'<div id="cmc-step1">'
+      +'<button onclick="_cmcChose()" style="width:100%;text-align:right;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#15803d">✅ نعم، اخترت مزوّداً من المنصة</button>'
+      +'<button onclick="_cmcReason()" style="width:100%;text-align:right;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#334155">لا، لم أعد بحاجة للمشروع</button>'
+    +'</div>'
+    +'<div id="cmc-step2" style="display:none">'
+      +'<div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:10px">ما سبب الإغلاق؟</div>'
+      +'<label class="cmc-r"><input type="radio" name="cmcreason" value="chose_outside"> اخترت مزوّداً من خارج المنصة</label>'
+      +'<label class="cmc-r"><input type="radio" name="cmcreason" value="price_high"> الأسعار أعلى من ميزانيتي</label>'
+      +'<label class="cmc-r"><input type="radio" name="cmcreason" value="postponed"> أجّلت أو ألغيت المشروع</label>'
+      +'<label class="cmc-r"><input type="radio" name="cmcreason" value="no_suitable_offers"> لم تصلني عروض مناسبة</label>'
+      +'<label class="cmc-r"><input type="radio" name="cmcreason" value="other"> سبب آخر</label>'
+      +'<textarea id="cmc-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
+      +'<button onclick="_cmcConfirm()" style="width:100%;margin-top:12px;background:#dc2626;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">تأكيد الإغلاق</button>'
+    +'</div>'
+    +'<button onclick="document.getElementById(\'closeModalOvC\').remove()" style="width:100%;margin-top:10px;background:none;border:none;color:#64748b;font-family:Tajawal;font-size:13px;cursor:pointer">إلغاء</button>'
+    +'<style>.cmc-r{display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:7px;font-size:13.5px;font-weight:600;color:#334155;cursor:pointer}.cmc-r input{width:17px;height:17px;accent-color:#dc2626}</style>'
+    +'</div>';
+  document.body.appendChild(d);
+}
+function _cmcChose(){ var ov=document.getElementById('closeModalOvC'); if(ov)ov.remove(); alert('ممتاز! لإتمام الاختيار، افتح مشروعك واضغط "قبول العرض" على عرض المزوّد الذي اخترته من قائمة العروض.'); }
+function _cmcReason(){ document.getElementById('cmc-step1').style.display='none'; document.getElementById('cmc-step2').style.display='block'; }
+function _cmcConfirm(){
+  var sel=document.querySelector('input[name=cmcreason]:checked');
+  if(!sel){ alert('اختر سبب الإغلاق'); return; }
+  var note=(document.getElementById('cmc-note')||{}).value||'';
+  fetch(API+'/api/requests/'+window._closeReqId+'/close-by-owner',Object.assign({method:'POST',body:JSON.stringify({reason:sel.value,note:note})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ var ov=document.getElementById('closeModalOvC'); if(ov)ov.remove(); if(typeof toast==='function')toast('تم إغلاق المشروع','success'); else alert('تم إغلاق المشروع'); if(typeof loadRequests==='function')loadRequests(); else location.reload(); }
+    else alert((d&&d.message)||'تعذّر الإغلاق');
+  }).catch(function(){ alert('تعذّر الإغلاق'); });
+}
 // كاش خفيف: يعرض آخر بيانات محفوظة فوراً (سرعة)، ثم يحدّثها من الخادم
 function _cGet(key){ try{ var v=sessionStorage.getItem('mnq_c_'+key); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function _cSet(key,val){ try{ sessionStorage.setItem('mnq_c_'+key,JSON.stringify(val)); }catch(e){} }
@@ -1685,6 +1722,7 @@ function loadActions(id){
     var _canEdit=(req.status==='open'), _canReopen=(req.status==='closed_auto'||req.status==='expired');
     h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة الطلب</h3></div>'
       +((_canEdit||_canReopen)?'<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>'+(_canReopen?'تمديد المدة وإعادة الفتح':'تعديل الطلب')+'</button>':'')
+      +(_canEdit?'<button class="btn-sm" onclick="openCloseModalC('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fed7aa;color:#ea580c;font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M18.36 6.64A9 9 0 1120.77 15"/><line x1="12" y1="2" x2="12" y2="12"/></svg>إغلاق المشروع</button>':'')
       +'<button class="btn-sm" onclick="deleteReq('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fecaca;color:#dc2626;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>حذف الطلب</button>'
       +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+(_canReopen?'مدّد مدة استقبال العروض ليُعاد فتح مشروعك ويستقبل عروضاً جديدة.':(_canEdit?'تقدر تعدّل التفاصيل والتصنيف والموقع والملفات، أو تحذف الطلب نهائياً.':'الحذف نهائي ولا يمكن التراجع عنه.'))+'</p></div>';
     el.innerHTML=h||emptyH('لا يوجد إجراءات','');
