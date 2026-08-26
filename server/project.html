@@ -802,6 +802,9 @@ function render(){
   // ── Share ──
   h+='<div class="card" style="text-align:center">';
   h+='<button onclick="shareProject()" style="background:none;border:1px solid var(--border);border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة هذا المشروع</button>';
+  if(isOwner && (req.status==='open')){
+    h+='<div style="margin-top:12px"><button onclick="openCloseModal()" style="background:none;border:1px solid #fecaca;border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">إغلاق المشروع</button></div>';
+  }
   h+='</div>';
 
   h+='<div class="foot">© مناقصة — جميع الحقوق محفوظة</div>';
@@ -1067,6 +1070,43 @@ function openViewer(src){
   document.getElementById('viewer').classList.add('on');
 }
 
+function openCloseModal(){
+  var d=document.createElement('div'); d.id='closeModalOv';
+  d.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#fff;width:100%;max-width:440px;border-radius:18px;padding:22px;font-family:Tajawal,sans-serif">'
+    +'<div style="font-size:17px;font-weight:900;color:#0f2a4f;margin-bottom:4px">إغلاق المشروع</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">قبل الإغلاق، هل اخترت مزوّداً من مناقصة؟</div>'
+    +'<div id="cm-step1">'
+      +'<button onclick="_cmChose()" style="width:100%;text-align:right;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#15803d">✅ نعم، اخترت مزوّداً من المنصة</button>'
+      +'<button onclick="_cmReason()" style="width:100%;text-align:right;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#334155">لا، لم أعد بحاجة للمشروع</button>'
+    +'</div>'
+    +'<div id="cm-step2" style="display:none">'
+      +'<div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:10px">ما سبب الإغلاق؟</div>'
+      +'<label class="cm-r"><input type="radio" name="cmreason" value="chose_outside"> اخترت مزوّداً من خارج المنصة</label>'
+      +'<label class="cm-r"><input type="radio" name="cmreason" value="price_high"> الأسعار أعلى من ميزانيتي</label>'
+      +'<label class="cm-r"><input type="radio" name="cmreason" value="postponed"> أجّلت أو ألغيت المشروع</label>'
+      +'<label class="cm-r"><input type="radio" name="cmreason" value="no_suitable_offers"> لم تصلني عروض مناسبة</label>'
+      +'<label class="cm-r"><input type="radio" name="cmreason" value="other"> سبب آخر</label>'
+      +'<textarea id="cm-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
+      +'<button onclick="_cmConfirm()" style="width:100%;margin-top:12px;background:#dc2626;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">تأكيد الإغلاق</button>'
+    +'</div>'
+    +'<button onclick="document.getElementById(\'closeModalOv\').remove()" style="width:100%;margin-top:10px;background:none;border:none;color:#64748b;font-family:Tajawal;font-size:13px;cursor:pointer">إلغاء</button>'
+    +'<style>.cm-r{display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:7px;font-size:13.5px;font-weight:600;color:#334155;cursor:pointer}.cm-r input{width:17px;height:17px;accent-color:#dc2626}</style>'
+    +'</div>';
+  document.body.appendChild(d);
+}
+function _cmChose(){ document.getElementById('closeModalOv').remove(); alert('ممتاز! لإتمام الاختيار واحتساب الاتفاق، اضغط "قبول العرض" على عرض المزوّد الذي اخترته من قائمة العروض.'); }
+function _cmReason(){ document.getElementById('cm-step1').style.display='none'; document.getElementById('cm-step2').style.display='block'; }
+function _cmConfirm(){
+  var sel=document.querySelector('input[name=cmreason]:checked');
+  if(!sel){ alert('اختر سبب الإغلاق'); return; }
+  var note=(document.getElementById('cm-note')||{}).value||'';
+  var id=getReqId();
+  fetch(API+'/api/requests/'+id+'/close-by-owner',Object.assign({method:'POST',body:JSON.stringify({reason:sel.value,note:note})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
+    else alert((d&&d.message)||'تعذّر الإغلاق');
+  }).catch(function(){ alert('تعذّر الإغلاق'); });
+}
 function shareProject(){
   var _id=(_req&&_req.id)||getReqId();
   var _url=_id?(location.origin+'/project/'+_id):location.href;
