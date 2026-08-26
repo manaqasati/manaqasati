@@ -4363,6 +4363,17 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query("SELECT status FROM requests WHERE id=$1", [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const st = r.rows[0].status;
+    if (['completed','in_progress','assigned'].includes(st)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
+    await pool.query("UPDATE requests SET status='closed_auto' WHERE id=$1", [id]);
+    res.json({ ok: true });
+  } catch(e){ console.error('close req:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
+});
 app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
