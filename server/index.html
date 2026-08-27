@@ -1613,7 +1613,7 @@ function renderProviderHome(u){
       body+='<div class="ph-feat"><span class="ph-fb">\u0623\u0641\u0636\u0644 \u0641\u0631\u0635\u0629 \u0644\u0643</span>'
         +'<div style="font-size:15px;font-weight:900;color:#1e3a8a">'+_esc(f.title||'')+'</div>'
         +'<div style="margin-top:7px"><span class="ph-tag">'+_esc(f.category||'')+'</span>'+(f.city?'<span class="ph-tag sky">'+_esc(f.city)+'</span>':'')+(f.budget_max?'<span class="ph-tag grn">\u0645\u064a\u0632\u0627\u0646\u064a\u0629 '+Number(f.budget_max).toLocaleString('en-US')+' \u0631.\u0633</span>':'')+'</div>'
-        +'<div style="font-size:11px;color:#94a3b8;margin-top:7px">'+(req_ago(f.created_at))+(fb?' \u00b7 '+fb+' \u0639\u0631\u0636':' \u00b7 \u0644\u0627 \u0639\u0631\u0648\u0636 \u0628\u0639\u062f \u2014 \u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0642\u062f\u0651\u0645')+'</div>'
+        +'<div style="font-size:11.5px;color:#64748b;margin-top:7px">'+(req_ago(f.created_at))+(fb?' \u00b7 '+fb+' \u0639\u0631\u0636':' \u00b7 \u0644\u0627 \u0639\u0631\u0648\u0636 \u0628\u0639\u062f \u2014 \u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0642\u062f\u0651\u0645')+'</div>'
         +'<button class="ph-cta" style="width:100%;justify-content:center;margin-top:13px" onclick="_openReq({id:'+f.id+'})">\u0642\u062f\u0651\u0645 \u0639\u0631\u0636\u0643 \u0627\u0644\u0622\u0646</button>'
         +'</div>';
       match.slice(1,4).forEach(function(r){
