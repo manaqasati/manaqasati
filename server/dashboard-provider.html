@@ -1611,6 +1611,17 @@ async function loadProfile(){
     +'</div>';
   pg.appendChild(hdr);
 
+  // بالجوال فقط: القائمة الجانبية (وفيها "سداد العمولة") مخفية — فنعرض بطاقة وصول للدفع هنا
+  if(window.innerWidth<=768){
+    var payCard=document.createElement('div');
+    payCard.style.cssText='background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;cursor:pointer';
+    payCard.setAttribute('onclick',"location.href='/payment.html'");
+    payCard.innerHTML='<div style="width:40px;height:40px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fed7aa"><svg width="20" height="20" fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;color:#9a3412">سداد العمولة</div><div style="font-size:11.5px;color:#b45309;margin-top:2px">اعرض واسدّد عمولة المنصة على مشاريعك</div></div>'
+      +'<svg width="18" height="18" fill="none" stroke="#d97706" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+    pg.appendChild(payCard);
+  }
+
   var cardUrl='/pro/'+_me.id;
   var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
   var previewCard=document.createElement('div');
