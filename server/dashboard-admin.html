@@ -2287,8 +2287,8 @@ function _fuAgo(iso){
   if(!iso)return ''; var d=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
   if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; return 'قبل '+d+' يوم';
 }
-var CR_LABELS={chose_outside:'اختار من خارج المنصة',price_high:'الأسعار أعلى من الميزانية',postponed:'أجّل/ألغى المشروع',no_suitable_offers:'لا عروض مناسبة',other:'سبب آخر'};
-var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2'};
+var CR_LABELS={chose_outside:'اختار من خارج المنصة',price_high:'الأسعار أعلى من الميزانية',postponed:'أجّل/ألغى المشروع',no_suitable_offers:'لا عروض مناسبة',other:'سبب آخر',auto_expired:'انتهت المدة',admin_closed:'أُغلق من الإدارة'};
+var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',auto_expired:'#94a3b8',admin_closed:'#0f766e'};
 function loadCloseReasons(){
   var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })
