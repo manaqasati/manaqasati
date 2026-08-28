@@ -4396,10 +4396,13 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
 });
 app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
   try {
-    const agg = await pool.query(`SELECT close_reason, COUNT(*)::int AS c FROM requests WHERE close_reason IS NOT NULL GROUP BY close_reason ORDER BY c DESC`);
-    const list = await pool.query(`SELECT r.id, r.title, r.close_reason, r.close_reason_note, r.closed_at, COALESCE(u.name,'عميل') AS client_name,
+    const agg = await pool.query(`SELECT reason AS close_reason, COUNT(*)::int AS c FROM (
+        SELECT COALESCE(close_reason,'auto_expired') AS reason FROM requests
+        WHERE close_reason IS NOT NULL OR status IN ('closed_auto','expired','cancelled')
+      ) t GROUP BY reason ORDER BY c DESC`);
+    const list = await pool.query(`SELECT r.id, r.title, COALESCE(r.close_reason,'auto_expired') AS close_reason, r.close_reason_note, r.closed_at, COALESCE(u.name,'عميل') AS client_name,
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
-      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL ORDER BY r.closed_at DESC NULLS LAST LIMIT 300`);
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL OR r.status IN ('closed_auto','expired','cancelled') ORDER BY r.closed_at DESC NULLS LAST LIMIT 300`);
     res.json({ summary: agg.rows, list: list.rows });
   } catch(e){ console.error('close-reasons:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
@@ -4410,7 +4413,7 @@ app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), as
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     const st = r.rows[0].status;
     if (['completed','in_progress','assigned'].includes(st)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
-    await pool.query("UPDATE requests SET status='closed_auto' WHERE id=$1", [id]);
+    await pool.query("UPDATE requests SET status='closed_auto', close_reason='admin_closed', closed_at=NOW() WHERE id=$1", [id]);
     res.json({ ok: true });
   } catch(e){ console.error('close req:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
 });
