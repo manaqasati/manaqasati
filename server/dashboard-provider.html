@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" id="ni-chat" onclick="location.href='/chat'"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>المحادثات<span class="badge" id="nb-chat" style="display:none">0</span></button>
     <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي</button>
     <button class="ni" id="ni-profile" onclick="gotoPage('profile')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
-    <button class="ni" id="ni-payment" onclick="location.href='/payment.html'"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>سداد الرسوم</button>
+    <button class="ni" id="ni-payment" onclick="location.href='/payment.html'"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>سداد العمولة</button>
     <button class="ni" id="ni-notifs" onclick="gotoPage('notifs')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="badge" id="nb-notif" style="display:none">0</span></button>
   </div>
   <div class="side-foot">
@@ -1183,15 +1183,15 @@ function _renderBrowseList(list){
   }).join('');
 }
 
-// ── نص اتفاقية رسوم المنصة (كامل) ──
+// ── نص اتفاقية عمولة المنصة (كامل) ──
 function _showFeeAgreement(){
   var p=parseFloat((_el('bid-price')||{}).value||0);
-  var feeTxt = p>0 ? ('<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:11px;margin-top:14px;text-align:center;font-size:13px;font-weight:900;color:#9a3412">على سعرك الحالي ('+Math.round(p).toLocaleString('en-US')+' ر.س) تكون الرسوم <span style="font-size:16px">'+Math.round(p*0.03).toLocaleString('en-US')+'</span> ر.س</div>') : '';
+  var feeTxt = p>0 ? ('<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:11px;margin-top:14px;text-align:center;font-size:13px;font-weight:900;color:#9a3412">على سعرك الحالي ('+Math.round(p).toLocaleString('en-US')+' ر.س) تكون العمولة <span style="font-size:16px">'+Math.round(p*0.03).toLocaleString('en-US')+'</span> ر.س</div>') : '';
   var d=document.createElement('div');
   d.id='feeAgrModal';
   d.style.cssText='position:fixed;inset:0;z-index:1500;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
   d.innerHTML='<div style="background:#fff;width:100%;max-width:560px;max-height:86vh;overflow-y:auto;border-radius:18px;padding:22px">'
-    +'<div style="text-align:center;font-family:Cairo,Tajawal,sans-serif;font-size:17px;font-weight:900;color:var(--p3);margin-bottom:4px">اتفاقية رسوم المنصة</div>'
+    +'<div style="text-align:center;font-family:Cairo,Tajawal,sans-serif;font-size:17px;font-weight:900;color:var(--p3);margin-bottom:4px">اتفاقية عمولة المنصة</div>'
     +'<div style="text-align:center;font-size:13px;font-weight:800;color:#9a3412;margin-bottom:14px">بسم الله الرحمن الرحيم</div>'
     +'<div style="background:#f8fafc;border-right:4px solid var(--p);border-radius:10px;padding:14px;margin-bottom:16px">'
       +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">قال الله تعالى:</div>'
@@ -1199,12 +1199,12 @@ function _showFeeAgreement(){
       +'<div style="text-align:center;font-size:11.5px;color:var(--muted);font-weight:700;margin-top:7px">صدق الله العظيم</div>'
     +'</div>'
     +'<div style="font-size:13px;line-height:2.05;color:var(--text);text-align:justify">'
-      +'أتعهد أنا مزود الخدمة بالالتزام بسداد رسوم المنصة وقدرها <b>3% من قيمة الاتفاق</b>، إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تعاقد أو تنفيذ للمشروع، سواء تم ذلك من خلال المنصة أو خارجها، بشكل مباشر أو غير مباشر، متى كان سبب التعارف أو الوصول إلى العميل هو هذه المنصة.'
-      +'<br><br>كما أتعهد بسداد رسوم المنصة خلال <b>10 أيام</b> من تاريخ إبرام الاتفاق أو البدء في تنفيذ المشروع أو تنفيذه، أيها أسبق.'
+      +'أتعهد أنا مزود الخدمة بالالتزام بسداد عمولة المنصة وقدرها <b>3% من قيمة الاتفاق</b>، إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تعاقد أو تنفيذ للمشروع، سواء تم ذلك من خلال المنصة أو خارجها، بشكل مباشر أو غير مباشر، متى كان سبب التعارف أو الوصول إلى العميل هو هذه المنصة.'
+      +'<br><br>كما أتعهد بسداد عمولة المنصة خلال <b>10 أيام</b> من تاريخ إبرام الاتفاق أو البدء في تنفيذ المشروع أو تنفيذه، أيها أسبق.'
     +'</div>'
     +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:13px;margin-top:15px">'
       +'<div style="font-size:12.5px;font-weight:900;color:var(--p);margin-bottom:6px">ملاحظة</div>'
-      +'<div style="font-size:12px;line-height:1.95;color:var(--text2);text-align:justify">تُعد رسوم المنصة حقًا مستحقًا بمجرد الاستفادة من الفرصة التي وفرتها المنصة، ولا يؤثر على استحقاقها تغيير وسيلة التواصل، أو إتمام الاتفاق خارج المنصة، أو تعديل قيمة الاتفاق، أو تنفيذ المشروع جزئيًا أو كليًا، أو التعامل مع العميل مباشرة بعد التعارف من خلال المنصة. ولا تبرأ الذمة من هذه الرسوم إلا بعد سدادها كاملًا.</div>'
+      +'<div style="font-size:12px;line-height:1.95;color:var(--text2);text-align:justify">تُعد عمولة المنصة حقًا مستحقًا بمجرد الاستفادة من الفرصة التي وفرتها المنصة، ولا يؤثر على استحقاقها تغيير وسيلة التواصل، أو إتمام الاتفاق خارج المنصة، أو تعديل قيمة الاتفاق، أو تنفيذ المشروع جزئيًا أو كليًا، أو التعامل مع العميل مباشرة بعد التعارف من خلال المنصة. ولا تبرأ الذمة من هذه العمولة إلا بعد سدادها كاملًا.</div>'
     +'</div>'
     +feeTxt
     +'<button onclick="document.getElementById(\'feeAgrModal\').remove()" style="width:100%;margin-top:16px;padding:13px;background:var(--p3);color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer">إغلاق</button>'
@@ -1233,13 +1233,13 @@ function _openBidNudge(projId,bidCount){
 function _openBidModal(projId){
   var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div>'+'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11.5px;color:#166534;line-height:1.75">💡 <strong>سعر منافس يرفع فرصتك في الفوز.</strong> العميل يقارن القيمة كاملة — خبرتك وجودتك ومدة تنفيذك — مو السعر وحده. قدّم أفضل سعر تقدر عليه، وأبرز ما يميّزك.</div>'+'<div class="fg"><label>نوع السعر</label><select id="bid-unit" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;background:var(--white)"><option value="total">إجمالي للمشروع</option><option value="meter">للمتر</option><option value="unit">للوحدة/القطعة</option></select></div>'+'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div onclick="_toggleBidTip()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;color:#1e40af"><span>💡 كيف تكتب عرضاً يفوز؟ (مثال)</span><span id="bid-tip-ar" style="font-size:11px">▾</span></div><div id="bid-tip-body" style="display:none;margin-top:9px;font-size:11.5px;color:#334155;line-height:1.9"><div style="font-weight:800;margin-bottom:5px;color:#1e293b">عرضك القوي يذكر باختصار:</div>خبرتك · كيف ستنفّذ العمل والمواد · مدة البدء · الضمان بعد التنفيذ.<div style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;margin-top:9px;line-height:2;color:#475569">«لدي خبرة … سنوات في هذا المجال. سأنفّذ المشروع بـ… باستخدام مواد …، مع الالتزام بالمقاسات المطلوبة. أبدأ خلال … أيام، وأقدّم ضماناً لمدة … .»</div><button type="button" onclick="_useBidTemplate()" style="margin-top:10px;background:#1e40af;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ استخدام هذا القالب</button></div></div>'+'<div class="fg"><label>رسالتك للعميل *</label>'+fmtBar('bid-note')+'<textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع...&#10;مثال:&#10;- خبرة 8 سنوات في هذا المجال&#10;- ضمان سنة على التنفيذ&#10;- البدء خلال 3 أيام" style="min-height:110px"></textarea></div>'+'<div style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.6">💡 لو اخترت إخفاء سعرك، لا تذكر الرقم داخل الرسالة حتى يبقى مخفياً عن المنافسين.</div>'
     +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:13px;margin-bottom:11px">'
-      +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:6px">💰 اتفاقية رسوم المنصة — 3%</div>'
+      +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:6px">💰 اتفاقية عمولة المنصة — 3%</div>'
       +'<div style="font-size:11.5px;color:#7c2d12;line-height:1.85">أتعهد بسداد <b>3% من قيمة الاتفاق</b> إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تنفيذ — سواء داخل المنصة أو خارجها — خلال <b>10 أيام</b> من الاتفاق أو بدء التنفيذ.</div>'
       +'<div id="feeLive" style="margin-top:8px;font-size:12px;font-weight:800;color:#9a3412;display:none"></div>'
       +'<button type="button" onclick="_showFeeAgreement()" style="margin-top:9px;background:none;border:none;color:#9a3412;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;padding:0">📜 اقرأ الاتفاقية كاملة</button>'
       +'<label style="display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:10px 11px;background:#fff;border:1.5px solid #fed7aa;border-radius:10px;cursor:pointer">'
         +'<input type="checkbox" id="feeAgree" style="margin-top:2px;width:17px;height:17px;flex-shrink:0;accent-color:#d97706">'
-        +'<span style="font-size:12px;font-weight:800;color:#7c2d12;line-height:1.6">أقرّ بأنني اطّلعت على اتفاقية رسوم المنصة وأتعهد بالالتزام بها</span>'
+        +'<span style="font-size:12px;font-weight:800;color:#7c2d12;line-height:1.6">أقرّ بأنني اطّلعت على اتفاقية عمولة المنصة وأتعهد بالالتزام بها</span>'
       +'</label>'
     +'</div>'
     +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
@@ -1275,7 +1275,7 @@ async function _submitBid(projId){
   if(!daysStr||isNaN(daysNum)||daysNum<=0){showToast('أدخل مدة التنفيذ','error');return;}
   if(!note){showToast('أدخل رسالتك للعميل','error');return;}
   var _ag=_el('feeAgree');
-  if(_ag && !_ag.checked){ showToast('يجب الإقرار بالموافقة على اتفاقية رسوم المنصة','error');
+  if(_ag && !_ag.checked){ showToast('يجب الإقرار بالموافقة على اتفاقية عمولة المنصة','error');
     try{ _ag.closest('label').style.borderColor='#dc2626'; _ag.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} return; }
   var btn=document.querySelector('[onclick*="_submitBid"]');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
