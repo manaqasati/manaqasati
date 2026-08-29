@@ -3891,10 +3891,28 @@ app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (r
       q("SELECT COUNT(*) FROM requests r WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days'"),
       q("SELECT COUNT(*) FROM requests r WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)")
     ]);
+    // قوائم التفاصيل (مين/وش بالضبط) — تظهر عند النقر
+    const rows = (sql) => pool.query(sql).then(r => r.rows).catch(()=>[]);
+    const [projList, provList, cliList, bidList, chatList] = await Promise.all([
+      rows("SELECT r.id, r.title, COALESCE(u.name,'عميل') AS owner, r.created_at FROM requests r JOIN users u ON u.id=r.client_id WHERE r.created_at::date=CURRENT_DATE ORDER BY r.created_at DESC LIMIT 20"),
+      rows("SELECT id, name, phone, created_at FROM users WHERE role='provider' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
+      rows("SELECT id, name, phone, created_at FROM users WHERE role='client' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
+      rows("SELECT b.id, COALESCE(u.name,'مزود') AS provider, r.title AS project, b.created_at FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id WHERE b.created_at::date=CURRENT_DATE ORDER BY b.created_at DESC LIMIT 20"),
+      // محادثات اليوم: مين راسل مين + المشروع — بدون محتوى الرسالة (احترام الخصوصية)
+      rows(`SELECT MIN(m.id) AS id, COALESCE(s.name,'—') AS sender, COALESCE(rc.name,'—') AS receiver, COALESCE(r.title,'—') AS project, MAX(m.created_at) AS created_at, COUNT(*)::int AS msgs
+            FROM messages m
+            LEFT JOIN users s ON s.id=m.sender_id
+            LEFT JOIN users rc ON rc.id=m.receiver_id
+            LEFT JOIN requests r ON r.id=m.request_id
+            WHERE m.created_at::date=CURRENT_DATE
+            GROUP BY LEAST(m.sender_id,m.receiver_id), GREATEST(m.sender_id,m.receiver_id), m.request_id, s.name, rc.name, r.title
+            ORDER BY MAX(m.created_at) DESC LIMIT 20`)
+    ]);
     res.json({
-      today: { projects: projToday, bids: bidsToday, providers: provToday, clients: cliToday },
+      today: { projects: projToday, bids: bidsToday, providers: provToday, clients: cliToday, chats: chatList.length },
       pending: { review: pendReview, open: openProj, in_progress: inProg },
-      followup: { few: fuFew, delayed: fuDelayed, review: fuReview, total: fuFew+fuDelayed+fuReview }
+      followup: { few: fuFew, delayed: fuDelayed, review: fuReview, total: fuFew+fuDelayed+fuReview },
+      lists: { projects: projList, providers: provList, clients: cliList, bids: bidList, chats: chatList }
     });
   } catch(e){ console.error('daily-report:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
