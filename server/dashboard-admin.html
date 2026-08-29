@@ -844,16 +844,39 @@ function _dashStChip(st){
   var x=m[st]||['—','var(--muted)','var(--bg)'];
   return '<span style="font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;background:'+x[2]+';color:'+x[1]+'">'+x[0]+'</span>';
 }
+function _drTime(s){ try{ return new Date(s).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function _drToggle(key){
+  var box=document.getElementById('dr-detail'); if(!box)return;
+  document.querySelectorAll('[data-drkey]').forEach(function(c){ c.setAttribute('data-on','0'); c.style.borderColor='var(--border)'; });
+  if(box.getAttribute('data-open')===key){ box.innerHTML=''; box.removeAttribute('data-open'); return; }
+  box.setAttribute('data-open',key);
+  var active=document.querySelector('[data-drkey="'+key+'"]'); if(active){ active.setAttribute('data-on','1'); active.style.borderColor=(active.querySelector('div')||{}).style.color||'var(--p)'; }
+  var list=((window._drLists||{})[key])||[];
+  if(!list.length){ box.innerHTML='<div style="background:var(--bg);border:1px dashed var(--border);border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--muted)">لا يوجد شيء اليوم في هذا القسم</div>'; return; }
+  var row=function(inner){ return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)">'+inner+'</div>'; };
+  var html='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">';
+  list.forEach(function(x){
+    if(key==='projects') html+=row('<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(x.title||'—')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">صاحبه: '+esc(x.owner||'—')+'</div></div><div style="font-size:11px;color:var(--muted)">'+_drTime(x.created_at)+'</div>');
+    else if(key==='bids') html+=row('<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(x.provider||'—')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">قدّم عرضاً على: '+esc(x.project||'—')+'</div></div><div style="font-size:11px;color:var(--muted)">'+_drTime(x.created_at)+'</div>');
+    else if(key==='providers'||key==='clients') html+=row('<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(x.name||'—')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px" dir="ltr">'+esc(x.phone||'')+'</div></div><div style="font-size:11px;color:var(--muted)">'+_drTime(x.created_at)+'</div>');
+    else if(key==='chats') html+=row('<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--text)">'+esc(x.sender||'—')+' <span style="color:var(--muted)">←</span> '+esc(x.receiver||'—')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">على: '+esc(x.project||'—')+' · '+(x.msgs||1)+' رسالة</div></div><div style="font-size:11px;color:var(--muted)">'+_drTime(x.created_at)+'</div>');
+  });
+  html+='</div>';
+  box.innerHTML=html;
+}
 function loadDailyReport(){
   var box=document.getElementById('daily-report'); if(!box)return;
   fetch(API+'/api/admin/daily-report',hdr()).then(function(r){return r.json();}).then(function(d){
     var t=d.today||{}, p=d.pending||{}, f=d.followup||{};
-    var chip=function(label,val,color){ return '<div style="flex:1;min-width:110px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:center"><div style="font-size:23px;font-weight:900;color:'+(color||'var(--p)')+';line-height:1">'+val+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">'+label+'</div></div>'; };
+    window._drLists=d.lists||{};
+    var chip=function(key,label,val,color){ return '<div onclick="_drToggle(\''+key+'\')" style="flex:1;min-width:100px;cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:center;transition:border-color .15s" onmouseover="this.style.borderColor=\''+color+'\'" onmouseout="if(this.getAttribute(\'data-on\')!==\'1\')this.style.borderColor=\'var(--border)\'" data-drkey="'+key+'"><div style="font-size:23px;font-weight:900;color:'+(color||'var(--p)')+';line-height:1">'+val+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">'+label+' ▾</div></div>'; };
     var h='<div class="card card-accent" style="margin-bottom:16px"><div class="card-head"><h3>📅 تقرير اليوم</h3><span style="font-size:11px;color:var(--muted)">'+new Date().toLocaleDateString('ar-SA')+'</span></div><div style="padding:14px">';
-    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">نشاط اليوم</div>';
-    h+='<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">'
-      +chip('مشاريع جديدة',t.projects||0,'#2563eb')+chip('عروض جديدة',t.bids||0,'#059669')
-      +chip('مزودون جدد',t.providers||0,'#7c3aed')+chip('عملاء جدد',t.clients||0,'#d97706')+'</div>';
+    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">نشاط اليوم <span style="font-weight:600;color:var(--muted)">— اضغط الرقم لعرض التفاصيل</span></div>';
+    h+='<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px">'
+      +chip('projects','مشاريع جديدة',t.projects||0,'#2563eb')+chip('bids','عروض جديدة',t.bids||0,'#059669')
+      +chip('providers','مزودون جدد',t.providers||0,'#7c3aed')+chip('clients','عملاء جدد',t.clients||0,'#d97706')
+      +chip('chats','محادثات اليوم',t.chats||0,'#0891b2')+'</div>';
+    h+='<div id="dr-detail" style="margin-bottom:16px"></div>';
     h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">يحتاج انتباهك</div>';
     h+='<div style="display:flex;gap:9px;flex-wrap:wrap">';
     var pr=(p.review||0);
