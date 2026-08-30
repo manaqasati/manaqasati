@@ -279,17 +279,18 @@ function renderList(){
   var unreadTotal=convs.reduce(function(a,c){return a+(parseInt(c.unread)||0);},0);
   if(sub)sub.textContent=convs.length+' محادثة'+(unreadTotal?' · '+unreadTotal+' غير مقروءة':'');
   el.innerHTML=convs.map(function(c){
+    var isAdm=(!isProvider && !!c.is_admin);
     var nm=isProvider?(c.client_name||'عميل'):(c.provider_name||'مزوّد');
     var img=isProvider?c.client_image:c.provider_image;
     var wid=isProvider?c.client_id:c.provider_id;
     var un=parseInt(c.unread)||0;
-    var av=(img&&/^(https?:|data:)/.test(img))?'<img loading="lazy" src="'+esc(img)+'">':esc(nm.charAt(0)||'؟');
+    var av=isAdm?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>':((img&&/^(https?:|data:)/.test(img))?'<img loading="lazy" src="'+esc(img)+'">':esc(nm.charAt(0)||'؟'));
     return '<div class="conv" onclick="openChat('+c.request_id+','+wid+',\''+esc(nm).replace(/'/g,"\\'")+'\',\''+esc(c.request_title||'').replace(/'/g,"\\'")+'\')">'
-      +'<div class="conv-av">'+av+'</div>'
+      +'<div class="conv-av"'+(isAdm?' style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff"':'')+'>'+av+'</div>'
       +'<div class="conv-body">'
-        +'<div class="conv-top"><div class="conv-name">'+esc(nm)+'</div><div class="conv-time">'+ago(c.last_time)+'</div></div>'
+        +'<div class="conv-top"><div class="conv-name">'+esc(nm)+(isAdm?' <span style="font-size:9px;font-weight:800;color:#1d4ed8;background:#eaf1fe;padding:1px 6px;border-radius:10px">رسمي</span>':'')+'</div><div class="conv-time">'+ago(c.last_time)+'</div></div>'
         +'<div class="conv-last">'+esc(String(c.last_message||'لا رسائل بعد').slice(0,58))+'</div>'
-        +'<div class="conv-proj">📁 '+esc(c.request_title||'مشروع')+'</div>'
+        +'<div class="conv-proj">'+(isAdm?'🛡️ رسالة من إدارة المنصة':'📁 '+esc(c.request_title||'مشروع'))+'</div>'
       +'</div>'
       +(un?'<div class="conv-badge">'+un+'</div>':'')
     +'</div>';
