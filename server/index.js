@@ -2282,9 +2282,10 @@ app.get('/api/client/conversations', auth, async (req, res) => {
         c.request_id,
         c.provider_id,
         COALESCE(r.title, 'محادثة مباشرة') as request_title,
-        u.name as provider_name,
+        CASE WHEN u.role='admin' THEN 'إدارة مناقصة' ELSE u.name END as provider_name,
         u.profile_image as provider_image,
         u.phone as provider_phone,
+        (u.role='admin') as is_admin,
         (SELECT content FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1)) ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT MAX(created_at) FROM messages WHERE ((sender_id=$1 AND receiver_id=c.provider_id) OR (sender_id=c.provider_id AND receiver_id=$1))) as last_time,
         (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=c.provider_id AND is_read=FALSE) as unread
@@ -2904,6 +2905,38 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
     }
     res.json({ request_id: requestId, success: true });
   } catch(e) { console.error('direct-message:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// الأدمن يراسل عميلاً — رسالة عامة أو مرتبطة بمشروع + إشعار + إيميل (باسم "إدارة مناقصة")
+app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
+  try {
+    const clientId = parseInt(req.body.client_id);
+    const content = (req.body.content||'').trim();
+    const reqId = req.body.request_id ? parseInt(req.body.request_id) : null;
+    const doEmail = req.body.email !== false;
+    if (!clientId || !content) return res.status(400).json({ message: 'اختر العميل واكتب الرسالة' });
+    const cli = await pool.query("SELECT id, name, email FROM users WHERE id=$1 AND role='client'", [clientId]);
+    if (!cli.rows.length) return res.status(404).json({ message: 'العميل غير موجود' });
+    if (reqId) {
+      const rq = await pool.query('SELECT id FROM requests WHERE id=$1 AND client_id=$2', [reqId, clientId]);
+      if (!rq.rows.length) return res.status(400).json({ message: 'المشروع غير مرتبط بهذا العميل' });
+    }
+    await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`, [reqId, req.user.id, clientId, content]);
+    const c = cli.rows[0];
+    await notify(clientId, 'رسالة من إدارة مناقصة', content.slice(0,120), 'admin_message', reqId);
+    if (doEmail && c.email) sendEmail(c.email, 'رسالة من إدارة منصة مناقصة', emailTpl('رسالة من إدارة مناقصة', `<p>عزيزي <strong>${eEsc(c.name||'')}</strong>،</p><p>${eEsc(content)}</p>`, 'فتح المحادثات', SITE_URL+'/chat.html')).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { console.error('admin-message-client:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+
+// مشاريع عميل (لقائمة الربط عند مراسلته)
+app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
+  try {
+    const uid = parseInt(req.query.uid);
+    if (!uid) return res.json([]);
+    const r = await pool.query("SELECT id, title FROM requests WHERE client_id=$1 ORDER BY created_at DESC LIMIT 50", [uid]);
+    res.json(r.rows);
+  } catch(e) { res.json([]); }
 });
 
 app.get('/api/users/search', auth, async (req, res) => {
