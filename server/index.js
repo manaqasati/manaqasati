@@ -2939,6 +2939,39 @@ app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
   } catch(e) { res.json([]); }
 });
 
+// سياق زر العرض في المحادثة: يحدّد الإجراء الصحيح للمزوّد (قدّم/عدّل/مشروع مفتوح آخر/لا شيء)
+app.get('/api/provider/chat-bid-context', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.json({ action: 'none' });
+    const pid = req.user.id;
+    const reqId = parseInt(req.query.req) || null;
+    let clientId = parseInt(req.query.client) || null;
+    const bidOn = async (rid) => (await pool.query("SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2 LIMIT 1", [rid, pid])).rows.length > 0;
+    // 1) مشروع المحادثة نفسه
+    if (reqId) {
+      const rq = await pool.query("SELECT id, title, status, assigned_provider_id, client_id FROM requests WHERE id=$1", [reqId]);
+      if (rq.rows.length) {
+        const p = rq.rows[0];
+        if (!clientId) clientId = p.client_id;
+        const already = await bidOn(p.id);
+        const isOpen = p.status === 'open' && !p.assigned_provider_id;
+        if (already) return res.json({ action: 'edit', req_id: p.id, title: p.title });
+        if (isOpen) return res.json({ action: 'bid', req_id: p.id, title: p.title });
+      }
+    }
+    // 2) للعميل مشروع مفتوح آخر لم يقدّم عليه المزوّد بعد
+    if (clientId) {
+      const others = await pool.query(
+        `SELECT r.id, r.title FROM requests r
+         WHERE r.client_id=$1 AND r.status='open' AND r.assigned_provider_id IS NULL
+           AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=$2)
+         ORDER BY r.created_at DESC LIMIT 1`, [clientId, pid]);
+      if (others.rows.length) return res.json({ action: 'bid_other', req_id: others.rows[0].id, title: others.rows[0].title });
+    }
+    res.json({ action: 'none' });
+  } catch(e) { console.error('chat-bid-context:', e.message); res.json({ action: 'none' }); }
+});
+
 app.get('/api/users/search', auth, async (req, res) => {
   try {
     const q = (req.query.q||'').trim();
