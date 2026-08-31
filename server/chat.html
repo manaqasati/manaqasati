@@ -183,6 +183,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
     </div>
     <div id="msgs"><div class="load">جاري التحميل...</div></div>
     <div id="replyBar"></div>
+    <div id="bidBar"></div>
     <div id="inputBar">
       <input type="file" id="file" accept="image/*,.pdf,.doc,.docx" style="display:none" onchange="attachFile(this)">
       <button class="ib-btn ib-attach" onclick="document.getElementById('file').click()" title="إرفاق">
@@ -383,6 +384,8 @@ function startNew(provId,provName){
 function openChat(reqId,withId,name,proj){
   window._recovered=false; _msgsSig='';
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
+  var _bb=document.getElementById('bidBar');
+  if(_bb){ _bb.innerHTML=(isProvider&&reqId)?'<button onclick="location.href=\'/dashboard-provider.html?bid='+reqId+'\'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#1e3a8a;color:#fff;border:none;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)"><svg width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>قدّم عرض سعر على هذا المشروع</button>':''; }
   document.getElementById('chName').textContent=curName;
   document.getElementById('chProj').textContent=curProj?('📁 '+curProj):'';
   var av=document.getElementById('chAv');
