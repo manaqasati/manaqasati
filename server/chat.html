@@ -385,7 +385,22 @@ function openChat(reqId,withId,name,proj){
   window._recovered=false; _msgsSig='';
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
   var _bb=document.getElementById('bidBar');
-  if(_bb){ _bb.innerHTML=(isProvider&&reqId)?'<button onclick="location.href=\'/dashboard-provider.html?bid='+reqId+'\'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#1e3a8a;color:#fff;border:none;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)"><svg width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>قدّم عرض سعر على هذا المشروع</button>':''; }
+  if(_bb){
+    _bb.innerHTML='';
+    if(isProvider&&(reqId||withId)){
+      var _rid=reqId, _cid=withId;
+      api('/api/provider/chat-bid-context?req='+(reqId||'')+'&client='+(withId||'')).then(function(ctx){
+        if(curReq!==_rid||curWith!==_cid)return; // تغيّرت المحادثة
+        if(!ctx||ctx.action==='none'){ _bb.innerHTML=''; return; }
+        var label,bg='#1e3a8a';
+        if(ctx.action==='edit'){ label='✓ عرضك مقدّم على هذا المشروع — عدّله'; bg='#0f766e'; }
+        else if(ctx.action==='bid'){ label='قدّم عرض سعر على هذا المشروع'; }
+        else if(ctx.action==='bid_other'){ label='قدّم عرض على مشروعه المفتوح: '+esc(String(ctx.title||'مشروع').slice(0,26)); }
+        else { _bb.innerHTML=''; return; }
+        _bb.innerHTML='<button onclick="location.href=\'/dashboard-provider.html?bid='+ctx.req_id+'\'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:'+bg+';color:#fff;border:none;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13.5px;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)"><svg width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>'+label+'</span></button>';
+      }).catch(function(){ _bb.innerHTML=''; });
+    }
+  }
   document.getElementById('chName').textContent=curName;
   document.getElementById('chProj').textContent=curProj?('📁 '+curProj):'';
   var av=document.getElementById('chAv');
