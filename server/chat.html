@@ -402,7 +402,9 @@ function openChat(reqId,withId,name,proj){
     }
   }
   document.getElementById('chName').textContent=curName;
-  document.getElementById('chProj').textContent=curProj?('📁 '+curProj):'';
+  var _cp=curProj||'';
+  var _cpDirect=(_cp==='محادثة مباشرة')||/^محادثة مع/.test(_cp);
+  document.getElementById('chProj').textContent=(_cp&&!_cpDirect)?('📁 '+_cp):'';
   var av=document.getElementById('chAv');
   var c=convs.filter(function(x){return x.request_id==reqId;})[0];
   var img=c?(isProvider?c.client_image:c.provider_image):null;
@@ -457,9 +459,10 @@ function renderMsgs(scroll){
   var lastDay='', lastProj='';
   el.innerHTML=msgs.map(function(m){
     var h='';
-    // فاصل المشروع (يظهر عند تغيّر المشروع داخل الخيط الموحّد)
+    // فاصل المشروع (يظهر فقط للمشاريع الحقيقية — نتجاهل المحادثات المباشرة الوهمية)
     var pj=m.project_title||'';
-    if(pj&&pj!==lastProj){
+    var _isDirect=(pj==='محادثة مباشرة')||/^محادثة مع/.test(pj);
+    if(pj&&!_isDirect&&pj!==lastProj){
       lastProj=pj;
       h+='<div class="projsep">📁 '+esc(pj)+'</div>';
       lastDay=''; // أعِد فاصل التاريخ بعد فاصل المشروع
