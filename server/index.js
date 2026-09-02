@@ -1381,7 +1381,7 @@ async function runReminders(){
         await setSetting('admin_summary_lastday', dayKey);
         const q=(s)=>pool.query(s);
         const [np, nc, npr, nb, nComp, cAuto] = await Promise.all([
-          q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '1 day'`),
+          q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '1 day' AND (category IS DISTINCT FROM 'direct')`),
           q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '1 day'`),
           q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '1 day'`),
           q(`SELECT COUNT(*) c FROM bids WHERE created_at > NOW() - INTERVAL '1 day'`),
@@ -2134,7 +2134,7 @@ app.put('/api/profile', auth, async (req, res) => {
 
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress') as active_requests FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress' AND (category IS DISTINCT FROM 'direct')) as active_requests FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3814,7 +3814,7 @@ app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (r
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int req_week,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int req_month,
         COUNT(*) FILTER (WHERE status NOT IN ('completed','cancelled','rejected'))::int req_open
-        FROM requests`);
+        FROM requests WHERE (category IS DISTINCT FROM 'direct')`);
       dem = rq.rows[0] || dem;
     }catch(e){}
     res.json({
@@ -3946,13 +3946,13 @@ app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (r
   try {
     const q = (sql) => pool.query(sql).then(r => parseInt((r.rows[0]&&(r.rows[0].count||r.rows[0].c))||0)).catch(()=>0);
     const [projToday, bidsToday, provToday, cliToday, pendReview, openProj, inProg, fuFew, fuDelayed, fuReview] = await Promise.all([
-      q("SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE AND (category IS DISTINCT FROM 'direct')"),
       q("SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE"),
       q("SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE"),
       q("SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE"),
       q("SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')"),
       q("SELECT COUNT(*) FROM requests WHERE status='open'"),
-      q("SELECT COUNT(*) FROM requests WHERE status='in_progress'"),
+      q("SELECT COUNT(*) FROM requests WHERE status='in_progress' AND (category IS DISTINCT FROM 'direct')"),
       q("SELECT COUNT(*) FROM requests r WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)<=2"),
       q("SELECT COUNT(*) FROM requests r WHERE r.status='open' AND (SELECT COUNT(*) FROM bids WHERE request_id=r.id)>=3 AND r.created_at <= NOW() - INTERVAL '5 days'"),
       q("SELECT COUNT(*) FROM requests r WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id)")
@@ -3960,7 +3960,7 @@ app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (r
     // قوائم التفاصيل (مين/وش بالضبط) — تظهر عند النقر
     const rows = (sql) => pool.query(sql).then(r => r.rows).catch(()=>[]);
     const [projList, provList, cliList, bidList, chatList] = await Promise.all([
-      rows("SELECT r.id, r.title, COALESCE(u.name,'عميل') AS owner, r.created_at FROM requests r JOIN users u ON u.id=r.client_id WHERE r.created_at::date=CURRENT_DATE ORDER BY r.created_at DESC LIMIT 20"),
+      rows("SELECT r.id, r.title, COALESCE(u.name,'عميل') AS owner, r.created_at FROM requests r JOIN users u ON u.id=r.client_id WHERE r.created_at::date=CURRENT_DATE AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC LIMIT 20"),
       rows("SELECT id, name, phone, created_at FROM users WHERE role='provider' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
       rows("SELECT id, name, phone, created_at FROM users WHERE role='client' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
       rows("SELECT b.id, COALESCE(u.name,'مزود') AS provider, r.title AS project, b.created_at FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id WHERE b.created_at::date=CURRENT_DATE ORDER BY b.created_at DESC LIMIT 20"),
@@ -3991,22 +3991,22 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders
     ] = await Promise.all([
       q('SELECT COUNT(*) FROM users'),
-      q('SELECT COUNT(*) FROM requests'),
+      q("SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct')"),
       q('SELECT COUNT(*) FROM bids'),
       q(`SELECT COUNT(*) FROM users WHERE role='provider'`),
       q(`SELECT COUNT(*) FROM users WHERE role='client'`),
       q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
-      q(`SELECT COUNT(*) FROM requests WHERE status='in_progress'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='in_progress' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
       q(`SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE`),
       q(`SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE`),
       q(`SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE`),
       q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
       q(`SELECT COUNT(DISTINCT provider_id) FROM bids`)
     ]);
@@ -4124,7 +4124,7 @@ app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, 
 
 app.get('/api/admin/duplicates', requirePermission('users.view'), async (req, res) => {
   try {
-    const memberJson = `json_agg(json_build_object('id',id,'name',name,'email',email,'phone',phone,'role',role,'created_at',created_at,'is_active',is_active,'requests',(SELECT COUNT(*) FROM requests WHERE client_id=u.id),'bids',(SELECT COUNT(*) FROM bids WHERE provider_id=u.id)) ORDER BY created_at ASC)`;
+    const memberJson = `json_agg(json_build_object('id',id,'name',name,'email',email,'phone',phone,'role',role,'created_at',created_at,'is_active',is_active,'requests',(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND (category IS DISTINCT FROM 'direct')),'bids',(SELECT COUNT(*) FROM bids WHERE provider_id=u.id)) ORDER BY created_at ASC)`;
     const byEmail = await pool.query(
       `SELECT LOWER(TRIM(email)) AS key, ${memberJson} AS members, COUNT(*)::int AS c
        FROM users u WHERE email IS NOT NULL AND TRIM(email)<>'' AND role<>'admin' AND email NOT LIKE 'proxy_%@manaqasa.local'
@@ -4139,7 +4139,7 @@ app.get('/api/admin/duplicates', requirePermission('users.view'), async (req, re
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND (category IS DISTINCT FROM 'direct')) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
@@ -4641,7 +4641,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
     const d=await Promise.all([
       pool.query("SELECT COUNT(*)::int c FROM users"),
       pool.query("SELECT COUNT(*)::int c FROM users WHERE role='provider'"),
-      pool.query("SELECT COUNT(*)::int c FROM requests"),
+      pool.query("SELECT COUNT(*)::int c FROM requests WHERE (category IS DISTINCT FROM 'direct')"),
       pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='open'"),
       pool.query("SELECT COUNT(*)::int c FROM reports WHERE status='pending'").catch(()=>({rows:[{c:0}]})),
       pool.query("SELECT COUNT(*)::int c FROM requests WHERE status='completed'").catch(()=>({rows:[{c:0}]})),
@@ -5034,7 +5034,7 @@ app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (re
     const cond = intv ? ` AND created_at > NOW() - INTERVAL '${intv}'` : '';
     const q = (sql)=>pool.query(sql);
     const [projects, providers, clients, bids] = await Promise.all([
-      q(`SELECT COUNT(*) c FROM requests WHERE 1=1${cond}`),
+      q(`SELECT COUNT(*) c FROM requests WHERE 1=1 AND (category IS DISTINCT FROM 'direct')${cond}`),
       q(`SELECT COUNT(*) c FROM users WHERE role='provider'${cond}`),
       q(`SELECT COUNT(*) c FROM users WHERE role='client'${cond}`),
       q(`SELECT COUNT(*) c FROM bids WHERE 1=1${cond}`)
@@ -5090,8 +5090,8 @@ app.get('/api/admin/marketing-stats', requirePermission('analytics.view'), async
       q(`SELECT COUNT(*) c FROM users WHERE role='client' AND created_at > NOW() - INTERVAL '7 days'`),
       q(`SELECT COUNT(*) c FROM users WHERE role='provider' AND created_at > NOW() - INTERVAL '7 days'`),
       q(`SELECT COUNT(*) c FROM users WHERE role IN ('client','provider') AND created_at > NOW() - INTERVAL '1 day'`),
-      q(`SELECT COUNT(*) c FROM requests`),
-      q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) c FROM requests WHERE (category IS DISTINCT FROM 'direct')`),
+      q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '7 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) c FROM bids`),
       q(`SELECT city, COUNT(*) c FROM users WHERE city IS NOT NULL AND city<>'' GROUP BY city ORDER BY c DESC LIMIT 6`)
     ]);
@@ -5130,7 +5130,7 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
     const many = (sql) => pool.query(sql).then(r => r.rows).catch(() => []);
 
     const [totalReq, totalBids, completedDeals, acceptedBids, needReview, needReports, needVerify, needQ] = await Promise.all([
-      q('SELECT COUNT(*) FROM requests'),
+      q("SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct')"),
       q('SELECT COUNT(*) FROM bids'),
       q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
       q(`SELECT COUNT(*) FROM bids WHERE status='accepted'`),
@@ -5143,12 +5143,12 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
     const rev = await one(`SELECT COALESCE(SUM(price),0)::float as total, COALESCE(AVG(price),0)::float as avg, COUNT(*)::int as deals FROM bids WHERE status='accepted'`, { total: 0, avg: 0, deals: 0 });
     const thisMonth = await one(`SELECT
         (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as requests,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct'))::int as requests,
         (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as bids,
         (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)) as revenue`, {});
     const lastMonth = await one(`SELECT
         (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as requests,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct')-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as requests,
         (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as bids,
         (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE)) as revenue`, {});
 
@@ -5158,8 +5158,8 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
     const topActive = await many(`SELECT u.id, u.name, COUNT(b.id)::int as bids
       FROM users u JOIN bids b ON b.provider_id=u.id WHERE u.role='provider'
       GROUP BY u.id, u.name ORDER BY bids DESC LIMIT 6`);
-    const byCity = await many(`SELECT COALESCE(NULLIF(city,''),'غير محدد') as city, COUNT(*)::int as n FROM requests GROUP BY city ORDER BY n DESC LIMIT 8`);
-    const byCat = await many(`SELECT COALESCE(NULLIF(category,''),'غير محدد') as category, COUNT(*)::int as n FROM requests GROUP BY category ORDER BY n DESC LIMIT 8`);
+    const byCity = await many(`SELECT COALESCE(NULLIF(city,''),'غير محدد') as city, COUNT(*)::int as n FROM requests WHERE (category IS DISTINCT FROM 'direct') GROUP BY city ORDER BY n DESC LIMIT 8`);
+    const byCat = await many(`SELECT COALESCE(NULLIF(category,''),'غير محدد') as category, COUNT(*)::int as n FROM requests WHERE (category IS DISTINCT FROM 'direct') GROUP BY category ORDER BY n DESC LIMIT 8`);
     const revMonthly = await many(`SELECT to_char(date_trunc('month',created_at),'YYYY-MM') as period, COALESCE(SUM(price),0)::float as revenue, COUNT(*)::int as deals
       FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '5 months'
       GROUP BY period ORDER BY period`);
