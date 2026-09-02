@@ -1522,6 +1522,7 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
     // إشعار العميل تلقائياً بتقرير العروض عند بلوغ حدّ معيّن (يخزّن عدد العروض وقت الإشعار)
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
@@ -3939,15 +3940,33 @@ app.get('/api/admin/coverage-gaps', requirePermission('outreach.manage'), async 
 app.get('/api/showcase', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT r.title, r.category, r.city, r.completed_at,
-              (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
+      `SELECT r.id, r.title, r.category, r.city, COALESCE(r.featured,false) AS featured,
+              (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers,
+              (SELECT MIN(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0) AS min_price,
+              (SELECT MAX(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0) AS max_price,
+              (SELECT b.price::int FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id LIMIT 1) AS awarded_price
        FROM requests r
        WHERE r.status='completed' AND r.completed_at IS NOT NULL
          AND (r.category IS DISTINCT FROM 'direct')
-       ORDER BY r.completed_at DESC LIMIT 8`);
+       ORDER BY COALESCE(r.featured,false) DESC, r.completed_at DESC LIMIT 12`);
     res.set('Cache-Control','public, max-age=300');
-    res.json(r.rows.map(x=>({ title:x.title, category:x.category||'', city:x.city||'', offers:x.offers||0 })));
+    // مجهّل تماماً: لا أسماء، لا جوالات، لا معرّفات — أرقام فقط
+    res.json(r.rows.map(x=>({
+      id:x.id, title:x.title, category:x.category||'', city:x.city||'', offers:x.offers||0,
+      min_price:x.min_price||null, max_price:x.max_price||null, awarded_price:x.awarded_price||null
+    })));
   } catch(e){ res.json([]); }
+});
+
+// تثبيت/إلغاء تثبيت مشروع في معرض النجاح (الأدمن)
+app.post('/api/admin/requests/:id/featured', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const on = req.body.featured === true || req.body.featured === 'true';
+    const r = await pool.query("UPDATE requests SET featured=$1 WHERE id=$2 AND status='completed' RETURNING id, featured", [on, id]);
+    if (!r.rows.length) return res.status(400).json({ message: 'المشروع غير مكتمل أو غير موجود' });
+    res.json({ ok: true, featured: r.rows[0].featured });
+  } catch(e){ console.error('featured:', e.message); res.status(500).json({ message: 'تعذّر التحديث' }); }
 });
 
 // ═══ ADMIN ═══
