@@ -3942,9 +3942,9 @@ app.get('/api/showcase', async (req, res) => {
     const r = await pool.query(
       `SELECT r.id, r.title, r.category, r.city, COALESCE(r.featured,false) AS featured,
               (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers,
-              (SELECT MIN(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0) AS min_price,
-              (SELECT MAX(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0) AS max_price,
-              (SELECT b.price::int FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id LIMIT 1) AS awarded_price
+              (SELECT MIN(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0 AND COALESCE(b.price_unit,'total')='total') AS min_price,
+              (SELECT MAX(b.price)::int FROM bids b WHERE b.request_id=r.id AND b.price>0 AND COALESCE(b.price_unit,'total')='total') AS max_price,
+              (SELECT b.price::int FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id AND COALESCE(b.price_unit,'total')='total' LIMIT 1) AS awarded_price
        FROM requests r
        WHERE r.status='completed' AND r.completed_at IS NOT NULL
          AND (r.category IS DISTINCT FROM 'direct')
