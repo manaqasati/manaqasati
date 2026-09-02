@@ -2940,6 +2940,31 @@ app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
 });
 
 // سياق زر العرض في المحادثة: يحدّد الإجراء الصحيح للمزوّد (قدّم/عدّل/مشروع مفتوح آخر/لا شيء)
+// سياق العميل في المحادثة: مشاريعه المفتوحة + هل قدّم هذا المزوّد عليها/على مشروع المحادثة
+app.get('/api/client/quote-context', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') return res.json({ open: [], cur_open: false, cur_bid: true });
+    const cid = req.user.id;
+    const providerId = parseInt(req.query.provider) || null;
+    const curReqId = parseInt(req.query.req) || null;
+    const open = await pool.query(
+      `SELECT r.id, r.title,
+         EXISTS(SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=$2) as provider_bid
+       FROM requests r
+       WHERE r.client_id=$1 AND r.status='open' AND (r.category IS DISTINCT FROM 'direct')
+       ORDER BY r.created_at DESC LIMIT 30`, [cid, providerId]);
+    let curOpen = false, curBid = true;
+    if (curReqId) {
+      const cr = await pool.query(
+        `SELECT (r.status='open' AND (r.category IS DISTINCT FROM 'direct')) as is_open,
+           EXISTS(SELECT 1 FROM bids b WHERE b.request_id=$1 AND b.provider_id=$2) as bid, r.title
+         FROM requests r WHERE r.id=$1 AND r.client_id=$3`, [curReqId, providerId, cid]);
+      if (cr.rows.length) { curOpen = !!cr.rows[0].is_open; curBid = !!cr.rows[0].bid; }
+    }
+    res.json({ open: open.rows, cur_open: curOpen, cur_bid: curBid, cur_req: curReqId });
+  } catch(e) { console.error('quote-context:', e.message); res.json({ open: [], cur_open:false, cur_bid:true }); }
+});
+
 app.get('/api/provider/chat-bid-context', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.json({ action: 'none' });
