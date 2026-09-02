@@ -769,6 +769,10 @@
 .store-badge .sb-big{display:block;font-size:16px;color:#fff;font-weight:800;font-family:'Cairo',sans-serif}
 @media(max-width:560px){.app-badges{flex-direction:column;align-items:center}.store-badge{width:100%;max-width:260px;justify-content:center}}
  .hzp-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);width:64px;height:64px;border-radius:50%;border:3px double #059669;color:#059669;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:10.5px;line-height:1.2;background:rgba(255,255,255,.93);box-shadow:0 2px 10px rgba(5,150,105,.25);z-index:2}
+
+  .sc-done-badge .sc-shine{position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:scShine 3.2s ease-in-out infinite}
+  @keyframes scShine{0%,72%{left:-60%}88%,100%{left:130%}}
+  @media (prefers-reduced-motion:reduce){.sc-done-badge .sc-shine{display:none}}
 </style>
 </head>
 <body>
@@ -932,7 +936,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         +'</div>';
       return '<div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 2px 12px var(--glow);position:relative;overflow:hidden;display:flex;flex-direction:column">'
         +'<div style="position:absolute;top:0;right:0;width:100%;height:4px;background:linear-gradient(90deg,var(--accent),#38bdf8)"></div>'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><span style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px">✓ أُنجز بنجاح</span><span style="font-size:11.5px;color:var(--muted);font-weight:700">'+[esc(x.category),esc(x.city)].filter(Boolean).join(' · ')+'</span></div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px"><span class="sc-done-badge" style="position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px">✓ أُنجز بنجاح<span class="sc-shine"></span></span><span style="font-size:11.5px;color:var(--muted);font-weight:700">'+[esc(x.category),esc(x.city)].filter(Boolean).join(' · ')+'</span></div>'
         +'<div style="font-family:\'Cairo\',sans-serif;font-weight:800;font-size:16px;line-height:1.45;margin-bottom:15px;color:#0f2544">'+esc(x.title)+'</div>'
         +steps+_btns+'</div>';
     }).join('');
