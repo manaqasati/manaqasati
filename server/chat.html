@@ -399,6 +399,17 @@ function openChat(reqId,withId,name,proj){
         else { _bb.innerHTML=''; return; }
         _bb.innerHTML='<button onclick="location.href=\'/dashboard-provider.html?bid='+ctx.req_id+'\'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:'+bg+';color:#fff;border:none;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13.5px;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)"><svg width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span>'+label+'</span></button>';
       }).catch(function(){ _bb.innerHTML=''; });
+    } else if(!isProvider&&(reqId||withId)){
+      var _r2=reqId,_c2=withId;
+      api('/api/client/quote-context?req='+(reqId||'')+'&provider='+(withId||'')).then(function(ctx){
+        if(curReq!==_r2||curWith!==_c2)return;
+        window._qctx=ctx||{open:[]};
+        if(ctx&&ctx.cur_open&&!ctx.cur_bid){
+          _bb.innerHTML='<div style="background:#fff7ed;border-top:1px solid #fed7aa;padding:11px 14px;display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:12.5px;color:#9a3412;font-weight:700">هذا المزوّد لم يقدّم عرضاً بعد على مشروعك</div><button onclick="askQuote()" style="background:#ea580c;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">اطلب عرضاً</button></div>';
+        } else if(ctx&&(ctx.open||[]).length){
+          _bb.innerHTML='<button onclick="askQuote()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--card);color:var(--p);border:none;border-top:1px solid var(--border);padding:11px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">📋 اطلب منه عرض سعر على مشروع</button>';
+        } else { _bb.innerHTML=''; }
+      }).catch(function(){ _bb.innerHTML=''; });
     }
   }
   document.getElementById('chName').textContent=curName;
@@ -488,7 +499,16 @@ function renderMsgs(scroll){
         h+='<a class="bub-file" href="'+esc(m.attachment_url)+'" target="_blank" style="margin-bottom:'+(m.content?'6px':'0')+'"><span style="font-size:18px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف')+'</span></a>';
       }
     }
-    if(m.content)h+=esc(m.content);
+    if(m.content){
+      var _qr=String(m.content).match(/^\[\[qr:(\d+)\|([\s\S]*?)\]\]/);
+      if(_qr){
+        var _qid=_qr[1], _qt=esc(String(_qr[2]||'مشروع')), _dk=isMe;
+        var _act=isProvider
+          ? '<button onclick="location.href=\'/dashboard-provider.html?bid='+_qid+'\'" style="margin-top:10px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:10px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">قدّم عرض سعر الآن</button>'
+          : '<div style="margin-top:8px;font-size:11.5px;color:'+(_dk?'rgba(255,255,255,.8)':'var(--muted)')+'">📨 بانتظار عرض المزوّد</div>';
+        h+='<div style="background:'+(_dk?'rgba(255,255,255,.13)':'var(--bg)')+';border:1px solid '+(_dk?'rgba(255,255,255,.22)':'var(--border)')+';border-radius:12px;padding:12px;min-width:210px"><div style="font-size:11px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.75)':'var(--muted)')+';margin-bottom:5px">📋 طلب عرض سعر على مشروع</div><div style="font-weight:800;font-size:13.5px;line-height:1.45">'+_qt+'</div>'+_act+'</div>';
+      } else { h+=esc(m.content); }
+    }
     var tick='';
     if(isMe&&!String(m.id).startsWith('tmp_')){
       var rd=(m.is_read===true||m.is_read==='t'||m.is_read===1);
@@ -681,6 +701,25 @@ function compressImg(file,cb){
 }
 
 /* ═══ إرسال ═══ */
+function askQuote(){
+  var ctx=window._qctx||{open:[]}; var list=ctx.open||[];
+  if(!list.length){ toast('لا يوجد مشروع مفتوح لإرساله','err'); return; }
+  var s=document.getElementById('sheet');
+  s.innerHTML='<div class="sheet-card"><div class="sheet-grip"></div>'
+    +'<div style="padding:4px 20px 10px"><div style="font-family:Cairo,sans-serif;font-weight:800;font-size:16px">اطلب عرض سعر</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px">اختر مشروعاً لإرساله للمزوّد ليقدّم عرضه عليه</div></div>'
+    +list.slice(0,12).map(function(p){
+       var b=p.provider_bid;
+       return '<button class="sheet-btn" '+(b?'disabled style="opacity:.5;cursor:default"':'onclick="closeSheet();sendQuote('+p.id+',\''+esc(String(p.title||'مشروع')).replace(/'/g,"\\'")+'\')"')+'><span style="font-size:16px">📋</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(p.title||'مشروع').slice(0,38))+'</span>'+(b?'<span style="font-size:10.5px;color:var(--green);font-weight:800">قدّم عرضاً ✓</span>':'<span style="font-size:10.5px;color:var(--p);font-weight:800">اطلب ←</span>')+'</button>';
+     }).join('')
+    +'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>';
+  s.classList.add('on');
+}
+function sendQuote(pid,title){
+  var content='[[qr:'+pid+'|'+String(title||'مشروع').slice(0,60)+']]';
+  api('/api/messages',{method:'POST',body:JSON.stringify({request_id:curReq,receiver_id:curWith,content:content})})
+    .then(function(){ toast('تم إرسال طلب العرض','ok'); loadMsgs(); })
+    .catch(function(){ toast('تعذّر الإرسال','err'); });
+}
 function sendMsg(){
   if(sending||!curReq)return;
   var inp=document.getElementById('inp');
