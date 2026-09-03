@@ -383,7 +383,7 @@ function startNew(provId,provName){
 /* ═══ فتح محادثة ═══ */
 function openChat(reqId,withId,name,proj){
   window._recovered=false; _msgsSig='';
-  curReq=reqId; curWith=withId; curName=name||''; curProj=proj||'';
+  curReq=reqId; curWith=withId; curName=name||''; curProj=proj||''; window._remindedBid=false;
   var _bb=document.getElementById('bidBar');
   if(_bb){
     _bb.innerHTML='';
@@ -405,9 +405,9 @@ function openChat(reqId,withId,name,proj){
         if(curReq!==_r2||curWith!==_c2)return;
         window._qctx=ctx||{open:[]};
         if(ctx&&ctx.cur_open&&!ctx.cur_bid){
-          _bb.innerHTML='<div style="background:#fff7ed;border-top:1px solid #fed7aa;padding:11px 14px;display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:12.5px;color:#9a3412;font-weight:700">هذا المزوّد لم يقدّم عرضاً بعد على مشروعك</div><button onclick="askQuote()" style="background:#ea580c;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">اطلب عرضاً</button></div>';
+          _bb.innerHTML='<div style="background:#fff7ed;border-top:1px solid #fed7aa;padding:11px 14px;display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:12.5px;color:#9a3412;font-weight:700">هذا المزوّد لم يقدّم عرضاً رسمياً على مشروعك بعد</div><button onclick="askQuote()" style="background:#ea580c;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">ذكّره بالعرض</button></div>';
         } else if(ctx&&(ctx.open||[]).length){
-          _bb.innerHTML='<button onclick="askQuote()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--card);color:var(--p);border:none;border-top:1px solid var(--border);padding:11px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">📋 اطلب منه عرض سعر على مشروع</button>';
+          _bb.innerHTML='<button onclick="askQuote()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--card);color:var(--p);border:none;border-top:1px solid var(--border);padding:11px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">📋 ذكّره يقدّم عرضه رسمياً على مشروع</button>';
         } else { _bb.innerHTML=''; }
       }).catch(function(){ _bb.innerHTML=''; });
     }
@@ -721,6 +721,16 @@ function sendQuote(pid,title){
     .then(function(){ toast('تم إرسال طلب العرض','ok'); loadMsgs(); })
     .catch(function(){ toast('تعذّر الإرسال','err'); });
 }
+function _maybeRemindBid(txt){
+  if(!isProvider||!curReq||window._remindedBid)return;
+  // كشف ذكر سعر: رقم من 3 خانات فأكثر، أو كلمات تسعير
+  if(!(/\d{3,}/.test(txt)||/عرضي|سعري|بسعر|سعره|أسعّر|أسعرك/.test(txt)))return;
+  var _r=curReq,_c=curWith;
+  api('/api/provider/chat-bid-context?req='+(curReq||'')+'&client='+(curWith||'')).then(function(ctx){
+    if(curReq!==_r||curWith!==_c)return;
+    if(ctx&&ctx.action==='bid'){ window._remindedBid=true; toast('💡 ذكرتَ سعراً — قدّمه رسمياً من زر «قدّم عرض سعر» ليتمكّن العميل من قبوله','ok'); }
+  }).catch(function(){});
+}
 function sendMsg(){
   if(sending||!curReq)return;
   var inp=document.getElementById('inp');
@@ -740,6 +750,7 @@ function sendMsg(){
     attachment_url:att?att.data:null,attachment_type:att?att.type:null,attachment_name:att?att.name:null,
     reply_to:rep?rep.id:null,reply_content:rep?rep.txt:null,reply_sender:rep?rep.who:null};
   msgs.push(tmp); renderMsgs();
+  if(isProvider)_maybeRemindBid(txt);
   api('/api/messages',{method:'POST',body:JSON.stringify(payload)})
     .then(function(){ loadMsgs(); })
     .catch(function(){
