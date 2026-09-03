@@ -503,10 +503,11 @@ function renderMsgs(scroll){
       var _qr=String(m.content).match(/^\[\[qr:(\d+)\|([\s\S]*?)\]\]/);
       if(_qr){
         var _qid=_qr[1], _qt=esc(String(_qr[2]||'مشروع')), _dk=isMe;
+        var _pslug=encodeURIComponent(String(_qr[2]||'مشروع').trim().replace(/\s+/g,'-').slice(0,40));
         var _act=isProvider
-          ? '<button onclick="location.href=\'/dashboard-provider.html?bid='+_qid+'\'" style="margin-top:10px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:10px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">قدّم عرض سعر الآن</button>'
+          ? '<button onclick="event.stopPropagation();location.href=\'/dashboard-provider.html?bid='+_qid+'\'" style="margin-top:10px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:10px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">قدّم عرض سعر الآن</button>'
           : '<div style="margin-top:8px;font-size:11.5px;color:'+(_dk?'rgba(255,255,255,.8)':'var(--muted)')+'">📨 بانتظار عرض المزوّد</div>';
-        h+='<div style="background:'+(_dk?'rgba(255,255,255,.13)':'var(--bg)')+';border:1px solid '+(_dk?'rgba(255,255,255,.22)':'var(--border)')+';border-radius:12px;padding:12px;min-width:210px"><div style="font-size:11px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.75)':'var(--muted)')+';margin-bottom:5px">📋 طلب عرض سعر على مشروع</div><div style="font-weight:800;font-size:13.5px;line-height:1.45">'+_qt+'</div>'+_act+'</div>';
+        h+='<div onclick="location.href=\'/project/'+_pslug+'?id='+_qid+'\'" style="cursor:pointer;background:'+(_dk?'rgba(255,255,255,.13)':'var(--bg)')+';border:1px solid '+(_dk?'rgba(255,255,255,.22)':'var(--border)')+';border-radius:12px;padding:12px;min-width:210px"><div style="font-size:11px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.75)':'var(--muted)')+';margin-bottom:5px">📋 طلب عرض سعر على مشروع</div><div style="font-weight:800;font-size:13.5px;line-height:1.45">'+_qt+'</div><div style="margin-top:7px;font-size:10.5px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.8)':'var(--accent,#1d4ed8)')+';display:flex;align-items:center;gap:4px">اضغط لعرض المشروع <span style="font-size:12px">←</span></div>'+_act+'</div>';
       } else { h+=esc(m.content); }
     }
     var tick='';
