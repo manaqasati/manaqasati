@@ -392,6 +392,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="nav-label">النمو</div>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
+    <button class="ni" onclick="showPage('inbox',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>رسائل العملاء<span id="inbox-badge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:6px"></span></button>
     <button class="ni" onclick="showPage('closereasons',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>أسباب الإغلاق</button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
     <div class="nav-label">النظام</div>
@@ -477,6 +478,17 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="card-body flush"><div class="tbl-wrap" id="requests-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
     </div>
+
+    <div class="page" id="page-inbox">
+      <div class="card"><div class="card-head"><h3>📨 رسائل العملاء</h3><span style="font-size:11px;color:var(--muted)">ردود العملاء على رسائلك</span></div>
+      <div id="inbox-list" style="padding:8px"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
+    </div>
+
+    <div class="modal-overlay" id="inboxModal"><div class="modal" style="max-width:560px">
+      <div class="modal-head"><h3 id="ib-name">محادثة</h3><button class="modal-x" onclick="closeModal('inboxModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-body"><div id="ib-thread" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div></div>
+      <div class="modal-foot" style="gap:8px"><textarea id="ib-reply" placeholder="اكتب ردّك للعميل..." style="flex:1;min-height:44px;max-height:120px;padding:11px 13px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;resize:vertical;outline:none"></textarea><button class="btn-p" id="ib-send" onclick="sendInboxReply()" style="align-self:stretch">إرسال</button></div>
+    </div></div>
 
     <div class="page" id="page-agents">
       <div class="card card-accent"><div class="card-head"><h3>المناديب وعمولاتهم</h3></div>
@@ -804,12 +816,13 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();loadNeedsAction();loadDailyReport();}
   if(pg==='analytics')loadAnalytics();
+  if(pg==='inbox')loadInbox();
   if(pg==='settings')loadSettings();
   if(pg==='marketing')loadMarketing();
   if(pg==='outreach')loadOutreach();
@@ -865,6 +878,53 @@ function _drToggle(key){
   });
   html+='</div>';
   box.innerHTML=html;
+}
+var _ibClient=null, _ibName='';
+function loadInbox(){
+  var box=document.getElementById('inbox-list'); if(!box)return;
+  fetch(API+'/api/admin/inbox',hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!list.length){ box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">لا توجد رسائل بعد. أرسل رسالة لعميل من صفحة «المستخدمون».</div>'; return; }
+    var totalUnread=0;
+    box.innerHTML=list.map(function(c){
+      var un=c.unread||0; totalUnread+=un;
+      var last=String(c.last_message||'').replace(/^\[\[qr:[^\]]*\]\]/,'📋 طلب عرض').slice(0,60);
+      return '<div onclick="openInboxThread('+c.client_id+',\''+esc(String(c.client_name||'عميل')).replace(/'/g,"")+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);cursor:pointer">'
+        +'<div style="width:42px;height:42px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">'+esc(String(c.client_name||'؟').charAt(0))+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:14px;color:var(--text)">'+esc(c.client_name||'عميل')+'</div><div style="font-size:10.5px;color:var(--muted)">'+_ibTime(c.last_time)+'</div></div><div style="font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(last)+'</div></div>'
+        +(un?'<div style="background:#dc2626;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+un+'</div>':'')
+      +'</div>';
+    }).join('');
+    var bd=document.getElementById('inbox-badge');
+    if(bd){ if(totalUnread>0){bd.textContent=totalUnread;bd.style.display='inline-block';}else bd.style.display='none'; }
+  }).catch(function(){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--red)">تعذّر التحميل</div>'; });
+}
+function _ibTime(s){ try{ return new Date(s).toLocaleDateString('ar-SA',{day:'numeric',month:'short'}); }catch(e){ return ''; } }
+function openInboxThread(cid,name){
+  _ibClient=cid; _ibName=name||'';
+  document.getElementById('ib-name').textContent=name||'محادثة';
+  document.getElementById('ib-reply').value='';
+  var t=document.getElementById('ib-thread'); t.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('inboxModal').classList.add('show');
+  fetch(API+'/api/admin/inbox/'+cid,hdr()).then(function(r){return r.json();}).then(function(msgs){
+    if(!msgs.length){ t.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12.5px;padding:16px">لا رسائل</div>'; return; }
+    t.innerHTML=msgs.map(function(m){
+      var mine=(m.mine===true||m.mine==='t');
+      return '<div style="align-self:'+(mine?'flex-start':'flex-end')+';max-width:80%;background:'+(mine?'var(--p)':'var(--bg)')+';color:'+(mine?'#fff':'var(--text)')+';border:1px solid '+(mine?'var(--p)':'var(--border)')+';border-radius:13px;padding:9px 13px;font-size:13.5px;line-height:1.6">'+esc(m.content)+'<div style="font-size:9.5px;opacity:.6;margin-top:3px">'+(mine?'أنت (الإدارة)':name)+'</div></div>';
+    }).join('');
+    t.scrollTop=t.scrollHeight;
+    loadInbox(); // تحديث عدّاد غير المقروء
+  }).catch(function(){ t.innerHTML='<div style="text-align:center;color:var(--red);padding:16px">تعذّر التحميل</div>'; });
+}
+function sendInboxReply(){
+  if(!_ibClient)return;
+  var ta=document.getElementById('ib-reply'), content=ta.value.trim();
+  if(!content){toast('اكتب ردّك','error');return;}
+  var btn=document.getElementById('ib-send'); btn.disabled=true; btn.textContent='...';
+  fetch(API+'/api/admin/message-client',Object.assign({method:'POST',body:JSON.stringify({client_id:_ibClient,content:content,email:false})},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.ok){ ta.value=''; openInboxThread(_ibClient,_ibName); } else toast((d&&d.message)||'تعذّر','error'); })
+    .catch(function(){toast('تعذّر الإرسال','error');})
+    .finally(function(){btn.disabled=false;btn.textContent='إرسال';});
 }
 function loadDailyReport(){
   var box=document.getElementById('daily-report'); if(!box)return;
