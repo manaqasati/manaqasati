@@ -2930,7 +2930,38 @@ app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('admin-message-client:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
-// مشاريع عميل (لقائمة الربط عند مراسلته)
+// صندوق وارد الأدمن: محادثاته مع العملاء (آخر رسالة + غير المقروء)
+app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const r = await pool.query(`
+      SELECT c.other_id AS client_id, u.name AS client_name, u.phone,
+        (SELECT m2.content FROM messages m2 WHERE ((m2.sender_id=$1 AND m2.receiver_id=c.other_id) OR (m2.sender_id=c.other_id AND m2.receiver_id=$1)) ORDER BY m2.created_at DESC LIMIT 1) AS last_message,
+        (SELECT m3.created_at FROM messages m3 WHERE ((m3.sender_id=$1 AND m3.receiver_id=c.other_id) OR (m3.sender_id=c.other_id AND m3.receiver_id=$1)) ORDER BY m3.created_at DESC LIMIT 1) AS last_time,
+        (SELECT COUNT(*) FROM messages m4 WHERE m4.sender_id=c.other_id AND m4.receiver_id=$1 AND m4.is_read=false)::int AS unread
+      FROM (SELECT DISTINCT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id
+            FROM messages WHERE sender_id=$1 OR receiver_id=$1) c
+      JOIN users u ON u.id=c.other_id AND u.role='client'
+      ORDER BY last_time DESC NULLS LAST LIMIT 100`, [me]);
+    res.json(r.rows);
+  } catch(e){ console.error('admin-inbox:', e.message); res.json([]); }
+});
+
+// محادثة الأدمن مع عميل محدّد (كل الرسائل بينهما) + تعليمها مقروءة
+app.get('/api/admin/inbox/:clientId', auth, adminOnly, async (req, res) => {
+  try {
+    const me = req.user.id, cid = parseInt(req.params.clientId);
+    const r = await pool.query(`
+      SELECT id, sender_id, receiver_id, content, created_at,
+        (sender_id=$1) AS mine
+      FROM messages
+      WHERE ((sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1))
+        AND content NOT LIKE '[[qr:%'
+      ORDER BY created_at ASC LIMIT 300`, [me, cid]);
+    await pool.query('UPDATE messages SET is_read=true WHERE sender_id=$1 AND receiver_id=$2 AND is_read=false', [cid, me]);
+    res.json(r.rows);
+  } catch(e){ console.error('admin-inbox-thread:', e.message); res.json([]); }
+});
 app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
   try {
     const uid = parseInt(req.query.uid);
