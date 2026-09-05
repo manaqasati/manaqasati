@@ -443,7 +443,18 @@ function seoCleanDesc(txt){
   t = t.replace(/[0-9]{7,}/g, '[…]');
   t = t.replace(/[\u0660-\u0669]{7,}/g, '[…]');
   t = t.replace(/\s{2,}/g, ' ').trim();
-  return t.slice(0, 700);
+  // قطع ذكي: إن تجاوز الطول، اقطع عند آخر نهاية جملة/سطر كاملة قبل الحد
+  const LIMIT = 1400;
+  if (t.length > LIMIT) {
+    let cut = t.slice(0, LIMIT);
+    // آخر فاصل جملة (نقطة، سطر، فاصلة عربية) ضمن آخر 40%
+    const marks = ['.', '\n', '؟', '!', '،', ':'];
+    let best = -1;
+    marks.forEach(mk => { const i = cut.lastIndexOf(mk); if (i > best) best = i; });
+    if (best > LIMIT * 0.5) cut = cut.slice(0, best + 1);
+    t = cut.trim() + ' …';
+  }
+  return t;
 }
 function seoStars(n){ n=Math.round(n||0); let h=''; for(let i=1;i<=5;i++) h+= (i<=n?'★':'☆'); return h; }
 
