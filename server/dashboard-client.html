@@ -911,35 +911,43 @@ var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 if(!token||!user.id){location.href='/auth.html';}
 
-// ═══ إرسال مسودّة المشروع تلقائياً بعد التسجيل (تدفّق: انشر أولاً ← سجّل ← يُرسل) ═══
+// ═══ فتح نموذج المشروع معبّأً بالمسودّة بعد التسجيل (تدفّق: انشر أولاً ← سجّل ← راجع وانشر) ═══
 (function(){
-  try{
-    var qp=new URLSearchParams(location.search);
-    if(qp.get('postdraft')!=='1') return;
-    var raw=null; try{ raw=sessionStorage.getItem('mnq_req_draft'); }catch(e){}
-    if(!raw) return;
-    var draft=JSON.parse(raw);
-    if(!draft||!draft.title||!draft.category){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
-    // نظّف المسودّة فوراً لمنع التكرار، ونظّف الرابط
-    try{ sessionStorage.removeItem('mnq_req_draft'); }catch(e){}
-    try{ history.replaceState(null,'','/dashboard-client.html'); }catch(e){}
-    // بدل النشر الصامت: افتح نموذج المشروع معبّأً ليراجع المستخدم المدينة ويؤكّد قبل النشر
-    function _prefillDraft(tries){
-      tries=tries||0;
-      var t=document.getElementById('n-title'), d=document.getElementById('n-desc'), c=document.getElementById('n-cat'), ct=document.getElementById('n-city');
-      if((!t||!c||!ct) && tries<25){ return setTimeout(function(){_prefillDraft(tries+1);},200); }
-      if(!t||!c||!ct) return;
-      t.value=String(draft.title).slice(0,200);
-      if(d) d.value=String(draft.description||'').slice(0,4000);
-      var setCat=function(n){ n=n||0; if(c.options.length<=1&&n<20){return setTimeout(function(){setCat(n+1);},200);} for(var i=0;i<c.options.length;i++){ if(c.options[i].value===draft.category){ c.value=draft.category; break; } } if(typeof checkOther==='function')checkOther(); };
-      setCat();
-      var setCity=function(n){ n=n||0; if(ct.options.length<=1&&n<20){return setTimeout(function(){setCity(n+1);},200);} if(draft.city){ for(var i=0;i<ct.options.length;i++){ if(ct.options[i].value===draft.city){ ct.value=draft.city; ct.style.borderColor='var(--green)'; break; } } } };
-      setCity();
-      if(typeof showToast==='function') showToast('راجع مشروعك وأكّد المدينة ثم اضغط نشر','success');
-    }
-    if(typeof show==='function') show('new',null,'new');
-    setTimeout(function(){_prefillDraft(0);},350);
-  }catch(e){}
+  function _runDraft(){
+    try{
+      var qp=new URLSearchParams(location.search);
+      if(qp.get('postdraft')!=='1') return;
+      var raw=null; try{ raw=sessionStorage.getItem('mnq_req_draft'); }catch(e){}
+      if(!raw) return;
+      var draft=null; try{ draft=JSON.parse(raw); }catch(e){}
+      if(!draft||!draft.title||!draft.category){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
+      var done=false, tries=0;
+      function step(){
+        if(done) return;
+        tries++;
+        // أعِد تأكيد الانتقال لنموذج المشروع (يغلب توجيه التطبيق الافتراضي)
+        if(typeof show==='function'){ try{ show('new',null,'new'); }catch(e){} }
+        var t=document.getElementById('n-title'), d=document.getElementById('n-desc'), c=document.getElementById('n-cat'), ct=document.getElementById('n-city');
+        var ready = t&&c&&ct && c.options.length>1 && ct.options.length>1;
+        if(!ready){ if(tries<40) return setTimeout(step,250); return; }
+        // عبّئ
+        t.value=String(draft.title).slice(0,200);
+        if(d) d.value=String(draft.description||'').slice(0,4000);
+        for(var i=0;i<c.options.length;i++){ if(c.options[i].value===draft.category){ c.value=draft.category; break; } }
+        if(typeof checkOther==='function') checkOther();
+        if(draft.city){ for(var j=0;j<ct.options.length;j++){ if(ct.options[j].value===draft.city){ ct.value=draft.city; ct.style.borderColor='var(--green)'; break; } } }
+        done=true;
+        // نجحت التعبئة → امسح المسودّة ونظّف الرابط
+        try{ sessionStorage.removeItem('mnq_req_draft'); }catch(e){}
+        try{ history.replaceState(null,'','/dashboard-client.html#new'); }catch(e){}
+        if(typeof showToast==='function') showToast('راجع مشروعك وأكّد المدينة ثم اضغط نشر','success');
+      }
+      step();
+    }catch(e){}
+  }
+  // شغّله بعد استقرار توجيه التطبيق (window load ثم مهلة قصيرة)
+  if(document.readyState==='complete'){ setTimeout(_runDraft,400); }
+  else { window.addEventListener('load', function(){ setTimeout(_runDraft,400); }); }
 })();
 
 
