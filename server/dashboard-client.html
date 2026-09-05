@@ -920,26 +920,25 @@ if(!token||!user.id){location.href='/auth.html';}
     if(!raw) return;
     var draft=JSON.parse(raw);
     if(!draft||!draft.title||!draft.category){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
-    // نظّف المسودّة فوراً لمنع الإرسال المكرّر
+    // نظّف المسودّة فوراً لمنع التكرار، ونظّف الرابط
     try{ sessionStorage.removeItem('mnq_req_draft'); }catch(e){}
-    // جسم المشروع — نفس شكل submitReq بالضبط
-    var body={ title:String(draft.title).slice(0,200), description:String(draft.description||'').slice(0,4000), category:draft.category, city:draft.city||null };
-    if(draft.budget_max) body.budget_max=Number(draft.budget_max)||undefined;
-    if(draft.deadline) body.deadline=draft.deadline;
-    fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
-      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
-      .then(function(res){
-        if(res.ok && res.d && res.d.id){
-          if(window.track) track('StartPost');
-          showToast('تم نشر مشروعك بنجاح! 🎉','success');
-          // نظّف الرابط
-          try{ history.replaceState(null,'','/dashboard-client.html'); }catch(e){}
-          setTimeout(function(){ if(typeof loadHome==='function') loadHome(); },400);
-        } else {
-          showToast((res.d&&res.d.message)||'تعذّر نشر المشروع، حاول من جديد','error');
-        }
-      })
-      .catch(function(){ showToast('تعذّر نشر المشروع، تأكّد من اتصالك','error'); });
+    try{ history.replaceState(null,'','/dashboard-client.html'); }catch(e){}
+    // بدل النشر الصامت: افتح نموذج المشروع معبّأً ليراجع المستخدم المدينة ويؤكّد قبل النشر
+    function _prefillDraft(tries){
+      tries=tries||0;
+      var t=document.getElementById('n-title'), d=document.getElementById('n-desc'), c=document.getElementById('n-cat'), ct=document.getElementById('n-city');
+      if((!t||!c||!ct) && tries<25){ return setTimeout(function(){_prefillDraft(tries+1);},200); }
+      if(!t||!c||!ct) return;
+      t.value=String(draft.title).slice(0,200);
+      if(d) d.value=String(draft.description||'').slice(0,4000);
+      var setCat=function(n){ n=n||0; if(c.options.length<=1&&n<20){return setTimeout(function(){setCat(n+1);},200);} for(var i=0;i<c.options.length;i++){ if(c.options[i].value===draft.category){ c.value=draft.category; break; } } if(typeof checkOther==='function')checkOther(); };
+      setCat();
+      var setCity=function(n){ n=n||0; if(ct.options.length<=1&&n<20){return setTimeout(function(){setCity(n+1);},200);} if(draft.city){ for(var i=0;i<ct.options.length;i++){ if(ct.options[i].value===draft.city){ ct.value=draft.city; ct.style.borderColor='var(--green)'; break; } } } };
+      setCity();
+      if(typeof showToast==='function') showToast('راجع مشروعك وأكّد المدينة ثم اضغط نشر','success');
+    }
+    if(typeof show==='function') show('new',null,'new');
+    setTimeout(function(){_prefillDraft(0);},350);
   }catch(e){}
 })();
 
