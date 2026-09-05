@@ -432,6 +432,19 @@ const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدي�
 function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
 function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
 function seoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// تنظيف وصف المشروع للنشر العام: يحذف الجوّالات (لاتيني/عربي) والإيميل والروابط وأي تسلسل أرقام طويل
+function seoCleanDesc(txt){
+  let t = String(txt==null?'':txt).trim();
+  t = t.replace(/https?:\/\/\S+/g, ' ');
+  t = t.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[…]');
+  // جوّال سعودي بصيغه المختلفة (يسمح بمسافات/شرطات)
+  t = t.replace(/(?:\+?966|00966)?[\s-]*0?5(?:[\s-]*[\u0660-\u06690-9]){8}/g, '[…]');
+  // أي تسلسل أرقام طويل (7+) لاتيني أو عربي
+  t = t.replace(/[0-9]{7,}/g, '[…]');
+  t = t.replace(/[\u0660-\u0669]{7,}/g, '[…]');
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  return t.slice(0, 700);
+}
 function seoStars(n){ n=Math.round(n||0); let h=''; for(let i=1;i<=5;i++) h+= (i<=n?'★':'☆'); return h; }
 
 // دليل رئيسي (هَب للربط الداخلي)
@@ -600,7 +613,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     let doneProjects = [];
     try {
       const dp = await pool.query(
-        `SELECT r.title, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
+        `SELECT r.id, r.title, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
          FROM requests r
          WHERE r.status='completed' AND r.completed_at IS NOT NULL
            AND (r.category IS DISTINCT FROM 'direct')
@@ -643,11 +656,46 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       }]
     };
 
-    const doneSection = doneProjects.length ? `<h2>مشاريع ${seoEsc(cat)} أُنجزت في ${seoEsc(city)}</h2>`+doneProjects.map(function(p){ return `<div style="background:#fff;border:1px solid #e6eefb;border-right:3px solid #16a34a;border-radius:12px;padding:14px 16px;margin-bottom:10px"><div style="display:inline-flex;align-items:center;gap:5px;background:rgba(22,163,74,.1);color:#16a34a;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;margin-bottom:7px">\u2713 أُنجز بنجاح</div><div style="font-weight:800;font-size:14px;color:#0f2544;line-height:1.5">${seoEsc(p.title)}</div>`+(p.offers?`<div style="font-size:12.5px;color:#64748b;margin-top:5px">استقبل <b style="color:#0f2544">${p.offers}</b> ${p.offers===1?'عرضاً':'عروض'}، واختار صاحب المشروع الأنسب له</div>`:'')+`</div>`; }).join('') : '';
+    const doneSection = doneProjects.length ? `<h2>مشاريع ${seoEsc(cat)} أُنجزت في ${seoEsc(city)}</h2>`+doneProjects.map(function(p){ return `<div style="background:#fff;border:1px solid #e6eefb;border-right:3px solid #16a34a;border-radius:12px;padding:14px 16px;margin-bottom:10px"><div style="display:inline-flex;align-items:center;gap:5px;background:rgba(22,163,74,.1);color:#16a34a;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;margin-bottom:7px">\u2713 أُنجز بنجاح</div><a href="/mashroo/${seoSlug(p.title)}-${p.id}" style="font-weight:800;font-size:14px;color:#0f2544;line-height:1.5;text-decoration:none;display:block">${seoEsc(p.title)}</a>`+(p.offers?`<div style="font-size:12.5px;color:#64748b;margin-top:5px">استقبل <b style="color:#0f2544">${p.offers}</b> ${p.offers===1?'عرضاً':'عروض'}، واختار صاحب المشروع الأنسب له</div>`:'')+`</div>`; }).join('') : '';
     const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;color:#1e293b;outline:none;margin-bottom:10px;background:#fff}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>اكتب ما تحتاجه، ويصلك عروض أسعار من مزوّدي ${seoEsc(cat)} في ${seoEsc(city)} — قارن واختر الأنسب.</p><div class="startbox"><div class="sb-t">⚡ ابدأ طلبك في ${seoEsc(cat)} بـ${seoEsc(city)}</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">تكتب طلبك أول — ونطلب جوالك للتأكيد قبل الإرسال فقط.</div></div></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر مشروعك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}${doneSection}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div><div class="stickybar"><button onclick="sbFocus()">⚡ ابدأ طلب ${seoEsc(cat)} في ${seoEsc(city)} <span style='font-size:15px'>←</span></button></div><script>function sbFocus(){var t=document.getElementById("sb-title");if(t){t.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(function(){t.focus();},400);}}function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
     _dalilCache.set(_ck, { html: _pageHtml, exp: Date.now() + _DALIL_TTL });
     res.set('Content-Type','text/html; charset=utf-8').send(_pageHtml);
   } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
+});
+
+// صفحة مشروع منجز مؤرشفة (SEO) — عنوان + وصف منظّف + بلا صور/أسماء/أسعار
+app.get('/mashroo/:slug', async (req, res) => {
+  try {
+    const mm = String(req.params.slug).match(/(\d+)$/);
+    const id = mm ? parseInt(mm[1]) : parseInt(req.params.slug);
+    if (!id) return res.redirect(302, '/');
+    const q = await pool.query(
+      `SELECT r.id, r.title, r.description, r.category, r.city, r.completed_at,
+         (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS offers
+       FROM requests r
+       WHERE r.id=$1 AND r.status='completed' AND (r.category IS DISTINCT FROM 'direct')`, [id]);
+    if (!q.rows.length) return res.redirect(302, '/dalil');
+    const p = q.rows[0];
+    const cat = p.category||'خدمة', city = p.city||'';
+    const cleanDesc = seoCleanDesc(p.description);
+    const canonical = `${SITE_URL}/mashroo/${seoSlug(p.title)}-${p.id}`;
+    const title = `${p.title} — مشروع ${cat} أُنجز${city?(' في '+city):''} عبر مناقصة`;
+    const metaDesc = `مشروع ${cat}${city?(' في '+city):''} أُنجز بنجاح عبر مناقصة: استقبل ${p.offers||0} عروض واختار صاحبه الأنسب. عندك مشروع مشابه؟ انشره واستقبل عروضك.`;
+    // مشاريع مشابهة (نفس التصنيف+المدينة)
+    let similar = [];
+    try {
+      const sm = await pool.query(
+        `SELECT r.id, r.title FROM requests r
+         WHERE r.status='completed' AND (r.category IS DISTINCT FROM 'direct')
+           AND r.category=$1 AND r.city ILIKE $2 AND r.id<>$3
+         ORDER BY r.completed_at DESC LIMIT 4`, [cat, '%'+city+'%', id]);
+      similar = sm.rows;
+    } catch(e){ similar = []; }
+    const simHtml = similar.length ? '<h2>مشاريع مشابهة</h2>'+similar.map(x=>`<a href="/mashroo/${seoSlug(x.title)}-${x.id}" style="display:block;background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:13px 16px;margin-bottom:9px;color:#0f2544;text-decoration:none;font-weight:700;font-size:14px">📄 ${seoEsc(x.title)}</a>`).join('') : '';
+    const schema = { "@context":"https://schema.org","@type":"CreativeWork","name":p.title,"about":cat,"locationCreated":city||undefined,"url":canonical };
+    const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(metaDesc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(metaDesc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="article"><script type="application/ld+json">${JSON.stringify(schema)}</script><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:24px 22px;margin-bottom:20px}.hero h1{margin:8px 0;font-size:22px;line-height:1.4}.done{display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px}.meta{font-size:12.5px;opacity:.92;margin-top:6px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.desc{background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px 18px;font-size:14.5px;white-space:pre-wrap}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;margin-bottom:10px}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><span class="done">✓ أُنجز بنجاح</span><h1>${seoEsc(p.title)}</h1><div class="meta">${seoEsc(cat)}${city?(' · '+seoEsc(city)):''}${p.offers?(' · استقبل '+p.offers+' '+(p.offers===1?'عرضاً':'عروض')):''}</div><div class="startbox"><div class="sb-t">⚡ عندك مشروع مشابه؟ ابدأ طلبك</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">تكتب طلبك أول — ونطلب جوالك للتأكيد قبل الإرسال فقط.</div></div></div>${cleanDesc?('<h2>عن المشروع</h2><div class="desc">'+seoEsc(cleanDesc)+'</div>'):''}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">هكذا تعمل مناقصة</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك، استقبل عروضاً من مزوّدين، وقارن واختر الأنسب لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div>${simHtml}<p style="margin-top:18px"><a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="font-weight:700">← كل مشاريع ${seoEsc(cat)} في ${seoEsc(city)}</a></p><p class="foot">مناقصة — منصة المشاريع والخدمات السعودية</p></div><div class="stickybar"><button onclick="var t=document.getElementById('sb-title');if(t){t.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){t.focus();},400);}">⚡ ابدأ طلبك واستقبل عروضك <span style="font-size:15px">←</span></button></div><script>function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
+    res.set('Content-Type','text/html; charset=utf-8').send(html);
+  } catch(e){ console.error('/mashroo SSR:', e.message); res.redirect(302, '/dalil'); }
 });
 
 // خريطة الموقع (Sitemap) — يساعد قوقل يكتشف صفحات SEO
@@ -5404,6 +5452,14 @@ app.get('/sitemap.xml', async (req, res) => {
     xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
     Object.keys(INTENT_PAGES).forEach(sl=>{ xml+=`\n  <url><loc>${SITE_URL}/${encodeURIComponent(sl)}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`; });
     SEO_CATS.forEach(cat=>SEO_CITIES.forEach(city=>{ xml+=`\n  <url><loc>${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`; }));
+    // صفحات المشاريع المنجزة
+    try {
+      const mp = await pool.query(`SELECT id, title, completed_at FROM requests WHERE status='completed' AND completed_at IS NOT NULL AND (category IS DISTINCT FROM 'direct') ORDER BY completed_at DESC LIMIT 2000`);
+      for (const p of mp.rows) {
+        const lm = p.completed_at ? new Date(p.completed_at).toISOString().slice(0,10) : now;
+        xml+=`\n  <url><loc>${SITE_URL}/mashroo/${seoSlug(p.title)}-${p.id}</loc><changefreq>monthly</changefreq><priority>0.7</priority><lastmod>${lm}</lastmod></url>`;
+      }
+    } catch(e){}
     for (const p of providers.rows) {
       const slug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
       const lastmod=p.created_at?p.created_at.toISOString().split('T')[0]:now;
