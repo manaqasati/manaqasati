@@ -1702,7 +1702,7 @@ function loadActions(id){
       } else {
         h='<div class="card"><div class="ch"><h3>إجراءات المشروع</h3></div>'
           +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">عند انتهاء المزود من العمل، اضغط لإكمال المشروع ثم يمكنك تقييمه.</p>'
-          +'<button class="btn-sm bs-g" onclick="markDone('+id+')" style="width:100%;padding:13px">'+check+' تم الإنجاز — أكمل المشروع</button></div>';
+          +'<button class="btn-sm" onclick="markDone('+id+')" style="width:100%;padding:15px;background:#16a34a;color:#fff;font-weight:800;font-size:15px;border:none;border-radius:12px;box-shadow:0 4px 14px rgba(22,163,74,.32);cursor:pointer">'+check+' تم الإنجاز — أكمل المشروع</button></div>';
       }
     } else if(req.status==='completed'||req.status==='done'){
       // مكتمل: أظهر زر التقييم
@@ -1776,18 +1776,25 @@ function markNotDone(id){
     .then(function(d){ if(d&&d.ok){showToast('تم — سنذكّرك لاحقاً','success');loadActions(id);loadHome();} else showToast((d&&d.message)||'تعذر التحديث','error'); })
     .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
 }
+function _confirmBox(msg, yesText, onYes){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)';
+  ov.innerHTML='<div style="background:#fff;border-radius:18px;padding:24px 22px;max-width:380px;width:100%;box-shadow:0 20px 50px -12px rgba(0,0,0,.4);text-align:center"><div style="font-family:Cairo,sans-serif;font-weight:800;font-size:16.5px;color:#0f2544;margin-bottom:20px;line-height:1.7">'+msg+'</div><div style="display:flex;gap:10px"><button id="_cb-yes" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer">'+yesText+'</button><button id="_cb-no" style="flex:1;background:#f1f5f9;color:#475569;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:700;font-size:15px;cursor:pointer">لا، ليس بعد</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#_cb-no').onclick=function(){ov.remove();};
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.querySelector('#_cb-yes').onclick=function(){ ov.remove(); onYes(); };
+}
 function markDone(id){
-  if(!confirm('هل تؤكد إتمام هذا المشروع؟'))return;
-  fetch(API+'/api/requests/'+id+'/complete',Object.assign({method:'PUT'},hdr()))
-    .then(function(r){
-      if(!r.ok){
-        // Fallback: try status update
-        return fetch(API+'/api/requests/'+id,Object.assign({method:'PUT',body:JSON.stringify({status:'completed'})},hdr()));
-      }
-      return r;
-    })
-    .then(function(){showToast('تم تحديث حالة المشروع','success');loadBids(id);loadActions(id);loadHome();})
-    .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
+  _confirmBox('هل أنجز المزوّد العمل فعلاً؟<br><span style="font-size:13px;font-weight:600;color:#64748b">سيُغلق المشروع وتتمكّن من تقييم المزوّد.</span>', 'نعم، تم الإنجاز', function(){
+    fetch(API+'/api/requests/'+id+'/complete',Object.assign({method:'PUT'},hdr()))
+      .then(function(r){
+        if(!r.ok){ return fetch(API+'/api/requests/'+id,Object.assign({method:'PUT',body:JSON.stringify({status:'completed'})},hdr())); }
+        return r;
+      })
+      .then(function(){showToast('تم إكمال المشروع بنجاح 🎉','success');loadBids(id);loadActions(id);loadHome();})
+      .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
+  });
 }
 function openRate(reqId){
   var bids=window._currentBids||[];
