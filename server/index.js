@@ -1757,6 +1757,22 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
+    // دفتر السعي: يتتبّع عمولة كل مشروع مقبول (تراكم → صرف بإثبات → اعتماد الأدمن)
+    try { await pool.query(`CREATE TABLE IF NOT EXISTS saai_ledger (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
+      provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      bid_id INTEGER,
+      contract_value NUMERIC NOT NULL DEFAULT 0,
+      saai_amount NUMERIC NOT NULL DEFAULT 0,
+      status VARCHAR(20) DEFAULT 'pending',
+      proof_url TEXT,
+      edits_log JSONB DEFAULT '[]'::jsonb,
+      created_at TIMESTAMP DEFAULT NOW(),
+      submitted_at TIMESTAMP,
+      approved_at TIMESTAMP,
+      UNIQUE(request_id, provider_id)
+    )`); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
@@ -2908,6 +2924,14 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
     const _fee = Math.round((parseFloat(bid.price)||0) * 0.03);
+    // تراكم السعي: أنشئ سجلاً معلّقاً للمزوّد (لا يكرّر لو أُعيد القبول)
+    try {
+      await pool.query(
+        `INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status)
+         VALUES ($1,$2,$3,$4,$5,'pending')
+         ON CONFLICT (request_id, provider_id) DO NOTHING`,
+        [bid.request_id, bid.provider_id, bidId, (parseFloat(bid.price)||0), _fee]);
+    } catch(e){ console.error('saai accrue:', e.message); }
     await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) تُسدَّد خلال 10 أيام من الاتفاق أو بدء التنفيذ.':''), 'bid_accepted', bid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
         const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
@@ -3068,6 +3092,55 @@ app.get('/api/client/quote-context', auth, async (req, res) => {
     }
     res.json({ open: open.rows, cur_open: curOpen, cur_bid: curBid, cur_req: curReqId });
   } catch(e) { console.error('quote-context:', e.message); res.json({ open: [], cur_open:false, cur_bid:true }); }
+});
+
+// محفظة السعي للمزوّد: الرصيد المتراكم + تفصيل كل مشروع
+// المزوّد يصرف السعي: يعدّل المبلغ (حر) + يرفع الإثبات + يؤكّد → بانتظار اعتماد الأدمن
+app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    const id = parseInt(req.params.id);
+    const newVal = Math.max(0, parseFloat(req.body.contract_value)||0);
+    const proof = req.body.proof || null;
+    if (!newVal) return res.status(400).json({ message: 'أدخل مبلغ العقد' });
+    const row = (await pool.query('SELECT * FROM saai_ledger WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
+    if (!row) return res.status(404).json({ message: 'السجل غير موجود' });
+    if (row.status === 'approved') return res.status(400).json({ message: 'هذا السعي معتمد مسبقاً' });
+    let proofUrl = row.proof_url;
+    if (proof && typeof proof === 'string' && proof.startsWith('data:')) {
+      try { proofUrl = await uploadToR2(proof, 'manaqasa/saai-proofs', 'saai-'+id+'-'+Date.now()); } catch(e){ proofUrl = row.proof_url; }
+    }
+    const newFee = Math.round(newVal * 0.03);
+    // سجل التعديل لو تغيّر المبلغ
+    let log = row.edits_log || [];
+    if (Number(row.contract_value) !== newVal) {
+      log = Array.isArray(log) ? log : [];
+      log.push({ from: Number(row.contract_value), to: newVal, at: new Date().toISOString() });
+    }
+    await pool.query(
+      `UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, proof_url=$3, status='submitted', submitted_at=NOW(), edits_log=$4::jsonb WHERE id=$5`,
+      [newVal, newFee, proofUrl, JSON.stringify(log), id]);
+    res.json({ ok: true });
+  } catch(e){ console.error('saai-submit:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+
+app.get('/api/provider/saai', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 });
+    const pid = req.user.id;
+    const r = await pool.query(
+      `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.created_at, s.submitted_at, s.approved_at,
+              r.title AS project_title, r.category, r.city
+       FROM saai_ledger s JOIN requests r ON r.id=s.request_id
+       WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [pid]);
+    let pending=0, approved=0, contract=0;
+    r.rows.forEach(x=>{
+      contract += parseFloat(x.contract_value)||0;
+      if (x.status==='approved') approved += parseFloat(x.saai_amount)||0;
+      else pending += parseFloat(x.saai_amount)||0;
+    });
+    res.json({ items: r.rows, pending_total: Math.round(pending), approved_total: Math.round(approved), contract_total: Math.round(contract) });
+  } catch(e){ console.error('provider-saai:', e.message); res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 }); }
 });
 
 app.get('/api/provider/chat-bid-context', auth, async (req, res) => {
