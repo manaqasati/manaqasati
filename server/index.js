@@ -5148,6 +5148,32 @@ async function getReminderCfg(){
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
   try { res.json(await getReminderCfg()); } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
 });
+// بيانات التحويل البنكي (عامة للمزوّدين) — بقيم افتراضية قابلة للتعديل من الأدمن
+const BANK_DEFAULTS = {
+  bank_name: 'مصرف الراجحي',
+  account_name: 'عمرو عبدالله العمرو',
+  account_number: '374000010006080891560',
+  iban: 'SA6780000374608010891560',
+  whatsapp: '966594011313'
+};
+app.get('/api/bank-info', auth, async (req, res) => {
+  try {
+    const out = {};
+    for (const k of Object.keys(BANK_DEFAULTS)) {
+      out[k] = await getSetting('bank_'+k, BANK_DEFAULTS[k]);
+    }
+    res.json(out);
+  } catch(e){ res.json(BANK_DEFAULTS); }
+});
+app.put('/api/admin/bank-info', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    for (const k of Object.keys(BANK_DEFAULTS)) {
+      if (typeof b[k] === 'string') await setSetting('bank_'+k, b[k].trim());
+    }
+    res.json({ ok: true });
+  } catch(e){ console.error('bank-info save:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
 app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
   try {
     const b = req.body||{};
