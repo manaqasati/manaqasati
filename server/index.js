@@ -3094,6 +3094,36 @@ app.get('/api/client/quote-context', auth, async (req, res) => {
   } catch(e) { console.error('quote-context:', e.message); res.json({ open: [], cur_open:false, cur_bid:true }); }
 });
 
+// الأدمن: قائمة السعي (المُرسل للاعتماد + الملتزمون) + الاعتماد
+app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.edits_log, s.created_at, s.submitted_at, s.approved_at,
+              r.title AS project_title, r.city,
+              COALESCE(u.business_name, u.name) AS provider_name, u.id AS provider_id
+       FROM saai_ledger s
+       JOIN requests r ON r.id=s.request_id
+       JOIN users u ON u.id=s.provider_id
+       ORDER BY CASE s.status WHEN 'submitted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, s.submitted_at DESC NULLS LAST, s.created_at DESC
+       LIMIT 300`);
+    const sum = await pool.query(
+      `SELECT COALESCE(SUM(saai_amount) FILTER (WHERE status='approved'),0)::int AS collected,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='submitted'),0)::int AS awaiting,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending'),0)::int AS due
+       FROM saai_ledger`);
+    res.json({ items: r.rows, summary: sum.rows[0] || {} });
+  } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {} }); }
+});
+app.post('/api/admin/saai/:id/approve', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query("UPDATE saai_ledger SET status='approved', approved_at=NOW() WHERE id=$1 RETURNING provider_id, request_id, saai_amount", [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    try { await notify(r.rows[0].provider_id, 'تم اعتماد سدادك ✅', 'اعتمدت الإدارة سداد سعي المنصة ('+Math.round(r.rows[0].saai_amount).toLocaleString('en-US')+' ر.س). شكراً لالتزامك.', 'saai_approved', r.rows[0].request_id); } catch(e){}
+    res.json({ ok: true });
+  } catch(e){ console.error('admin-saai-approve:', e.message); res.status(500).json({ message: 'تعذّر الاعتماد' }); }
+});
+
 // محفظة السعي للمزوّد: الرصيد المتراكم + تفصيل كل مشروع
 // المزوّد يصرف السعي: يعدّل المبلغ (حر) + يرفع الإثبات + يؤكّد → بانتظار اعتماد الأدمن
 app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
