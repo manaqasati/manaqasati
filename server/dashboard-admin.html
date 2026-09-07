@@ -393,6 +393,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
     <button class="ni" onclick="showPage('inbox',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>رسائل العملاء<span id="inbox-badge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:6px"></span></button>
+    <button class="ni" onclick="showPage('saai',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>سداد السعي<span id="saai-badge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:6px"></span></button>
     <button class="ni" onclick="showPage('closereasons',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>أسباب الإغلاق</button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
     <div class="nav-label">النظام</div>
@@ -479,6 +480,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       </div>
     </div>
 
+    <div class="page" id="page-saai"><div class="card"><div class="card-head"><h3>💰 سداد السعي</h3><span style="font-size:11px;color:var(--muted)">اعتماد سداد المزوّدين</span></div><div id="saai-sum" style="padding:8px 14px"></div><div id="saai-list" style="padding:8px"><div class="loading"><div class="spinner"></div></div></div></div></div>
     <div class="page" id="page-inbox">
       <div class="card"><div class="card-head"><h3>📨 رسائل العملاء</h3><span style="font-size:11px;color:var(--muted)">ردود العملاء على رسائلك</span></div>
       <div id="inbox-list" style="padding:8px"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
@@ -816,13 +818,14 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();loadNeedsAction();loadDailyReport();}
   if(pg==='analytics')loadAnalytics();
   if(pg==='inbox')loadInbox();
+  if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
   if(pg==='marketing')loadMarketing();
   if(pg==='outreach')loadOutreach();
@@ -880,6 +883,38 @@ function _drToggle(key){
   box.innerHTML=html;
 }
 var _ibClient=null, _ibName='';
+function loadSaaiAdmin(){
+  var box=document.getElementById('saai-list'), sumEl=document.getElementById('saai-sum'); if(!box)return;
+  box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  fetch(API+'/api/admin/saai',hdr()).then(function(r){return r.json();}).then(function(d){
+    d=d||{items:[],summary:{}}; var items=d.items||[], sm=d.summary||{};
+    if(sumEl){ sumEl.innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
+      +'<div style="flex:1;min-width:120px;background:#dcfce7;border-radius:12px;padding:12px;text-align:center"><div style="font-family:Cairo,sans-serif;font-weight:900;font-size:20px;color:#16a34a">'+(sm.collected||0).toLocaleString("en-US")+'</div><div style="font-size:11px;color:#15803d">محصّل ✓ ر.س</div></div>'
+      +'<div style="flex:1;min-width:120px;background:#dbeafe;border-radius:12px;padding:12px;text-align:center"><div style="font-family:Cairo,sans-serif;font-weight:900;font-size:20px;color:#1d4ed8">'+(sm.awaiting||0).toLocaleString("en-US")+'</div><div style="font-size:11px;color:#1e40af">بانتظار الاعتماد ر.س</div></div>'
+      +'<div style="flex:1;min-width:120px;background:#fef3c7;border-radius:12px;padding:12px;text-align:center"><div style="font-family:Cairo,sans-serif;font-weight:900;font-size:20px;color:#d97706">'+(sm.due||0).toLocaleString("en-US")+'</div><div style="font-size:11px;color:#b45309">مستحق ر.س</div></div>'
+      +'</div>'; }
+    var awaiting=items.filter(function(x){return x.status==='submitted';}).length;
+    var bd=document.getElementById('saai-badge'); if(bd){ if(awaiting>0){bd.textContent=awaiting;bd.style.display='inline-block';}else bd.style.display='none'; }
+    if(!items.length){ box.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px">لا يوجد سعي بعد.</div>'; return; }
+    box.innerHTML=items.map(function(x){
+      var st=x.status, badge, act='';
+      if(st==='approved'){ badge='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dcfce7;color:#16a34a">معتمد ✓</span>'; }
+      else if(st==='submitted'){ badge='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار الاعتماد</span>'; act='<button onclick="approveSaai('+x.id+')" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;cursor:pointer">اعتماد ✓</button>'; }
+      else { badge='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">مستحق (لم يُرسل)</span>'; }
+      var proof=x.proof_url?'<a href="'+esc(x.proof_url)+'" target="_blank" style="font-size:12px;color:var(--p);font-weight:700;text-decoration:none;margin-left:10px">📎 الإيصال</a>':'';
+      var log='';
+      try{ var L=x.edits_log; if(typeof L==='string')L=JSON.parse(L); if(L&&L.length){ var last=L[L.length-1]; log='<div style="font-size:11.5px;color:#92620e;background:#fffbeb;border-radius:8px;padding:6px 10px;margin-top:7px">📝 عدّل المبلغ من <b>'+Number(last.from).toLocaleString("en-US")+'</b> → <b>'+Number(last.to).toLocaleString("en-US")+'</b></div>'; } }catch(e){}
+      return '<div style="padding:14px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:var(--text)">'+esc(x.provider_name||'مزوّد')+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(x.project_title||'مشروع')+'</div><div style="font-size:12.5px;margin-top:4px">العقد <b>'+Number(x.contract_value).toLocaleString("en-US")+'</b> · السعي <b style="color:#0f2544">'+Number(x.saai_amount).toLocaleString("en-US")+' ر.س</b> '+proof+'</div><div style="margin-top:6px">'+badge+'</div>'+log+'</div><div style="flex-shrink:0">'+act+'</div></div></div>';
+    }).join('');
+  }).catch(function(){ box.innerHTML='<div style="text-align:center;color:var(--red);padding:20px">تعذّر التحميل</div>'; });
+}
+function approveSaai(id){
+  if(!confirm('اعتماد استلام هذا السعي؟'))return;
+  fetch(API+'/api/admin/saai/'+id+'/approve',Object.assign({method:'POST'},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.ok){ toast('تم الاعتماد','success'); loadSaaiAdmin(); } else toast((d&&d.message)||'تعذّر','error'); })
+    .catch(function(){ toast('تعذّر الاتصال','error'); });
+}
 function loadInbox(){
   var box=document.getElementById('inbox-list'); if(!box)return;
   fetch(API+'/api/admin/inbox',hdr()).then(function(r){return r.json();}).then(function(list){
