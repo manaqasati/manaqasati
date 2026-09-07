@@ -4628,12 +4628,12 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
 app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
   try {
     const agg = await pool.query(`SELECT reason AS close_reason, COUNT(*)::int AS c FROM (
-        SELECT COALESCE(close_reason,'auto_expired') AS reason FROM requests
-        WHERE close_reason IS NOT NULL OR status IN ('closed_auto','expired','cancelled')
+        SELECT CASE WHEN status='completed' THEN 'completed' ELSE COALESCE(close_reason,'auto_expired') END AS reason FROM requests
+        WHERE close_reason IS NOT NULL OR status IN ('closed_auto','expired','cancelled','completed')
       ) t GROUP BY reason ORDER BY c DESC`);
-    const list = await pool.query(`SELECT r.id, r.title, COALESCE(r.close_reason,'auto_expired') AS close_reason, r.close_reason_note, r.closed_at, COALESCE(u.name,'عميل') AS client_name,
+    const list = await pool.query(`SELECT r.id, r.title, CASE WHEN r.status='completed' THEN 'completed' ELSE COALESCE(r.close_reason,'auto_expired') END AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, COALESCE(u.name,'عميل') AS client_name,
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
-      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL OR r.status IN ('closed_auto','expired','cancelled') ORDER BY r.closed_at DESC NULLS LAST LIMIT 300`);
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL OR r.status IN ('closed_auto','expired','cancelled','completed') ORDER BY COALESCE(r.closed_at, r.completed_at) DESC NULLS LAST LIMIT 300`);
     res.json({ summary: agg.rows, list: list.rows });
   } catch(e){ console.error('close-reasons:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
