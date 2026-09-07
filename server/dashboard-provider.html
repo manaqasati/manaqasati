@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" id="ni-chat" onclick="location.href='/chat'"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>المحادثات<span class="badge" id="nb-chat" style="display:none">0</span></button>
     <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي</button>
     <button class="ni" id="ni-profile" onclick="gotoPage('profile')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
-    <button class="ni" id="ni-payment" onclick="location.href='/payment.html'"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>سداد العمولة</button>
+    <button class="ni" id="ni-saai" onclick="gotoPage('saai')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>سداد العمولة</button>
     <button class="ni" id="ni-notifs" onclick="gotoPage('notifs')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>الإشعارات<span class="badge" id="nb-notif" style="display:none">0</span></button>
   </div>
   <div class="side-foot">
@@ -463,6 +463,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-notifs"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-profile"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-chat"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-saai"><div class="loading">جاري التحميل...</div></div>
   </div>
 </div>
 
@@ -775,6 +776,7 @@ function _gotoPageInner(page){
   else if(page==='notifs')loadNotifs();
   else if(page==='profile')loadProfile();
   else if(page==='chat'){loadChat();}
+  else if(page==='saai')loadSaai();
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
 // زر رجوع المتصفّح: يرجّع للقسم السابق داخل لوحة المزوّد بدل الخروج
@@ -1887,6 +1889,62 @@ function _openNewChatSearch(){
   },200);
 }
 
+function loadSaai(){
+  var pg=_el('page-saai'); if(!pg)return;
+  pg.innerHTML='<div class="loading">جاري التحميل...</div>';
+  _api('/api/provider/saai').then(function(d){
+    d=d||{items:[],pending_total:0,approved_total:0,contract_total:0};
+    var items=d.items||[];
+    var wallet='<div style="background:linear-gradient(135deg,#172554,#1e3a8a 60%,#2563eb);color:#fff;border-radius:18px;padding:22px;margin-bottom:16px">'
+      +'<div style="font-size:12.5px;opacity:.85">سعي مستحق عليك</div>'
+      +'<div style="font-family:Cairo,sans-serif;font-size:38px;font-weight:900;line-height:1.1;margin:4px 0">'+fmtN(d.pending_total)+' <small style="font-size:15px">ر.س</small></div>'
+      +'<div style="font-size:12px;opacity:.8">سعي المنصة 3% — يُسدَّد خلال 10 أيام من الاتفاق</div>'
+      +'<div style="display:flex;gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)">'
+        +'<div style="flex:1"><div style="font-weight:800;font-size:17px">'+fmtN(d.contract_total)+'</div><div style="font-size:11px;opacity:.8">إجمالي العقود</div></div>'
+        +'<div style="flex:1"><div style="font-weight:800;font-size:17px">'+fmtN(d.approved_total)+'</div><div style="font-size:11px;opacity:.8">مدفوع ومعتمد ✓</div></div>'
+      +'</div></div>';
+    var list='';
+    if(!items.length){ list='<div style="text-align:center;color:var(--muted);padding:30px;font-size:13.5px">لا يوجد سعي مستحق بعد. يظهر هنا عند قبول العميل لعرضك.</div>'; }
+    else {
+      list=items.map(function(x){
+        var st=x.status, pill, act='';
+        if(st==='approved'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dcfce7;color:#16a34a">مدفوع ومعتمد ✓ · '+fmtN(x.saai_amount)+' ر.س</span>'; }
+        else if(st==='submitted'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار اعتماد الأدمن · '+fmtN(x.saai_amount)+' ر.س</span>'; }
+        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">مستحق · '+fmtN(x.saai_amount)+' ر.س</span>'; act='<button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+',\''+_esc(String(x.project_title||'مشروع')).replace(/\x27/g,"")+'\')">صرف السعي</button>'; }
+        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:#0f2544">'+_esc(x.project_title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">العقد: '+fmtN(x.contract_value)+' ر.س'+(x.city?' · '+_esc(x.city):'')+'</div><div style="margin-top:5px">'+pill+'</div></div>'+act+'</div>';
+      }).join('');
+      list='<div class="card" style="padding:6px 18px">'+list+'</div>';
+    }
+    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+list+'</div>';
+  }).catch(function(){ pg.innerHTML='<div style="text-align:center;color:#dc2626;padding:30px">تعذّر تحميل المحفظة</div>'; });
+}
+window._saaiProof=null;
+function openSaaiSubmit(id, contract, title){
+  window._saaiId=id; window._saaiProof=null;
+  var m=_el('saaiModal');
+  if(!m){ m=document.createElement('div'); m.id='saaiModal'; document.body.appendChild(m); }
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)';
+  var fee=Math.round((contract||0)*0.03);
+  m.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:400px;width:100%;box-shadow:0 20px 50px -12px rgba(0,0,0,.4)">'
+    +'<div style="font-family:Cairo,sans-serif;font-weight:800;font-size:16px;margin-bottom:16px">صرف سعي — '+_esc(title)+'</div>'
+    +'<div style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">المبلغ الإجمالي للعقد (يمكن تعديله)</label><input id="saai-amt" type="number" value="'+(contract||0)+'" oninput="_saaiRecalc()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px"><div style="font-size:11.5px;color:var(--muted);margin-top:4px">لو اتفقت على مبلغ مختلف خارج المنصة، عدّله — والسعي يُعاد حسابه.</div></div>'
+    +'<div style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">السعي المستحق (3%)</label><input id="saai-fee" type="text" value="'+fmtN(fee)+' ر.س" readonly style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;background:#f6f8fc;color:#64748b;font-weight:800;font-family:Tajawal,sans-serif"></div>'
+    +'<div style="margin-bottom:15px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">إثبات التحويل</label><input type="file" id="saai-proof" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="font-size:12px;font-family:Tajawal,sans-serif;width:100%"><div id="saai-proof-lbl" style="display:none;font-size:12px;color:#16a34a;font-weight:700;margin-top:5px"></div></div>'
+    +'<div style="display:flex;gap:9px"><button onclick="submitSaai()" style="flex:1;background:#1e3a8a;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer">تأكيد الصرف</button><button onclick="_el(\'saaiModal\').remove()" style="flex:0 0 auto;background:#f1f5f9;color:#475569;border:none;border-radius:11px;padding:13px 18px;font-family:Tajawal,sans-serif;font-weight:700;cursor:pointer">إلغاء</button></div>'
+    +'<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:9px">بعد التأكيد يراجع الأدمن الإيصال ويعتمد الاستلام.</div>'
+    +'</div>';
+  m.onclick=function(e){ if(e.target===m) m.remove(); };
+}
+function _saaiRecalc(){ var a=parseFloat(_el('saai-amt').value)||0; _el('saai-fee').value=fmtN(Math.round(a*0.03))+' ر.س'; }
+function _onSaaiProof(inp){ var f=inp.files&&inp.files[0]; if(!f)return; var rd=new FileReader(); rd.onload=function(){ window._saaiProof=rd.result; var l=_el('saai-proof-lbl'); if(l){l.textContent='✓ '+f.name;l.style.display='block';} }; rd.readAsDataURL(f); }
+function submitSaai(){
+  var amt=parseFloat(_el('saai-amt').value)||0;
+  if(amt<=0){ showToast('أدخل مبلغ العقد','error'); return; }
+  if(!window._saaiProof){ showToast('ارفع إثبات التحويل','error'); return; }
+  _api('/api/provider/saai/'+window._saaiId+'/submit',{method:'POST',body:JSON.stringify({contract_value:amt,proof:window._saaiProof})})
+    .then(function(d){ if(d&&d.ok){ showToast('تم إرسال الصرف — بانتظار اعتماد الأدمن','success'); _el('saaiModal').remove(); loadSaai(); } else showToast((d&&d.message)||'تعذّر الإرسال','error'); })
+    .catch(function(){ showToast('تعذّر الإرسال','error'); });
+}
 async function loadChat(){
   var pg=_el('page-chat');if(!pg)return;
   pg.innerHTML='<div class="pghd"><div class="pg-t">المحادثات</div></div>'+_skList(3);
