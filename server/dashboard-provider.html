@@ -1915,9 +1915,31 @@ function loadSaai(){
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
     }
-    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+list+'</div>';
+    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+list+'<div id="saai-bank"></div></div>';
+    // بيانات التحويل + الحاسبة (لمن يحوّل مباشرة)
+    _api('/api/bank-info').then(function(bk){
+      bk=bk||{}; var bx=_el('saai-bank'); if(!bx)return;
+      var row=function(lbl,val,copy){ return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:10px"><div style="font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0">'+lbl+'</div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:13.5px;font-weight:800;'+(copy?'direction:ltr;':'')+'word-break:break-all">'+_esc(val||'')+'</div>'+(copy?'<button onclick="_copyTxt(\''+_esc(String(val)).replace(/\x27/g,"")+'\',this)" style="background:var(--bg,#eef2f9);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif">نسخ</button>':'')+'</div></div>'; };
+      bx.innerHTML='<div class="card" style="margin-top:16px;padding:20px">'
+        +'<div style="font-weight:900;font-size:15px;color:var(--p);margin-bottom:14px">🧮 احسب السعي المستحق</div>'
+        +'<label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">قيمة الاتفاق مع العميل (ر.س)</label>'
+        +'<input type="number" id="calc-val" placeholder="مثال: 5000" oninput="_calcSaai()" style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:15px;outline:none">'
+        +'<div id="calc-res" style="display:none;background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:14px;text-align:center;margin-top:12px"><div style="font-size:12px;color:var(--accent,#1d4ed8);font-weight:800">السعي المستحق (3%)</div><div id="calc-amt" style="font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:var(--p)">0 ر.س</div></div>'
+        +'</div>'
+        +'<div class="card" style="margin-top:14px;padding:20px">'
+        +'<div style="font-weight:900;font-size:15px;color:var(--p);margin-bottom:6px">🏦 بيانات التحويل</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">لمن يفضّل التحويل مباشرة — حوّل ثم أرسل الإيصال عبر «صرف السعي» أعلاه أو واتساب.</div>'
+        +row('اسم صاحب الحساب', bk.account_name)
+        +row('رقم الحساب', bk.account_number, true)
+        +row('الآيبان (IBAN)', bk.iban, true)
+        +row('البنك', bk.bank_name)
+        +(bk.whatsapp?'<a href="https://wa.me/'+_esc(bk.whatsapp)+'" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;text-decoration:none;border-radius:11px;padding:12px;font-weight:800;font-size:13.5px">إرسال الإيصال عبر واتساب</a>':'')
+        +'</div>';
+    }).catch(function(){});
   }).catch(function(){ pg.innerHTML='<div style="text-align:center;color:#dc2626;padding:30px">تعذّر تحميل المحفظة</div>'; });
 }
+function _calcSaai(){ var v=parseFloat(_el('calc-val').value)||0; var r=_el('calc-res'),a=_el('calc-amt'); if(v>0){r.style.display='block';a.textContent=fmtN(Math.round(v*0.03))+' ر.س';}else r.style.display='none'; }
+function _copyTxt(t,btn){ if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){var o=btn.textContent;btn.textContent='تم النسخ';setTimeout(function(){btn.textContent=o;},1500);});} }
 window._saaiProof=null;
 function openSaaiSubmit(id, contract, title){
   window._saaiId=id; window._saaiProof=null;
