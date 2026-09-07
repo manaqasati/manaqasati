@@ -318,7 +318,8 @@ app.get('/api/bids/public/:id', async (req, res) => {
     let isPrivileged = false;
     try {
       const rq = (await pool.query('SELECT client_id, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
-      isPrivileged = viewerId != null && (String(viewerId) === String(rq.client_id) || String(viewerId) === String(rq.assigned_provider_id) || viewerRole === 'admin');
+      // الأسعار تُكشف لصاحب المشروع والأدمن فقط — لا المزوّد الفائز (الفوز لا يبيح رؤية أسعار المنافسين)
+      isPrivileged = viewerId != null && (String(viewerId) === String(rq.client_id) || viewerRole === 'admin');
     } catch(e) {}
     const r = await pool.query(`
       SELECT b.id, b.days, b.status, b.created_at,
