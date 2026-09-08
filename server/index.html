@@ -1170,7 +1170,7 @@ function card(p){
   var isOpen=p.status==='open';
   var isRev=p.status==='pending_review'||p.status==='review';
   var isDone=p.status==='completed'||p.status==='in_progress'||p.status==='done';
-  var isAwarded=(p.status==='in_progress'||p.status==='assigned');
+  var isAwarded=(p.status==='in_progress'||p.status==='assigned'||p.status==='completed'||p.status==='done');
   var isCompleted=(p.status==='completed'||p.status==='done');
   var badgeCls=isOpen?'hzp-open':(isRev?'hzp-rev':'hzp-done');
   var badgeTxt=isOpen?'مفتوح':(isRev?'قيد المراجعة':(isCompleted?'مكتمل':'مغلق'));
