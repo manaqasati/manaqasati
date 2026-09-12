@@ -4684,19 +4684,31 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
-    if (!['approve','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
-    const newStatus = action==='approve' ? 'open' : 'rejected';
+    if (!['approve','needs_edit','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
+    // «طلب تعديل» و«رفض نهائي» يتطلّبان ملاحظة/سبباً يصل للعميل
+    if (action !== 'approve' && !String(reason||'').trim()) {
+      return res.status(400).json({ message: action==='needs_edit' ? 'اكتب ملاحظات التعديل للعميل' : 'اكتب سبب الرفض' });
+    }
+    const newStatus = action==='approve' ? 'open' : (action==='needs_edit' ? 'needs_edit' : 'rejected');
     const r = await pool.query(`UPDATE requests SET status=$1, admin_notes=COALESCE($2, admin_notes) WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, reason||null, id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
-    const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك' : '❌ تم رفض مشروعك';
-    const inAppBody = action==='approve' ? `مشروعك "${row.title}" متاح للعروض الآن` : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
-    await logAdmin(req, 'review_request', 'request', id, action==='approve'?'الموافقة على مشروع':'رفض مشروع');
+    const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك'
+                     : action==='needs_edit' ? '📝 مشروعك يحتاج تعديلاً'
+                     : '❌ تم رفض مشروعك';
+    const inAppBody = action==='approve' ? `مشروعك "${row.title}" متاح للعروض الآن`
+                    : action==='needs_edit' ? `مشروعك "${row.title}" يحتاج تعديلاً — ادخل وعالج ملاحظات الإدارة${reason?': '+reason:''}`
+                    : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
+    const logLabel = action==='approve' ? 'الموافقة على مشروع' : (action==='needs_edit' ? 'طلب تعديل مشروع' : 'رفض مشروع');
+    await logAdmin(req, 'review_request', 'request', id, logLabel);
     await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
-      const body = action==='approve' ? `<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>` : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
-      sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, 'فتح المنصة', SITE_URL+'/dashboard-client.html')).catch(()=>{});
+      const body = action==='approve' ? `<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>`
+                 : action==='needs_edit' ? `<p>مشروعك "<strong>${row.title}</strong>" يحتاج بعض التعديل قبل نشره على المنصة.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>ملاحظات الإدارة:</strong> ${reason}</p>`:''}<p>ادخل المنصة، عالج الملاحظات، ثم أعد إرسال مشروعك.</p>`
+                 : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
+      const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
+      sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
