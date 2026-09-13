@@ -1725,7 +1725,7 @@ function loadActions(id){
       h='<div class="card" style="border:1.5px solid #fecaca;background:#fef2f2">'
         +'<div class="ch"><h3 style="color:#dc2626">مطلوب تعديل قبل النشر</h3></div>'
         +'<p style="font-size:12.5px;color:#7f1d1d;line-height:1.8;margin-bottom:8px">راجعت الإدارة مشروعك ويحتاج تعديلاً قبل نشره للمزوّدين:</p>'
-        +'<div style="background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;color:#7f1d1d;line-height:1.9;font-weight:600;white-space:pre-wrap">'+(req.admin_notes?esc(req.admin_notes):'يرجى إضافة مزيد من التفاصيل ليقدّم لك المزوّد أفضل سعر.')+'</div>'
+        +'<div style="background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;color:#7f1d1d;line-height:1.9;font-weight:600;white-space:pre-wrap">'+(req.review_notes?esc(req.review_notes):'يرجى إضافة مزيد من التفاصيل ليقدّم لك المزوّد أفضل سعر.')+'</div>'
         +'<button class="btn-sm bs-p" onclick="openEditReq('+id+',event)" style="width:100%;padding:14px;background:var(--p);color:#fff;margin-top:12px;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>عدّل مشروعك وأعد الإرسال</button>'
         +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">بعد الحفظ يعود مشروعك لمراجعة الإدارة، ثم يُنشر فور اعتماده.</p></div>';
     } else {
