@@ -2453,7 +2453,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.admin_notes,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -2475,6 +2475,8 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
       if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
       row.provider_phone = null;
     }
+    // ملاحظات المراجعة الداخلية: لصاحب المشروع أو الأدمن فقط — لا للمزوّد ولا للزائر
+    if (!(isOwner || isAdmin)) delete row.admin_notes;
     // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
     if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
     res.json({ ...row, status: normalizeStatus(row.status) });
@@ -2630,7 +2632,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
 app.put('/api/requests/:id', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT client_id FROM requests WHERE id=$1', [id]);
+    const own = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const { title, description, category, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
@@ -2663,6 +2665,11 @@ app.put('/api/requests/:id', auth, async (req, res) => {
       }
       sets.push('attachments=$'+i); params.push(JSON.stringify(atts)); i++;
       req._attDbg = _attDbg;
+    }
+    // إعادة الإرسال: تعديل العميل لمشروع «مطلوب تعديل» يعيده لقائمة المراجعة ويمسح الملاحظات
+    if (own.rows[0].status === 'needs_edit' && req.user.role !== 'admin') {
+      sets.push("status='pending_review'");
+      sets.push('admin_notes=NULL');
     }
     params.push(id);
     const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
