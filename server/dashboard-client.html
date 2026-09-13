@@ -1037,7 +1037,7 @@ function showToast(msg,type){
   setTimeout(function(){t.style.opacity='0';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},400);},3000);
 }
 function stTag(s){
-  var m={open:'<span class="tag t-open">● مفتوح</span>',in_progress:'<span class="tag t-prog">⟳ جارٍ</span>',completed:'<span class="tag t-done"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مكتمل</span>',pending_review:'<span class="tag t-rev">⧖ مراجعة</span>',review:'<span class="tag t-rev">⧖ مراجعة</span>'};
+  var m={open:'<span class="tag t-open">● مفتوح</span>',in_progress:'<span class="tag t-prog">⟳ جارٍ</span>',completed:'<span class="tag t-done"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مكتمل</span>',pending_review:'<span class="tag t-rev">⧖ مراجعة</span>',review:'<span class="tag t-rev">⧖ مراجعة</span>',needs_edit:'<span class="tag" style="background:#ffedd5;color:#c2410e;border:1px solid #fed7aa;font-weight:800">✕ مطلوب تعديل</span>'};
   return m[s]||'<span class="tag t-rev">'+s+'</span>';
 }
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
@@ -1294,9 +1294,9 @@ function catSvg(cat,size){
 }
 
 function riCard(r,actions){
-  var open=r.status==='open',prog=r.status==='in_progress',done=r.status==='completed'||r.status==='done',rev=r.status==='pending_review'||r.status==='review';
+  var open=r.status==='open',prog=r.status==='in_progress',done=r.status==='completed'||r.status==='done',rev=r.status==='pending_review'||r.status==='review',nedit=r.status==='needs_edit';
   var bidCount=parseInt(r.bid_count)||0;
-  var icCls=open?'s-open':prog?'s-prog':done?'s-done':rev?'s-rev':'s-prog';
+  var icCls=open?'s-open':prog?'s-prog':done?'s-done':(rev||nedit)?'s-rev':'s-prog';
   var bolt='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
   var clock='<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>';
   // الخطوة التالية حسب حالة المشروع
@@ -1304,6 +1304,7 @@ function riCard(r,actions){
   if(open&&bidCount>0){nextTxt='استعرض العروض واختر الأنسب';}
   else if(open){nextTxt='ننتظر وصول أول عرض';nextWait=true;}
   else if(prog){nextTxt='العمل جارٍ — تابع أو أكمل عند الانتهاء';}
+  else if(nedit){nextTxt='مطلوب تعديل — عدّل وأعد الإرسال';nextWait=true;}
   else if(rev){nextTxt='قيد المراجعة';nextWait=true;}
   else if(done){nextTxt='مكتمل — لا تنسَ تقييم المزود';}
 
@@ -1720,6 +1721,13 @@ function loadActions(id){
         +'<div style="text-align:center;padding:8px 0 14px"><div style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:700">هذا المشروع مُغلق</div></div>'
         +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7;text-align:center">تقدر تعيد نشره ليظهر للمزوّدين من جديد وتستقبل عروضاً.</p>'
         +'<button class="btn-sm bs-p" onclick="repostReq('+id+')" style="width:100%;padding:13px;background:var(--p);color:#fff"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>إعادة نشر المشروع</button></div>';
+    } else if(req.status==='needs_edit'){
+      h='<div class="card" style="border:1.5px solid #fecaca;background:#fef2f2">'
+        +'<div class="ch"><h3 style="color:#dc2626">مطلوب تعديل قبل النشر</h3></div>'
+        +'<p style="font-size:12.5px;color:#7f1d1d;line-height:1.8;margin-bottom:8px">راجعت الإدارة مشروعك ويحتاج تعديلاً قبل نشره للمزوّدين:</p>'
+        +'<div style="background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;color:#7f1d1d;line-height:1.9;font-weight:600;white-space:pre-wrap">'+(req.admin_notes?esc(req.admin_notes):'يرجى إضافة مزيد من التفاصيل ليقدّم لك المزوّد أفضل سعر.')+'</div>'
+        +'<button class="btn-sm bs-p" onclick="openEditReq('+id+',event)" style="width:100%;padding:14px;background:var(--p);color:#fff;margin-top:12px;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>عدّل مشروعك وأعد الإرسال</button>'
+        +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">بعد الحفظ يعود مشروعك لمراجعة الإدارة، ثم يُنشر فور اعتماده.</p></div>';
     } else {
       h='<div class="card"><p style="text-align:center;font-size:13px;color:var(--muted);padding:10px">انتظر العروض ثم اقبل العرض المناسب</p></div>';
     }
