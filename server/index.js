@@ -2440,7 +2440,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
@@ -2473,6 +2473,10 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     const isOwner = uid && uid === row.client_id;
     const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
     const isAdmin = role === 'admin';
+    // المشاريع ما قبل النشر أو المرفوضة لا تُعرض إلا لصاحبها أو الأدمن (حتى بالرابط المباشر)
+    if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) {
+      return res.status(404).json({ message: 'غير موجود' });
+    }
     if (!(isOwner || isAssigned || isAdmin)) {
       row.client_phone = null;
       if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
