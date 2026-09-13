@@ -625,7 +625,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div class="fld"><label>الميزانية (ر.س)</label><input id="re-budget" type="number"></div>
       <div class="fld"><label>مندوب (اختياري)</label><input id="re-agent-name" placeholder="اسم المندوب الذي جلب المشروع"></div><div class="fld"><label>جوال المندوب</label><input id="re-agent-phone" placeholder="05xxxxxxxx (لرابط المتابعة)"></div><div class="fld"><label>نسبة المندوب %</label><input id="re-agent-pct" type="number" min="0" max="100" step="0.5" placeholder="مثال: 5" oninput="_updAgentDue()"><div id="re-agent-due" style="font-size:12px;font-weight:700;color:var(--p);margin-top:7px"></div><button type="button" onclick="sendAgentLink(_editReqId)" style="margin-top:9px;background:#0f2a4f;color:#fff;border:none;padding:9px 15px;border-radius:9px;font-family:Tajawal;font-size:12px;font-weight:800;cursor:pointer">رابط تتبّع المندوب</button></div><div class="fld"><label>مدة استقبال العروض</label><select id="re-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div><div class="fld" style="margin-bottom:0"><label>ملاحظات الأدمن (داخلية)</label><textarea id="re-notes" placeholder="لا تظهر للمستخدمين"></textarea></div>
     </div>
-    <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" id="re-feature" style="display:none" onclick="toggleFeatured()"></button><button class="btn-s" id="re-close" onclick="closeReqAdmin()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">إغلاق المشروع</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
+    <div id="re-pullback" style="display:none;margin:0 20px;background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:13px 15px">
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#c2410e;margin-bottom:6px">ملاحظات للعميل — ما الذي يجب تعديله؟</label>
+      <textarea id="re-pullnotes" placeholder="مثال: أضف عدد المكيفات، الأدوار، وهل التوريد مطلوب أم التركيب فقط..." style="width:100%;padding:10px 12px;border:1.5px solid #fed7aa;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;min-height:62px;resize:vertical;outline:none"></textarea>
+      <div id="re-pullwarn" style="font-size:12px;color:#b45309;margin-top:8px;line-height:1.7;display:none"></div>
+      <button class="btn-s" onclick="submitPullback()" style="margin-top:10px;background:#ea580c;color:#fff;border:none;font-weight:800">🟡 أرسل واسحب للمراجعة</button>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" id="re-pullbtn" onclick="togglePullback()" style="display:none;background:#fff7ed;color:#c2410e;border:1px solid #fed7aa">🟡 سحب وطلب تعديل</button><button class="btn-s" id="re-feature" style="display:none" onclick="toggleFeatured()"></button><button class="btn-s" id="re-close" onclick="closeReqAdmin()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">إغلاق المشروع</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
   </div>
 </div>
 
@@ -1849,6 +1855,12 @@ function openReqEdit(id){
   document.getElementById('re-agent-pct').value=(r.agent_pct!=null&&r.agent_pct!==''?r.agent_pct:'');
   window._reAcceptedPrice=parseFloat(r.accepted_price)||0;
   window._reStatus=r.status||'';
+  (function(){
+    var pb=document.getElementById('re-pullbtn'),blk=document.getElementById('re-pullback');
+    if(blk)blk.style.display='none';
+    var nt=document.getElementById('re-pullnotes');if(nt)nt.value='';
+    if(pb)pb.style.display=(String(r.status)==='open')?'inline-flex':'none';
+  })();
   _updAgentDue();
   document.getElementById('reqModal').classList.add('show');
   // زر التثبيت في المعرض — للمشاريع المكتملة فقط
@@ -1878,6 +1890,32 @@ function toggleFeatured(){
     })
     .catch(function(){toast('تعذّر الاتصال','error');})
     .finally(function(){ft.disabled=false;});
+}
+function togglePullback(){
+  var b=document.getElementById('re-pullback');if(!b)return;
+  var show=(b.style.display==='none'||!b.style.display);
+  b.style.display=show?'block':'none';
+  if(show){
+    var w=document.getElementById('re-pullwarn');
+    var r=_allReq.find(function(x){return x.id===_editReqId;});
+    var bc=r?(parseInt(r.bid_count)||0):0;
+    if(w){ if(bc>0){w.style.display='block';w.textContent='⚠️ هذا المشروع عليه '+bc+' '+(bc===1?'عرض':'عروض')+' — سيُخفى عن المزوّدين مؤقتاً حتى يُصلحه العميل ويُعتمد ثانية (العروض تبقى محفوظة).';}else{w.style.display='none';w.textContent='';} }
+    var nt=document.getElementById('re-pullnotes');if(nt)nt.focus();
+  }
+}
+function submitPullback(){
+  var ta=document.getElementById('re-pullnotes');
+  var reason=((ta&&ta.value)||'').trim();
+  if(!reason){toast('اكتب ملاحظات التعديل للعميل أولاً','error');if(ta)ta.focus();return;}
+  fetch(API+'/api/admin/requests/'+_editReqId+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:'needs_edit',reason:reason})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
+      toast('تم سحب المشروع وإرسال طلب التعديل للعميل','success');
+      closeModal('reqModal');loadRequests();
+      if(typeof loadProjReview==='function')loadProjReview();
+    })
+    .catch(function(){toast('تعذّر الاتصال','error');});
 }
 function closeReqAdmin(){
   if(!_editReqId)return;
