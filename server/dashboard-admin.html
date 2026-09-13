@@ -3918,11 +3918,13 @@ function loadSettings(){
 }
 function renderSettings(st){
   var box=document.getElementById('settings-body');if(!box)return;
-  var rm=parseInt(st.review_minutes);if(isNaN(rm))rm=5;
+  var rm=parseInt(st.review_minutes);if(isNaN(rm))rm=1440;
+  var opts=[{v:0,t:'بدون نشر تلقائي — مراجعة يدوية فقط'},{v:60,t:'ساعة'},{v:360,t:'٦ ساعات'},{v:720,t:'١٢ ساعة'},{v:1440,t:'٢٤ ساعة (شبكة أمان)'}];
+  if(!opts.some(function(o){return o.v===rm;}))opts.push({v:rm,t:rm+' دقيقة'});
+  var sel='<select id="set-review-min">'+opts.map(function(o){return '<option value="'+o.v+'"'+(o.v===rm?' selected':'')+'>'+o.t+'</option>';}).join('')+'</select>';
   box.innerHTML=''+
-    '<div class="fld" style="margin-bottom:6px"><label>مدة المراجعة قبل النشر التلقائي (بالدقائق)</label>'+
-    '<input id="set-review-min" type="number" min="0" max="1440" value="'+rm+'"></div>'+
-    '<div style="font-size:12.5px;color:var(--muted);line-height:1.8;margin-bottom:18px;background:var(--p-light);padding:13px 15px;border-radius:11px">الطلب الجديد يدخل حالة «قيد المراجعة»، ثم يُنشر تلقائياً للعروض بعد هذه المدة. اضبطها على <b>0</b> للنشر الفوري بدون مراجعة. يمكنك دائماً قبول أو رفض الطلب يدوياً خلال فترة المراجعة من قسم المشاريع.</div>'+
+    '<div class="fld" style="margin-bottom:6px"><label>النشر التلقائي بعد المراجعة</label>'+sel+'</div>'+
+    '<div style="font-size:12.5px;color:var(--muted);line-height:1.8;margin-bottom:18px;background:var(--p-light);padding:13px 15px;border-radius:11px">كل مشروع جديد يدخل «قيد المراجعة» ولا يُنشر حتى تعتمده من تبويب «مراجعة المشاريع». الخيار أعلاه شبكة أمان: لو غفلت عن المراجعة، يُنشر تلقائياً بعد المدة المحددة. اختر <b>«مراجعة يدوية فقط»</b> لإيقاف النشر التلقائي نهائياً — لن يُنشر أي مشروع إلا باعتمادك.</div>'+
     '<div class="fld" style="margin-bottom:6px"><label>خدمة العملاء (رقم واتساب)</label>'+
     '<input id="set-support-wa" type="text" dir="ltr" placeholder="05xxxxxxxx" value="'+esc(st.support_whatsapp||'')+'"></div>'+
     '<div style="font-size:12.5px;color:var(--muted);line-height:1.8;margin-bottom:18px;background:var(--p-light);padding:13px 15px;border-radius:11px">الرقم اللي يوصل له العملاء عبر زر «خدمة العملاء» في كل الصفحات. تغيّره هنا مرة → يتحدّث في كل مكان تلقائياً.</div>'+
@@ -3930,7 +3932,7 @@ function renderSettings(st){
 }
 function saveSettings(){
   var inp=document.getElementById('set-review-min');var v=parseInt(inp.value);
-  if(isNaN(v)||v<0){toast('أدخل رقماً صحيحاً (0 أو أكثر)','error');return;}
+  if(isNaN(v)||v<0)v=0;
   if(v>1440)v=1440;
   var _wa=((document.getElementById('set-support-wa')||{}).value||'').trim();
   fetch(API+'/api/admin/settings',Object.assign({method:'PUT',body:JSON.stringify({review_minutes:v,support_whatsapp:_wa})},hdr()))
