@@ -4709,7 +4709,7 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     const r = await pool.query(`UPDATE requests SET status=$1, review_notes=$2 WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, action==='approve' ? null : (reason||null), id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [row.client_id]);
+    const clientInfo = await pool.query('SELECT name, email, phone FROM users WHERE id=$1', [row.client_id]);
     const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك'
                      : action==='needs_edit' ? '📝 مشروعك يحتاج تعديلاً'
                      : '❌ تم رفض مشروعك';
@@ -4726,7 +4726,18 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
       sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
-    res.json(row);
+    // رابط واتساب جاهز للأدمن عند «طلب تعديل» أو «رفض» (رقم العميل + رسالة معبّأة)
+    let wa_link = null;
+    if (action !== 'approve') {
+      const ph = normPhone(clientInfo.rows.length ? clientInfo.rows[0].phone : null);
+      if (ph) {
+        const waMsg = action==='needs_edit'
+          ? `السلام عليكم، مشروعك «${row.title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${reason}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`
+          : `السلام عليكم، بخصوص مشروعك «${row.title}» في منصة مناقصة:\n${reason}`;
+        wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
+      }
+    }
+    res.json({ ...row, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
