@@ -772,6 +772,16 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="waFollowModal">
+  <div class="modal">
+    <div class="modal-head"><h3>📲 تواصل مع العميل</h3><button class="modal-x" onclick="closeModal('waFollowModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);line-height:1.9;margin-bottom:14px">تم تسجيل الطلب وإشعار العميل تلقائياً. لتأكيد أسرع، أرسل له رسالة واتساب جاهزة بالملاحظات من رقمك:</p>
+      <a id="wa-follow-link" href="#" target="_blank" rel="noopener" onclick="setTimeout(function(){closeModal('waFollowModal');},400)" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;background:#25d366;color:#fff;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;text-decoration:none">💬 فتح واتساب وإرسال</a>
+      <button class="btn-s" onclick="closeModal('waFollowModal')" style="width:100%;margin-top:10px">تخطّي</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="proxyDoneModal">
   <div class="modal">
     <div class="modal-head"><h3>🔗 رابط دخول العميل</h3><button class="modal-x" onclick="closeModal('proxyDoneModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -1727,6 +1737,7 @@ var REVIEW_REASONS=[
 ];
 function reasonChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'+REVIEW_REASONS.map(function(r,i){return '<button type="button" onclick="addReason(\''+t+'\','+i+')" style="background:#fff7ed;color:#c2410e;border:1px solid #fed7aa;border-radius:20px;padding:5px 11px;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer">+ '+esc(r.k)+'</button>';}).join('')+'</div>';}
 function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
+function showWaFollowup(link){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
 var _projReview=[];
 function setProjReviewBadge(n){var b=document.getElementById('projreview-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}}
 function loadProjReview(){
@@ -1775,6 +1786,7 @@ async function reviewAct(id,action){
     .then(function(res){
       if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
       toast(action==='approve'?'تم الاعتماد والنشر ✓':action==='needs_edit'?'أُرسل طلب التعديل للعميل':'تم الرفض النهائي','success');
+      if(action!=='approve'&&res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
       if(card){card.style.transition='.25s';card.style.opacity='0';setTimeout(function(){card.remove();},250);}
       _projReview=(_projReview||[]).filter(function(x){return x.id!==id;});
       setProjReviewBadge(_projReview.length);
@@ -1927,6 +1939,7 @@ function submitPullback(){
       if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
       toast('تم سحب المشروع وإرسال طلب التعديل للعميل','success');
       closeModal('reqModal');loadRequests();
+      if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
       if(typeof loadProjReview==='function')loadProjReview();
     })
     .catch(function(){toast('تعذّر الاتصال','error');});
