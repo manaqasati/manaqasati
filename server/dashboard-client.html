@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="form-grid">
           <div class="fg ff">
             <label>التصنيف <span style="color:var(--red)">*</span></label>
-            <select id="n-cat" onchange="checkOther()">
+            <select id="n-cat" onchange="checkOther();updateGuide();updateQuality()">
               <option value="">اختر التصنيف</option>
               <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
               <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
@@ -693,7 +693,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           </div>
           <div class="fg ff">
             <label>التفاصيل <span style="color:var(--red)">*</span></label>
-            <textarea id="n-desc" placeholder="اشرح المشروع بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر مشروعك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
+            <textarea id="n-desc" oninput="updateQuality()" placeholder="اشرح المشروع بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر مشروعك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
+            <div id="n-guide" style="display:none;margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:11px 13px;font-size:12.5px;color:#9a3412;line-height:1.9"></div>
           </div>
           <div class="fg ff">
             <label>المدينة <span style="color:var(--red)">*</span></label>
@@ -736,10 +737,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <label>مخططات أو ملفات (PDF · DWG · Excel · Word — اختياري)</label>
               <input type="file" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv" multiple onchange="previewFiles(this)" style="padding:8px">
               <div id="file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+              <div style="display:flex;gap:7px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:9px 12px;font-size:12px;color:#1e40af;margin-top:8px;line-height:1.7"><span>💡</span><span>إرفاق مخطط أو صورة (إن وُجد) يجعل عروض المنفذين <b>أدق وأسرع</b> — ويرفع فرصة قبول مشروعك.</span></div>
             </div>
           </div>
         </div>
         <div class="form-btns">
+          <div id="n-quality" style="display:none;margin-bottom:12px;border-radius:12px;padding:12px 14px;border:1px solid var(--border)"></div>
           <button class="btn-p" id="submitBtn" onclick="submitReq()">نشر المشروع</button>
           <button class="btn-s" onclick="show('home',null,'home')">إلغاء</button>
         </div>
@@ -1724,7 +1727,7 @@ function loadActions(id){
     } else if(req.status==='needs_edit'){
       h='<div class="card" style="border:1.5px solid #fecaca;background:#fef2f2">'
         +'<div class="ch"><h3 style="color:#dc2626">مطلوب تعديل قبل النشر</h3></div>'
-        +'<p style="font-size:12.5px;color:#7f1d1d;line-height:1.8;margin-bottom:8px">راجعت الإدارة مشروعك ويحتاج تعديلاً قبل نشره للمزوّدين:</p>'
+        +'<p style="font-size:12.5px;color:#7f1d1d;line-height:1.9;margin-bottom:8px">🔒 مشروعك <b>غير ظاهر للمنفذين حالياً</b> بسبب نقص المعلومات. أكمل التفاصيل التالية ليُنشر ويبدأ باستقبال العروض:</p>'
         +'<div style="background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:13px;color:#7f1d1d;line-height:1.9;font-weight:600;white-space:pre-wrap">'+(req.review_notes?esc(req.review_notes):'يرجى إضافة مزيد من التفاصيل ليقدّم لك المزوّد أفضل سعر.')+'</div>'
         +'<button class="btn-sm bs-p" onclick="openEditReq('+id+',event)" style="width:100%;padding:14px;background:var(--p);color:#fff;margin-top:12px;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>عدّل مشروعك وأعد الإرسال</button>'
         +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">بعد الحفظ يعود مشروعك لمراجعة الإدارة، ثم يُنشر فور اعتماده.</p></div>';
@@ -1892,6 +1895,7 @@ function compressImage(file,cb){
 function renderImgGrid(){
   var g=document.getElementById('img-grid');if(!g)return;
   g.innerHTML=_reqImages.map(function(img,i){return'<div style="position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1"><img loading="lazy" src="'+img.data+'" style="width:100%;height:100%;object-fit:cover"><button onclick="removeReqImg('+i+')" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;font-size:13px;cursor:pointer"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
+  if(window.updateQuality)updateQuality();
 }
 function removeReqImg(i){_reqImages.splice(i,1);renderImgGrid();}
 var _reqFiles=[];
@@ -1909,6 +1913,7 @@ function previewFiles(input){
 function renderFileList(){
   var g=document.getElementById('file-list');if(!g)return;
   g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(f.name)+'</span><button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
+  if(window.updateQuality)updateQuality();
 }
 function removeReqFile(i){_reqFiles.splice(i,1);renderFileList();}
 function _reqDraftGet(){try{return JSON.parse(localStorage.getItem('nreq_draft')||'null');}catch(e){return null;}}
@@ -1995,6 +2000,49 @@ function pickMyLocation(){
     showToast('تعذّر تحديد الموقع \u2014 تأكّد من السماح للمتصفح','error');
   },{enableHighAccuracy:true,timeout:10000});
 }
+var CAT_HINTS={
+  'تبريد وتكييف':['كم عدد المكيفات؟','نوعها (سبليت/شباك/مركزي/كونسيلد)؟','توريد وتركيب أم تركيب فقط؟','عدد الأدوار وارتفاع التركيب؟'],
+  'كهرباء':['المطلوب (تأسيس/تمديد/صيانة)؟','عدد النقاط أو اللوحات؟','مساحة الموقع أو عدد الغرف؟'],
+  'سباكة':['المطلوب (تسليك/تأسيس/صيانة)؟','عدد نقاط الصرف/الإمداد؟','داخلي أم خارجي؟'],
+  'نجارة':['القطعة المطلوبة ومقاساتها؟','نوع الخشب المفضّل؟','العدد المطلوب؟'],
+  'بناء':['المساحة (م²)؟','عدد الأدوار؟','عظم أم تشطيب كامل؟','هل يوجد مخطط معتمد؟'],
+  'دهانات وديكور':['المساحة أو عدد الغرف؟','جديد أم إعادة دهان؟','نوع الدهان/الديكور المطلوب؟'],
+  'تنظيف':['نوع المكان (شقة/فيلا/مكتب)؟','المساحة أو عدد الغرف؟','تنظيف عام أم عميق؟'],
+  'نقل عفش':['من أين وإلى أين؟','حجم المنقولات (غرف/قطع)؟','هل يلزم فك وتركيب؟','دور المصدر والوجهة؟'],
+  'مظلات وسواتر':['المساحة (م²)؟','النوع (مظلة/ساتر) والخامة؟','مكان التركيب؟'],
+  'عزل حراري':['المساحة (م²)؟','نوع السطح؟','عزل حراري أم مائي أم الاثنان؟'],
+  'كاميرات مراقبة':['عدد الكاميرات؟','داخلي أم خارجي؟','هل يلزم تمديد شبكة وجهاز تخزين؟'],
+  'مسابح':['المقاسات (طول×عرض×عمق)؟','إنشاء جديد أم صيانة؟','هل تلزم فلاتر وتجهيزات؟'],
+  'تنسيق حدائق':['المساحة (م²)؟','المطلوب (عشب/ري/تشجير/إنارة)؟','هل يوجد تصميم؟'],
+  'بلاط ورخام':['المساحة (م²)؟','النوع المطلوب؟','توريد وتركيب أم تركيب فقط؟'],
+  'كشف تسربات المياه':['موقع التسرب المتوقع؟','نوع العقار؟','هل ظهرت آثار رطوبة؟'],
+  'جبس':['المساحة أو عدد الغرف؟','النوع (أسقف/ديكورات/فواصل)؟','هل يوجد تصميم؟'],
+  'ألمنيوم':['المطلوب (نوافذ/أبواب/واجهات)؟','المقاسات وعددها؟','اللون/النوع المطلوب؟'],
+  '_default':['المطلوب بالضبط؟','الكمية أو المساحة؟','أي مواصفات أو تفضيلات؟','الوقت المناسب للتنفيذ؟']
+};
+function updateGuide(){
+  var box=document.getElementById('n-guide');if(!box)return;
+  var cat=((document.getElementById('n-cat')||{}).value||'');
+  if(!cat){box.style.display='none';return;}
+  var qs=CAT_HINTS[cat]||CAT_HINTS._default;
+  box.style.display='block';
+  box.innerHTML='<b>لتحصل على أفضل سعر، وضّح في التفاصيل:</b><br>'+qs.map(function(q){return '• '+esc(q);}).join('<br>');
+}
+function updateQuality(){
+  var box=document.getElementById('n-quality');if(!box)return;
+  var desc=((document.getElementById('n-desc')||{}).value||'').trim();
+  var cat=((document.getElementById('n-cat')||{}).value||'');
+  if(!desc && !cat){box.style.display='none';return;}
+  var hasAtt=((window._reqFiles||[]).length+(window._reqImages||[]).length)>0;
+  var hasLoc=!!(window._reqGeo&&window._reqGeo.lat);
+  var checks=[{ok:desc.length>=40,t:'وصف كافٍ للمشروع'},{ok:hasAtt,t:'مخطط أو صورة مرفقة'},{ok:hasLoc,t:'الموقع محدد على الخريطة'}];
+  var done=checks.filter(function(c){return c.ok;}).length;
+  var lvl=done>=3?{t:'ممتاز',c:'#16a34a',bg:'#f0fdf4',bd:'#bbf7d0'}:done===2?{t:'جيد',c:'#d97706',bg:'#fffbeb',bd:'#fde68a'}:{t:'ضعيف',c:'#dc2626',bg:'#fef2f2',bd:'#fecaca'};
+  box.style.display='block';box.style.background=lvl.bg;box.style.borderColor=lvl.bd;
+  box.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:12.5px;font-weight:800;color:#334155">جودة مشروعك</span><span style="font-size:13px;font-weight:900;color:'+lvl.c+'">'+lvl.t+'</span></div>'+
+    '<div style="display:flex;flex-direction:column;gap:5px">'+checks.map(function(c){return '<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:'+(c.ok?'#15803d':'#94a3b8')+'"><span style="font-weight:900;font-size:14px">'+(c.ok?'✓':'○')+'</span><span>'+c.t+'</span></div>';}).join('')+'</div>'+
+    (done<3?'<div style="font-size:11.5px;color:'+lvl.c+';margin-top:9px;line-height:1.6">كل ما اكتمل مشروعك، جاءتك عروض أدق وأسرع.</div>':'<div style="font-size:11.5px;color:#15803d;margin-top:9px;font-weight:700">مشروعك مكتمل — جاهز لأفضل العروض 🎉</div>');
+}
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
   if(cat==='أخرى')cat=document.getElementById('n-cat-other').value.trim()||'أخرى';
@@ -2013,6 +2061,7 @@ function submitReq(){
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';
+  if(desc.length<40){ if(!confirm('وصف مشروعك مختصر — كل ما زادت التفاصيل جاءتك عروض أدق وأسرع. تبي ترسله الآن؟'))return; }
   // افتح اتفاقية الرسوم قبل النشر
   var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;}
   var ab=document.getElementById('agreeBtn');if(ab){ab.disabled=true;}
