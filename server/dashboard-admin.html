@@ -154,6 +154,7 @@ tbody tr:hover{background:var(--bg)}
 .b-progress{background:var(--blue-l);color:var(--blue)}
 .b-completed{background:var(--bg);color:var(--muted)}
 .b-review{background:var(--amber-l);color:var(--amber)}
+.b-edit{background:#ffedd5;color:#c2410e}
 .b-verified{background:var(--blue-l);color:var(--blue)}
 .b-verified svg{width:10px;height:10px}
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
@@ -875,7 +876,7 @@ function _phmc(v,icon,num,label){
   return '<div class="ph-mc"><div class="ph-mi '+v+'"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">'+icon+'</svg></div><div class="ph-mn">'+(num||0)+'</div><div class="ph-ml">'+label+'</div></div>';
 }
 function _dashStChip(st){
-  var m={open:['مفتوح','var(--green)','var(--green-l)'],in_progress:['جارٍ','var(--p)','var(--p-light)'],completed:['مكتمل','var(--star)','var(--gold-l)'],done:['مكتمل','var(--star)','var(--gold-l)'],pending_review:['مراجعة','var(--amber)','var(--amber-l)'],review:['مراجعة','var(--amber)','var(--amber-l)']};
+  var m={open:['مفتوح','var(--green)','var(--green-l)'],in_progress:['جارٍ','var(--p)','var(--p-light)'],completed:['مكتمل','var(--star)','var(--gold-l)'],done:['مكتمل','var(--star)','var(--gold-l)'],pending_review:['مراجعة','var(--amber)','var(--amber-l)'],review:['مراجعة','var(--amber)','var(--amber-l)'],needs_edit:['مطلوب تعديل','#c2410e','#ffedd5'],rejected:['مرفوض','var(--red)','#fee2e2']};
   var x=m[st]||['—','var(--muted)','var(--bg)'];
   return '<span style="font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;background:'+x[2]+';color:'+x[1]+'">'+x[0]+'</span>';
 }
@@ -1832,7 +1833,7 @@ function renderRequests(){
   var filtered=getFilteredRequests();
   var cnt=document.getElementById('rf-count');if(cnt)cnt.textContent=filtered.length+' نتيجة';
   if(!filtered.length){document.getElementById('requests-table').innerHTML=emptyState('لا يوجد مشاريع مطابقة');return;}
-  var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review']};
+  var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej']};
   document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th>العروض</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
     var st=sm[r.status]||[r.status,'b-completed'];
     return '<tr>'
