@@ -628,6 +628,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div id="re-pullback" style="display:none;margin:0 20px;background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:13px 15px">
       <label style="display:block;font-size:12.5px;font-weight:800;color:#c2410e;margin-bottom:6px">ملاحظات للعميل — ما الذي يجب تعديله؟</label>
       <textarea id="re-pullnotes" placeholder="مثال: أضف عدد المكيفات، الأدوار، وهل التوريد مطلوب أم التركيب فقط..." style="width:100%;padding:10px 12px;border:1.5px solid #fed7aa;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;min-height:62px;resize:vertical;outline:none"></textarea>
+      <div id="re-pullchips"></div>
       <div id="re-pullwarn" style="font-size:12px;color:#b45309;margin-top:8px;line-height:1.7;display:none"></div>
       <button class="btn-s" onclick="submitPullback()" style="margin-top:10px;background:#ea580c;color:#fff;border:none;font-weight:800">🟡 أرسل واسحب للمراجعة</button>
     </div>
@@ -1715,6 +1716,16 @@ function submitProxyPost(){
     .catch(function(e){ toast(e.message||'تعذّر النشر','error'); if(btn){btn.disabled=false;btn.textContent='نشر المشروع';} });
 }
 
+var REVIEW_REASONS=[
+  {k:'نقص الوصف',v:'وضّح تفاصيل المطلوب بدقة أكبر.'},
+  {k:'لا يوجد مخطط',v:'أرفق مخطط المشروع أو صورة توضيحية.'},
+  {k:'الموقع غير واضح',v:'حدّد موقع المشروع أو معلماً قريباً.'},
+  {k:'الكمية/المساحة',v:'حدّد الكمية أو المساحة المطلوبة.'},
+  {k:'نوع/مواصفات',v:'وضّح النوع أو المواصفات المطلوبة.'},
+  {k:'الوقت المناسب',v:'وضّح الوقت المناسب للتنفيذ.'}
+];
+function reasonChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'+REVIEW_REASONS.map(function(r,i){return '<button type="button" onclick="addReason(\''+t+'\','+i+')" style="background:#fff7ed;color:#c2410e;border:1px solid #fed7aa;border-radius:20px;padding:5px 11px;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer">+ '+esc(r.k)+'</button>';}).join('')+'</div>';}
+function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
 var _projReview=[];
 function setProjReviewBadge(n){var b=document.getElementById('projreview-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}}
 function loadProjReview(){
@@ -1740,6 +1751,7 @@ function renderProjReview(){
       +'</div>'
       +'<div style="font-size:12.5px;color:var(--muted);margin-top:4px">'+meta+(att?' · 📎 '+att+' مرفق':'')+'</div>'
       +'<div style="font-size:13px;color:#334155;margin-top:8px;background:var(--bg);border-radius:9px;padding:10px 12px;line-height:1.7;max-height:130px;overflow:auto;white-space:pre-wrap">'+esc(r.description||'—')+'</div>'
+      +reasonChips('rv-notes-'+r.id)
       +'<textarea id="rv-notes-'+r.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;margin-top:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:58px;resize:vertical;outline:none"></textarea>'
       +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;align-items:center">'
         +'<button onclick="reviewAct('+r.id+',\'approve\')" style="background:var(--green);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">✓ اعتماد ونشر</button>'
@@ -1900,6 +1912,7 @@ function togglePullback(){
     var r=_allReq.find(function(x){return x.id===_editReqId;});
     var bc=r?(parseInt(r.bid_count)||0):0;
     if(w){ if(bc>0){w.style.display='block';w.textContent='⚠️ هذا المشروع عليه '+bc+' '+(bc===1?'عرض':'عروض')+' — سيُخفى عن المزوّدين مؤقتاً حتى يُصلحه العميل ويُعتمد ثانية (العروض تبقى محفوظة).';}else{w.style.display='none';w.textContent='';} }
+    var ch=document.getElementById('re-pullchips');if(ch)ch.innerHTML=reasonChips('re-pullnotes');
     var nt=document.getElementById('re-pullnotes');if(nt)nt.focus();
   }
 }
