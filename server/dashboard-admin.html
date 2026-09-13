@@ -382,6 +382,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('analytics',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>التحليلات</button>
     <div class="nav-label">العمليات</div>
     <button class="ni" onclick="showPage('requests',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>المشاريع</button>
+    <button class="ni" onclick="showPage('projreview',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>مراجعة المشاريع<span class="ni-badge" id="projreview-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('bids',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض</button>
     <button class="ni" onclick="showPage('users',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المستخدمون</button>
     <button class="ni" onclick="showPage('agents',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>المناديب</button>
@@ -478,6 +479,14 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         </div>
         <div class="card-body flush"><div class="tbl-wrap" id="requests-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
+    </div>
+
+    <div class="page" id="page-projreview">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><h3>⧖ مراجعة المشاريع</h3><span id="pr-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">راجع كل مشروع جديد قبل نشره — <b style="color:var(--green)">اعتماد ونشر</b> · <b style="color:#ea580c">طلب تعديل</b> (يرجع للعميل مع ملاحظاتك ويعيد الإرسال) · <b style="color:var(--red)">رفض نهائي</b> (لا يُعاد). العميل يُبلَّغ عبر إشعار وإيميل.</div>
+      </div>
+      <div id="projreview-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
     <div class="page" id="page-saai"><div class="card"><div class="card-head"><h3>💰 سداد السعي</h3><span style="font-size:11px;color:var(--muted)">اعتماد سداد المزوّدين</span></div><div id="saai-sum" style="padding:8px 14px"></div><div id="saai-list" style="padding:8px"><div class="loading"><div class="spinner"></div></div></div></div></div>
@@ -818,7 +827,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -837,6 +846,7 @@ function showPage(pg,el){
   if(pg==='logs')loadLogs();
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
+  if(pg==='projreview')loadProjReview();
   if(pg==='agents')loadAgents();
   if(pg==='reviews')loadReviews();
   if(pg==='questions')loadQuestions();
@@ -1699,6 +1709,61 @@ function submitProxyPost(){
     .catch(function(e){ toast(e.message||'تعذّر النشر','error'); if(btn){btn.disabled=false;btn.textContent='نشر المشروع';} });
 }
 
+var _projReview=[];
+function setProjReviewBadge(n){var b=document.getElementById('projreview-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}}
+function loadProjReview(){
+  var host=document.getElementById('projreview-list');if(!host)return;
+  host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/requests?status=pending_review',hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _projReview=list;setProjReviewBadge(list.length);renderProjReview();
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function renderProjReview(){
+  var host=document.getElementById('projreview-list');if(!host)return;
+  var list=_projReview||[];
+  var cnt=document.getElementById('pr-count');if(cnt)cnt.textContent=list.length?(list.length+' مشروع بانتظار المراجعة'):'';
+  if(!list.length){host.innerHTML=emptyState('لا توجد مشاريع بانتظار المراجعة 🎉');return;}
+  host.innerHTML=list.map(function(r){
+    var att=0;try{att=(Array.isArray(r.attachments)?r.attachments.length:0)+((r.images&&r.images.length)||0);}catch(e){}
+    var meta=[esc(r.client_name||'عميل'),esc(r.category||''),esc(r.city||'')].filter(Boolean).join(' · ');
+    return '<div class="card" id="prc-'+r.id+'" style="margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
+        +'<div style="font-weight:800;font-size:15px">'+esc(r.title||'مشروع')+' <span style="font-size:11px;color:var(--muted);font-weight:700">#'+r.id+'</span></div>'
+        +'<span class="badge b-review" style="white-space:nowrap">⧖ بانتظار المراجعة</span>'
+      +'</div>'
+      +'<div style="font-size:12.5px;color:var(--muted);margin-top:4px">'+meta+(att?' · 📎 '+att+' مرفق':'')+'</div>'
+      +'<div style="font-size:13px;color:#334155;margin-top:8px;background:var(--bg);border-radius:9px;padding:10px 12px;line-height:1.7;max-height:130px;overflow:auto;white-space:pre-wrap">'+esc(r.description||'—')+'</div>'
+      +'<textarea id="rv-notes-'+r.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;margin-top:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:58px;resize:vertical;outline:none"></textarea>'
+      +'<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;align-items:center">'
+        +'<button onclick="reviewAct('+r.id+',\'approve\')" style="background:var(--green);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">✓ اعتماد ونشر</button>'
+        +'<button onclick="reviewAct('+r.id+',\'needs_edit\')" style="background:#ea580c;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">🟡 طلب تعديل</button>'
+        +'<button onclick="reviewAct('+r.id+',\'reject\')" style="background:#fff;color:var(--red);border:1.5px solid #fecaca;border-radius:10px;padding:10px 16px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">🔴 رفض نهائي</button>'
+        +'<a href="/project/x-'+r.id+'?id='+r.id+'" target="_blank" rel="noopener" style="margin-inline-start:auto;font-size:12.5px;color:var(--p);font-weight:700;text-decoration:none">عرض التفاصيل ↗</a>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+async function reviewAct(id,action){
+  var ta=document.getElementById('rv-notes-'+id);
+  var reason=((ta&&ta.value)||'').trim();
+  if(action!=='approve'&&!reason){toast(action==='needs_edit'?'اكتب ملاحظات التعديل أولاً':'اكتب سبب الرفض أولاً','error');if(ta)ta.focus();return;}
+  if(action==='approve'&&!await askConfirm({title:'اعتماد ونشر',message:'سيُنشر المشروع للمزوّدين مباشرة.',confirmText:'نعم، انشر'}))return;
+  if(action==='reject'&&!await askConfirm({title:'رفض نهائي',message:'الرفض النهائي لا يُعاد، وسيُبلَّغ العميل بالسبب. متأكد؟',confirmText:'نعم، ارفض'}))return;
+  var card=document.getElementById('prc-'+id);
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:action,reason:reason||null})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
+      toast(action==='approve'?'تم الاعتماد والنشر ✓':action==='needs_edit'?'أُرسل طلب التعديل للعميل':'تم الرفض النهائي','success');
+      if(card){card.style.transition='.25s';card.style.opacity='0';setTimeout(function(){card.remove();},250);}
+      _projReview=(_projReview||[]).filter(function(x){return x.id!==id;});
+      setProjReviewBadge(_projReview.length);
+      var cnt=document.getElementById('pr-count');if(cnt)cnt.textContent=_projReview.length?(_projReview.length+' مشروع بانتظار المراجعة'):'';
+      if(!_projReview.length){var host=document.getElementById('projreview-list');if(host)host.innerHTML=emptyState('لا توجد مشاريع بانتظار المراجعة 🎉');}
+    })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function loadRequests(){
   fetch(API+'/api/admin/requests',hdr()).then(function(r){return r.json();}).then(function(reqs){
     if(!Array.isArray(reqs)){document.getElementById('requests-table').innerHTML=emptyState('تعذر التحميل');return;}
@@ -2195,10 +2260,11 @@ function loadNeedsAction(){
   }).catch(function(){});
 }
 function renderNeedsAction(na){
+  (function(){var b=document.getElementById('projreview-badge');if(b){var n=na.review||0;b.textContent=n;b.style.display=n?'flex':'none';}})();
   var el=document.getElementById('needs-action');if(!el)return;
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var items=[
-    {label:'طلبات قيد المراجعة',sub:'بانتظار موافقتك على نشرها',n:na.review||0,pg:'requests',navIdx:3,ic:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/>',c:'var(--amber)',bg:'var(--amber-l)'},
+    {label:'طلبات قيد المراجعة',sub:'بانتظار موافقتك على نشرها',n:na.review||0,pg:'projreview',navIdx:3,ic:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/>',c:'var(--amber)',bg:'var(--amber-l)'},
     {label:'بلاغات جديدة',sub:'تحتاج مراجعة وإجراء',n:na.reports||0,pg:'reports',navIdx:7,ic:'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',c:'var(--red)',bg:'var(--red-l)'},
     {label:'مزودون بانتظار توثيق',sub:'راجع ملفاتهم وفعّل التوثيق',n:na.verify||0,pg:'users',navIdx:2,ic:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>',c:'var(--sky)',bg:'var(--accent-l)'},
     {label:'أسئلة بانتظار رد',sub:'عملاء ومزودون ينتظرون',n:na.questions||0,pg:'questions',navIdx:6,ic:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',c:'var(--p)',bg:'var(--p-light)'}
@@ -3906,7 +3972,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
