@@ -4714,14 +4714,14 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
                      : action==='needs_edit' ? '📝 مشروعك يحتاج تعديلاً'
                      : '❌ تم رفض مشروعك';
     const inAppBody = action==='approve' ? `مشروعك "${row.title}" متاح للعروض الآن`
-                    : action==='needs_edit' ? `مشروعك "${row.title}" يحتاج تعديلاً — ادخل وعالج ملاحظات الإدارة${reason?': '+reason:''}`
+                    : action==='needs_edit' ? `🔒 مشروعك "${row.title}" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات — ادخل وأكمل التفاصيل ليُنشر ويستقبل العروض${reason?': '+reason:''}`
                     : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
     const logLabel = action==='approve' ? 'الموافقة على مشروع' : (action==='needs_edit' ? 'طلب تعديل مشروع' : 'رفض مشروع');
     await logAdmin(req, 'review_request', 'request', id, logLabel);
     await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
       const body = action==='approve' ? `<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>`
-                 : action==='needs_edit' ? `<p>مشروعك "<strong>${row.title}</strong>" يحتاج بعض التعديل قبل نشره على المنصة.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>ملاحظات الإدارة:</strong> ${reason}</p>`:''}<p>ادخل المنصة، عالج الملاحظات، ثم أعد إرسال مشروعك.</p>`
+                 : action==='needs_edit' ? `<p>🔒 مشروعك "<strong>${row.title}</strong>" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>المطلوب إكماله:</strong> ${reason}</p>`:''}<p>ادخل المنصة، أكمل التفاصيل، ثم أعد الإرسال — وسيعود مشروعك للنشر ويستقبل العروض.</p>`
                  : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
       sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
