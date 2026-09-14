@@ -2537,7 +2537,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     }
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
-      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'open',NOW()) RETURNING id, title`,
+      `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending_review',NOW()) RETURNING id, title`,
       [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null, pxCloseAt]);
     await client.query('COMMIT');
@@ -2602,10 +2602,10 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
       if (clientInfo.rows.length && clientInfo.rows[0].email) {
-        const ctitle = '✅ تم نشر مشروعك بنجاح';
-        const cBody = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تم نشر مشروعك "<strong>${eEsc(newReq.title)}</strong>" بنجاح. رقم المشروع: ${pn}</p>`;
+        const ctitle = '✅ استلمنا مشروعك — قيد المراجعة';
+        const cBody = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>استلمنا مشروعك "<strong>${eEsc(newReq.title)}</strong>" وهو الآن قيد مراجعة الإدارة. سيُنشر للمنفذين فور اعتماده. رقم المشروع: ${pn}</p>`;
         sendEmail(clientInfo.rows[0].email, ctitle, emailTpl(ctitle, cBody, 'متابعة المشروع', SITE_URL+'/dashboard-client.html')).catch(()=>{});
-        await notify(req.user.id, ctitle, `تم نشر "${eEsc(newReq.title)}" بنجاح`, 'request_published', newReq.id);
+        await notify(req.user.id, ctitle, `استلمنا مشروعك "${eEsc(newReq.title)}" — قيد المراجعة`, 'request_published', newReq.id);
       }
     } catch(e) { console.error('client confirmation email:', e.message); }
     if (newReq.category) {
