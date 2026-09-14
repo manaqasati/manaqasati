@@ -754,7 +754,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="det-head"></div>
       <div class="tab-btns">
         <button class="tab-btn on" onclick="showTab('bids',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض<span class="tcount" id="bids-count">0</span></button>
-        <button class="tab-btn" onclick="showTab('actions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>الإجراءات</button>
+        <button class="tab-btn" onclick="showTab('actions',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>الإجراءات<span class="tcount" id="actions-dot" style="display:none;background:#dc2626;color:#fff">!</span></button>
         <button class="tab-btn" onclick="showTab('timeline',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>الأنشطة</button>
         <button class="tab-btn" onclick="showTab('cq',this)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="tcount" id="cq-count">0</span></button>
       </div>
@@ -1321,7 +1321,7 @@ function riCard(r,actions){
         +'<span'+(open&&bidCount>0?' class="hzp-bidsN"':'')+'>'+bidCount+' '+(bidCount===1?'عرض':'عروض')+'</span>'
         +'<span>'+timeAgo(r.created_at)+'</span>'
       +'</div>'
-      +(nextTxt?'<div class="hzp-next'+(nextWait?' wait':'')+'">'+(nextWait?clock:bolt)+'<span>'+esc(nextTxt)+'</span></div>':'')
+      +(nedit?'<div style="display:flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:7px 10px;margin-top:6px;font-size:12px;color:#dc2626;font-weight:800"><span>⚠️</span><span>مطلوب تعديل — ادخل وعدّل مشروعك ليُنشر</span></div>':(nextTxt?'<div class="hzp-next'+(nextWait?' wait':'')+'">'+(nextWait?clock:bolt)+'<span>'+esc(nextTxt)+'</span></div>':''))
       +'<div class="hzp-qbadge" data-qid="'+r.id+'" style="display:none"></div>'
     +'</div>'
     +'<div class="hzp-side">'
@@ -1524,6 +1524,10 @@ function loadReqs(){
 function openDetail(id,e){
   if(e)e.stopPropagation();
   curRequestId=id;
+  // إعادة ضبط التبويبات لكل فتح (الافتراضي: العروض)
+  document.querySelectorAll('.tab').forEach(function(x){x.className='tab';});
+  document.querySelectorAll('.tab-btn').forEach(function(x){x.className='tab-btn';});
+  (function(){var _tb=document.getElementById('tab-bids');if(_tb)_tb.className='tab on';var _bb=document.querySelector('.tab-btn[onclick*="bids"]');if(_bb)_bb.className='tab-btn on';})();
   // اطّلع على المشروع ⇒ عروضه تُعدّ مُشاهَدة (يختفي نبيه "لديك عرض جديد")
   try{
     var r=(window._allMyReqs||[]).filter(function(x){return String(x.id)===String(id);})[0];
@@ -1552,6 +1556,9 @@ function openDetail(id,e){
       +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
     +'</div>';
     document.getElementById('det-head').innerHTML=h;
+    var _ne=(req.status==='needs_edit');
+    var _adot=document.getElementById('actions-dot');if(_adot)_adot.style.display=_ne?'inline-flex':'none';
+    if(_ne){var _ab=document.querySelector('.tab-btn[onclick*="actions"]');if(_ab)showTab('actions',_ab);}
   }).catch(function(){
     // المشروع غير موجود أو ليس للعميل → ارجع للرئيسية
     showToast('المشروع غير متاح','error');
