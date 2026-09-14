@@ -442,12 +442,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page on" id="page-dashboard">
       <div id="dash-hero"></div>
+      <div id="needs-action"></div>
       <div id="dash-kpis"></div>
       <div id="daily-report"></div>
-      <div id="needs-action"></div>
       <div class="dash-2col">
-        <div class="card card-accent"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="showPage('users',document.querySelectorAll('.ni')[2])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
-        <div class="card card-accent"><div class="card-head"><h3>أحدث المشاريع</h3><button class="ftab" onclick="showPage('requests',document.querySelectorAll('.ni')[3])">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-reqs"></div></div></div>
+        <div class="card card-accent"><div class="card-head"><h3>أحدث المستخدمين</h3><button class="ftab" onclick="_niGo('users')">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-users"></div></div></div>
+        <div class="card card-accent"><div class="card-head"><h3>أحدث المشاريع</h3><button class="ftab" onclick="_niGo('requests')">عرض الكل</button></div><div class="card-body flush"><div class="tbl-wrap" id="recent-reqs"></div></div></div>
       </div>
     </div>
 
@@ -2370,6 +2370,8 @@ function loadNeedsAction(){
     window._analytics=a;renderNeedsAction(a.needs_action||{});
   }).catch(function(){});
 }
+function _niBtn(pg){var b=null;document.querySelectorAll('.ni').forEach(function(n){if((n.getAttribute('onclick')||'').indexOf("showPage('"+pg+"'")>=0)b=n;});return b;}
+function _niGo(pg){showPage(pg,_niBtn(pg));}
 function renderNeedsAction(na){
   (function(){var b=document.getElementById('projreview-badge');if(b){var n=na.review||0;b.textContent=n;b.style.display=n?'flex':'none';}})();
   var el=document.getElementById('needs-action');if(!el)return;
@@ -2382,9 +2384,9 @@ function renderNeedsAction(na){
   ];
   var active=items.filter(function(i){return i.n>0;});
   if(!active.length){el.innerHTML='';return;}
-  el.innerHTML='<div class="nudges"><div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج إجراء</div>'+
+  el.innerHTML='<div class="nudges"><div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك اليوم</div>'+
     active.map(function(i){
-      return '<div class="nudge" style="border-right-color:'+i.c+'" onclick="showPage(\''+i.pg+'\',document.querySelectorAll(\'.ni\')['+i.navIdx+'])">'+
+      return '<div class="nudge" style="border-right-color:'+i.c+'" onclick="_niGo(\''+i.pg+'\')">'+
         '<div class="nudge-ic" style="background:'+i.bg+';color:'+i.c+'"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">'+i.ic+'</svg></div>'+
         '<div class="nudge-body"><div class="nudge-t">'+i.n+' '+i.label+'</div><div class="nudge-s">'+i.sub+'</div></div>'+
         '<div class="nudge-cta" style="color:'+i.c+'">فتح '+chev+'</div></div>';
@@ -4073,13 +4075,13 @@ function globalSearch(q){
 function gsOpenUser(email){
   var d=document.getElementById('gs-results');if(d)d.style.display='none';
   var gi=document.getElementById('global-search');if(gi)gi.value='';
-  showPage('users',document.querySelectorAll('.ni')[2]);
+  _niGo('users');
   setTimeout(function(){var inp=document.getElementById('user-search');if(inp){inp.value=email;filterUsers();}},350);
 }
 function gsOpenReq(id){
   var d=document.getElementById('gs-results');if(d)d.style.display='none';
   var gi=document.getElementById('global-search');if(gi)gi.value='';
-  showPage('requests',document.querySelectorAll('.ni')[3]);
+  _niGo('requests');
   setTimeout(function(){ if(typeof openReqEdit==='function') openReqEdit(id); },400);
 }
 
