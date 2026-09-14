@@ -4697,6 +4697,25 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.post('/api/admin/requests/:id/remind', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = await pool.query('SELECT r.title, r.client_id, r.status, r.review_notes, u.phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
+    if (!q.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = q.rows[0];
+    if (row.status !== 'needs_edit') return res.status(400).json({ message: 'المشروع ليس بحالة «مطلوب تعديل»' });
+    const notes = row.review_notes || '';
+    await notify(row.client_id, '📝 تذكير: مشروعك يحتاج تعديلاً', `🔒 مشروعك "${row.title}" ما زال غير ظاهر للمنفذين — أكمل التفاصيل ليُنشر${notes?': '+notes:''}`, 'request', id);
+    await logAdmin(req, 'remind_edit', 'request', id, 'تذكير بطلب تعديل');
+    let wa_link = null;
+    const ph = normPhone(row.phone);
+    if (ph) {
+      const waMsg = `السلام عليكم، تذكير بخصوص مشروعك «${row.title}» في منصة مناقصة — يحتاج إكمال معلومات قبل نشره للمنفذين:\n${notes}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`;
+      wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
+    }
+    res.json({ ok: true, wa_link });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
