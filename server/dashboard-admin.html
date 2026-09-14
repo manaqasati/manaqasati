@@ -82,6 +82,9 @@ svg{display:block}
 .ni svg{width:19px;height:19px;stroke:currentColor;flex-shrink:0;opacity:.85}
 .ni.on svg{opacity:1;stroke:var(--p)}
 .ni-badge{margin-right:auto;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:20px;height:20px;border-radius:10px;padding:0 6px;display:flex;align-items:center;justify-content:center}
+.ni.ni-sm{opacity:.55;font-size:12.5px;padding-top:8px;padding-bottom:8px}
+.ni.ni-sm svg{width:16px;height:16px}
+.ni.ni-sm:hover,.ni.ni-sm.on{opacity:1}
 .side-foot{padding:12px;border-top:1px solid var(--border)}
 .side-user{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:var(--bg);margin-bottom:8px}
 .side-user-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p),#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;overflow:hidden}
@@ -387,9 +390,9 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="nav-label">الرئيسية</div>
     <button class="ni on" onclick="showPage('dashboard',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>لوحة المعلومات</button>
     <button class="ni" onclick="showPage('analytics',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>التحليلات</button>
-    <div class="nav-label">العمليات</div>
-    <button class="ni" onclick="showPage('requests',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>المشاريع</button>
+    <div class="nav-label">العمل اليومي</div>
     <button class="ni" onclick="showPage('projreview',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>مراجعة المشاريع<span class="ni-badge" id="projreview-badge" style="display:none">0</span></button>
+    <button class="ni" onclick="showPage('requests',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>المشاريع</button>
     <button class="ni" onclick="showPage('bids',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>العروض</button>
     <button class="ni" onclick="showPage('users',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المستخدمون</button>
     <button class="ni" onclick="showPage('agents',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>المناديب</button>
@@ -400,15 +403,15 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="nav-label">النمو</div>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
-    <button class="ni" onclick="showPage('inbox',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>رسائل العملاء<span id="inbox-badge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:6px"></span></button>
-    <button class="ni" onclick="showPage('saai',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>سداد السعي<span id="saai-badge" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:6px"></span></button>
-    <button class="ni" onclick="showPage('closereasons',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>أسباب الإغلاق</button>
+    <button class="ni" onclick="showPage('inbox',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>رسائل العملاء<span class="ni-badge" id="inbox-badge" style="display:none"></span></button>
+    <button class="ni" onclick="showPage('saai',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>سداد السعي<span class="ni-badge" id="saai-badge" style="display:none"></span></button>
     <button class="ni" onclick="showPage('marketing',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>التسويق</button>
     <div class="nav-label">النظام</div>
     <button class="ni" onclick="showPage('admins',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>المشرفون</button>
     <button class="ni" onclick="showPage('settings',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>الإعدادات</button>
-    <button class="ni" onclick="showPage('logs',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>سجل النشاط</button>
-    <button class="ni" onclick="showPage('health',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>صحة النظام</button>
+    <button class="ni ni-sm" onclick="showPage('logs',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>سجل النشاط</button>
+    <button class="ni ni-sm" onclick="showPage('health',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>صحة النظام</button>
+    <button class="ni ni-sm" onclick="showPage('closereasons',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>أسباب الإغلاق</button>
   </nav>
   <div class="side-foot">
     <div class="side-user" id="sideUser">
@@ -928,7 +931,7 @@ function loadSaaiAdmin(){
       +'<div style="flex:1;min-width:120px;background:#fef3c7;border-radius:12px;padding:12px;text-align:center"><div style="font-family:Cairo,sans-serif;font-weight:900;font-size:20px;color:#d97706">'+(sm.due||0).toLocaleString("en-US")+'</div><div style="font-size:11px;color:#b45309">مستحق ر.س</div></div>'
       +'</div>'; }
     var awaiting=items.filter(function(x){return x.status==='submitted';}).length;
-    var bd=document.getElementById('saai-badge'); if(bd){ if(awaiting>0){bd.textContent=awaiting;bd.style.display='inline-block';}else bd.style.display='none'; }
+    var bd=document.getElementById('saai-badge'); if(bd){ if(awaiting>0){bd.textContent=awaiting;bd.style.display='flex';}else bd.style.display='none'; }
     if(!items.length){ box.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px;font-size:13px">لا يوجد سعي بعد.</div>'; return; }
     box.innerHTML=items.map(function(x){
       var st=x.status, badge, act='';
@@ -964,7 +967,7 @@ function loadInbox(){
       +'</div>';
     }).join('');
     var bd=document.getElementById('inbox-badge');
-    if(bd){ if(totalUnread>0){bd.textContent=totalUnread;bd.style.display='inline-block';}else bd.style.display='none'; }
+    if(bd){ if(totalUnread>0){bd.textContent=totalUnread;bd.style.display='flex';}else bd.style.display='none'; }
   }).catch(function(){ box.innerHTML='<div style="text-align:center;padding:20px;color:var(--red)">تعذّر التحميل</div>'; });
 }
 function _ibTime(s){ try{ return new Date(s).toLocaleDateString('ar-SA',{day:'numeric',month:'short'}); }catch(e){ return ''; } }
