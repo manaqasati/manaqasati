@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="form-grid">
           <div class="fg ff">
             <label>التصنيف <span style="color:var(--red)">*</span></label>
-            <select id="n-cat" onchange="checkOther();updateGuide();updateQuality()">
+            <select id="n-cat" onchange="checkOther();updateGuide();renderSmart(this.value);updateQuality()">
               <option value="">اختر التصنيف</option>
               <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option>
               <option>نجارة</option><option>تنظيف</option><option>نقل عفش</option>
@@ -702,6 +702,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           </div>
           <div class="fg ff">
             <label>التفاصيل <span style="color:var(--red)">*</span></label>
+            <div id="n-smart" style="display:none;margin-bottom:10px"></div>
             <textarea id="n-desc" oninput="updateQuality()" placeholder="اشرح المشروع بالتفصيل...&#10;&#10;نصيحة: اكتب كل نقطة في سطر منفصل ليظهر مشروعك مرتباً:&#10;- المطلوب بالضبط&#10;- الكمية أو المساحة&#10;- أي تفاصيل إضافية" style="min-height:130px"></textarea>
             <div id="n-guide" style="display:none;margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:11px 13px;font-size:12.5px;color:#9a3412;line-height:1.9"></div>
           </div>
@@ -2070,6 +2071,100 @@ var CAT_HINTS={
   'مكاتب هندسية':['نوع الخدمة (تصميم/إشراف/مخططات)؟','نوع المشروع ومساحته؟','هل يوجد مخطط أولي؟'],
   '_default':['المطلوب بالضبط؟','الكمية أو المساحة؟','أي مواصفات أو تفضيلات؟','الوقت المناسب للتنفيذ؟']
 };
+var SMART_FORMS={
+  'تبريد وتكييف':[{key:'count',label:'عدد المكيفات',type:'number',ph:'مثال: 4'},{key:'type',label:'نوع المكيف',type:'select',opts:['سبليت','شباك','مركزي','كونسيلد','دولابي']},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط','صيانة']},{key:'floors',label:'عدد الأدوار',type:'number',ph:'مثال: 2'}],
+  'كهرباء':[{key:'svc',label:'المطلوب',type:'seg',opts:['تأسيس','تمديد','صيانة']},{key:'points',label:'عدد النقاط أو اللوحات',type:'number',ph:'مثال: 12'},{key:'area',label:'المساحة أو عدد الغرف',type:'text',ph:'مثال: 4 غرف'}],
+  'سباكة':[{key:'svc',label:'المطلوب',type:'seg',opts:['تسليك','تأسيس','صيانة']},{key:'points',label:'عدد نقاط الصرف/الإمداد',type:'number',ph:'مثال: 6'},{key:'place',label:'الموقع',type:'seg',opts:['داخلي','خارجي']}],
+  'نجارة':[{key:'item',label:'القطعة المطلوبة ومقاساتها',type:'text',ph:'مثال: باب 2×0.9م'},{key:'wood',label:'نوع الخشب المفضّل',type:'text'},{key:'qty',label:'العدد المطلوب',type:'number',ph:'مثال: 3'}],
+  'تنظيف':[{key:'place',label:'نوع المكان',type:'select',opts:['شقة','فيلا','مكتب','محل','استراحة','مستودع']},{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'depth',label:'النوع',type:'seg',opts:['عام','عميق']}],
+  'نقل عفش':[{key:'from',label:'من (الحي/المدينة)',type:'text'},{key:'to',label:'إلى (الحي/المدينة)',type:'text'},{key:'size',label:'حجم المنقولات (غرف/قطع)',type:'text'},{key:'asm',label:'فك وتركيب؟',type:'seg',opts:['فك وتركيب','نقل فقط']}],
+  'حدادة':[{key:'item',label:'المطلوب',type:'select',opts:['أبواب','شبابيك','مظلات','درابزين','أخرى']},{key:'size',label:'المقاسات والعدد',type:'text'},{key:'mat',label:'الخامة المطلوبة',type:'text'}],
+  'ألمنيوم':[{key:'item',label:'المطلوب',type:'select',opts:['نوافذ','أبواب','واجهات','مطابخ']},{key:'size',label:'المقاسات والعدد',type:'text'},{key:'color',label:'اللون/النوع',type:'text'}],
+  'كلادينج وواجهات':[{key:'area',label:'مساحة الواجهة (م²)',type:'number'},{key:'type',label:'نوع الكلادينج',type:'text'},{key:'st',label:'الحالة',type:'seg',opts:['جديد','صيانة']}],
+  'مسابح':[{key:'size',label:'المقاسات (طول×عرض×عمق)',type:'text'},{key:'st',label:'المطلوب',type:'seg',opts:['إنشاء جديد','صيانة']},{key:'eq',label:'الفلاتر والتجهيزات',type:'seg',opts:['مطلوبة','غير مطلوبة']}],
+  'كاميرات مراقبة':[{key:'count',label:'عدد الكاميرات',type:'number',ph:'مثال: 6'},{key:'place',label:'الموقع',type:'seg',opts:['داخلي','خارجي','الاثنان']},{key:'net',label:'تمديد شبكة وجهاز تخزين',type:'seg',opts:['مطلوب','غير مطلوب']}],
+  'شبكات وإنترنت':[{key:'svc',label:'المطلوب',type:'seg',opts:['تأسيس','صيانة']},{key:'area',label:'المساحة وعدد النقاط',type:'text'},{key:'kind',label:'النوع',type:'seg',opts:['سلكي','لاسلكي','الاثنان']}],
+  'مظلات وسواتر':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'type',label:'النوع',type:'select',opts:['مظلة','ساتر','الاثنان']},{key:'mat',label:'الخامة',type:'text'}],
+  'عزل حراري':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'surf',label:'نوع السطح',type:'text'},{key:'kind',label:'نوع العزل',type:'seg',opts:['حراري','مائي','الاثنان']}],
+  'جبس':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'type',label:'النوع',type:'select',opts:['أسقف','ديكورات','فواصل']},{key:'design',label:'يوجد تصميم؟',type:'seg',opts:['نعم','لا']}],
+  'مكافحة حشرات':[{key:'pest',label:'نوع الحشرات',type:'text'},{key:'area',label:'المساحة ونوع المكان',type:'text'},{key:'freq',label:'التكرار',type:'seg',opts:['مرة واحدة','عقد دوري']}],
+  'بناء':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'floors',label:'عدد الأدوار',type:'number'},{key:'stage',label:'المرحلة',type:'seg',opts:['عظم','تشطيب كامل']},{key:'plan',label:'يوجد مخطط معتمد؟',type:'seg',opts:['نعم','لا']}],
+  'كشف تسربات المياه':[{key:'place',label:'موقع التسرب المتوقع',type:'text'},{key:'prop',label:'نوع العقار',type:'text'},{key:'signs',label:'ظهرت آثار رطوبة؟',type:'seg',opts:['نعم','لا']}],
+  'تنظيف خزانات':[{key:'count',label:'عدد الخزانات',type:'number'},{key:'cap',label:'السعة',type:'text'},{key:'loc',label:'الموقع',type:'seg',opts:['علوي','أرضي']},{key:'ster',label:'تعقيم',type:'seg',opts:['مطلوب','غير مطلوب']}],
+  'دهانات وديكور':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'st',label:'الحالة',type:'seg',opts:['جديد','إعادة دهان']},{key:'type',label:'النوع/اللون المطلوب',type:'text'}],
+  'تركيب مطابخ':[{key:'size',label:'المقاسات أو الطول (م)',type:'text'},{key:'mat',label:'الخامة',type:'select',opts:['خشب','ألمنيوم','بولي لاك','أكريليك']},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط']}],
+  'تنسيق حدائق':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'want',label:'المطلوب (عشب/ري/تشجير/إنارة)',type:'text'},{key:'design',label:'يوجد تصميم؟',type:'seg',opts:['نعم','لا']}],
+  'زجاج ومرايا':[{key:'item',label:'المطلوب ومقاساته',type:'text'},{key:'type',label:'نوع الزجاج/السماكة',type:'text'},{key:'qty',label:'العدد',type:'number'}],
+  'بلاط ورخام':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'type',label:'النوع المطلوب',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط']}],
+  'تركيب أثاث':[{key:'items',label:'نوع وعدد القطع',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['فك وتركيب','تركيب فقط']},{key:'floor',label:'الموقع (الدور)',type:'text'}],
+  'أرضيات خشبية وباركيه':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'type',label:'النوع',type:'select',opts:['باركيه','HDF','SPC','فينيل']},{key:'cur',label:'حالة الأرضية الحالية',type:'text'}],
+  'تنظيف سجاد وكنب':[{key:'items',label:'عدد القطع ونوعها',type:'text'},{key:'loc',label:'مكان التنظيف',type:'seg',opts:['بالموقع','استلام']},{key:'add',label:'تعطير/تعقيم',type:'seg',opts:['مطلوب','غير مطلوب']}],
+  'صيانة مصاعد':[{key:'count',label:'عدد المصاعد',type:'number'},{key:'kind',label:'المطلوب',type:'seg',opts:['صيانة دورية','إصلاح عطل']},{key:'brand',label:'الماركة إن عُرفت',type:'text'}],
+  'أبواب وبوابات أوتوماتيكية':[{key:'type',label:'النوع',type:'select',opts:['سحب','جرارة','دوارة','رفرفة']},{key:'size',label:'العدد والمقاسات',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','صيانة']}],
+  'ترميم مبانٍ':[{key:'prop',label:'نوع المبنى وعمره',type:'text'},{key:'want',label:'المطلوب ترميمه',type:'text'},{key:'area',label:'المساحة التقريبية',type:'text'}],
+  'تنظيف واجهات المباني':[{key:'floors',label:'ارتفاع المبنى (أدوار)',type:'number'},{key:'facade',label:'نوع الواجهة',type:'text'},{key:'area',label:'المساحة التقريبية',type:'text'}],
+  'حفر آبار ومضخات':[{key:'depth',label:'العمق المطلوب',type:'text'},{key:'soil',label:'نوع التربة إن عُرف',type:'text'},{key:'pump',label:'نوع المضخة',type:'text'}],
+  'أنظمة الحريق والسلامة':[{key:'prop',label:'نوع المبنى ومساحته',type:'text'},{key:'want',label:'المطلوب',type:'seg',opts:['إنذار','إطفاء','الاثنان']},{key:'st',label:'الحالة',type:'seg',opts:['جديد','صيانة']}],
+  'تخطيط المواقف والسلامة المرورية':[{key:'size',label:'المساحة أو عدد المواقف',type:'text'},{key:'want',label:'المطلوب (دهان/لوحات/مطبات)',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
+  'معدات ثقيلة':[{key:'machine',label:'نوع المعدة المطلوبة',type:'text'},{key:'dur',label:'مدة التأجير أو نوع العمل',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
+  'عوازل مائية':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'place',label:'موقع العزل',type:'select',opts:['سطح','حمام','خزان','أساسات','مسبح']},{key:'type',label:'نوع العزل المفضل',type:'text'}],
+  'أنظمة شمسية':[{key:'load',label:'الاستهلاك أو المساحة',type:'text'},{key:'kind',label:'النظام',type:'seg',opts:['على الشبكة','مستقل']},{key:'use',label:'الاستخدام',type:'seg',opts:['سخان','كهرباء']}],
+  'صيانة عامة':[{key:'want',label:'المطلوب بالتحديد',type:'text'},{key:'prop',label:'نوع العقار',type:'text'},{key:'freq',label:'التكرار',type:'seg',opts:['مرة واحدة','عقد دوري']}],
+  'إنشاءات معدنية وهناجر':[{key:'size',label:'المساحة والأبعاد',type:'text'},{key:'struct',label:'نوع الهيكل',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط']}],
+  'أعمال الطرق والأسفلت':[{key:'size',label:'المساحة أو الطول',type:'text'},{key:'st',label:'الحالة',type:'seg',opts:['جديد','صيانة']},{key:'layer',label:'نوع الطبقة',type:'text'}],
+  'صرف صحي وبيارات':[{key:'want',label:'المطلوب',type:'seg',opts:['تأسيس','تسليك','شفط']},{key:'cap',label:'العمق أو السعة',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
+  'أرضيات إيبوكسي':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'place',label:'نوع المكان',type:'text',ph:'مستودع/موقف/مصنع'},{key:'cur',label:'حالة الأرضية',type:'text'}],
+  'تحلية ومعالجة مياه':[{key:'water',label:'نوع المياه والاستخدام',type:'text'},{key:'cap',label:'السعة المطلوبة',type:'text'},{key:'use',label:'الاستخدام',type:'seg',opts:['منزلي','تجاري']}],
+  'تشطيبات ومقاولات عامة':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'scope',label:'نطاق العمل',type:'text'},{key:'plan',label:'يوجد مخطط؟',type:'seg',opts:['نعم','لا']}],
+  'مكاتب هندسية':[{key:'svc',label:'نوع الخدمة',type:'select',opts:['تصميم','إشراف','مخططات','دراسة جدوى']},{key:'proj',label:'نوع المشروع ومساحته',type:'text'},{key:'plan',label:'يوجد مخطط أولي؟',type:'seg',opts:['نعم','لا']}]
+};
+var _SMSTY='width:100%;padding:10px 12px;border:1.5px solid #dbe4f3;border-radius:10px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;background:#fff';
+function smField(f){
+  var h='<label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:11px 0 5px">'+esc(f.label)+'</label>';
+  if(f.type==='number'||f.type==='text') h+='<input type="'+f.type+'" id="sm-'+f.key+'" oninput="buildSmart()" placeholder="'+esc(f.ph||'')+'" style="'+_SMSTY+'">';
+  else if(f.type==='textarea') h+='<textarea id="sm-'+f.key+'" oninput="buildSmart()" placeholder="'+esc(f.ph||'')+'" style="'+_SMSTY+';min-height:52px;resize:vertical"></textarea>';
+  else if(f.type==='select') h+='<select id="sm-'+f.key+'" onchange="buildSmart()" style="'+_SMSTY+'"><option value="">اختر</option>'+f.opts.map(function(o){return '<option>'+esc(o)+'</option>';}).join('')+'</select>';
+  else if(f.type==='seg') h+='<input type="hidden" id="sm-'+f.key+'"><div style="display:flex;gap:7px;flex-wrap:wrap">'+f.opts.map(function(o,oi){return '<button type="button" onclick="segPick(this,\''+f.key+'\','+oi+')" style="flex:1;min-width:78px;padding:9px;border:1.5px solid #dbe4f3;background:#fff;border-radius:10px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;color:#475569;cursor:pointer">'+esc(o)+'</button>';}).join('')+'</div>';
+  return h;
+}
+function renderSmart(cat){
+  var host=document.getElementById('n-smart');if(!host)return;
+  var def=SMART_FORMS[cat];
+  var desc=document.getElementById('n-desc'), guide=document.getElementById('n-guide');
+  if(!def){ host.style.display='none'; host.innerHTML=''; if(desc){desc.readOnly=false;desc.style.background='';desc.style.color='';} return; }
+  var h='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:13px 15px">'
+    +'<div style="font-weight:800;font-size:13px;color:#1e40af;margin-bottom:2px;display:flex;align-items:center;gap:6px"><span>⚡</span><span>عبّي الحقول وتتكوّن التفاصيل تلقائياً</span></div>';
+  def.forEach(function(f){ h+=smField(f); });
+  h+=smField({key:'extra',label:'تفاصيل إضافية (اختياري)',type:'textarea',ph:'أي ملاحظة أخرى...'});
+  h+='<div style="font-size:11px;color:#1e40af;margin-top:11px">👇 النتيجة تظهر في «التفاصيل» أدناه.</div></div>';
+  host.innerHTML=h; host.style.display='block';
+  if(guide)guide.style.display='none';
+  if(desc){desc.readOnly=true;desc.style.background='#f8fafc';desc.style.color='#334155';}
+  buildSmart();
+}
+function buildSmart(){
+  var cat=((document.getElementById('n-cat')||{}).value||'');
+  var def=SMART_FORMS[cat]; if(!def)return;
+  var lines=[];
+  def.forEach(function(f){
+    var el=document.getElementById('sm-'+f.key); if(!el)return;
+    var v=(el.value||'').trim(); if(!v)return;
+    lines.push('- '+f.label+': '+v);
+  });
+  var ex=((document.getElementById('sm-extra')||{}).value||'').trim();
+  var txt=lines.join('\n'); if(ex)txt+=(txt?'\n':'')+ex;
+  var desc=document.getElementById('n-desc'); if(desc)desc.value=txt;
+  if(window.updateQuality)updateQuality();
+}
+function segPick(btn,key,oi){
+  var cat=((document.getElementById('n-cat')||{}).value||''), def=SMART_FORMS[cat]||[], f=null;
+  for(var i=0;i<def.length;i++){if(def[i].key===key){f=def[i];break;}}
+  var val=f?f.opts[oi]:'';
+  var hid=document.getElementById('sm-'+key); if(hid)hid.value=val;
+  btn.parentNode.querySelectorAll('button').forEach(function(b){b.style.background='#fff';b.style.color='#475569';b.style.borderColor='#dbe4f3';});
+  btn.style.background='#2563eb';btn.style.color='#fff';btn.style.borderColor='#2563eb';
+  buildSmart();
+}
 function updateGuide(){
   var box=document.getElementById('n-guide');if(!box)return;
   var cat=((document.getElementById('n-cat')||{}).value||'');
