@@ -4170,8 +4170,9 @@ app.get('/api/showcase', async (req, res) => {
               (SELECT b.price::int FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id AND COALESCE(b.price_unit,'total')='total' LIMIT 1) AS awarded_price
        FROM requests r
        WHERE r.status='completed' AND r.completed_at IS NOT NULL
+         AND r.featured=true
          AND (r.category IS DISTINCT FROM 'direct')
-       ORDER BY COALESCE(r.featured,false) DESC, r.completed_at DESC LIMIT 12`);
+       ORDER BY r.completed_at DESC LIMIT 12`);
     res.set('Cache-Control','public, max-age=300');
     // مجهّل تماماً: لا أسماء، لا جوالات، لا معرّفات — أرقام فقط
     res.json(r.rows.map(x=>({
