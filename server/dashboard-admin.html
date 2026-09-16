@@ -1747,13 +1747,23 @@ var REVIEW_REASONS=[
 function reasonChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'+REVIEW_REASONS.map(function(r,i){return '<button type="button" onclick="addReason(\''+t+'\','+i+')" style="background:#fff7ed;color:#c2410e;border:1px solid #fed7aa;border-radius:20px;padding:5px 11px;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer">+ '+esc(r.k)+'</button>';}).join('')+'</div>';}
 function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
 function showWaFollowup(link){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
+function toggleFeaturedRow(id){
+  var rr=(_allReq||[]).find(function(x){return x.id===id;});
+  var on=!(rr&&rr.featured);
+  fetch(API+'/api/admin/requests/'+id+'/featured',Object.assign({method:'POST',body:JSON.stringify({featured:on})},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.ok){ if(rr)rr.featured=d.featured; toast(d.featured?'ثُبّت في المعرض ★':'أُزيل من المعرض','success'); } else toast((d&&d.message)||'تعذّر التحديث','error'); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function _rowMenu(btn,id,status){
   try{event.stopPropagation();}catch(e){}
   var m=document.getElementById('rowMenu');
   if(!m){m=document.createElement('div');m.id='rowMenu';m.className='rowdd-menu';document.body.appendChild(m);}
   if(m.classList.contains('open')&&m._rid===id){m.classList.remove('open');return;}
   m._rid=id;
-  m.innerHTML=''
+  var _rr=(_allReq||[]).find(function(x){return x.id===id;});
+  var _ftItem=(status==='completed')?'<button class="rowdd-item" onclick="_rmClose();toggleFeaturedRow('+id+')" style="color:#a16207"><svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>'+((_rr&&_rr.featured)?'إزالة من المعرض':'تثبيت في المعرض')+'</button>':'';
+  m.innerHTML=_ftItem
     +'<button class="rowdd-item" onclick="_rmClose();printOffersReport('+id+')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>تقرير العروض</button>'
     +'<button class="rowdd-item" onclick="_rmClose();sendOffersReport('+id+')"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>إرسال للعميل</button>'
     +'<button class="rowdd-item" onclick="_rmClose();_oBriefFromReq('+id+')"><svg viewBox="0 0 24 24"><path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>كراسة لمزودين</button>'
