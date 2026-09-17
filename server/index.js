@@ -190,6 +190,16 @@ async function notifyMatchingProviders(request){
     if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
   }catch(e){ console.error('notifyMatchingProviders:', e.message); }
 }
+async function matchingProviders(cat, city, allCities){
+  const cityCond = allCities ? 'TRUE' : '(COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))';
+  const params = allCities ? [cat] : [cat, city];
+  const r = await pool.query(
+    `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
+      WHERE role='provider' AND is_active=TRUE
+        AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
+        AND ${cityCond}`, params);
+  return r.rows;
+}
 setInterval(async () => {
   try {
     const mins = Math.max(0, parseInt(await getSetting('review_minutes', '1440')) || 0);
@@ -4715,6 +4725,41 @@ app.post('/api/admin/requests/:id/remind', requirePermission('requests.review'),
       wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
     }
     res.json({ ok: true, wa_link });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = await pool.query('SELECT category, city FROM requests WHERE id=$1', [id]);
+    if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const rows = await matchingProviders(rq.rows[0].category, rq.rows[0].city, !!req.body.all_cities);
+    res.json({ count: rows.length });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const doNotify = req.body.notify !== false;
+    const doEmail = !!req.body.email;
+    const allCities = !!req.body.all_cities;
+    if (!doNotify && !doEmail) return res.status(400).json({ message: 'اختر قناة واحدة على الأقل' });
+    const rq = await pool.query('SELECT title, category, city, status FROM requests WHERE id=$1', [id]);
+    if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = rq.rows[0];
+    if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
+    const rows = await matchingProviders(row.category, row.city, allCities);
+    const link = SITE_URL + '/project/x-' + id + '?id=' + id;
+    let notified = 0, emailed = 0;
+    for (const p of rows) {
+      if (doNotify) { try { await notify(p.id, '🆕 مشروع جديد يناسبك', `"${row.title}"${row.city?(' · '+row.city):''} — بادر بتقديم عرضك`, 'request', id); notified++; } catch(e){} }
+      if (doEmail && p.email) {
+        const body = `<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(row.title)}</strong>${row.city?' · '+eEsc(row.city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`;
+        sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', body, 'تقديم عرض', link)).catch(()=>{});
+        emailed++;
+      }
+    }
+    await logAdmin(req, 'invite_providers', 'request', id, 'دعوة المزودين ('+rows.length+')');
+    res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
