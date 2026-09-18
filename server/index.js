@@ -192,9 +192,16 @@ async function notifyMatchingProviders(request){
     if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
   }catch(e){ console.error('notifyMatchingProviders:', e.message); }
 }
-async function matchingProviders(cat, city, allCities){
-  const cityCond = allCities ? 'TRUE' : '(COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))';
-  const params = allCities ? [cat] : [cat, city];
+async function matchingProviders(cat, city, allCities, cities){
+  let cityCond, params;
+  if (allCities) { cityCond='TRUE'; params=[cat]; }
+  else if (Array.isArray(cities) && cities.length) {
+    cityCond='(COALESCE(serves_all_cities,FALSE) OR city = ANY($2::text[]) OR (service_cities && $2::text[]))';
+    params=[cat, cities];
+  } else {
+    cityCond='(COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))';
+    params=[cat, city];
+  }
   const r = await pool.query(
     `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
       WHERE role='provider' AND is_active=TRUE
@@ -4725,7 +4732,7 @@ app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view
     const id = parseInt(req.params.id);
     const rq = await pool.query('SELECT category, city FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const rows = await matchingProviders(rq.rows[0].category, rq.rows[0].city, !!req.body.all_cities);
+    const rows = await matchingProviders(rq.rows[0].category, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
     res.json({ count: rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -4740,7 +4747,7 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = rq.rows[0];
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
-    const rows = await matchingProviders(row.category, row.city, allCities);
+    const rows = await matchingProviders(row.category, row.city, allCities, req.body.cities);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;
     for (const p of rows) {
