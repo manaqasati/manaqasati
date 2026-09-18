@@ -175,15 +175,17 @@ async function notifyMatchingProviders(request){
     const city = request.city || null;
     // مزوّد يطابق الفئة (ضمن تخصصاته أو فئات إشعاره) ونفس المدينة إن توفّرت
     const r = await pool.query(
-      `SELECT DISTINCT id FROM users
+      `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
         WHERE role='provider' AND is_active=TRUE
           AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
           AND (COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))`,
       [cat, city]);
     let sent=0;
+    const link = SITE_URL + '/project/x-' + request.id + '?id=' + request.id;
     for(const p of r.rows){
       try{
         await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id);
+        if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', link)).catch(()=>{}); }
         sent++;
       }catch(e){}
     }
@@ -2631,19 +2633,10 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
           }
           return res.json(newReq);
         }
-        const provs = await pool.query(`SELECT id, name, email FROM users WHERE role='provider' AND is_active=TRUE AND ((specialties IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(specialties))))) OR (notify_categories IS NOT NULL AND TRIM($1::text)=ANY(ARRAY(SELECT TRIM(UNNEST(notify_categories))))))`, [cat]);
-        const cityHint = newReq.city ? ` في ${newReq.city}` : '';
-        const nTitle = '🆕 مشروع جديد في تخصصك';
-        const nBody = `${eEsc(newReq.title)}${cityHint} — اطّلع وقدّم عرضك`;
-        const emailBody = `<p>وصلنا مشروع مشروع جديد ضمن تخصصاتك.</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:15px;font-weight:800;color:#16213E">${eEsc(newReq.title)}</div><div style="font-size:13px;color:#475569;margin-top:8px">${cat}${newReq.city?` · ${newReq.city}`:''}${newReq.budget_max?` · ${Number(newReq.budget_max).toLocaleString('en-US')} ر.س`:''}</div></div>`;
-        for (const p of provs.rows) {
-          await notify(p.id, nTitle, nBody, 'new_request', newReq.id);
-          if (p.email) sendEmail(p.email, nTitle, emailTpl(nTitle, emailBody, 'فتح المشروع الآن', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-        }
-        console.log(`📢 Request #${newReq.id} category="${cat}" → notified ${provs.rows.length} providers`);
+        // إشعار المزودين انتقل إلى لحظة الاعتماد (لا يُشعرون قبل مراجعة الأدمن)
       } catch(nerr) { console.error('notify providers:', nerr); }
     }
-    await addTimeline(newReq.id, 'published', 'تم نشر المشروع');
+    await addTimeline(newReq.id, 'published', 'قيد المراجعة');
     res.json(newReq);
   } catch(e) { console.error('create request:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4791,6 +4784,8 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
       sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
+    // عند الاعتماد: أشعر المزودين المطابقين (إشعار + إيميل) — الآن فقط، بعد المراجعة
+    if (action === 'approve') { try { await notifyMatchingProviders({ id: row.id, title: row.title, category: row.category, city: row.city }); } catch(e){} }
     // رابط واتساب جاهز للأدمن عند «طلب تعديل» أو «رفض» (رقم العميل + رسالة معبّأة)
     let wa_link = null;
     if (action !== 'approve') {
