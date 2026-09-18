@@ -787,7 +787,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="modal-body">
       <div id="inv-title" style="font-weight:800;font-size:14px;margin-bottom:10px"></div>
       <div id="inv-count" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:13px 15px;font-size:13.5px;color:#1e40af;font-weight:800;margin-bottom:14px">جاري حساب المطابقين...</div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:14px"><input type="checkbox" id="inv-allcities" onchange="_invCount()"> وسّع لكل المدن (نفس التخصص)</label>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">النطاق (المنطقة/المدن):</label>
+      <select id="inv-scope" onchange="_invCount()" style="width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;margin-bottom:14px;background:#fff;outline:none"></select>
       <div style="font-size:12.5px;font-weight:800;color:#475569;margin-bottom:8px">قنوات الإرسال:</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="inv-notify" checked> 🔔 إشعار داخل التطبيق</label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer"><input type="checkbox" id="inv-email" checked> ✉️ إيميل</label>
@@ -1763,11 +1764,39 @@ function reasonChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;
 function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
 function showWaFollowup(link){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
 var _invReqId=null;
+var INV_REGIONS={
+  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية'],
+  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور'],
+  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة'],
+  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص'],
+  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا'],
+  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة'],
+  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
+  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
+  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
+  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة'],
+  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
+  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى'],
+  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
+};
+function _invScopeBody(){
+  var sc=((document.getElementById('inv-scope')||{}).value)||'city';
+  if(sc==='all')return {all_cities:true};
+  if(sc.indexOf('region:')===0){return {cities:INV_REGIONS[sc.slice(7)]||[]};}
+  return {};
+}
 function openInvite(id){
   _invReqId=id;
   var rr=(_allReq||[]).find(function(x){return x.id===id;});
   document.getElementById('inv-title').textContent=(rr?rr.title:'مشروع')+(rr&&rr.city?' · '+rr.city:'');
-  document.getElementById('inv-allcities').checked=false;
+  var sc=document.getElementById('inv-scope');
+  if(sc){
+    var cityLbl=(rr&&rr.city)?('مدينة المشروع ('+esc(rr.city)+')'):'مدينة المشروع فقط';
+    var opts='<option value="city">'+cityLbl+'</option>';
+    Object.keys(INV_REGIONS).forEach(function(rn){opts+='<option value="region:'+rn+'">منطقة '+esc(rn)+' — كل مدنها</option>';});
+    opts+='<option value="all">كل المدن</option>';
+    sc.innerHTML=opts; sc.value='city';
+  }
   document.getElementById('inv-notify').checked=true;
   document.getElementById('inv-email').checked=true;
   document.getElementById('inviteModal').classList.add('show');
@@ -1775,14 +1804,14 @@ function openInvite(id){
 }
 function _invCount(){
   var el=document.getElementById('inv-count'); if(el)el.textContent='...جاري الحساب';
-  fetch(API+'/api/admin/requests/'+_invReqId+'/match-count',Object.assign({method:'POST',body:JSON.stringify({all_cities:document.getElementById('inv-allcities').checked})},hdr()))
+  fetch(API+'/api/admin/requests/'+_invReqId+'/match-count',Object.assign({method:'POST',body:JSON.stringify(_invScopeBody())},hdr()))
     .then(function(r){return r.json();})
-    .then(function(d){ if(!el)return; if(d&&typeof d.count==='number'){ el.textContent = d.count? ('يطابق مشروعك '+d.count+' مزوّداً') : 'لا يوجد مزوّد مطابق — جرّب «وسّع لكل المدن»'; } else el.textContent='تعذّر الحساب'; })
+    .then(function(d){ if(!el)return; if(d&&typeof d.count==='number'){ el.textContent = d.count? ('يطابق مشروعك '+d.count+' مزوّداً') : 'لا يوجد مزوّد مطابق في هذا النطاق — جرّب منطقة أوسع'; } else el.textContent='تعذّر الحساب'; })
     .catch(function(){ if(el)el.textContent='تعذّر الحساب'; });
 }
 function sendInvite(){
   var btn=document.getElementById('inv-send');
-  var body={ notify:document.getElementById('inv-notify').checked, email:document.getElementById('inv-email').checked, all_cities:document.getElementById('inv-allcities').checked };
+  var body=Object.assign({ notify:document.getElementById('inv-notify').checked, email:document.getElementById('inv-email').checked }, _invScopeBody());
   if(!body.notify&&!body.email){ toast('اختر قناة واحدة على الأقل','error'); return; }
   if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
   fetch(API+'/api/admin/requests/'+_invReqId+'/invite-providers',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
