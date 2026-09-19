@@ -2916,6 +2916,18 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         await pool.query('INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,$6,TRUE)', [row.id, req.user.id, requestId, pv.city||null, reqCity||null, 'out_of_scope']);
       }
     } catch(fe) { console.error('offer_flag:', fe.message); } }
+    // رصد النشاط المشبوه (سرعة): عروض كثيرة في وقت قصير — تنبيه تلقائي مرة واحدة لكل موجة
+    if (!isUpdate) { try {
+      const rc = await pool.query("SELECT COUNT(*) c FROM bids WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '5 minutes'", [req.user.id]);
+      if ((parseInt(rc.rows[0].c)||0) >= 6) {
+        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='spam_speed' AND created_at > NOW() - INTERVAL '5 minutes' LIMIT 1", [req.user.id]);
+        if (!dup.rows.length) {
+          const warnMsg = 'لاحظنا تقديمكم عدداً كبيراً من العروض في وقت قصير. نرجو تقديم عروض جادّة ومدروسة بسعر وتفاصيل واضحة — النشاط غير المعتاد قد يؤدي لتقييد الحساب.';
+          await notify(req.user.id, '⚠️ نشاط غير معتاد', warnMsg, 'bid', requestId);
+          await pool.query("INSERT INTO offer_flags (bid_id, provider_id, request_id, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,'spam_speed',TRUE)", [row.id, req.user.id, requestId, reqRow.rows[0].city||null]);
+        }
+      }
+    } catch(se) { console.error('spam_flag:', se.message); } }
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
     let isFirst = false;
@@ -4816,7 +4828,7 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
 app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT f.id, f.provider_id, f.request_id, f.provider_city, f.request_city, f.reason, f.auto_notified, f.created_at,
+      SELECT f.id, f.bid_id, f.provider_id, f.request_id, f.provider_city, f.request_city, f.reason, f.auto_notified, f.created_at,
              u.name AS provider_name, r.title AS project_title,
              (SELECT COUNT(*) FROM offer_flags f2 WHERE f2.provider_id=f.provider_id) AS violations
       FROM offer_flags f
