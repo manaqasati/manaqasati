@@ -4654,6 +4654,19 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.put('/api/admin/users/:id/reset-password', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const np = String(req.body.password||'');
+    if (np.length < 6) return res.status(400).json({ message: 'كلمة المرور ٦ أحرف على الأقل' });
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    const hash = await bcrypt.hash(np, 10);
+    const r = await pool.query("UPDATE users SET password=$1, password_hash=$1 WHERE id=$2 AND role!='admin' RETURNING id, name", [hash, uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, 'reset_password', 'user', uid, 'إعادة تعيين كلمة مرور');
+    res.json({ ok: true, name: r.rows[0].name });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
 app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
