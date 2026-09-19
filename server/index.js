@@ -1925,7 +1925,18 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const servesAll = role === 'provider' ? (req.body.serves_all_cities === true || req.body.serves_all_cities === 'true') : false;
     const serviceCities = (role === 'provider' && Array.isArray(req.body.service_cities)) ? req.body.service_cities.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,20) : null;
     const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,false,NOW()) RETURNING id, name, email, role, city, badge, email_verified`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
+    // رفع صور التسجيل إلى R2 بدل تخزينها base64 (يمنع تضخّم القاعدة)
+    let _profImg = req.body.profile_image || null;
+    if (_profImg && typeof _profImg === 'string' && _profImg.startsWith('data:')) { try { const u = await uploadToCloud(_profImg, 'manaqasa/profiles'); _profImg = u || null; } catch(e){ _profImg = null; } }
+    let _portImgs = null;
+    if (isProv && Array.isArray(req.body.portfolio_images)) {
+      _portImgs = [];
+      for (const img of req.body.portfolio_images) {
+        if (img && typeof img === 'string' && img.startsWith('data:')) { try { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) _portImgs.push(u); } catch(e){} }
+        else if (img) _portImgs.push(img);
+      }
+    }
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,false,NOW()) RETURNING id, name, email, role, city, badge, email_verified`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, _profImg, _portImgs, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
     // احتساب الإحالة لصاحب صفحة المزوّد
     try{
       const ref = typeof req.body.ref==='string'?req.body.ref:'';
