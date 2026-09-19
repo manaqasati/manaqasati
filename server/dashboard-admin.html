@@ -400,6 +400,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('reports',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>البلاغات<span class="ni-badge" id="reports-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('questions',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="ni-badge" id="questions-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('reviews',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>التقييمات</button>
+    <button class="ni" onclick="showPage('offerwatch',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v4"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>مراقبة العروض<span class="ni-badge" id="offerwatch-badge" style="display:none">0</span></button>
     <div class="nav-label">النمو</div>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
@@ -497,6 +498,14 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">راجع كل مشروع جديد قبل نشره — <b style="color:var(--green)">اعتماد ونشر</b> · <b style="color:#ea580c">طلب تعديل</b> (يرجع للعميل مع ملاحظاتك ويعيد الإرسال) · <b style="color:var(--red)">رفض نهائي</b> (لا يُعاد). العميل يُبلَّغ عبر إشعار وإيميل.</div>
       </div>
       <div id="projreview-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+    </div>
+
+    <div class="page" id="page-offerwatch">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><h3>🛡️ مراقبة العروض</h3><span id="ow-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج مدن خدمة المزوّد</b>. يُرسَل تنبيه تلقائي للمزوّد لحظة المخالفة، ويُسجّل هنا. تقدر ترسل تنبيهاً يدوياً بنص جاهز أو مخصّص.</div>
+      </div>
+      <div id="offerwatch-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
     <div class="page" id="page-saai"><div class="card"><div class="card-head"><h3>💰 سداد السعي</h3><span style="font-size:11px;color:var(--muted)">اعتماد سداد المزوّدين</span></div><div id="saai-sum" style="padding:8px 14px"></div><div id="saai-list" style="padding:8px"><div class="loading"><div class="spinner"></div></div></div></div></div>
@@ -781,6 +790,20 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="owAlertModal">
+  <div class="modal">
+    <div class="modal-head"><h3>📣 تنبيه المزوّد</h3><button class="modal-x" onclick="closeModal('owAlertModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div id="ow-alert-prov" style="font-weight:800;font-size:13.5px;margin-bottom:10px"></div>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">نص جاهز:</label>
+      <select id="ow-preset" onchange="_owPreset()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;background:#fff;outline:none"></select>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin:12px 0 6px">نص التنبيه (تقدر تعدّله):</label>
+      <textarea id="ow-msg" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;min-height:120px;resize:vertical;outline:none;line-height:1.8"></textarea>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">يُرسَل عبر إشعار داخل التطبيق + إيميل.</div>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="ow-send" onclick="sendOwAlert()">📣 أرسل التنبيه</button><button class="btn-s" onclick="closeModal('owAlertModal')">إلغاء</button></div>
+  </div>
+</div>
 <div class="overlay" id="inviteModal">
   <div class="modal">
     <div class="modal-head"><h3>📣 دعوة المزودين</h3><button class="modal-x" onclick="closeModal('inviteModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -870,7 +893,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['مراقبة العروض','رصد العروض خارج نطاق الخدمة وتنبيه المزوّدين']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -890,6 +913,7 @@ function showPage(pg,el){
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
   if(pg==='projreview')loadProjReview();
+  if(pg==='offerwatch')loadOfferFlags();
   if(pg==='agents')loadAgents();
   if(pg==='reviews')loadReviews();
   if(pg==='questions')loadQuestions();
@@ -1763,6 +1787,61 @@ var REVIEW_REASONS=[
 function reasonChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'+REVIEW_REASONS.map(function(r,i){return '<button type="button" onclick="addReason(\''+t+'\','+i+')" style="background:#fff7ed;color:#c2410e;border:1px solid #fed7aa;border-radius:20px;padding:5px 11px;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer">+ '+esc(r.k)+'</button>';}).join('')+'</div>';}
 function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
 function showWaFollowup(link){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
+var OW_PRESETS=[
+  {t:'خارج نطاق الخدمة',m:'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم. وذلك لضمان وصول العروض للمشاريع المناسبة، وزيادة فرص اختياركم من قبل صاحب المشروع، وتجنب تقديم عروض على مشاريع خارج نطاق خدمتكم.'},
+  {t:'تذكير ودّي (أول مخالفة)',m:'مرحباً، لاحظنا تقديمكم عرضاً على مشروع خارج مدن خدمتكم. لتحصلوا على أفضل النتائج، ننصح بالتركيز على المشاريع ضمن نطاقكم. ولو كنتم تخدمون مدناً إضافية، حدّثوا «مدن الخدمة» في ملفكم.'},
+  {t:'تحديث الملف',m:'نرجو تحديث «مدن الخدمة» في ملفكم لتظهر لكم المشاريع المناسبة تلقائياً، وتصل عروضكم لأصحاب المشاريع الصحيحين.'},
+  {t:'عروض عشوائية',m:'نرجو تقديم عروض جادّة ومدروسة مع سعر وتفاصيل واضحة. العروض العشوائية أو المكررة تُضعف فرصكم وقد تؤدي لتقييد الحساب.'},
+  {t:'تحذير أخير',m:'هذا تنبيه أخير بخصوص تقديم عروض خارج نطاق خدمتكم بشكل متكرر. الاستمرار قد يؤدي إلى تقييد حسابكم مؤقتاً. نقدّر التزامكم.'}
+];
+var _owFlags=[], _owFlagId=null;
+function loadOfferFlags(){
+  var host=document.getElementById('offerwatch-list');if(!host)return;
+  host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/offer-flags',hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _owFlags=list;
+    var cnt=document.getElementById('ow-count');if(cnt)cnt.textContent=list.length?(list.length+' مخالفة'):'';
+    var b=document.getElementById('offerwatch-badge');if(b){b.textContent=list.length;b.style.display=list.length?'flex':'none';}
+    if(!list.length){host.innerHTML=emptyState('لا توجد مخالفات — كل العروض ضمن النطاق 🎉');return;}
+    host.innerHTML=list.map(function(f){
+      var v=parseInt(f.violations)||1;
+      return '<div class="card" style="margin-bottom:12px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +'<div style="font-weight:800;font-size:14px">'+esc(f.provider_name||'مزوّد')+' <span style="font-size:11px;color:var(--muted);font-weight:600">من '+esc(f.provider_city||'—')+'</span></div>'
+          +'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>'
+        +'</div>'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>'+(f.auto_notified?' · <span style="color:var(--green)">✓ أُرسل التنبيه التلقائي</span>':'')+(v>1?' · <span style="color:#c2410e;font-weight:800">إجمالي مخالفاته: '+v+'</span>':'')+'</div>'
+        +'<div style="display:flex;gap:9px;margin-top:11px">'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="openOwAlert('+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>تنبيه يدوي</button>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function openOwAlert(id){
+  _owFlagId=id;
+  var f=_owFlags.find(function(x){return x.id===id;});
+  document.getElementById('ow-alert-prov').textContent='إلى: '+((f&&f.provider_name)||'المزوّد');
+  var sel=document.getElementById('ow-preset');
+  if(sel){ sel.innerHTML=OW_PRESETS.map(function(p,i){return '<option value="'+i+'">'+esc(p.t)+'</option>';}).join('')+'<option value="custom">✏️ نص مخصّص</option>'; sel.value='0'; }
+  document.getElementById('ow-msg').value=OW_PRESETS[0].m;
+  document.getElementById('owAlertModal').classList.add('show');
+}
+function _owPreset(){
+  var v=document.getElementById('ow-preset').value;
+  if(v==='custom'){var t=document.getElementById('ow-msg');t.value='';t.focus();return;}
+  var p=OW_PRESETS[parseInt(v)]; if(p)document.getElementById('ow-msg').value=p.m;
+}
+function sendOwAlert(){
+  var msg=(document.getElementById('ow-msg').value||'').trim();
+  if(!msg){toast('اكتب نص التنبيه','error');return;}
+  var btn=document.getElementById('ow-send'); if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  fetch(API+'/api/admin/offer-flags/'+_owFlagId+'/alert',Object.assign({method:'POST',body:JSON.stringify({message:msg})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;} toast('تم إرسال التنبيه للمزوّد ✓','success'); closeModal('owAlertModal'); })
+    .catch(function(){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} toast('تعذّر الاتصال','error'); });
+}
 var _invReqId=null;
 var INV_REGIONS={
   'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية'],
@@ -4200,7 +4279,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
