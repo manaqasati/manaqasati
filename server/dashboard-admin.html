@@ -401,6 +401,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" onclick="showPage('questions',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>الأسئلة<span class="ni-badge" id="questions-badge" style="display:none">0</span></button>
     <button class="ni" onclick="showPage('reviews',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>التقييمات</button>
     <button class="ni" onclick="showPage('offerwatch',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v4"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>مراقبة العروض<span class="ni-badge" id="offerwatch-badge" style="display:none">0</span></button>
+    <button class="ni" onclick="showPage('engagement',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>متابعة التفاعل<span class="ni-badge" id="engagement-badge" style="display:none">0</span></button>
     <div class="nav-label">النمو</div>
     <button class="ni" onclick="showPage('outreach',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>الاستقطاب</button>
     <button class="ni" onclick="showPage('followup',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>متابعة العملاء</button>
@@ -506,6 +507,19 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج مدن خدمة المزوّد</b>. يُرسَل تنبيه تلقائي للمزوّد لحظة المخالفة، ويُسجّل هنا. تقدر ترسل تنبيهاً يدوياً بنص جاهز أو مخصّص.</div>
       </div>
       <div id="offerwatch-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+    </div>
+
+    <div class="page" id="page-engagement">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><h3>🔔 متابعة التفاعل</h3>
+          <div style="margin-inline-start:auto;display:flex;gap:6px">
+            <button id="eng-f-unread" class="btn-s" onclick="engFilter('unread')" style="padding:6px 12px;font-size:12px">لم يُفتح</button>
+            <button id="eng-f-all" class="btn-s" onclick="engFilter('all')" style="padding:6px 12px;font-size:12px">الكل</button>
+          </div>
+        </div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">من وصله <b>عرض</b> أو <b>رسالة محادثة</b> ولم يفتحها بعد. اضغط «تذكير» لتنبيهه عبر الإشعار + الإيميل + واتساب.</div>
+      </div>
+      <div id="engagement-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
     <div class="page" id="page-saai"><div class="card"><div class="card-head"><h3>💰 سداد السعي</h3><span style="font-size:11px;color:var(--muted)">اعتماد سداد المزوّدين</span></div><div id="saai-sum" style="padding:8px 14px"></div><div id="saai-list" style="padding:8px"><div class="loading"><div class="spinner"></div></div></div></div></div>
@@ -893,7 +907,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['مراقبة العروض','رصد العروض خارج نطاق الخدمة وتنبيه المزوّدين']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['مراقبة العروض','رصد العروض خارج نطاق الخدمة وتنبيه المزوّدين'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -914,6 +928,7 @@ function showPage(pg,el){
   if(pg==='requests')loadRequests();
   if(pg==='projreview')loadProjReview();
   if(pg==='offerwatch')loadOfferFlags();
+  if(pg==='engagement')loadEngagement();
   if(pg==='agents')loadAgents();
   if(pg==='reviews')loadReviews();
   if(pg==='questions')loadQuestions();
@@ -1807,6 +1822,46 @@ var OW_PRESETS=[
   {t:'تحذير أخير',m:'هذا تنبيه أخير بخصوص تقديم عروض خارج نطاق خدمتكم بشكل متكرر. الاستمرار قد يؤدي إلى تقييد حسابكم مؤقتاً. نقدّر التزامكم.'}
 ];
 var _owFlags=[], _owFlagId=null;
+var _engFilter='unread', _engList=[];
+function engFilter(f){_engFilter=f;loadEngagement();}
+function loadEngBadge(){
+  fetch(API+'/api/admin/engagement?filter=unread',hdr()).then(function(r){return r.json();}).then(function(l){
+    var n=Array.isArray(l)?l.length:0; var b=document.getElementById('engagement-badge'); if(b){b.textContent=n;b.style.display=n?'flex':'none';}
+  }).catch(function(){});
+}
+function loadEngagement(){
+  var host=document.getElementById('engagement-list');if(!host)return;
+  var a=document.getElementById('eng-f-unread'),b=document.getElementById('eng-f-all');
+  if(a){a.style.background=_engFilter==='unread'?'var(--p)':'';a.style.color=_engFilter==='unread'?'#fff':'';}
+  if(b){b.style.background=_engFilter==='all'?'var(--p)':'';b.style.color=_engFilter==='all'?'#fff':'';}
+  host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/engagement?filter='+_engFilter,hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _engList=list;
+    if(!list.length){host.innerHTML=emptyState(_engFilter==='unread'?'الكل تفاعلوا مع إشعاراتهم 🎉':'لا يوجد سجلّ');return;}
+    host.innerHTML=list.map(function(n){
+      var isBid=n.type==='bid';
+      var typeBadge=isBid?'<span class="badge b-open" style="white-space:nowrap">عرض</span>':'<span class="badge" style="background:#e0e7ff;color:#4338ca;white-space:nowrap">رسالة</span>';
+      var readBadge=n.is_read?'<span style="color:var(--green);font-size:12px;font-weight:700">✓ فُتح</span>':'<span style="color:#dc2626;font-size:12px;font-weight:800">● لم يُفتح</span>';
+      return '<div class="card" id="eng-'+n.id+'" style="margin-bottom:12px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +'<div style="font-weight:800;font-size:14px">'+esc(n.user_name||'مستخدم')+' <span style="font-size:11px;color:var(--muted);font-weight:600">'+(n.user_role==='provider'?'مزوّد':'عميل')+'</span></div>'
+          +typeBadge
+        +'</div>'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">'+(isBid?'عرض على مشروع':'رسالة في مشروع')+': <b style="color:#334155">'+esc(n.project_title||'—')+'</b> · '+readBadge+'</div>'
+        +'<div style="display:flex;gap:9px;margin-top:11px">'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+n.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير</button>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function engRemind(id){
+  fetch(API+'/api/admin/engagement/'+id+'/remind',Object.assign({method:'POST'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){ if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التذكير','error');return;} toast('تم إرسال التذكير (إشعار + إيميل) ✓','success'); if(res.d&&res.d.wa_link&&typeof showWaFollowup==='function')showWaFollowup(res.d.wa_link); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function loadOfferFlags(){
   var host=document.getElementById('offerwatch-list');if(!host)return;
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
@@ -2582,6 +2637,7 @@ function _niGo(pg){showPage(pg,_niBtn(pg));}
 function renderNeedsAction(na){
   (function(){var b=document.getElementById('projreview-badge');if(b){var n=na.review||0;b.textContent=n;b.style.display=n?'flex':'none';}})();
   if(window.loadOwBadge)loadOwBadge();
+  if(window.loadEngBadge)loadEngBadge();
   var el=document.getElementById('needs-action');if(!el)return;
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var items=[
@@ -4319,7 +4375,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
