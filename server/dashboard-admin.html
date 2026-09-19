@@ -1819,6 +1819,12 @@ function loadOfferFlags(){
     }).join('');
   }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
 }
+function loadOwBadge(){
+  fetch(API+'/api/admin/offer-flags',hdr()).then(function(r){return r.json();}).then(function(l){
+    var n=Array.isArray(l)?l.length:0;
+    var b=document.getElementById('offerwatch-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}
+  }).catch(function(){});
+}
 function openOwAlert(id){
   _owFlagId=id;
   var f=_owFlags.find(function(x){return x.id===id;});
@@ -2542,6 +2548,7 @@ function _niBtn(pg){var b=null;document.querySelectorAll('.ni').forEach(function
 function _niGo(pg){showPage(pg,_niBtn(pg));}
 function renderNeedsAction(na){
   (function(){var b=document.getElementById('projreview-badge');if(b){var n=na.review||0;b.textContent=n;b.style.display=n?'flex':'none';}})();
+  if(window.loadOwBadge)loadOwBadge();
   var el=document.getElementById('needs-action');if(!el)return;
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var items=[
