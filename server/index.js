@@ -1673,6 +1673,8 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -2849,7 +2851,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
-    const reqRow = await pool.query('SELECT client_id, title, status FROM requests WHERE id=$1', [requestId]);
+    const reqRow = await pool.query('SELECT client_id, title, status, city FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'المشروع غير مفتوح للعروض' });
@@ -2864,7 +2866,19 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl]);
       row = ins.rows[0];
     }
-    const provInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    const provInfo = await pool.query('SELECT name, city, service_cities, serves_all_cities FROM users WHERE id=$1', [req.user.id]);
+    // رصد العروض خارج نطاق الخدمة (يُسمح + تنبيه تلقائي + تسجيل للأدمن)
+    if (!isUpdate) { try {
+      const reqCity = reqRow.rows[0].city;
+      const pv = provInfo.rows[0] || {};
+      const svcCities = Array.isArray(pv.service_cities) ? pv.service_cities : [];
+      const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0;
+      if (!inScope) {
+        const warnMsg = 'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم — لضمان وصول عروضكم للمشاريع المناسبة، وزيادة فرص اختياركم، وتجنب العروض خارج نطاق خدمتكم.';
+        await notify(req.user.id, '⚠️ عرض خارج نطاق خدمتك', warnMsg, 'bid', requestId);
+        await pool.query('INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,$6,TRUE)', [row.id, req.user.id, requestId, pv.city||null, reqCity||null, 'out_of_scope']);
+      }
+    } catch(fe) { console.error('offer_flag:', fe.message); } }
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
     let isFirst = false;
@@ -4761,6 +4775,37 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     await logAdmin(req, 'invite_providers', 'request', id, 'دعوة المزودين ('+rows.length+')');
     res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT f.id, f.provider_id, f.request_id, f.provider_city, f.request_city, f.reason, f.auto_notified, f.created_at,
+             u.name AS provider_name, r.title AS project_title,
+             (SELECT COUNT(*) FROM offer_flags f2 WHERE f2.provider_id=f.provider_id) AS violations
+      FROM offer_flags f
+      LEFT JOIN users u ON u.id=f.provider_id
+      LEFT JOIN requests r ON r.id=f.request_id
+      ORDER BY f.created_at DESC LIMIT 200`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const msg = String(req.body.message||'').trim();
+    if (!msg) return res.status(400).json({ message: 'اكتب نص التنبيه' });
+    const f = await pool.query('SELECT provider_id, request_id FROM offer_flags WHERE id=$1', [id]);
+    if (!f.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const pid = f.rows[0].provider_id;
+    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [pid]);
+    await notify(pid, '⚠️ تنبيه من إدارة مناقصة', msg, 'bid', f.rows[0].request_id);
+    if (u.rows.length && u.rows[0].email) {
+      const body = `<p>مرحباً${u.rows[0].name?' '+eEsc(u.rows[0].name):''}،</p><p>${eEsc(msg).replace(/\n/g,'<br>')}</p>`;
+      sendEmail(u.rows[0].email, '⚠️ تنبيه من إدارة مناقصة', emailTpl('⚠️ تنبيه من إدارة مناقصة', body, 'فتح المنصة', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+    }
+    await logAdmin(req, 'alert_provider', 'user', pid, 'تنبيه مزوّد (عرض خارج النطاق)');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
