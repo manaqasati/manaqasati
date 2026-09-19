@@ -1806,14 +1806,19 @@ function loadOfferFlags(){
     if(!list.length){host.innerHTML=emptyState('لا توجد مخالفات — كل العروض ضمن النطاق 🎉');return;}
     host.innerHTML=list.map(function(f){
       var v=parseInt(f.violations)||1;
-      return '<div class="card" style="margin-bottom:12px">'
+      var spam=(f.reason==='spam_speed');
+      var badge=spam?'<span class="badge" style="background:#f3e8ff;color:#7c3aed;white-space:nowrap">نشاط مشبوه</span>':'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>';
+      var detail=spam?('عروض كثيرة في وقت قصير · '+esc(f.project_title||'مشروع')):('قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>');
+      return '<div class="card" id="owf-'+f.id+'" style="margin-bottom:12px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
-          +'<div style="font-weight:800;font-size:14px">'+esc(f.provider_name||'مزوّد')+' <span style="font-size:11px;color:var(--muted);font-weight:600">من '+esc(f.provider_city||'—')+'</span></div>'
-          +'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>'
+          +'<div style="font-weight:800;font-size:14px">'+esc(f.provider_name||'مزوّد')+' <span style="font-size:11px;color:var(--muted);font-weight:600">'+(f.provider_city?('من '+esc(f.provider_city)):'')+'</span></div>'
+          +badge
         +'</div>'
-        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>'+(f.auto_notified?' · <span style="color:var(--green)">✓ أُرسل التنبيه التلقائي</span>':'')+(v>1?' · <span style="color:#c2410e;font-weight:800">إجمالي مخالفاته: '+v+'</span>':'')+'</div>'
-        +'<div style="display:flex;gap:9px;margin-top:11px">'
-          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="openOwAlert('+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>تنبيه يدوي</button>'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">'+detail+(f.auto_notified?' · <span style="color:var(--green)">✓ أُرسل التنبيه التلقائي</span>':'')+(v>1?' · <span style="color:#c2410e;font-weight:800">إجمالي مخالفاته: '+v+'</span>':'')+'</div>'
+        +'<div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="openOwAlert('+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>تنبيه</button>'
+          +(f.bid_id?'<button class="act-btn ab-default" style="color:#dc2626;border-color:#fecaca" onclick="owDeleteBid('+f.bid_id+','+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف العرض</button>':'')
+          +'<button class="act-btn ab-default" style="color:#b45309;border-color:#fde68a" onclick="owSuspend('+f.provider_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>إيقاف المزوّد</button>'
         +'</div>'
       +'</div>';
     }).join('');
@@ -1847,6 +1852,22 @@ function sendOwAlert(){
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
     .then(function(res){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;} toast('تم إرسال التنبيه للمزوّد ✓','success'); closeModal('owAlertModal'); })
     .catch(function(){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} toast('تعذّر الاتصال','error'); });
+}
+function owDeleteBid(bidId,flagId){
+  if(!confirm('حذف هذا العرض نهائياً؟'))return;
+  fetch(API+'/api/admin/bids/'+bidId,Object.assign({method:'DELETE'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};}).catch(function(){return{ok:r.ok,d:{}};});})
+    .then(function(res){ if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الحذف','error');return;} toast('تم حذف العرض','success'); var c=document.getElementById('owf-'+flagId); if(c)c.remove(); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
+function owSuspend(pid){
+  var f=(_owFlags||[]).find(function(x){return x.provider_id===pid;});
+  var nm=(f&&f.provider_name)||'المزوّد';
+  if(!confirm('إيقاف حساب «'+nm+'»؟ لن يتمكن من الدخول أو التقديم حتى تعيد تفعيله.'))return;
+  fetch(API+'/api/admin/users/'+pid+'/toggle',Object.assign({method:'PUT'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){ if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإيقاف','error');return;} toast(res.d&&res.d.is_active===false?'تم إيقاف المزوّد ⛔':'تم تفعيل المزوّد','success'); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
 }
 var _invReqId=null;
 var INV_REGIONS={
