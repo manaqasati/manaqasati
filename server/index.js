@@ -1925,7 +1925,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const servesAll = role === 'provider' ? (req.body.serves_all_cities === true || req.body.serves_all_cities === 'true') : false;
     const serviceCities = (role === 'provider' && Array.isArray(req.body.service_cities)) ? req.body.service_cities.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,20) : null;
     const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,false,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,false,NOW()) RETURNING id, name, email, role, city, badge, email_verified`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
     // احتساب الإحالة لصاحب صفحة المزوّد
     try{
       const ref = typeof req.body.ref==='string'?req.body.ref:'';
@@ -2624,6 +2624,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
+    try { const _v = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1',[req.user.id]); if(_v.rows.length && _v.rows[0].ev===false) return res.status(403).json({ message:'فعّل بريدك الإلكتروني قبل نشر مشروع', code:'email_unverified' }); } catch(_e){}
     const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
     const district = (req.body.district||'').toString().trim().slice(0,80) || null;
     const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
@@ -2874,6 +2875,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
+    try { const _v = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1',[req.user.id]); if(_v.rows.length && _v.rows[0].ev===false) return res.status(403).json({ message:'فعّل بريدك الإلكتروني قبل تقديم عرض', code:'email_unverified' }); } catch(_e){}
     let { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
     const priceUnit = (['total','meter','unit'].indexOf(req.body.price_unit) >= 0) ? req.body.price_unit : 'total';
