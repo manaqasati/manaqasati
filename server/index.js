@@ -4658,14 +4658,15 @@ app.put('/api/admin/users/:id/reset-password', requirePermission('users.edit'), 
   try {
     const uid = parseInt(req.params.id);
     const np = String(req.body.password||'');
-    if (np.length < 6) return res.status(400).json({ message: 'كلمة المرور ٦ أحرف على الأقل' });
-    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    if (!uid || np.length < 6) return res.status(400).json({ message: 'كلمة المرور ٦ أحرف على الأقل' });
+    const tgt = await pool.query('SELECT role FROM users WHERE id=$1', [uid]);
+    if (!tgt.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (tgt.rows[0].role === 'admin') return res.status(403).json({ message: 'لا يمكن تغيير كلمة مرور مشرف من هنا' });
     const hash = await bcrypt.hash(np, 10);
-    const r = await pool.query("UPDATE users SET password=$1, password_hash=$1 WHERE id=$2 AND role!='admin' RETURNING id, name", [hash, uid]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    await logAdmin(req, 'reset_password', 'user', uid, 'إعادة تعيين كلمة مرور');
-    res.json({ ok: true, name: r.rows[0].name });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+    await pool.query('UPDATE users SET password=$1, password_hash=$1 WHERE id=$2', [hash, uid]);
+    try { await logAdmin(req, 'reset_password', 'user', uid, 'إعادة تعيين كلمة مرور'); } catch(e){}
+    res.json({ ok: true });
+  } catch(e) { console.error('reset-password admin:', e.message); res.status(500).json({ message: 'خطأ: '+e.message }); }
 });
 app.put('/api/admin/users/:id/toggle', requirePermission('users.edit'), async (req, res) => {
   try {
@@ -4878,6 +4879,38 @@ app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'
     }
     await logAdmin(req, 'alert_provider', 'user', pid, 'تنبيه مزوّد (عرض خارج النطاق)');
     res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/engagement', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const readCond = (req.query.filter==='all') ? '' : 'AND n.is_read=false';
+    const r = await pool.query(`
+      SELECT n.id, n.user_id, n.type, n.ref_id, n.is_read, n.created_at,
+             u.name AS user_name, u.role AS user_role, rq.title AS project_title
+      FROM notifications n
+      LEFT JOIN users u ON u.id=n.user_id
+      LEFT JOIN requests rq ON rq.id=n.ref_id
+      WHERE n.type IN ('bid','message') ${readCond}
+      ORDER BY n.is_read ASC, n.created_at DESC LIMIT 150`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/engagement/:id/remind', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const n = await pool.query('SELECT n.user_id, n.type, n.ref_id, u.email, u.name, u.phone FROM notifications n LEFT JOIN users u ON u.id=n.user_id WHERE n.id=$1', [id]);
+    if (!n.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = n.rows[0];
+    const isBid = row.type==='bid';
+    const title = isBid ? '🔔 تذكير: لديك عرض بانتظارك' : '🔔 تذكير: لديك رسالة بانتظارك';
+    const body = isBid ? 'وصلك عرض على مشروعك — ادخل واطّلع عليه ورد على المزوّد.' : 'وصلتك رسالة في محادثاتك — ادخل ورد عليها.';
+    await notify(row.user_id, title, body, row.type, row.ref_id);
+    if (row.email) { const eb = `<p>مرحباً${row.name?' '+eEsc(row.name):''}،</p><p>${eEsc(body)}</p>`; sendEmail(row.email, title, emailTpl(title, eb, 'فتح المنصة', SITE_URL+'/')).catch(()=>{}); }
+    let wa_link = null;
+    const ph = normPhone(row.phone);
+    if (ph) { const wm = `السلام عليكم، ${body}\nمنصة مناقصة: ${SITE_URL}/`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
+    await logAdmin(req, 'remind_engagement', 'user', row.user_id, 'تذكير تفاعل ('+(isBid?'عرض':'رسالة')+')');
+    res.json({ ok:true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
