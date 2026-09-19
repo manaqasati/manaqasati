@@ -1819,6 +1819,7 @@ async function setupDatabase() {
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
+    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE'); } catch(e){}
     try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
     try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
     // ═══ فهارس الأداء — تمنع مسح الجداول كاملة مع نمو البيانات ═══
@@ -1869,6 +1870,37 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
   } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.get('/api/auth/verify-email', async (req, res) => {
+  const token = req.query.token || '';
+  let ok=false, already=false;
+  try {
+    const p = jwt.verify(token, JWT_SECRET);
+    if (p && p.purpose === 'verify_email' && p.id) {
+      const cur = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [p.id]);
+      if (cur.rows.length) {
+        if (cur.rows[0].ev) already=true;
+        else { try { await pool.query('UPDATE users SET email_verified=true WHERE id=$1', [p.id]); } catch(e){} }
+        ok=true;
+      }
+    }
+  } catch(e) {}
+  const title = ok ? (already?'بريدك مفعّل مسبقاً ✓':'تم تفعيل بريدك بنجاح ✓') : 'رابط غير صالح أو منتهٍ';
+  const color = ok ? '#16a34a' : '#dc2626';
+  const msg = ok ? 'يمكنك الآن استخدام كل مزايا المنصة.' : 'انتهت صلاحية الرابط أو أنه غير صحيح. سجّل الدخول واطلب إعادة الإرسال.';
+  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل البريد</title><style>body{font-family:system-ui,Tahoma,sans-serif;background:#eef2f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}.c{background:#fff;border-radius:18px;padding:36px 28px;max-width:420px;text-align:center;box-shadow:0 12px 40px rgba(15,23,42,.1)}.i{font-size:52px;margin-bottom:10px}h1{font-size:20px;color:${color};margin:0 0 10px}p{color:#475569;font-size:14px;line-height:1.8;margin:0 0 22px}a{display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-weight:800;font-size:14px}</style></head><body><div class="c"><div class="i">${ok?'✅':'⚠️'}</div><h1>${title}</h1><p>${msg}</p><a href="${SITE_URL}/">الذهاب إلى المنصة</a></div></body></html>`);
+});
+app.post('/api/auth/resend-verification', auth, async (req, res) => {
+  try {
+    const u = await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id]);
+    if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (u.rows[0].ev) return res.json({ ok: true, already: true });
+    if (!u.rows[0].email) return res.status(400).json({ message: 'لا يوجد بريد مسجّل' });
+    const vtok = jwt.sign({ id: req.user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '7d' });
+    const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
+    sendEmail(u.rows[0].email, '✅ فعّل بريدك في مناقصة', emailTpl('✅ فعّل بريدك في مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>', 'تفعيل البريد', vlink)).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
   try {
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
@@ -1893,7 +1925,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const servesAll = role === 'provider' ? (req.body.serves_all_cities === true || req.body.serves_all_cities === 'true') : false;
     const serviceCities = (role === 'provider' && Array.isArray(req.body.service_cities)) ? req.body.service_cities.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,20) : null;
     const isProv = role === 'provider';
-    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
+    const result = await pool.query(`INSERT INTO users (name, email, phone, password, password_hash, role, specialties, notify_categories, city, bio, business_name, experience_years, website, location_url, instagram, tiktok, snapchat, twitter, youtube, profile_image, portfolio_images, referred_by, serves_all_cities, service_cities, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true,false,NOW()) RETURNING id, name, email, role, city, badge`, [name, email, phone||null, hash, hash, role, specs, notifyCats, city||null, bio||null, isProv?(req.body.business_name||null):null, isProv?(req.body.experience_years||null):null, isProv?(req.body.website||null):null, isProv?(req.body.location_url||null):null, isProv?(req.body.instagram||null):null, isProv?(req.body.tiktok||null):null, isProv?(req.body.snapchat||null):null, isProv?(req.body.twitter||null):null, isProv?(req.body.youtube||null):null, req.body.profile_image||null, isProv&&Array.isArray(req.body.portfolio_images)?req.body.portfolio_images:null, (typeof req.body.ref==='string'?req.body.ref.slice(0,40):null), servesAll, serviceCities]);
     // احتساب الإحالة لصاحب صفحة المزوّد
     try{
       const ref = typeof req.body.ref==='string'?req.body.ref:'';
@@ -1966,8 +1998,11 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const welcomeBody = isProvider
         ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
         : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-      await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! نحن سعداء بانضمامك إلينا.`, 'welcome', null);
-      if (email) sendEmail(email, welcomeTitle, emailTpl(welcomeTitle, welcomeBody, isProvider?'استكشف المشاريع':'انشر مشروعك الأول', SITE_URL+(isProvider?'/dashboard-provider.html':'/dashboard-client.html'))).catch(()=>{});
+      const vtok = jwt.sign({ id: user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '7d' });
+      const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
+      const verifyNote = `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin:14px 0;color:#1e40af"><strong>خطوة أخيرة:</strong> فعّل بريدك لتتمكن من ${isProvider?'تقديم العروض':'نشر مشاريعك'} — اضغط الزر أدناه.</p>`;
+      await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! فعّل بريدك من الرسالة المرسلة إلى إيميلك.`, 'welcome', null);
+      if (email) sendEmail(email, '✅ فعّل بريدك في مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote, 'تفعيل البريد', vlink)).catch(()=>{});
     } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
