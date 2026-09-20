@@ -1518,21 +1518,36 @@ async function runReminders(){
 setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
 async function runEngagementReminders(){
   try {
-    const rows = await pool.query(`
-      SELECT DISTINCT n.user_id, u.email, u.name FROM notifications n JOIN users u ON u.id=n.user_id
-      WHERE n.type IN ('bid','message') AND n.is_read=false
-        AND n.created_at > NOW() - INTERVAL '14 days'`);
+    const users = await pool.query(`
+      SELECT u.id, u.email, u.name, MIN(n.created_at) AS first_unread
+      FROM notifications n JOIN users u ON u.id=n.user_id
+      WHERE n.type IN ('bid','message') AND n.is_read=false AND n.created_at > NOW() - INTERVAL '30 days'
+      GROUP BY u.id, u.email, u.name`);
     const title = '👋 لديك تنبيهات بانتظارك';
     const body = 'لديك رسائل واستفسارات من المنفذين وعروض على مشاريعك لم تُفتح بعد. ادخل وتفاعل معها لتحصل على أفضل النتائج.';
-    for (const r of rows.rows) {
+    for (const u of users.rows) {
       try {
-        await notify(r.user_id, title, body, 'reminder', null);
-        if (r.email) sendEmail(r.email, title, emailTpl(title, `<p>مرحباً${r.name?' '+eEsc(r.name):''}،</p><p>${eEsc(body)}</p>`, 'فتح المنصة', SITE_URL+'/')).catch(()=>{});
+        const st = await pool.query('SELECT reminders_sent, last_reminded FROM engagement_state WHERE user_id=$1', [u.id]);
+        const sent = st.rows.length ? (st.rows[0].reminders_sent||0) : 0;
+        if (sent >= 5) continue; // توقّف بعد 5 تذكيرات
+        const now = Date.now();
+        const base = st.rows.length && st.rows[0].last_reminded ? new Date(st.rows[0].last_reminded).getTime() : new Date(u.first_unread).getTime();
+        let gap; // متدرّج
+        if (sent === 0) gap = 6*3600e3;        // 6 ساعات من أول وصول
+        else if (sent === 1) gap = 18*3600e3;  // ~24 ساعة
+        else if (sent === 2) gap = 2*86400e3;  // ~3 أيام
+        else gap = 24*3600e3;                  // بعدها يومي (تذكير 4 و5)
+        if (now < base + gap) continue; // لم يحن الموعد
+        await notify(u.id, title, body, 'reminder', null);
+        if (u.email && sent < 2) sendEmail(u.email, title, emailTpl(title, `<p>مرحباً${u.name?' '+eEsc(u.name):''}،</p><p>${eEsc(body)}</p>`, 'فتح المنصة', SITE_URL+'/')).catch(()=>{});
+        await pool.query(`INSERT INTO engagement_state (user_id, reminders_sent, last_reminded, updated_at) VALUES ($1,1,NOW(),NOW()) ON CONFLICT (user_id) DO UPDATE SET reminders_sent=engagement_state.reminders_sent+1, last_reminded=NOW(), updated_at=NOW()`, [u.id]);
       } catch(e){}
     }
+    // من فتح كل تنبيهاته → صفّر حالته (تبدأ دورة جديدة لاحقاً)
+    await pool.query(`DELETE FROM engagement_state WHERE user_id NOT IN (SELECT DISTINCT user_id FROM notifications WHERE type IN ('bid','message') AND is_read=false AND created_at > NOW() - INTERVAL '30 days')`);
   } catch(e){ console.error('engagementReminders:', e.message); }
 }
-setInterval(runEngagementReminders, 12*60*60*1000); // مرتين يومياً
+setInterval(runEngagementReminders, 2*60*60*1000); // كل ساعتين (يفحص المواعيد المتدرّجة)
 setTimeout(runReminders, 60000);          // مرّة بعد دقيقة من الإقلاع
 
 
@@ -1692,6 +1707,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -4904,11 +4920,12 @@ app.get('/api/admin/engagement', requirePermission('requests.view'), async (req,
       SELECT n.user_id, u.name AS user_name, u.role AS user_role,
              COUNT(*) FILTER (WHERE n.type='bid') AS bids,
              COUNT(*) FILTER (WHERE n.type='message') AS messages,
-             COUNT(*) AS total, MAX(n.created_at) AS last_at
+             COUNT(*) AS total, MAX(n.created_at) AS last_at,
+             COALESCE(es.reminders_sent,0) AS reminders_sent, es.last_reminded
       FROM notifications n JOIN users u ON u.id=n.user_id
-      WHERE n.type IN ('bid','message') AND n.is_read=false
-        AND n.created_at > NOW() - INTERVAL '30 days'
-      GROUP BY n.user_id, u.name, u.role
+      LEFT JOIN engagement_state es ON es.user_id=n.user_id
+      WHERE n.type IN ('bid','message') AND n.is_read=false AND n.created_at > NOW() - INTERVAL '30 days'
+      GROUP BY n.user_id, u.name, u.role, es.reminders_sent, es.last_reminded
       ORDER BY total DESC, last_at DESC LIMIT 100`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
@@ -4923,10 +4940,11 @@ app.post('/api/admin/engagement/:id/remind', requirePermission('requests.review'
     const body = 'لديك رسائل واستفسارات من المنفذين وعروض على مشاريعك لم تُفتح بعد. ادخل وتفاعل معها لتحصل على أفضل النتائج.';
     await notify(uid, title, body, 'reminder', null);
     if (row.email) { const eb = `<p>مرحباً${row.name?' '+eEsc(row.name):''}،</p><p>${eEsc(body)}</p>`; sendEmail(row.email, title, emailTpl(title, eb, 'فتح المنصة', SITE_URL+'/')).catch(()=>{}); }
+    await pool.query(`INSERT INTO engagement_state (user_id, reminders_sent, last_reminded, updated_at) VALUES ($1,1,NOW(),NOW()) ON CONFLICT (user_id) DO UPDATE SET reminders_sent=engagement_state.reminders_sent+1, last_reminded=NOW(), updated_at=NOW()`, [uid]);
     let wa_link = null;
     const ph = normPhone(row.phone);
     if (ph) { const wm = `السلام عليكم، ${body}\nمنصة مناقصة: ${SITE_URL}/`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
-    await logAdmin(req, 'remind_engagement', 'user', uid, 'تذكير تفاعل');
+    await logAdmin(req, 'remind_engagement', 'user', uid, 'تذكير تفاعل يدوي');
     res.json({ ok:true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
