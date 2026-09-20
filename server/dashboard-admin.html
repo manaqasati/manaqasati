@@ -799,6 +799,22 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="engRemindModal">
+  <div class="modal">
+    <div class="modal-head"><h3>📣 تذكير المستخدم</h3><button class="modal-x" onclick="closeModal('engRemindModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div id="eng-r-name" style="font-weight:800;font-size:13.5px;margin-bottom:12px"></div>
+      <div style="font-size:12.5px;font-weight:800;color:#475569;margin-bottom:8px">القنوات:</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="eng-r-notify" checked> 🔔 إشعار التطبيق</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:14px"><input type="checkbox" id="eng-r-email"> ✉️ إيميل</label>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">نص جاهز:</label>
+      <select id="eng-r-preset" onchange="_engPreset()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;background:#fff;outline:none"></select>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin:12px 0 6px">النص (تقدر تعدّله):</label>
+      <textarea id="eng-r-msg" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;min-height:100px;resize:vertical;outline:none;line-height:1.8"></textarea>
+    </div>
+    <div class="modal-foot"><button class="btn-p" id="eng-r-send" onclick="sendEngRemind()">📣 أرسل التذكير</button><button class="btn-s" onclick="closeModal('engRemindModal')">إلغاء</button></div>
+  </div>
+</div>
 <div class="overlay" id="owAlertModal">
   <div class="modal">
     <div class="modal-head"><h3>📣 تنبيه المزوّد</h3><button class="modal-x" onclick="closeModal('owAlertModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -1845,18 +1861,44 @@ function loadEngagement(){
           +(ignoredBadge||'')
         +'</div>'
         +'<div style="display:flex;gap:9px;margin-top:11px">'
-          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير + واتساب</button>'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="openEngRemind('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير</button>'
+          +'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0" onclick="engWa('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>واتساب</button>'
         +'</div>'
       +'</div>';
     }).join('');
   }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
 }
-function engRemind(id){
-  fetch(API+'/api/admin/engagement/'+id+'/remind',Object.assign({method:'POST'},hdr()))
-    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-    .then(function(res){ if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التذكير','error');return;} toast('تم إرسال التذكير (إشعار + إيميل) ✓','success'); if(res.d&&res.d.wa_link&&typeof showWaFollowup==='function')showWaFollowup(res.d.wa_link); })
-    .catch(function(){toast('تعذّر الاتصال','error');});
+var ENG_PRESETS=[
+  {t:'ودّي',m:'👋 لديك رسائل وعروض بانتظارك، ادخل وتفاعل معها لتصلك أفضل النتائج.'},
+  {t:'تحفيزي',m:'⏰ عروضك ورسائلك تنتظرك! المزوّدون بانتظار ردّك — سرعة تفاعلك ترفع فرصك في أفضل صفقة.'},
+  {t:'تذكير أخير',m:'تنبيه: لديك رسائل وعروض لم تفتحها منذ فترة. ننصح بالدخول والتفاعل معها حتى لا تفوتك الفرص المناسبة.'}
+];
+var _engRid=null;
+function openEngRemind(uid){
+  _engRid=uid;
+  var u=(_engList||[]).find(function(x){return x.user_id===uid;});
+  document.getElementById('eng-r-name').textContent='إلى: '+((u&&u.user_name)||'المستخدم');
+  var sel=document.getElementById('eng-r-preset');
+  if(sel){sel.innerHTML=ENG_PRESETS.map(function(p,i){return '<option value="'+i+'">'+esc(p.t)+'</option>';}).join('')+'<option value="custom">✏️ نص مخصّص</option>';sel.value='0';}
+  document.getElementById('eng-r-msg').value=ENG_PRESETS[0].m;
+  document.getElementById('eng-r-notify').checked=true;
+  document.getElementById('eng-r-email').checked=false;
+  document.getElementById('engRemindModal').classList.add('show');
 }
+function _engPreset(){var v=document.getElementById('eng-r-preset').value;if(v==='custom'){var t=document.getElementById('eng-r-msg');t.value='';t.focus();return;}var p=ENG_PRESETS[parseInt(v)];if(p)document.getElementById('eng-r-msg').value=p.m;}
+function sendEngRemind(){
+  var msg=(document.getElementById('eng-r-msg').value||'').trim();
+  var doNotify=document.getElementById('eng-r-notify').checked, doEmail=document.getElementById('eng-r-email').checked;
+  if(!doNotify&&!doEmail){toast('اختر قناة واحدة على الأقل','error');return;}
+  if(!msg){toast('اكتب نص التذكير','error');return;}
+  var btn=document.getElementById('eng-r-send');if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  fetch(API+'/api/admin/engagement/'+_engRid+'/remind',Object.assign({method:'POST',body:JSON.stringify({notify:doNotify,email:doEmail,message:msg})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){if(btn){btn.disabled=false;btn.textContent='📣 أرسل التذكير';}if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('تم إرسال التذكير ✓','success');closeModal('engRemindModal');loadEngagement();})
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='📣 أرسل التذكير';}toast('تعذّر الاتصال','error');});
+}
+function _waNorm(p){if(!p)return null;var d=(''+p).replace(/[^\d]/g,'');if(d.indexOf('00966')===0)d=d.slice(2);else if(d.indexOf('966')===0){}else if(d.indexOf('05')===0)d='966'+d.slice(1);else if(d.length===9&&d.charAt(0)==='5')d='966'+d;else if(d.charAt(0)==='0')d='966'+d.slice(1);if(d.indexOf('966')!==0)return null;var r=d.slice(3);if(r.length!==9||r.charAt(0)!=='5')return null;return d;}
+function engWa(uid){var u=(_engList||[]).find(function(x){return x.user_id===uid;});var ph=_waNorm(u&&u.user_phone);if(!ph){toast('لا يوجد رقم واتساب صالح لهذا المستخدم','error');return;}var msg='السلام عليكم، لديك رسائل وعروض بانتظارك في منصة مناقصة — ادخل وتفاعل معها.';window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');}
 function loadOfferFlags(){
   var host=document.getElementById('offerwatch-list');if(!host)return;
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
