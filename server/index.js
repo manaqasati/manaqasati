@@ -1516,6 +1516,23 @@ async function runReminders(){
   }catch(e){ console.error('runReminders:', e.message); }
 }
 setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
+async function runEngagementReminders(){
+  try {
+    const rows = await pool.query(`
+      SELECT DISTINCT n.user_id, u.email, u.name FROM notifications n JOIN users u ON u.id=n.user_id
+      WHERE n.type IN ('bid','message') AND n.is_read=false
+        AND n.created_at > NOW() - INTERVAL '14 days'`);
+    const title = '👋 لديك تنبيهات بانتظارك';
+    const body = 'لديك رسائل واستفسارات من المنفذين وعروض على مشاريعك لم تُفتح بعد. ادخل وتفاعل معها لتحصل على أفضل النتائج.';
+    for (const r of rows.rows) {
+      try {
+        await notify(r.user_id, title, body, 'reminder', null);
+        if (r.email) sendEmail(r.email, title, emailTpl(title, `<p>مرحباً${r.name?' '+eEsc(r.name):''}،</p><p>${eEsc(body)}</p>`, 'فتح المنصة', SITE_URL+'/')).catch(()=>{});
+      } catch(e){}
+    }
+  } catch(e){ console.error('engagementReminders:', e.message); }
+}
+setInterval(runEngagementReminders, 12*60*60*1000); // مرتين يومياً
 setTimeout(runReminders, 60000);          // مرّة بعد دقيقة من الإقلاع
 
 
@@ -4883,33 +4900,33 @@ app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'
 });
 app.get('/api/admin/engagement', requirePermission('requests.view'), async (req, res) => {
   try {
-    const readCond = (req.query.filter==='all') ? '' : 'AND n.is_read=false';
     const r = await pool.query(`
-      SELECT n.id, n.user_id, n.type, n.ref_id, n.is_read, n.created_at,
-             u.name AS user_name, u.role AS user_role, rq.title AS project_title
-      FROM notifications n
-      LEFT JOIN users u ON u.id=n.user_id
-      LEFT JOIN requests rq ON rq.id=n.ref_id
-      WHERE n.type IN ('bid','message') ${readCond}
-      ORDER BY n.is_read ASC, n.created_at DESC LIMIT 150`);
+      SELECT n.user_id, u.name AS user_name, u.role AS user_role,
+             COUNT(*) FILTER (WHERE n.type='bid') AS bids,
+             COUNT(*) FILTER (WHERE n.type='message') AS messages,
+             COUNT(*) AS total, MAX(n.created_at) AS last_at
+      FROM notifications n JOIN users u ON u.id=n.user_id
+      WHERE n.type IN ('bid','message') AND n.is_read=false
+        AND n.created_at > NOW() - INTERVAL '30 days'
+      GROUP BY n.user_id, u.name, u.role
+      ORDER BY total DESC, last_at DESC LIMIT 100`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/engagement/:id/remind', requirePermission('requests.review'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const n = await pool.query('SELECT n.user_id, n.type, n.ref_id, u.email, u.name, u.phone FROM notifications n LEFT JOIN users u ON u.id=n.user_id WHERE n.id=$1', [id]);
-    if (!n.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const row = n.rows[0];
-    const isBid = row.type==='bid';
-    const title = isBid ? '🔔 تذكير: لديك عرض بانتظارك' : '🔔 تذكير: لديك رسالة بانتظارك';
-    const body = isBid ? 'وصلك عرض على مشروعك — ادخل واطّلع عليه ورد على المزوّد.' : 'وصلتك رسالة في محادثاتك — ادخل ورد عليها.';
-    await notify(row.user_id, title, body, row.type, row.ref_id);
+    const uid = parseInt(req.params.id);
+    const u = await pool.query('SELECT email, name, phone FROM users WHERE id=$1', [uid]);
+    if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = u.rows[0];
+    const title = '👋 لديك تنبيهات بانتظارك';
+    const body = 'لديك رسائل واستفسارات من المنفذين وعروض على مشاريعك لم تُفتح بعد. ادخل وتفاعل معها لتحصل على أفضل النتائج.';
+    await notify(uid, title, body, 'reminder', null);
     if (row.email) { const eb = `<p>مرحباً${row.name?' '+eEsc(row.name):''}،</p><p>${eEsc(body)}</p>`; sendEmail(row.email, title, emailTpl(title, eb, 'فتح المنصة', SITE_URL+'/')).catch(()=>{}); }
     let wa_link = null;
     const ph = normPhone(row.phone);
     if (ph) { const wm = `السلام عليكم، ${body}\nمنصة مناقصة: ${SITE_URL}/`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
-    await logAdmin(req, 'remind_engagement', 'user', row.user_id, 'تذكير تفاعل ('+(isBid?'عرض':'رسالة')+')');
+    await logAdmin(req, 'remind_engagement', 'user', uid, 'تذكير تفاعل');
     res.json({ ok:true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
