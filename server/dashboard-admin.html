@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-engagement">
       <div class="card" style="margin-bottom:14px">
         <div class="card-head"><h3>🔔 متابعة التفاعل</h3><span id="ow-eng-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
-        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">كل شخص عنده <b style="color:var(--red)">رسائل أو عروض لم يفتحها</b> — صف واحد يجمع الكل. يُذكَّر <b>تلقائياً مرتين يومياً</b> (إشعار + إيميل) حتى يفتح. وزر «تذكير» ينبّهه فوراً + يفتح واتساب جاهز.</div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">كل شخص عنده <b style="color:var(--red)">رسائل أو عروض لم يفتحها</b> — صف واحد يجمع الكل. يُذكَّر <b>تلقائياً بتدرّج</b> (٦س → ٢٤س → ٣أيام → يومي، حد ٥ تذكيرات) حتى يفتح. وزر «تذكير» ينبّهه فوراً + يفتح واتساب.</div>
       </div>
       <div id="engagement-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
@@ -1833,15 +1833,19 @@ function loadEngagement(){
     var cnt=document.getElementById('ow-eng-count');if(cnt)cnt.textContent=list.length?(list.length+' شخص لم يتفاعل'):'';
     if(!list.length){host.innerHTML=emptyState('الكل تفاعلوا مع تنبيهاتهم 🎉');return;}
     host.innerHTML=list.map(function(u){
-      var bids=parseInt(u.bids)||0, msgs=parseInt(u.messages)||0;
-      var parts=[];
-      if(msgs)parts.push('📩 '+msgs+' رسالة');
-      if(bids)parts.push('💼 '+bids+' عرض');
+      var bids=parseInt(u.bids)||0, msgs=parseInt(u.messages)||0, rem=parseInt(u.reminders_sent)||0;
+      var parts=[]; if(msgs)parts.push('📩 '+msgs+' رسالة'); if(bids)parts.push('💼 '+bids+' عرض');
+      var ignored=rem>=5;
+      var remInfo = rem?('<span style="color:#c2410e;font-weight:700"> · أُرسل له '+rem+' تذكير</span>'):'';
+      var ignoredBadge = ignored?'<span class="badge b-rej" style="white-space:nowrap">🔴 متجاهل</span>':'';
       return '<div class="card" id="eng-'+u.user_id+'" style="margin-bottom:10px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
           +'<div><span style="font-weight:800;font-size:14px">'+esc(u.user_name||'مستخدم')+'</span> <span style="font-size:11px;color:var(--muted);font-weight:600">'+(u.user_role==='provider'?'مزوّد':'عميل')+'</span>'
-            +'<div style="font-size:12.5px;color:var(--red);font-weight:800;margin-top:3px">● لم يفتح: '+parts.join(' + ')+'</div></div>'
-          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير</button>'
+            +'<div style="font-size:12.5px;color:var(--red);font-weight:800;margin-top:3px">● لم يفتح: '+parts.join(' + ')+remInfo+'</div></div>'
+          +(ignoredBadge||'')
+        +'</div>'
+        +'<div style="display:flex;gap:9px;margin-top:11px">'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير + واتساب</button>'
         +'</div>'
       +'</div>';
     }).join('');
