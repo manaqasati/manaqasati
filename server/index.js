@@ -4917,7 +4917,7 @@ app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'
 app.get('/api/admin/engagement', requirePermission('requests.view'), async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT n.user_id, u.name AS user_name, u.role AS user_role,
+      SELECT n.user_id, u.name AS user_name, u.role AS user_role, u.phone AS user_phone,
              COUNT(*) FILTER (WHERE n.type='bid') AS bids,
              COUNT(*) FILTER (WHERE n.type='message') AS messages,
              COUNT(*) AS total, MAX(n.created_at) AS last_at,
@@ -4925,7 +4925,7 @@ app.get('/api/admin/engagement', requirePermission('requests.view'), async (req,
       FROM notifications n JOIN users u ON u.id=n.user_id
       LEFT JOIN engagement_state es ON es.user_id=n.user_id
       WHERE n.type IN ('bid','message') AND n.is_read=false AND n.created_at > NOW() - INTERVAL '30 days'
-      GROUP BY n.user_id, u.name, u.role, es.reminders_sent, es.last_reminded
+      GROUP BY n.user_id, u.name, u.role, u.phone, es.reminders_sent, es.last_reminded
       ORDER BY total DESC, last_at DESC LIMIT 100`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
@@ -4933,19 +4933,19 @@ app.get('/api/admin/engagement', requirePermission('requests.view'), async (req,
 app.post('/api/admin/engagement/:id/remind', requirePermission('requests.review'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
-    const u = await pool.query('SELECT email, name, phone FROM users WHERE id=$1', [uid]);
+    const notifyOn = req.body.notify !== false;
+    const emailOn = !!req.body.email;
+    if (!notifyOn && !emailOn) return res.status(400).json({ message: 'اختر قناة واحدة على الأقل' });
+    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [uid]);
     if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = u.rows[0];
-    const title = '👋 لديك تنبيهات بانتظارك';
-    const body = 'لديك رسائل واستفسارات من المنفذين وعروض على مشاريعك لم تُفتح بعد. ادخل وتفاعل معها لتحصل على أفضل النتائج.';
-    await notify(uid, title, body, 'reminder', null);
-    if (row.email) { const eb = `<p>مرحباً${row.name?' '+eEsc(row.name):''}،</p><p>${eEsc(body)}</p>`; sendEmail(row.email, title, emailTpl(title, eb, 'فتح المنصة', SITE_URL+'/')).catch(()=>{}); }
+    const title = '👋 تذكير من مناقصة';
+    const body = String(req.body.message||'').trim() || 'لديك رسائل وعروض بانتظارك — ادخل وتفاعل معها لتحصل على أفضل النتائج.';
+    if (notifyOn) await notify(uid, title, body, 'reminder', null);
+    if (emailOn && row.email) { const eb = `<p>مرحباً${row.name?' '+eEsc(row.name):''}،</p><p>${eEsc(body).replace(/\n/g,'<br>')}</p>`; sendEmail(row.email, title, emailTpl(title, eb, 'فتح المنصة', SITE_URL+'/')).catch(()=>{}); }
     await pool.query(`INSERT INTO engagement_state (user_id, reminders_sent, last_reminded, updated_at) VALUES ($1,1,NOW(),NOW()) ON CONFLICT (user_id) DO UPDATE SET reminders_sent=engagement_state.reminders_sent+1, last_reminded=NOW(), updated_at=NOW()`, [uid]);
-    let wa_link = null;
-    const ph = normPhone(row.phone);
-    if (ph) { const wm = `السلام عليكم، ${body}\nمنصة مناقصة: ${SITE_URL}/`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
     await logAdmin(req, 'remind_engagement', 'user', uid, 'تذكير تفاعل يدوي');
-    res.json({ ok:true, wa_link });
+    res.json({ ok:true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
