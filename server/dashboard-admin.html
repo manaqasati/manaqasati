@@ -511,13 +511,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-engagement">
       <div class="card" style="margin-bottom:14px">
-        <div class="card-head"><h3>🔔 متابعة التفاعل</h3>
-          <div style="margin-inline-start:auto;display:flex;gap:6px">
-            <button id="eng-f-unread" class="btn-s" onclick="engFilter('unread')" style="padding:6px 12px;font-size:12px">لم يُفتح</button>
-            <button id="eng-f-all" class="btn-s" onclick="engFilter('all')" style="padding:6px 12px;font-size:12px">الكل</button>
-          </div>
-        </div>
-        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">من وصله <b>عرض</b> أو <b>رسالة محادثة</b> ولم يفتحها بعد. اضغط «تذكير» لتنبيهه عبر الإشعار + الإيميل + واتساب.</div>
+        <div class="card-head"><h3>🔔 متابعة التفاعل</h3><span id="ow-eng-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">كل شخص عنده <b style="color:var(--red)">رسائل أو عروض لم يفتحها</b> — صف واحد يجمع الكل. يُذكَّر <b>تلقائياً مرتين يومياً</b> (إشعار + إيميل) حتى يفتح. وزر «تذكير» ينبّهه فوراً + يفتح واتساب جاهز.</div>
       </div>
       <div id="engagement-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
@@ -1822,35 +1817,31 @@ var OW_PRESETS=[
   {t:'تحذير أخير',m:'هذا تنبيه أخير بخصوص تقديم عروض خارج نطاق خدمتكم بشكل متكرر. الاستمرار قد يؤدي إلى تقييد حسابكم مؤقتاً. نقدّر التزامكم.'}
 ];
 var _owFlags=[], _owFlagId=null;
-var _engFilter='unread', _engList=[];
-function engFilter(f){_engFilter=f;loadEngagement();}
+var _engList=[];
 function loadEngBadge(){
-  fetch(API+'/api/admin/engagement?filter=unread',hdr()).then(function(r){return r.json();}).then(function(l){
+  fetch(API+'/api/admin/engagement',hdr()).then(function(r){return r.json();}).then(function(l){
     var n=Array.isArray(l)?l.length:0; var b=document.getElementById('engagement-badge'); if(b){b.textContent=n;b.style.display=n?'flex':'none';}
   }).catch(function(){});
 }
 function loadEngagement(){
   var host=document.getElementById('engagement-list');if(!host)return;
-  var a=document.getElementById('eng-f-unread'),b=document.getElementById('eng-f-all');
-  if(a){a.style.background=_engFilter==='unread'?'var(--p)':'';a.style.color=_engFilter==='unread'?'#fff':'';}
-  if(b){b.style.background=_engFilter==='all'?'var(--p)':'';b.style.color=_engFilter==='all'?'#fff':'';}
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-  fetch(API+'/api/admin/engagement?filter='+_engFilter,hdr()).then(function(r){return r.json();}).then(function(list){
+  fetch(API+'/api/admin/engagement',hdr()).then(function(r){return r.json();}).then(function(list){
     if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
     _engList=list;
-    if(!list.length){host.innerHTML=emptyState(_engFilter==='unread'?'الكل تفاعلوا مع إشعاراتهم 🎉':'لا يوجد سجلّ');return;}
-    host.innerHTML=list.map(function(n){
-      var isBid=n.type==='bid';
-      var typeBadge=isBid?'<span class="badge b-open" style="white-space:nowrap">عرض</span>':'<span class="badge" style="background:#e0e7ff;color:#4338ca;white-space:nowrap">رسالة</span>';
-      var readBadge=n.is_read?'<span style="color:var(--green);font-size:12px;font-weight:700">✓ فُتح</span>':'<span style="color:#dc2626;font-size:12px;font-weight:800">● لم يُفتح</span>';
-      return '<div class="card" id="eng-'+n.id+'" style="margin-bottom:12px">'
+    var b=document.getElementById('engagement-badge');if(b){b.textContent=list.length;b.style.display=list.length?'flex':'none';}
+    var cnt=document.getElementById('ow-eng-count');if(cnt)cnt.textContent=list.length?(list.length+' شخص لم يتفاعل'):'';
+    if(!list.length){host.innerHTML=emptyState('الكل تفاعلوا مع تنبيهاتهم 🎉');return;}
+    host.innerHTML=list.map(function(u){
+      var bids=parseInt(u.bids)||0, msgs=parseInt(u.messages)||0;
+      var parts=[];
+      if(msgs)parts.push('📩 '+msgs+' رسالة');
+      if(bids)parts.push('💼 '+bids+' عرض');
+      return '<div class="card" id="eng-'+u.user_id+'" style="margin-bottom:10px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
-          +'<div style="font-weight:800;font-size:14px">'+esc(n.user_name||'مستخدم')+' <span style="font-size:11px;color:var(--muted);font-weight:600">'+(n.user_role==='provider'?'مزوّد':'عميل')+'</span></div>'
-          +typeBadge
-        +'</div>'
-        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">'+(isBid?'عرض على مشروع':'رسالة في مشروع')+': <b style="color:#334155">'+esc(n.project_title||'—')+'</b> · '+readBadge+'</div>'
-        +'<div style="display:flex;gap:9px;margin-top:11px">'
-          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+n.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير</button>'
+          +'<div><span style="font-weight:800;font-size:14px">'+esc(u.user_name||'مستخدم')+'</span> <span style="font-size:11px;color:var(--muted);font-weight:600">'+(u.user_role==='provider'?'مزوّد':'عميل')+'</span>'
+            +'<div style="font-size:12.5px;color:var(--red);font-weight:800;margin-top:3px">● لم يفتح: '+parts.join(' + ')+'</div></div>'
+          +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="engRemind('+u.user_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>تذكير</button>'
         +'</div>'
       +'</div>';
     }).join('');
