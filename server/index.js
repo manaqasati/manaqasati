@@ -365,12 +365,10 @@ app.get('/api/bids/public/:id', async (req, res) => {
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
     const rows = r.rows.map(x => {
       const { _p, ...rest } = x;
-      // تمويه نص العرض للزائر/المنافس إن كان السعر مخفياً — حماية السعر من التسريب داخل النص
+      // إخفاء نص العرض كاملاً للزائر/المنافس إن كان السعر خاصاً — يمنع تسريب السعر داخل النص (يبقى ظاهراً لصاحب المشروع والأدمن)
       const locked = (String(rest.price_visibility) === 'client') && !isPrivileged;
-      if (locked && rest.proposal) {
-        const full = String(rest.proposal);
-        rest.proposal = full.length > 70 ? full.slice(0, 70) : full;
-        rest.note_truncated = full.length > 70;
+      if (locked) {
+        rest.proposal = '🔒 تفاصيل هذا العرض خاصة — تظهر لصاحب المشروع فقط.';
         rest.note_locked = true;
       } else {
         rest.note_locked = false;
@@ -3082,6 +3080,29 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.put('/api/admin/bids/:id/reject', requirePermission('bids.delete'), async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const reason = String(req.body.reason||'').trim();
+    const b = await pool.query('SELECT b.provider_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [bidId]);
+    if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await pool.query("UPDATE bids SET status='rejected' WHERE id=$1", [bidId]);
+    await notify(b.rows[0].provider_id, '❌ رُفض عرضك', `رُفض عرضك على "${eEsc(b.rows[0].title)}" من إدارة المنصة${reason?': '+eEsc(reason):''}.`, 'bid_rejected', null);
+    await logAdmin(req, 'reject_bid', 'bid', bidId, 'رفض عرض');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/admin/bids/:id/request-edit', requirePermission('bids.delete'), async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const reason = String(req.body.reason||'').trim();
+    const b = await pool.query('SELECT b.provider_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [bidId]);
+    if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await notify(b.rows[0].provider_id, '📝 عرضك يحتاج تعديلاً', `عرضك على "${eEsc(b.rows[0].title)}" يحتاج تعديلاً${reason?': '+eEsc(reason):' — يرجى مراجعته وتحديثه'}. ادخل «عروضي» وعدّله.`, 'bid', null);
+    await logAdmin(req, 'request_edit_bid', 'bid', bidId, 'طلب تعديل عرض');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
   try {
     const bidId = parseInt(req.params.id);
