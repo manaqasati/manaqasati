@@ -2441,6 +2441,22 @@ function syncBidFiltersToHash(){
   var hash='#bids'+(parts.length?'?'+parts.join('&'):'');
   if(location.hash!==hash){window._skipHash=true;history.replaceState(null,'',hash);window._skipHash=false;}
 }
+function adminBidReject(id){
+  var reason=prompt('سبب الرفض (اختياري، يصل للمزوّد):');
+  if(reason===null)return;
+  fetch(API+'/api/admin/bids/'+id+'/reject',Object.assign({method:'PUT',body:JSON.stringify({reason:(reason||'').trim()})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الرفض','error');return;}toast('تم رفض العرض وإشعار المزوّد','success');if(typeof loadBids==='function')loadBids();})
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
+function adminBidEdit(id){
+  var reason=prompt('ملاحظة التعديل للمزوّد (مثال: لا تكتب السعر في نص العرض عند اختيار «السعر خاص»):');
+  if(reason===null)return;
+  fetch(API+'/api/admin/bids/'+id+'/request-edit',Object.assign({method:'PUT',body:JSON.stringify({reason:(reason||'').trim()})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('أُرسل طلب التعديل للمزوّد','success');})
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function renderBids(){
   syncBidFiltersToHash();
   var list=getFilteredBids();
@@ -2456,7 +2472,7 @@ function renderBids(){
         '<td style="font-weight:800">'+(b.price?fmtN(b.price)+' ر.س':'—')+'</td>'+
         '<td style="font-size:12px">'+(b.days?b.days+' يوم':'—')+'</td>'+
         '<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'+
-        '<td><div style="display:flex;gap:6px"><button class="act-btn ab-default" style="padding:6px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button></div></td>'+
+        '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'+(b.status==='pending'?'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px;color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="adminBidReject('+b.id+')">رفض</button>':'')+'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button></div></td>'+
         '</tr>';
     }).join('')+'</tbody></table>';
 }
