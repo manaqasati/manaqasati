@@ -503,8 +503,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-offerwatch">
       <div class="card" style="margin-bottom:14px">
-        <div class="card-head"><h3>🛡️ مراقبة العروض</h3><span id="ow-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
-        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج مدن خدمة المزوّد</b>. يُرسَل تنبيه تلقائي للمزوّد لحظة المخالفة، ويُسجّل هنا. تقدر ترسل تنبيهاً يدوياً بنص جاهز أو مخصّص.</div>
+        <div class="card-head"><h3>🛡️ مراقبة العروض</h3>
+          <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center">
+            <span id="ow-count" style="font-size:12.5px;font-weight:700;color:var(--muted)"></span>
+            <button class="act-btn ab-default" style="padding:6px 12px;font-size:12px;color:#dc2626;border-color:#fecaca" onclick="clearOfferFlags()">🗑️ مسح القديمة</button>
+          </div>
+        </div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج منطقة خدمة المزوّد</b> (نفس المنطقة = عادي، لا يُرصد — مثلاً الرياض والخرج). يُرسَل تنبيه تلقائي لحظة المخالفة. تقدر تنبّه يدوياً أو عبر واتساب.</div>
       </div>
       <div id="offerwatch-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
@@ -1919,15 +1924,20 @@ function loadOfferFlags(){
       var v=parseInt(f.violations)||1;
       var spam=(f.reason==='spam_speed');
       var badge=spam?'<span class="badge" style="background:#f3e8ff;color:#7c3aed;white-space:nowrap">نشاط مشبوه</span>':'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>';
-      var detail=spam?('عروض كثيرة في وقت قصير · '+esc(f.project_title||'مشروع')):('قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>');
+      var detail=spam?('عروض كثيرة في وقت قصير · '+esc(f.project_title||'مشروع')):('قدّم على مشروع: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>');
       return '<div class="card" id="owf-'+f.id+'" style="margin-bottom:12px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
-          +'<div style="font-weight:800;font-size:14px">'+esc(f.provider_name||'مزوّد')+' <span style="font-size:11px;color:var(--muted);font-weight:600">'+(f.provider_city?('من '+esc(f.provider_city)):'')+'</span></div>'
+          +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+            +'<span style="background:#dbeafe;color:#1d4ed8;font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:20px">مزوّد</span>'
+            +'<span style="font-weight:800;font-size:14px">'+esc(f.provider_name||'—')+'</span>'
+            +'<span style="font-size:11px;color:var(--muted);font-weight:600">'+(f.provider_city?('مدينته: '+esc(f.provider_city)):'')+'</span>'
+          +'</div>'
           +badge
         +'</div>'
-        +'<div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.8">'+detail+(f.auto_notified?' · <span style="color:var(--green)">✓ أُرسل التنبيه التلقائي</span>':'')+(v>1?' · <span style="color:#c2410e;font-weight:800">إجمالي مخالفاته: '+v+'</span>':'')+'</div>'
-        +'<div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">'
+        +'<div style="font-size:12.5px;color:var(--muted);margin-top:7px;line-height:1.9">'+detail+(f.auto_notified?' · <span style="color:var(--green)">✓ أُرسل التنبيه التلقائي</span>':'')+(v>1?' · <span style="color:#c2410e;font-weight:800">إجمالي مخالفاته: '+v+'</span>':'')+'</div>'
+        +'<div style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">'
           +'<button class="act-btn ab-default" style="color:#1d4ed8;border-color:#bfdbfe" onclick="openOwAlert('+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>تنبيه</button>'
+          +'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0" onclick="owWa('+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>واتساب</button>'
           +(f.bid_id?'<button class="act-btn ab-default" style="color:#dc2626;border-color:#fecaca" onclick="owDeleteBid('+f.bid_id+','+f.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف العرض</button>':'')
           +'<button class="act-btn ab-default" style="color:#b45309;border-color:#fde68a" onclick="owSuspend('+f.provider_id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>إيقاف المزوّد</button>'
         +'</div>'
@@ -1963,6 +1973,20 @@ function sendOwAlert(){
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
     .then(function(res){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;} toast('تم إرسال التنبيه للمزوّد ✓','success'); closeModal('owAlertModal'); })
     .catch(function(){ if(btn){btn.disabled=false;btn.textContent='📣 أرسل التنبيه';} toast('تعذّر الاتصال','error'); });
+}
+function owWa(flagId){
+  var f=(_owFlags||[]).find(function(x){return x.id===flagId;});
+  var ph=_waNorm(f&&f.provider_phone);
+  if(!ph){toast('لا يوجد رقم واتساب صالح لهذا المزوّد','error');return;}
+  var msg='السلام عليكم، نرجو تقديم العروض فقط للمشاريع ضمن مناطق خدمتكم — لضمان وصول عروضكم للمشاريع المناسبة. منصة مناقصة.';
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
+}
+function clearOfferFlags(){
+  if(!confirm('مسح كل مخالفات العروض القديمة؟ (يبدأ الرصد من جديد — لا يؤثّر على العروض نفسها)'))return;
+  fetch(API+'/api/admin/offer-flags/clear',Object.assign({method:'POST'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){if(!res.ok){toast((res.d&&res.d.message)||'تعذّر المسح','error');return;}toast('تم مسح '+(res.d.cleared||0)+' مخالفة','success');loadOfferFlags();})
+    .catch(function(){toast('تعذّر الاتصال','error');});
 }
 function owDeleteBid(bidId,flagId){
   if(!confirm('حذف هذا العرض نهائياً؟'))return;
