@@ -525,7 +525,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-contactlog">
       <div class="card" style="margin-bottom:14px">
-        <div class="card-head"><h3>📇 سجل فتح التواصل</h3><span id="cl-count" style="margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--muted)"></span></div>
+        <div class="card-head"><h3>📇 سجل فتح التواصل</h3>
+          <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center">
+            <span id="cl-count" style="font-size:12.5px;font-weight:700;color:var(--muted)"></span>
+            <button class="act-btn ab-default" style="padding:6px 12px;font-size:12px;color:#1d4ed8;border-color:#bfdbfe" onclick="openNotifyBidders()">📣 تنبيه أصحاب العروض بالتواصل</button>
+          </div>
+        </div>
         <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">سجل كل مرة انفتح فيها رقم العميل لمزوّد (بعد تقديم عرض حقيقي). مرجع لحماية عمولتك ومتابعة التواصل خارج المنصة.</div>
       </div>
       <div id="contactlog-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
@@ -820,6 +825,17 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="notifyBiddersModal">
+  <div class="modal">
+    <div class="modal-head"><h3>📣 تنبيه أصحاب العروض بالتواصل</h3><button class="modal-x" onclick="closeModal('notifyBiddersModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.9;margin-bottom:12px">المزوّدون اللي عندهم <b>عرض حقيقي</b> (سعر + تفاصيل أو ملف) ويقدرون يتواصلون الآن. أرسل لهم إشعار + إيميل دفعة وحدة، أو نبّه كل واحد بالواتساب.</div>
+      <button class="btn-p" id="nb-sendall" onclick="notifyAllBidders()" style="width:100%;margin-bottom:14px">📩 إرسال إشعار + إيميل للكل</button>
+      <div id="nb-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+    </div>
+    <div class="modal-foot"><button class="btn-s" onclick="closeModal('notifyBiddersModal')">إغلاق</button></div>
+  </div>
+</div>
 <div class="overlay" id="engRemindModal">
   <div class="modal">
     <div class="modal-head"><h3>📣 تذكير المستخدم</h3><button class="modal-x" onclick="closeModal('engRemindModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -1861,6 +1877,36 @@ function loadEngBadge(){
   fetch(API+'/api/admin/engagement',hdr()).then(function(r){return r.json();}).then(function(l){
     var n=Array.isArray(l)?l.length:0; var b=document.getElementById('engagement-badge'); if(b){b.textContent=n;b.style.display=n?'flex':'none';}
   }).catch(function(){});
+}
+var _rbList=[];
+function openNotifyBidders(){
+  document.getElementById('notifyBiddersModal').classList.add('show');
+  var host=document.getElementById('nb-list');host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/real-bidders',hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _rbList=list;
+    if(!list.length){host.innerHTML=emptyState('لا يوجد مزوّدون بعروض حقيقية حالياً');return;}
+    host.innerHTML='<div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">'+list.length+' مزوّد:</div>'+list.map(function(p){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">'
+        +'<div><span style="font-weight:700;font-size:13px">'+esc(p.provider_name||'مزوّد')+'</span> <span style="font-size:11px;color:var(--muted)">('+(parseInt(p.real_offers)||0)+' عرض)</span></div>'
+        +'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0;padding:5px 11px;font-size:11px" onclick="rbWa('+p.provider_id+')">واتساب</button>'
+      +'</div>';
+    }).join('');
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function rbWa(pid){
+  var p=(_rbList||[]).find(function(x){return x.provider_id===pid;});
+  var ph=_waNorm(p&&p.provider_phone);
+  if(!ph){toast('لا يوجد رقم واتساب صالح','error');return;}
+  var msg='🎉 خبر يهمك من منصة مناقصة: عروضك الحقيقية صارت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع! افتح المشروع أو «مشاريعي وعروضي» وبتلقى أزرار التواصل مفتوحة.';
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
+}
+function notifyAllBidders(){
+  var btn=document.getElementById('nb-sendall');if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  fetch(API+'/api/admin/notify-real-bidders',Object.assign({method:'POST'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){if(btn){btn.disabled=false;btn.textContent='📩 إرسال إشعار + إيميل للكل';}if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('تم إرسال التنبيه لـ'+(res.d.sent||0)+' مزوّد ✓','success');})
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='📩 إرسال إشعار + إيميل للكل';}toast('تعذّر الاتصال','error');});
 }
 function loadContactLog(){
   var host=document.getElementById('contactlog-list');if(!host)return;
