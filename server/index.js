@@ -4484,6 +4484,7 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
     const where = conds.length ? 'WHERE '+conds.join(' AND ') : '';
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
+        b.price_visibility, b.price_unit, b.attachment_url,
         u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
         rq.title as request_title, rq.client_id,
         cu.name as client_name
