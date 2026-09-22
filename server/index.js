@@ -1724,6 +1724,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -2438,7 +2439,18 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, CASE WHEN b.status='accepted' THEN u.phone ELSE NULL END as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+      CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
+      ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted') as contact_unlocked
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
+    try {
+      for (const b of r.rows) {
+        if (b.contact_unlocked && b.client_id) {
+          await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [req.user.id, b.client_id, b.request_id, b.id]);
+        }
+      }
+    } catch(e) {}
     res.json(r.rows);
   } catch(e) { console.error('/provider/bids:', e); res.json([]); }
 });
@@ -4922,6 +4934,21 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     await logAdmin(req, 'invite_providers', 'request', id, 'دعوة المزودين ('+rows.length+')');
     res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT cu.id, cu.request_id, cu.created_at,
+             p.name AS provider_name, p.phone AS provider_phone,
+             c.name AS client_name, c.phone AS client_phone,
+             rq.title AS project_title
+      FROM contact_unlocks cu
+      LEFT JOIN users p ON p.id=cu.provider_id
+      LEFT JOIN users c ON c.id=cu.client_id
+      LEFT JOIN requests rq ON rq.id=cu.request_id
+      ORDER BY cu.created_at DESC LIMIT 300`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req, res) => {
   try {
