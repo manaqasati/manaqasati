@@ -781,6 +781,13 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="bidViewModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="bidview-title">تفاصيل العرض</h3><button class="modal-x" onclick="closeModal('bidViewModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="bidview-body"></div>
+    <div class="modal-foot" id="bidview-foot"></div>
+  </div>
+</div>
 <div class="overlay" id="editBidModal">
   <div class="modal">
     <div class="modal-head"><h3>تعديل عرض <span id="eb-prov" style="color:#1e40af"></span></h3><button class="modal-x" onclick="closeModal('editBidModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -2457,6 +2464,50 @@ function adminBidEdit(id){
     .then(function(res){if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('أُرسل طلب التعديل للمزوّد','success');})
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
+function _bidMenu(btn,id,status){
+  try{event.stopPropagation();}catch(e){}
+  var m=document.getElementById('rowMenu');
+  if(!m){m=document.createElement('div');m.id='rowMenu';m.className='rowdd-menu';document.body.appendChild(m);}
+  if(m.classList.contains('open')&&m._rid==='b'+id){m.classList.remove('open');return;}
+  m._rid='b'+id;
+  var _pend=(status==='pending');
+  m.innerHTML=''
+    +'<button class="rowdd-item" onclick="_rmClose();openBidView('+id+')"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض التفاصيل</button>'
+    +(_pend?'<button class="rowdd-item" style="color:#c2410e" onclick="_rmClose();adminBidEdit('+id+')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>طلب تعديل</button>':'')
+    +(_pend?'<button class="rowdd-item danger" onclick="_rmClose();adminBidReject('+id+')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>رفض العرض</button>':'')
+    +'<button class="rowdd-item" onclick="_rmClose();editBid('+id+')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل</button>'
+    +'<button class="rowdd-item danger" onclick="_rmClose();delBid('+id+')"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>حذف</button>';
+  m.classList.add('open');
+  var r=btn.getBoundingClientRect();
+  var mw=m.offsetWidth||190, mh=m.offsetHeight||240;
+  var left=r.left; if(left+mw>window.innerWidth-8)left=window.innerWidth-mw-8; if(left<8)left=8;
+  var top=r.bottom+6; if(top+mh>window.innerHeight-8)top=Math.max(8,r.top-mh-6);
+  m.style.left=left+'px'; m.style.top=top+'px';
+}
+function openBidView(id){
+  var b=(_allBids||[]).find(function(x){return x.id===id;}); if(!b)return;
+  var vis=(b.price_visibility==='public')?'عام (يظهر للكل)':'خاص (لصاحب المشروع فقط)';
+  var unit=(b.price_unit==='total'||!b.price_unit)?'إجمالي':b.price_unit;
+  var body='<div style="font-size:13px;line-height:2.1">'
+    +'<div><b>المزود:</b> '+esc(b.provider_business||b.provider_name||'—')+(b.provider_city?(' · '+esc(b.provider_city)):'')+'</div>'
+    +'<div><b>المشروع:</b> '+esc(b.request_title||'—')+(b.client_name?(' · العميل: '+esc(b.client_name)):'')+'</div>'
+    +'<div><b>السعر:</b> '+(b.price?fmtN(b.price)+' ر.س':'—')+' <span style="color:var(--muted);font-size:12px">('+esc(vis)+' · '+esc(unit)+')</span></div>'
+    +'<div><b>المدة:</b> '+(b.days?b.days+' يوم':'—')+'</div>'
+    +'</div>'
+    +'<div style="margin-top:14px;font-weight:800;font-size:13px;color:#334155">نص العرض:</div>'
+    +'<div style="background:var(--bg,#f8fafc);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-top:6px;font-size:13px;line-height:1.9;white-space:pre-wrap;max-height:300px;overflow:auto">'+esc(b.note||'— لا يوجد نص —')+'</div>'
+    +(b.attachment_url?('<a href="'+esc(b.attachment_url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:#1d4ed8;font-weight:800;font-size:13px;text-decoration:none">📎 عرض ملف السعر المرفق ↗</a>'):'');
+  document.getElementById('bidview-body').innerHTML=body;
+  document.getElementById('bidview-title').textContent='عرض من '+((b.provider_business||b.provider_name)||'مزوّد');
+  var ft=document.getElementById('bidview-foot');
+  if(ft){
+    var acts='';
+    if(b.status==='pending'){acts+='<button class="btn-s" style="color:#c2410e;border:1px solid #fed7aa" onclick="closeModal(\'bidViewModal\');adminBidEdit('+id+')">🟠 طلب تعديل</button><button class="btn-s" style="color:#dc2626;border:1px solid #fecaca" onclick="closeModal(\'bidViewModal\');adminBidReject('+id+')">🔴 رفض</button>';}
+    acts+='<button class="btn-s" onclick="closeModal(\'bidViewModal\')">إغلاق</button>';
+    ft.innerHTML=acts;
+  }
+  document.getElementById('bidViewModal').classList.add('show');
+}
 function renderBids(){
   syncBidFiltersToHash();
   var list=getFilteredBids();
@@ -2472,7 +2523,7 @@ function renderBids(){
         '<td style="font-weight:800">'+(b.price?fmtN(b.price)+' ر.س':'—')+'</td>'+
         '<td style="font-size:12px">'+(b.days?b.days+' يوم':'—')+'</td>'+
         '<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'+
-        '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'+(b.status==='pending'?'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px;color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="adminBidReject('+b.id+')">رفض</button>':'')+'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button></div></td>'+
+        '<td><div style="display:flex;gap:6px;align-items:center"><button class="act-btn ab-default" style="padding:6px 12px;font-size:11px" onclick="openBidView('+b.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-default" style="padding:5px 11px;font-size:16px;font-weight:900;line-height:1" onclick="_bidMenu(this,'+b.id+',\''+b.status+'\')">⋯</button></div></td>'+
         '</tr>';
     }).join('')+'</tbody></table>';
 }
