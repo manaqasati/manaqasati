@@ -1172,7 +1172,7 @@ function getFilteredUsers(){
     if(u.role==='admin')return false;
     if(_roleFilter!=='all'&&u.role!==_roleFilter)return false;
     if(_searchTerm&&!(u.name||'').toLowerCase().includes(_searchTerm)&&!(u.email||'').toLowerCase().includes(_searchTerm)&&!String(u.phone||'').includes(_searchTerm))return false;
-    if(ci.length&&ci.indexOf(u.city)<0)return false;
+    if(ci.length){ var _eff={}; ci.forEach(function(v){ if(v.indexOf('منطقة ')===0){(INV_REGIONS[v.slice(6)]||[]).forEach(function(c){_eff[c]=1;});} else _eff[v]=1; }); if(!_eff[u.city])return false; }
     if(sp.length){var _a=(u.specialties||[]).concat(u.notify_categories||[]);if(!sp.some(function(x){return _a.indexOf(x)>=0;}))return false;}
     if(stt==='active'&&!u.is_active)return false;
     if(stt==='banned'&&u.is_active)return false;
@@ -1226,7 +1226,8 @@ function fillUserFilters(){
   var baseCities=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','الرس','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء','حفر الباطن','الخرج','المجمعة','الزلفي','شقراء','الدوادمي','القويعية','وادي الدواسر','بيشة','محايل عسير','صبيا','أبو عريش','الليث','القنفذة','رابغ','ضباء','الوجه','تيماء','دومة الجندل','طريف'];
   var citySet2={}; baseCities.forEach(function(c){citySet2[c]=1;}); Object.keys(cityset).forEach(function(c){citySet2[c]=1;});
   var cityOpts=Object.keys(citySet2).sort(function(a,b){return a.localeCompare(b,'ar');});
-  msSetup('city','كل المدن',cityOpts,renderUsers);
+  var regionOpts=Object.keys(INV_REGIONS).map(function(rg){return 'منطقة '+rg;});
+  msSetup('city','كل المدن',regionOpts.concat(cityOpts),renderUsers);
   fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
     var canon=(d&&(d.categories||d))||[]; var set={}; canon.forEach(function(c){set[c]=1;}); Object.keys(specset).forEach(function(c){set[c]=1;});
     msSetup('spec','كل التخصصات',Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');}),renderUsers);
