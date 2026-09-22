@@ -192,6 +192,24 @@ async function notifyMatchingProviders(request){
     if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
   }catch(e){ console.error('notifyMatchingProviders:', e.message); }
 }
+const _REGIONS = {
+  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية'],
+  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور'],
+  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة'],
+  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص'],
+  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا'],
+  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة'],
+  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
+  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
+  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
+  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة'],
+  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
+  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى'],
+  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
+};
+const _CITY2REGION = {};
+for (const _rg in _REGIONS) { for (const _c of _REGIONS[_rg]) _CITY2REGION[_c] = _rg; }
+function sameRegion(a, b){ if(!a||!b) return false; const ra=_CITY2REGION[String(a).trim()], rb=_CITY2REGION[String(b).trim()]; return !!ra && ra===rb; }
 async function matchingProviders(cat, city, allCities, cities){
   let cityCond, params;
   if (allCities) { cityCond='TRUE'; params=[cat]; }
@@ -2951,7 +2969,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const reqCity = reqRow.rows[0].city;
       const pv = provInfo.rows[0] || {};
       const svcCities = Array.isArray(pv.service_cities) ? pv.service_cities : [];
-      const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0;
+      const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0 || sameRegion(pv.city, reqCity) || svcCities.some(c => sameRegion(c, reqCity));
       if (!inScope) {
         const warnMsg = 'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم — لضمان وصول عروضكم للمشاريع المناسبة، وزيادة فرص اختياركم، وتجنب العروض خارج نطاق خدمتكم.';
         await notify(req.user.id, '⚠️ عرض خارج نطاق خدمتك', warnMsg, 'bid', requestId);
@@ -4909,13 +4927,20 @@ app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req
   try {
     const r = await pool.query(`
       SELECT f.id, f.bid_id, f.provider_id, f.request_id, f.provider_city, f.request_city, f.reason, f.auto_notified, f.created_at,
-             u.name AS provider_name, r.title AS project_title,
+             u.name AS provider_name, u.phone AS provider_phone, r.title AS project_title,
              (SELECT COUNT(*) FROM offer_flags f2 WHERE f2.provider_id=f.provider_id) AS violations
       FROM offer_flags f
       LEFT JOIN users u ON u.id=f.provider_id
       LEFT JOIN requests r ON r.id=f.request_id
       ORDER BY f.created_at DESC LIMIT 200`);
     res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/offer-flags/clear', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM offer_flags');
+    await logAdmin(req, 'clear_offer_flags', 'system', null, 'مسح مخالفات العروض القديمة');
+    res.json({ ok: true, cleared: r.rowCount || 0 });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'), async (req, res) => {
