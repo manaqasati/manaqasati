@@ -4948,6 +4948,42 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+app.get('/api/admin/real-bidders', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.provider_id, u.name AS provider_name, u.phone AS provider_phone,
+             COUNT(*) AS real_offers
+      FROM bids b JOIN users u ON u.id=b.provider_id
+      WHERE b.status='pending' AND b.price IS NOT NULL AND b.price>0
+        AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)
+        AND COALESCE(u.is_active,TRUE)=TRUE
+      GROUP BY b.provider_id, u.name, u.phone
+      ORDER BY real_offers DESC LIMIT 500`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/notify-real-bidders', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT DISTINCT b.provider_id, u.email, u.name
+      FROM bids b JOIN users u ON u.id=b.provider_id
+      WHERE b.status='pending' AND b.price IS NOT NULL AND b.price>0
+        AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)
+        AND COALESCE(u.is_active,TRUE)=TRUE`);
+    const title = '🎉 صار بإمكانك التواصل مباشرة مع أصحاب مشاريعك';
+    const body = 'خبر يهمك: العروض الحقيقية التي قدّمتها أصبحت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع. افتح المشروع أو ادخل «مشاريعي وعروضي» وستجد أزرار التواصل مفتوحة. سرعة تواصلك ترفع فرصك في الفوز.';
+    let sent = 0;
+    for (const p of r.rows) {
+      try {
+        await notify(p.provider_id, title, body, 'reminder', null);
+        if (p.email) sendEmail(p.email, title, emailTpl(title, `<p>مرحباً${p.name?' '+eEsc(p.name):''}،</p><p>${eEsc(body)}</p>`, 'مشاريعي وعروضي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        sent++;
+      } catch(e) {}
+    }
+    await logAdmin(req, 'notify_real_bidders', 'system', null, 'تنبيه أصحاب العروض بالتواصل ('+sent+')');
+    res.json({ ok: true, sent });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async (req, res) => {
   try {
     const r = await pool.query(`
