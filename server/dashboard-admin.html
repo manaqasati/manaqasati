@@ -3169,8 +3169,8 @@ function _renderOutreach(st, cov){
       +'<button onclick="_oSearch()" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-family:Tajawal;font-weight:800;cursor:pointer">بحث</button>'
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:10px 12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #a7f3d0;border-radius:10px">'
-      +'<span style="font-size:12.5px;font-weight:800;color:#065f46">🧹 كنس مدينة كاملة</span>'
-      +'<select id="o-sweep-city" style="padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:#fff;color:var(--text);cursor:pointer">'+Object.keys(_OAREAS).map(function(c){return '<option value="'+c+'">'+c+' ('+_OAREAS[c].length+' حي)</option>';}).join('')+'</select>'
+      +'<span style="font-size:12.5px;font-weight:800;color:#065f46">🧹 كنس مدينة أو منطقة كاملة</span>'
+      +'<select id="o-sweep-city" style="padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:#fff;color:var(--text);cursor:pointer"><optgroup label="🗺️ مناطق كاملة">'+Object.keys(INV_REGIONS).map(function(rg){var cnt=INV_REGIONS[rg].filter(function(c){return _OAREAS[c];}).length;return '<option value="region:'+rg+'">'+rg+' — كل مدنها ('+cnt+' مدينة)</option>';}).join('')+'</optgroup><optgroup label="🏙️ مدينة واحدة">'+Object.keys(_OAREAS).map(function(c){return '<option value="'+c+'">'+c+' ('+_OAREAS[c].length+' حي)</option>';}).join('')+'</optgroup></select>'
       +'<span style="font-size:11.5px;color:#065f46;font-weight:700">الهدف:</span>'
       +'<input id="o-sweep-target" type="number" value="300" min="20" max="1000" style="width:74px;padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;background:#fff;color:var(--text);text-align:center">'
       +'<button id="o-sweep-btn" onclick="_oSweep()" style="background:#059669;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">🧹 ابدأ الكنس</button>'
@@ -3376,9 +3376,15 @@ function _oSweepStopFn(){ _oSweepStop=true; var s=document.getElementById('o-swe
 async function _oSweep(){
   var term=((document.getElementById('o-q')||{}).value||'').trim();
   if(!term){ toast('اكتب التخصص أولاً بالأعلى (مثال: مكيفات)','error'); var qi=document.getElementById('o-q'); if(qi)qi.focus(); return; }
-  var city=(document.getElementById('o-sweep-city')||{}).value||'';
-  var areas=(_OAREAS[city]||[]).slice();
-  if(!areas.length){ toast('لا توجد قائمة أحياء لهذه المدينة','error'); return; }
+  var sel=(document.getElementById('o-sweep-city')||{}).value||'';
+  var targets=[];
+  if(sel.indexOf('region:')===0){
+    var _rg=sel.slice(7); (INV_REGIONS[_rg]||[]).forEach(function(c){ (_OAREAS[c]||[]).forEach(function(a){ targets.push({city:c,area:a}); }); });
+    if(!targets.length){ toast('لا توجد بيانات أحياء لمدن هذه المنطقة','error'); return; }
+  } else {
+    (_OAREAS[sel]||[]).forEach(function(a){ targets.push({city:sel,area:a}); });
+    if(!targets.length){ toast('لا توجد قائمة أحياء لهذه المدينة','error'); return; }
+  }
   var target=parseInt((document.getElementById('o-sweep-target')||{}).value)||300;
   _oSweepStop=false;
   var btn=document.getElementById('o-sweep-btn'), stop=document.getElementById('o-sweep-stop'), prog=document.getElementById('o-sweep-prog');
@@ -3387,13 +3393,13 @@ async function _oSweep(){
   if(prog)prog.style.display='block';
   var seen={}, acc=[], newCnt=0;
   var rbox=document.getElementById('o-results'); if(rbox)rbox.innerHTML='';
-  for(var i=0;i<areas.length;i++){
+  for(var i=0;i<targets.length;i++){
     if(_oSweepStop) break;
     if(acc.length>=target) break;
-    var area=areas[i];
-    if(prog)prog.innerHTML='⏳ يكنس: <b>'+esc(area)+'</b> ('+(i+1)+'/'+areas.length+') · جُمِع <b style="color:#059669">'+acc.length+'</b> · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b>';
+    var _tc=targets[i].city, area=targets[i].area;
+    if(prog)prog.innerHTML='⏳ يكنس: <b>'+esc(area)+'</b> — '+esc(_tc)+' ('+(i+1)+'/'+targets.length+') · جُمِع <b style="color:#059669">'+acc.length+'</b> · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b>';
     try{
-      var d=await fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:term+' '+area+' '+city,pages:2})}).then(function(r){return r.json();});
+      var d=await fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:term+' '+area+' '+_tc,pages:2})}).then(function(r){return r.json();});
       (d.results||[]).forEach(function(p){
         if(p.place_id && !seen[p.place_id]){ seen[p.place_id]=1; acc.push(p); if(!p.exists && p.phone_norm) newCnt++; }
       });
