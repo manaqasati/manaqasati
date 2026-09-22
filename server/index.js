@@ -1021,6 +1021,17 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function sendCommissionReminder(providerId, requestId){
+  try {
+    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [providerId]);
+    const rq = await pool.query('SELECT title FROM requests WHERE id=$1', [requestId]);
+    const tt = rq.rows.length ? (rq.rows[0].title||'') : '';
+    const title = '💰 تذكير: عمولة المنصة عند إتمام الاتفاق';
+    const body = 'حصلت على بيانات تواصل صاحب مشروع'+(tt?(' «'+tt+'»'):'')+'. تذكيراً ودّياً: عند اتفاقك معه تُطبَّق رسوم المنصة (٣٪ من قيمة العقد) — سواء داخل المنصة أو خارجها، حفاظاً على حقوق الجميع. سدّدها من صفحة الدفع عند إتمام الصفقة.';
+    await notify(providerId, title, body, 'saai', requestId);
+    if (u.rows.length && u.rows[0].email) sendEmail(u.rows[0].email, title, emailTpl(title, `<p>مرحباً${u.rows[0].name?' '+eEsc(u.rows[0].name):''}،</p><p>${eEsc(body)}</p>`, 'صفحة الدفع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+  } catch(e){ console.error('commissionReminder:', e.message); }
+}
 async function logAdmin(req, action, targetType, targetId, details) {
   try {
     await pool.query(
@@ -1725,6 +1736,7 @@ async function setupDatabase() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
+    try { await pool.query('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); } catch(e){}
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -2447,7 +2459,8 @@ app.get('/api/provider/bids', auth, async (req, res) => {
     try {
       for (const b of r.rows) {
         if (b.contact_unlocked && b.client_id) {
-          await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [req.user.id, b.client_id, b.request_id, b.id]);
+          const _ins = await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [req.user.id, b.client_id, b.request_id, b.id]);
+          if (_ins.rowCount > 0) sendCommissionReminder(req.user.id, b.request_id);
         }
       }
     } catch(e) {}
@@ -2612,7 +2625,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
         const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`, [id, uid]);
         if (rb.rows.length) {
           isRealBidder = true;
-          try { await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [uid, row.client_id, id, rb.rows[0].id]); } catch(e){}
+          try { const _ins = await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [uid, row.client_id, id, rb.rows[0].id]); if (_ins.rowCount > 0) sendCommissionReminder(uid, id); } catch(e){}
         }
       } catch(e) {}
     }
