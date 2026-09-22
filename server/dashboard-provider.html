@@ -1374,6 +1374,12 @@ async function loadWorks(){
   var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
   var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
   var html='<div class="pghd"><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
+  if(_myBids.some(function(b){return b.contact_unlocked;}) && !(function(){try{return localStorage.getItem('mnq_contact_banner_seen');}catch(e){return 0;}})()){
+    html+='<div id="contact-banner" style="background:linear-gradient(135deg,#065f46,#059669);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:200px"><div style="font-weight:800;font-size:14px;margin-bottom:3px">✨ جديد: تواصل مباشر مع أصحاب مشاريعك</div><div style="font-size:12px;opacity:.92;line-height:1.7">عروضك الحقيقية تتيح لك الآن الاتصال والواتساب مباشرة مع العميل — افتح العرض بالأسفل وبتلقى أزرار التواصل.</div></div>'
+      +'<button onclick="var e=document.getElementById(&quot;contact-banner&quot;);if(e)e.remove();try{localStorage.setItem(&quot;mnq_contact_banner_seen&quot;,&quot;1&quot;);}catch(x){}" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">فهمت ✓</button>'
+    +'</div>';
+  }
   html+='<div class="stat-grid"><div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div><div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div><div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div><div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div></div>';
   html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
