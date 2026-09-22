@@ -2596,7 +2596,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    // خصوصية العميل: جواله يظهر فقط لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن
+    // خصوصية العميل: جواله يظهر لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن، أو مزوّد قدّم عرضاً حقيقياً
     const uid = req.user && req.user.id, role = req.user && req.user.role;
     const isOwner = uid && uid === row.client_id;
     const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
@@ -2605,9 +2605,22 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) {
       return res.status(404).json({ message: 'غير موجود' });
     }
-    if (!(isOwner || isAssigned || isAdmin)) {
+    // فتح التواصل لمزوّد قدّم عرضاً حقيقياً (سعر + تفاصيل كافية أو ملف مرفق)
+    let isRealBidder = false;
+    if (uid && !isOwner && !isAdmin) {
+      try {
+        const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`, [id, uid]);
+        if (rb.rows.length) {
+          isRealBidder = true;
+          try { await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [uid, row.client_id, id, rb.rows[0].id]); } catch(e){}
+        }
+      } catch(e) {}
+    }
+    if (!(isOwner || isAssigned || isAdmin || isRealBidder)) {
       row.client_phone = null;
       if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
+    }
+    if (!(isOwner || isAssigned || isAdmin)) {
       row.provider_phone = null;
     }
     // ملاحظات المراجعة الموجّهة للعميل (طلب تعديل): لصاحب المشروع أو الأدمن فقط
