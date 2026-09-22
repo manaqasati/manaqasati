@@ -456,10 +456,6 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
   </div>
   <div class="content">
-    <div id="verify-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92620e;padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13px;font-weight:700;align-items:center;gap:10px;flex-wrap:wrap">
-      <span>✉️ فعّل بريدك الإلكتروني لتتمكن من تقديم العروض.</span>
-      <button id="verify-resend" onclick="resendVerify()" style="margin-inline-start:auto;background:#1e3a8a;color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12px;cursor:pointer">إعادة إرسال رابط التفعيل</button>
-    </div>
     <div class="page on" id="page-home"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-browse"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-works"><div class="loading">جاري التحميل...</div></div>
@@ -705,16 +701,6 @@ function enableRequestRole(btn){
     else { btn.disabled=false; btn.textContent=_t; showToast((r&&r.message)||'تعذّر التفعيل','error'); }
   }).catch(function(){ btn.disabled=false; btn.textContent=_t; showToast('تعذّر التفعيل','error'); });
 }
-function _checkVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(_me && _me.email_verified===false){ b.style.display='flex'; } }catch(e){} }
-function resendVerify(){
-  var btn=document.getElementById('verify-resend'); if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
-  _api('/api/auth/resend-verification',{method:'POST',body:JSON.stringify({})}).then(function(d){
-    if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';}
-    if(d&&d.ok){ showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} }
-    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); }
-  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} showToast('تعذّر الاتصال','error'); });
-}
-window.addEventListener('load',function(){try{_checkVerify();}catch(e){}});
 function showToast(msg,type){
   var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');if(!el)return;
   ic.textContent=type==='success'?'':type==='error'?'':'i';
@@ -1450,6 +1436,21 @@ function _renderBids(list){
     h+='<div class="wz-cell"><div class="wz-lbl">تاريخ العرض</div><div class="wz-val sm">'+_fdt(b.created_at)+'</div></div>';
     h+='</div>';
     if(b.note)h+='<div class="wz-note fmt-text">'+fmtText(b.note)+'</div>';
+    if(b.contact_unlocked && b.client_phone){
+      var _pc=String(b.client_phone).replace(/[^0-9]/g,'');
+      var _wn=_pc.indexOf('966')===0?_pc:(_pc.indexOf('0')===0?'966'+_pc.slice(1):'966'+_pc);
+      var _wt='مرحباً '+(b.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(b.request_title||'')+'\nأنا '+((typeof _me!=='undefined'&&_me&&_me.name)||'المزود')+'.';
+      h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:11px 13px;margin-top:10px">';
+      h+='<div style="font-size:12px;font-weight:800;color:#166534;margin-bottom:8px">📞 تواصل مع '+_esc(b.client_name||'العميل')+'</div>';
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+      h+='<a href="https://wa.me/'+_wn+'?text='+encodeURIComponent(_wt)+'" target="_blank" style="padding:10px;background:#25d366;color:#fff;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">واتساب</a>';
+      h+='<a href="tel:'+_esc(b.client_phone)+'" style="padding:10px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">اتصال</a>';
+      h+='</div>';
+      h+='<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.6">💡 التعامل داخل المنصة يحفظ حقوقك والضمان.</div>';
+      h+='</div>';
+    } else if(!isRej){
+      h+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:11px 13px;margin-top:10px;font-size:11.5px;color:#92620e;line-height:1.7">⚠️ لمشاهدة بيانات العميل والتواصل معه: أرفق عرضاً حقيقياً وواضحاً (سعر + تفاصيل كافية أو ملف عرض سعر). العروض الفاضية أو العبث تعرّض حسابك للإيقاف.</div>';
+    }
     h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view">عرض المشروع</button>';
     if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
     if(!isAcc&&!isRej){
