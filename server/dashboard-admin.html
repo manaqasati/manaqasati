@@ -1908,22 +1908,61 @@ function notifyAllBidders(){
     .then(function(res){if(btn){btn.disabled=false;btn.textContent='📩 إرسال إشعار + إيميل للكل';}if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('تم إرسال التنبيه لـ'+(res.d.sent||0)+' مزوّد ✓','success');})
     .catch(function(){if(btn){btn.disabled=false;btn.textContent='📩 إرسال إشعار + إيميل للكل';}toast('تعذّر الاتصال','error');});
 }
+var _clList=[];
 function loadContactLog(){
   var host=document.getElementById('contactlog-list');if(!host)return;
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/contact-unlocks',hdr()).then(function(r){return r.json();}).then(function(list){
     if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _clList=list;
     var cnt=document.getElementById('cl-count');if(cnt)cnt.textContent=list.length?(list.length+' عملية فتح'):'';
-    if(!list.length){host.innerHTML=emptyState('لا يوجد سجل بعد');return;}
-    host.innerHTML='<table><thead><tr><th>المزوّد</th><th>العميل</th><th>المشروع</th><th>التاريخ</th></tr></thead><tbody>'+list.map(function(c){
-      return '<tr>'
-        +'<td style="font-size:12.5px"><div style="font-weight:700">'+esc(c.provider_name||'—')+'</div><div style="font-size:11px;color:var(--muted)" dir="ltr">'+esc(c.provider_phone||'')+'</div></td>'
-        +'<td style="font-size:12.5px"><div style="font-weight:700">'+esc(c.client_name||'—')+'</div><div style="font-size:11px;color:var(--muted)" dir="ltr">'+esc(c.client_phone||'')+'</div></td>'
-        +'<td style="font-size:12px;color:var(--muted);max-width:220px">'+esc(c.project_title||'—')+'</td>'
-        +'<td style="font-size:11.5px;color:var(--muted);white-space:nowrap">'+fmtDate(c.created_at)+'</td>'
-      +'</tr>';
-    }).join('')+'</tbody></table>';
+    var provs={},clis={},wk=0,now=Date.now();
+    list.forEach(function(c){ if(c.provider_id)provs[c.provider_id]=1; if(c.client_name)clis[c.client_name]=1; if(c.created_at&&(now-new Date(c.created_at).getTime())<7*864e5)wk++; });
+    var stats='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px;margin-bottom:14px">'
+      +_clStat('📇',list.length,'إجمالي الفتح','#1d4ed8','#dbeafe')
+      +_clStat('👷',Object.keys(provs).length,'مزوّدون','#059669','#d1fae5')
+      +_clStat('👥',Object.keys(clis).length,'عملاء','#7c3aed','#ede9fe')
+      +_clStat('🗓️',wk,'آخر ٧ أيام','#c2410e','#ffedd5')
+    +'</div>';
+    if(!list.length){host.innerHTML=stats+emptyState('لا يوجد سجل بعد — يظهر هنا كل فتح تواصل');return;}
+    host.innerHTML=stats+'<div style="margin-bottom:12px"><input id="cl-search" oninput="clSearch()" placeholder="🔍 بحث بالمزوّد أو العميل أو المشروع..." style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13px;outline:none"></div><div id="cl-cards"></div>';
+    _clRenderCards(list);
   }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function _clStat(ic,n,lbl,c,bg){
+  return '<div style="background:'+bg+';border-radius:13px;padding:12px 14px"><div style="font-size:19px;font-weight:800;color:'+c+'">'+ic+' '+n+'</div><div style="font-size:11.5px;color:#475569;font-weight:700;margin-top:2px">'+lbl+'</div></div>';
+}
+function _clRenderCards(list){
+  var box=document.getElementById('cl-cards');if(!box)return;
+  if(!list.length){box.innerHTML=emptyState('لا نتائج مطابقة');return;}
+  box.innerHTML=list.map(function(c){
+    var ph=_waNorm(c.provider_phone);
+    return '<div class="card" style="margin-bottom:10px;padding:13px 15px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+          +'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px">مزوّد</span>'
+          +'<span style="font-weight:800;font-size:13.5px">'+esc(c.provider_name||'—')+'</span>'
+          +'<span style="color:var(--muted);font-size:15px;font-weight:800">←</span>'
+          +'<span style="background:#ede9fe;color:#7c3aed;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px">عميل</span>'
+          +'<span style="font-weight:800;font-size:13.5px">'+esc(c.client_name||'—')+'</span>'
+        +'</div>'
+        +(ph?'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0;padding:5px 11px;font-size:11px" onclick="clWa('+c.id+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>تذكير المزوّد</button>':'')
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:9px;line-height:1.8;display:flex;gap:14px;flex-wrap:wrap"><span>📋 '+esc(c.project_title||'—')+'</span><span style="white-space:nowrap">🗓️ '+fmtDate(c.created_at)+'</span></div>'
+    +'</div>';
+  }).join('');
+}
+function clSearch(){
+  var q=((document.getElementById('cl-search')||{}).value||'').trim().toLowerCase();
+  if(!q){_clRenderCards(_clList);return;}
+  _clRenderCards(_clList.filter(function(c){return ((c.provider_name||'')+' '+(c.client_name||'')+' '+(c.project_title||'')).toLowerCase().indexOf(q)>=0;}));
+}
+function clWa(id){
+  var c=(_clList||[]).find(function(x){return x.id===id;});
+  var ph=_waNorm(c&&c.provider_phone);
+  if(!ph){toast('لا يوجد رقم واتساب صالح','error');return;}
+  var msg='السلام عليكم، بخصوص تواصلك مع صاحب مشروع عبر منصة مناقصة — نذكّرك بأن رسوم المنصة (٣٪) تُطبَّق عند إتمام الاتفاق. شكراً لالتزامك 🌟';
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
 }
 function loadEngagement(){
   var host=document.getElementById('engagement-list');if(!host)return;
