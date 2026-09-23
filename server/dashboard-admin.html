@@ -874,6 +874,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="inv-count" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:13px 15px;font-size:13.5px;color:#1e40af;font-weight:800;margin-bottom:14px">جاري حساب المطابقين...</div>
       <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">النطاق (المنطقة/المدن):</label>
       <select id="inv-scope" onchange="_invCount()" style="width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;margin-bottom:14px;background:#fff;outline:none"></select>
+      <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">التخصصات (تصنيف المشروع محدّد تلقائياً — أضف تخصصات قريبة):</label>
+      <div id="inv-cats" style="max-height:150px;overflow:auto;border:1.5px solid var(--border);border-radius:11px;padding:8px 12px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px 14px"></div>
       <div style="font-size:12.5px;font-weight:800;color:#475569;margin-bottom:8px">قنوات الإرسال:</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="inv-notify" checked> 🔔 إشعار داخل التطبيق</label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer"><input type="checkbox" id="inv-email" checked> ✉️ إيميل</label>
@@ -2135,9 +2137,13 @@ var INV_REGIONS={
 };
 function _invScopeBody(){
   var sc=((document.getElementById('inv-scope')||{}).value)||'city';
-  if(sc==='all')return {all_cities:true};
-  if(sc.indexOf('region:')===0){return {cities:INV_REGIONS[sc.slice(7)]||[]};}
-  return {};
+  var body={};
+  if(sc==='all')body.all_cities=true;
+  else if(sc.indexOf('region:')===0)body.cities=INV_REGIONS[sc.slice(7)]||[];
+  var cats=[];
+  Array.prototype.forEach.call(document.querySelectorAll('#inv-cats input[type=checkbox]:checked'),function(c){cats.push(c.value);});
+  if(cats.length)body.categories=cats;
+  return body;
 }
 function openInvite(id){
   _invReqId=id;
@@ -2150,6 +2156,13 @@ function openInvite(id){
     Object.keys(INV_REGIONS).forEach(function(rn){opts+='<option value="region:'+rn+'">منطقة '+esc(rn)+' — كل مدنها</option>';});
     opts+='<option value="all">كل المدن</option>';
     sc.innerHTML=opts; sc.value='city';
+  }
+  var cbox=document.getElementById('inv-cats');
+  if(cbox){
+    var cats=(window._CATS&&window._CATS.length)?window._CATS:[];
+    var projCat=rr&&rr.category?rr.category:'';
+    if(projCat && cats.indexOf(projCat)<0)cats=[projCat].concat(cats);
+    cbox.innerHTML=cats.map(function(c){var ck=(c===projCat)?' checked':'';return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334155;cursor:pointer;white-space:nowrap"><input type="checkbox" value="'+esc(c)+'" onchange="_invCount()"'+ck+'> '+esc(c)+'</label>';}).join('');
   }
   document.getElementById('inv-notify').checked=true;
   document.getElementById('inv-email').checked=true;
