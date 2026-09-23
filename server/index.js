@@ -210,20 +210,22 @@ const _REGIONS = {
 const _CITY2REGION = {};
 for (const _rg in _REGIONS) { for (const _c of _REGIONS[_rg]) _CITY2REGION[_c] = _rg; }
 function sameRegion(a, b){ if(!a||!b) return false; const ra=_CITY2REGION[String(a).trim()], rb=_CITY2REGION[String(b).trim()]; return !!ra && ra===rb; }
-async function matchingProviders(cat, city, allCities, cities){
+async function matchingProviders(cats, city, allCities, cities){
+  const catArr = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
+  const catCond = '(cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])';
   let cityCond, params;
-  if (allCities) { cityCond='TRUE'; params=[cat]; }
+  if (allCities) { cityCond='TRUE'; params=[catArr]; }
   else if (Array.isArray(cities) && cities.length) {
     cityCond='(COALESCE(serves_all_cities,FALSE) OR city = ANY($2::text[]) OR (service_cities && $2::text[]))';
-    params=[cat, cities];
+    params=[catArr, cities];
   } else {
     cityCond='(COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))';
-    params=[cat, city];
+    params=[catArr, city];
   }
   const r = await pool.query(
     `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
       WHERE role='provider' AND is_active=TRUE
-        AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
+        AND ${catCond}
         AND ${cityCond}`, params);
   return r.rows;
 }
@@ -4931,7 +4933,8 @@ app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view
     const id = parseInt(req.params.id);
     const rq = await pool.query('SELECT category, city FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const rows = await matchingProviders(rq.rows[0].category, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [rq.rows[0].category];
+    const rows = await matchingProviders(_cats, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
     res.json({ count: rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -4946,7 +4949,8 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = rq.rows[0];
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
-    const rows = await matchingProviders(row.category, row.city, allCities, req.body.cities);
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [row.category];
+    const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;
     for (const p of rows) {
