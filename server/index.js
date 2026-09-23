@@ -119,7 +119,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn(' VAPID keys not set — push notifications disabled');
 }
 
-app.use(cors());
+app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
 // ترويسات أمان أساسية
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
