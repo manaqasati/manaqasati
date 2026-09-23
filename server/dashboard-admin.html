@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           <div class="ms" id="ms-spec"><button type="button" class="ms-btn" onclick="msToggle('spec')"><span id="ms-spec-lbl">كل التخصصات</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-spec-panel"></div></div>
           <select id="uf-status" onchange="renderUsers()"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
           <select id="uf-badge" onchange="renderUsers()"><option value="">كل الألقاب</option></select>
+          <select id="uf-offers" onchange="renderUsers()"><option value="">كل العروض</option><option value="has">قدّم عروضاً</option><option value="none">لم يقدّم</option></select>
           <button class="act-btn ab-default" onclick="resetUserFilters()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>مسح الفلاتر</button>
           <span id="uf-count" style="margin-right:auto;align-self:center;font-size:12.5px;font-weight:700;color:var(--muted)"></span>
         </div>
@@ -1196,6 +1197,7 @@ function getFilteredUsers(){
   var sp=msVals('spec');
   var stt=(document.getElementById('uf-status')||{}).value||'';
   var bd=(document.getElementById('uf-badge')||{}).value||'';
+  var ofr=(document.getElementById('uf-offers')||{}).value||'';
   return (_allUsers||[]).filter(function(u){
     if(u.role==='admin')return false;
     if(_roleFilter!=='all'&&u.role!==_roleFilter)return false;
@@ -1205,6 +1207,7 @@ function getFilteredUsers(){
     if(stt==='active'&&!u.is_active)return false;
     if(stt==='banned'&&u.is_active)return false;
     if(bd){if(bd==='none'){if(u.badge&&u.badge!=='none')return false;}else if(u.badge!==bd)return false;}
+    if(ofr){var _bc=parseInt(u.bid_count)||0; if(ofr==='has'&&_bc<1)return false; if(ofr==='none'&&_bc>0)return false;}
     return true;
   });
 }
@@ -1263,7 +1266,7 @@ function fillUserFilters(){
   var bSel=document.getElementById('uf-badge');
   if(bSel&&bSel.options.length<=1){(typeof BADGE_CATALOG!=='undefined'?BADGE_CATALOG:[]).forEach(function(b){var o=document.createElement('option');o.value=b.key;o.textContent=b.label;bSel.appendChild(o);});var no=document.createElement('option');no.value='none';no.textContent='بدون لقب';bSel.appendChild(no);}
 }
-function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
+function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge','uf-offers'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
 function applyUserFiltersFromHash(){
   var ps=_parseHashParams();
   [['status','uf-status'],['badge','uf-badge']].forEach(function(m){
