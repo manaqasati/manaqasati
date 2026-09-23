@@ -2350,7 +2350,7 @@ function renderRequests(){
   var filtered=getFilteredRequests();
   var cnt=document.getElementById('rf-count');if(cnt)cnt.textContent=filtered.length+' نتيجة';
   if(!filtered.length){document.getElementById('requests-table').innerHTML=emptyState('لا يوجد مشاريع مطابقة');return;}
-  var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej']};
+  var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],executing:['قيد التنفيذ','b-progress'],assigned:['تم الإسناد','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej'],closed:['مغلق','b-rej'],closed_auto:['مغلق تلقائياً','b-rej'],cancelled:['ملغى','b-rej'],expired:['منتهي','b-rej']};
   document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th>العروض</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
     var st=sm[r.status]||[r.status,'b-completed'];
     return '<tr>'
