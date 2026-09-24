@@ -328,7 +328,8 @@ tbody tr:hover{background:var(--bg)}
 .ph-hl b{color:var(--p2);margin:0 3px;font-weight:900}
 .ph-dot{width:8px;height:8px;border-radius:50%;background:var(--star);box-shadow:0 0 0 4px rgba(240,165,0,.18);flex-shrink:0}
 .ph-mrow{display:flex;gap:10px;margin:-22px 14px 16px;position:relative;z-index:2}
-.ph-mc{flex:1;min-width:0;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px 10px;box-shadow:var(--shadow-md);text-align:center}
+.ph-mc{flex:1;min-width:0;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:13px 10px;box-shadow:var(--shadow-md);text-align:center;transition:transform .16s ease,box-shadow .16s ease}
+.ph-mc:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(15,23,42,.10)}
 .ph-mi{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
 .ph-mi.blue{background:var(--p-light);color:var(--p)}
 .ph-mi.sky{background:#e0f2fe;color:var(--sky)}
@@ -336,6 +337,7 @@ tbody tr:hover{background:var(--bg)}
 .ph-mi.grn{background:var(--green-l);color:var(--green)}
 .ph-mn{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;line-height:1;color:var(--p)}
 .ph-ml{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:3px}
+.ph-md{font-size:10px;color:#16a34a;font-weight:800;margin-top:5px;background:#f0fdf4;border-radius:20px;padding:2px 8px;display:inline-block}
 .nudges{margin-bottom:16px}
 .nudges-h{font-size:12px;font-weight:800;color:var(--muted);margin:0 2px 9px;display:flex;align-items:center;gap:6px}
 .nudge{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--border);border-right:4px solid var(--p);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:transform .15s var(--ease),box-shadow .15s}
@@ -998,8 +1000,10 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 
 
 // شبكة الكوكبة الحيّة (هوية مناقصة)
-function _phmc(v,icon,num,label){
-  return '<div class="ph-mc"><div class="ph-mi '+v+'"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">'+icon+'</svg></div><div class="ph-mn">'+(num||0)+'</div><div class="ph-ml">'+label+'</div></div>';
+function _phmc(v,icon,num,label,delta){
+  var d=parseInt(delta)||0;
+  var dh=d>0?'<div class="ph-md">▲ +'+d+' هذا الأسبوع</div>':'';
+  return '<div class="ph-mc"><div class="ph-mi '+v+'"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">'+icon+'</svg></div><div class="ph-mn">'+(num||0)+'</div><div class="ph-ml">'+label+'</div>'+dh+'</div>';
 }
 function _dashStChip(st){
   var m={open:['مفتوح','var(--green)','var(--green-l)'],in_progress:['جارٍ','var(--p)','var(--p-light)'],completed:['مكتمل','var(--star)','var(--gold-l)'],done:['مكتمل','var(--star)','var(--gold-l)'],pending_review:['مراجعة','var(--amber)','var(--amber-l)'],review:['مراجعة','var(--amber)','var(--amber-l)'],needs_edit:['مطلوب تعديل','#c2410e','#ffedd5'],rejected:['مرفوض','var(--red)','#fee2e2']};
@@ -1118,13 +1122,13 @@ function loadDailyReport(){
       +chip('providers','مزودون جدد',t.providers||0,'#7c3aed')+chip('clients','عملاء جدد',t.clients||0,'#d97706')
       +chip('chats','محادثات اليوم',t.chats||0,'#0891b2')+'</div>';
     h+='<div id="dr-detail" style="margin-bottom:16px"></div>';
-    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">يحتاج انتباهك</div>';
+    h+='<div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px">نظرة على المشاريع</div>';
     h+='<div style="display:flex;gap:9px;flex-wrap:wrap">';
     var pr=(p.review||0);
-    h+='<div onclick="showPage(\'requests\',document.querySelectorAll(\'.ni\')[3])" style="flex:1;min-width:130px;cursor:pointer;background:'+(pr>0?'#fef3c7':'var(--card)')+';border:1px solid '+(pr>0?'#fcd34d':'var(--border)')+';border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:#b45309;line-height:1">'+pr+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">مشاريع بانتظار المراجعة</div></div>';
+    h+='<div onclick="showPage(\'requests\',document.querySelectorAll(\'.ni\')[3])" style="flex:1;min-width:130px;cursor:pointer;background:'+(pr>0?'#fef3c7':'var(--card)')+';border:1px solid '+(pr>0?'#fcd34d':'var(--border)')+';border-radius:14px;padding:13px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05);transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 16px rgba(15,23,42,.09)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 1px 3px rgba(15,23,42,.05)\'"><div style="font-size:22px;font-weight:900;color:#b45309;line-height:1">'+pr+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">مشاريع بانتظار المراجعة</div></div>';
     var ft=(f.total||0);
-    h+='<div onclick="showPage(\'followup\',[].filter.call(document.querySelectorAll(\'.ni\'),function(x){return /متابعة العملاء/.test(x.textContent);})[0])" style="flex:1;min-width:130px;cursor:pointer;background:'+(ft>0?'#dbeafe':'var(--card)')+';border:1px solid '+(ft>0?'#93c5fd':'var(--border)')+';border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:#1d4ed8;line-height:1">'+ft+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">عملاء ينتظرون متابعة ←</div></div>';
-    h+='<div style="flex:1;min-width:130px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px"><div style="font-size:20px;font-weight:900;color:var(--text);line-height:1">'+(p.open||0)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">مشاريع مفتوحة للعروض</div></div>';
+    h+='<div onclick="showPage(\'followup\',[].filter.call(document.querySelectorAll(\'.ni\'),function(x){return /متابعة العملاء/.test(x.textContent);})[0])" style="flex:1;min-width:130px;cursor:pointer;background:'+(ft>0?'#dbeafe':'var(--card)')+';border:1px solid '+(ft>0?'#93c5fd':'var(--border)')+';border-radius:14px;padding:13px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05);transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 16px rgba(15,23,42,.09)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'0 1px 3px rgba(15,23,42,.05)\'"><div style="font-size:22px;font-weight:900;color:#1d4ed8;line-height:1">'+ft+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">عملاء ينتظرون متابعة ←</div></div>';
+    h+='<div style="flex:1;min-width:130px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05)"><div style="font-size:22px;font-weight:900;color:var(--text);line-height:1">'+(p.open||0)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:5px">مشاريع مفتوحة للعروض</div></div>';
     h+='</div></div></div>';
     box.innerHTML=h;
   }).catch(function(){ box.innerHTML=''; });
@@ -1150,10 +1154,10 @@ function loadDashboard(){
     var kp=document.getElementById('dash-kpis');
     if(kp){
       kp.innerHTML='<div class="ph-mrow">'
-        +_phmc('blue','<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',s.total_users,'مستخدم')
-        +_phmc('sky','<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',s.requests,'مشروع')
-        +_phmc('gold','<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',s.total_bids,'عرض')
-        +_phmc('grn','<polyline points="20 6 9 17 4 12"/>',s.completed,'مكتمل')
+        +_phmc('blue','<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',s.total_users,'مستخدم',s.week&&s.week.users)
+        +_phmc('sky','<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',s.requests,'مشروع',s.week&&s.week.requests)
+        +_phmc('gold','<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',s.total_bids,'عرض',s.week&&s.week.bids)
+        +_phmc('grn','<polyline points="20 6 9 17 4 12"/>',s.completed,'مكتمل',s.week&&s.week.completed)
       +'</div>';
     }
   }).catch(function(){var kp=document.getElementById('dash-kpis');if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات');});
