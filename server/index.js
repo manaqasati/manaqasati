@@ -340,6 +340,26 @@ app.get('/api/requests/public/:id', async (req, res) => {
       if (!ok) { row.geo_lat = null; row.geo_lng = null; }
     } catch(e) { row.geo_lat = null; row.geo_lng = null; }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
+    // فتح جوال العميل: لصاحب المشروع/الأدمن/المُرسى عليه/مزوّد قدّم عرضاً حقيقياً (سعر + وصف≥25 أو ملف)
+    try {
+      let vw=null; const ah3=req.headers.authorization||''; const tk3=ah3.startsWith('Bearer ')?ah3.slice(7):null;
+      if(tk3){try{vw=jwt.verify(tk3,JWT_SECRET);}catch(e){}}
+      const uid=vw&&vw.id;
+      const isOwner=uid&&String(uid)===String(row.client_id);
+      const isAdmin=vw&&vw.role==='admin';
+      const asg=(await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0]||{};
+      const isAssigned=uid&&asg.assigned_provider_id&&String(uid)===String(asg.assigned_provider_id);
+      let isRealBidder=false;
+      if(uid&&!isOwner&&!isAdmin){
+        const rb=await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`,[id,uid]);
+        if(rb.rows.length){ isRealBidder=true; try{ const _i=await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING',[uid,row.client_id,id,rb.rows[0].id]); if(_i.rowCount>0)sendCommissionReminder(uid,id); }catch(e){} }
+      }
+      if(isOwner||isAdmin||isAssigned||isRealBidder){
+        const cp=await pool.query('SELECT phone FROM users WHERE id=$1',[row.client_id]);
+        if(cp.rows.length){ row.client_phone=cp.rows[0].phone||null; if(row.client){ row.client.phone=cp.rows[0].phone||null; } }
+        row.contact_unlocked=true;
+      } else { row.contact_unlocked=false; }
+    } catch(e){}
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
