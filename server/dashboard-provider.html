@@ -899,26 +899,10 @@ function _renderHome(data){
   html+='</div>';
 
 
-  if(featured){
-    var _fprice=(featured.budget_min&&featured.budget_max)?(fmtN(featured.budget_min)+'–'+fmtN(featured.budget_max)+' ر.س'):_fpr(featured.budget_max);
-    var _fbids=parseInt(featured.bid_count||0);
-    var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
-    html+='<div class="ph-feat">'
-      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'مشروع متاح')+'</span>'
-      +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'مشروع جديد')+'</div>'
-      +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
-        +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
-        +(featured.city?'<span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:20px">'+_esc(featured.city)+'</span>':'')
-        +'<span style="font-size:11px;font-weight:700;background:var(--green-l);color:#15803d;padding:3px 10px;border-radius:20px">'+_fprice+'</span>'
-      +'</div>'
-      +(featured.description?'<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_esc(featured.description)+'</div>':'')
-      +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+timeAgoP(featured.created_at)+' · '+_fbidTxt+'</div>'
-      +'<button class="ph-feat-cta" onclick="_openBidNudge('+featured.id+','+_fbids+')">قدّم عرضك الآن</button>'
-    +'</div>';
-  }
+  // (دُمجت «أفضل فرصة» داخل قائمة «مشاريع في تخصصك» أدناه)
 
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(matchedBySpec?'مشاريع في تخصصك':'أحدث المشاريع المتاحة')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
-  var _listPool=pool.slice(featured?1:0,featured?5:4);
+  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,6);
   if(_listPool.length){
     html+=_renderBrowseList(_listPool);
   }else{
