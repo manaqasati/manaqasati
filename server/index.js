@@ -359,6 +359,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
         if(cp.rows.length){ row.client_phone=cp.rows[0].phone||null; if(row.client){ row.client.phone=cp.rows[0].phone||null; } }
         row.contact_unlocked=true;
       } else { row.contact_unlocked=false; }
+      if(uid){ try{ const sv=await pool.query('SELECT 1 FROM saved_requests WHERE user_id=$1 AND request_id=$2',[uid,id]); row.is_saved=sv.rows.length>0; }catch(e){ row.is_saved=false; } }
     } catch(e){}
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
