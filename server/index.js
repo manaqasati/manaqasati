@@ -1023,6 +1023,20 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function remindClosedContacts(requestId, title){
+  try {
+    const r = await pool.query('SELECT cu.provider_id, u.email, u.name FROM contact_unlocks cu JOIN users u ON u.id=cu.provider_id WHERE cu.request_id=$1', [requestId]);
+    if (!r.rows.length) return;
+    const t = '💰 تذكير: عمولة المنصة عند إتمام الاتفاق';
+    const b = 'أُغلق مشروع'+(title?(' «'+title+'»'):'')+' الذي تواصلت بشأنه. إن كنت قد أتممت الاتفاق مع صاحبه، فلا تنسَ سداد رسوم المنصة (٣٪ من قيمة العقد) من صفحة الدفع — سواء تم الاتفاق داخل المنصة أو خارجها، حفاظاً على حقوق الجميع.';
+    for (const x of r.rows) {
+      try {
+        await notify(x.provider_id, t, b, 'saai', requestId);
+        if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'صفحة الدفع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+      } catch(e){}
+    }
+  } catch(e){ console.error('remindClosedContacts:', e.message); }
+}
 async function sendCommissionReminder(providerId, requestId){
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [providerId]);
@@ -1311,6 +1325,7 @@ async function runReminders(){
          RETURNING id, client_id, title`, [String(closeDays)]);
       for(const x of cl.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
+        try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
     }
@@ -1323,6 +1338,7 @@ async function runReminders(){
          RETURNING id, client_id, title`);
       for(const x of clC.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً عند انتهاء المدة التي حددتها`, 'request', x.id); }catch(e){}
+        try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(clC.rows.length) console.log(`[lifecycle] أُغلق ${clC.rows.length} مشروع (تاريخ خاص)`);
     }
@@ -5148,6 +5164,7 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const _wasOpen = (r.rows[0].status === 'open');
     const _projTitle = r.rows[0].title || 'مشروع';
     await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW() WHERE id=$3", [reason, note||null, id]);
+    try { await remindClosedContacts(id, _projTitle); } catch(e){}
     // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
     if (_wasOpen) {
       try {
