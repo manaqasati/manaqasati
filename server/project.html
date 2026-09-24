@@ -805,6 +805,7 @@ function render(){
   // ── Share ──
   h+='<div class="card" style="text-align:center">';
   h+='<button onclick="shareProject()" style="background:none;border:1px solid var(--border);border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة هذا المشروع</button>';
+  if(getUser()){ var _psv=!!(_req&&_req.is_saved); h+='<button id="pj-save-btn" onclick="_pjToggleSave()" style="background:'+(_psv?'var(--p-light,#eef2ff)':'none')+';border:1px solid '+(_psv?'var(--p,#1d4ed8)':'var(--border)')+';border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:'+(_psv?'var(--p,#1d4ed8)':'var(--muted)')+';cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-inline-start:8px"><svg width="14" height="14" fill="'+(_psv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg><span>'+(_psv?'محفوظ':'حفظ')+'</span></button>'; }
   if(isOwner && (req.status==='open')){
     h+='<div style="margin-top:12px"><button onclick="openCloseModal()" style="background:none;border:1px solid #fecaca;border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">إغلاق المشروع</button></div>';
   }
@@ -1112,6 +1113,24 @@ function _cmConfirm(){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });
+}
+function _pjToggleSave(){
+  if(!getUser()){ location.href='/login.html'; return; }
+  var btn=document.getElementById('pj-save-btn');
+  fetch(API+'/api/saved-requests/'+_rid,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var saved=d&&d.saved;
+      if(_req)_req.is_saved=saved;
+      if(btn){
+        btn.style.background=saved?'var(--p-light,#eef2ff)':'none';
+        btn.style.borderColor=saved?'var(--p,#1d4ed8)':'var(--border)';
+        btn.style.color=saved?'var(--p,#1d4ed8)':'var(--muted)';
+        var svg=btn.querySelector('svg'); if(svg)svg.setAttribute('fill',saved?'currentColor':'none');
+        var sp=btn.querySelector('span'); if(sp)sp.textContent=saved?'محفوظ':'حفظ';
+      }
+    })
+    .catch(function(){});
 }
 function shareProject(){
   var _id=(_req&&_req.id)||getReqId();
