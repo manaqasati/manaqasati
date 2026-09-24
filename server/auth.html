@@ -9,7 +9,12 @@
     var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
     var p=new URLSearchParams(location.search);
     if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة
-    var d = u.role==='provider' ? '/dashboard-provider.html' : (u.role==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
+    var _m=''; try{_m=localStorage.getItem('activeMode')||'';}catch(e){}
+    var _eff = (u.role==='admin') ? 'admin'
+      : ((_m==='provider' && (u.role==='provider' || u.can_provide)) ? 'provider'
+      : ((_m==='client' && (u.role==='client' || u.can_request)) ? 'client'
+      : u.role));
+    var d = _eff==='provider' ? '/dashboard-provider.html' : (_eff==='admin' ? '/dashboard-admin.html' : '/dashboard-client.html');
     document.documentElement.style.visibility='hidden';
     location.replace(d);
   }catch(e){}
@@ -673,12 +678,12 @@ async function doSubmit(){
           try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
             location.href=_back;
-          } else if(rl==='admin'){
-            location.href='dashboard-admin.html';
-          } else if(rl==='provider'){
-            location.href='dashboard-provider.html';
           } else {
-            location.href='dashboard-client.html';
+            var _m=''; try{_m=localStorage.getItem('activeMode')||'';}catch(e){}
+            var _eff=(rl==='admin')?'admin':((_m==='provider'&&(rl==='provider'||(d.user&&d.user.can_provide)))?'provider':((_m==='client'&&(rl==='client'||(d.user&&d.user.can_request)))?'client':rl));
+            if(_eff==='admin') location.href='dashboard-admin.html';
+            else if(_eff==='provider') location.href='dashboard-provider.html';
+            else location.href='dashboard-client.html';
           }
         }
       },900);
