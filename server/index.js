@@ -4874,6 +4874,15 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.put('/api/admin/users/:id/verify-email', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const r = await pool.query('UPDATE users SET email_verified=true WHERE id=$1 RETURNING id, name', [uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, 'verify_email', 'user', uid, 'توثيق بريد يدوي');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/admin/users/:id/reset-password', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
