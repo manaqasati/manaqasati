@@ -790,6 +790,23 @@ window.addEventListener('popstate',function(){
 function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
 function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
 
+var _PROV_REGIONS={
+  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية'],
+  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور'],
+  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة'],
+  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص'],
+  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا'],
+  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة'],
+  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
+  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
+  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
+  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة'],
+  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
+  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى'],
+  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
+};
+var _C2R={};for(var _rg in _PROV_REGIONS){_PROV_REGIONS[_rg].forEach(function(c){_C2R[c]=_rg;});}
+function _sameRegionP(a,b){if(!a||!b)return false;var ra=_C2R[(''+a).trim()],rb=_C2R[(''+b).trim()];return !!ra&&ra===rb;}
 function _isVerified(p){return !!(p&&p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0);}
 function _renderHome(data){
   var pg=_el('page-home');if(!pg)return;
@@ -803,9 +820,21 @@ function _renderHome(data){
   var verified=_isVerified(profile);
   var acceptRate=_myBids.length?Math.round((acc/_myBids.length)*100):0;
   var specs=profile.specialties||[];
+  var _servesAll=!!profile.serves_all_cities;
+  var _svc=Array.isArray(profile.service_cities)?profile.service_cities:[];
+  var _myCity=profile.city||'';
+  function _inMyArea(city){
+    if(_servesAll)return true;
+    if(!city)return true;
+    if(_myCity&&city===_myCity)return true;
+    if(_svc.indexOf(city)>=0)return true;
+    if(_sameRegionP(_myCity,city))return true;
+    if(_svc.some(function(c){return _sameRegionP(c,city);}))return true;
+    return false;
+  }
   var _bidIds={};_myBids.forEach(function(b){_bidIds[b.request_id]=1;});
   var openAll=allReq.filter(function(r){return r&&r.status==='open'&&!_bidIds[r.id];});
-  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0;}):[];
+  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0&&_inMyArea(r.city);}):[];
   var matchedBySpec=matches.length>0;
   var pool=matchedBySpec?matches:openAll;
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
