@@ -826,7 +826,7 @@ function _renderHome(data){
   var _myCity=profile.city||'';
   function _inMyArea(city){
     if(_servesAll)return true;
-    if(!city)return true;
+    if(!city)return false;
     if(_myCity&&city===_myCity)return true;
     if(_svc.indexOf(city)>=0)return true;
     if(_sameRegionP(_myCity,city))return true;
@@ -1163,7 +1163,7 @@ function _toggleSmart(){_smartOn=!_smartOn;var b=_el('bSmart');if(b){b.style.bac
 function _inMyAreaG(city){
   var p=window._prof||{};
   if(p.serves_all_cities)return true;
-  if(!city)return true;
+  if(!city)return false; // بلا مدينة مؤكّدة = لا يظهر في «الأنسب لي»
   var svc=Array.isArray(p.service_cities)?p.service_cities:[];
   if(p.city&&city===p.city)return true;
   if(svc.indexOf(city)>=0)return true;
@@ -1232,7 +1232,7 @@ function _renderBrowseList(list){
     h+=imgHtml;
     h+='<div class="hz-body">';
     h+='<div class="hz-title">'+_esc(r.title)+'</div>';
-    if(parseInt(r.bid_count||0)===0)h+='<div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:9.5px;font-weight:800;padding:2px 9px;border-radius:20px;margin-top:2px">🔥 فرصة ذهبية · لا عروض بعد</div>';
+    if(parseInt(r.bid_count||0)===0)h+='<div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:9.5px;font-weight:800;padding:2px 9px;border-radius:20px;margin-top:2px">🔥 فرصة ذهبية</div>';
     if(r.category)h+='<div class="hz-cat">'+_esc(r.category)+'</div>';
     h+='<div class="hz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
     h+='</div>';
