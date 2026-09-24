@@ -866,8 +866,8 @@ async function submitBid(btn){
   var days=document.getElementById('bid-days').value;
   var note=document.getElementById('bid-note').value.trim();
   var al=document.getElementById('bid-al');
-  if(!price||!days){al.textContent='السعر والمدة مطلوبان';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';return;}
-  var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
+  if(!price||!days){al.textContent='السعر والمدة مطلوبان';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}return;}
+  var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
   var _vis=((document.querySelector('input[name="bidVis"]:checked')||{}).value)||'client';
   btn.disabled=true;btn.textContent='جاري الإرسال...';
   try{
@@ -881,7 +881,8 @@ async function submitBid(btn){
       window._bidAttachP=null;al.textContent='تم إرسال عرضك بنجاح!';al.style.cssText='display:block;background:var(--green-l);color:var(--green)';
       setTimeout(function(){closeBid();load();},1500);
     } else {
-      al.textContent=d.message||'حدث خطأ';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';
+      al.textContent=d.message||('تعذّر الإرسال (رمز '+r.status+')');al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';
+      try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
       btn.disabled=false;btn.textContent='إرسال العرض';
     }
   }catch(e){
