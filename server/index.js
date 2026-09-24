@@ -1257,7 +1257,43 @@ async function _remindOnce(userId, kind, refId, title, body, emailSubject, email
     return true;
   }catch(e){ console.error('_remindOnce '+kind+':', e.message); return false; }
 }
+async function runSavedReminders(){
+  try {
+    const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+    const rows = await pool.query(`
+      SELECT s.id AS sid, s.user_id, s.created_at AS saved_at, s.notified_saved, s.notified_2d, s.notified_1d,
+             u.email, u.name, rq.id AS rid, rq.title,
+             COALESCE(rq.close_at, rq.created_at + ($1 || ' days')::interval) AS close_time
+      FROM saved_requests s JOIN requests rq ON rq.id=s.request_id JOIN users u ON u.id=s.user_id
+      WHERE rq.status='open' AND rq.assigned_provider_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=rq.id AND b.provider_id=s.user_id)`, [String(closeDays)]);
+    const now = Date.now(), DAY = 86400000;
+    const _send = (r, title, body) => {
+      const p = notify(r.user_id, title, body, 'request', r.rid);
+      if (r.email) sendEmail(r.email, title, emailTpl(title, `<p>مرحباً${r.name?' '+eEsc(r.name):''}،</p><p>${eEsc(body)}</p>`, 'فتح المشروع', SITE_URL+'/project.html?id='+r.rid)).catch(()=>{});
+      return p;
+    };
+    for (const r of rows.rows) {
+      try {
+        const closeT = new Date(r.close_time).getTime();
+        const savedT = new Date(r.saved_at).getTime();
+        const t = (r.title||'مشروع');
+        if (!r.notified_1d && now >= closeT - DAY && now < closeT) {
+          await _send(r, '🔥 آخر فرصة! مشروعك المحفوظ يُغلق غداً', `مشروعك المحفوظ "${t}" يُغلق خلال يوم — قدّم عرضك الآن قبل الإغلاق.`);
+          await pool.query('UPDATE saved_requests SET notified_1d=TRUE WHERE id=$1', [r.sid]);
+        } else if (!r.notified_2d && now >= closeT - 2*DAY && now < closeT - DAY) {
+          await _send(r, '⏰ مشروعك المحفوظ يُغلق قريباً', `مشروعك المحفوظ "${t}" يُغلق بعد يومين — سارع بتقديم عرضك.`);
+          await pool.query('UPDATE saved_requests SET notified_2d=TRUE WHERE id=$1', [r.sid]);
+        } else if (!r.notified_saved && now >= savedT + DAY && now < closeT - 2*DAY) {
+          await _send(r, '🔖 مشروع محفوظ بانتظارك', `لا تنسَ مشروعك المحفوظ "${t}" — قدّم عرضك قبل فوات الفرصة.`);
+          await pool.query('UPDATE saved_requests SET notified_saved=TRUE WHERE id=$1', [r.sid]);
+        }
+      } catch(e){}
+    }
+  } catch(e){ console.error('runSavedReminders:', e.message); }
+}
 async function runReminders(){
+  try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
     const dDeal   = Math.max(0, parseInt(await getSetting('rem_deal_days','5'))||5);
@@ -1780,6 +1816,10 @@ async function setupDatabase() {
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS saved_requests (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, request_id))`);
+    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_saved BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
@@ -3481,6 +3521,28 @@ async function addTimeline(requestId, event, description) {
   try { await pool.query('INSERT INTO request_timeline (request_id, event, description) VALUES ($1,$2,$3)', [requestId, event, description]); } catch(e) {}
 }
 
+app.post('/api/saved-requests/:id', auth, async (req, res) => {
+  try {
+    const rid = parseInt(req.params.id);
+    const ex = await pool.query('SELECT id FROM saved_requests WHERE user_id=$1 AND request_id=$2', [req.user.id, rid]);
+    if (ex.rows.length) { await pool.query('DELETE FROM saved_requests WHERE user_id=$1 AND request_id=$2', [req.user.id, rid]); return res.json({ saved: false }); }
+    await pool.query('INSERT INTO saved_requests (user_id, request_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, rid]);
+    res.json({ saved: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/saved-requests/ids', auth, async (req, res) => {
+  try { const r = await pool.query('SELECT request_id FROM saved_requests WHERE user_id=$1', [req.user.id]); res.json(r.rows.map(function(x){return x.request_id;})); }
+  catch(e) { res.json([]); }
+});
+app.get('/api/saved-requests', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT rq.*, (SELECT COUNT(*) FROM bids WHERE request_id=rq.id) AS bid_count
+      FROM saved_requests s JOIN requests rq ON rq.id=s.request_id
+      WHERE s.user_id=$1 ORDER BY s.created_at DESC LIMIT 100`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json([]); }
+});
 app.post('/api/favorites/provider/:id', auth, async (req, res) => {
   try {
     const pid = parseInt(req.params.id);
