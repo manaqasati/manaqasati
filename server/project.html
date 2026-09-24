@@ -183,6 +183,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .bid-stamp{position:absolute;top:12px;left:12px;width:68px;height:68px;border-radius:50%;border:3px double var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:11px;line-height:1.25;transform:rotate(-12deg);background:rgba(255,255,255,.92);z-index:3;pointer-events:none;box-shadow:0 2px 8px rgba(34,197,94,.2)}
 .bid-x-rejected{opacity:.5}
 .bid-accepted-banner{background:var(--green-l,#f0fdf4);border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.bid-closed-banner{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
 .bid-x-best{border:2px solid var(--p);box-shadow:0 4px 16px rgba(30,58,138,.12)}
 .bid-x-badge{position:absolute;top:-11px;right:13px;background:var(--p);color:#fff;font-family:'Cairo',sans-serif;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
 .bid-x-av{width:46px;height:46px;border-radius:50%;background:var(--gold-l);border:2px solid var(--gold-soft);display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:var(--gold-d);flex-shrink:0;overflow:hidden}
@@ -564,6 +565,7 @@ function _renderBidsList(mode){
   var html='';
   var accB=_bids.filter(function(b){return b.status==='accepted';})[0];
   if(accB){ html+='<div class="bid-accepted-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> تم اختيار عرض <b>'+esc(accB.provider_name||'مزود')+'</b> — المشروع الآن قيد التنفيذ</div>'; }
+  else if(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0){ html+='<div class="bid-closed-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg> أُغلق هذا المشروع — لم يعد يستقبل عروضاً جديدة</div>'; }
   arr.forEach(function(b){html+=_bidCard(b,String(b.id)===String(bestId),isOwner,req.status);});
   wrap.innerHTML=html;
 }
@@ -612,7 +614,7 @@ function render(){
     // Immersive hero overlay on the cover image
     if(coverEl&&!coverEl.querySelector('.hero-ov')){
       var stColor=req.status==='open'?'rgba(22,163,74,.92)':(req.status==='in_progress'?'rgba(37,99,235,.92)':'rgba(100,116,139,.92)');
-      var stTxt=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':'مكتمل');
+      var stTxt=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0?'أُغلق':'مكتمل'));
       var stEl=document.createElement('div');
       stEl.className='hero-ov';
       stEl.style.cssText='position:absolute;top:12px;right:14px;z-index:3';
@@ -636,7 +638,7 @@ function render(){
       var actionsEl=ptop.querySelector('.proj-actions');
       var parts=[];if(req.category)parts.push(esc(req.category));if(req.city)parts.push(esc(req.city));
       var catcity=parts.join(' · ');
-      var stTxt2=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':'مكتمل');
+      var stTxt2=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0?'أُغلق':'مكتمل'));
       var stBg2=req.status==='open'?'#dcfce7':(req.status==='in_progress'?'#dbeafe':'#f1f5f9');
       var stC2=req.status==='open'?'#15803d':(req.status==='in_progress'?'#1d4ed8':'#64748b');
       var head=document.createElement('div');
@@ -650,6 +652,7 @@ function render(){
   var stHtml='';
   if(req.status==='open')stHtml='<span class="st st-open">مفتوح للعروض</span>';
   else if(req.status==='in_progress')stHtml='<span class="st st-prog">قيد التنفيذ</span>';
+  else if(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0)stHtml='<span class="st st-done" style="background:#fef2f2;color:#b91c1c">أُغلق</span>';
   else stHtml='<span class="st st-done">مكتمل</span>';
 
   // SEO / OG
