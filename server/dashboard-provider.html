@@ -1439,17 +1439,28 @@ function _wTab(tab,btn){
 }
 // تعديل عرض قائم (متاح ما دام لم يُقبل أو يُرفض)
 function _editBid(id,price,days,note,pvis){
+  window._ebAttach=null;
   var fin='padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;width:100%;box-sizing:border-box';
   var body='<div style="display:flex;flex-direction:column;gap:12px">'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">السعر (ر.س)</label><input id="eb-price" type="number" inputmode="numeric" value="'+(price||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">مدة التنفيذ (أيام)</label><input id="eb-days" type="number" inputmode="numeric" value="'+(days||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ملاحظة للعميل</label><textarea id="eb-note" rows="3" style="'+fin+';resize:vertical">'+_esc(note||'')+'</textarea></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ظهور السعر</label><select id="eb-pvis" style="'+fin+';cursor:pointer"><option value="client"'+(pvis!=='public'?' selected':'')+'>خاص بصاحب المشروع فقط</option><option value="public"'+(pvis==='public'?' selected':'')+'>ظاهر للجميع</option></select></div>'
-    +'<div style="font-size:11.5px;color:var(--muted);background:var(--bg);padding:9px 11px;border-radius:9px;line-height:1.6">💡 تعديل سعرك أو مدتك يرفع فرصتك — العميل يشوف العرض المحدّث فوراً.</div>'
+    +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">📎 عرض السعر المرفق <span style="color:var(--muted);font-weight:600">(صورة أو PDF — اختياري)</span></label><input id="eb-file" type="file" accept="image/*,application/pdf" onchange="_ebFile(this)" style="'+fin+'"><div id="eb-file-note" style="font-size:11px;color:var(--muted);margin-top:5px">استبدل الملف السابق برفع ملف جديد.</div></div>'
+    +'<div style="font-size:11.5px;color:var(--muted);background:var(--bg);padding:9px 11px;border-radius:9px;line-height:1.6">💡 تعديل سعرك أو مدتك أو إرفاق عرض سعر يرفع فرصتك — العميل يشوف العرض المحدّث فوراً.</div>'
     +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button>'
     +'<button id="eb-save" onclick="_saveBidEdit('+id+')" style="flex:1;padding:10px;background:var(--p3);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">حفظ التعديل</button>';
   openModal('تعديل العرض',body,foot);
+}
+function _ebFile(inp){
+  var f=inp.files&&inp.files[0]; window._ebAttach=null;
+  var note=_el('eb-file-note');
+  if(!f){if(note)note.textContent='استبدل الملف السابق برفع ملف جديد.';return;}
+  if(f.size>5*1024*1024){if(note){note.textContent='⚠️ الحجم أكبر من 5MB';note.style.color='#dc2626';}inp.value='';return;}
+  var rd=new FileReader();
+  rd.onload=function(){window._ebAttach={data:rd.result,type:f.type,name:f.name};if(note){note.textContent='✓ '+f.name;note.style.color='#059669';}};
+  rd.readAsDataURL(f);
 }
 async function _saveBidEdit(id){
   var btn=_el('eb-save'); if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
@@ -1459,7 +1470,9 @@ async function _saveBidEdit(id){
   if(!price||price<=0){ if(typeof showToast==='function')showToast('أدخل سعراً صحيحاً','error'); if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';} return; }
   try{
     var _pv=((_el('eb-pvis')||{}).value==='public')?'public':'client';
-    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify({price:price,days:days||null,note:note||null,price_visibility:_pv})});
+    var _pl={price:price,days:days||null,note:note||null,price_visibility:_pv};
+    if(window._ebAttach&&window._ebAttach.data){_pl.attachment=window._ebAttach.data;_pl.attachment_name=window._ebAttach.name;}
+    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify(_pl)});
     if(!r||r.message)throw new Error();
     closeModal();
     if(typeof showToast==='function')showToast('تم تحديث عرضك ✓','success');
