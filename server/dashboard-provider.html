@@ -267,13 +267,16 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .rev-avg-lbl{font-size:12px;color:rgba(255,255,255,.6);font-weight:600;position:relative}
 .mark-all-btn{font-size:12px;font-weight:700;color:var(--p);background:var(--p-light);border:none;padding:8px 14px;border-radius:9px;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);white-space:nowrap}
 .mark-all-btn:hover{background:var(--p-mid)}
-.hz-item{display:flex;align-items:center;gap:15px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:11px;cursor:pointer;box-shadow:0 1px 2px rgba(15,37,68,.04);transition:all .2s var(--ease,ease)}
+.hz-item{display:flex;align-items:center;gap:15px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:11px;cursor:pointer;box-shadow:0 1px 2px rgba(15,37,68,.04);transition:all .2s var(--ease,ease);position:relative}
 .hz-item:hover{border-color:var(--p-mid);box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .hz-img{width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:var(--bg)}
 .hz-img img{width:100%;height:100%;object-fit:cover}
 .hz-noimg{display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--p-mid);background:var(--p-light)}
 .hz-body{flex:1;min-width:0}
 .hz-title{font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;color:#0f2544;line-height:1.4;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hz-save{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .15s;z-index:2}
+.hz-save:hover{color:var(--p);transform:scale(1.08)}
+.hz-save.on{color:var(--p);background:var(--p-light);border-color:var(--p)}
 .hz-item:hover .hz-title{text-decoration:underline}
 .hz-cat{font-size:11.5px;color:var(--p);font-weight:700;margin-top:8px;display:inline-block;background:#eaf1fe;padding:4px 9px;border-radius:7px}
 .hz-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);font-weight:600;margin-top:9px}
@@ -912,6 +915,12 @@ function _renderHome(data){
 
   var lastBump=profile.last_bumped_at;
 
+  var _savedPool=(allReq||[]).filter(function(r){return r&&r.status==='open'&&window._savedIds&&window._savedIds.indexOf(r.id)>=0;});
+  if(_savedPool.length){
+    html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🔖 محفوظاتي</h3></div><button class="ch-link" onclick="_gotoSaved()">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
+    html+=_renderBrowseList(_savedPool.slice(0,6));
+    html+='</div>';
+  }
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   if(_myBids.length){
     _myBids.slice(0,5).forEach(function(b){
@@ -1098,7 +1107,8 @@ async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
-    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests')]);
+    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests'),_api('/api/saved-requests/ids')]);
+    window._savedIds=Array.isArray(r[4])?r[4]:[];
     var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[],requests:Array.isArray(r[3])?r[3]:[]};
     _cacheSet('home_data',fresh);
     var _sg=''; try{_sg=JSON.stringify(fresh).length+':'+((fresh.bids||[]).length);}catch(e){}
@@ -1116,6 +1126,7 @@ async function loadBrowse(){
   var failed=false;
   try{var fresh=await _api('/api/requests');if(fresh===null){failed=true;}else{_allProjs=Array.isArray(fresh)?fresh:[];}}catch(e){failed=true;}
   if(!window._prof||!window._prof.city){ try{ var _p=await _api('/api/provider/profile'); if(_p&&_p.id)window._prof=_p; }catch(e){} }
+  try{ await _loadSavedIds(); }catch(e){}
   // فشل شبكة حقيقي + لا بيانات مخزّنة → زر إعادة محاولة (بدل حالة فاضية مضلّلة)
   if(failed && (!Array.isArray(_allProjs)||_allProjs.length===0)){
     pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div><div style="text-align:center;padding:40px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button onclick="loadBrowse()" style="background:var(--p3);color:#fff;border:none;padding:10px 24px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>حاول مرة ثانية</button></div>';
@@ -1136,6 +1147,7 @@ function _renderBrowse(){
     html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
     html+='<select id="bSort" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="new">الأحدث</option><option value="old">الأقدم</option><option value="budget">الأعلى ميزانية</option></select>';
     html+='<button id="bSmart" onclick="_toggleSmart()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">✨ الأنسب لي</button>';
+    html+='<button id="bSaved" onclick="_toggleSavedFilter()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">🔖 المحفوظة</button>';
     html+='</div><div id="bList">'+_renderBrowseList(open)+'</div></div>';
     pg.innerHTML=html;
     var catSel=_el('bCat');CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
@@ -1143,6 +1155,21 @@ function _renderBrowse(){
     _lb.done();
   }catch(e){console.error('_renderBrowse error:',e);_lb.done();}
 }
+window._savedIds=window._savedIds||[];
+var _savedOn=false;
+function _loadSavedIds(){ return _api('/api/saved-requests/ids').then(function(ids){window._savedIds=Array.isArray(ids)?ids:[];}).catch(function(){}); }
+function _gotoSaved(){ gotoPage('browse'); setTimeout(function(){ if(!_savedOn&&typeof _toggleSavedFilter==='function')_toggleSavedFilter(); },450); }
+function _toggleSave(id,btn){
+  _api('/api/saved-requests/'+id,{method:'POST'}).then(function(r){
+    var saved=r&&r.saved;
+    if(saved){ if(window._savedIds.indexOf(id)<0)window._savedIds.push(id); }
+    else { var i=window._savedIds.indexOf(id); if(i>=0)window._savedIds.splice(i,1); }
+    if(btn){ btn.classList.toggle('on',saved); var svg=btn.querySelector('svg'); if(svg)svg.setAttribute('fill',saved?'currentColor':'none'); btn.title=saved?'محفوظ':'حفظ للاحقاً'; }
+    if(typeof showToast==='function')showToast(saved?'تم الحفظ في المحفوظة 🔖':'أُزيل من المحفوظة','success');
+    if(_savedOn)_filterBrowse();
+  }).catch(function(){ if(typeof showToast==='function')showToast('تعذّر الحفظ','error'); });
+}
+function _toggleSavedFilter(){_savedOn=!_savedOn;var b=_el('bSaved');if(b){b.style.background=_savedOn?'#4338ca':'#eef2ff';b.style.color=_savedOn?'#fff':'#4338ca';b.style.borderColor=_savedOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
 var _smartOn=false;
 function _toggleSmart(){_smartOn=!_smartOn;var b=_el('bSmart');if(b){b.style.background=_smartOn?'#4338ca':'#eef2ff';b.style.color=_smartOn?'#fff':'#4338ca';b.style.borderColor=_smartOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
 function _inMyAreaG(city){
@@ -1162,6 +1189,7 @@ function _filterBrowse(){
     if(q&&!((p.title||'').toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q)))return false;
     if(cat&&p.category!==cat)return false;
     if(cit&&p.city!==cit)return false;
+    if(_savedOn&&!(window._savedIds&&window._savedIds.indexOf(p.id)>=0))return false;
     if(_smartOn){
       var specs=(window._prof&&window._prof.specialties)||[];
       if(specs.length&&specs.indexOf(p.category)<0)return false;
@@ -1175,7 +1203,7 @@ function _filterBrowse(){
     var ta=new Date(a.created_at||0).getTime(),tb=new Date(b.created_at||0).getTime();
     return srt==='old'?(ta-tb):(tb-ta);
   });
-  var el=_el('bList');if(el){ if(_smartOn&&!f.length){ el.innerHTML=_empty('لا مشاريع تناسب تخصصك في منطقتك حالياً','ألغِ «الأنسب لي» لتصفّح كل المشاريع، أو وسّع مدن خدمتك من ملفك'); } else { el.innerHTML=_renderBrowseList(f); } }
+  var el=_el('bList');if(el){ if(_savedOn&&!f.length){ el.innerHTML=_empty('لا مشاريع محفوظة','احفظ أي مشروع بالضغط على 🔖 لتجده هنا لاحقاً'); } else if(_smartOn&&!f.length){ el.innerHTML=_empty('لا مشاريع تناسب تخصصك في منطقتك حالياً','ألغِ «الأنسب لي» لتصفّح كل المشاريع، أو وسّع مدن خدمتك من ملفك'); } else { el.innerHTML=_renderBrowseList(f); } }
 }
 function catSvg(cat,size){
   size=size||26;
@@ -1222,6 +1250,8 @@ function _renderBrowseList(list){
     h+='<div class="hz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
     h+='</div>';
     if(r.budget_max)h+='<div class="hz-price">'+fmtN(r.budget_max)+'<span>ر.س</span></div>';
+    var _sv=(window._savedIds&&window._savedIds.indexOf(r.id)>=0);
+    h+='<button class="hz-save'+(_sv?' on':'')+'" onclick="event.stopPropagation();_toggleSave('+r.id+',this)" title="'+(_sv?'محفوظ':'حفظ للاحقاً')+'"><svg viewBox="0 0 24 24" width="17" height="17" fill="'+(_sv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>';
     h+='</div>';
     return h;
   }).join('');
