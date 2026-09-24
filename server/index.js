@@ -933,31 +933,31 @@ function emailTpl(title, body, btnText, btnUrl) {
     <tr><td align="center">
       <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(22,33,62,.10)">
         <!-- Header -->
-        <tr><td style="background:#16213E;background:linear-gradient(135deg,#0D1829 0%,#16213E 55%,#1B3A6B 100%);padding:0;position:relative">
+        <tr><td style="background:#1e3a8a;background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#3b82f6 100%);padding:0;position:relative">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:34px 28px 28px;text-align:center">
             <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:.5px">
               <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:8px;box-shadow:0 0 0 4px rgba(201,146,10,.25)"></span>مناقصة
             </div>
             <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:7px;font-weight:600">سوق المشاريع والخدمات</div>
           </td></tr></table>
-          <div style="height:4px;background:linear-gradient(90deg,#A87000,#C9920A,#F0A500,#C9920A,#A87000)"></div>
+          <div style="height:4px;background:linear-gradient(90deg,#1e3a8a,#1d4ed8,#3b82f6,#1d4ed8,#1e3a8a)"></div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:34px 30px 26px">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td>
             <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
-            <div style="width:46px;height:3px;background:#C9920A;border-radius:2px;margin-bottom:20px"></div>
+            <div style="width:46px;height:3px;background:#1d4ed8;border-radius:2px;margin-bottom:20px"></div>
             <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
-            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#C9920A,#A87000)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
+            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
           </td></tr></table>
         </td></tr>
         <!-- Divider -->
         <tr><td style="padding:0 30px"><div style="height:1px;background:#E8EAED"></div></td></tr>
         <!-- Footer -->
         <tr><td style="padding:22px 30px 26px;text-align:center">
-          <div style="font-size:13px;font-weight:800;color:#16213E;margin-bottom:6px">منصة مناقصة</div>
+          <div style="font-size:13px;font-weight:800;color:#1e3a8a;margin-bottom:6px">منصة مناقصة</div>
           <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
-            <a href="https://manaqasa.com" style="color:#C9920A;text-decoration:none;font-weight:700">manaqasa.com</a>
+            <a href="https://manaqasa.com" style="color:#1d4ed8;text-decoration:none;font-weight:700">manaqasa.com</a>
           </div>
           <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
         </td></tr>
