@@ -459,6 +459,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
   </div>
   <div class="content">
+    <div id="verify-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92620e;padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13px;font-weight:700;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>✉️ فعّل بريدك الإلكتروني لتتمكن من تقديم العروض.</span>
+      <button id="verify-resend" onclick="resendVerify()" style="margin-inline-start:auto;background:#1e3a8a;color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12px;cursor:pointer">إعادة إرسال رابط التفعيل</button>
+    </div>
     <div class="page on" id="page-home"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-browse"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-works"><div class="loading">جاري التحميل...</div></div>
@@ -550,6 +554,16 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
+function _pvCheckVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(_me&&_me.email_verified===false){ b.style.display='flex'; } }catch(e){} }
+function resendVerify(){
+  var btn=document.getElementById('verify-resend'); if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  _api('/api/auth/resend-verification',{method:'POST',body:JSON.stringify({})}).then(function(d){
+    if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';}
+    if(d&&d.ok){ showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} }
+    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); }
+  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} showToast('تعذّر الاتصال','error'); });
+}
+window.addEventListener('load',function(){try{_pvCheckVerify();}catch(e){}});
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
 // حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
 window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
