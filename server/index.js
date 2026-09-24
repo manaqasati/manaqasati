@@ -3087,7 +3087,13 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
-    const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
+    let attUrl;
+    if (req.body.attachment && typeof req.body.attachment==='string' && req.body.attachment.indexOf('data:')===0) {
+      try { const u = await uploadToCloud(req.body.attachment, 'manaqasa/attachments', req.body.attachment_name||'عرض-سعر'); if (u) attUrl = u; } catch(e){}
+    }
+    const r = await pool.query(
+      'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url) WHERE id=$6 RETURNING *',
+      [price||null, days||null, note||null, priceVis, attUrl||null, id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
