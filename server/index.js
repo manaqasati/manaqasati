@@ -4468,7 +4468,7 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
     const [
       users, requests, bids, providers, clients, pending, inProgress, completed,
       todayUsers, todayProviders, todayClients, todayRequests, todayBids,
-      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders
+      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders, weekBids, weekCompleted
     ] = await Promise.all([
       q('SELECT COUNT(*) FROM users'),
       q("SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct')"),
@@ -4488,7 +4488,9 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
       q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
-      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`)
+      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`),
+      q(`SELECT COUNT(*) FROM bids WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='completed' AND COALESCE(completed_at, created_at) >= CURRENT_DATE - INTERVAL '7 days'`)
     ]);
     // آخر 7 أيام (تسجيلات يومية)
     const daily = await pool.query(`
@@ -4535,7 +4537,7 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       total_users:users, requests, total_bids:bids, providers, clients,
       pending_review:pending, in_progress:inProgress, completed, verified, active_providers:activeProviders,
       today:{ users:todayUsers, providers:todayProviders, clients:todayClients, requests:todayRequests, bids:todayBids },
-      week:{ users:weekUsers, requests:weekRequests },
+      week:{ users:weekUsers, requests:weekRequests, bids:weekBids, completed:weekCompleted },
       month:{ users:monthUsers, requests:monthRequests },
       daily_signups: daily.rows,
       daily_requests: dailyReq.rows,
