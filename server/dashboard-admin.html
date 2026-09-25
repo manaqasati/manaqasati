@@ -3077,6 +3077,13 @@ function renderNeedsAction(na){
     {label:'أسئلة بانتظار رد',sub:'عملاء ومزودون ينتظرون',n:na.questions||0,pg:'questions',navIdx:6,ic:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',c:'var(--p)',bg:'var(--p-light)'}
   ];
   var active=items.filter(function(i){return i.n>0;});
+  // تنبيه امتلاء التخزين: يظهر من 70٪، ويصير أحمر من 85٪
+  var _st=na.storage||{};
+  [['db','قاعدة البيانات',_st.dbPct,_st.dbMB,_st.dbCapMB],['r2','تخزين الملفات (R2)',_st.r2Pct,_st.r2MB,_st.r2CapMB]].forEach(function(x){
+    var p=parseFloat(x[2])||0; if(p<70)return;
+    var hot=p>=85;
+    active.unshift({label:(hot?'🚨 ':'⚠️ ')+x[1]+' ممتلئة',n:p+'٪',sub:x[3]+' ميجا من '+Math.round((x[4]||0)/1024)+' جيجا — '+(hot?'وسّع القرص من Railway أو نظّف الآن قبل ما يتوقّف الموقع':'راقبها وخطّط للتوسعة أو التنظيف'),pg:'health',ic:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',c:hot?'#dc2626':'var(--amber)',bg:hot?'#fef2f2':'var(--amber-l)'});
+  });
   if(!active.length){el.innerHTML='';return;}
   el.innerHTML='<div class="nudges"><div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج انتباهك اليوم</div>'+
     active.map(function(i){
