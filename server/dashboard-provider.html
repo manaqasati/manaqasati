@@ -267,16 +267,13 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .rev-avg-lbl{font-size:12px;color:rgba(255,255,255,.6);font-weight:600;position:relative}
 .mark-all-btn{font-size:12px;font-weight:700;color:var(--p);background:var(--p-light);border:none;padding:8px 14px;border-radius:9px;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .2s var(--ease,ease);white-space:nowrap}
 .mark-all-btn:hover{background:var(--p-mid)}
-.hz-item{display:flex;align-items:center;gap:15px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:11px;cursor:pointer;box-shadow:0 1px 2px rgba(15,37,68,.04);transition:all .2s var(--ease,ease);position:relative}
+.hz-item{display:flex;align-items:center;gap:15px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:11px;cursor:pointer;box-shadow:0 1px 2px rgba(15,37,68,.04);transition:all .2s var(--ease,ease)}
 .hz-item:hover{border-color:var(--p-mid);box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .hz-img{width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:var(--bg)}
 .hz-img img{width:100%;height:100%;object-fit:cover}
 .hz-noimg{display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--p-mid);background:var(--p-light)}
 .hz-body{flex:1;min-width:0}
 .hz-title{font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;color:#0f2544;line-height:1.4;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hz-save{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .15s;z-index:2}
-.hz-save:hover{color:var(--p);transform:scale(1.08)}
-.hz-save.on{color:var(--p);background:var(--p-light);border-color:var(--p)}
 .hz-item:hover .hz-title{text-decoration:underline}
 .hz-cat{font-size:11.5px;color:var(--p);font-weight:700;margin-top:8px;display:inline-block;background:#eaf1fe;padding:4px 9px;border-radius:7px}
 .hz-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);font-weight:600;margin-top:9px}
@@ -459,10 +456,6 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
   </div>
   <div class="content">
-    <div id="verify-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92620e;padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13px;font-weight:700;align-items:center;gap:10px;flex-wrap:wrap">
-      <span>✉️ فعّل بريدك الإلكتروني لتتمكن من تقديم العروض.</span>
-      <button id="verify-resend" onclick="resendVerify()" style="margin-inline-start:auto;background:#1e3a8a;color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12px;cursor:pointer">إعادة إرسال رابط التفعيل</button>
-    </div>
     <div class="page on" id="page-home"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-browse"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-works"><div class="loading">جاري التحميل...</div></div>
@@ -554,16 +547,6 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
-function _pvCheckVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(_me&&_me.email_verified===false){ b.style.display='flex'; } }catch(e){} }
-function resendVerify(){
-  var btn=document.getElementById('verify-resend'); if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
-  _api('/api/auth/resend-verification',{method:'POST',body:JSON.stringify({})}).then(function(d){
-    if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';}
-    if(d&&d.ok){ showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} }
-    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); }
-  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} showToast('تعذّر الاتصال','error'); });
-}
-window.addEventListener('load',function(){try{_pvCheckVerify();}catch(e){}});
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
 // حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
 window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
@@ -807,28 +790,10 @@ window.addEventListener('popstate',function(){
 function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
 function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
 
-var _PROV_REGIONS={
-  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية','الدلم','الحريق','السليل','مرات','ضرما'],
-  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور','الخبراء'],
-  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة','المويه','الخرمة'],
-  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص','المهد'],
-  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا','صفوى','سيهات','العوامية'],
-  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة','المجاردة','الحرجة','قيال'],
-  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
-  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
-  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
-  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة','الريث','الحرث'],
-  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
-  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى','غامد الزناد'],
-  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
-};
-var _C2R={};for(var _rg in _PROV_REGIONS){_PROV_REGIONS[_rg].forEach(function(c){_C2R[c]=_rg;});}
-function _sameRegionP(a,b){if(!a||!b)return false;var ra=_C2R[(''+a).trim()],rb=_C2R[(''+b).trim()];return !!ra&&ra===rb;}
 function _isVerified(p){return !!(p&&p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0);}
 function _renderHome(data){
   var pg=_el('page-home');if(!pg)return;
   var profile=data.profile||{},bids=data.bids||[],projs=data.projs||[],allReq=Array.isArray(data.requests)?data.requests:[];
-  window._prof=profile;
   _myBids=Array.isArray(bids)?bids:[];_myProjs=Array.isArray(projs)?projs:[];
   var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
   var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
@@ -838,21 +803,9 @@ function _renderHome(data){
   var verified=_isVerified(profile);
   var acceptRate=_myBids.length?Math.round((acc/_myBids.length)*100):0;
   var specs=profile.specialties||[];
-  var _servesAll=!!profile.serves_all_cities;
-  var _svc=Array.isArray(profile.service_cities)?profile.service_cities:[];
-  var _myCity=profile.city||'';
-  function _inMyArea(city){
-    if(_servesAll)return true;
-    if(!city)return false;
-    if(_myCity&&city===_myCity)return true;
-    if(_svc.indexOf(city)>=0)return true;
-    if(_sameRegionP(_myCity,city))return true;
-    if(_svc.some(function(c){return _sameRegionP(c,city);}))return true;
-    return false;
-  }
   var _bidIds={};_myBids.forEach(function(b){_bidIds[b.request_id]=1;});
   var openAll=allReq.filter(function(r){return r&&r.status==='open'&&!_bidIds[r.id];});
-  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0&&_inMyArea(r.city);}):[];
+  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0;}):[];
   var matchedBySpec=matches.length>0;
   var pool=matchedBySpec?matches:openAll;
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
@@ -916,10 +869,26 @@ function _renderHome(data){
   html+='</div>';
 
 
-  // (دُمجت «أفضل فرصة» داخل قائمة «مشاريع في تخصصك» أدناه)
+  if(featured){
+    var _fprice=(featured.budget_min&&featured.budget_max)?(fmtN(featured.budget_min)+'–'+fmtN(featured.budget_max)+' ر.س'):_fpr(featured.budget_max);
+    var _fbids=parseInt(featured.bid_count||0);
+    var _fbidTxt=_fbids===0?'كن أول من يقدّم':(_fbids+' '+(_fbids===1?'عرض':'عروض'));
+    html+='<div class="ph-feat">'
+      +'<span class="ph-fb">'+(matchedBySpec?'أفضل فرصة لك · تناسب تخصصك':'مشروع متاح')+'</span>'
+      +'<div onclick="_viewProj('+featured.id+')" style="cursor:pointer;font-size:15px;font-weight:900;color:var(--p);margin:3px 0 9px;line-height:1.4">'+_esc(featured.title||'مشروع جديد')+'</div>'
+      +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">'
+        +'<span style="font-size:11px;font-weight:700;background:var(--p-light);color:var(--p2);padding:3px 10px;border-radius:20px">'+_esc(featured.category||'خدمة')+'</span>'
+        +(featured.city?'<span style="font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:20px">'+_esc(featured.city)+'</span>':'')
+        +'<span style="font-size:11px;font-weight:700;background:var(--green-l);color:#15803d;padding:3px 10px;border-radius:20px">'+_fprice+'</span>'
+      +'</div>'
+      +(featured.description?'<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_esc(featured.description)+'</div>':'')
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+timeAgoP(featured.created_at)+' · '+_fbidTxt+'</div>'
+      +'<button class="ph-feat-cta" onclick="_openBidNudge('+featured.id+','+_fbids+')">قدّم عرضك الآن</button>'
+    +'</div>';
+  }
 
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🛠 '+(matchedBySpec?'مشاريع في تخصصك':'أحدث المشاريع المتاحة')+'</h3></div><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
-  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,6);
+  var _listPool=pool.slice(featured?1:0,featured?5:4);
   if(_listPool.length){
     html+=_renderBrowseList(_listPool);
   }else{
@@ -929,12 +898,6 @@ function _renderHome(data){
 
   var lastBump=profile.last_bumped_at;
 
-  var _savedPool=(allReq||[]).filter(function(r){return r&&r.status==='open'&&window._savedIds&&window._savedIds.indexOf(r.id)>=0;});
-  if(_savedPool.length){
-    html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>🔖 محفوظاتي</h3></div><button class="ch-link" onclick="_gotoSaved()">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
-    html+=_renderBrowseList(_savedPool.slice(0,6));
-    html+='</div>';
-  }
   html+='<div class="card card-accent"><div class="ch"><div class="ch-l"><h3>آخر عروضي</h3></div><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">عرض الكل <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="15 18 9 12 15 6"/></svg></button></div>';
   if(_myBids.length){
     _myBids.slice(0,5).forEach(function(b){
@@ -1121,8 +1084,7 @@ async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
-    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests'),_api('/api/saved-requests/ids')]);
-    window._savedIds=Array.isArray(r[4])?r[4]:[];
+    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests')]);
     var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[],requests:Array.isArray(r[3])?r[3]:[]};
     _cacheSet('home_data',fresh);
     var _sg=''; try{_sg=JSON.stringify(fresh).length+':'+((fresh.bids||[]).length);}catch(e){}
@@ -1139,8 +1101,6 @@ async function loadBrowse(){
   if(!Array.isArray(_allProjs)||_allProjs.length===0){pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div>'+_skList(5);}
   var failed=false;
   try{var fresh=await _api('/api/requests');if(fresh===null){failed=true;}else{_allProjs=Array.isArray(fresh)?fresh:[];}}catch(e){failed=true;}
-  if(!window._prof||!window._prof.city){ try{ var _p=await _api('/api/provider/profile'); if(_p&&_p.id)window._prof=_p; }catch(e){} }
-  try{ await _loadSavedIds(); }catch(e){}
   // فشل شبكة حقيقي + لا بيانات مخزّنة → زر إعادة محاولة (بدل حالة فاضية مضلّلة)
   if(failed && (!Array.isArray(_allProjs)||_allProjs.length===0)){
     pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div><div style="text-align:center;padding:40px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button onclick="loadBrowse()" style="background:var(--p3);color:#fff;border:none;padding:10px 24px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>حاول مرة ثانية</button></div>';
@@ -1160,8 +1120,6 @@ function _renderBrowse(){
     html+='<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option></select>';
     html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
     html+='<select id="bSort" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="new">الأحدث</option><option value="old">الأقدم</option><option value="budget">الأعلى ميزانية</option></select>';
-    html+='<button id="bSmart" onclick="_toggleSmart()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">✨ الأنسب لي</button>';
-    html+='<button id="bSaved" onclick="_toggleSavedFilter()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">🔖 المحفوظة</button>';
     html+='</div><div id="bList">'+_renderBrowseList(open)+'</div></div>';
     pg.innerHTML=html;
     var catSel=_el('bCat');CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
@@ -1169,55 +1127,15 @@ function _renderBrowse(){
     _lb.done();
   }catch(e){console.error('_renderBrowse error:',e);_lb.done();}
 }
-window._savedIds=window._savedIds||[];
-var _savedOn=false;
-function _loadSavedIds(){ return _api('/api/saved-requests/ids').then(function(ids){window._savedIds=Array.isArray(ids)?ids:[];}).catch(function(){}); }
-function _gotoSaved(){ gotoPage('browse'); setTimeout(function(){ if(!_savedOn&&typeof _toggleSavedFilter==='function')_toggleSavedFilter(); },450); }
-function _toggleSave(id,btn){
-  _api('/api/saved-requests/'+id,{method:'POST'}).then(function(r){
-    var saved=r&&r.saved;
-    if(saved){ if(window._savedIds.indexOf(id)<0)window._savedIds.push(id); }
-    else { var i=window._savedIds.indexOf(id); if(i>=0)window._savedIds.splice(i,1); }
-    if(btn){ btn.classList.toggle('on',saved); var svg=btn.querySelector('svg'); if(svg)svg.setAttribute('fill',saved?'currentColor':'none'); btn.title=saved?'محفوظ':'حفظ للاحقاً'; }
-    if(typeof showToast==='function')showToast(saved?'تم الحفظ في المحفوظة 🔖':'أُزيل من المحفوظة','success');
-    if(_savedOn)_filterBrowse();
-  }).catch(function(){ if(typeof showToast==='function')showToast('تعذّر الحفظ','error'); });
-}
-function _toggleSavedFilter(){_savedOn=!_savedOn;var b=_el('bSaved');if(b){b.style.background=_savedOn?'#4338ca':'#eef2ff';b.style.color=_savedOn?'#fff':'#4338ca';b.style.borderColor=_savedOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
-var _smartOn=false;
-function _toggleSmart(){_smartOn=!_smartOn;var b=_el('bSmart');if(b){b.style.background=_smartOn?'#4338ca':'#eef2ff';b.style.color=_smartOn?'#fff':'#4338ca';b.style.borderColor=_smartOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
-function _inMyAreaG(city){
-  var p=window._prof||{};
-  if(p.serves_all_cities)return true;
-  if(!city)return false; // بلا مدينة مؤكّدة = لا يظهر في «الأنسب لي»
-  var svc=Array.isArray(p.service_cities)?p.service_cities:[];
-  if(p.city&&city===p.city)return true;
-  if(svc.indexOf(city)>=0)return true;
-  if(typeof _sameRegionP==='function'){ if(_sameRegionP(p.city,city))return true; if(svc.some(function(c){return _sameRegionP(c,city);}))return true; }
-  return false;
-}
 function _filterBrowse(){
   var q=(_el('bQ')||{value:''}).value.toLowerCase();var cat=(_el('bCat')||{value:''}).value;var cit=(_el('bCit')||{value:''}).value;var srt=(_el('bSort')||{value:'new'}).value;
-  var f=_allProjs.filter(function(p){
-    if(p.status!=='open')return false;
-    if(q&&!((p.title||'').toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q)))return false;
-    if(cat&&p.category!==cat)return false;
-    if(cit&&p.city!==cit)return false;
-    if(_savedOn&&!(window._savedIds&&window._savedIds.indexOf(p.id)>=0))return false;
-    if(_smartOn){
-      var specs=(window._prof&&window._prof.specialties)||[];
-      if(specs.length&&specs.indexOf(p.category)<0)return false;
-      if(!_inMyAreaG(p.city))return false;
-    }
-    return true;
-  });
+  var f=_allProjs.filter(function(p){return p.status==='open'&&(!q||(p.title||'').toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!cit||p.city===cit);});
   f.sort(function(a,b){
-    if(_smartOn){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}
     if(srt==='budget')return (parseFloat(b.budget_max)||0)-(parseFloat(a.budget_max)||0);
     var ta=new Date(a.created_at||0).getTime(),tb=new Date(b.created_at||0).getTime();
     return srt==='old'?(ta-tb):(tb-ta);
   });
-  var el=_el('bList');if(el){ if(_savedOn&&!f.length){ el.innerHTML=_empty('لا مشاريع محفوظة','احفظ أي مشروع بالضغط على 🔖 لتجده هنا لاحقاً'); } else if(_smartOn&&!f.length){ el.innerHTML=_empty('لا مشاريع تناسب تخصصك في منطقتك حالياً','ألغِ «الأنسب لي» لتصفّح كل المشاريع، أو وسّع مدن خدمتك من ملفك'); } else { el.innerHTML=_renderBrowseList(f); } }
+  var el=_el('bList');if(el)el.innerHTML=_renderBrowseList(f);
 }
 function catSvg(cat,size){
   size=size||26;
@@ -1259,13 +1177,10 @@ function _renderBrowseList(list){
     h+=imgHtml;
     h+='<div class="hz-body">';
     h+='<div class="hz-title">'+_esc(r.title)+'</div>';
-    if(parseInt(r.bid_count||0)===0)h+='<div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:9.5px;font-weight:800;padding:2px 9px;border-radius:20px;margin-top:2px">🔥 فرصة ذهبية</div>';
     if(r.category)h+='<div class="hz-cat">'+_esc(r.category)+'</div>';
     h+='<div class="hz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
     h+='</div>';
     if(r.budget_max)h+='<div class="hz-price">'+fmtN(r.budget_max)+'<span>ر.س</span></div>';
-    var _sv=(window._savedIds&&window._savedIds.indexOf(r.id)>=0);
-    h+='<button class="hz-save'+(_sv?' on':'')+'" onclick="event.stopPropagation();_toggleSave('+r.id+',this)" title="'+(_sv?'محفوظ':'حفظ للاحقاً')+'"><svg viewBox="0 0 24 24" width="17" height="17" fill="'+(_sv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>';
     h+='</div>';
     return h;
   }).join('');
@@ -1319,7 +1234,7 @@ function _openBidNudge(projId,bidCount){
 }
 
 function _openBidModal(projId){
-  var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div>'+'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11.5px;color:#166534;line-height:1.75">💡 <strong>سعر منافس يرفع فرصتك في الفوز.</strong> العميل يقارن القيمة كاملة — خبرتك وجودتك ومدة تنفيذك — مو السعر وحده. قدّم أفضل سعر تقدر عليه، وأبرز ما يميّزك.</div>'+'<div class="fg"><label>نوع السعر</label><select id="bid-unit" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;background:var(--white)"><option value="total">إجمالي للمشروع</option><option value="meter">للمتر</option><option value="unit">للوحدة/القطعة</option></select></div>'+'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div onclick="_toggleBidTip()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;color:#1e40af"><span>💡 كيف تكتب عرضاً يفوز؟ (مثال)</span><span id="bid-tip-ar" style="font-size:11px">▾</span></div><div id="bid-tip-body" style="display:none;margin-top:9px;font-size:11.5px;color:#334155;line-height:1.9"><div style="font-weight:800;margin-bottom:5px;color:#1e293b">عرضك القوي يذكر باختصار:</div>خبرتك · كيف ستنفّذ العمل والمواد · مدة البدء · الضمان بعد التنفيذ.<div style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;margin-top:9px;line-height:2;color:#475569">«لدي خبرة … سنوات في هذا المجال. سأنفّذ المشروع بـ… باستخدام مواد …، مع الالتزام بالمقاسات المطلوبة. أبدأ خلال … أيام، وأقدّم ضماناً لمدة … .»</div><button type="button" onclick="_useBidTemplate()" style="margin-top:10px;background:#1e40af;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ استخدام هذا القالب</button></div></div>'+'<div class="fg"><label>رسالتك للعميل *</label>'+fmtBar('bid-note')+'<textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع...&#10;مثال:&#10;- خبرة 8 سنوات في هذا المجال&#10;- ضمان سنة على التنفيذ&#10;- البدء خلال 3 أيام" style="min-height:110px"></textarea></div>'+'<div style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.6">💡 لو اخترت إخفاء سعرك، لا تذكر الرقم داخل الرسالة حتى يبقى مخفياً عن المنافسين.</div>'+'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:11px;padding:11px 13px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.85">📞 <strong>عرضك الحقيقي يفتح لك بيانات العميل للتواصل المباشر</strong> — سعر واضح + تفاصيل كافية في الرسالة (أو أرفق ملف عرض سعر). العروض الفاضية أو العبث تعرّض حسابك للإيقاف.</div>'
+  var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div>'+'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11.5px;color:#166534;line-height:1.75">💡 <strong>سعر منافس يرفع فرصتك في الفوز.</strong> العميل يقارن القيمة كاملة — خبرتك وجودتك ومدة تنفيذك — مو السعر وحده. قدّم أفضل سعر تقدر عليه، وأبرز ما يميّزك.</div>'+'<div class="fg"><label>نوع السعر</label><select id="bid-unit" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;background:var(--white)"><option value="total">إجمالي للمشروع</option><option value="meter">للمتر</option><option value="unit">للوحدة/القطعة</option></select></div>'+'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div onclick="_toggleBidTip()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;color:#1e40af"><span>💡 كيف تكتب عرضاً يفوز؟ (مثال)</span><span id="bid-tip-ar" style="font-size:11px">▾</span></div><div id="bid-tip-body" style="display:none;margin-top:9px;font-size:11.5px;color:#334155;line-height:1.9"><div style="font-weight:800;margin-bottom:5px;color:#1e293b">عرضك القوي يذكر باختصار:</div>خبرتك · كيف ستنفّذ العمل والمواد · مدة البدء · الضمان بعد التنفيذ.<div style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;margin-top:9px;line-height:2;color:#475569">«لدي خبرة … سنوات في هذا المجال. سأنفّذ المشروع بـ… باستخدام مواد …، مع الالتزام بالمقاسات المطلوبة. أبدأ خلال … أيام، وأقدّم ضماناً لمدة … .»</div><button type="button" onclick="_useBidTemplate()" style="margin-top:10px;background:#1e40af;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ استخدام هذا القالب</button></div></div>'+'<div style="background:#fef2f2;border:1.5px solid #fecaca;border-right:4px solid #dc2626;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div style="font-size:12.5px;font-weight:900;color:#b91c1c;margin-bottom:4px">⚠️ عرض احترافي فقط</div><div style="font-size:11.5px;color:#7f1d1d;line-height:1.8">قدّم عرضاً يوضّح خبرتك وطريقة تنفيذك ليساعد العميل على الاختيار. <b>العروض العشوائية أو الفارغة تُرفض تلقائياً، وقد يُحظر الحساب عند تكرارها.</b></div></div>'+'<div class="fg"><label>رسالتك للعميل *</label>'+fmtBar('bid-note')+'<textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع...&#10;مثال:&#10;- خبرة 8 سنوات في هذا المجال&#10;- ضمان سنة على التنفيذ&#10;- البدء خلال 3 أيام" style="min-height:110px"></textarea></div>'+'<div style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.6">💡 لو اخترت إخفاء سعرك، لا تذكر الرقم داخل الرسالة حتى يبقى مخفياً عن المنافسين.</div>'
     +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:13px;margin-bottom:11px">'
       +'<div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:6px">💰 اتفاقية عمولة المنصة — 3%</div>'
       +'<div style="font-size:11.5px;color:#7c2d12;line-height:1.85">أتعهد بسداد <b>3% من قيمة الاتفاق</b> إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تنفيذ — سواء داخل المنصة أو خارجها — خلال <b>10 أيام</b> من الاتفاق أو بدء التنفيذ.</div>'
@@ -1362,6 +1277,8 @@ async function _submitBid(projId){
   if(!priceStr||isNaN(priceNum)||priceNum<=0){showToast('أدخل سعر العرض','error');return;}
   if(!daysStr||isNaN(daysNum)||daysNum<=0){showToast('أدخل مدة التنفيذ','error');return;}
   if(!note){showToast('أدخل رسالتك للعميل','error');return;}
+  var _nb=note.replace(/\s+/g,'');
+  if(_nb.length<15||/^[\d\s.,\-ريالر.س﷼]+$/.test(note)||/^(.)\1{4,}$/.test(_nb)){showToast('اكتب رسالة احترافية توضّح خبرتك وطريقة تنفيذك (١٥ حرفاً على الأقل) — العروض العشوائية تُرفض','error');try{_el('bid-note').style.borderColor='#dc2626';_el('bid-note').focus();}catch(e){}return;}
   var _ag=_el('feeAgree');
   if(_ag && !_ag.checked){ showToast('يجب الإقرار بالموافقة على اتفاقية عمولة المنصة','error');
     try{ _ag.closest('label').style.borderColor='#dc2626'; _ag.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} return; }
@@ -1459,12 +1376,6 @@ async function loadWorks(){
   var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
   var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
   var html='<div class="pghd"><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
-  if(_myBids.some(function(b){return b.contact_unlocked;}) && !(function(){try{return localStorage.getItem('mnq_contact_banner_seen');}catch(e){return 0;}})()){
-    html+='<div id="contact-banner" style="background:linear-gradient(135deg,#065f46,#059669);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
-      +'<div style="flex:1;min-width:200px"><div style="font-weight:800;font-size:14px;margin-bottom:3px">✨ جديد: تواصل مباشر مع أصحاب مشاريعك</div><div style="font-size:12px;opacity:.92;line-height:1.7">عروضك الحقيقية تتيح لك الآن الاتصال والواتساب مباشرة مع العميل — افتح العرض بالأسفل وبتلقى أزرار التواصل.</div></div>'
-      +'<button onclick="var e=document.getElementById(&quot;contact-banner&quot;);if(e)e.remove();try{localStorage.setItem(&quot;mnq_contact_banner_seen&quot;,&quot;1&quot;);}catch(x){}" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">فهمت ✓</button>'
-    +'</div>';
-  }
   html+='<div class="stat-grid"><div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div><div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div><div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div><div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div></div>';
   html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
@@ -1483,28 +1394,17 @@ function _wTab(tab,btn){
 }
 // تعديل عرض قائم (متاح ما دام لم يُقبل أو يُرفض)
 function _editBid(id,price,days,note,pvis){
-  window._ebAttach=null;
   var fin='padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;width:100%;box-sizing:border-box';
   var body='<div style="display:flex;flex-direction:column;gap:12px">'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">السعر (ر.س)</label><input id="eb-price" type="number" inputmode="numeric" value="'+(price||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">مدة التنفيذ (أيام)</label><input id="eb-days" type="number" inputmode="numeric" value="'+(days||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ملاحظة للعميل</label><textarea id="eb-note" rows="3" style="'+fin+';resize:vertical">'+_esc(note||'')+'</textarea></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ظهور السعر</label><select id="eb-pvis" style="'+fin+';cursor:pointer"><option value="client"'+(pvis!=='public'?' selected':'')+'>خاص بصاحب المشروع فقط</option><option value="public"'+(pvis==='public'?' selected':'')+'>ظاهر للجميع</option></select></div>'
-    +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">📎 عرض السعر المرفق <span style="color:var(--muted);font-weight:600">(صورة أو PDF — اختياري)</span></label><input id="eb-file" type="file" accept="image/*,application/pdf" onchange="_ebFile(this)" style="'+fin+'"><div id="eb-file-note" style="font-size:11px;color:var(--muted);margin-top:5px">استبدل الملف السابق برفع ملف جديد.</div></div>'
-    +'<div style="font-size:11.5px;color:var(--muted);background:var(--bg);padding:9px 11px;border-radius:9px;line-height:1.6">💡 تعديل سعرك أو مدتك أو إرفاق عرض سعر يرفع فرصتك — العميل يشوف العرض المحدّث فوراً.</div>'
+    +'<div style="font-size:11.5px;color:var(--muted);background:var(--bg);padding:9px 11px;border-radius:9px;line-height:1.6">💡 تعديل سعرك أو مدتك يرفع فرصتك — العميل يشوف العرض المحدّث فوراً.</div>'
     +'</div>';
   var foot='<button class="btn-sm bs-p" onclick="closeModal()" style="flex:1;padding:10px">إلغاء</button>'
     +'<button id="eb-save" onclick="_saveBidEdit('+id+')" style="flex:1;padding:10px;background:var(--p3);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">حفظ التعديل</button>';
   openModal('تعديل العرض',body,foot);
-}
-function _ebFile(inp){
-  var f=inp.files&&inp.files[0]; window._ebAttach=null;
-  var note=_el('eb-file-note');
-  if(!f){if(note)note.textContent='استبدل الملف السابق برفع ملف جديد.';return;}
-  if(f.size>5*1024*1024){if(note){note.textContent='⚠️ الحجم أكبر من 5MB';note.style.color='#dc2626';}inp.value='';return;}
-  var rd=new FileReader();
-  rd.onload=function(){window._ebAttach={data:rd.result,type:f.type,name:f.name};if(note){note.textContent='✓ '+f.name;note.style.color='#059669';}};
-  rd.readAsDataURL(f);
 }
 async function _saveBidEdit(id){
   var btn=_el('eb-save'); if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
@@ -1514,9 +1414,7 @@ async function _saveBidEdit(id){
   if(!price||price<=0){ if(typeof showToast==='function')showToast('أدخل سعراً صحيحاً','error'); if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';} return; }
   try{
     var _pv=((_el('eb-pvis')||{}).value==='public')?'public':'client';
-    var _pl={price:price,days:days||null,note:note||null,price_visibility:_pv};
-    if(window._ebAttach&&window._ebAttach.data){_pl.attachment=window._ebAttach.data;_pl.attachment_name=window._ebAttach.name;}
-    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify(_pl)});
+    var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify({price:price,days:days||null,note:note||null,price_visibility:_pv})});
     if(!r||r.message)throw new Error();
     closeModal();
     if(typeof showToast==='function')showToast('تم تحديث عرضك ✓','success');
@@ -1540,21 +1438,6 @@ function _renderBids(list){
     h+='<div class="wz-cell"><div class="wz-lbl">تاريخ العرض</div><div class="wz-val sm">'+_fdt(b.created_at)+'</div></div>';
     h+='</div>';
     if(b.note)h+='<div class="wz-note fmt-text">'+fmtText(b.note)+'</div>';
-    if(b.contact_unlocked && b.client_phone){
-      var _pc=String(b.client_phone).replace(/[^0-9]/g,'');
-      var _wn=_pc.indexOf('966')===0?_pc:(_pc.indexOf('0')===0?'966'+_pc.slice(1):'966'+_pc);
-      var _wt='مرحباً '+(b.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(b.request_title||'')+'\nأنا '+((typeof _me!=='undefined'&&_me&&_me.name)||'المزود')+'.';
-      h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:11px 13px;margin-top:10px">';
-      h+='<div style="font-size:12px;font-weight:800;color:#166534;margin-bottom:8px">📞 تواصل مع '+_esc(b.client_name||'العميل')+'</div>';
-      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
-      h+='<a href="https://wa.me/'+_wn+'?text='+encodeURIComponent(_wt)+'" target="_blank" style="padding:10px;background:#25d366;color:#fff;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">واتساب</a>';
-      h+='<a href="tel:'+_esc(b.client_phone)+'" style="padding:10px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">اتصال</a>';
-      h+='</div>';
-      h+='<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.6">💡 التعامل داخل المنصة يحفظ حقوقك والضمان.</div>';
-      h+='</div>';
-    } else if(!isRej){
-      h+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:11px 13px;margin-top:10px;font-size:11.5px;color:#92620e;line-height:1.7">⚠️ لمشاهدة بيانات العميل والتواصل معه: أرفق عرضاً حقيقياً وواضحاً (سعر + تفاصيل كافية أو ملف عرض سعر). العروض الفاضية أو العبث تعرّض حسابك للإيقاف.</div>';
-    }
     h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view">عرض المشروع</button>';
     if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
     if(!isAcc&&!isRej){
