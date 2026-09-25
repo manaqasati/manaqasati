@@ -1847,6 +1847,11 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS saved_requests (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, request_id))`);
+    // ترقية الجدول القديم (فبراير): كان يستخدم provider_id بدل user_id — CREATE IF NOT EXISTS ما يعدّله، فنضيف العمود وننقل البيانات
+    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS user_id INTEGER'); } catch(e){ console.error('saved_requests user_id:', e.message); }
+    try { await pool.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='saved_requests' AND column_name='provider_id') THEN UPDATE saved_requests SET user_id=provider_id WHERE user_id IS NULL; ALTER TABLE saved_requests ALTER COLUMN provider_id DROP NOT NULL; END IF; END $$`); } catch(e){ console.error('saved_requests migrate:', e.message); }
+    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()'); } catch(e){}
+    try { await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_saved_requests_user ON saved_requests(user_id, request_id)'); } catch(e){ console.error('saved_requests idx:', e.message); }
     try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_saved BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
@@ -3613,7 +3618,7 @@ app.post('/api/saved-requests/:id', auth, async (req, res) => {
     if (ex.rows.length) { await pool.query('DELETE FROM saved_requests WHERE user_id=$1 AND request_id=$2', [req.user.id, rid]); return res.json({ saved: false }); }
     await pool.query('INSERT INTO saved_requests (user_id, request_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, rid]);
     res.json({ saved: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+  } catch(e) { console.error('saved-requests toggle:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/saved-requests/ids', auth, async (req, res) => {
   try { const r = await pool.query('SELECT request_id FROM saved_requests WHERE user_id=$1', [req.user.id]); res.json(r.rows.map(function(x){return x.request_id;})); }
