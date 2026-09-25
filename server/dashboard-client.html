@@ -613,6 +613,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 
   <div class="content">
+    <div id="verify-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92620e;padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13px;font-weight:700;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>✉️ فعّل بريدك الإلكتروني لتتمكن من نشر مشاريعك.</span>
+      <button id="verify-resend" onclick="resendVerify()" style="margin-inline-start:auto;background:#1e3a8a;color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12px;cursor:pointer">إعادة إرسال رابط التفعيل</button>
+    </div>
 
     <!-- HOME -->
     <div class="page on" id="page-home">
@@ -985,6 +989,16 @@ function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
+function _checkVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(user && user.email_verified===false){ b.style.display='flex'; } }catch(e){} }
+function resendVerify(){
+  var btn=document.getElementById('verify-resend');
+  if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  fetch(API+'/api/auth/resend-verification',Object.assign({method:'POST',body:JSON.stringify({})},hdr()))
+    .then(function(r){return r.json();})
+    .then(function(d){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(d&&d.ok){ if(typeof showToast==='function')showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} } else { if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); } })
+    .catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
+}
+window.addEventListener('load',function(){try{_checkVerify();}catch(e){}});
 function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
   window._closeReqId=id;
   var d=document.createElement('div'); d.id='closeModalOvC';
