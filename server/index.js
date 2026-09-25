@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 
 // Cloudflare R2 Setup
@@ -1340,7 +1340,26 @@ async function recordStorageSnapshot(st){
     await pool.query(`INSERT INTO storage_snapshots (day, db_bytes, r2_bytes, updated_at) VALUES (CURRENT_DATE,$1,$2,NOW()) ON CONFLICT (day) DO UPDATE SET db_bytes=EXCLUDED.db_bytes, r2_bytes=EXCLUDED.r2_bytes, updated_at=NOW()`, [Number(d.rows[0].b)||0, r2.rows.length?(Number(r2.rows[0].value)||0):0]);
   } catch(e){ console.error('storageSnapshot:', e.message); }
 }
+// مزامنة حجم R2 الحقيقي من Cloudflare (مرة يومياً) — بدل العدّاد التراكمي اللي فاته الملفات القديمة
+async function syncR2Size(force){
+  if (!r2Client) return;
+  try {
+    if (!force) { const last = parseInt(await getSetting('r2_sync_at','0'))||0; if (Date.now()-last < 20*3600*1000) return; }
+    let token, total = 0, count = 0, pages = 0;
+    do {
+      const r = await r2Client.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, ContinuationToken: token, MaxKeys: 1000 }));
+      for (const o of (r.Contents||[])) { total += Number(o.Size)||0; count++; }
+      token = r.IsTruncated ? r.NextContinuationToken : undefined;
+      pages++;
+    } while (token && pages < 200);
+    await setSetting('r2_bytes', String(total));
+    await setSetting('r2_objects', String(count));
+    await setSetting('r2_sync_at', String(Date.now()));
+    console.log('R2 size synced:', Math.round(total/1048576)+'MB', count+' objects');
+  } catch(e){ console.error('syncR2Size:', e.message); }
+}
 async function checkStorageAlert(){
+  try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
     const st = await storageStatus();
@@ -5619,6 +5638,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
       r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
       projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
     };
+    try { out.storage.r2Objects = parseInt(await getSetting('r2_objects','0'))||0; const _sa = parseInt(await getSetting('r2_sync_at','0'))||0; out.storage.r2SyncedAt = _sa ? new Date(_sa).toISOString() : null; } catch(e){}
     // أكبر الجداول
     try {
       const tt = await pool.query(`SELECT relname AS name, pg_total_relation_size(relid)::bigint AS b FROM pg_catalog.pg_statio_user_tables ORDER BY b DESC LIMIT 6`);
