@@ -167,6 +167,25 @@ setInterval(() => {
 }, 600000);
 
 // نشر المشاريع قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
+// خريطة المدن → المناطق (لرصد الانتشار الجغرافي المشبوه)
+const _CITY_REGIONS = {
+  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية','الدلم','الحريق','السليل','مرات','ضرما'],
+  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور','الخبراء'],
+  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة','المويه','الخرمة'],
+  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص','المهد'],
+  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا','صفوى','سيهات','العوامية'],
+  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة','المجاردة','الحرجة','قيال'],
+  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
+  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
+  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
+  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة','الريث','الحرث'],
+  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
+  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى','غامد الزناد'],
+  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
+};
+const _C2RG = {};
+for (const _rg in _CITY_REGIONS) { for (const _c of _CITY_REGIONS[_rg]) _C2RG[_c] = _rg; }
+function cityRegion(c){ return c ? (_C2RG[String(c).trim()] || null) : null; }
 async function notifyMatchingProviders(request){
   try{
     if(!request || !request.id) return;
@@ -2970,6 +2989,20 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         }
       }
     } catch(se) { console.error('spam_flag:', se.message); } }
+    // رصد الانتشار الجغرافي: مزوّد يقدّم في مناطق متعددة خلال 24 ساعة (يكشف مزعج «كل المدن»)
+    if (!isUpdate) { try {
+      const rq = await pool.query(`SELECT DISTINCT r.city FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.provider_id=$1 AND b.created_at > NOW() - INTERVAL '24 hours' AND r.city IS NOT NULL`, [req.user.id]);
+      const regs = {}; for (const x of rq.rows) { const rg = cityRegion(x.city); if (rg) regs[rg] = 1; }
+      const nRegions = Object.keys(regs).length;
+      if (nRegions >= 4) {
+        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='spam_spread' AND created_at > NOW() - INTERVAL '24 hours' LIMIT 1", [req.user.id]);
+        if (!dup.rows.length) {
+          const warnMsg = 'لاحظنا تقديمكم عروضاً في مناطق متعددة خلال وقت قصير. نرجو التركيز على المشاريع ضمن مناطق خدمتكم الفعلية — العروض العشوائية تُضعف فرصكم وقد تؤدي لتقييد الحساب.';
+          await notify(req.user.id, '⚠️ عروض في مناطق متعددة', warnMsg, 'bid', requestId);
+          await pool.query("INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,'spam_spread',TRUE)", [row.id, req.user.id, requestId, (provInfo.rows[0]&&provInfo.rows[0].city)||null, reqRow.rows[0].city||null]);
+        }
+      }
+    } catch(sp) { console.error('spread_flag:', sp.message); } }
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
     let isFirst = false;
