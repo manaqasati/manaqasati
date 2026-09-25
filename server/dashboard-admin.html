@@ -803,6 +803,20 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 </div>
 
+<div class="overlay" id="warnBidModal">
+  <div class="modal">
+    <div class="modal-head"><h3>⚠️ تحذير <span id="wb-prov" style="color:#b91c1c"></span></h3><button class="modal-x" onclick="closeModal('warnBidModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:9px 11px;margin-bottom:11px;font-size:11.5px;color:#7f1d1d;line-height:1.7">يصل التحذير للمزوّد عبر <b>إشعار داخل التطبيق + إيميل + واتساب</b>. لا يغيّر حالة العرض.</div>
+      <div style="font-size:12px;font-weight:800;color:#475569;margin-bottom:7px">تحذيرات جاهزة (اضغط لإضافتها):</div>
+      <div id="wb-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px"></div>
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:5px">نص التحذير للمزوّد</label>
+      <textarea id="wb-note" placeholder="اكتب التحذير أو اختر من الجاهز فوق..." style="width:100%;min-height:100px;padding:10px;border:1px solid #e2e8f0;border-radius:9px;font-family:Tajawal;resize:vertical;font-size:13px"></textarea>
+      <button onclick="submitWarnBid()" style="width:100%;margin-top:12px;background:#dc2626;color:#fff;border:none;padding:12px;border-radius:11px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">🚨 إرسال التحذير</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="engRemindModal">
   <div class="modal">
     <div class="modal-head"><h3>📣 تذكير المستخدم</h3><button class="modal-x" onclick="closeModal('engRemindModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -2502,6 +2516,37 @@ function _bidFlags(b,dupMap){
   if(note && dupMap[b.provider_id+'|'+note]>1) f.push(['عرض مكرر','#7c3aed']);
   return f;
 }
+var WARN_PRESETS=[
+  'المرفق غير واضح أو لا علاقة له بالمشروع — أعد رفع ملف مناسب أو احذفه.',
+  'لا تكتب رقم جوالك في نص العرض — التواصل يتم عبر المنصة فقط.',
+  'لا تكتب السعر داخل نص العرض عند اختيار «السعر خاص».',
+  'عرضك مختصر جداً — أضف تفاصيل خبرتك وطريقة التنفيذ والمدة.',
+  'العرض خارج نطاق/تخصص المشروع المطلوب.',
+  'العرض عشوائي أو غير مكتمل — يرجى تقديم عرض احترافي. التكرار يعرّض حسابك للحظر.'
+];
+var _warnBidId=null;
+function warnBid(id){
+  var b=(_allBids||[]).find(function(x){return x.id===id;});if(!b)return;
+  _warnBidId=id;
+  document.getElementById('wb-prov').textContent=(b.provider_business||b.provider_name||'المزوّد');
+  document.getElementById('wb-note').value='';
+  document.getElementById('wb-chips').innerHTML=WARN_PRESETS.map(function(t,i){return '<button type="button" onclick="_addWarn('+i+')" style="background:#fff;border:1px solid #fecaca;color:#b91c1c;padding:6px 10px;border-radius:999px;font-family:Tajawal;font-size:11.5px;font-weight:700;cursor:pointer;text-align:right;line-height:1.5">'+esc(t.length>42?t.slice(0,42)+'…':t)+'</button>';}).join('');
+  document.getElementById('warnBidModal').classList.add('show');
+}
+function _addWarn(i){var t=document.getElementById('wb-note');var v=t.value.trim();t.value=(v?v+'\n':'')+WARN_PRESETS[i];t.focus();}
+async function submitWarnBid(){
+  if(_warnBidId==null)return;
+  var note=(document.getElementById('wb-note').value||'').trim();
+  if(!note){toast('اكتب نص التحذير أو اختر من الجاهز','error');return;}
+  var btn=document.querySelector('#warnBidModal button[onclick="submitWarnBid()"]');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
+  try{
+    var res=await fetch(API+'/api/admin/bids/'+_warnBidId+'/warn',Object.assign({method:'PUT',body:JSON.stringify({reason:note})},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});});
+    if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');if(btn){btn.disabled=false;btn.textContent='🚨 إرسال التحذير';}return;}
+    closeModal('warnBidModal');toast('أُرسل التحذير للمزوّد (إشعار + إيميل)','success');
+    if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
+  }catch(e){toast('تعذّر الاتصال','error');if(btn){btn.disabled=false;btn.textContent='🚨 إرسال التحذير';}}
+  if(btn){btn.disabled=false;btn.textContent='🚨 إرسال التحذير';}
+}
 function renderBids(){
   syncBidFiltersToHash();
   var list=getFilteredBids();
@@ -2520,6 +2565,7 @@ function renderBids(){
       var vis=visMap[b.price_visibility]||null;
       var flagHtml=flags.map(function(x){return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;color:#fff;background:'+x[1]+';padding:2px 8px;border-radius:999px">🚩 '+x[0]+'</span>';}).join(' ');
       var actions='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-right:auto">'+
+        '<button class="act-btn ab-default" style="padding:5px 10px;font-size:11px;color:#b91c1c;border-color:#fecaca;background:#fef2f2" onclick="warnBid('+b.id+')">⚠️ تحذير</button>'+
         (b.status==='pending'?'<button class="act-btn ab-default" style="padding:5px 10px;font-size:11px;color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" style="padding:5px 10px;font-size:11px" onclick="adminBidReject('+b.id+')">رفض</button>':'')+
         '<button class="act-btn ab-default" style="padding:5px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button>'+
         '<button class="act-btn ab-danger" style="padding:5px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button>'+
