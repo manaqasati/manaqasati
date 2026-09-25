@@ -2448,7 +2448,7 @@ function getFilteredBids(){
   return (_allBids||[]).filter(function(b){
     if(_bidStatusFilter!=='all'&&b.status!==_bidStatusFilter)return false;
     if(ci&&b.provider_city!==ci)return false;
-    if(term){var hay=((b.provider_name||'')+(b.provider_business||'')+(b.request_title||'')+(b.client_name||'')).toLowerCase();if(hay.indexOf(term)<0)return false;}
+    if(term){var hay=((b.provider_name||'')+(b.provider_business||'')+(b.request_title||'')+(b.client_name||'')+(b.note||'')).toLowerCase();if(hay.indexOf(term)<0)return false;}
     return true;
   });
 }
@@ -2491,24 +2491,59 @@ function adminBidEdit(id){
     .then(function(res){if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}toast('أُرسل طلب التعديل للمزوّد','success');})
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
+function _bidFlags(b,dupMap){
+  var f=[];
+  var note=(b.note||'').trim();
+  if(!note) f.push(['نص فارغ','#b91c1c']);
+  if(b.price!=null && b.price>0 && b.price<100) f.push(['سعر رمزي','#b45309']);
+  // سعر مكتوب داخل النص رغم أن السعر «خاص»
+  if(b.price_visibility && b.price_visibility!=='public' && /\d[\d.,\s]{2,}/.test(note)) f.push(['سعر داخل النص','#b45309']);
+  // عرض مكرر: نفس المزوّد بنفس النص أكثر من مرة
+  if(note && dupMap[b.provider_id+'|'+note]>1) f.push(['عرض مكرر','#7c3aed']);
+  return f;
+}
 function renderBids(){
   syncBidFiltersToHash();
   var list=getFilteredBids();
   var cnt=document.getElementById('bf-count');if(cnt)cnt.textContent=list.length+' نتيجة';
   if(!list.length){document.getElementById('bids-table').innerHTML=emptyState('لا توجد عروض مطابقة');return;}
   var stMap={pending:['معلّق','b-prog'],accepted:['مقبول','b-done'],rejected:['مرفوض','b-rej']};
-  document.getElementById('bids-table').innerHTML='<table><thead><tr><th>المزود</th><th>المشروع</th><th>السعر</th><th>المدة</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>'+
+  // خريطة التكرار: عدد مرات ظهور نفس (المزوّد + النص)
+  var dupMap={};(_allBids||[]).forEach(function(x){var n=(x.note||'').trim();if(n){var k=x.provider_id+'|'+n;dupMap[k]=(dupMap[k]||0)+1;}});
+  var visMap={'public':['🌐 السعر ظاهر','#059669'],'client':['🔒 السعر خاص','#6b7280'],'private':['🔒 السعر خاص','#6b7280']};
+  document.getElementById('bids-table').innerHTML='<div style="display:flex;flex-direction:column;gap:10px;padding:6px">'+
     list.map(function(b){
       var st=stMap[b.status]||[b.status,'b-prog'];
-      return '<tr>'+
-        '<td><div class="u-name">'+esc(b.provider_business||b.provider_name||'—')+'</div><div class="u-email">'+esc(b.provider_city||'')+'</div></td>'+
-        '<td style="font-size:12px">'+esc(b.request_title||'—')+'<div class="u-email">'+esc(b.client_name||'')+'</div></td>'+
-        '<td style="font-weight:800">'+(b.price?fmtN(b.price)+' ر.س':'—')+'</td>'+
-        '<td style="font-size:12px">'+(b.days?b.days+' يوم':'—')+'</td>'+
-        '<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'+
-        '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'+(b.status==='pending'?'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px;color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="adminBidReject('+b.id+')">رفض</button>':'')+'<button class="act-btn ab-default" style="padding:6px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button><button class="act-btn ab-danger" style="padding:6px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button></div></td>'+
-        '</tr>';
-    }).join('')+'</tbody></table>';
+      var flags=_bidFlags(b,dupMap);
+      var sus=flags.length>0;
+      var note=(b.note||'').trim();
+      var vis=visMap[b.price_visibility]||null;
+      var flagHtml=flags.map(function(x){return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;color:#fff;background:'+x[1]+';padding:2px 8px;border-radius:999px">🚩 '+x[0]+'</span>';}).join(' ');
+      var actions='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-right:auto">'+
+        (b.status==='pending'?'<button class="act-btn ab-default" style="padding:5px 10px;font-size:11px;color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" style="padding:5px 10px;font-size:11px" onclick="adminBidReject('+b.id+')">رفض</button>':'')+
+        '<button class="act-btn ab-default" style="padding:5px 10px;font-size:11px" onclick="editBid('+b.id+')">تعديل</button>'+
+        '<button class="act-btn ab-danger" style="padding:5px 10px;font-size:11px" onclick="delBid('+b.id+')">حذف</button>'+
+        '</div>';
+      return '<div style="border:1px solid '+(sus?'#fecaca':'var(--border)')+';border-right:4px solid '+(sus?'#dc2626':'var(--brand,#1e3a8a)')+';border-radius:12px;padding:12px 14px;background:'+(sus?'#fef2f2':'#fff')+'">'+
+        // السطر العلوي: المزوّد + المشروع + الحالة + الأزرار
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+          '<span class="badge '+st[1]+'" style="flex:none">'+st[0]+'</span>'+
+          '<div style="min-width:150px"><div class="u-name" style="font-size:13.5px">'+esc(b.provider_business||b.provider_name||'—')+'</div><div class="u-email">'+esc(b.provider_city||'—')+'</div></div>'+
+          '<div style="min-width:150px;font-size:12px"><span style="color:var(--muted)">📋</span> '+esc(b.request_title||'—')+'<div class="u-email">العميل: '+esc(b.client_name||'—')+(b.request_city?' · '+esc(b.request_city):'')+'</div></div>'+
+          actions+
+        '</div>'+
+        // السطر الثاني: السعر + المدة + ظهور السعر + الرايات
+        '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12.5px">'+
+          '<span style="font-weight:800;font-size:14px">💰 '+(b.price?fmtN(b.price)+' ر.س':'—')+'</span>'+
+          '<span style="color:var(--muted)">⏱ '+(b.days?b.days+' يوم':'—')+'</span>'+
+          (vis?'<span style="color:'+vis[1]+';font-weight:700">'+vis[0]+'</span>':'')+
+          (b.attachment_url?'<a href="'+esc(b.attachment_url)+'" target="_blank" style="color:var(--brand,#1e3a8a);font-weight:700;text-decoration:none">📎 مرفق</a>':'')+
+          (flagHtml?'<span style="display:flex;gap:5px;flex-wrap:wrap">'+flagHtml+'</span>':'')+
+        '</div>'+
+        // نص العرض ظاهر مباشرة
+        '<div style="margin-top:8px;background:'+(note?'#f8fafc':'#fff7ed')+';border:1px dashed '+(note?'#e2e8f0':'#fdba74')+';border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.7;color:'+(note?'#334155':'#9a3412')+';white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:auto">'+(note?esc(note):'⚠️ لا يوجد نص عرض')+'</div>'+
+        '</div>';
+    }).join('')+'</div>';
 }
 async function printOffersReport(reqId){
   try{
