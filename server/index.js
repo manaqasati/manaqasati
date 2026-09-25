@@ -1326,9 +1326,17 @@ async function runSavedReminders(){
 const STORAGE_DB_CAP_MB = 5000;     // قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB) — عدّله لو وسّعت مرة ثانية
 const MB = 1000000;                 // ميجا عشري — نفس حساب Cloudflare وRailway
 const STORAGE_R2_CAP_MB = 10000;    // R2 المجاني 10GB
+// حجم القرص الفعلي تقريباً = كل قواعد البيانات + سجلات WAL الداخلية (القرص كله هو اللي يمتلي، مو البيانات بس)
+async function diskUsageBytes(){
+  let data = 0, wal = 0;
+  try { const r = await pool.query("SELECT COALESCE(SUM(pg_database_size(datname)),0)::bigint b FROM pg_database"); data = Number(r.rows[0].b)||0; }
+  catch(e){ try { const r = await pool.query("SELECT pg_database_size(current_database())::bigint b"); data = Number(r.rows[0].b)||0; } catch(_){} }
+  try { const w = await pool.query("SELECT COALESCE(SUM(size),0)::bigint b FROM pg_ls_waldir()"); wal = Number(w.rows[0].b)||0; } catch(e){}
+  return { total: data + wal, data, wal };
+}
 async function storageStatus(){
   const out = { dbMB:0, dbPct:0, dbCapMB:STORAGE_DB_CAP_MB, r2MB:0, r2Pct:0, r2CapMB:STORAGE_R2_CAP_MB, r2Connected: !!r2Client };
-  try { const d = await pool.query("SELECT pg_database_size(current_database())::bigint b"); out.dbMB = Math.round(Number(d.rows[0].b)/MB); out.dbPct = Math.round(out.dbMB/STORAGE_DB_CAP_MB*1000)/10; } catch(e){}
+  try { const du = await diskUsageBytes(); out.dbMB = Math.round(du.total/MB); out.dbPct = Math.round(out.dbMB/STORAGE_DB_CAP_MB*1000)/10; } catch(e){}
   try { const r = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'"); const b = r.rows.length?(Number(r.rows[0].value)||0):0; out.r2MB = Math.round(b/MB); out.r2Pct = Math.round(out.r2MB/STORAGE_R2_CAP_MB*1000)/10; } catch(e){}
   return out;
 }
@@ -1336,7 +1344,7 @@ async function storageStatus(){
 async function recordStorageSnapshot(st){
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS storage_snapshots (day DATE PRIMARY KEY, db_bytes BIGINT, r2_bytes BIGINT, updated_at TIMESTAMP DEFAULT NOW())`);
-    const d = await pool.query("SELECT pg_database_size(current_database())::bigint b");
+    const _du = await diskUsageBytes(); const d = { rows: [{ b: _du.total }] };
     const r2 = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
     await pool.query(`INSERT INTO storage_snapshots (day, db_bytes, r2_bytes, updated_at) VALUES (CURRENT_DATE,$1,$2,NOW()) ON CONFLICT (day) DO UPDATE SET db_bytes=EXCLUDED.db_bytes, r2_bytes=EXCLUDED.r2_bytes, updated_at=NOW()`, [Number(d.rows[0].b)||0, r2.rows.length?(Number(r2.rows[0].value)||0):0]);
   } catch(e){ console.error('storageSnapshot:', e.message); }
@@ -5655,7 +5663,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
   } catch(e){ out.data={}; }
   // التخزين والحجم
   try {
-    const dbs = await pool.query("SELECT pg_database_size(current_database())::bigint b");
+    const _du = await diskUsageBytes(); const dbs = { rows: [{ b: _du.total }] };
     const att = await pool.query("SELECT COUNT(*)::int c FROM requests WHERE attachments IS NOT NULL AND attachments::text NOT IN ('[]','null','')").catch(()=>({rows:[{c:0}]}));
     const img = await pool.query("SELECT COALESCE(SUM(COALESCE(array_length(images,1),0)),0)::int c FROM requests").catch(()=>({rows:[{c:0}]}));
     const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
@@ -5667,6 +5675,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
       r2UsedMB: Math.round(r2Bytes/MB*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*MB)*1000)/10),
       projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
     };
+    out.storage.dbDataMB = Math.round(_du.data/MB*10)/10; out.storage.dbWalMB = Math.round(_du.wal/MB*10)/10;
     try { out.storage.r2Objects = parseInt(await getSetting('r2_objects','0'))||0; const _sa = parseInt(await getSetting('r2_sync_at','0'))||0; out.storage.r2SyncedAt = _sa ? new Date(_sa).toISOString() : null; } catch(e){}
     // أكبر الجداول
     try {
