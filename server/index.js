@@ -339,6 +339,26 @@ app.get('/api/requests/public/:id', async (req, res) => {
       if (!ok) { row.geo_lat = null; row.geo_lng = null; }
     } catch(e) { row.geo_lat = null; row.geo_lng = null; }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
+    // فتح جوال العميل: لصاحب المشروع/الأدمن/المُرسى عليه/مزوّد قدّم عرضاً حقيقياً (سعر + وصف≥25 أو ملف)
+    try {
+      let vw=null; const ah3=req.headers.authorization||''; const tk3=ah3.startsWith('Bearer ')?ah3.slice(7):null;
+      if(tk3){try{vw=jwt.verify(tk3,JWT_SECRET);}catch(e){}}
+      const uid=vw&&vw.id;
+      const isOwner=uid&&String(uid)===String(row.client_id);
+      const isAdmin=vw&&vw.role==='admin';
+      const asg=(await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0]||{};
+      const isAssigned=uid&&asg.assigned_provider_id&&String(uid)===String(asg.assigned_provider_id);
+      let isRealBidder=false;
+      if(uid&&!isOwner&&!isAdmin){
+        const rb=await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`,[id,uid]);
+        if(rb.rows.length){ isRealBidder=true; try{ const _i=await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING',[uid,row.client_id,id,rb.rows[0].id]); if(_i.rowCount>0)sendCommissionReminder(uid,id); }catch(e){} }
+      }
+      if(isOwner||isAdmin||isAssigned||isRealBidder){
+        const cp=await pool.query('SELECT phone FROM users WHERE id=$1',[row.client_id]);
+        if(cp.rows.length){ row.client_phone=cp.rows[0].phone||null; if(row.client){ row.client.phone=cp.rows[0].phone||null; } }
+        row.contact_unlocked=true;
+      } else { row.contact_unlocked=false; }
+    } catch(e){}
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -1022,6 +1042,17 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function sendCommissionReminder(providerId, requestId){
+  try {
+    const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [providerId]);
+    const rq = await pool.query('SELECT title FROM requests WHERE id=$1', [requestId]);
+    const tt = rq.rows.length ? (rq.rows[0].title||'') : '';
+    const title = '💰 تذكير: عمولة المنصة عند إتمام الاتفاق';
+    const body = 'حصلت على بيانات تواصل صاحب مشروع'+(tt?(' «'+tt+'»'):'')+'. تذكيراً ودّياً: عند اتفاقك معه تُطبَّق رسوم المنصة (٣٪ من قيمة العقد) — سواء داخل المنصة أو خارجها، حفاظاً على حقوق الجميع. سدّدها من صفحة الدفع عند إتمام الصفقة.';
+    await notify(providerId, title, body, 'saai', requestId);
+    if (u.rows.length && u.rows[0].email) sendEmail(u.rows[0].email, title, emailTpl(title, `<p>مرحباً${u.rows[0].name?' '+eEsc(u.rows[0].name):''}،</p><p>${eEsc(body)}</p>`, 'صفحة الدفع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+  } catch(e){ console.error('commissionReminder:', e.message); }
+}
 async function logAdmin(req, action, targetType, targetId, details) {
   try {
     await pool.query(
@@ -1733,6 +1764,7 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
@@ -2449,7 +2481,19 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name, CASE WHEN b.status='accepted' THEN u.phone ELSE NULL END as client_phone FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+      CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
+      ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted') as contact_unlocked
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
+    try {
+      for (const b of r.rows) {
+        if (b.contact_unlocked && b.client_id) {
+          const _ins = await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [req.user.id, b.client_id, b.request_id, b.id]);
+          if (_ins.rowCount > 0) sendCommissionReminder(req.user.id, b.request_id);
+        }
+      }
+    } catch(e) { console.error('unlock-log:', e.message); }
     res.json(r.rows);
   } catch(e) { console.error('/provider/bids:', e); res.json([]); }
 });
@@ -4988,6 +5032,21 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     await logAdmin(req, 'invite_providers', 'request', id, 'دعوة المزودين ('+rows.length+')');
     res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT cu.id, cu.request_id, cu.created_at,
+             p.id AS provider_id, p.name AS provider_name, p.phone AS provider_phone,
+             c.id AS client_id, c.name AS client_name, c.phone AS client_phone,
+             rq.title AS project_title, rq.status AS project_status
+      FROM contact_unlocks cu
+      LEFT JOIN users p ON p.id=cu.provider_id
+      LEFT JOIN users c ON c.id=cu.client_id
+      LEFT JOIN requests rq ON rq.id=cu.request_id
+      ORDER BY cu.created_at DESC LIMIT 300`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req, res) => {
   try {
