@@ -613,10 +613,6 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   </div>
 
   <div class="content">
-    <div id="verify-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;color:#92620e;padding:11px 15px;border-radius:12px;margin:0 0 14px;font-size:13px;font-weight:700;align-items:center;gap:10px;flex-wrap:wrap">
-      <span>✉️ فعّل بريدك الإلكتروني لتتمكن من نشر مشاريعك.</span>
-      <button id="verify-resend" onclick="resendVerify()" style="margin-inline-start:auto;background:#1e3a8a;color:#fff;border:none;border-radius:9px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12px;cursor:pointer">إعادة إرسال رابط التفعيل</button>
-    </div>
 
     <!-- HOME -->
     <div class="page on" id="page-home">
@@ -989,16 +985,6 @@ function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
-function _checkVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(user && user.email_verified===false){ b.style.display='flex'; } }catch(e){} }
-function resendVerify(){
-  var btn=document.getElementById('verify-resend');
-  if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
-  fetch(API+'/api/auth/resend-verification',Object.assign({method:'POST',body:JSON.stringify({})},hdr()))
-    .then(function(r){return r.json();})
-    .then(function(d){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(d&&d.ok){ if(typeof showToast==='function')showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} } else { if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); } })
-    .catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
-}
-window.addEventListener('load',function(){try{_checkVerify();}catch(e){}});
 function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
   window._closeReqId=id;
   var d=document.createElement('div'); d.id='closeModalOvC';
@@ -2100,13 +2086,13 @@ var SMART_FORMS={
   'كاميرات مراقبة':[{key:'count',label:'عدد الكاميرات',type:'number',ph:'مثال: 6'},{key:'place',label:'الموقع',type:'seg',opts:['داخلي','خارجي','الاثنان']},{key:'net',label:'تمديد شبكة وجهاز تخزين',type:'seg',opts:['مطلوب','غير مطلوب']}],
   'شبكات وإنترنت':[{key:'svc',label:'المطلوب',type:'seg',opts:['تأسيس','صيانة']},{key:'area',label:'المساحة وعدد النقاط',type:'text'},{key:'kind',label:'النوع',type:'seg',opts:['سلكي','لاسلكي','الاثنان']}],
   'مظلات وسواتر':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'type',label:'النوع',type:'select',opts:['مظلة','ساتر','الاثنان']},{key:'mat',label:'الخامة',type:'text'}],
-  'عزل حراري':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'surf',label:'نوع السطح',type:'text'},{key:'kind',label:'نوع العزل',type:'seg',opts:['حراري','مائي','الاثنان']}],
-  'جبس':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'type',label:'النوع',type:'select',opts:['أسقف','ديكورات','فواصل']},{key:'design',label:'يوجد تصميم؟',type:'seg',opts:['نعم','لا']}],
+  'عزل حراري':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'surf',label:'نوع السطح',type:'text'},{key:'kind',label:'نوع العزل',type:'seg',opts:['حراري','مائي','الاثنان']},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']}],
+  'جبس':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'type',label:'النوع',type:'select',opts:['أسقف','ديكورات','فواصل']},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']},{key:'design',label:'يوجد تصميم؟',type:'seg',opts:['نعم','لا']}],
   'مكافحة حشرات':[{key:'pest',label:'نوع الحشرات',type:'text'},{key:'area',label:'المساحة ونوع المكان',type:'text'},{key:'freq',label:'التكرار',type:'seg',opts:['مرة واحدة','عقد دوري']}],
-  'بناء':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'floors',label:'عدد الأدوار',type:'number'},{key:'stage',label:'المرحلة',type:'seg',opts:['عظم','تشطيب كامل']},{key:'plan',label:'يوجد مخطط معتمد؟',type:'seg',opts:['نعم','لا']}],
+  'بناء':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'floors',label:'عدد الأدوار',type:'number'},{key:'stage',label:'المرحلة',type:'seg',opts:['عظم','تشطيب كامل']},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']},{key:'plan',label:'يوجد مخطط معتمد؟',type:'seg',opts:['نعم','لا']}],
   'كشف تسربات المياه':[{key:'place',label:'موقع التسرب المتوقع',type:'text'},{key:'prop',label:'نوع العقار',type:'text'},{key:'signs',label:'ظهرت آثار رطوبة؟',type:'seg',opts:['نعم','لا']}],
   'تنظيف خزانات':[{key:'count',label:'عدد الخزانات',type:'number'},{key:'cap',label:'السعة',type:'text'},{key:'loc',label:'الموقع',type:'seg',opts:['علوي','أرضي']},{key:'ster',label:'تعقيم',type:'seg',opts:['مطلوب','غير مطلوب']}],
-  'دهانات وديكور':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'st',label:'الحالة',type:'seg',opts:['جديد','إعادة دهان']},{key:'type',label:'النوع/اللون المطلوب',type:'text'}],
+  'دهانات وديكور':[{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'st',label:'الحالة',type:'seg',opts:['جديد','إعادة دهان']},{key:'type',label:'النوع/اللون المطلوب',type:'text'},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']}],
   'تصاميم داخلي وخارجي':[{key:'kind',label:'نوع التصميم',type:'seg',opts:['داخلي','خارجي','الاثنان']},{key:'area',label:'المساحة أو عدد الغرف',type:'text'},{key:'style',label:'النمط المفضّل',type:'select',opts:['مودرن','كلاسيك','نيو كلاسيك','بوهيمي','صناعي','ريفي']},{key:'plan',label:'يوجد مخطط أو صور؟',type:'seg',opts:['نعم','لا']}],
   'تركيب مطابخ':[{key:'size',label:'المقاسات أو الطول (م)',type:'text'},{key:'mat',label:'الخامة',type:'select',opts:['خشب','ألمنيوم','بولي لاك','أكريليك']},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط']}],
   'تنسيق حدائق':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'want',label:'المطلوب (عشب/ري/تشجير/إنارة)',type:'text'},{key:'design',label:'يوجد تصميم؟',type:'seg',opts:['نعم','لا']}],
@@ -2123,7 +2109,7 @@ var SMART_FORMS={
   'أنظمة الحريق والسلامة':[{key:'prop',label:'نوع المبنى ومساحته',type:'text'},{key:'want',label:'المطلوب',type:'seg',opts:['إنذار','إطفاء','الاثنان']},{key:'st',label:'الحالة',type:'seg',opts:['جديد','صيانة']}],
   'تخطيط المواقف والسلامة المرورية':[{key:'size',label:'المساحة أو عدد المواقف',type:'text'},{key:'want',label:'المطلوب (دهان/لوحات/مطبات)',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
   'معدات ثقيلة':[{key:'machine',label:'نوع المعدة المطلوبة',type:'text'},{key:'dur',label:'مدة التأجير أو نوع العمل',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
-  'عوازل مائية':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'place',label:'موقع العزل',type:'select',opts:['سطح','حمام','خزان','أساسات','مسبح']},{key:'type',label:'نوع العزل المفضل',type:'text'}],
+  'عوازل مائية':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'place',label:'موقع العزل',type:'select',opts:['سطح','حمام','خزان','أساسات','مسبح']},{key:'type',label:'نوع العزل المفضل',type:'text'},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']}],
   'أنظمة شمسية':[{key:'load',label:'الاستهلاك أو المساحة',type:'text'},{key:'kind',label:'النظام',type:'seg',opts:['على الشبكة','مستقل']},{key:'use',label:'الاستخدام',type:'seg',opts:['سخان','كهرباء']}],
   'صيانة عامة':[{key:'want',label:'المطلوب بالتحديد',type:'text'},{key:'prop',label:'نوع العقار',type:'text'},{key:'freq',label:'التكرار',type:'seg',opts:['مرة واحدة','عقد دوري']}],
   'إنشاءات معدنية وهناجر':[{key:'size',label:'المساحة والأبعاد',type:'text'},{key:'struct',label:'نوع الهيكل',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','تركيب فقط']}],
@@ -2131,7 +2117,7 @@ var SMART_FORMS={
   'صرف صحي وبيارات':[{key:'want',label:'المطلوب',type:'seg',opts:['تأسيس','تسليك','شفط']},{key:'cap',label:'العمق أو السعة',type:'text'},{key:'loc',label:'الموقع',type:'text'}],
   'أرضيات إيبوكسي':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'place',label:'نوع المكان',type:'text',ph:'مستودع/موقف/مصنع'},{key:'cur',label:'حالة الأرضية',type:'text'}],
   'تحلية ومعالجة مياه':[{key:'water',label:'نوع المياه والاستخدام',type:'text'},{key:'cap',label:'السعة المطلوبة',type:'text'},{key:'use',label:'الاستخدام',type:'seg',opts:['منزلي','تجاري']}],
-  'تشطيبات ومقاولات عامة':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'scope',label:'نطاق العمل',type:'text'},{key:'plan',label:'يوجد مخطط؟',type:'seg',opts:['نعم','لا']}],
+  'تشطيبات ومقاولات عامة':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'scope',label:'نطاق العمل',type:'text'},{key:'mat',label:'الأسعار المطلوبة تشمل المواد؟',type:'seg',opts:['مع المواد','بدون مواد','غير محدد']},{key:'plan',label:'يوجد مخطط؟',type:'seg',opts:['نعم','لا']}],
   'مكاتب هندسية':[{key:'svc',label:'نوع الخدمة',type:'select',opts:['تصميم','إشراف','مخططات','دراسة جدوى']},{key:'proj',label:'نوع المشروع ومساحته',type:'text'},{key:'plan',label:'يوجد مخطط أولي؟',type:'seg',opts:['نعم','لا']}]
 };
 var _SMSTY='width:100%;padding:10px 12px;border:1.5px solid #dbe4f3;border-radius:10px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;background:#fff';
@@ -2234,6 +2220,12 @@ function submitReq(){
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';
   if(desc.length<40){ if(!confirm('وصف مشروعك مختصر — كل ما زادت التفاصيل جاءتك عروض أدق وأسرع. تبي ترسله الآن؟'))return; }
+  // بوابة المخطط: مشاريع البناء/التشطيب تحتاج مخططاً لدقّة العروض
+  var _PLAN_CATS=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
+  var _hasAtt=((window._reqFiles||[]).length+(window._reqImages||[]).length)>0;
+  if(_PLAN_CATS.indexOf(cat)>=0 && !_hasAtt){
+    if(!confirm('📐 مشاريع «'+cat+'» تحتاج مخططاً ليقدّم المنفذون أسعاراً دقيقة.\n\nبدون مخطط ستصلك تقديرات تقريبية فقط، وقد تتغيّر الأسعار عند التنفيذ.\n\nننصحك بإرفاق المخطط الآن (زر «المخططات والملفات» بالأعلى).\n\nتبي تنشر المشروع بدون مخطط؟')) return;
+  }
   // افتح اتفاقية الرسوم قبل النشر
   var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;}
   var ab=document.getElementById('agreeBtn');if(ab){ab.disabled=true;}
