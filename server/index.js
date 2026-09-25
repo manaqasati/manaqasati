@@ -2949,6 +2949,14 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
+    // جودة الرسالة: نمنع العروض العشوائية/الفارغة (حارس أساسي — يُطبَّق مهما كانت الصفحة)
+    note = (note || '').trim();
+    const _noteBare = note.replace(/\s+/g, '');
+    const _noteBad = !note
+      || _noteBare.length < 15                       // قصيرة جداً
+      || /^[\d\s.,\-ريالر.س﷼]+$/.test(note)          // مجرد أرقام/سعر بدون كلام
+      || /^(.)\1{4,}$/.test(_noteBare);              // حرف واحد مكرّر (ااااا)
+    if (_noteBad) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (١٥ حرفاً على الأقل) توضّح خبرتك وطريقة تنفيذك — العروض العشوائية أو الفارغة تُرفض، وقد يُحظر الحساب عند تكرارها.', code: 'note_quality' });
     const reqRow = await pool.query('SELECT client_id, title, status, city FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
