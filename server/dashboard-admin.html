@@ -4458,6 +4458,7 @@ function _hStorageCard(st){
     +'<svg width="17" height="17" fill="none" stroke="var(--text2)" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
     +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">التخزين والحجم</h3></div>'
     +_hBar('تخزين الملفات والمخططات (R2)', st.r2UsedMB||0, st.r2CapMB||10240)
+    +(st.r2Objects?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">'+st.r2Objects+' ملف في المخزن'+(st.r2SyncedAt?' · آخر مطابقة مع Cloudflare: '+new Date(st.r2SyncedAt).toLocaleString('ar-SA',{dateStyle:'short',timeStyle:'short'}):'')+'</div>':'')
     +_hBar('قاعدة البيانات', st.dbSizeMB||0, st.dbCapMB||1024)
     +_hGrowth(st.growth||{})
     +_hTopTables(st.topTables||[], st.dbSizeMB||0)
