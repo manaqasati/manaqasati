@@ -5575,7 +5575,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
     const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
     const dbMB = Math.round(Number(dbs.rows[0].b)/1048576*10)/10;
     const r2Bytes = r2b.rows.length ? (Number(r2b.rows[0].value)||0) : 0;
-    const R2_CAP_MB = 10*1024, DB_CAP_MB = 1024; // مراجع قابلة للتعديل (R2 المجاني 10GB · حسب خطة Postgres)
+    const R2_CAP_MB = 10*1024, DB_CAP_MB = 5*1024; // R2 المجاني 10GB · قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB)
     out.storage = {
       dbSizeMB: dbMB, dbCapMB: DB_CAP_MB, dbPct: Math.min(100, Math.round(dbMB/DB_CAP_MB*1000)/10),
       r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
