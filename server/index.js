@@ -119,7 +119,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn(' VAPID keys not set — push notifications disabled');
 }
 
-app.use(cors());
+app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
 // ترويسات أمان أساسية
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -211,20 +211,40 @@ async function notifyMatchingProviders(request){
     if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
   }catch(e){ console.error('notifyMatchingProviders:', e.message); }
 }
-async function matchingProviders(cat, city, allCities, cities){
+const _REGIONS = {
+  'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية'],
+  'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور'],
+  'مكة المكرمة':['مكة المكرمة','جدة','الطائف','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة'],
+  'المدينة المنورة':['المدينة المنورة','ينبع','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص'],
+  'الشرقية':['الدمام','الخبر','الظهران','الأحساء','الجبيل','القطيف','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا'],
+  'عسير':['أبها','خميس مشيط','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة'],
+  'تبوك':['تبوك','ضباء','الوجه','تيماء','حقل','أملج','البدع'],
+  'حائل':['حائل','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي'],
+  'الحدود الشمالية':['عرعر','رفحاء','طريف','العويقيلة'],
+  'جازان':['جازان','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة'],
+  'نجران':['نجران','شرورة','حبونا','بدر الجنوب','يدمة','ثار'],
+  'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى'],
+  'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
+};
+const _CITY2REGION = {};
+for (const _rg in _REGIONS) { for (const _c of _REGIONS[_rg]) _CITY2REGION[_c] = _rg; }
+function sameRegion(a, b){ if(!a||!b) return false; const ra=_CITY2REGION[String(a).trim()], rb=_CITY2REGION[String(b).trim()]; return !!ra && ra===rb; }
+async function matchingProviders(cats, city, allCities, cities){
+  const catArr = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
+  const catCond = '(cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])';
   let cityCond, params;
-  if (allCities) { cityCond='TRUE'; params=[cat]; }
+  if (allCities) { cityCond='TRUE'; params=[catArr]; }
   else if (Array.isArray(cities) && cities.length) {
     cityCond='(COALESCE(serves_all_cities,FALSE) OR city = ANY($2::text[]) OR (service_cities && $2::text[]))';
-    params=[cat, cities];
+    params=[catArr, cities];
   } else {
     cityCond='(COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))';
-    params=[cat, city];
+    params=[catArr, city];
   }
   const r = await pool.query(
     `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
       WHERE role='provider' AND is_active=TRUE
-        AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
+        AND ${catCond}
         AND ${cityCond}`, params);
   return r.rows;
 }
@@ -952,31 +972,31 @@ function emailTpl(title, body, btnText, btnUrl) {
     <tr><td align="center">
       <table role="presentation" width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(22,33,62,.10)">
         <!-- Header -->
-        <tr><td style="background:#16213E;background:linear-gradient(135deg,#0D1829 0%,#16213E 55%,#1B3A6B 100%);padding:0;position:relative">
+        <tr><td style="background:#1e3a8a;background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#3b82f6 100%);padding:0;position:relative">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:34px 28px 28px;text-align:center">
             <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:.5px">
               <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#C9920A;vertical-align:middle;margin-left:8px;box-shadow:0 0 0 4px rgba(201,146,10,.25)"></span>مناقصة
             </div>
             <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:7px;font-weight:600">سوق المشاريع والخدمات</div>
           </td></tr></table>
-          <div style="height:4px;background:linear-gradient(90deg,#A87000,#C9920A,#F0A500,#C9920A,#A87000)"></div>
+          <div style="height:4px;background:linear-gradient(90deg,#1e3a8a,#1d4ed8,#3b82f6,#1d4ed8,#1e3a8a)"></div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:34px 30px 26px">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td>
             <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
-            <div style="width:46px;height:3px;background:#C9920A;border-radius:2px;margin-bottom:20px"></div>
+            <div style="width:46px;height:3px;background:#1d4ed8;border-radius:2px;margin-bottom:20px"></div>
             <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
-            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#C9920A,#A87000)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
+            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
           </td></tr></table>
         </td></tr>
         <!-- Divider -->
         <tr><td style="padding:0 30px"><div style="height:1px;background:#E8EAED"></div></td></tr>
         <!-- Footer -->
         <tr><td style="padding:22px 30px 26px;text-align:center">
-          <div style="font-size:13px;font-weight:800;color:#16213E;margin-bottom:6px">منصة مناقصة</div>
+          <div style="font-size:13px;font-weight:800;color:#1e3a8a;margin-bottom:6px">منصة مناقصة</div>
           <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
-            <a href="https://manaqasa.com" style="color:#C9920A;text-decoration:none;font-weight:700">manaqasa.com</a>
+            <a href="https://manaqasa.com" style="color:#1d4ed8;text-decoration:none;font-weight:700">manaqasa.com</a>
           </div>
           <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
         </td></tr>
@@ -1042,6 +1062,20 @@ async function sendPush(userId, title, body, url, refType, refId) {
   } catch(e) { console.error('sendPush helper error:', e.message); }
 }
 
+async function remindClosedContacts(requestId, title){
+  try {
+    const r = await pool.query('SELECT cu.provider_id, u.email, u.name FROM contact_unlocks cu JOIN users u ON u.id=cu.provider_id WHERE cu.request_id=$1', [requestId]);
+    if (!r.rows.length) return;
+    const t = '💰 تذكير: عمولة المنصة عند إتمام الاتفاق';
+    const b = 'أُغلق مشروع'+(title?(' «'+title+'»'):'')+' الذي تواصلت بشأنه. إن كنت قد أتممت الاتفاق مع صاحبه، فلا تنسَ سداد رسوم المنصة (٣٪ من قيمة العقد) من صفحة الدفع — سواء تم الاتفاق داخل المنصة أو خارجها، حفاظاً على حقوق الجميع.';
+    for (const x of r.rows) {
+      try {
+        await notify(x.provider_id, t, b, 'saai', requestId);
+        if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'صفحة الدفع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+      } catch(e){}
+    }
+  } catch(e){ console.error('remindClosedContacts:', e.message); }
+}
 async function sendCommissionReminder(providerId, requestId){
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [providerId]);
@@ -1340,6 +1374,7 @@ async function runReminders(){
          RETURNING id, client_id, title`, [String(closeDays)]);
       for(const x of cl.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
+        try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
     }
@@ -1352,6 +1387,7 @@ async function runReminders(){
          RETURNING id, client_id, title`);
       for(const x of clC.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً عند انتهاء المدة التي حددتها`, 'request', x.id); }catch(e){}
+        try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(clC.rows.length) console.log(`[lifecycle] أُغلق ${clC.rows.length} مشروع (تاريخ خاص)`);
     }
@@ -1767,6 +1803,8 @@ async function setupDatabase() {
     await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
+    try { await pool.query('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); } catch(e){}
     await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -2421,7 +2459,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -2639,7 +2677,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    // خصوصية العميل: جواله يظهر فقط لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن
+    // خصوصية العميل: جواله يظهر لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن، أو مزوّد قدّم عرضاً حقيقياً
     const uid = req.user && req.user.id, role = req.user && req.user.role;
     const isOwner = uid && uid === row.client_id;
     const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
@@ -2648,9 +2686,22 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) {
       return res.status(404).json({ message: 'غير موجود' });
     }
-    if (!(isOwner || isAssigned || isAdmin)) {
+    // فتح التواصل لمزوّد قدّم عرضاً حقيقياً (سعر + تفاصيل كافية أو ملف مرفق)
+    let isRealBidder = false;
+    if (uid && !isOwner && !isAdmin) {
+      try {
+        const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`, [id, uid]);
+        if (rb.rows.length) {
+          isRealBidder = true;
+          try { const _ins = await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [uid, row.client_id, id, rb.rows[0].id]); if (_ins.rowCount > 0) sendCommissionReminder(uid, id); } catch(e){}
+        }
+      } catch(e) {}
+    }
+    if (!(isOwner || isAssigned || isAdmin || isRealBidder)) {
       row.client_phone = null;
       if (row.client_name) row.client_name = String(row.client_name).trim().split(/\s+/)[0]; // الاسم الأول فقط
+    }
+    if (!(isOwner || isAssigned || isAdmin)) {
       row.provider_phone = null;
     }
     // ملاحظات المراجعة الموجّهة للعميل (طلب تعديل): لصاحب المشروع أو الأدمن فقط
@@ -3032,7 +3083,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const reqCity = reqRow.rows[0].city;
       const pv = provInfo.rows[0] || {};
       const svcCities = Array.isArray(pv.service_cities) ? pv.service_cities : [];
-      const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0;
+      const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0 || sameRegion(pv.city, reqCity) || svcCities.some(c => sameRegion(c, reqCity));
       if (!inScope) {
         const warnMsg = 'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم — لضمان وصول عروضكم للمشاريع المناسبة، وزيادة فرص اختياركم، وتجنب العروض خارج نطاق خدمتكم.';
         await notify(req.user.id, '⚠️ عرض خارج نطاق خدمتك', warnMsg, 'bid', requestId);
@@ -3118,7 +3169,13 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
-    const r = await pool.query('UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3 WHERE id=$4 RETURNING *', [price||null, days||null, note||null, id]);
+    let attUrl;
+    if (req.body.attachment && typeof req.body.attachment==='string' && req.body.attachment.indexOf('data:')===0) {
+      try { const u = await uploadToCloud(req.body.attachment, 'manaqasa/attachments', req.body.attachment_name||'عرض-سعر'); if (u) attUrl = u; } catch(e){}
+    }
+    const r = await pool.query(
+      'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url) WHERE id=$6 RETURNING *',
+      [price||null, days||null, note||null, priceVis, attUrl||null, id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4522,7 +4579,7 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
     const [
       users, requests, bids, providers, clients, pending, inProgress, completed,
       todayUsers, todayProviders, todayClients, todayRequests, todayBids,
-      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders
+      weekUsers, weekRequests, monthUsers, monthRequests, verified, activeProviders, weekBids, weekCompleted
     ] = await Promise.all([
       q('SELECT COUNT(*) FROM users'),
       q("SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct')"),
@@ -4542,7 +4599,9 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
       q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
-      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`)
+      q(`SELECT COUNT(DISTINCT provider_id) FROM bids`),
+      q(`SELECT COUNT(*) FROM bids WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='completed' AND COALESCE(completed_at, created_at) >= CURRENT_DATE - INTERVAL '7 days'`)
     ]);
     // آخر 7 أيام (تسجيلات يومية)
     const daily = await pool.query(`
@@ -4589,7 +4648,7 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       total_users:users, requests, total_bids:bids, providers, clients,
       pending_review:pending, in_progress:inProgress, completed, verified, active_providers:activeProviders,
       today:{ users:todayUsers, providers:todayProviders, clients:todayClients, requests:todayRequests, bids:todayBids },
-      week:{ users:weekUsers, requests:weekRequests },
+      week:{ users:weekUsers, requests:weekRequests, bids:weekBids, completed:weekCompleted },
       month:{ users:monthUsers, requests:monthRequests },
       daily_signups: daily.rows,
       daily_requests: dailyReq.rows,
@@ -4612,7 +4671,7 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
     const where = conds.length ? 'WHERE '+conds.join(' AND ') : '';
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
-        b.price_visibility, b.attachment_url,
+        b.price_visibility, b.price_unit, b.attachment_url,
         u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
         rq.title as request_title, rq.client_id, rq.city as request_city,
         cu.name as client_name
@@ -5003,7 +5062,8 @@ app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view
     const id = parseInt(req.params.id);
     const rq = await pool.query('SELECT category, city FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const rows = await matchingProviders(rq.rows[0].category, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [rq.rows[0].category];
+    const rows = await matchingProviders(_cats, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
     res.json({ count: rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -5018,7 +5078,8 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = rq.rows[0];
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
-    const rows = await matchingProviders(row.category, row.city, allCities, req.body.cities);
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [row.category];
+    const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;
     for (const p of rows) {
@@ -5032,6 +5093,42 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     await logAdmin(req, 'invite_providers', 'request', id, 'دعوة المزودين ('+rows.length+')');
     res.json({ ok: true, matched: rows.length, notified, emailed });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/admin/real-bidders', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT b.provider_id, u.name AS provider_name, u.phone AS provider_phone,
+             COUNT(*) AS real_offers
+      FROM bids b JOIN users u ON u.id=b.provider_id
+      WHERE b.status='pending' AND b.price IS NOT NULL AND b.price>0
+        AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)
+        AND COALESCE(u.is_active,TRUE)=TRUE
+      GROUP BY b.provider_id, u.name, u.phone
+      ORDER BY real_offers DESC LIMIT 500`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/notify-real-bidders', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT DISTINCT b.provider_id, u.email, u.name
+      FROM bids b JOIN users u ON u.id=b.provider_id
+      WHERE b.status='pending' AND b.price IS NOT NULL AND b.price>0
+        AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)
+        AND COALESCE(u.is_active,TRUE)=TRUE`);
+    const title = '🎉 صار بإمكانك التواصل مباشرة مع أصحاب مشاريعك';
+    const body = 'خبر يهمك: العروض الحقيقية التي قدّمتها أصبحت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع. افتح المشروع أو ادخل «مشاريعي وعروضي» وستجد أزرار التواصل مفتوحة. سرعة تواصلك ترفع فرصك في الفوز.';
+    let sent = 0;
+    for (const p of r.rows) {
+      try {
+        await notify(p.provider_id, title, body, 'reminder', null);
+        if (p.email) sendEmail(p.email, title, emailTpl(title, `<p>مرحباً${p.name?' '+eEsc(p.name):''}،</p><p>${eEsc(body)}</p>`, 'مشاريعي وعروضي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        sent++;
+      } catch(e) {}
+    }
+    await logAdmin(req, 'notify_real_bidders', 'system', null, 'تنبيه أصحاب العروض بالتواصل ('+sent+')');
+    res.json({ ok: true, sent });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async (req, res) => {
   try {
@@ -5052,13 +5149,20 @@ app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req
   try {
     const r = await pool.query(`
       SELECT f.id, f.bid_id, f.provider_id, f.request_id, f.provider_city, f.request_city, f.reason, f.auto_notified, f.created_at,
-             u.name AS provider_name, r.title AS project_title,
+             u.name AS provider_name, u.phone AS provider_phone, r.title AS project_title,
              (SELECT COUNT(*) FROM offer_flags f2 WHERE f2.provider_id=f.provider_id) AS violations
       FROM offer_flags f
       LEFT JOIN users u ON u.id=f.provider_id
       LEFT JOIN requests r ON r.id=f.request_id
       ORDER BY f.created_at DESC LIMIT 200`);
     res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/offer-flags/clear', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM offer_flags');
+    await logAdmin(req, 'clear_offer_flags', 'system', null, 'مسح مخالفات العروض القديمة');
+    res.json({ ok: true, cleared: r.rowCount || 0 });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/offer-flags/:id/alert', requirePermission('requests.review'), async (req, res) => {
@@ -5200,6 +5304,7 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const _wasOpen = (r.rows[0].status === 'open');
     const _projTitle = r.rows[0].title || 'مشروع';
     await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW() WHERE id=$3", [reason, note||null, id]);
+    try { await remindClosedContacts(id, _projTitle); } catch(e){}
     // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
     if (_wasOpen) {
       try {
