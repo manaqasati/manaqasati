@@ -4746,7 +4746,7 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
       JOIN users u ON b.provider_id=u.id
       JOIN requests rq ON b.request_id=rq.id
       LEFT JOIN users cu ON rq.client_id=cu.id
-      ${where} ORDER BY b.created_at DESC LIMIT 200`, params);
+      ${where} ORDER BY b.created_at DESC LIMIT 500`, params);
     res.json(r.rows);
   } catch(e) { console.error('admin bids:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
