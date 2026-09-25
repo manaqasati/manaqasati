@@ -1332,7 +1332,16 @@ async function storageStatus(){
   return out;
 }
 // إيميل للأدمن مرة يومياً إذا تعدّى التخزين 80٪ (يشتغل ضمن runReminders كل 6 ساعات)
+async function recordStorageSnapshot(st){
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS storage_snapshots (day DATE PRIMARY KEY, db_bytes BIGINT, r2_bytes BIGINT, updated_at TIMESTAMP DEFAULT NOW())`);
+    const d = await pool.query("SELECT pg_database_size(current_database())::bigint b");
+    const r2 = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
+    await pool.query(`INSERT INTO storage_snapshots (day, db_bytes, r2_bytes, updated_at) VALUES (CURRENT_DATE,$1,$2,NOW()) ON CONFLICT (day) DO UPDATE SET db_bytes=EXCLUDED.db_bytes, r2_bytes=EXCLUDED.r2_bytes, updated_at=NOW()`, [Number(d.rows[0].b)||0, r2.rows.length?(Number(r2.rows[0].value)||0):0]);
+  } catch(e){ console.error('storageSnapshot:', e.message); }
+}
 async function checkStorageAlert(){
+  try { await recordStorageSnapshot(); } catch(e){}
   try {
     const st = await storageStatus();
     const worst = Math.max(st.dbPct, st.r2Pct);
@@ -5610,6 +5619,46 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
       r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
       projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
     };
+    // أكبر الجداول
+    try {
+      const tt = await pool.query(`SELECT relname AS name, pg_total_relation_size(relid)::bigint AS b FROM pg_catalog.pg_statio_user_tables ORDER BY b DESC LIMIT 6`);
+      out.storage.topTables = tt.rows.map(r => ({ name: r.name, mb: Math.round(Number(r.b)/1048576*10)/10 }));
+    } catch(e){ out.storage.topTables = []; }
+    // سرعة النمو + متى يمتلي
+    try {
+      await recordStorageSnapshot();
+      const nowB = Number(dbs.rows[0].b)||0;
+      let base = await pool.query(`SELECT day, db_bytes FROM storage_snapshots WHERE day <= CURRENT_DATE - 7 ORDER BY day DESC LIMIT 1`);
+      if (!base.rows.length) base = await pool.query(`SELECT day, db_bytes FROM storage_snapshots ORDER BY day ASC LIMIT 1`);
+      const first = await pool.query(`SELECT MIN(day) AS d, COUNT(*)::int AS n FROM storage_snapshots`);
+      const g = { historyDays: 0, weekMB: null, perDayMB: null, daysToFull: null };
+      if (base.rows.length) {
+        const days = Math.max(0, Math.round((Date.now() - new Date(base.rows[0].day).getTime())/864e5));
+        g.historyDays = days;
+        if (days >= 2) {
+          const perDay = (nowB - Number(base.rows[0].db_bytes))/1048576/days;
+          g.perDayMB = Math.round(perDay*100)/100;
+          g.weekMB = Math.round(perDay*7*10)/10;
+          const leftMB = STORAGE_DB_CAP_MB - nowB/1048576;
+          g.daysToFull = perDay > 0.01 ? Math.round(leftMB/perDay) : null;
+        }
+      }
+      g.since = first.rows[0] && first.rows[0].d ? first.rows[0].d : null;
+      out.storage.growth = g;
+    } catch(e){ out.storage.growth = { historyDays:0 }; }
+    // صور قديمة محفوظة داخل القاعدة (base64) — المفروض تكون في R2
+    try {
+      const cols = [['users','profile_image','صور البروفايل'],['users','portfolio_images','صور الأعمال'],['requests','images','صور المشاريع'],['requests','image_url','صورة المشروع']];
+      let n = 0, bytes = 0; const parts = [];
+      for (const [t,c,lbl] of cols) {
+        try {
+          const q = await pool.query(`SELECT COALESCE(SUM((length(${c}::text)-length(replace(${c}::text,'data:','')))/5),0)::bigint AS n, COALESCE(SUM(length(${c}::text)),0)::bigint AS b FROM ${t} WHERE ${c}::text LIKE '%data:%'`);
+          const cn = Number(q.rows[0].n)||0, cb = Number(q.rows[0].b)||0;
+          if (cn) { n += cn; bytes += cb; parts.push({ label: lbl, count: cn, mb: Math.round(cb/1048576*10)/10 }); }
+        } catch(e){}
+      }
+      out.storage.inlineImages = { count: n, mb: Math.round(bytes/1048576*10)/10, parts };
+    } catch(e){ out.storage.inlineImages = { count:0, mb:0, parts:[] }; }
   } catch(e){ out.storage={}; }
   out.allOk = out.db.ok && out.email.ok && out.server.ok;
   res.json(out);
