@@ -183,6 +183,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .bid-stamp{position:absolute;top:12px;left:12px;width:68px;height:68px;border-radius:50%;border:3px double var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:11px;line-height:1.25;transform:rotate(-12deg);background:rgba(255,255,255,.92);z-index:3;pointer-events:none;box-shadow:0 2px 8px rgba(34,197,94,.2)}
 .bid-x-rejected{opacity:.5}
 .bid-accepted-banner{background:var(--green-l,#f0fdf4);border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.bid-closed-banner{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:12px;padding:12px 15px;margin-bottom:14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
 .bid-x-best{border:2px solid var(--p);box-shadow:0 4px 16px rgba(30,58,138,.12)}
 .bid-x-badge{position:absolute;top:-11px;right:13px;background:var(--p);color:#fff;font-family:'Cairo',sans-serif;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px}
 .bid-x-av{width:46px;height:46px;border-radius:50%;background:var(--gold-l);border:2px solid var(--gold-soft);display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:var(--gold-d);flex-shrink:0;overflow:hidden}
@@ -564,6 +565,7 @@ function _renderBidsList(mode){
   var html='';
   var accB=_bids.filter(function(b){return b.status==='accepted';})[0];
   if(accB){ html+='<div class="bid-accepted-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> تم اختيار عرض <b>'+esc(accB.provider_name||'مزود')+'</b> — المشروع الآن قيد التنفيذ</div>'; }
+  else if(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0){ html+='<div class="bid-closed-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg> أُغلق هذا المشروع — لم يعد يستقبل عروضاً جديدة</div>'; }
   arr.forEach(function(b){html+=_bidCard(b,String(b.id)===String(bestId),isOwner,req.status);});
   wrap.innerHTML=html;
 }
@@ -612,7 +614,7 @@ function render(){
     // Immersive hero overlay on the cover image
     if(coverEl&&!coverEl.querySelector('.hero-ov')){
       var stColor=req.status==='open'?'rgba(22,163,74,.92)':(req.status==='in_progress'?'rgba(37,99,235,.92)':'rgba(100,116,139,.92)');
-      var stTxt=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':'مكتمل');
+      var stTxt=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0?'أُغلق':'مكتمل'));
       var stEl=document.createElement('div');
       stEl.className='hero-ov';
       stEl.style.cssText='position:absolute;top:12px;right:14px;z-index:3';
@@ -636,7 +638,7 @@ function render(){
       var actionsEl=ptop.querySelector('.proj-actions');
       var parts=[];if(req.category)parts.push(esc(req.category));if(req.city)parts.push(esc(req.city));
       var catcity=parts.join(' · ');
-      var stTxt2=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':'مكتمل');
+      var stTxt2=req.status==='open'?'مفتوح للعروض':(req.status==='in_progress'?'قيد التنفيذ':(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0?'أُغلق':'مكتمل'));
       var stBg2=req.status==='open'?'#dcfce7':(req.status==='in_progress'?'#dbeafe':'#f1f5f9');
       var stC2=req.status==='open'?'#15803d':(req.status==='in_progress'?'#1d4ed8':'#64748b');
       var head=document.createElement('div');
@@ -650,6 +652,7 @@ function render(){
   var stHtml='';
   if(req.status==='open')stHtml='<span class="st st-open">مفتوح للعروض</span>';
   else if(req.status==='in_progress')stHtml='<span class="st st-prog">قيد التنفيذ</span>';
+  else if(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0)stHtml='<span class="st st-done" style="background:#fef2f2;color:#b91c1c">أُغلق</span>';
   else stHtml='<span class="st st-done">مكتمل</span>';
 
   // SEO / OG
@@ -703,8 +706,8 @@ function render(){
     h+='<a href="https://wa.me/'+clientPhone.replace('+','')+'" class="cbtn c-wa" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>واتساب</a>';
     h+='<a href="tel:'+clientPhone+'" class="cbtn c-call"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.86 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.77 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 15.16z"/></svg>اتصال</a>';
   } else {
-    h+='<button class="cbtn c-wa" onclick="doMsg()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967c-.273-.099-.471-.148-.67.15c-.197.297-.767.966-.94 1.164c-.173.199-.347.223-.644.075c-.297-.15-1.255-.463-2.39-1.475A7.5 7.5 0 019 9c0-.198.05-.371-.025-.52c-.075-.149-.669-1.612-.916-2.207c-.242-.579-.487-.5-.669-.51C7.217 5.755 7.019 5.753 6.82 5.753c-.198 0-.52.074-.792.372c-.272.297-1.04 1.016-1.04 2.479c0 1.462 1.065 2.875 1.213 3.074c.149.198 2.096 3.2 5.077 4.487c.709.306 1.262.489 1.694.625c.712.227 1.36.195 1.871.118c.571-.085 1.758-.719 2.006-1.413c.248-.694.248-1.289.173-1.413z"/></svg>واتساب</button>';
-    h+='<button class="cbtn c-call" onclick="doMsg()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.86 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.77 0h3a2 2 0 012 1.72c.18.97.44 1.9.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45c.91.26 1.84.52 2.81.7A2 2 0 0122 15.16z"/></svg>اتصال</button>';
+    h+='<button class="cbtn c-wa" onclick="_lockedContact()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967c-.273-.099-.471-.148-.67.15c-.197.297-.767.966-.94 1.164c-.173.199-.347.223-.644.075c-.297-.15-1.255-.463-2.39-1.475A7.5 7.5 0 019 9c0-.198.05-.371-.025-.52c-.075-.149-.669-1.612-.916-2.207c-.242-.579-.487-.5-.669-.51C7.217 5.755 7.019 5.753 6.82 5.753c-.198 0-.52.074-.792.372c-.272.297-1.04 1.016-1.04 2.479c0 1.462 1.065 2.875 1.213 3.074c.149.198 2.096 3.2 5.077 4.487c.709.306 1.262.489 1.694.625c.712.227 1.36.195 1.871.118c.571-.085 1.758-.719 2.006-1.413c.248-.694.248-1.289.173-1.413z"/></svg>واتساب</button>';
+    h+='<button class="cbtn c-call" onclick="_lockedContact()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.86 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012.77 0h3a2 2 0 012 1.72c.18.97.44 1.9.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45c.91.26 1.84.52 2.81.7A2 2 0 0122 15.16z"/></svg>اتصال</button>';
   }
   h+='</div>';
   h+='<button class="cbtn c-msg" id="msgbtn" onclick="doMsg()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>رسالة عبر المنصة</button>';
@@ -802,6 +805,7 @@ function render(){
   // ── Share ──
   h+='<div class="card" style="text-align:center">';
   h+='<button onclick="shareProject()" style="background:none;border:1px solid var(--border);border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>مشاركة هذا المشروع</button>';
+  if(getUser()){ var _psv=!!(_req&&_req.is_saved); h+='<button id="pj-save-btn" onclick="_pjToggleSave()" style="background:'+(_psv?'var(--p-light,#eef2ff)':'none')+';border:1px solid '+(_psv?'var(--p,#1d4ed8)':'var(--border)')+';border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:'+(_psv?'var(--p,#1d4ed8)':'var(--muted)')+';cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-inline-start:8px"><svg width="14" height="14" fill="'+(_psv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg><span>'+(_psv?'محفوظ':'حفظ')+'</span></button>'; }
   if(isOwner && (req.status==='open')){
     h+='<div style="margin-top:12px"><button onclick="openCloseModal()" style="background:none;border:1px solid #fecaca;border-radius:22px;padding:9px 20px;font-family:Tajawal;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer">إغلاق المشروع</button></div>';
   }
@@ -862,10 +866,10 @@ async function submitBid(btn){
   var days=document.getElementById('bid-days').value;
   var note=document.getElementById('bid-note').value.trim();
   var al=document.getElementById('bid-al');
-  if(!price||!days){al.textContent='السعر والمدة مطلوبان';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';return;}
+  if(!price||!days){al.textContent='السعر والمدة مطلوبان';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}return;}
   var _nb=note.replace(/\s+/g,'');
   if(!note||_nb.length<15||/^[\d\s.,\-ريالر.س﷼]+$/.test(note)||/^(.)\1{4,}$/.test(_nb)){al.textContent='اكتب رسالة احترافية توضّح خبرتك وطريقة تنفيذك (١٥ حرفاً على الأقل) — العروض العشوائية تُرفض';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';try{document.getElementById('bid-note').style.borderColor='#dc2626';document.getElementById('bid-note').focus();}catch(e){}return;}
-  var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
+  var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
   var _vis=((document.querySelector('input[name="bidVis"]:checked')||{}).value)||'client';
   var unit=((document.getElementById('bid-unit')||{}).value||'total');
   window._pendingBidP={price:Math.max(1,Math.round(Number(price))),days:Math.max(1,Math.round(Number(days))),note:note,vis:_vis,unit:unit};
@@ -910,23 +914,26 @@ async function _reallySubmitBidP(){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
       body:JSON.stringify({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit})
     });
-    var dd=await r.json();
+    var dd={};try{dd=await r.json();}catch(_j){dd={};}
     if(r.ok){
       window._bidAttachP=null;window._pendingBidP=null;_closeBidConfirmP();
       if(al){al.textContent='تم إرسال عرضك بنجاح!';al.style.cssText='display:block;background:var(--green-l);color:var(--green)';}
       setTimeout(function(){closeBid();load();},1200);
     } else {
       _closeBidConfirmP();
-      if(al){al.textContent=dd.message||'حدث خطأ';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';}
+      if(al){al.textContent=dd.message||('تعذّر الإرسال (رمز '+r.status+')');al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(_e){}}
     }
   }catch(e){
     _closeBidConfirmP();
-    if(al){al.textContent='تعذر الإرسال';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';}
+    if(al){al.textContent='تعذّر الإرسال — تحقّق من الإنترنت أو صغّر حجم الملف المرفق';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(_e){}}
   }
 }
 
 var _chatReqId=null,_chatMsgs=[],_chatReceiver=null;
 
+function _lockedContact(){
+  if(confirm('🔒 لفتح التواصل المباشر (اتصال / واتساب) مع صاحب المشروع:\nقدّم عرضاً حقيقياً وواضحاً على هذا المشروع — سعر + تفاصيل كافية أو ملف عرض سعر.\n\nالعروض الفاضية أو العبث تعرّض حسابك للإيقاف.\n\nتقدر تراسل صاحب المشروع عبر المنصة الآن مجاناً — فتح المحادثة؟')){ doMsg(); }
+}
 function doMsg(){
   var u=getUser();
   if(!u){goLogin();return;}
@@ -1145,6 +1152,24 @@ function _cmConfirm(){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });
+}
+function _pjToggleSave(){
+  if(!getUser()){ location.href='/login.html'; return; }
+  var btn=document.getElementById('pj-save-btn');
+  fetch(API+'/api/saved-requests/'+_rid,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var saved=d&&d.saved;
+      if(_req)_req.is_saved=saved;
+      if(btn){
+        btn.style.background=saved?'var(--p-light,#eef2ff)':'none';
+        btn.style.borderColor=saved?'var(--p,#1d4ed8)':'var(--border)';
+        btn.style.color=saved?'var(--p,#1d4ed8)':'var(--muted)';
+        var svg=btn.querySelector('svg'); if(svg)svg.setAttribute('fill',saved?'currentColor':'none');
+        var sp=btn.querySelector('span'); if(sp)sp.textContent=saved?'محفوظ':'حفظ';
+      }
+    })
+    .catch(function(){});
 }
 function shareProject(){
   var _id=(_req&&_req.id)||getReqId();
