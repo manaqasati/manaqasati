@@ -4969,6 +4969,30 @@ app.post('/api/admin/engagement/:id/remind', requirePermission('requests.review'
     res.json({ ok:true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// إرسال ملاحظة للعميل دون تغيير حالة المشروع (يبقى منشوراً) — «معتمد لكن ينقص كذا»
+app.post('/api/admin/requests/:id/advise', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const note = String(req.body.note||'').trim();
+    if (!note) return res.status(400).json({ message: 'اكتب الملاحظة للعميل' });
+    const r = await pool.query('SELECT client_id, title FROM requests WHERE id=$1', [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = r.rows[0];
+    const c = await pool.query('SELECT name, email, phone FROM users WHERE id=$1', [row.client_id]);
+    const title = '💡 ملاحظة على مشروعك المنشور';
+    const body = `مشروعك «${row.title}» منشور ويستقبل العروض ✅ — لتحصل على عروض أدق، ننصح بإضافة: ${note}`;
+    await notify(row.client_id, title, body, 'request', id);
+    if (c.rows.length && c.rows[0].email) {
+      const eb = `<p>مشروعك "<strong>${row.title}</strong>" منشور ويستقبل العروض ✅</p><p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e40af;margin:10px 0">💡 <strong>لعروض أدق، ننصح بإضافة:</strong> ${note}</p>`;
+      sendEmail(c.rows[0].email, title, emailTpl(title, eb, 'تعديل مشروعك', SITE_URL+'/dashboard-client.html')).catch(()=>{});
+    }
+    let wa_link = null;
+    const ph = normPhone(c.rows.length ? c.rows[0].phone : null);
+    if (ph) { const wm = `السلام عليكم، مشروعك «${row.title}» في منصة مناقصة منشور ويستقبل العروض ✅\n💡 لعروض أدق ننصح بإضافة: ${note}\n\nتقدر تعدّله من هنا:\n${SITE_URL}/dashboard-client.html`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
+    await logAdmin(req, 'advise_request', 'request', id, 'ملاحظة للعميل (بقاء منشور)');
+    res.json({ ok: true, wa_link });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
