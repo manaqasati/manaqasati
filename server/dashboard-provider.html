@@ -1253,7 +1253,7 @@ function _renderBrowseList(list){
     var meta=[];
     if(r.city)meta.push(_esc(r.city));
     meta.push(timeAgoP(r.created_at));
-    meta.push(parseInt(r.bid_count||0)+' عرض');
+    meta.push(_arN(r.bid_count,'b'));
     var imgHtml=img
       ?'<div class="hz-img"><img src="'+img+'" loading="lazy"></div>'
       :'<div class="hz-img hz-noimg" style="color:var(--p)">'+catSvg(r.category,30)+'</div>';
@@ -2498,7 +2498,8 @@ function _viewImg(src){
 }
 
 
-function timeAgoP(d){if(!d)return '';var s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'الآن';var m=Math.floor(s/60);if(m<60)return 'منذ '+m+' دقيقة';var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';var dy=Math.floor(h/24);if(dy<30)return 'منذ '+dy+' يوم';return 'منذ '+Math.floor(dy/30)+' شهر';}
+function _arN(n,u){var f={m:['دقيقة','دقيقتين','دقائق','دقيقة'],h:['ساعة','ساعتين','ساعات','ساعة'],d:['يوم','يومين','أيام','يوماً'],mo:['شهر','شهرين','أشهر','شهراً'],b:['عرض واحد','عرضين','عروض','عرضاً']}[u];n=parseInt(n)||0;if(n===0)return u==='b'?'لا عروض':'0 '+f[3];if(n===1)return f[0];if(n===2)return f[1];if(n<=10)return n+' '+f[2];return n+' '+f[3];}
+function timeAgoP(d){if(!d)return '';var s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'الآن';var m=Math.floor(s/60);if(m<60)return 'منذ '+_arN(m,'m');var h=Math.floor(m/60);if(h<24)return 'منذ '+_arN(h,'h');var dy=Math.floor(h/24);if(dy<30)return 'منذ '+_arN(dy,'d');return 'منذ '+_arN(Math.floor(dy/30),'mo');}
 
 // ═══ الأسئلة والتوضيحات (لوحة المزود) ═══
 function _provPending(q){ return !(q.answer&&String(q.answer).trim()); }
