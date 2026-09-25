@@ -3144,6 +3144,29 @@ app.put('/api/admin/bids/:id/request-edit', requirePermission('bids.delete'), as
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══ تحذير المزوّد على عرضه (إشعار + إيميل + واتساب) — لا يغيّر حالة العرض ═══
+app.put('/api/admin/bids/:id/warn', requirePermission('bids.delete'), async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const reason = String(req.body.reason||'').trim();
+    if (!reason) return res.status(400).json({ message: 'اكتب نص التحذير' });
+    const b = await pool.query('SELECT b.provider_id, r.title, u.name, u.email, u.phone FROM bids b JOIN requests r ON r.id=b.request_id JOIN users u ON u.id=b.provider_id WHERE b.id=$1', [bidId]);
+    if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const p = b.rows[0];
+    const title = '⚠️ تنبيه بخصوص عرضك';
+    const body = `تنبيه من إدارة المنصة على عرضك في «${eEsc(p.title)}»: ${eEsc(reason)}\nيرجى تعديل العرض — تكرار المخالفة قد يؤدي لحظر الحساب.`;
+    await notify(p.provider_id, title, body, 'bid', null);
+    if (p.email) {
+      const eb = `<p>عزيزي <strong>${eEsc(p.name||'')}</strong>،</p><p>لدينا تنبيه بخصوص عرضك على "<strong>${eEsc(p.title)}</strong>":</p><p style="background:#fef2f2;border:1px solid #fecaca;border-right:4px solid #dc2626;border-radius:8px;padding:11px 13px;color:#7f1d1d;margin:12px 0">⚠️ ${eEsc(reason)}</p><p style="color:#64748b;font-size:13px">يرجى تعديل عرضك من «عروضي». تكرار المخالفة قد يؤدي لحظر الحساب.</p>`;
+      sendEmail(p.email, title, emailTpl(title, eb, 'تعديل عرضي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+    }
+    let wa_link = null;
+    const ph = normPhone(p.phone);
+    if (ph) { const wm = `السلام عليكم ${p.name||''}،\n⚠️ تنبيه من منصة مناقصة بخصوص عرضك على «${p.title}»:\n${reason}\n\nيرجى تعديل العرض من «عروضي»:\n${SITE_URL}/dashboard-provider.html`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
+    await logAdmin(req, 'warn_bid', 'bid', bidId, 'تحذير المزوّد: '+reason.slice(0,80));
+    res.json({ ok: true, wa_link });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
   try {
     const bidId = parseInt(req.params.id);
