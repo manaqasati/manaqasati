@@ -4460,7 +4460,8 @@ function _hStorageCard(st){
     +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">التخزين والحجم</h3></div>'
     +_hBar('تخزين الملفات والمخططات (R2)', st.r2UsedMB||0, st.r2CapMB||10000)
     +(st.r2Objects?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">'+st.r2Objects+' ملف في المخزن'+(st.r2SyncedAt?' · آخر مطابقة مع Cloudflare: '+new Date(st.r2SyncedAt).toLocaleString('ar-SA',{dateStyle:'short',timeStyle:'short'}):'')+'</div>':'')
-    +_hBar('قاعدة البيانات', st.dbSizeMB||0, st.dbCapMB||5000)
+    +_hBar('قرص قاعدة البيانات', st.dbSizeMB||0, st.dbCapMB||5000)
+    +((st.dbDataMB!=null)?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">البيانات '+st.dbDataMB+' MB · سجلات Postgres الداخلية (WAL) '+(st.dbWalMB||0)+' MB</div>':'')
     +_hGrowth(st.growth||{})
     +_hTopTables(st.topTables||[], st.dbSizeMB||0)
     +_hInline(st.inlineImages||{})
