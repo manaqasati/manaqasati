@@ -869,7 +869,7 @@ app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
     if(bio !== null){ v.push(bio); sets.push(`card_bio=$${v.length}`); }
     if(typeof req.body.logo === 'string'){
       let logo = req.body.logo.trim();
-      if(logo.startsWith('data:')) logo = await uploadToR2(logo, 'manaqasa/cards');
+      if(logo.startsWith('data:')) logo = await uploadToCloud(logo, 'manaqasa/cards'); // لا نحفظ base64 في القاعدة أبداً
       v.push(logo || null); sets.push(`card_logo=$${v.length}`);
     }
     v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`);
@@ -1323,12 +1323,13 @@ async function runSavedReminders(){
   } catch(e){ console.error('runSavedReminders:', e.message); }
 }
 // ═══ مراقبة امتلاء التخزين (القاعدة + R2) ═══
-const STORAGE_DB_CAP_MB = 5*1024;   // قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB) — عدّله لو وسّعت مرة ثانية
-const STORAGE_R2_CAP_MB = 10*1024;  // R2 المجاني 10GB
+const STORAGE_DB_CAP_MB = 5000;     // قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB) — عدّله لو وسّعت مرة ثانية
+const MB = 1000000;                 // ميجا عشري — نفس حساب Cloudflare وRailway
+const STORAGE_R2_CAP_MB = 10000;    // R2 المجاني 10GB
 async function storageStatus(){
-  const out = { dbMB:0, dbPct:0, dbCapMB:STORAGE_DB_CAP_MB, r2MB:0, r2Pct:0, r2CapMB:STORAGE_R2_CAP_MB };
-  try { const d = await pool.query("SELECT pg_database_size(current_database())::bigint b"); out.dbMB = Math.round(Number(d.rows[0].b)/1048576); out.dbPct = Math.round(out.dbMB/STORAGE_DB_CAP_MB*1000)/10; } catch(e){}
-  try { const r = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'"); const b = r.rows.length?(Number(r.rows[0].value)||0):0; out.r2MB = Math.round(b/1048576); out.r2Pct = Math.round(out.r2MB/STORAGE_R2_CAP_MB*1000)/10; } catch(e){}
+  const out = { dbMB:0, dbPct:0, dbCapMB:STORAGE_DB_CAP_MB, r2MB:0, r2Pct:0, r2CapMB:STORAGE_R2_CAP_MB, r2Connected: !!r2Client };
+  try { const d = await pool.query("SELECT pg_database_size(current_database())::bigint b"); out.dbMB = Math.round(Number(d.rows[0].b)/MB); out.dbPct = Math.round(out.dbMB/STORAGE_DB_CAP_MB*1000)/10; } catch(e){}
+  try { const r = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'"); const b = r.rows.length?(Number(r.rows[0].value)||0):0; out.r2MB = Math.round(b/MB); out.r2Pct = Math.round(out.r2MB/STORAGE_R2_CAP_MB*1000)/10; } catch(e){}
   return out;
 }
 // إيميل للأدمن مرة يومياً إذا تعدّى التخزين 80٪ (يشتغل ضمن runReminders كل 6 ساعات)
@@ -1355,10 +1356,38 @@ async function syncR2Size(force){
     await setSetting('r2_bytes', String(total));
     await setSetting('r2_objects', String(count));
     await setSetting('r2_sync_at', String(Date.now()));
-    console.log('R2 size synced:', Math.round(total/1048576)+'MB', count+' objects');
+    console.log('R2 size synced:', Math.round(total/MB)+'MB', count+' objects');
   } catch(e){ console.error('syncR2Size:', e.message); }
 }
+// حارس المشكلة الأولى: لو انقطع R2 أو بدأت صور تنحفظ داخل القاعدة → تنبيه فوري للأدمن
+async function _alertAdmins(key, title, text){
+  try {
+    const last = parseInt(await getSetting(key,'0'))||0;
+    if (Date.now() - last < 22*3600*1000) return;
+    await setSetting(key, String(Date.now()));
+    const admins = await pool.query(`SELECT id, email FROM users WHERE role='admin'`);
+    for (const a of admins.rows) {
+      try { await notify(a.id, title, text, 'system', null); } catch(e){}
+      if (a.email) sendEmail(a.email, title, emailTpl(title, `<p style="background:#fef2f2;border:1px solid #fecaca;border-right:4px solid #dc2626;border-radius:8px;padding:11px 13px;color:#7f1d1d">${eEsc(text)}</p>`, 'صحة النظام', SITE_URL+'/dashboard-admin.html#health')).catch(()=>{});
+    }
+  } catch(e){ console.error('alertAdmins:', e.message); }
+}
+async function checkUploadGuards(){
+  if (!r2Client) await _alertAdmins('alert_r2_off_at', '🚨 تخزين الملفات R2 غير متصل', 'مفاتيح R2 غير موجودة في Railway، فرفع الصور والملفات متوقّف. راجع متغيرات R2_ACCESS_KEY و R2_SECRET_KEY و R2_ENDPOINT.');
+  try {
+    // نعدّ الصور المحفوظة داخل القاعدة؛ لو زادت عن آخر فحص = فيه مسار يحفظ base64 بدل R2
+    const q = await pool.query(`SELECT
+      (SELECT COUNT(*) FROM users WHERE profile_image LIKE 'data:%')
+    + (SELECT COUNT(*) FROM users WHERE portfolio_images::text LIKE '%data:%')
+    + (SELECT COUNT(*) FROM requests WHERE images::text LIKE '%data:%' OR image_url LIKE 'data:%') AS n`);
+    const n = Number(q.rows[0].n)||0;
+    const prevRaw = await getSetting('inline_count_last', '');
+    await setSetting('inline_count_last', String(n));
+    if (prevRaw !== '' && n > (parseInt(prevRaw)||0)) await _alertAdmins('alert_inline_at', '⚠️ صور جديدة تنحفظ داخل قاعدة البيانات', 'عدد السجلات اللي فيها صور داخل القاعدة زاد من '+prevRaw+' إلى '+n+' — يعني فيه رفع ينحفظ في القاعدة بدل R2، وهذا نفس سبب امتلاء القاعدة سابقاً.');
+  } catch(e){ console.error('inlineGuard:', e.message); }
+}
 async function checkStorageAlert(){
+  try { await checkUploadGuards(); } catch(e){}
   try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
@@ -5630,19 +5659,19 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
     const att = await pool.query("SELECT COUNT(*)::int c FROM requests WHERE attachments IS NOT NULL AND attachments::text NOT IN ('[]','null','')").catch(()=>({rows:[{c:0}]}));
     const img = await pool.query("SELECT COALESCE(SUM(COALESCE(array_length(images,1),0)),0)::int c FROM requests").catch(()=>({rows:[{c:0}]}));
     const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
-    const dbMB = Math.round(Number(dbs.rows[0].b)/1048576*10)/10;
+    const dbMB = Math.round(Number(dbs.rows[0].b)/MB*10)/10;
     const r2Bytes = r2b.rows.length ? (Number(r2b.rows[0].value)||0) : 0;
     const R2_CAP_MB = STORAGE_R2_CAP_MB, DB_CAP_MB = STORAGE_DB_CAP_MB;
     out.storage = {
       dbSizeMB: dbMB, dbCapMB: DB_CAP_MB, dbPct: Math.min(100, Math.round(dbMB/DB_CAP_MB*1000)/10),
-      r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
+      r2UsedMB: Math.round(r2Bytes/MB*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*MB)*1000)/10),
       projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
     };
     try { out.storage.r2Objects = parseInt(await getSetting('r2_objects','0'))||0; const _sa = parseInt(await getSetting('r2_sync_at','0'))||0; out.storage.r2SyncedAt = _sa ? new Date(_sa).toISOString() : null; } catch(e){}
     // أكبر الجداول
     try {
       const tt = await pool.query(`SELECT relname AS name, pg_total_relation_size(relid)::bigint AS b FROM pg_catalog.pg_statio_user_tables ORDER BY b DESC LIMIT 6`);
-      out.storage.topTables = tt.rows.map(r => ({ name: r.name, mb: Math.round(Number(r.b)/1048576*10)/10 }));
+      out.storage.topTables = tt.rows.map(r => ({ name: r.name, mb: Math.round(Number(r.b)/MB*10)/10 }));
     } catch(e){ out.storage.topTables = []; }
     // سرعة النمو + متى يمتلي
     try {
@@ -5656,10 +5685,10 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
         const days = Math.max(0, Math.round((Date.now() - new Date(base.rows[0].day).getTime())/864e5));
         g.historyDays = days;
         if (days >= 2) {
-          const perDay = (nowB - Number(base.rows[0].db_bytes))/1048576/days;
+          const perDay = (nowB - Number(base.rows[0].db_bytes))/MB/days;
           g.perDayMB = Math.round(perDay*100)/100;
           g.weekMB = Math.round(perDay*7*10)/10;
-          const leftMB = STORAGE_DB_CAP_MB - nowB/1048576;
+          const leftMB = STORAGE_DB_CAP_MB - nowB/MB;
           g.daysToFull = perDay > 0.01 ? Math.round(leftMB/perDay) : null;
         }
       }
@@ -5674,10 +5703,10 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
         try {
           const q = await pool.query(`SELECT COALESCE(SUM((length(${c}::text)-length(replace(${c}::text,'data:','')))/5),0)::bigint AS n, COALESCE(SUM(length(${c}::text)),0)::bigint AS b FROM ${t} WHERE ${c}::text LIKE '%data:%'`);
           const cn = Number(q.rows[0].n)||0, cb = Number(q.rows[0].b)||0;
-          if (cn) { n += cn; bytes += cb; parts.push({ label: lbl, count: cn, mb: Math.round(cb/1048576*10)/10 }); }
+          if (cn) { n += cn; bytes += cb; parts.push({ label: lbl, count: cn, mb: Math.round(cb/MB*10)/10 }); }
         } catch(e){}
       }
-      out.storage.inlineImages = { count: n, mb: Math.round(bytes/1048576*10)/10, parts };
+      out.storage.inlineImages = { count: n, mb: Math.round(bytes/MB*10)/10, parts };
     } catch(e){ out.storage.inlineImages = { count:0, mb:0, parts:[] }; }
   } catch(e){ out.storage={}; }
   out.allOk = out.db.ok && out.email.ok && out.server.ok;
