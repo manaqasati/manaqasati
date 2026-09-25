@@ -1086,6 +1086,16 @@ function normPhone(p){
   if(rest.length !== 9 || !rest.startsWith('5')) return null;
   return d;
 }
+// كشف محاولة تواصل خارج المنصة داخل نص (رقم جوال أو كلمات تواصل + أرقام)
+function _hasContact(text){
+  let t = String(text||'');
+  t = t.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+       .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  const compact = t.replace(/[\s\-\.\(\)+_]/g, '');
+  if (/\d{9,}/.test(compact)) return true;
+  if (/(واتس|whats|wa\.me|تواصل\s*مع|كلّ?مني|كلمني|اتصل|رقمي|جوالي|تلفون|تليفون|خارج\s*المنص|تليجرام|telegram|سناب|snap|انستقرام|instagram|ايميلي)/i.test(t) && /\d{7,}/.test(compact)) return true;
+  return false;
+}
 // توحيد اسم المنشأة للمطابقة: يوحّد الحروف، يشيل التشكيل و«ال» والكلمات العامة (مؤسسة/شركة/محل...)
 function normName(s){
   if(!s) return '';
@@ -3011,6 +3021,16 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         }
       }
     } catch(sp) { console.error('spread_flag:', sp.message); } }
+    // رصد محاولة التواصل خارج المنصة: رقم جوال/كلمات تواصل في نص العرض (تفادي العمولة)
+    try {
+      if (note && _hasContact(note)) {
+        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='contact_share' AND created_at > NOW() - INTERVAL '24 hours' LIMIT 1", [req.user.id]);
+        if (!dup.rows.length) {
+          await notify(req.user.id, '⚠️ ممنوع مشاركة التواصل في العرض', 'رصدنا رقم تواصل داخل نص عرضك. التواصل يتم عبر المنصة فقط — مشاركة الأرقام لتفادي العمولة مخالفة قد تؤدي لحظر الحساب.', 'bid', requestId);
+          await pool.query("INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,'contact_share',TRUE)", [row.id, req.user.id, requestId, (provInfo.rows[0]&&provInfo.rows[0].city)||null, reqRow.rows[0].city||null]);
+        }
+      }
+    } catch(ce) { console.error('contact_flag:', ce.message); }
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
     let isFirst = false;
