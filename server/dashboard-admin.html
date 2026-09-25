@@ -658,7 +658,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <textarea id="re-pullnotes" placeholder="مثال: أضف عدد المكيفات، الأدوار، وهل التوريد مطلوب أم التركيب فقط..." style="width:100%;padding:10px 12px;border:1.5px solid #fed7aa;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;min-height:62px;resize:vertical;outline:none"></textarea>
       <div id="re-pullchips"></div>
       <div id="re-pullwarn" style="font-size:12px;color:#b45309;margin-top:8px;line-height:1.7;display:none"></div>
-      <button class="btn-s" onclick="submitPullback()" style="margin-top:10px;background:#ea580c;color:#fff;border:none;font-weight:800">🟡 أرسل واسحب للمراجعة</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn-s" onclick="submitAdvise()" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-weight:800">📢 أرسل ملاحظة (يبقى منشوراً)</button>
+        <button class="btn-s" onclick="submitPullback()" style="background:#ea580c;color:#fff;border:none;font-weight:800">🟡 أرسل واسحب للمراجعة</button>
+      </div>
+      <div style="font-size:11px;color:#92620e;margin-top:7px;line-height:1.6">📢 <b>يبقى منشوراً:</b> ملاحظة نصح فقط، العروض تستمر · 🟡 <b>واسحب:</b> يُخفى عن المنفّذين حتى يعدّل.</div>
     </div>
     <div class="modal-foot"><button class="btn-p" id="re-save" onclick="saveReqEdit()">حفظ التعديلات</button><button class="btn-s" id="re-pullbtn" onclick="togglePullback()" style="display:none;background:#fff7ed;color:#c2410e;border:1px solid #fed7aa">🟡 سحب وطلب تعديل</button><button class="btn-s" id="re-feature" style="display:none" onclick="toggleFeatured()"></button><button class="btn-s" id="re-close" onclick="closeReqAdmin()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca">إغلاق المشروع</button><button class="btn-s" onclick="closeModal('reqModal')">إلغاء</button></div>
   </div>
@@ -2288,6 +2292,20 @@ function togglePullback(){
     var ch=document.getElementById('re-pullchips');if(ch)ch.innerHTML=reasonChips('re-pullnotes');
     var nt=document.getElementById('re-pullnotes');if(nt)nt.focus();
   }
+}
+function submitAdvise(){
+  var ta=document.getElementById('re-pullnotes');
+  var note=((ta&&ta.value)||'').trim();
+  if(!note){toast('اكتب الملاحظة للعميل أولاً','error');if(ta)ta.focus();return;}
+  fetch(API+'/api/admin/requests/'+_editReqId+'/advise',Object.assign({method:'POST',body:JSON.stringify({note:note})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الإرسال','error');return;}
+      toast('أُرسلت الملاحظة للعميل — المشروع باقٍ منشوراً ✓','success');
+      closeModal('reqModal');
+      if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
+    })
+    .catch(function(){toast('تعذّر الاتصال','error');});
 }
 function submitPullback(){
   var ta=document.getElementById('re-pullnotes');
