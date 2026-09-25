@@ -1322,7 +1322,36 @@ async function runSavedReminders(){
     }
   } catch(e){ console.error('runSavedReminders:', e.message); }
 }
+// ═══ مراقبة امتلاء التخزين (القاعدة + R2) ═══
+const STORAGE_DB_CAP_MB = 5*1024;   // قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB) — عدّله لو وسّعت مرة ثانية
+const STORAGE_R2_CAP_MB = 10*1024;  // R2 المجاني 10GB
+async function storageStatus(){
+  const out = { dbMB:0, dbPct:0, dbCapMB:STORAGE_DB_CAP_MB, r2MB:0, r2Pct:0, r2CapMB:STORAGE_R2_CAP_MB };
+  try { const d = await pool.query("SELECT pg_database_size(current_database())::bigint b"); out.dbMB = Math.round(Number(d.rows[0].b)/1048576); out.dbPct = Math.round(out.dbMB/STORAGE_DB_CAP_MB*1000)/10; } catch(e){}
+  try { const r = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'"); const b = r.rows.length?(Number(r.rows[0].value)||0):0; out.r2MB = Math.round(b/1048576); out.r2Pct = Math.round(out.r2MB/STORAGE_R2_CAP_MB*1000)/10; } catch(e){}
+  return out;
+}
+// إيميل للأدمن مرة يومياً إذا تعدّى التخزين 80٪ (يشتغل ضمن runReminders كل 6 ساعات)
+async function checkStorageAlert(){
+  try {
+    const st = await storageStatus();
+    const worst = Math.max(st.dbPct, st.r2Pct);
+    if (worst < 80) return;
+    const last = parseInt(await getSetting('storage_alert_at','0'))||0;
+    if (Date.now() - last < 22*3600*1000) return;
+    await setSetting('storage_alert_at', String(Date.now()));
+    const which = st.dbPct >= st.r2Pct ? `قاعدة البيانات ${st.dbPct}٪ (${st.dbMB} ميجا من ${st.dbCapMB} ميجا)` : `تخزين الملفات R2 ${st.r2Pct}٪ (${st.r2MB} ميجا من ${st.r2CapMB} ميجا)`;
+    const title = worst >= 90 ? '🚨 التخزين على وشك الامتلاء — تصرّف الآن' : '⚠️ التخزين تعدّى 80٪';
+    const body = `<p>تنبيه تلقائي من منصة مناقصة:</p><p style="background:#fef2f2;border:1px solid #fecaca;border-right:4px solid #dc2626;border-radius:8px;padding:11px 13px;color:#7f1d1d">${which}</p><p>لما يمتلي التخزين، القاعدة ترفض الكتابة ويتوقّف تسجيل الدخول والإجراءات (أخطاء 500). وسّع القرص من Railway أو نظّف البيانات قبل ما يوصل 100٪.</p>`;
+    const admins = await pool.query(`SELECT id, email FROM users WHERE role='admin'`);
+    for (const a of admins.rows) {
+      try { await notify(a.id, title, which, 'system', null); } catch(e){}
+      if (a.email) sendEmail(a.email, title, emailTpl(title, body, 'صحة النظام', SITE_URL+'/dashboard-admin.html#health')).catch(()=>{});
+    }
+  } catch(e){ console.error('storageAlert:', e.message); }
+}
 async function runReminders(){
+  try { await checkStorageAlert(); } catch(e){}
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -5575,7 +5604,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
     const r2b = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'").catch(()=>({rows:[]}));
     const dbMB = Math.round(Number(dbs.rows[0].b)/1048576*10)/10;
     const r2Bytes = r2b.rows.length ? (Number(r2b.rows[0].value)||0) : 0;
-    const R2_CAP_MB = 10*1024, DB_CAP_MB = 5*1024; // R2 المجاني 10GB · قرص Postgres على Railway = 5GB (بعد التوسعة من 500MB)
+    const R2_CAP_MB = STORAGE_R2_CAP_MB, DB_CAP_MB = STORAGE_DB_CAP_MB;
     out.storage = {
       dbSizeMB: dbMB, dbCapMB: DB_CAP_MB, dbPct: Math.min(100, Math.round(dbMB/DB_CAP_MB*1000)/10),
       r2UsedMB: Math.round(r2Bytes/1048576*10)/10, r2CapMB: R2_CAP_MB, r2Pct: Math.min(100, Math.round(r2Bytes/(R2_CAP_MB*1048576)*1000)/10),
@@ -6123,7 +6152,7 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
       by_city: byCity, by_category: byCat,
       by_tier: byTier,
       revenue_monthly: revMonthly,
-      needs_action: { review: needReview, reports: needReports, verify: needVerify, questions: needQ }
+      needs_action: { review: needReview, reports: needReports, verify: needVerify, questions: needQ, storage: await storageStatus() }
     });
   } catch(e) { console.error('analytics:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
