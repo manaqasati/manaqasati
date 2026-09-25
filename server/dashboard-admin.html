@@ -1923,8 +1923,9 @@ function loadOfferFlags(){
     host.innerHTML=list.map(function(f){
       var v=parseInt(f.violations)||1;
       var spam=(f.reason==='spam_speed');
-      var badge=spam?'<span class="badge" style="background:#f3e8ff;color:#7c3aed;white-space:nowrap">نشاط مشبوه</span>':'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>';
-      var detail=spam?('عروض كثيرة في وقت قصير · '+esc(f.project_title||'مشروع')):('قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>');
+      var spread=(f.reason==='spam_spread');
+      var badge=spread?'<span class="badge" style="background:#fef2f2;color:#b91c1c;white-space:nowrap">🌐 انتشار مشبوه</span>':(spam?'<span class="badge" style="background:#f3e8ff;color:#7c3aed;white-space:nowrap">نشاط مشبوه</span>':'<span class="badge b-rej" style="white-space:nowrap">خارج النطاق</span>');
+      var detail=spread?('عروض في مناطق متعددة خلال 24 ساعة (احتمال «كل المدن» مزعج) · '+esc(f.project_title||'مشروع')):(spam?('عروض كثيرة في وقت قصير · '+esc(f.project_title||'مشروع')):('قدّم على: <b style="color:#334155">'+esc(f.project_title||'مشروع')+'</b> في <b style="color:var(--red)">'+esc(f.request_city||'—')+'</b>'));
       return '<div class="card" id="owf-'+f.id+'" style="margin-bottom:12px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
           +'<div style="font-weight:800;font-size:14px">'+esc(f.provider_name||'مزوّد')+' <span style="font-size:11px;color:var(--muted);font-weight:600">'+(f.provider_city?('من '+esc(f.provider_city)):'')+'</span></div>'
