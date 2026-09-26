@@ -852,7 +852,7 @@ function render(){
   var dl=_daysLeft();
   var stc=_stCol(req.status);
   var stLine='● '+_stTxt(req.status)+(req.status==='open'&&dl!==null?' · '+(dl<=0?'آخر يوم':'باقي '+dl+' '+_dWord(dl)):'');
-  var catcity=[(req.category==='أخرى'&&req.category_other)?req.category_other:req.category,[req.district,req.city].filter(Boolean).join(' — ')].filter(Boolean).map(esc).join(' · ');
+  var catcity=[((req.category==='أخرى'&&req.category_other)?req.category_other:req.category)+((req.extra_categories&&req.extra_categories.length)?' + '+req.extra_categories.join(' + '):''),[req.district,req.city].filter(Boolean).join(' — ')].filter(Boolean).map(esc).join(' · ');
   var nImgs=imgs.filter(isImg).length;
   // ── الغلاف ──
   var coverEl=document.getElementById('cover');
