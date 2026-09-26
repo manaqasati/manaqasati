@@ -394,6 +394,13 @@ app.get('/api/requests/public/:id', async (req, res) => {
         row.contact_unlocked=true;
       } else { row.contact_unlocked=false; }
       if(uid){ try{ const sv=await pool.query('SELECT 1 FROM saved_requests WHERE user_id=$1 AND request_id=$2',[uid,id]); row.is_saved=sv.rows.length>0; }catch(e){ row.is_saved=false; } }
+      // مهلة الاختيار بعد الإغلاق (لصاحب المشروع)
+      if(isOwner && ['closed_auto','expired','closed'].includes(row.status)){ try{
+        const cw=(await pool.query(`SELECT close_reason, (COALESCE(closed_at, close_at, created_at + INTERVAL '30 days') + ($2 || ' days')::interval) AS until FROM requests WHERE id=$1`,[id, String(ACCEPT_AFTER_CLOSE_DAYS)])).rows[0]||{};
+        row.accept_until = cw.until && new Date(cw.until) > new Date() ? cw.until : null;
+        row.closed_by_client = !!(cw.close_reason && cw.close_reason !== 'admin_closed');
+        row.closed_by_admin = cw.close_reason === 'admin_closed';
+      }catch(e){} }
       // ملاحظات الإدارة: ترجع لصاحب المشروع والأدمن فقط — أي أحد ثاني ما تنرسل له أصلاً
       if(isOwner||isAdmin){ try{
         const cn=(await pool.query('SELECT client_note, client_note_at, client_note_seen_at, client_note_done_at, client_note_hidden FROM requests WHERE id=$1',[id])).rows[0]||{};
@@ -3188,6 +3195,13 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!isAdmin) delete row.admin_notes;
     // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
     if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
+    if (isOwner && ['closed_auto','expired','closed'].includes(row.status)) {
+      const _base = row.closed_at || row.close_at || (row.created_at ? new Date(new Date(row.created_at).getTime() + 30*86400000) : null);
+      const _until = _base ? new Date(new Date(_base).getTime() + ACCEPT_AFTER_CLOSE_DAYS*86400000) : null;
+      row.accept_until = _until && _until > new Date() ? _until : null;
+      row.closed_by_client = !!(row.close_reason && row.close_reason !== 'admin_closed');
+      row.closed_by_admin = row.close_reason === 'admin_closed';
+    }
     // ملاحظات الإدارة للعميل: لصاحب المشروع والأدمن فقط
     if (!(isOwner || isAdmin)) _stripClientNote(row);
     else if (isOwner && row.client_note && !row.client_note_seen_at) { try { await pool.query('UPDATE requests SET client_note_seen_at=NOW() WHERE id=$1', [id]); row.client_note_seen_at = new Date(); } catch(e){} }
@@ -3702,12 +3716,24 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     try {
       await client.query('BEGIN');
       // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
+      // مفتوح، أو مغلق (تلقائياً أو من العميل) خلال مهلة ${ACCEPT_AFTER_CLOSE_DAYS} يوم من الإغلاق — العميل يقدر يختار من العروض الموجودة
       const lock = await client.query(
-        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW()
+        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW(),
+             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
          WHERE id=$2 AND assigned_provider_id IS NULL
-           AND status NOT IN ('completed','cancelled','closed_auto')
-         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id]);
-      if (!lock.rows.length) { await client.query('ROLLBACK'); client.release(); return res.status(400).json({ message: 'تمت ترسية هذا المشروع مسبقاً' }); }
+           AND ( status NOT IN ('completed','cancelled','closed_auto','expired','closed','rejected','pending_review','review','needs_edit')
+              OR ( status IN ('closed_auto','expired','closed')
+                   AND COALESCE(closed_at, close_at, created_at + INTERVAL '30 days') >= NOW() - ($3 || ' days')::interval ) )
+         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id, String(ACCEPT_AFTER_CLOSE_DAYS)]);
+      if (!lock.rows.length) {
+        await client.query('ROLLBACK'); client.release();
+        const cur = (await pool.query('SELECT status, assigned_provider_id FROM requests WHERE id=$1', [acceptedBid.request_id])).rows[0] || {};
+        const msg = cur.assigned_provider_id ? 'تمت ترسية هذا المشروع مسبقاً'
+          : (['closed_auto','expired','closed'].includes(cur.status) ? 'انتهت مهلة الاختيار (' + ACCEPT_AFTER_CLOSE_DAYS + ' يوم من إغلاق المشروع) — أعد فتح المشروع أولاً ثم اقبل العرض'
+          : (cur.status === 'cancelled' ? 'المشروع ملغي' : 'لا يمكن قبول عرض على هذا المشروع في حالته الحالية'));
+        return res.status(400).json({ message: msg });
+      }
+      if (acceptedBid.status === 'rejected') { /* قبول عرض سبق رفضه مسموح — يرجع مقبول */ }
       await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
       await client.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
       await client.query('COMMIT');
@@ -5890,6 +5916,8 @@ function _closeInfo(r, defDays){
   if (kind === 'client_extend') return { by:'auto', short:'انتهت بعد تمديد العميل', text:'العميل مدّد المدة بنفسه وانتهت' + (d ? ' — إجمالي ' + _dTxt(d) + ' من تاريخ النشر' : '') + ' بدون ما يختار عرض', open_days: openDays };
   return { by:'auto', short:'العميل اختار مدة ' + (d ? _dTxt(d) : '') , text:'العميل اختار بنفسه عند النشر أو التعديل مدة استقبال العروض' + (d ? ': «' + _dTxt(d) + '»' : '') + '، وانتهت بدون ما يختار عرض', open_days: openDays };
 }
+// مهلة اختيار عرض بعد إغلاق المشروع (أيام)
+const ACCEPT_AFTER_CLOSE_DAYS = 90;
 const SAAI_RATE = 0.03;
 function _saaiSuggest(rq, bids){
   const acc = bids.find(b => b.status === 'accepted');
