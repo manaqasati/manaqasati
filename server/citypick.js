@@ -10,7 +10,10 @@
   function bare(t){ return norm(t).replace(/^ال/,''); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function isCitySelect(s){
-    if (!s || s.multiple || s.dataset.cpNo || s.options.length < 20) return false;
+    if (!s || s.multiple || s.dataset.cpNo) return false;
+    // قوائم المدن بالاسم (فلاتر فيها مدن قليلة، أو تنعبّى لاحقاً) — لازم فيها مدينة وحدة على الأقل
+    if (/(^|[-_])city$|city[-_]|Cit$/i.test(s.id||'') && s.options.length >= 2) return true;
+    if (s.options.length < 20) return false;
     var t = {}; for (var i=0;i<s.options.length;i++) t[s.options[i].text.trim()] = 1;
     return !!(t['الرياض'] && t['جدة'] && (t['الدمام'] || t['الخبر']));
   }
