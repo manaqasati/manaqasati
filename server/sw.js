@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v5';
+var CACHE = 'manaqasa-v6';
 var STATIC = [
   './',
   './index.html',
@@ -130,7 +130,8 @@ self.addEventListener('fetch', function(e) {
   var acc = e.request.headers.get('accept') || '';
   if (e.request.mode === 'navigate' || acc.includes('text/html')) {
     e.respondWith(
-      fetch(e.request).then(function(res) {
+      // cache:'no-store' = نتجاوز كاش المتصفح/الـWebView تماماً ونجيب آخر نسخة من السيرفر
+      fetch(e.request.url, { cache: 'no-store', credentials: 'include', redirect: 'follow' }).catch(function() { return fetch(e.request); }).then(function(res) {
         if (res && res.status === 200 && res.type !== 'opaque') {
           var clone = res.clone();
           caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
