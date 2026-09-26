@@ -5633,6 +5633,17 @@ app.get('/api/admin/users/search', requirePermission('users.view'), async (req, 
 });
 
 // صحة النظام (فحص شامل للأدمن)
+// فحص عام خفيف للمراقبة الخارجية (UptimeRobot): 200 لو السيرفر والقاعدة شغالين، 503 لو القاعدة ما ترد
+app.get('/api/uptime', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const t0 = Date.now();
+  try {
+    await Promise.race([ pool.query('SELECT 1'), new Promise((_, rej) => setTimeout(() => rej(new Error('db timeout')), 5000)) ]);
+    res.json({ ok: true, db: 'up', ms: Date.now() - t0 });
+  } catch(e) {
+    res.status(503).json({ ok: false, db: 'down', error: String(e.message||'').slice(0,80) });
+  }
+});
 app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
   const out = { db:{}, email:{}, push:{}, server:{}, data:{} };
   // قاعدة البيانات + زمن الاستجابة
