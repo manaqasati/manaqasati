@@ -473,6 +473,96 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
+
+/* ═══ حسابي 2026 ═══ */
+.pf-hero{background:#1e3a8a;border-radius:22px;padding:20px;color:#fff;margin-bottom:12px;display:flex;flex-direction:column;gap:16px;box-shadow:0 10px 26px rgba(30,58,138,.18)}
+.pf-top{display:flex;align-items:center;gap:15px}
+.pf-avw{position:relative;flex-shrink:0}
+.pf-av{width:78px;height:78px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;border:3px solid rgba(255,255,255,.25)}
+.pf-av span{color:#1e3a8a!important}
+.pf-cam{position:absolute;bottom:-4px;left:-4px;width:32px;height:32px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #1e3a8a;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.pf-name{font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;line-height:1.3}
+.pf-badges{margin-top:3px;display:flex;gap:5px;flex-wrap:wrap}
+.pf-sub{font-size:12.5px;color:#c9d8ff;font-weight:600;margin-top:5px}
+.pf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:rgba(255,255,255,.08);border-radius:16px;padding:12px 4px}
+.pf-stats>div{text-align:center;display:flex;flex-direction:column;gap:2px}
+.pf-stats>div+div{border-right:1px solid rgba(255,255,255,.12)}
+.pf-stats b{font-family:'Cairo',sans-serif;font-size:21px;font-weight:900}.pf-stats b.g{color:#86efac}.pf-stats b i{color:#fbbf24;font-style:normal;font-size:16px}
+.pf-stats span{font-size:11.5px;color:#c9d8ff;font-weight:700}
+.pf-pc{background:#fff;color:#1e293b;border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+.pf-pc.done{font-size:13px;font-weight:800;color:#15803d;background:#e9f7ee}
+.pf-pc-h{display:flex;justify-content:space-between;font-size:13.5px;font-weight:900}.pf-pc-h b{color:#b45309}
+.pf-pc-bar{height:8px;border-radius:8px;background:#fde9c4;overflow:hidden}.pf-pc-bar i{display:block;height:100%;background:#f59e0b;border-radius:8px}
+.pf-pc-chips{display:flex;gap:6px;flex-wrap:wrap}
+.pf-pc-chips button{border:1px dashed #d9a54a;background:#fffaf2;color:#92400e;border-radius:999px;padding:6px 11px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
+.pf-pc-note{font-size:11.5px;color:#64748b;font-weight:600}
+.pf-pub{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e1e9f6;border-radius:18px;padding:12px 14px;margin-bottom:12px;flex-wrap:wrap}
+.pf-pub-ic{width:42px;height:42px;border-radius:12px;background:#e6eeff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pf-pub-t{font-size:14px;font-weight:900;color:var(--text)}.pf-pub-u{font-size:11.5px;color:var(--muted);direction:ltr;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-pub-b1{background:#1d4ed8;color:#fff;border-radius:11px;padding:10px 14px;font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap}
+.pf-pub-b2{background:#eef3fb;color:#1e3a8a;border:0;border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;white-space:nowrap}
+.pf-pub-tx{flex:1 1 180px;min-width:0}
+@media(max-width:480px){.pf-pub-tx{flex:1 1 calc(100% - 60px)!important}.pf-pub-b1,.pf-pub-b2{flex:1;text-align:center;padding:11px 8px}}
+.pf-grp{font-size:12px;font-weight:800;color:var(--muted);margin:18px 4px 8px}
+.pf-sec{background:#fff;border:1px solid #e1e9f6;border-radius:18px;margin-bottom:10px;overflow:hidden}
+.pf-sec summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer;user-select:none}
+.pf-sec summary::-webkit-details-marker{display:none}
+.pf-sec-ic{width:40px;height:40px;border-radius:12px;background:#eef3ff;color:#1e3a8a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pf-sec-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.pf-sec-tx b{font-size:14.5px;font-weight:900;color:var(--text)}.pf-sec-tx small{font-size:11.5px;color:var(--muted);font-weight:600}
+.pf-chev{color:#94a3b8;transition:transform .2s;flex-shrink:0}
+.pf-sec[open] .pf-chev{transform:rotate(180deg)}
+.pf-cnt{font-size:11.5px!important;padding:3px 9px!important}
+.pf-sec-b{padding:4px 15px 16px;border-top:1px solid #eef3fb}
+.pf-sec-b>div:first-child{margin-top:10px}
+.pf-save{position:static;bottom:96px;z-index:30;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e1e9f6;border-radius:16px;padding:10px 10px 10px 14px;margin:14px 0 4px;box-shadow:0 10px 26px rgba(30,58,138,.12)}
+.pf-save span{flex:1;font-size:12.5px;font-weight:700;color:var(--muted)}
+.pf-save button{border:0;background:#1e3a8a;color:#fff;border-radius:12px;padding:12px 20px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;cursor:pointer;min-height:44px}
+.pf-save.dirty{position:sticky;border-color:#f59e0b;background:#fffbeb}.pf-save.dirty span{color:#92400e}.pf-save.dirty button{background:#d97706}
+@media(min-width:769px){.pf-save{bottom:16px}}
+.pf-menu{background:#fff;border:1px solid #e1e9f6;border-radius:18px;overflow:hidden;margin-bottom:10px}
+.pf-menu>div{margin:12px!important}
+.pf-row{display:flex!important;align-items:center;gap:10px;width:100%;box-sizing:border-box;background:none;border:0;border-bottom:1px solid #eef3fb;padding:15px 16px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;color:var(--text);text-decoration:none;cursor:pointer;text-align:right;justify-content:flex-start}
+.pf-row:last-child{border-bottom:0}.pf-row:hover{background:#f8fafc}
+.pf-row.wa{color:#15803d}.pf-row.wa svg{fill:#16a34a}.pf-row.out{color:#dc2626}
+.pf-del{margin:6px 0 30px;text-align:center}
+.pf-del summary{list-style:none;font-size:12.5px;font-weight:700;color:#94a3b8;cursor:pointer;padding:8px;display:inline-block}
+.pf-del summary::-webkit-details-marker{display:none}
+.pf-del .danger-zone{text-align:right}
+
+.pf-pub{flex-direction:column;align-items:stretch!important}
+.pf-pub-top{display:flex;align-items:center;gap:11px}
+.pf-pub-v{text-align:center;display:flex;flex-direction:column;flex-shrink:0}.pf-pub-v b{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#1e3a8a;line-height:1.2}.pf-pub-v span{font-size:10.5px;color:var(--muted);font-weight:700}
+.pf-pub-btns{display:flex;gap:8px}.pf-pub-btns .pf-pub-b1{flex:1;text-align:center}
+.pf-wal{background:#fff;border:1px solid #e1e9f6;border-radius:20px;padding:14px 15px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px}
+.pf-wal.late{border-color:#fecaca}
+.pf-wal-h{display:flex;align-items:center;gap:11px}
+.pf-wal-ic{width:40px;height:40px;border-radius:12px;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pf-wal.ok .pf-wal-ic{background:#e3f5e9;color:#15803d}.pf-wal.wait .pf-wal-ic{background:#e6eeff;color:#1d4ed8}.pf-wal.late .pf-wal-ic{background:#fef2f2;color:#dc2626}
+.pf-wal-t{font-size:14.5px;font-weight:900;color:var(--text)}.pf-wal-s{font-size:11.5px;color:var(--muted);font-weight:600}
+.pf-wal-pill{flex-shrink:0;font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pf-wal-pill.due{background:#fef3c7;color:#92400e}.pf-wal-pill.late{background:#fef2f2;color:#b91c1c}.pf-wal-pill.wait{background:#e6eeff;color:#1d4ed8}.pf-wal-pill.ok{background:#e3f5e9;color:#166534}
+.pf-wal-amt{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.pf-wal-k{font-size:12px;color:var(--muted);font-weight:700}
+.pf-wal-est{font-size:10.5px;font-weight:800;background:#eef3fb;color:#475569;border-radius:999px;padding:1px 7px}
+.pf-wal-n{font-family:'Cairo',sans-serif;font-size:30px;font-weight:900;color:var(--text);line-height:1.2}.pf-wal-n small{font-size:14px;color:var(--muted)}
+.pf-wal-days{display:flex;align-items:center;background:#fff7ed;border:1px solid #fed7aa;color:#b45309;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:800;margin-bottom:6px;white-space:nowrap}
+.pf-wal-days.late{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.pf-wal-bar{height:6px;border-radius:6px;background:#eef3fb;overflow:hidden;margin-top:-4px}.pf-wal-bar i{display:block;height:100%;background:#f59e0b;border-radius:6px}
+.pf-wal.late .pf-wal-bar i{background:#dc2626}
+.pf-wal-bl{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);margin-top:-8px}
+.pf-wal-note{font-size:12px;font-weight:800;color:#92400e;background:#fffbeb;border:1px dashed #f5c26b;border-radius:10px;padding:8px 10px}
+.pf-wal-msg{font-size:13px;font-weight:700;color:#475569;line-height:1.7}
+.pf-wal-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#f5f8fd;border-radius:14px;padding:10px 4px}
+.pf-wal-stats>div{text-align:center;display:flex;flex-direction:column}.pf-wal-stats>div+div{border-right:1px solid #e1e9f6}
+.pf-wal-stats b{font-size:14.5px;font-weight:900;color:var(--text)}.pf-wal-stats b.g{color:#15803d}.pf-wal-stats b.b{color:#1d4ed8}
+.pf-wal-stats span{font-size:10.5px;color:var(--muted);font-weight:700}
+.pf-wal-btns{display:flex;gap:8px}
+.pf-wal-b1{flex:1;border:0;background:#1e3a8a;color:#fff;border-radius:12px;padding:12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;cursor:pointer;min-height:46px}
+.pf-wal.late .pf-wal-b1{background:#dc2626}
+.pf-wal-b2{border:1px solid #cdd9ef;background:#fff;color:#1e3a8a;border-radius:12px;padding:12px 16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;cursor:pointer;min-height:46px}
+.pf-wal-b2.wide{flex:1}
+.pf-nt-h{display:flex;align-items:center;gap:12px;padding:14px 15px}
+.pf-nt .push-status-badge{font-size:11px}
 </style>
 </head>
 <body>
@@ -1839,55 +1929,40 @@ async function loadProfile(){
   pg.innerHTML='';
 
   var hdr=document.createElement('div');
-  hdr.style.cssText='background:var(--p3);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden';
-  hdr.innerHTML='<div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)"></div>'
-    +'<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">'
-    +'<div id="av-preview" style="width:80px;height:80px;border-radius:50%;background:var(--p-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:3px solid rgba(255,255,255,.25);cursor:pointer" onclick="document.getElementById(&quot;av-inp&quot;).click()">'+avHtml+'</div>'
-    +'<div style="flex:1"><div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px">'+_esc(p.business_name||p.name||'المزود')+' '+_tierBadge(p.tier)+_pubBadge(p.badge)+'</div>'
-    +'<div style="font-size:12px;color:rgba(255,255,255,.55)">مزود خدمة · '+_esc(p.city||'')+'</div>'
-    +'<div style="margin-top:10px"><input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)">'
-    +'<button onclick="document.getElementById(&quot;av-inp&quot;).click()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer">تغيير الصورة</button>'
-    +'</div></div></div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'
-    +'<div class="profile-stat"><div class="profile-stat-n" style="color:var(--gold)">'+totalBids+'</div><div class="profile-stat-l">عروض</div></div>'
-    +'<div class="profile-stat"><div class="profile-stat-n" style="color:var(--green)">'+completed+'</div><div class="profile-stat-l">مكتملة</div></div>'
-    +'<div class="profile-stat"><div class="profile-stat-n" style="color:#fff">'+avgR+'</div><div class="profile-stat-l">التقييم</div></div>'
-    +'</div>';
+  var _pci=[{l:'الصورة الشخصية',d:!!p.profile_image,t:'av'},{l:'التخصصات',d:(p.specialties||[]).length>0,t:'specs'},{l:'نبذة عنك',d:!!(p.bio&&String(p.bio).trim()),t:'info'},{l:'صور أعمالك',d:portImgs.length>0,t:'port'},{l:'سنوات الخبرة',d:!!p.experience_years,t:'info'}];
+  var _pcp=Math.round(_pci.filter(function(x){return x.d;}).length/_pci.length*100);
+  hdr.className='pf-hero';
+  hdr.innerHTML='<div class="pf-top">'
+    +'<div class="pf-avw"><div id="av-preview" class="pf-av" onclick="document.getElementById(&quot;av-inp&quot;).click()">'+avHtml+'</div>'
+    +'<button class="pf-cam" aria-label="تغيير الصورة" onclick="document.getElementById(&quot;av-inp&quot;).click()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></button>'
+    +'<input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)"></div>'
+    +'<div style="flex:1;min-width:0"><div class="pf-name">'+_esc(p.business_name||p.name||'المزود')+'</div>'
+    +'<div class="pf-badges">'+_tierBadge(p.tier)+_pubBadge(p.badge)+'</div>'
+    +'<div class="pf-sub">'+[p.city?_esc(p.city):'',(p.specialties||[]).slice(0,2).map(_esc).join('، ')].filter(Boolean).join(' · ')+'</div></div></div>'
+    +'<div class="pf-stats"><div><b>'+totalBids+'</b><span>عروض</span></div><div><b class="g">'+completed+'</b><span>مكتملة</span></div><div><b>'+avgR+(avgR!=='—'?' <i>★</i>':'')+'</b><span>'+(Array.isArray(reviews)&&reviews.length?reviews.length+' تقييم':'التقييم')+'</span></div></div>'
+    +(_pcp<100?'<div class="pf-pc"><div class="pf-pc-h"><span>اكتمال ملفك</span><b>'+_pcp+'%</b></div><div class="pf-pc-bar"><i style="width:'+_pcp+'%"></i></div>'
+      +'<div class="pf-pc-chips">'+_pci.filter(function(x){return !x.d;}).map(function(x){return '<button onclick="_pfGo(\''+x.t+'\')">+ '+x.l+'</button>';}).join('')+'</div>'
+      +'<div class="pf-pc-note">الملف المكتمل يزيد ثقة العملاء وفرص قبول عروضك</div></div>'
+      :'<div class="pf-pc done">✓ ملفك مكتمل — العملاء يشوفونك بأفضل صورة</div>');
   pg.appendChild(hdr);
-
-  // بالجوال فقط: القائمة الجانبية (وفيها "سداد العمولة") مخفية — فنعرض بطاقة وصول للدفع هنا
-  if(window.innerWidth<=768){
-    var payCard=document.createElement('div');
-    payCard.style.cssText='background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;cursor:pointer';
-    payCard.setAttribute('onclick',"gotoPage('saai')");
-    payCard.innerHTML='<div style="width:40px;height:40px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #fed7aa"><svg width="20" height="20" fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'
-      +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;color:#9a3412">محفظة السعي</div><div style="font-size:11.5px;color:#b45309;margin-top:2px">اعرض رصيدك واسدّد سعي المنصة على مشاريعك</div></div>'
-      +'<svg width="18" height="18" fill="none" stroke="#d97706" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
-    pg.appendChild(payCard);
-  }
 
   var cardUrl='/pro/'+_me.id;
   var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
   var previewCard=document.createElement('div');
-  previewCard.style.cssText='background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(14,165,233,.03));border:1.5px solid rgba(14,165,233,.2);border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px';
-  previewCard.innerHTML=''
-    +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;font-weight:900;color:var(--gold-d);margin-bottom:4px">بطاقتي الشخصية</div>'
-      +'<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cardUrlDisplay+'</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;flex-shrink:0">'
-    +'<button id="copy-card-btn" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">نسخ الرابط</button>'
-    +'<a href="'+cardUrl+'" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:9px;font-size:12px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 3px 10px rgba(14,165,233,.3)">'
-      +'<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
-      +'عرض كما يراك العملاء'
-    +'</a>'
-    +'</div>';
+  previewCard.className='pf-pub';
+  previewCard.innerHTML='<div class="pf-pub-top"><div class="pf-pub-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg></div>'
+    +'<div class="pf-pub-tx"><div class="pf-pub-t">صفحتك العامة</div><div class="pf-pub-u">'+cardUrlDisplay+'</div></div>'
+    +'<div class="pf-pub-v" id="pf-views" style="display:none"><b>0</b><span>زيارة لصفحتك</span></div></div>'
+    +'<div class="pf-pub-btns"><a href="'+cardUrl+'" class="pf-pub-b1">عرض كما يراك العملاء</a>'
+    +'<button class="pf-pub-b2" onclick="_shareMyPage(location.origin+\''+cardUrl+'\')">مشاركة</button>'
+    +'<button id="copy-card-btn" class="pf-pub-b2">نسخ</button></div>';
+  _api('/api/me/marketing').then(function(d){ var v=_el('pf-views'); if(v&&d&&typeof d.views==='number'){ v.querySelector('b').textContent=fmtN(d.views)||'0'; v.style.display=''; } }).catch(function(){});
   pg.appendChild(previewCard);
   // إصلاح 2: event listener مباشرة
   document.getElementById('copy-card-btn').addEventListener('click',function(){
     if(navigator.clipboard){
       navigator.clipboard.writeText(location.origin+cardUrl).then(function(){
-        var cb=document.getElementById('copy-card-btn');if(cb){cb.textContent='تم النسخ';setTimeout(function(){cb.textContent='نسخ الرابط';},2000);}
+        var cb=document.getElementById('copy-card-btn');if(cb){cb.textContent='تم ✓';setTimeout(function(){cb.textContent='نسخ';},2000);}
       });
     }
   });
@@ -1979,9 +2054,96 @@ async function loadProfile(){
     '<button onclick="location.href=\'/\'" style="width:100%;margin-bottom:10px;padding:13px;background:var(--p-light);color:var(--p2);border:1px solid #bfdbfe;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>الصفحة الرئيسية</button>'
     +(p.can_request?'<a href="/dashboard-client.html" style="display:flex;width:100%;margin-bottom:12px;padding:13px;background:var(--p-light);color:var(--p2);border:1px solid #bfdbfe;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;text-decoration:none;align-items:center;justify-content:center;gap:8px;box-sizing:border-box">اذهب إلى لوحة العميل ←</a>':'<div style="margin-bottom:12px;border:1.5px solid #bfdbfe;border-radius:14px;padding:16px;background:linear-gradient(135deg,#eff6ff,#f8fafc)"><div style="font-weight:900;font-size:15px;color:var(--p2);margin-bottom:5px">تحتاج تنشر مشروعاً؟</div><div style="font-size:12.5px;color:#475569;line-height:1.7;margin-bottom:12px">فعّل «نشر المشاريع» لتنشر مشاريعك وتستقبل عروضاً — من نفس الحساب.</div><button onclick="enableRequestRole(this)" style="width:100%;padding:12px;background:var(--p2);color:#fff;border:none;border-radius:11px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer">فعّل نشر المشاريع</button></div>')+'<a id="supportBtn" href="#" onclick="openSupport(event)" style="display:flex;width:100%;margin-bottom:12px;padding:13px;background:#25D366;color:#fff;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>تواصل مع خدمة العملاء</a>'+'<button onclick="doLogout()" style="width:100%;padding:13px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>';
   pg.appendChild(acctWrap);
+  try{_pfEnhance(pg,{info:infoCard,specs:specsCard,port:portCard,social:socialCard,pw:pwCard,save:saveWrap,acct:acctWrap,danger:dangerZone,pub:previewCard});}catch(e){console.error(e);}
   _lb.done();
 }
 
+
+// ═══ «حسابي» — تنظيم الأقسام + شريط حفظ ثابت ═══
+function _pfSection(key,title,sub,icon,node,open){
+  var d=document.createElement('details');d.className='pf-sec';d.id='pf-sec-'+key;if(open)d.open=true;
+  d.innerHTML='<summary><span class="pf-sec-ic">'+icon+'</span><span class="pf-sec-tx"><b>'+title+'</b><small>'+sub+'</small></span><svg class="pf-chev" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary><div class="pf-sec-b"></div>';
+  var body=d.querySelector('.pf-sec-b');
+  // انقل محتوى البطاقة القديمة (بدون عنوانها المكرر)
+  var h=node.querySelector(':scope > .ch'); if(h){ var cnt=h.querySelector('span'); if(cnt){cnt.classList.add('pf-cnt'); d.querySelector('summary').insertBefore(cnt,d.querySelector('.pf-chev'));} h.remove(); }
+  var first=node.firstElementChild; if(first&&!first.id&&/روابط التواصل|تغيير كلمة المرور/.test(first.textContent||'')&&first.children.length===0) first.remove();
+  while(node.firstChild) body.appendChild(node.firstChild);
+  node.replaceWith(d);
+  return d;
+}
+
+function _pfWallet(){
+  var box=_el('pf-wal'); if(!box)return;
+  _api('/api/provider/saai').then(function(d){
+    d=d||{}; var items=Array.isArray(d.items)?d.items:[];
+    var pend=items.filter(function(x){return x.status==='pending';});
+    var subm=items.filter(function(x){return x.status==='submitted';});
+    var due=pend.reduce(function(a,x){return a+(parseFloat(x.saai_amount)||0);},0);
+    var noAmt=pend.filter(function(x){return !(parseFloat(x.contract_value)>0);}).length;
+    var I='<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 010-4h12v4"/><path d="M4 6v12a2 2 0 002 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
+    var st,pill,body='';
+    if(pend.length){
+      var oldest=pend.reduce(function(m,x){var t=new Date(x.created_at).getTime();return (!m||t<m)?t:m;},0);
+      var left=Math.ceil((oldest+10*86400000-Date.now())/86400000);
+      var late=left<0; st=late?'late':'due';
+      pill=late?'<span class="pf-wal-pill late">متأخر</span>':'<span class="pf-wal-pill due">مستحق</span>';
+      var pct=Math.min(100,Math.max(4,Math.round((Date.now()-oldest)/(10*86400000)*100)));
+      body='<div class="pf-wal-amt"><div><div class="pf-wal-k">المبلغ المستحق عليك <span class="pf-wal-est">تقديري</span></div><div class="pf-wal-n">'+fmtN(due)+' <small>ر.س</small></div></div>'
+        +'<div class="pf-wal-days'+(late?' late':'')+'">'+(late?'متأخر '+Math.abs(left)+' يوم':(left<=0?'آخر يوم اليوم':'باقي '+left+(left===1?' يوم':(left===2?' يومين':' أيام'))))+'</div></div>'
+        +'<div class="pf-wal-bar"><i style="width:'+pct+'%"></i></div><div class="pf-wal-bl"><span>تاريخ الاتفاق</span><span>آخر موعد للسداد</span></div>'
+        +(noAmt?'<div class="pf-wal-note">'+(noAmt===1?'مشروع واحد':noAmt+' مشاريع')+' يحتاج تحدد مبلغ الاتفاق النهائي</div>':'');
+    }else if(subm.length){
+      st='wait'; pill='<span class="pf-wal-pill wait">بانتظار الاعتماد</span>';
+      body='<div class="pf-wal-msg">أرسلت إيصال السداد — تراجعه الإدارة وتعتمده قريباً.</div>';
+    }else{
+      st='ok'; pill='<span class="pf-wal-pill ok">ما عليك شي ✓</span>';
+      body='<div class="pf-wal-msg">ما عليك سعي مستحق حالياً. يظهر هنا عند قبول عرضك على مشروع.</div>';
+    }
+    box.className='pf-wal '+st;
+    box.innerHTML='<div class="pf-wal-h"><span class="pf-wal-ic">'+I+'</span><div style="flex:1;min-width:0"><div class="pf-wal-t">محفظة السعي</div><div class="pf-wal-s">سعي المنصة 3% من مبلغ الاتفاق النهائي</div></div>'+pill+'</div>'
+      +body
+      +(items.length?'<div class="pf-wal-stats"><div><b>'+fmtN(d.contract_total||0)+'</b><span>إجمالي العقود</span></div><div><b class="g">'+fmtN(d.approved_total||0)+'</b><span>مدفوع ومعتمد</span></div><div><b class="b">'+pend.length+'</b><span>مشروع مستحق</span></div></div>':'')
+      +'<div class="pf-wal-btns">'+(pend.length?'<button class="pf-wal-b1" onclick="gotoPage(\'saai\')">سدّد الآن</button>':'')+'<button class="pf-wal-b2'+(pend.length?'':' wide')+'" onclick="gotoPage(\'saai\')">التفاصيل</button></div>';
+  }).catch(function(){ box.innerHTML=''; box.style.display='none'; });
+}
+function _pfGo(t){
+  if(t==='av'){ var i=document.getElementById('av-inp'); if(i)i.click(); return; }
+  var d=document.getElementById('pf-sec-'+t); if(!d)return; d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function _pfEnhance(pg,n){
+  var I=function(p){return '<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+p+'</svg>';};
+  var wal=document.createElement('div'); wal.className='pf-wal'; wal.id='pf-wal'; wal.innerHTML='<div class="sk-card" style="height:120px;border-radius:18px"></div>';
+  n.pub.parentNode.insertBefore(wal,n.pub.nextSibling); _pfWallet();
+  var head=document.createElement('div');head.className='pf-grp';head.textContent='إعدادات الملف';
+  n.info.parentNode.insertBefore(head,n.info);
+  _pfSection('info','معلومات المنشأة','الاسم، التواصل، المدن، النبذة',I('<path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/>'),n.info,true);
+  _pfSection('specs','التخصصات','تحدد المشاريع اللي توصلك',I('<path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/>'),n.specs,true);
+  _pfSection('port','معرض الأعمال','صور من شغلك السابق — أهم شي يشوفه العميل',I('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'),n.port,true);
+  _pfSection('social','روابط التواصل','اختيارية — تظهر في صفحتك العامة',I('<path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/>'),n.social,false);
+  // شريط الحفظ الثابت بعد الأقسام القابلة للحفظ
+  var sv=n.save; sv.className='pf-save'; sv.style.cssText='';
+  sv.innerHTML='<span id="pf-dirty">عدّلت بياناتك؟ لا تنسَ الحفظ</span><button id="save-btn" onclick="_saveProfile().then(function(){var w=document.querySelector(\'.pf-save\');if(w)w.classList.remove(\'dirty\');})">حفظ التغييرات</button>';
+  var socSec=document.getElementById('pf-sec-social'); socSec.parentNode.insertBefore(sv,socSec.nextSibling);
+  pg.addEventListener('input',function(e){ if(e.target&&e.target.closest&&e.target.closest('#pf-sec-info,#pf-sec-specs,#pf-sec-social')) sv.classList.add('dirty'); });
+  pg.addEventListener('change',function(e){ if(e.target&&e.target.closest&&e.target.closest('#pf-sec-info,#pf-sec-specs,#pf-sec-social')) sv.classList.add('dirty'); });
+  // الأمان والحساب
+  var head2=document.createElement('div');head2.className='pf-grp';head2.textContent='الحساب';
+  sv.parentNode.insertBefore(head2,sv.nextSibling);
+  var nt=document.createElement('div'); nt.className='pf-sec pf-nt';
+  var _pushOK=('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+  nt.innerHTML='<div class="pf-nt-h"><span class="pf-sec-ic">'+I('<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>')+'</span><span class="pf-sec-tx"><b>الإشعارات الفورية</b><small>'+(_pushOK?'مشاريع جديدة في تخصصك، رسائل، قبول العروض':'تُدار من إعدادات جهازك أو التطبيق')+'</small></span>'
+    +(_pushOK?'<span id="pushStatusBadge" class="push-status-badge"></span><button type="button" id="pushToggleSwitch" class="push-toggle-switch" aria-label="تفعيل الإشعارات" onclick="togglePush().then(updatePushToggleUI)"></button>':'')+'</div>';
+  head2.parentNode.insertBefore(nt,head2.nextSibling);
+  if(_pushOK){ try{ updatePushToggleUI(); }catch(e){} }
+  nt.parentNode.insertBefore(n.pw,nt.nextSibling);
+  _pfSection('pw','كلمة المرور','غيّر كلمة المرور',I('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>'),n.pw,false);
+  // قائمة الحساب: صفوف بدل أزرار كبيرة
+  var a=n.acct; a.className='pf-menu'; a.style.cssText='';
+  [].slice.call(a.children).forEach(function(el){ if(el.tagName==='BUTTON'||el.tagName==='A'){ el.removeAttribute('style'); el.classList.add('pf-row'); if(/تسجيل الخروج/.test(el.textContent))el.classList.add('out'); if(el.id==='supportBtn')el.classList.add('wa'); } });
+  var pw=document.getElementById('pf-sec-pw'); pw.parentNode.insertBefore(a,pw.nextSibling);
+  // حذف الحساب: آخر شي ومطوي
+  var dz=n.danger; var dd=document.createElement('details'); dd.className='pf-del'; dd.innerHTML='<summary>حذف الحساب</summary>'; dz.style.marginTop='10px'; a.parentNode.insertBefore(dd,a.nextSibling); dd.appendChild(dz);
+}
 async function updatePushToggleUI(){
   var sw=document.getElementById('pushToggleSwitch');var bg=document.getElementById('pushStatusBadge');if(!sw||!bg)return;
   var active=await isPushActive();
