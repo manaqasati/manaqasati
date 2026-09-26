@@ -5647,7 +5647,9 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
     const params = [];
     if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
-    const r = await pool.query(q, params); res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status)})));
+    const r = await pool.query(q, params);
+    const _cd = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+    res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status), close_time: x.close_at || (x.created_at ? new Date(new Date(x.created_at).getTime()+_cd*86400000) : null)})));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -5882,6 +5884,34 @@ function _saaiSuggest(rq, bids){
   const best = (accOk && accTotal) || (med && Math.round(med)) || (parseFloat(rq.budget_max) > 0 ? Math.round(parseFloat(rq.budget_max)) : null);
   return { rate: SAAI_RATE, best, options: opts, provider_id: rq.assigned_provider_id, provider_name: acc ? acc.provider_name : null, accepted_bid_id: acc ? acc.id : null };
 }
+// إعادة فتح مشروع مغلق (أو تمديد مشروع مفتوح) لعدد أيام يحدده الأدمن
+app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const days = parseInt(req.body.days);
+    if (!(days >= 1 && days <= 365)) return res.status(400).json({ message: 'اختر مدة من 1 إلى 365 يوم' });
+    const q = (await pool.query('SELECT id, client_id, title, category, city, status, assigned_provider_id, close_at FROM requests WHERE id=$1', [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (q.assigned_provider_id || ['in_progress','completed'].includes(q.status)) return res.status(400).json({ message: 'المشروع تم اختيار مزوّد له — ما يحتاج إعادة فتح' });
+    if (['pending_review','review','needs_edit','rejected','deleted'].includes(q.status)) return res.status(400).json({ message: 'المشروع مو منشور — راجعه من «مراجعة المشاريع»' });
+    const wasOpen = q.status === 'open';
+    // للمفتوح: نمدّد من موعد الإغلاق الحالي. للمغلق: نبدأ من الآن
+    let base = new Date();
+    if (wasOpen) {
+      const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+      const cur = (await pool.query('SELECT COALESCE(close_at, created_at + ($2 || \' days\')::interval) AS t FROM requests WHERE id=$1', [id, String(closeDays)])).rows[0].t;
+      if (cur && new Date(cur) > base) base = new Date(cur);
+    }
+    const until = new Date(base.getTime() + days * 86400000);
+    await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL WHERE id=$2`, [until, id]);
+    try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); } catch(e){}
+    if (!wasOpen && req.body.notify_client) { try { await notify(q.client_id, '🔓 أعدنا فتح مشروعك', `«${q.title}» مفتوح للعروض من جديد لمدة ${days} يوم`, 'request', id); } catch(e){} }
+    let sent = 0;
+    if (req.body.notify_providers) { try { const bidders = new Set((await pool.query('SELECT provider_id FROM bids WHERE request_id=$1', [id])).rows.map(x => String(x.provider_id))); for (const p of await matchingProviders(q.category ? [q.category] : [], q.city, false, null)) { if (bidders.has(String(p.id))) continue; try { await notify(p.id, '🆕 مشروع مفتوح للعروض', `«${q.title}»${q.city?' · '+q.city:''} — قدّم عرضك`, 'request', id); sent++; } catch(e){} } } catch(e){} }
+    await logAdmin(req, wasOpen ? 'extend_request' : 'reopen_request', 'request', id, (wasOpen ? 'تمديد ' : 'إعادة فتح ') + days + ' يوم');
+    res.json({ ok: true, close_at: until, reopened: !wasOpen, sent });
+  } catch(e) { console.error('admin reopen:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.post('/api/admin/requests/:id/saai', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -5921,7 +5951,9 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
       saai = (await pool.query('SELECT id, contract_value, saai_amount, status, created_at, provider_id FROM saai_ledger WHERE request_id=$1 ORDER BY id DESC LIMIT 1', [id])).rows[0] || null;
       if (!saai && rq.assigned_provider_id) saai_suggest = _saaiSuggest(rq, bids);
     } catch(e){}
-    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status) }), bids, timeline, saai, saai_suggest });
+    let close_time = rq.close_at;
+    try { if (!close_time) { const _cd = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20); close_time = new Date(new Date(rq.created_at).getTime()+_cd*86400000); } } catch(e){}
+    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status), close_time }), bids, timeline, saai, saai_suggest });
   } catch(e) { console.error('req-detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
