@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="rq-kpis"></div>
       <div class="card">
         
-        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button><button class="ftab" onclick="filterReq('notes',this)" style="color:#b45309">💡 ملاحظات مفتوحة</button><button class="ftab" onclick="filterReq('nosaai',this)" style="color:#dc2626">💰 بدون سعي</button></div>
+        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button><button class="ftab" onclick="filterReq('notes',this)" style="color:#b45309">💡 ملاحظات مفتوحة</button><button class="ftab" onclick="filterReq('nosaai',this)" style="color:#dc2626">💰 بدون سعي</button><button class="ftab" onclick="filterReq('closed',this)" style="color:#64748b">🔒 مغلق</button></div>
         <div class="ufilters" id="req-filters">
           <div class="search-box" style="min-width:180px"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="req-search" placeholder="ابحث بالعنوان أو العميل..." oninput="renderRequests()"></div>
           <select id="rf-city" onchange="renderRequests()"><option value="">كل المدن</option></select>
@@ -2672,6 +2672,7 @@ function getFilteredRequests(){
     if(_reqFilter==='stale'){ if(!_rqStale(r))return false; }
     else if(_reqFilter==='notes'){ if(!(r.client_note&&!r.client_note_done_at))return false; }
     else if(_reqFilter==='nosaai'){ if(!_noSaai(r))return false; }
+    else if(_reqFilter==='closed'){ if(_RQ_CLOSED.indexOf(r.status)<0)return false; }
     else if(_reqFilter!=='all'&&r.status!==_reqFilter)return false;
     if(ci&&r.city!==ci)return false;
     if(cat&&r.category!==cat)return false;
@@ -2726,7 +2727,7 @@ function _rqKpis(){
     +'<div><span class="l">متوسط العروض لكل مشروع</span><span class="n">'+(Math.round(avg*10)/10)+'</span><span class="s">آخر 30 يوم</span></div>'
     +'</div>';
   // عدّادات التبويبات
-  var cnt={all:all.length,stale:stale};
+  var cnt={all:all.length,stale:stale,notes:all.filter(function(r){return r.client_note&&!r.client_note_done_at;}).length,nosaai:all.filter(_noSaai).length,closed:all.filter(function(r){return _RQ_CLOSED.indexOf(r.status)>=0;}).length};
   all.forEach(function(r){cnt[r.status]=(cnt[r.status]||0)+1;});
   document.querySelectorAll('#page-requests .ftab').forEach(function(t){
     var m=(t.getAttribute('onclick')||'').match(/filterReq\('([a-z_]+)'/); if(!m)return;
@@ -2744,10 +2745,10 @@ function renderRequests(){
   filtered=_pgSlice('r',filtered,_rSig);
   var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],executing:['قيد التنفيذ','b-progress'],assigned:['تم الإسناد','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej'],closed:['مغلق','b-rej'],closed_auto:['مغلق تلقائياً','b-rej'],cancelled:['ملغى','b-rej'],expired:['منتهي','b-rej']};
   var eye='<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-  document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th style="text-align:center">العروض</th><th>أقل سعر</th><th>العمر</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
+  document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th style="text-align:center">العروض</th><th>منشور منذ</th><th>يُغلق بعد</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
     var st=sm[r.status]||[r.status,'b-completed'];
     var _days=_rqAge(r), _bc=parseInt(r.bid_count)||0, _stale=_rqStale(r);
-    var _ago=_days==null?'—':(_days<=0?'اليوم':(_days===1?'أمس':_days+' يوم'));
+    var _ago=_days==null?'—':(_days<=0?'اليوم':(_days===1?'أمس':(_days===2?'يومين':(_days<=10?_days+' أيام':_days+' يوم'))));var _left=_rqLeft(r);
     var th=_rqThumb(r);
     var sel=(window._rqSel===r.id)?' class="sel"':'';
     return '<tr'+sel+' data-rid="'+r.id+'" onclick="_rqRowClick(event,'+r.id+')"'+(_stale?' style="background:#fffafa"':'')+'>'
@@ -2755,13 +2756,68 @@ function renderRequests(){
       +'<td style="font-size:12.5px">'+esc(r.client_name||'—')+'</td>'
       +'<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'
       +'<td style="text-align:center">'+(_stale?'<span class="rq-stale">0 · '+_days+' أيام</span>':(_bc===0?'<span style="color:var(--muted);font-weight:600">0</span>':'<span style="font-weight:900;color:#059669">'+_bc+'</span>'))+'</td>'
-      +'<td style="font-weight:800">'+(r.min_bid?fmtNum(r.min_bid):'<span style="color:var(--muted);font-weight:600">—</span>')+'</td>'
-      +'<td style="font-size:12.5px;'+(_stale?'color:#b91c1c;font-weight:800':'color:var(--muted)')+'">'+_ago+'</td>'
+      +'<td style="font-size:13px;font-weight:800;'+(_stale?'color:#b91c1c':'')+'">'+_ago+'</td>'
+      +'<td style="font-size:12.5px;font-weight:800;color:'+_left[1]+'">'+_left[0]+'</td>'
       +'<td><div class="act-btns"><button class="act-btn ab-default" onclick="_rqOpen('+r.id+')">'+eye+'تفاصيل</button>'
         +(r.status==='needs_edit'?'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0" onclick="remindClient('+r.id+')">تذكير</button>':'')
         +'<button class="act-btn ab-default" onclick="_rowMenu(this,'+r.id+',\''+r.status+'\')" title="إجراءات أخرى" style="font-weight:900;font-size:17px;line-height:1;padding:5px 11px">⋯</button></div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('r',_rTotal);
+}
+// ═══ إعادة فتح / تمديد مدة العروض ═══
+var _RQ_CLOSED=['closed_auto','expired','cancelled','closed'];
+var _RO_REASONS={chose_outside:'اتفق مع مزوّد من برا المنصة',price_high:'الأسعار عالية',postponed:'أجّل المشروع',no_suitable_offers:'ما لقى عرض مناسب',other:'سبب آخر',admin_closed:'أغلقته الإدارة'};
+function _rqLeft(r){
+  if(_RQ_CLOSED.indexOf(r.status)>=0) return ['مغلق','#64748b'];
+  if(r.status!=='open') return ['—','var(--muted)'];
+  if(!r.close_time) return ['—','var(--muted)'];
+  var d=Math.ceil((new Date(r.close_time)-Date.now())/86400000);
+  if(d<=0) return ['اليوم','#b91c1c'];
+  return [d===1?'يوم':(d===2?'يومين':(d<=10?d+' أيام':d+' يوم')), d<=3?'#b91c1c':(d<=7?'#b45309':'#15803d')];
+}
+function _roSection(r){
+  var closed=_RQ_CLOSED.indexOf(r.status)>=0, open=r.status==='open';
+  if(!(closed||open)||r.assigned_provider_id) return '';
+  var dd=r.close_time?new Date(r.close_time):null;
+  var left=dd?Math.ceil((dd-Date.now())/86400000):null;
+  var chips=[7,14,30,60,90].map(function(n){return '<button type="button" class="ftab ro-d" data-d="'+n+'" onclick="_roPick('+r.id+','+n+')" style="border:1.5px solid var(--border)">'+n+' يوم</button>';}).join('');
+  var h='<div class="rq-ds" style="border:1.5px solid '+(closed?'#93c5fd':'var(--border)')+';background:'+(closed?'#f5f9ff':'#fff')+';border-radius:14px;padding:12px 14px">'
+    +'<h4 style="color:#1e3a8a">'+(closed?'🔓 إعادة فتح المشروع':'⏳ مدة استقبال العروض')+'</h4>';
+  if(closed){
+    var why=r.close_reason?(_RO_REASONS[r.close_reason]||r.close_reason):'';
+    h+='<div style="font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.7">'+(r.closed_at?'أُغلق '+_adAgo(r.closed_at):'مغلق')+(why?' — العميل كتب: <b style="color:#b45309">'+esc(why)+'</b>'+(r.close_reason_note?' ('+esc(r.close_reason_note)+')':''):' — انتهت المدة بدون اختيار')+'</div>';
+  } else {
+    h+='<div style="font-size:12.5px;font-weight:700;color:var(--muted)">'+(dd?'يُغلق '+(left<=0?'اليوم':'بعد <b style="color:'+(left<=3?'#b91c1c':'#15803d')+'">'+left+' يوم</b>')+' · '+dd.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'')+'</div>';
+  }
+  h+='<div style="font-size:12.5px;font-weight:800;margin-top:8px">'+(closed?'افتحه لمدة:':'مدّد بـ:')+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="ro-chips-'+r.id+'">'+chips+'<label style="font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px">أو <input id="ro-d-'+r.id+'" type="number" min="1" max="365" placeholder="أيام" oninput="_roPick('+r.id+',0)" style="width:70px;padding:7px 9px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-weight:800"></label></div>';
+  if(closed){
+    h+='<div style="display:flex;flex-direction:column;gap:5px;margin-top:9px;font-size:12.5px;font-weight:700"><label><input type="checkbox" id="ro-nc-'+r.id+'" checked> أبلّغ العميل إن مشروعه انفتح</label><label><input type="checkbox" id="ro-np-'+r.id+'"> أرسل تنبيه للمزوّدين المطابقين اللي ما قدّموا</label></div>';
+  }
+  h+='<button id="ro-btn-'+r.id+'" onclick="_roGo('+r.id+','+(closed?1:0)+')" style="margin-top:10px;width:100%;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">'+(closed?'إعادة فتح المشروع':'تمديد المدة')+'</button></div>';
+  return h;
+}
+function _roPick(id,n){
+  var box=document.getElementById('ro-chips-'+id); if(!box)return;
+  box.querySelectorAll('.ro-d').forEach(function(b){ var on=n&&+b.getAttribute('data-d')===n; b.style.background=on?'#1e3a8a':''; b.style.color=on?'#fff':''; b.style.borderColor=on?'#1e3a8a':''; });
+  if(n){ var i=document.getElementById('ro-d-'+id); if(i)i.value=''; window._roDays=n; } else { window._roDays=parseInt((document.getElementById('ro-d-'+id)||{}).value)||0; }
+}
+async function _roGo(id,closed){
+  var d=window._roDays||parseInt((document.getElementById('ro-d-'+id)||{}).value)||0;
+  if(!(d>=1&&d<=365)){toast('اختر المدة (أيام)','error');return;}
+  if(!await askConfirm({title:closed?'إعادة فتح المشروع':'تمديد المدة',message:(closed?'يرجع المشروع مفتوح للعروض لمدة ':'يتمدد استقبال العروض ')+d+' يوم.',confirmText:closed?'افتحه':'مدّد'}))return;
+  var b=document.getElementById('ro-btn-'+id); if(b){b.disabled=true;b.textContent='...';}
+  var body={days:d,notify_client:!!(document.getElementById('ro-nc-'+id)||{}).checked,notify_providers:!!(document.getElementById('ro-np-'+id)||{}).checked};
+  fetch(API+'/api/admin/requests/'+id+'/reopen',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
+    .then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});})
+    .then(function(x){
+      if(!x.ok){toast((x.d&&x.d.message)||'تعذّر التنفيذ','error'); if(b){b.disabled=false;b.textContent=closed?'إعادة فتح المشروع':'تمديد المدة';} return;}
+      window._roDays=0;
+      toast((x.d.reopened?'انفتح المشروع':'تم التمديد')+' — يُغلق '+new Date(x.d.close_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'})+(x.d.sent?' · وصل تنبيه لـ '+x.d.sent+' مزوّد':''),'success');
+      (_allReq||[]).forEach(function(r){ if(r.id===id){ r.status='open'; r.close_at=x.d.close_at; r.close_time=x.d.close_at; } });
+      try{renderRequests();}catch(e){}
+      _rqOpen(id);
+    }).catch(function(){toast('تعذّر الاتصال','error'); if(b){b.disabled=false;}});
 }
 // ═══ إنشاء سعي يدوي مع اقتراح القيمة ═══
 function _noSaai(r){ return (r.status==='in_progress'||r.status==='completed')&&r.assigned_provider_id&&!r.saai_id; }
@@ -2869,7 +2925,7 @@ function _rqOpen(id){
   fetch(API+'/api/admin/requests/'+id+'/detail',hdr()).then(function(r){return r.json();}).then(function(x){
     if(!x||!x.request){ d.innerHTML='<div style="padding:30px">'+emptyState('تعذّر التحميل')+'</div>'; return; }
     var r=x.request, bids=x.bids||[], tl=x.timeline||[];
-    var sm={open:['مفتوح','#e3f5e9','#166534'],in_progress:['قيد التنفيذ','#e6eeff','#1d4ed8'],completed:['مكتمل','#f1f5f9','#334766'],pending_review:['مراجعة','#fef3c7','#92400e'],needs_edit:['مطلوب تعديل','#fff7ed','#c2410c'],rejected:['مرفوض','#fef2f2','#b91c1c']}[r.status]||[r.status,'#f1f5f9','#334766'];
+    var sm={open:['مفتوح','#e3f5e9','#166534'],in_progress:['قيد التنفيذ','#e6eeff','#1d4ed8'],completed:['مكتمل','#f1f5f9','#334766'],pending_review:['مراجعة','#fef3c7','#92400e'],needs_edit:['مطلوب تعديل','#fff7ed','#c2410c'],rejected:['مرفوض','#fef2f2','#b91c1c'],closed_auto:['مغلق تلقائياً','#f1f5f9','#475569'],expired:['منتهي','#f1f5f9','#475569'],cancelled:['ملغي','#f1f5f9','#475569'],closed:['مغلق','#f1f5f9','#475569']}[r.status]||[r.status,'#f1f5f9','#334766'];
     var ph=String(r.client_phone||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1);
     var prices=bids.filter(function(b){return (!b.price_unit||b.price_unit==='total')&&parseFloat(b.price)>0;}).map(function(b){return parseFloat(b.price);});
     var mn=prices.length?Math.min.apply(null,prices):0, av=prices.length?prices.reduce(function(a,b){return a+b;},0)/prices.length:0;
@@ -2879,6 +2935,7 @@ function _rqOpen(id){
       +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><span class="pl" style="background:'+sm[1]+';color:'+sm[2]+'">'+sm[0]+'</span>'+(r.category?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.category)+'</span>':'')+(r.city?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.city)+'</span>':'')+'</div></div><button class="rq-x" onclick="_rqClose()" aria-label="إغلاق">×</button></div>'
       +'<div class="rq-ds" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button class="btn-g" style="flex:1" onclick="_rqClose();openReqEdit('+r.id+')">تعديل</button><a class="btn-g" style="flex:1;text-align:center;text-decoration:none" href="/project/x-'+r.id+'?id='+r.id+'" target="_blank" rel="noopener">فتح الصفحة</a>'
         +(r.status==='open'?'<button class="btn-g" style="flex:1;color:#c2410c" onclick="_rqClose();pullbackFromRow('+r.id+')">طلب تعديل</button>':'')+'</div>'
+      +_roSection(r)
       +_saSection(r,x.saai,x.saai_suggest)
       +_cnSection(r)
       +(r.description?'<div class="rq-ds"><h4>الوصف</h4><div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;max-height:180px;overflow:auto;color:var(--text2)">'+esc(r.description)+'</div>'
