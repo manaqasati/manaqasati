@@ -471,6 +471,7 @@ app.post('/api/requests/:id/extend', auth, async (req, res) => {
     const from = cur > new Date() ? cur : new Date();
     const nx = new Date(from.getTime() + 7*86400000);
     await pool.query(`UPDATE requests SET close_at=$1, status='open', close_set_by='client_extend', closed_at=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [nx, id]);
+    try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('close_warn','closed_offers','closed_offers_2d')`, [id]); } catch(e){}
     res.json({ ok:true, close_at: nx });
   } catch(e){ console.error('extend:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
@@ -1401,6 +1402,22 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
 }
 
 /* ═══════════ محرّك التذكيرات المجدولة (Push + Email، مرّة واحدة لكل حالة) ═══════════ */
+// بعد الإغلاق التلقائي: لو عنده عروض نذكّره إنه يقدر يختار منها (إشعار + إيميل)
+function _nOffers(n){ return n===1?'عرض واحد':(n===2?'عرضين':(n>=3&&n<=10?n+' عروض':n+' عرض')); }
+async function _notifyClosedWithOffers(x, fallbackText){
+  try{
+    const n = (await pool.query("SELECT COUNT(*)::int AS n FROM bids WHERE request_id=$1 AND COALESCE(status,'pending')<>'rejected'", [x.id])).rows[0].n;
+    if (n > 0) {
+      const t = 'أُغلق مشروعك — وعندك ' + _nOffers(n) + ' تقدر تختار منها';
+      const b = `«${x.title}» انتهت مدة استقبال العروض، بس العروض اللي وصلتك باقية وتقدر تقبل منها خلال ${ACCEPT_AFTER_CLOSE_DAYS} يوم`;
+      const ok = await _remindOnce(x.client_id, 'closed_offers', x.id, t, b, t,
+        `<p>انتهت مدة استقبال العروض لمشروعك «<strong>${eEsc(x.title)}</strong>».</p><p>وصلك <strong>${_nOffers(n)}</strong> من مزوّدين — تقدر تراجعها وتختار الأنسب لك خلال <strong>${ACCEPT_AFTER_CLOSE_DAYS} يوم</strong>، أو تعيد فتح المشروع لعروض جديدة.</p>`,
+        'شاهد العروض واختر', SITE_URL + '/dashboard-client.html#detail/' + x.id);
+      if (ok) return;
+    }
+    await notify(x.client_id, 'أُغلق مشروعك', fallbackText, 'request', x.id);
+  }catch(e){ console.error('closed-offers notify:', e.message); }
+}
 async function _remindOnce(userId, kind, refId, title, body, emailSubject, emailBody, btnText, btnUrl){
   try{
     const ins = await pool.query(
@@ -1838,7 +1855,7 @@ async function runReminders(){
            AND created_at <= NOW() - ($1 || ' days')::interval
          RETURNING id, client_id, title`, [String(closeDays), closeDays]);
       for(const x of cl.rows){
-        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
+        await _notifyClosedWithOffers(x, `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`);
         try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(cl.rows.length) console.log(`[lifecycle] أُغلق ${cl.rows.length} مشروع تلقائياً`);
@@ -1852,10 +1869,28 @@ async function runReminders(){
            AND close_at IS NOT NULL AND close_at <= NOW()
          RETURNING id, client_id, title`);
       for(const x of clC.rows){
-        try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً عند انتهاء المدة التي حددتها`, 'request', x.id); }catch(e){}
+        await _notifyClosedWithOffers(x, `أُغلق "${eEsc(x.title)}" تلقائياً عند انتهاء المدة التي حددتها`);
         try{ await remindClosedContacts(x.id, x.title); }catch(e){}
       }
       if(clC.rows.length) console.log(`[lifecycle] أُغلق ${clC.rows.length} مشروع (تاريخ خاص)`);
+    }
+    // ج) تذكير بعد يومين من الإغلاق التلقائي: عندك عروض ما اخترت منها
+    {
+      try {
+        const fu = await pool.query(`SELECT r.id, r.client_id, r.title,
+            (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id AND COALESCE(b.status,'pending')<>'rejected')::int AS n
+          FROM requests r
+          WHERE r.status='closed_auto' AND r.close_reason IS NULL AND r.assigned_provider_id IS NULL
+            AND r.closed_at IS NOT NULL AND r.closed_at <= NOW() - INTERVAL '2 days' AND r.closed_at > NOW() - INTERVAL '10 days'`);
+        for (const x of fu.rows) {
+          if (!x.n) continue;
+          const t = '⏰ لا تفوّت عروض مشروعك';
+          const b = `«${x.title}» — عندك ${_nOffers(x.n)} ما اخترت منها. تقدر تقبل الأنسب لك الحين`;
+          await _remindOnce(x.client_id, 'closed_offers_2d', x.id, t, b, t,
+            `<p>مشروعك «<strong>${eEsc(x.title)}</strong>» مغلق لاستقبال عروض جديدة، بس عندك <strong>${_nOffers(x.n)}</strong> من مزوّدين ما اخترت منها للحين.</p><p>راجعها واقبل اللي يناسبك — أو أعد فتح المشروع لعروض جديدة.</p>`,
+            'اختر من العروض', SITE_URL + '/dashboard-client.html#detail/' + x.id);
+        }
+      } catch(e){ console.error('closed follow-up:', e.message); }
     }
 
     // ب) مشروع اختير مزوّده ولم يُتمّ: مشروع تأكيد (موافقة ضمنية)
@@ -3480,7 +3515,7 @@ app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
        RETURNING id, title, category, city, client_id`, [id, req.user.id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
-    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); }catch(e){}
+    try{ await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn','closed_offers','closed_offers_2d')`, [id]); }catch(e){}
     try{ await notifyMatchingProviders(r.rows[0]); }catch(e){}
     res.json({ ok:true });
   } catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
@@ -5952,7 +5987,7 @@ app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), a
     }
     const until = new Date(base.getTime() + days * 86400000);
     await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL, close_set_by='admin', close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [until, id]);
-    try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); } catch(e){}
+    try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn','closed_offers','closed_offers_2d')`, [id]); } catch(e){}
     if (!wasOpen && req.body.notify_client) { try { await notify(q.client_id, '🔓 أعدنا فتح مشروعك', `«${q.title}» مفتوح للعروض من جديد لمدة ${days} يوم`, 'request', id); } catch(e){} }
     let sent = 0;
     if (req.body.notify_providers) { try { const bidders = new Set((await pool.query('SELECT provider_id FROM bids WHERE request_id=$1', [id])).rows.map(x => String(x.provider_id))); for (const p of await matchingProviders(q.category ? [q.category] : [], q.city, false, null)) { if (bidders.has(String(p.id))) continue; try { await notify(p.id, '🆕 مشروع مفتوح للعروض', `«${q.title}»${q.city?' · '+q.city:''} — قدّم عرضك`, 'request', id); sent++; } catch(e){} } } catch(e){} }
