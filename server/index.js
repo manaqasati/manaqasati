@@ -5643,7 +5643,7 @@ app.get('/api/admin/providers', requirePermission('users.view'), async (req, res
 app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
   try {
     const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price, (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) as min_bid, u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
+    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price, (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) as min_bid, (SELECT id FROM saai_ledger WHERE request_id=r.id LIMIT 1) as saai_id, u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
     if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
@@ -5867,6 +5867,40 @@ app.put('/api/admin/requests/:id/client-note', requirePermission('requests.revie
     res.json({ ok: true });
   } catch(e) { console.error('client-note:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// اقتراح قيمة العقد لإنشاء سعي يدوي: العرض المقبول (لو إجمالي ومنطقي) ← متوسط العروض الإجمالية ← ميزانية العميل
+const SAAI_RATE = 0.03;
+function _saaiSuggest(rq, bids){
+  const acc = bids.find(b => b.status === 'accepted');
+  const totals = bids.filter(b => (!b.price_unit || b.price_unit === 'total') && parseFloat(b.price) >= 50).map(b => parseFloat(b.price)).sort((a,b)=>a-b);
+  const med = totals.length ? totals[Math.floor(totals.length/2)] : null;
+  const opts = [];
+  const accTotal = acc && (!acc.price_unit || acc.price_unit === 'total') ? parseFloat(acc.price) || 0 : 0;
+  const accOk = accTotal >= 50 && (!med || accTotal >= med * 0.3);
+  if (acc) opts.push({ key:'accepted', label:'العرض المقبول', value: accTotal || null, unit: acc.price_unit || 'total', raw: parseFloat(acc.price)||0, ok: accOk });
+  if (med) opts.push({ key:'median', label:'متوسط عروض المشروع', value: Math.round(med), ok: true });
+  if (parseFloat(rq.budget_max) > 0) opts.push({ key:'budget', label:'ميزانية العميل', value: Math.round(parseFloat(rq.budget_max)), ok: true });
+  const best = (accOk && accTotal) || (med && Math.round(med)) || (parseFloat(rq.budget_max) > 0 ? Math.round(parseFloat(rq.budget_max)) : null);
+  return { rate: SAAI_RATE, best, options: opts, provider_id: rq.assigned_provider_id, provider_name: acc ? acc.provider_name : null, accepted_bid_id: acc ? acc.id : null };
+}
+app.post('/api/admin/requests/:id/saai', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const cv = Math.round(parseFloat(req.body.contract_value) || 0);
+    if (cv < 50) return res.status(400).json({ message: 'اكتب قيمة عقد صحيحة (50 ريال أو أكثر)' });
+    const rq = (await pool.query('SELECT id, title, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq) return res.status(404).json({ message: 'غير موجود' });
+    if (!rq.assigned_provider_id) return res.status(400).json({ message: 'ما فيه مزوّد مقبول على هذا المشروع' });
+    const acc = (await pool.query("SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND status='accepted' LIMIT 1", [id, rq.assigned_provider_id])).rows[0];
+    const fee = Math.round(cv * SAAI_RATE);
+    const ins = await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, edits_log)
+      VALUES ($1,$2,$3,$4,$5,'pending',$6::jsonb) ON CONFLICT (request_id, provider_id) DO NOTHING RETURNING id`,
+      [id, rq.assigned_provider_id, acc ? acc.id : null, cv, fee, JSON.stringify([{ by:'admin', at:new Date().toISOString(), note:'أُنشئ يدوياً من الإدارة', contract_value: cv }])]);
+    if (!ins.rows.length) return res.status(409).json({ message: 'هذا المشروع له سعي مسجّل من قبل' });
+    try { await notify(rq.assigned_provider_id, '💰 تم تسجيل سعي المنصة', `«${rq.title}» — سعي المنصة التقديري ${fee.toLocaleString('en-US')} ر.س (3% من ${cv.toLocaleString('en-US')}). لو المبلغ النهائي مختلف عدّله من محفظتك.`, 'saai', id); } catch(e){}
+    await logAdmin(req, 'saai_create', 'request', id, 'إنشاء سعي يدوي: ' + cv + ' → ' + fee);
+    res.json({ ok: true, id: ins.rows[0].id, saai_amount: fee });
+  } catch(e) { console.error('admin saai create:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -5882,7 +5916,12 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     let timeline = [];
     try { timeline = (await pool.query('SELECT event, description, created_at FROM request_timeline WHERE request_id=$1 ORDER BY created_at ASC LIMIT 30', [id])).rows; } catch(e){}
     delete rq.password; 
-    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status) }), bids, timeline });
+    let saai = null, saai_suggest = null;
+    try {
+      saai = (await pool.query('SELECT id, contract_value, saai_amount, status, created_at, provider_id FROM saai_ledger WHERE request_id=$1 ORDER BY id DESC LIMIT 1', [id])).rows[0] || null;
+      if (!saai && rq.assigned_provider_id) saai_suggest = _saaiSuggest(rq, bids);
+    } catch(e){}
+    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status) }), bids, timeline, saai, saai_suggest });
   } catch(e) { console.error('req-detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
