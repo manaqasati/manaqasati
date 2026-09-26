@@ -1484,6 +1484,28 @@ function _sendCliReport(){
 var _cliRptTarget={};
 // ── الرئيسية الجديدة: بطاقة المشروع ──
 function _hhPl(n,u){n=parseInt(n)||0;var f={b:['عرض واحد','عرضان','عروض','عرضاً'],p:['مشروع واحد','مشروعين','مشاريع','مشروعاً'],d:['يوم واحد','يومين','أيام','يوماً']}[u];if(n===1)return f[0];if(n===2)return f[1];if(n>=3&&n<=10)return n+' '+f[2];return n+' '+f[3];}
+// ═══ ملاحظات الإدارة للعميل ═══
+function _cnActive(r){ return !!(r&&r.client_note&&!r.client_note_done_at&&!r.client_note_hidden); }
+function _cnCardHtml(r){
+  if(!r||!r.client_note)return '';
+  if(r.client_note_done_at){
+    if((Date.now()-new Date(r.client_note_done_at))/86400000>2)return '';
+    return '<div id="cn-card" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:13px;display:flex;align-items:center;gap:10px;margin:12px 0"><span style="width:34px;height:34px;border-radius:11px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">✓</span><div><b style="font-size:14px;color:#14532d">شكراً! تم تحديث مشروعك</b><div style="font-size:12px;font-weight:700;color:#166534">المزوّدين يشوفون المعلومات الجديدة الحين</div></div></div>';
+  }
+  if(r.client_note_hidden)return '';
+  var items=String(r.client_note).split(/\n+/).map(function(t){return t.replace(/^\s*[•\-\*·–]+\s*/,'').trim();}).filter(Boolean);
+  var h='<div id="cn-card" style="background:linear-gradient(160deg,#fffbeb,#fef3c7);border:2px solid #f59e0b;border-radius:18px;padding:15px;display:flex;flex-direction:column;gap:9px;margin:12px 0;box-shadow:0 8px 20px rgba(245,158,11,.14)">'
+    +'<div style="display:flex;align-items:center;gap:9px"><span style="width:36px;height:36px;border-radius:11px;background:#f59e0b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💡</span><div style="flex:1"><div style="font-size:15.5px;font-weight:900;color:#78350f">ملاحظات الإدارة لتحسين مشروعك</div><div style="font-size:11.5px;font-weight:800;color:#92400e">تظهر لك أنت فقط 🔒</div></div></div>'
+    +'<div style="font-size:13px;font-weight:700;color:#78350f;line-height:1.7">إضافة هذي المعلومات تخلّي المزوّدين يعطونك أسعار أدق ويوصلك عروض أكثر:</div>';
+  items.forEach(function(t,i){ h+='<div style="display:flex;gap:9px;align-items:flex-start;background:#fff;border:1px solid #fde68a;border-radius:11px;padding:9px 11px;font-size:13.5px;font-weight:700;line-height:1.7;color:#422006">'+(items.length>1?'<b style="width:21px;height:21px;border-radius:21px;background:#f59e0b;color:#fff;font-size:11.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">'+(i+1)+'</b>':'')+'<span>'+esc(t)+'</span></div>'; });
+  if(['open','pending_review','review','needs_edit'].indexOf(r.status)>=0) h+='<button onclick="openEditReq('+r.id+',event)" style="border:0;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px;font-family:inherit;font-weight:900;font-size:14.5px;cursor:pointer">✏️ أضف المعلومات الآن</button>';
+  h+='<div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:#92400e"><span>من فريق مناقصة</span><button onclick="_cnHide('+r.id+')" style="border:0;background:none;padding:0;font-family:inherit;font-size:11.5px;font-weight:800;color:#92400e;text-decoration:underline;cursor:pointer">تم، أخفِ الملاحظة</button></div></div>';
+  return h;
+}
+function _cnHide(id){
+  var c=document.getElementById('cn-card'); if(c)c.style.display='none';
+  fetch(API+'/api/requests/'+id+'/client-note/hide',Object.assign({method:'POST'},hdr())).catch(function(){});
+}
 function _hhCard(r){
   var st=r.status,open=st==='open',prog=st==='in_progress',done=st==='completed'||st==='done',rev=st==='pending_review'||st==='review',nedit=st==='needs_edit',rej=st==='rejected';
   var bc=parseInt(r.bid_count)||0;
@@ -1494,6 +1516,7 @@ function _hhCard(r){
     +'<div class="hh-row"><div class="hh-ic '+icCls+'">'+ic+'</div>'
     +'<div class="hh-body"><div class="hh-t">'+esc(r.title||'')+'</div><div class="hh-chips">'+(r.category?'<span class="hh-chip">'+esc(r.category)+'</span>':'')+(r.city?'<span class="hh-chip">'+esc(r.city)+'</span>':'')+'</div></div>'
     +pill+'</div>';
+  if(_cnActive(r)) h+='<div style="margin-top:9px;display:flex;align-items:center;gap:7px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:11px;padding:8px 11px;font-size:12.5px;font-weight:800;color:#92400e">💡 عندك ملاحظة من الإدارة لتحسين مشروعك<span style="margin-right:auto;color:#1d4ed8">افتح ‹</span></div>';
   if(nedit){ return h+'<div class="hh-warn">⚠️ ادخل وعدّل مشروعك ليُنشر</div></div>'; }
   if(rev){ return h+'<div class="hh-note">يراجع فريقنا مشروعك قبل نشره — عادةً خلال ساعات</div></div>'; }
   if(rej){ return h+'</div>'; }
@@ -1562,7 +1585,8 @@ function _paintHome(all){
     if(tgt){cta.textContent='شاهد العروض';cta.onclick=function(e){_markOffersSeen(window._allMyReqs||[]);openDetail(tgt.id,e);};}
     else{cta.textContent='مشاريعي';cta.onclick=function(){show('requests',null,'requests');};}
   }
-  if(el)el.innerHTML=all.length?all.slice(0,5).map(_hhCard).join(''):emptyReqsH();
+  var _homeList=all.filter(_cnActive).concat(all.filter(function(r){return !_cnActive(r);}));
+  if(el)el.innerHTML=all.length?_homeList.slice(0,5).map(_hhCard).join(''):emptyReqsH();
   renderNudges(all);
   renderQuestionNudge(all);
   renderBestOffer(all);
@@ -1596,6 +1620,12 @@ function renderNudges(all){
   var doneR=all.filter(function(r){return r.status==='completed'||r.status==='done';});
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var reqItems=[];
+  all.filter(_cnActive).slice(0,2).forEach(function(r){
+    reqItems.push('<div class="nudge" style="border-right-color:#f59e0b" onclick="openDetail('+r.id+',event)">'
+      +'<div class="nudge-ic" style="background:#fef3c7;color:#b45309;font-size:18px">💡</div>'
+      +'<div class="nudge-body"><div class="nudge-t">ملاحظة من الإدارة على مشروعك</div><div class="nudge-s">'+esc(r.title)+' — أضف المعلومات الناقصة لعروض أدق</div></div>'
+      +'<div class="nudge-cta">عرض '+chev+'</div></div>');
+  });
   if(totalOffers>0){
     reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="_markOffersSeen(window._allMyReqs||[]);show(\'requests\',null,\'requests\')">'
       +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
@@ -1719,7 +1749,7 @@ function openDetail(id,e){
       +(req.deadline?'<span>'+cal+' '+fmtDate(req.deadline)+'</span>':'')
       +'</div>'
       +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
-    +'</div>';
+    +'</div>'+_cnCardHtml(req);
     document.getElementById('det-head').innerHTML=h;
     var _ne=(req.status==='needs_edit');
     var _adot=document.getElementById('actions-dot');if(_adot)_adot.style.display=_ne?'inline-flex':'none';
