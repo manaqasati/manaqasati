@@ -2462,6 +2462,8 @@ function acceptAgree(){
 // EDIT REQUEST
 // ═══════════════════════════════════
 var _editReqId=null;
+function _cdPrefill(sel,close_at,created_at){ if(!sel)return; var o=sel.querySelector('option[value="keep"]'); if(o)o.remove(); sel.value=''; if(close_at&&created_at){ var d=Math.round((new Date(close_at)-new Date(created_at))/86400000); if([7,14,30,60,90,120,180].indexOf(d)>=0) sel.value=String(d); else { var op=document.createElement('option'); op.value='keep'; op.textContent='مدة حالية مخصصة (حتى '+new Date(close_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'})+')'; sel.insertBefore(op,sel.firstChild); sel.value='keep'; } } sel.setAttribute('data-init',sel.value); }
+function _cdVal(id){ var s=document.getElementById(id); if(!s)return undefined; if(s.value==='keep'||s.value===s.getAttribute('data-init'))return undefined; return parseInt(s.value)||0; }
 function openEditReq(id,e){
   if(e)e.stopPropagation();_editReqId=id;
   jFetch('/api/requests/'+id).then(function(req){
@@ -2469,7 +2471,7 @@ function openEditReq(id,e){
     document.getElementById('e-desc').value=req.description||'';
     document.getElementById('e-budget').value=req.budget_max||'';
     document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
-    (function(){var _m={7:7,14:14,30:30,60:60,90:90,120:120,180:180};var _sel=document.getElementById('e-closedur');if(_sel){_sel.value='';if(req.close_at&&req.created_at){var _d=Math.round((new Date(req.close_at)-new Date(req.created_at))/86400000);if(_m[_d])_sel.value=String(_d);}}})();
+    _cdPrefill(document.getElementById('e-closedur'),req.close_at,req.created_at);
     var _ec=document.getElementById('e-cat'), _nc=document.getElementById('n-cat'); if(_ec&&_nc){ _ec.innerHTML=_nc.innerHTML; _ec.value=req.category||''; }
     var _ecy=document.getElementById('e-city'), _ncy=document.getElementById('n-city'); if(_ecy&&_ncy){ _ecy.innerHTML=_ncy.innerHTML; _ecy.value=req.city||''; }
     _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)};
@@ -2519,7 +2521,7 @@ function submitEditReq(){
   if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[])};
-  body.close_days=parseInt((document.getElementById('e-closedur')||{}).value)||0;
+  var _cdv=_cdVal('e-closedur'); if(_cdv!==undefined) body.close_days=_cdv;
   if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
   var xhr=new XMLHttpRequest();
   xhr.open('PUT',API+'/api/requests/'+_editReqId);
