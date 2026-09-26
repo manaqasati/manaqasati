@@ -2759,8 +2759,7 @@ function renderRequests(){
       +'<td style="font-size:13px;font-weight:800;'+(_stale?'color:#b91c1c':'')+'">'+_ago+'</td>'
       +'<td style="font-size:12.5px;font-weight:800;color:'+_left[1]+'">'+_left[0]+'</td>'
       +'<td><div class="act-btns"><button class="act-btn ab-default" onclick="_rqOpen('+r.id+')">'+eye+'تفاصيل</button>'
-        +(r.status==='needs_edit'?'<button class="act-btn ab-default" style="color:#059669;border-color:#a7f3d0" onclick="remindClient('+r.id+')">تذكير</button>':'')
-        +'<button class="act-btn ab-default" onclick="_rowMenu(this,'+r.id+',\''+r.status+'\')" title="إجراءات أخرى" style="font-weight:900;font-size:17px;line-height:1;padding:5px 11px">⋯</button></div></td>'
++'</div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('r',_rTotal);
 }
