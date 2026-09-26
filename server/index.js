@@ -1152,6 +1152,11 @@ function normPhone(p){
   if(rest.length !== 9 || !rest.startsWith('5')) return null;
   return d;
 }
+// قالب العرض غير معبّأ: المزوّد ضغط «استخدام القالب» وأرسله بدون ما يعبّي الأقواس
+const _TPL_PLACEHOLDER_RE = /\(\s*(?:عدد|اشرح[^)]{0,40}|نوعها[^)]{0,40}|اذكر[^)]{0,40}|حدد[^)]{0,40})\s*\)/;
+function _hasUnfilledTemplate(t){ return _TPL_PLACEHOLDER_RE.test(String(t||'')); }
+// بصمة الملف (md5) — نفس ETag في R2 للرفع العادي؛ تكشف إرفاق نفس الملف في عروض كثيرة
+function _dataUrlMd5(dataUrl){ try { const m = String(dataUrl).match(/;base64,(.+)$/); return m ? crypto.createHash('md5').update(Buffer.from(m[1],'base64')).digest('hex') : null; } catch(e){ return null; } }
 // كشف محاولة تواصل خارج المنصة داخل نص (رقم جوال أو كلمات تواصل + أرقام)
 function _hasContact(text){
   let t = String(text||'');
@@ -2077,6 +2082,7 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_hash TEXT`); } catch(e){}
     // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
@@ -3394,8 +3400,9 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const priceVis = (req.body.price_visibility === 'public') ? 'public' : 'client'; // الافتراضي: لصاحب المشروع فقط
     const priceUnit = (['total','meter','unit'].indexOf(req.body.price_unit) >= 0) ? req.body.price_unit : 'total';
     // ملف عرض السعر (اختياري): صورة أو PDF بصيغة data-URL → يُرفع إلى التخزين ويُحفظ رابطه
-    let attUrl = null;
+    let attUrl = null, attHash = null;
     if (req.body.attachment && typeof req.body.attachment === 'string' && req.body.attachment.startsWith('data:')) {
+      attHash = _dataUrlMd5(req.body.attachment);
       attUrl = await uploadToCloud(req.body.attachment, 'manaqasa/bids');
       if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
     }
@@ -3410,6 +3417,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       || /^[\d\s.,\-ريالر.س﷼]+$/.test(note)          // مجرد أرقام/سعر بدون كلام
       || /^(.)\1{4,}$/.test(_noteBare);              // حرف واحد مكرّر (ااااا)
     if (_noteBad) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (١٥ حرفاً على الأقل) توضّح خبرتك وطريقة تنفيذك — العروض العشوائية أو الفارغة تُرفض، وقد يُحظر الحساب عند تكرارها.', code: 'note_quality' });
+    if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الإرسال — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية. العروض بالقالب الفاضي تُرفض.', code: 'template_unfilled' });
     const reqRow = await pool.query('SELECT client_id, title, status, city FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
@@ -3419,10 +3427,10 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
       // COALESCE: لو ما رفع ملفاً جديداً نُبقي القديم
-      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, price_unit=$5, attachment_url=COALESCE($6,attachment_url), created_at=NOW() WHERE request_id=$7 AND provider_id=$8 RETURNING *`, [price, days, note||null, priceVis, priceUnit, attUrl, requestId, req.user.id]);
+      const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, price_unit=$5, attachment_url=COALESCE($6,attachment_url), attachment_hash=CASE WHEN $6::text IS NOT NULL THEN $9 ELSE attachment_hash END, created_at=NOW() WHERE request_id=$7 AND provider_id=$8 RETURNING *`, [price, days, note||null, priceVis, priceUnit, attUrl, requestId, req.user.id, attHash]);
       row = upd.rows[0]; isUpdate = true;
     } else {
-      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl]);
+      const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, attachment_hash, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,$9,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl, attHash]);
       row = ins.rows[0];
     }
     const provInfo = await pool.query('SELECT name, city, service_cities, serves_all_cities FROM users WHERE id=$1', [req.user.id]);
@@ -3517,13 +3525,15 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
-    let attUrl;
+    if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الحفظ — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية.', code: 'template_unfilled' });
+    let attUrl, attHash = null;
     if (req.body.attachment && typeof req.body.attachment==='string' && req.body.attachment.indexOf('data:')===0) {
+      attHash = _dataUrlMd5(req.body.attachment);
       try { const u = await uploadToCloud(req.body.attachment, 'manaqasa/attachments', req.body.attachment_name||'عرض-سعر'); if (u) attUrl = u; } catch(e){}
     }
     const r = await pool.query(
-      'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url) WHERE id=$6 RETURNING *',
-      [price||null, days||null, note||null, priceVis, attUrl||null, id]);
+      'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url), attachment_hash=CASE WHEN $5::text IS NOT NULL THEN $7 ELSE attachment_hash END WHERE id=$6 RETURNING *',
+      [price||null, days||null, note||null, priceVis, attUrl||null, id, attHash]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5031,8 +5041,32 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
 });
 
 // ═══ كل العروض (للأدمن) مع فلترة ═══
+// تعبئة بصمات مرفقات العروض القديمة من ETag في R2 (مرة، على دفعات)
+async function backfillBidAttachmentHashes(){
+  if (!r2Client || global._bkHashRunning) return;
+  global._bkHashRunning = true;
+  try {
+    const { HeadObjectCommand } = require('@aws-sdk/client-s3');
+    const base = (R2_PUBLIC_URL||'').replace(/\/+$/,'') + '/';
+    const r = await pool.query(`SELECT id, attachment_url FROM bids WHERE attachment_url IS NOT NULL AND attachment_hash IS NULL ORDER BY id DESC LIMIT 400`);
+    for (const b of r.rows) {
+      let hash = 'x';
+      try {
+        const u = String(b.attachment_url||'');
+        if (u.indexOf('data:') === 0) hash = _dataUrlMd5(u) || 'x';
+        else if (base.length > 1 && u.indexOf(base) === 0) {
+          const h = await r2Client.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: decodeURIComponent(u.slice(base.length)) }));
+          const et = String(h.ETag||'').replace(/"/g,''); if (/^[a-f0-9]{32}$/i.test(et)) hash = et.toLowerCase();
+        }
+      } catch(e){}
+      await pool.query('UPDATE bids SET attachment_hash=$1 WHERE id=$2', [hash, b.id]).catch(()=>{});
+    }
+  } catch(e){ console.error('backfillHashes:', e.message); }
+  finally { global._bkHashRunning = false; }
+}
 app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
   try {
+    backfillBidAttachmentHashes().catch(()=>{});
     const { status, provider_id, request_id } = req.query;
     const conds = []; const params = []; let i = 1;
     if (status) { params.push(status); conds.push(`b.status=$${i}`); i++; }
@@ -5041,7 +5075,7 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
     const where = conds.length ? 'WHERE '+conds.join(' AND ') : '';
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
-        b.price_visibility, b.price_unit, b.attachment_url,
+        b.price_visibility, b.price_unit, b.attachment_url, b.attachment_hash, COALESCE(u.is_active,TRUE) AS provider_active,
         u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
         rq.title as request_title, rq.client_id, rq.city as request_city,
         cu.name as client_name
