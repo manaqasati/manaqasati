@@ -116,12 +116,23 @@
   // ── ربط القوائم: زر شفاف فوق القائمة (نفس مكانها ومقاسها) ──
   function enhance(s){
     s.dataset.cpOn = '1';
-    var b = document.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.setAttribute('aria-hidden','true');
-    b.style.cssText = 'position:absolute;margin:0;padding:0;border:0;background:transparent;cursor:pointer;z-index:2;opacity:0';
-    s.parentNode.insertBefore(b, s.nextSibling); s._cpBtn = b;
-    b.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); open(s); });
     s.addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' ' || e.key==='ArrowDown' || (e.altKey && e.key==='ArrowDown')){ e.preventDefault(); open(s); } });
     s.addEventListener('mousedown', function(e){ e.preventDefault(); open(s); });
+    // لمس بدون زر شفاف (احتياط): نفتح لما يرفع إصبعه بدون سحب
+    var ty = null;
+    s.addEventListener('touchstart', function(e){ ty = e.touches && e.touches[0] ? e.touches[0].clientY : null; }, {passive:true});
+    s.addEventListener('touchend', function(e){ if (s._cpBtn) return; var y = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : null; if (ty != null && y != null && Math.abs(y - ty) > 10) return; e.preventDefault(); open(s); });
+    // الزر الشفاف لازم يكون داخل نفس حاوية القائمة (يتحرك ويتقصّ معها لو الصفحة/النافذة تمررت)
+    var par = s.parentNode, cs = getComputedStyle(par);
+    if (cs.position === 'static'){
+      var clash = [].some.call(par.children, function(c){ return c !== s && getComputedStyle(c).position === 'absolute'; });
+      if (clash) { sync(s); return; }
+      par.style.position = 'relative';
+    }
+    var b = document.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.setAttribute('aria-hidden','true');
+    b.style.cssText = 'position:absolute;margin:0;padding:0;border:0;background:transparent;cursor:pointer;z-index:1;opacity:0';
+    par.insertBefore(b, s.nextSibling); s._cpBtn = b;
+    b.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); open(s); });
     sync(s);
   }
   function sync(s){
@@ -130,7 +141,7 @@
     var vis = s.offsetParent !== null && s.offsetWidth > 0 && s.style.display !== 'none';
     if (!vis || s.disabled){ b.style.display = 'none'; return; }
     b.style.display = 'block';
-    if (s.offsetParent !== b.offsetParent){ b.style.display = 'none'; return; }
+    if (s.offsetParent !== b.offsetParent || b.offsetParent !== s.parentNode){ b.style.display = 'none'; return; }
     b.style.left = s.offsetLeft + 'px'; b.style.top = s.offsetTop + 'px'; b.style.width = s.offsetWidth + 'px'; b.style.height = s.offsetHeight + 'px';
   }
   function scan(){
