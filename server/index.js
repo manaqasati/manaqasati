@@ -1766,9 +1766,9 @@ async function runReminders(){
          RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
       for(const x of done.rows){
         try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
-    const _wb = await pool.query("SELECT price FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
-    const _cfee = _wb.rows.length ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
-    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة '+_cfee.toLocaleString('en-US')+' ر.س (3%) — سدّدها خلال 10 أيام — من صفحة الدفع.':''), 'completed', id);
+    const _wb = await pool.query("SELECT price, price_unit FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
+    const _cfee = (_wb.rows.length && (!_wb.rows[0].price_unit || _wb.rows[0].price_unit==='total')) ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
+    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة التقديري '+_cfee.toLocaleString('en-US')+' ر.س (3%) — يُحسب على مبلغ الاتفاق النهائي، عدّله إن اختلف وسدّده خلال 10 أيام من «محفظة السعي».':' 💰 سعي المنصة 3% من مبلغ الاتفاق النهائي — حدّده وسدّده من «محفظة السعي».'), 'completed', id);
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
@@ -2281,6 +2281,8 @@ async function setupDatabase() {
       approved_at TIMESTAMP,
       UNIQUE(request_id, provider_id)
     )`); } catch(e){}
+    // تنظيف سجلات سعي فارغة نتجت عن خلل قديم في قبول العرض (بدون مشروع/مزوّد)
+    try { await pool.query('DELETE FROM saai_ledger WHERE request_id IS NULL OR provider_id IS NULL'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
     try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
@@ -3574,16 +3576,18 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
-    const _fee = Math.round((parseFloat(bid.price)||0) * 0.03);
+    const _isTotal = !acceptedBid.price_unit || acceptedBid.price_unit === 'total';
+    const _cval = _isTotal ? (parseFloat(acceptedBid.price)||0) : 0;   // سعر المتر/الوحدة ليس قيمة العقد
+    const _fee = Math.round(_cval * 0.03);
     // تراكم السعي: أنشئ سجلاً معلّقاً للمزوّد (لا يكرّر لو أُعيد القبول)
     try {
       await pool.query(
         `INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status)
          VALUES ($1,$2,$3,$4,$5,'pending')
          ON CONFLICT (request_id, provider_id) DO NOTHING`,
-        [bid.request_id, bid.provider_id, bidId, (parseFloat(bid.price)||0), _fee]);
+        [acceptedBid.request_id, acceptedBid.provider_id, bidId, _cval, _fee]);
     } catch(e){ console.error('saai accrue:', e.message); }
-    await notify(bid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(bid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة '+_fee.toLocaleString('en-US')+' ر.س (3%) تُسدَّد خلال 10 أيام من الاتفاق أو بدء التنفيذ.':''), 'bid_accepted', bid.request_id);
+    await notify(acceptedBid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(acceptedBid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة التقديري '+_fee.toLocaleString('en-US')+' ر.س (3% من سعر عرضك) — يُحسب النهائي على مبلغ اتفاقك الفعلي مع العميل، وتعدّله من «محفظة السعي» عند السداد خلال 10 أيام.':' سعي المنصة 3% من مبلغ اتفاقك النهائي مع العميل — حدّده من «محفظة السعي» وسدّده خلال 10 أيام.'), 'bid_accepted', acceptedBid.request_id);
       if (acceptedProv.rows.length && acceptedProv.rows[0].email) {
         const subject = `تم قبول عرضك على "${eEsc(acceptedBid.title)}"`;
         const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
