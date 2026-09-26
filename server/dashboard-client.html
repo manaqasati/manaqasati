@@ -763,7 +763,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <option>تنسيق حدائق</option><option>زجاج ومرايا</option>
               <option>بلاط ورخام</option><option>تركيب أثاث</option>
               <option>أرضيات خشبية وباركيه</option><option>تنظيف سجاد وكنب</option>
-              <option>صيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option>
+              <option>تركيب وصيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option>
               <option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option>
               <option>حفر آبار ومضخات</option>
               <option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>معدات ثقيلة</option><option>عوازل مائية</option><option>أنظمة شمسية</option><option>صيانة عامة</option><option>إنشاءات معدنية وهناجر</option><option>أعمال الطرق والأسفلت</option><option>صرف صحي وبيارات</option><option>أرضيات إيبوكسي</option><option>تحلية ومعالجة مياه</option><option>تشطيبات ومقاولات عامة</option><option>مكاتب هندسية</option>
@@ -771,8 +771,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
             </select>
           </div>
           <div class="fg ff" id="other-wrap" style="display:none">
-            <label>التصنيف (أخرى)</label>
-            <input type="text" id="n-cat-other" placeholder="اكتب التصنيف">
+            <label>وش الخدمة المطلوبة؟</label>
+            <input type="text" id="n-cat-other" placeholder="اكتب نوع الخدمة المطلوبة" oninput="_catSug()" maxlength="120"><div id="n-cat-sug"></div>
           </div>
           <div class="fg ff">
             <label>عنوان المشروع <span style="color:var(--red)">*</span></label>
@@ -2074,6 +2074,28 @@ function toggleExtra(){
   f.style.display=hidden?'block':'none';
   if(t)t.classList.toggle('open',hidden);
 }
+// «تقصد: …؟» — يقترح تخصص من قائمتنا لما العميل يكتب في «أخرى»
+var _CAT_SYN=[['مصعد','تركيب وصيانة مصاعد'],['مصاعد','تركيب وصيانة مصاعد'],['اسانسير','تركيب وصيانة مصاعد'],['مكيف','تبريد وتكييف'],['تكييف','تبريد وتكييف'],['تبريد','تبريد وتكييف'],['دهان','دهانات وديكور'],['بويه','دهانات وديكور'],['ديكور','دهانات وديكور'],['كهرب','كهرباء'],['سباك','سباكة'],['تسرب','كشف تسربات المياه'],['تسريب','كشف تسربات المياه'],['خزان','تنظيف خزانات'],['حشرات','مكافحة حشرات'],['نمل','مكافحة حشرات'],['صراصير','مكافحة حشرات'],['عفش','نقل عفش'],['كاميرا','كاميرات مراقبة'],['كاميرات','كاميرات مراقبة'],['انترنت','شبكات وإنترنت'],['شبكه','شبكات وإنترنت'],['مظل','مظلات وسواتر'],['ساتر','مظلات وسواتر'],['سواتر','مظلات وسواتر'],['عزل','عزل حراري'],['عازل','عوازل مائية'],['مسبح','مسابح'],['مطبخ','تركيب مطابخ'],['مطابخ','تركيب مطابخ'],['حديقه','تنسيق حدائق'],['حدائق','تنسيق حدائق'],['عشب','تنسيق حدائق'],['زجاج','زجاج ومرايا'],['مرايا','زجاج ومرايا'],['بلاط','بلاط ورخام'],['رخام','بلاط ورخام'],['سيراميك','بلاط ورخام'],['باركيه','أرضيات خشبية وباركيه'],['سجاد','تنظيف سجاد وكنب'],['كنب','تنظيف سجاد وكنب'],['بوابه','أبواب وبوابات أوتوماتيكية'],['ابواب','أبواب وبوابات أوتوماتيكية'],['باب','أبواب وبوابات أوتوماتيكية'],['ترميم','ترميم مبانٍ'],['واجهه','كلادينج وواجهات'],['واجهات','كلادينج وواجهات'],['كلادينج','كلادينج وواجهات'],['بير','حفر آبار ومضخات'],['ابار','حفر آبار ومضخات'],['مضخه','حفر آبار ومضخات'],['غطاس','حفر آبار ومضخات'],['حريق','أنظمة الحريق والسلامة'],['شمسي','أنظمة شمسية'],['شمسيه','أنظمة شمسية'],['هنجر','إنشاءات معدنية وهناجر'],['هناجر','إنشاءات معدنية وهناجر'],['مستودع','إنشاءات معدنية وهناجر'],['اسفلت','أعمال الطرق والأسفلت'],['سفلته','أعمال الطرق والأسفلت'],['بياره','صرف صحي وبيارات'],['صرف','صرف صحي وبيارات'],['ايبوكسي','أرضيات إيبوكسي'],['تحليه','تحلية ومعالجة مياه'],['فلتر','تحلية ومعالجة مياه'],['تشطيب','تشطيبات ومقاولات عامة'],['مقاول','تشطيبات ومقاولات عامة'],['هندسي','مكاتب هندسية'],['مخطط','مكاتب هندسية'],['تصميم','تصاميم داخلي وخارجي'],['المنيوم','ألمنيوم'],['نوافذ','ألمنيوم'],['شبابيك','ألمنيوم'],['حداد','حدادة'],['نجار','نجارة'],['خشب','نجارة'],['جبس','جبس'],['بناء','بناء'],['عظم','بناء'],['ملحق','بناء'],['شيول','معدات ثقيلة'],['رافعه','معدات ثقيلة'],['كرين','معدات ثقيلة'],['تنظيف','تنظيف'],['صيانه','صيانة عامة'],['اثاث','تركيب أثاث'],['مواقف','تخطيط المواقف والسلامة المرورية']];
+function _catNorm(t){return String(t||'').replace(/[ً-ْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase();}
+function _catSug(){
+  var inp=document.getElementById('n-cat-other'),box=document.getElementById('n-cat-sug'),sel=document.getElementById('n-cat');
+  if(!inp||!box||!sel)return;
+  var t=_catNorm(inp.value); if(t.replace(/\s/g,'').length<3){box.innerHTML='';return;}
+  var have={}; [].forEach.call(sel.options,function(o){var v=o.value||o.text; if(v&&v!=='أخرى')have[v]=1;});
+  var out=[];
+  var add=function(c){ if(have[c]&&out.indexOf(c)<0)out.push(c); };
+  _CAT_SYN.forEach(function(p){ if(t.indexOf(_catNorm(p[0]))>=0)add(p[1]); });
+  var _stop={'تركيب':1,'وصيانه':1,'صيانه':1,'اعمال':1,'انظمه':1,'عامه':1,'ومقاولات':1,'مقاولات':1,'والسلامه':1,'السلامه':1,'المروريه':1,'ومعالجه':1,'مياه':1,'المياه':1,'المباني':1,'داخلي':1,'وخارجي':1};
+  Object.keys(have).forEach(function(c){ _catNorm(c).split(/\s+/).forEach(function(w){ w=w.replace(/^و/,''); if(w.length>=4&&!_stop[w]&&!_stop['و'+w]&&t.indexOf(w.replace(/^ال/,''))>=0)add(c); }); });
+  out=out.slice(0,3);
+  box.innerHTML=out.length?'<div style="margin-top:8px;font-size:13px;font-weight:800;color:#1e3a8a">تقصد:</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+out.map(function(c){return '<button type="button" onclick="_catPick(this.getAttribute(\'data-c\'))" data-c="'+c.replace(/"/g,'&quot;')+'" style="border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer">'+c+' ✓</button>';}).join('')+'</div><div style="font-size:11.5px;color:#64748b;margin-top:6px">اختيار تخصص من القائمة يوصّل مشروعك للمزوّدين المختصين مباشرة</div>':'';
+}
+function _catPick(c){
+  var sel=document.getElementById('n-cat'); if(!sel)return;
+  sel.value=c; sel.dispatchEvent(new Event('change'));
+  var box=document.getElementById('n-cat-sug'); if(box)box.innerHTML='';
+  try{ (typeof showToast==='function'?showToast:(typeof toast==='function'?toast:function(){}))('تم اختيار «'+c+'» ✓','success'); }catch(e){}
+}
 function checkOther(){document.getElementById('other-wrap').style.display=document.getElementById('n-cat').value==='أخرى'?'block':'none';}
 function fillCitySelect(sel){
   if(!sel||sel.children.length>1)return;
@@ -2262,7 +2284,7 @@ var CAT_HINTS={
   'تركيب أثاث':['نوع وعدد القطع؟','فك وتركيب أم تركيب فقط؟','الموقع (الدور)؟'],
   'أرضيات خشبية وباركيه':['المساحة (م²)؟','النوع (باركيه/HDF/SPC)؟','حالة الأرضية الحالية؟'],
   'تنظيف سجاد وكنب':['عدد القطع ونوعها؟','بالموقع أم استلام؟','تعطير/تعقيم؟'],
-  'صيانة مصاعد':['عدد المصاعد ونوعها؟','صيانة دورية أم إصلاح عطل؟','الماركة إن عُرفت؟'],
+  'تركيب وصيانة مصاعد':['عدد المصاعد ونوعها؟','صيانة دورية أم إصلاح عطل؟','الماركة إن عُرفت؟'],
   'أبواب وبوابات أوتوماتيكية':['النوع (سحب/جرارة/دوارة)؟','العدد والمقاسات؟','توريد وتركيب أم صيانة؟'],
   'ترميم مبانٍ':['نوع المبنى وعمره؟','المطلوب ترميمه بالضبط؟','المساحة التقريبية؟'],
   'تنظيف واجهات المباني':['ارتفاع المبنى (أدوار)؟','نوع الواجهة؟','المساحة التقريبية؟'],
@@ -2311,7 +2333,7 @@ var SMART_FORMS={
   'تركيب أثاث':[{key:'items',label:'نوع وعدد القطع',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['فك وتركيب','تركيب فقط']},{key:'floor',label:'الموقع (الدور)',type:'text'}],
   'أرضيات خشبية وباركيه':[{key:'area',label:'المساحة (م²)',type:'number'},{key:'type',label:'النوع',type:'select',opts:['باركيه','HDF','SPC','فينيل']},{key:'cur',label:'حالة الأرضية الحالية',type:'text'}],
   'تنظيف سجاد وكنب':[{key:'items',label:'عدد القطع ونوعها',type:'text'},{key:'loc',label:'مكان التنظيف',type:'seg',opts:['بالموقع','استلام']},{key:'add',label:'تعطير/تعقيم',type:'seg',opts:['مطلوب','غير مطلوب']}],
-  'صيانة مصاعد':[{key:'count',label:'عدد المصاعد',type:'number'},{key:'kind',label:'المطلوب',type:'seg',opts:['صيانة دورية','إصلاح عطل']},{key:'brand',label:'الماركة إن عُرفت',type:'text'}],
+  'تركيب وصيانة مصاعد':[{key:'count',label:'عدد المصاعد',type:'number'},{key:'kind',label:'المطلوب',type:'seg',opts:['صيانة دورية','إصلاح عطل']},{key:'brand',label:'الماركة إن عُرفت',type:'text'}],
   'أبواب وبوابات أوتوماتيكية':[{key:'type',label:'النوع',type:'select',opts:['سحب','جرارة','دوارة','رفرفة']},{key:'size',label:'العدد والمقاسات',type:'text'},{key:'svc',label:'الخدمة',type:'seg',opts:['توريد وتركيب','صيانة']}],
   'ترميم مبانٍ':[{key:'prop',label:'نوع المبنى وعمره',type:'text'},{key:'want',label:'المطلوب ترميمه',type:'text'},{key:'area',label:'المساحة التقريبية',type:'text'}],
   'تنظيف واجهات المباني':[{key:'floors',label:'ارتفاع المبنى (أدوار)',type:'number'},{key:'facade',label:'نوع الواجهة',type:'text'},{key:'area',label:'المساحة التقريبية',type:'text'}],
@@ -2413,7 +2435,7 @@ function updateQuality(){
 }
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
-  if(cat==='أخرى')cat=document.getElementById('n-cat-other').value.trim()||'أخرى';
+  var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
   var desc=(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
@@ -2449,7 +2471,7 @@ function closeAgree(){
 function acceptAgree(){
   closeAgree();
   var cat=document.getElementById('n-cat').value;
-  if(cat==='أخرى')cat=document.getElementById('n-cat-other').value.trim()||'أخرى';
+  var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
   var desc=(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
@@ -2457,7 +2479,7 @@ function acceptAgree(){
   var deadline=document.getElementById('n-deadline').value;
   var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
-  var body={title:title,description:desc,category:cat,city:city};
+  var body={title:title,description:desc,category:cat,city:city}; if(catOther)body.category_other=catOther;
   var _cd=(document.getElementById('n-closedur')||{}).value; if(_cd)body.close_days=parseInt(_cd);
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
