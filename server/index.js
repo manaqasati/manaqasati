@@ -153,7 +153,7 @@ app.use(function(req, res, next){
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
 const _UP_VER = '1'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
-const _CITY_VER = '2'; // غيّره عند تعديل citypick.js
+const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
 const _pageCache = new Map();
