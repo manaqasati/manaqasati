@@ -131,6 +131,19 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '45mb' }));
+// صفحات HTML (ومنها الروابط بدون .html مثل /pro/... و/project/...) لا تُخزَّن أبداً —
+// ضروري لتطبيق أندرويد (WebView) اللي يحتفظ بكاش قوي، عشان يوصله التحديث فور الرفع
+app.use(function(req, res, next){
+  if ((req.method === 'GET' || req.method === 'HEAD') && !req.path.startsWith('/api/') && !/\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf|css|js|json|xml|txt|pdf|mp4|webm)$/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    // sendFile يضيف افتراضياً «public, max-age=0» فوق هيدرنا — نوقفه عشان يبقى no-store
+    const _sf = res.sendFile.bind(res);
+    res.sendFile = function(p, o, cb){ if (typeof o === 'function') { cb = o; o = {}; } return _sf(p, Object.assign({ cacheControl: false }, o || {}), cb); };
+  }
+  next();
+});
 // كاش ذكي للملفات الثابتة: الصور/الأيقونات تُحفظ طويلاً، وصفحات HTML لا تُخزَّن أبداً
 app.use(express.static('.', {
   etag: true,
@@ -139,7 +152,9 @@ app.use(express.static('.', {
     if (/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
     } else if (/\.html$/i.test(filePath)) {
-      res.setHeader('Cache-Control', 'no-cache'); // HTML يُتحقَّق منه دائماً (تصل التحديثات فوراً)
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTML لا يُخزَّن أبداً (تصل التحديثات فوراً)
+    } else if (/(^|[\/\\])sw\.js$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // عامل الخدمة: يتحدّث دائماً
     }
   }
 }));
