@@ -2778,7 +2778,7 @@ app.put('/api/profile', auth, async (req, res) => {
 
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress' AND (category IS DISTINCT FROM 'direct')) as active_requests FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,business_name,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress' AND (category IS DISTINCT FROM 'direct')) as active_requests FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
