@@ -140,9 +140,36 @@ app.use(function(req, res, next){
     res.setHeader('Expires', '0');
     // sendFile يضيف افتراضياً «public, max-age=0» فوق هيدرنا — نوقفه عشان يبقى no-store
     const _sf = res.sendFile.bind(res);
-    res.sendFile = function(p, o, cb){ if (typeof o === 'function') { cb = o; o = {}; } return _sf(p, Object.assign({ cacheControl: false }, o || {}), cb); };
+    res.sendFile = function(p, o, cb){
+      if (typeof o === 'function') { cb = o; o = {}; }
+      // صفحات HTML: نقرأها ونحقن سكربت نسبة الرفع (up.js)
+      if (!cb && /\.html$/i.test(String(p))) { const h = _readPage(String(p)); if (h != null) { res.type('html'); return res.send(h); } }
+      return _sf(p, Object.assign({ cacheControl: false }, o || {}), cb);
+    };
+    const _snd = res.send.bind(res);
+    res.send = function(body){ if (typeof body === 'string') body = _injectUp(body); return _snd(body); };
   }
   next();
+});
+// حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
+const _UP_VER = '1'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script>';
+function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
+const _pageCache = new Map();
+function _readPage(p){
+  try { const fs = require('fs'); const st = fs.statSync(p); const c = _pageCache.get(p);
+    if (c && c.m === st.mtimeMs) return c.h;
+    const h = fs.readFileSync(p, 'utf8'); _pageCache.set(p, { m: st.mtimeMs, h }); return h;
+  } catch(e) { return null; }
+}
+// الصفحات الثابتة (.html و /) تمر من هنا قبل express.static عشان يوصلها الحقن
+app.use(function(req, res, next){
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const m = req.path === '/' ? '/index.html' : req.path;
+  if (!/^\/[\w\-.]+\.html$/.test(m)) return next();
+  const f = __dirname + m;
+  if (!require('fs').existsSync(f)) return next();
+  res.sendFile(f);
 });
 // كاش ذكي للملفات الثابتة: الصور/الأيقونات تُحفظ طويلاً، وصفحات HTML لا تُخزَّن أبداً
 app.use(express.static('.', {
@@ -158,6 +185,27 @@ app.use(express.static('.', {
     }
   }
 }));
+
+// تحميل مرفق كملف (بدل فتحه) — فقط من تخزيننا (R2/Cloudinary)
+app.get('/api/dl', async (req, res) => {
+  try {
+    const u = String(req.query.u || '');
+    const ok = (R2_PUBLIC_URL && u.startsWith(R2_PUBLIC_URL + '/')) || /^https:\/\/res\.cloudinary\.com\//.test(u);
+    if (!ok) return res.status(400).json({ message: 'رابط غير مسموح' });
+    const r = await fetch(u);
+    if (!r.ok || !r.body) return res.status(404).json({ message: 'الملف غير موجود' });
+    const urlExt = (u.split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '';
+    let nm = String(req.query.n || '').replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim().slice(0, 120) || ('ملف' + (urlExt ? '.' + urlExt : ''));
+    if (urlExt && !/\.[a-z0-9]{2,5}$/i.test(nm)) nm += '.' + urlExt;
+    let ascii = nm.replace(/[^\x20-\x7e]/g, '').replace(/"/g, '').trim();
+    if (!/[a-z0-9]/i.test(ascii.replace(/\.[a-z0-9]{2,5}$/i, ''))) ascii = 'manaqasa-file' + (urlExt ? '.' + urlExt : '');
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'application/octet-stream');
+    const len = r.headers.get('content-length'); if (len) res.setHeader('Content-Length', len);
+    res.setHeader('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nm)}`);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    require('stream').Readable.fromWeb(r.body).pipe(res);
+  } catch(e) { if (!res.headersSent) res.status(500).json({ message: 'تعذّر التحميل' }); }
+});
 
 // Rate Limiting بسيط (in-memory) — حماية من brute force
 const _rateLimit = new Map();
