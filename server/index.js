@@ -6214,10 +6214,35 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
         if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { _closeClause += ", status='open'"; }
       } else { _closeClause = ', close_at = NULL'; }
     }
-    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,deadline=$6,admin_notes=$7,agent_name=$8,agent_pct=$9,agent_phone=$10,agent_id=$11${_closeClause} WHERE id=$12 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, deadline||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id]);
+    // حقول اختيارية: تتعدّل فقط إذا أُرسلت (ما نمسح بيانات العميل بالغلط)
+    const _xs = []; const _xp = []; let _xi = 12; let _dropped = 0;
+    if ('deadline' in req.body) { _xs.push('deadline=$'+_xi++); _xp.push(deadline||null); }
+    if ('district' in req.body) { _xs.push('district=$'+_xi++); _xp.push((req.body.district||'').toString().trim().slice(0,80)||null); }
+    if (Array.isArray(req.body.images)) {
+      const imgs = [];
+      for (const im of req.body.images.slice(0, 10)) {
+        if (typeof im !== 'string' || !im) continue;
+        if (im.startsWith('data:')) { const u = await uploadToCloud(im, 'manaqasa/projects'); if (u && u.startsWith('http')) imgs.push(u); else _dropped++; }
+        else imgs.push(im);
+      }
+      _xs.push('images=$'+_xi++); _xp.push(imgs);
+    }
+    if (Array.isArray(req.body.attachments)) {
+      const atts = [];
+      for (const a of req.body.attachments.slice(0, 3)) {
+        if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,120), url: a.url });
+        else if (a && a.data && String(a.data).startsWith('data:')) {
+          let u = null; try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(_){}
+          if (u && String(u).startsWith('http')) atts.push({ name: String(a.name||'ملف').slice(0,120), url: u }); else _dropped++;
+        }
+      }
+      _xs.push('attachments=$'+_xi++); _xp.push(JSON.stringify(atts));
+    }
+    const _xsql = _xs.length ? ','+_xs.join(',') : '';
+    const r = await pool.query(`UPDATE requests SET title=COALESCE(NULLIF($1,''),title),description=COALESCE(NULLIF($2,''),description),category=$3,city=$4,budget_max=$5,admin_notes=$6,agent_name=$7,agent_pct=$8,agent_phone=$9,agent_id=$10${_closeClause}${_xsql} WHERE id=$11 RETURNING *`, [title||'', description||'', category||null, city||null, budget_max||null, admin_notes||null, agentName, agentPct, agentPhone, agentId, id, ..._xp]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل مشروع: ' + (r.rows[0].title||''));
-    res.json(r.rows[0]);
+    res.json(Object.assign({}, r.rows[0], { _dropped }));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
