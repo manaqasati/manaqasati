@@ -394,6 +394,14 @@ app.get('/api/requests/public/:id', async (req, res) => {
         row.contact_unlocked=true;
       } else { row.contact_unlocked=false; }
       if(uid){ try{ const sv=await pool.query('SELECT 1 FROM saved_requests WHERE user_id=$1 AND request_id=$2',[uid,id]); row.is_saved=sv.rows.length>0; }catch(e){ row.is_saved=false; } }
+      // ملاحظات الإدارة: ترجع لصاحب المشروع والأدمن فقط — أي أحد ثاني ما تنرسل له أصلاً
+      if(isOwner||isAdmin){ try{
+        const cn=(await pool.query('SELECT client_note, client_note_at, client_note_seen_at, client_note_done_at, client_note_hidden FROM requests WHERE id=$1',[id])).rows[0]||{};
+        if(cn.client_note){
+          row.client_note={ text: cn.client_note, at: cn.client_note_at, seen_at: cn.client_note_seen_at, done_at: cn.client_note_done_at, hidden: !!cn.client_note_hidden };
+          if(isOwner && !cn.client_note_seen_at){ await pool.query('UPDATE requests SET client_note_seen_at=NOW() WHERE id=$1',[id]); row.client_note.seen_at=new Date(); }
+        }
+      }catch(e){} }
       // صاحب المشروع فتح الصفحة = شاف العروض → نسجّل «شاف عرضك» ونبلّغ المزوّد مرة وحدة
       if(isOwner){ try{
         const sn=await pool.query('UPDATE bids SET seen_at=NOW() WHERE request_id=$1 AND seen_at IS NULL RETURNING provider_id',[id]);
@@ -432,6 +440,15 @@ app.get('/api/requests/public/:id/similar', async (req, res) => {
       ORDER BY (r.city=$3) DESC NULLS LAST, r.created_at DESC LIMIT 4`, [id, base.category, base.city]);
     res.json(r.rows);
   } catch(e){ res.json([]); }
+});
+// صاحب المشروع يخفي ملاحظة الإدارة
+app.post('/api/requests/:id/client-note/hide', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query('UPDATE requests SET client_note_hidden=TRUE WHERE id=$1 AND client_id=$2 RETURNING id', [id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // تمديد استقبال العروض 7 أيام (لصاحب المشروع)
 app.post('/api/requests/:id/extend', auth, async (req, res) => {
@@ -2185,6 +2202,10 @@ async function setupDatabase() {
     try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
     try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
     try { await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
+    // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
+    for (const _c of ['client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
+      try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS ' + _c); } catch(e){}
+    }
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false`);
@@ -3352,7 +3373,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     }
     params.push(id);
     const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
-    res.json(Object.assign({}, r.rows[0], req._attDbg && req._attDbg.length ? { _attDebug: req._attDbg } : {}));
+    if (String(own.rows[0].client_id)===String(req.user.id)) _clientNoteDone(id); res.json(Object.assign({}, r.rows[0], req._attDbg && req._attDbg.length ? { _attDebug: req._attDbg } : {}));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3387,7 +3408,7 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (current.length >= 10) return res.status(400).json({ message: 'الحد الأقصى 10 صور' });
     current.push(image);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
-    res.json({ ok: true, count: current.length });
+    _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3406,7 +3427,7 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     if (!stored) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة فقط)' });
     current.push({ name: String(name||'ملف').slice(0,120), type: type||null, url: stored, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
-    res.json({ ok: true, count: current.length });
+    _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3496,6 +3517,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
 
 // أقل سعر إجمالي مقبول للعرض — يمنع «1 ريال» اللي يُستخدم لفتح رقم العميل ويخرّب مقارنة الأسعار
 const BID_MIN_TOTAL = 50;
+async function _clientNoteDone(reqId){ try { await pool.query('UPDATE requests SET client_note_done_at=NOW() WHERE id=$1 AND client_note IS NOT NULL AND client_note_done_at IS NULL', [reqId]); } catch(e){} }
 function _matVal(v){ if(v==='yes'||v===true||v==='1') return 'yes'; if(v==='no'||v===false||v==='0') return 'no'; return null; }
 function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
@@ -5827,6 +5849,19 @@ app.post('/api/admin/requests/:id/advise', requirePermission('requests.review'),
     res.json({ ok: true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ملاحظات الإدارة للعميل — حفظ/تعديل/حذف (بدون أي إشعار للعميل)
+app.put('/api/admin/requests/:id/client-note', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const note = String(req.body.note || '').trim().slice(0, 2000);
+    const r = note
+      ? await pool.query(`UPDATE requests SET client_note=$1, client_note_at=NOW(), client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$2 RETURNING id`, [note, id])
+      : await pool.query(`UPDATE requests SET client_note=NULL, client_note_at=NULL, client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$1 RETURNING id`, [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, note ? 'client_note_set' : 'client_note_clear', 'request', id, note ? 'ملاحظة للعميل في صفحة المشروع' : 'حذف ملاحظة العميل');
+    res.json({ ok: true });
+  } catch(e) { console.error('client-note:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -5873,6 +5908,7 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     const r = await pool.query(`UPDATE requests SET status=$1, review_notes=$2 WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, action==='approve' ? null : (reason||null), id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+    if (action === 'approve' && String(reason||'').trim()) { try { await pool.query(`UPDATE requests SET client_note=$1, client_note_at=NOW(), client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$2`, [String(reason).trim().slice(0,2000), id]); } catch(e){} }
     const clientInfo = await pool.query('SELECT name, email, phone FROM users WHERE id=$1', [row.client_id]);
     const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك'
                      : action==='needs_edit' ? '📝 مشروعك يحتاج تعديلاً'
