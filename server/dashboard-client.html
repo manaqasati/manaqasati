@@ -1751,6 +1751,7 @@ function openDetail(id,e){
       +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
     +'</div>'+_cnCardHtml(req);
     document.getElementById('det-head').innerHTML=h;
+    window._curReq=req; _closedBanner(req);
     var _ne=(req.status==='needs_edit');
     var _adot=document.getElementById('actions-dot');if(_adot)_adot.style.display=_ne?'inline-flex':'none';
     if(_ne){var _ab=document.querySelector('.tab-btn[onclick*="actions"]');if(_ab)showTab('actions',_ab);}
@@ -1868,15 +1869,39 @@ function loadBids(id){
 // ═══════════════════════════════════
 // BID ACTIONS
 // ═══════════════════════════════════
+// ═══ مشروع مغلق: يقدر يختار من العروض الموجودة خلال 90 يوم ═══
+function _isClosedSt(s){ return ['closed_auto','expired','closed'].indexOf(s)>=0; }
+function _closedBanner(req){
+  var tab=document.getElementById('tab-bids'); if(!tab)return;
+  var b=document.getElementById('closed-banner'); if(b)b.remove();
+  if(!req||!_isClosedSt(req.status)||req.assigned_provider_id)return;
+  b=document.createElement('div'); b.id='closed-banner';
+  var until=req.accept_until?new Date(req.accept_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'';
+  b.style.cssText='background:#eff6ff;border:1.5px solid #93c5fd;border-radius:14px;padding:13px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px';
+  b.innerHTML=req.accept_until
+    ?'<div style="font-size:14px;font-weight:900;color:#1e3a8a">🔒 مشروعك مغلق لاستقبال عروض جديدة</div><div style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">بس تقدر تختار من العروض الموجودة تحت وتقبل اللي يناسبك'+(until?' — متاح لين <b>'+until+'</b>':'')+'.</div><button onclick="_reopenMine('+req.id+',this)" style="align-self:flex-start;border:1.5px solid #1d4ed8;background:#fff;color:#1d4ed8;border-radius:10px;padding:8px 14px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">🔓 أعد فتحه لعروض جديدة (7 أيام)</button>'
+    :'<div style="font-size:14px;font-weight:900;color:#1e3a8a">🔒 مشروعك مغلق</div><div style="font-size:13px;font-weight:700;color:#334155;line-height:1.7">انتهت مهلة الاختيار من العروض. أعد فتحه عشان تقدر تقبل عرض أو تستقبل عروض جديدة.</div><button onclick="_reopenMine('+req.id+',this)" style="align-self:flex-start;border:0;background:#1d4ed8;color:#fff;border-radius:10px;padding:9px 15px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">🔓 أعد فتح المشروع (7 أيام)</button>';
+  tab.insertBefore(b,tab.firstChild);
+}
+function _reopenMine(id,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  fetch(API+'/api/requests/'+id+'/extend',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(x){ if(!x.ok){showToast((x.d&&x.d.message)||'تعذّر','error'); if(btn)btn.disabled=false; return;} showToast('انفتح مشروعك 7 أيام ✓','success'); openDetail(id); })
+    .catch(function(){showToast('تعذّر الاتصال','error'); if(btn)btn.disabled=false;});
+}
 function acceptBid(bidId,reqId){
   if(window._acceptingBid)return;              // حماية من الضغط المزدوج
-  if(!confirm('هل تؤكد قبول هذا العرض؟'))return;
+  var _cr=window._curReq;
+  var _q=(_cr&&String(_cr.id)===String(reqId)&&_isClosedSt(_cr.status))
+    ?(_cr.closed_by_client?'أنت أغلقت هذا المشروع من قبل. متأكد تبي تقبل هذا العرض؟ بيتحول المشروع لـ«قيد التنفيذ».':(_cr.closed_by_admin?'هذا المشروع أغلقته الإدارة. متأكد تبي تقبل هذا العرض؟':'مشروعك مغلق، بس تقدر تختار من العروض الموجودة. تأكيد قبول هذا العرض؟'))
+    :'هل تؤكد قبول هذا العرض؟';
+  if(!confirm(_q))return;
   window._acceptingBid=true;
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
-    .catch(function(){showToast('تعذّر القبول — تحقّق من اتصالك','error');})
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; });})
+    .then(function(){showToast('تم قبول العرض','success');var cb=document.getElementById('closed-banner');if(cb)cb.remove();loadBids(reqId);loadHome();})
+    .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر القبول — تحقّق من اتصالك','error');})
     .finally(function(){window._acceptingBid=false;});
 }
 function rejectBid(bidId,reqId){
