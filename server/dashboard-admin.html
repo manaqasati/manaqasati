@@ -4459,7 +4459,7 @@ function _hStorageCard(st){
     +'<svg width="17" height="17" fill="none" stroke="var(--text2)" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
     +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">التخزين والحجم</h3></div>'
     +_hBar('تخزين الملفات والمخططات (R2)', st.r2UsedMB||0, st.r2CapMB||10000)
-    +(st.r2Objects?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">'+st.r2Objects+' ملف في المخزن'+(st.r2SyncedAt?' · آخر مطابقة مع Cloudflare: '+new Date(st.r2SyncedAt).toLocaleString('ar-SA',{dateStyle:'short',timeStyle:'short'}):'')+'</div>':'')
+    +(st.r2Objects?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">'+st.r2Objects+' ملف في المخزن'+(st.r2BackupMB?' · منها نسخ احتياطية '+st.r2BackupMB+' MB':'')+(st.r2SyncedAt?' · آخر مطابقة مع Cloudflare: '+new Date(st.r2SyncedAt).toLocaleString('ar-SA',{dateStyle:'short',timeStyle:'short'}):'')+'</div>':'')
     +_hBar('قرص قاعدة البيانات', st.dbSizeMB||0, st.dbCapMB||5000)
     +((st.dbDataMB!=null)?'<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">البيانات '+st.dbDataMB+' MB · سجلات Postgres الداخلية (WAL) '+(st.dbWalMB||0)+' MB</div>':'')
     +_hGrowth(st.growth||{})
@@ -4469,6 +4469,37 @@ function _hStorageCard(st){
     +'<div style="font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.7">🟢 مرتاح · 🟡 تنبّه · 🔴 راجع الترقية · تخزين الملفات يُحسب تراكمياً من الآن — والرقم الدقيق في لوحة Cloudflare R2.</div></div>';
 }
 function _fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'ي ':'')+(h?h+'س ':'')+m+'د';}
+function _fmtBytes(b){b=b||0;return b>=1e9?(b/1e9).toFixed(2)+' GB':(b>=1e6?(b/1e6).toFixed(1)+' MB':Math.round(b/1e3)+' KB');}
+function loadOffsite(){
+  var el=document.getElementById('offsite-box');if(!el)return;
+  fetch(API+'/api/admin/offsite-backups',hdr()).then(function(r){return r.json();}).then(function(d){
+    var bl=d.backups||[], last=d.last, err=d.error;
+    var ago=function(t){if(!t)return '—';var h=(Date.now()-new Date(t).getTime())/36e5;return h<1?'قبل أقل من ساعة':(h<48?'قبل '+Math.round(h)+' ساعة':'قبل '+Math.round(h/24)+' يوم');};
+    var newest=bl[0], stale=!newest||(Date.now()-new Date(newest.at).getTime()>36*36e5);
+    var col=!d.r2?'#dc2626':(stale?'#d97706':'#16a34a');
+    var status=!d.r2?'R2 غير متصل — النسخ متوقفة':(d.running?'⏳ جاري إنشاء نسخة الآن...':(newest?('آخر نسخة '+ago(newest.at)+' · '+_fmtBytes(newest.bytes)):'لا توجد نسخ بعد — أول نسخة تلقائية خلال ساعات، أو اضغط «نسخة الآن»'));
+    var h='<div class="card" style="margin-bottom:14px;border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+      +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      +'<span style="width:10px;height:10px;border-radius:50%;background:'+col+'"></span>'
+      +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">💾 نسخ احتياطية خارج Railway (R2)</h3>'
+      +'<button class="act-btn ab-default" style="margin-inline-start:auto;padding:6px 12px;font-size:12px" id="offsite-run" onclick="runOffsiteNow()"'+(d.running||!d.r2?' disabled':'')+'>💾 نسخة الآن</button></div>'
+      +'<div style="font-size:13px;font-weight:800;color:'+col+';margin-bottom:6px">'+status+'</div>'
+      +'<div style="font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:10px">نسخة كاملة من القاعدة يومياً إلى Cloudflare — لو صار شي لحساب Railway نفسه، بياناتك موجودة هنا. يحتفظ بآخر 7 أيام + نسخة كل جمعة لآخر 4 أسابيع.'+(last&&last.rows?' آخر نسخة فيها '+last.tables+' جدول و'+Number(last.rows).toLocaleString('en-US')+' سجل.':'')+'</div>'
+      +(err&&(!newest||new Date(err.at)>new Date(newest.at))?'<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:9px 11px;font-size:12px;color:#991b1b;margin-bottom:10px">⚠️ آخر محاولة فشلت ('+ago(err.at)+'): '+esc(err.msg||'')+'</div>':'')
+      +(bl.length?'<div style="display:flex;flex-direction:column;gap:6px">'+bl.slice(0,12).map(function(b){var dt=new Date(b.at);return '<div style="display:flex;align-items:center;gap:10px;font-size:12px;background:var(--bg,#f8fafc);border:1px solid var(--border);border-radius:9px;padding:8px 11px"><span style="font-weight:800">'+dt.toLocaleDateString('ar-SA',{weekday:'short',day:'numeric',month:'short'})+'</span><span style="color:var(--muted)">'+dt.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})+'</span><span dir="ltr" style="margin-inline-start:auto;color:var(--muted)">'+_fmtBytes(b.bytes)+'</span>'+(b.url?'<a href="'+esc(b.url)+'" download style="color:#1d4ed8;font-weight:800;text-decoration:none">⬇ تحميل</a>':'')+'</div>';}).join('')+'</div>':'')
+      +'<div style="font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.8">🔒 الملف فيه بيانات المستخدمين — لا تشارك رابط التحميل. الاسترجاع يحتاج خطوات تقنية: تواصل مع المطوّر.</div>'
+      +'</div>';
+    el.innerHTML=h;
+    if(d.running)setTimeout(loadOffsite,8000);
+  }).catch(function(){el.innerHTML='';});
+}
+function runOffsiteNow(){
+  var b=document.getElementById('offsite-run');if(b){b.disabled=true;b.textContent='⏳ جاري...';}
+  fetch(API+'/api/admin/offsite-backups/run',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(res){
+    toast(res.ok?'بدأت النسخة — تاخذ دقيقة أو دقيقتين':((res.d&&res.d.message)||'تعذّر البدء'),res.ok?'success':'error');
+    setTimeout(loadOffsite,1500);
+  }).catch(function(){toast('تعذّر الاتصال','error');if(b){b.disabled=false;b.textContent='💾 نسخة الآن';}});
+}
 function renderHealth(d){
   d=d||{};var box=document.getElementById('health-body');if(!box)return;
   var db=d.db||{},em=d.email||{},pu=d.push||{},sv=d.server||{},dt=d.data||{};
@@ -4476,7 +4507,9 @@ function renderHealth(d){
     +'<div style="font-size:26px">'+(d.allOk?'✅':'⚠️')+'</div><div><div style="font-weight:900;font-size:16px;color:'+(d.allOk?'#16a34a':'#dc2626')+'">'+(d.allOk?'كل الأنظمة تعمل':'يوجد ما يحتاج انتباه')+'</div>'
     +'<div style="font-size:12px;color:#64748b">آخر فحص: الآن</div></div>'
     +'<button onclick="_refreshHealth(this)" style="margin-inline-start:auto;background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:Tajawal">تحديث</button></div>';
+  setTimeout(loadOffsite,50);
   box.innerHTML=banner
+    +'<div id="offsite-box"></div>'
     +_hCard('قاعدة البيانات', db.ok, [['الحالة', db.ok?'متصلة':'غير متصلة'],['زمن الاستجابة', (db.latencyMs!=null?db.latencyMs+' ms':'—')]])
     +_hCard('الإيميل (Resend)', em.ok, [['الإعداد', em.configured?'مضبوط':'غير مضبوط'],['المُرسِل', em.from||'—']])
     +_hCard('الإشعارات (Push)', pu.ok, [['أجهزة مسجّلة', (pu.tokens||0)],['مستخدمون', (pu.users||0)]])
