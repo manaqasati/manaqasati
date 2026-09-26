@@ -398,7 +398,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.city, r.district, r.client_id,
+      SELECT r.id, r.title, r.description, r.category, r.category_other, r.city, r.district, r.client_id,
         r.budget_max, r.geo_lat, r.geo_lng,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.close_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
@@ -675,7 +675,7 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // صفحات SEO — دليل الخدمات حسب التخصص والمدينة (مرسومة من الخادم)
 // ═══════════════════════════════════════════════════════════════
-const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تصاميم داخلي وخارجي','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','مكاتب هندسية'];
+const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تصاميم داخلي وخارجي','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','تركيب وصيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','مكاتب هندسية'];
 const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','الرس','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء','حفر الباطن','الخرج','المجمعة','الزلفي','شقراء','الدوادمي','القويعية','وادي الدواسر','بيشة','محايل عسير','صبيا','أبو عريش','الليث','القنفذة','رابغ','ضباء','الوجه','تيماء','دومة الجندل','طريف'];
 function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
 function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
@@ -854,6 +854,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     if (_hit && Date.now() < _hit.exp) { return res.set('Content-Type','text/html; charset=utf-8').send(_hit.html); }
     const cat = seoUnslug(req.params.cat);
     const city = seoUnslug(req.params.city);
+    if (_CAT_ALIASES[cat]) return res.redirect(301, '/dalil/' + seoSlug(_CAT_ALIASES[cat]) + '/' + seoSlug(city));
     if (!SEO_CATS.includes(cat) || !SEO_CITIES.includes(city)) return res.redirect(302, '/dalil');
     let providers = [];
     try {
@@ -2319,6 +2320,9 @@ async function setupDatabase() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
     // المزوّد: خدمة كل المدن + وقت آخر إيميل مطابقة (للإيميل المُجمّع)
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
+    // «أخرى»: النص اللي كتبه العميل ينحفظ منفصل — التصنيف يبقى من قائمتنا
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS category_other TEXT`);
+    try { await pool.query(`UPDATE requests SET category_other=LEFT(category,120), category='أخرى' WHERE category IS NOT NULL AND category<>'' AND category<>'direct' AND category<>'صيانة مصاعد' AND category<>'أبواب' AND category<>'جبس وطباشير' AND NOT (category = ANY($1::text[]))`, [CATEGORIES]); } catch(_e){ console.error('cat_other migrate:', _e.message); }
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
     // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
@@ -2328,6 +2332,11 @@ async function setupDatabase() {
       await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(notify_categories)");
       await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(notify_categories)");
       await pool.query("UPDATE requests SET category='أبواب وبوابات أوتوماتيكية' WHERE category='أبواب'");
+      // «صيانة مصاعد» صار «تركيب وصيانة مصاعد»
+      for (const col of ['specialties','notify_categories','categories']) {
+        try { await pool.query(`UPDATE users SET ${col}=array_replace(${col},'صيانة مصاعد','تركيب وصيانة مصاعد') WHERE 'صيانة مصاعد'=ANY(${col})`); } catch(_e){}
+      }
+      await pool.query("UPDATE requests SET category='تركيب وصيانة مصاعد' WHERE category='صيانة مصاعد'");
       await pool.query("UPDATE requests SET category='جبس' WHERE category='جبس وطباشير'");
     } catch(e) { console.error('category migration:', e.message); }
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
@@ -2456,7 +2465,7 @@ async function setupDatabase() {
         'Kitchen installation':'تركيب مطابخ','Landscaping':'تنسيق حدائق','Glass and mirrors':'زجاج ومرايا',
         'Tiles and marble':'بلاط ورخام','Tiling':'بلاط ورخام','Furniture installation':'تركيب أثاث',
         'Furniture assembly':'تركيب أثاث','Parquet':'أرضيات خشبية وباركيه','Wooden floors':'أرضيات خشبية وباركيه',
-        'Carpet cleaning':'تنظيف سجاد وكنب','Elevator maintenance':'صيانة مصاعد',
+        'Carpet cleaning':'تنظيف سجاد وكنب','Elevator maintenance':'تركيب وصيانة مصاعد',
         'Automatic doors and gates':'أبواب وبوابات أوتوماتيكية','Doors and gates':'أبواب وبوابات أوتوماتيكية',
         'Building facades cleaning':'تنظيف واجهات المباني','Facade cleaning':'تنظيف واجهات المباني',
         'Restoration of buildings':'ترميم مبانٍ','Restoration':'ترميم مبانٍ','Well drilling':'حفر آبار ومضخات',
@@ -3298,7 +3307,8 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
 app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (req, res) => {
   const client = await pool.connect();
   try {
-    const { client_name, client_phone, client_email, title, description, category, city, budget_max, deadline } = req.body;
+    const { client_name, client_phone, client_email, title, description, city, budget_max, deadline } = req.body;
+    const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const pxDistrict = (req.body.district||'').toString().trim().slice(0,80) || null;
     // رفع صور ومرفقات المشروع (نفس آلية نشر العميل)
     const pxImages = [];
@@ -3342,6 +3352,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null, pxCloseAt]);
     await client.query('COMMIT');
     try { if (pxCloseAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='admin' WHERE id=$1", [r.rows[0].id]); } catch(e){}
+    try { if (_nc.category_other && r.rows[0]) await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); } catch(e){}
 
     // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
     const magicTok = await getMagicToken(clientId);
@@ -3370,7 +3381,8 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
     try { const _v = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1',[req.user.id]); if(_v.rows.length && _v.rows[0].ev===false) return res.status(403).json({ message:'فعّل بريدك الإلكتروني قبل نشر مشروع', code:'email_unverified' }); } catch(_e){}
-    const { title, description, category, city, address, budget_max, deadline, attachments } = req.body;
+    const { title, description, city, address, budget_max, deadline, attachments } = req.body;
+    const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const district = (req.body.district||'').toString().trim().slice(0,80) || null;
     const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const gLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
@@ -3401,6 +3413,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const pn = generateProjectNumber();
     const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
     try { if (closeAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='client' WHERE id=$1", [r.rows[0].id]); } catch(e){}
+    try { if (_nc.category_other && r.rows[0]) { await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); r.rows[0].category_other = _nc.category_other; } } catch(e){}
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
@@ -3438,13 +3451,15 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
-    const { title, description, category, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
+    const { title, description, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
+    const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)', 'category=$3', 'city=$4', 'address=$5', 'budget_max=$6', 'deadline=$7'];
     const params = [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null];
     let i = 8;
     const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
+    if (category !== 'أخرى' || _nc.category_other) { sets.push('category_other=$'+i); params.push(category === 'أخرى' ? _nc.category_other : null); i++; }
     if (req.body.close_days !== undefined) {
       const _cd = parseInt(req.body.close_days)||0;
       if (_cd>0) {
@@ -4733,12 +4748,25 @@ app.delete('/api/push-token', auth, async (req, res) => {
 // ═══ PUBLIC ═══
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل']); });
 // ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/أدمن/رئيسية) ═══
-const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تصاميم داخلي وخارجي','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','صيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','مكاتب هندسية','أخرى'];
+const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تصاميم داخلي وخارجي','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','تركيب وصيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','مكاتب هندسية','أخرى'];
 app.get('/api/support-contact', async (req, res) => {
   try { const num = await getSetting('support_whatsapp', '0594011313'); res.set('Cache-Control','public, max-age=120'); res.json({ whatsapp: String(num||'').trim() }); }
   catch(e){ res.json({ whatsapp: '0594011313' }); }
 });
 app.get('/api/version', (req, res) => { res.json({ version: 'edit-geo-atts-30mb-v3', features: ['edit_geo','edit_attachments','dwg_30mb','provider_location','categories_fixed'], ts: '2026-08-14' }); });
+// أسماء قديمة للتخصصات → الاسم الحالي (روابط قديمة/نسخ تطبيق قديمة)
+const _CAT_ALIASES = { 'صيانة مصاعد': 'تركيب وصيانة مصاعد', 'أبواب': 'أبواب وبوابات أوتوماتيكية', 'جبس وطباشير': 'جبس' };
+// التصنيف لازم يكون من قائمتنا — أي نص حر يصير «أخرى» والنص يروح لـcategory_other
+function _normCat(cat, other){
+  let c = (cat == null ? '' : String(cat)).trim();
+  let o = (other == null ? '' : String(other)).trim().slice(0, 120) || null;
+  if (!c) return { category: null, category_other: o };
+  if (_CAT_ALIASES[c]) c = _CAT_ALIASES[c];
+  if (c === 'direct') return { category: c, category_other: null };
+  if (c === 'أخرى') return { category: 'أخرى', category_other: o };
+  if (CATEGORIES.includes(c)) return { category: c, category_other: null };
+  return { category: 'أخرى', category_other: c.slice(0, 120) };
+}
 app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-age=300'); res.json({ categories: CATEGORIES }); });
 
 app.get('/api/stats', async (req, res) => {
@@ -6233,7 +6261,8 @@ app.put('/api/admin/requests/:id/complete', requirePermission('requests.edit'), 
 
 app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (req, res) => {
   try {
-    const id = parseInt(req.params.id); const { title, description, category, city, budget_max, deadline, admin_notes, agent_name, agent_phone, agent_pct } = req.body;
+    const id = parseInt(req.params.id); const { title, description, city, budget_max, deadline, admin_notes, agent_name, agent_phone, agent_pct } = req.body;
+    const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const agentName = (agent_name && String(agent_name).trim()) ? String(agent_name).trim() : null;
     const agentPhone = (agent_phone && String(agent_phone).trim()) ? String(agent_phone).replace(/\D/g,'').replace(/^0/,'966') : null;
     let agentPct = (agent_pct === '' || agent_pct == null) ? null : parseFloat(agent_pct);
@@ -6265,6 +6294,7 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
     // حقول اختيارية: تتعدّل فقط إذا أُرسلت (ما نمسح بيانات العميل بالغلط)
     const _xs = []; const _xp = []; let _xi = 12; let _dropped = 0;
     if ('deadline' in req.body) { _xs.push('deadline=$'+_xi++); _xp.push(deadline||null); }
+    if (category !== 'أخرى' || _nc.category_other) { _xs.push('category_other=$'+_xi++); _xp.push(category === 'أخرى' ? _nc.category_other : null); }
     if ('district' in req.body) { _xs.push('district=$'+_xi++); _xp.push((req.body.district||'').toString().trim().slice(0,80)||null); }
     if (Array.isArray(req.body.images)) {
       const imgs = [];
