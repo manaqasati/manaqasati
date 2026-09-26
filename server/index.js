@@ -1354,15 +1354,16 @@ async function syncR2Size(force){
   if (!r2Client) return;
   try {
     if (!force) { const last = parseInt(await getSetting('r2_sync_at','0'))||0; if (Date.now()-last < 20*3600*1000) return; }
-    let token, total = 0, count = 0, pages = 0;
+    let token, total = 0, count = 0, pages = 0, bkBytes = 0, bkCount = 0;
     do {
       const r = await r2Client.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, ContinuationToken: token, MaxKeys: 1000 }));
-      for (const o of (r.Contents||[])) { total += Number(o.Size)||0; count++; }
+      for (const o of (r.Contents||[])) { const sz = Number(o.Size)||0; total += sz; if (String(o.Key||'').indexOf(OFFSITE_PREFIX)===0) { bkBytes += sz; bkCount++; } else count++; }
       token = r.IsTruncated ? r.NextContinuationToken : undefined;
       pages++;
     } while (token && pages < 200);
     await setSetting('r2_bytes', String(total));
     await setSetting('r2_objects', String(count));
+    await setSetting('r2_backup_bytes', String(bkBytes)); await setSetting('r2_backup_count', String(bkCount));
     await setSetting('r2_sync_at', String(Date.now()));
     console.log('R2 size synced:', Math.round(total/MB)+'MB', count+' objects');
   } catch(e){ console.error('syncR2Size:', e.message); }
@@ -1394,8 +1395,95 @@ async function checkUploadGuards(){
     if (prevRaw !== '' && n > (parseInt(prevRaw)||0)) await _alertAdmins('alert_inline_at', '⚠️ صور جديدة تنحفظ داخل قاعدة البيانات', 'عدد السجلات اللي فيها صور داخل القاعدة زاد من '+prevRaw+' إلى '+n+' — يعني فيه رفع ينحفظ في القاعدة بدل R2، وهذا نفس سبب امتلاء القاعدة سابقاً.');
   } catch(e){ console.error('inlineGuard:', e.message); }
 }
+// ═══ نسخة احتياطية يومية خارج Railway (إلى R2) ═══
+// ملف SQL مضغوط بصيغة psql: يُسترجع بـ  gunzip -c FILE.sql.gz | psql "$DATABASE_URL"  (بعد تشغيل السيرفر مرة على قاعدة فارغة لإنشاء الجداول)
+const OFFSITE_PREFIX = 'backups/db/';
+async function dumpDatabaseTo(out){
+  const { to: copyTo } = require('pg-copy-streams');
+  const { once } = require('events');
+  const w = async (str) => { if (!out.write(str)) await once(out, 'drain'); };
+  const client = await pool.connect();
+  const stats = { tables: 0, rows: 0 };
+  try {
+    const tq = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
+    const tables = tq.rows.map(r => r.tablename);
+    await w(`-- Manaqasa offsite backup\n-- created: ${new Date().toISOString()}\n-- tables: ${tables.length}\n`);
+    await w(`-- الاسترجاع: شغّل السيرفر مرة على قاعدة فارغة (ينشئ الجداول) ثم: gunzip -c FILE.sql.gz | psql "$DATABASE_URL"\n\n`);
+    await w(`BEGIN;\nSET session_replication_role = replica;\n`);
+    if (tables.length) await w(`TRUNCATE ${tables.map(t => 'public."'+t+'"').join(', ')} CASCADE;\n\n`);
+    const idTables = [];
+    for (const t of tables) {
+      const cq = await client.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`, [t]);
+      const cols = cq.rows.map(r => '"'+r.column_name.replace(/"/g,'""')+'"').join(', ');
+      if (cq.rows.some(r => r.column_name === 'id')) idTables.push(t);
+      const cnt = await client.query(`SELECT COUNT(*)::bigint c FROM public."${t}"`);
+      stats.rows += Number(cnt.rows[0].c)||0; stats.tables++;
+      await w(`-- ${t}: ${cnt.rows[0].c} rows\nCOPY public."${t}" (${cols}) FROM stdin;\n`);
+      const cs = client.query(copyTo(`COPY public."${t}" (${cols}) TO STDOUT`));
+      for await (const chunk of cs) { if (!out.write(chunk)) await once(out, 'drain'); }
+      await w(`\\.\n\n`);
+    }
+    for (const t of idTables) {
+      await w(`SELECT setval(pg_get_serial_sequence('public."${t}"','id'), COALESCE((SELECT MAX(id) FROM public."${t}"),1), (SELECT MAX(id) FROM public."${t}") IS NOT NULL) WHERE pg_get_serial_sequence('public."${t}"','id') IS NOT NULL;\n`);
+    }
+    await w(`\nCOMMIT;\n-- END OF BACKUP\n`);
+  } finally { client.release(); }
+  return stats;
+}
+async function runOffsiteBackup(force){
+  if (!r2Client) return { ok:false, message:'R2 غير متصل' };
+  if (global._offsiteRunning) return { ok:false, message:'نسخة أخرى قيد التنفيذ' };
+  if (!force) { const last = parseInt(await getSetting('offsite_backup_at','0'))||0; if (Date.now()-last < 20*3600*1000) return { ok:false, skipped:true }; }
+  global._offsiteRunning = true;
+  const t0 = Date.now();
+  try {
+    const zlib = require('zlib'); const { Upload } = require('@aws-sdk/lib-storage');
+    const d = new Date(); const day = d.toISOString().slice(0,10);
+    const key = OFFSITE_PREFIX + 'manaqasa-' + day + '-' + crypto.randomBytes(12).toString('hex') + '.sql.gz';
+    const { Transform } = require('stream');
+    const gz = zlib.createGzip({ level: 6 });
+    let bytes = 0;
+    const counter = new Transform({ transform(chunk, enc, cb){ bytes += chunk.length; cb(null, chunk); } });
+    gz.pipe(counter);
+    const up = new Upload({ client: r2Client, params: { Bucket: R2_BUCKET, Key: key, Body: counter, ContentType: 'application/gzip', ContentDisposition: 'attachment' }, queueSize: 2, partSize: 10*1024*1024 });
+    const upDone = up.done();
+    let stats;
+    try { stats = await dumpDatabaseTo(gz); gz.end(); } catch(e){ gz.destroy(e); try { await up.abort(); } catch(_){} throw e; }
+    await upDone;
+    await setSetting('offsite_backup_at', String(Date.now()));
+    await setSetting('offsite_backup_last', JSON.stringify({ key, bytes, at: new Date().toISOString(), tables: stats.tables, rows: stats.rows, sec: Math.round((Date.now()-t0)/1000) }));
+    await pruneOffsiteBackups();
+    console.log('✅ offsite backup:', key, Math.round(bytes/1e6)+'MB', stats.rows+' rows');
+    return { ok:true, key, bytes, ...stats };
+  } catch(e){
+    console.error('offsite backup failed:', e.message);
+    await setSetting('offsite_backup_error', JSON.stringify({ at: new Date().toISOString(), msg: String(e.message||'').slice(0,200) })).catch(()=>{});
+    try { await _alertAdmins('alert_backup_fail_at', '🚨 فشلت النسخة الاحتياطية الخارجية', 'فشل رفع نسخة القاعدة إلى R2: '+String(e.message||'').slice(0,150)); } catch(_){}
+    return { ok:false, message: e.message };
+  } finally { global._offsiteRunning = false; }
+}
+async function listOffsiteBackups(){
+  if (!r2Client) return [];
+  const out = []; let token, pages = 0;
+  do {
+    const r = await r2Client.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: OFFSITE_PREFIX, ContinuationToken: token }));
+    for (const o of (r.Contents||[])) out.push({ key: o.Key, bytes: Number(o.Size)||0, at: o.LastModified });
+    token = r.IsTruncated ? r.NextContinuationToken : undefined; pages++;
+  } while (token && pages < 20);
+  return out.sort((a,b) => new Date(b.at) - new Date(a.at));
+}
+// الاحتفاظ: آخر 7 نسخ يومية + نسخة يوم الجمعة لآخر 4 أسابيع
+async function pruneOffsiteBackups(){
+  try {
+    const list = await listOffsiteBackups();
+    const keep = new Set(list.slice(0,7).map(b => b.key));
+    for (const b of list) { const dt = new Date(b.at); if (dt.getUTCDay() === 5 && Date.now()-dt.getTime() < 29*864e5) keep.add(b.key); }
+    for (const b of list) { if (!keep.has(b.key)) { try { await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: b.key })); } catch(e){} } }
+  } catch(e){ console.error('pruneOffsite:', e.message); }
+}
 async function checkStorageAlert(){
   try { await checkUploadGuards(); } catch(e){}
+  try { await runOffsiteBackup(false); } catch(e){}
   try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
@@ -5644,6 +5732,20 @@ app.get('/api/uptime', async (req, res) => {
     res.status(503).json({ ok: false, db: 'down', error: String(e.message||'').slice(0,80) });
   }
 });
+app.get('/api/admin/offsite-backups', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const list = await listOffsiteBackups();
+    let last = null, err = null;
+    try { last = JSON.parse(await getSetting('offsite_backup_last','null')); } catch(e){}
+    try { err = JSON.parse(await getSetting('offsite_backup_error','null')); } catch(e){}
+    res.json({ r2: !!r2Client, running: !!global._offsiteRunning, last, error: err, backups: list.map(b => ({ key: b.key, bytes: b.bytes, at: b.at, url: R2_PUBLIC_URL ? (R2_PUBLIC_URL + '/' + b.key) : null })) });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/offsite-backups/run', requirePermission('settings.manage'), async (req, res) => {
+  if (global._offsiteRunning) return res.status(409).json({ message: 'نسخة قيد التنفيذ الآن' });
+  runOffsiteBackup(true).then(r => { if (r && r.ok) logAdmin(req, 'offsite_backup', 'system', null, 'نسخة احتياطية خارجية يدوية').catch(()=>{}); }).catch(()=>{});
+  res.json({ ok: true, started: true });
+});
 app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
   const out = { db:{}, email:{}, push:{}, server:{}, data:{} };
   // قاعدة البيانات + زمن الاستجابة
@@ -5687,6 +5789,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
       projectsWithFiles: att.rows[0].c, imagesCount: img.rows[0].c, r2Configured: !!r2Client
     };
     out.storage.dbDataMB = Math.round(_du.data/MB*10)/10; out.storage.dbWalMB = Math.round(_du.wal/MB*10)/10;
+    try { out.storage.r2BackupMB = Math.round((parseInt(await getSetting('r2_backup_bytes','0'))||0)/MB*10)/10; } catch(e){}
     try { out.storage.r2Objects = parseInt(await getSetting('r2_objects','0'))||0; const _sa = parseInt(await getSetting('r2_sync_at','0'))||0; out.storage.r2SyncedAt = _sa ? new Date(_sa).toISOString() : null; } catch(e){}
     // أكبر الجداول
     try {
