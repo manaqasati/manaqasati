@@ -1533,6 +1533,7 @@ async function _submitBid(projId){
   var priceStr=(_el('bid-price')||{}).value;var daysStr=(_el('bid-days')||{}).value;var note=((_el('bid-note')||{}).value||'').trim();
   var priceNum=parseFloat(priceStr);var daysNum=parseInt(daysStr);
   if(!priceStr||isNaN(priceNum)||priceNum<=0){showToast('أدخل سعر العرض','error');return;}
+  if(((_el('bid-unit')||{}).value||'total')==='total'&&priceNum<50){showToast('اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي 50 ريال. لو سعرك للمتر أو للقطعة غيّر «نوع السعر»','error');var _bp=_el('bid-price');if(_bp)_bp.focus();return;}
   if(!daysStr||isNaN(daysNum)||daysNum<=0){showToast('أدخل مدة التنفيذ','error');return;}
   if(!note){showToast('أدخل رسالتك للعميل','error');return;}
   var _nb=note.replace(/\s+/g,'');
@@ -1729,7 +1730,8 @@ async function _saveBidEdit(id){
     var _pl={price:price,days:days||null,note:note||null,price_visibility:_pv};
     if(window._ebAttach&&window._ebAttach.data){_pl.attachment=window._ebAttach.data;_pl.attachment_name=window._ebAttach.name;}
     var r=await _api('/api/bids/'+id,{method:'PUT',body:JSON.stringify(_pl)});
-    if(!r||r.message)throw new Error();
+    if(r&&r.message){ if(typeof showToast==='function')showToast(r.message,'error'); if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';} return; }
+    if(!r)throw new Error();
     closeModal();
     if(typeof showToast==='function')showToast('تم تحديث عرضك ✓','success');
     _cacheSet('home_data',null); loadWorks();
