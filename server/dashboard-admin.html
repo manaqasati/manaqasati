@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="rq-kpis"></div>
       <div class="card">
         
-        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button><button class="ftab" onclick="filterReq('notes',this)" style="color:#b45309">💡 ملاحظات مفتوحة</button><button class="ftab" onclick="filterReq('nosaai',this)" style="color:#dc2626">💰 بدون سعي</button><button class="ftab" onclick="filterReq('closed',this)" style="color:#64748b">🔒 مغلق</button></div>
+        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('pending_review',this)" style="color:#92400e">بانتظار المراجعة</button><button class="ftab" onclick="filterReq('needs_edit',this)" style="color:#c2410c">مطلوب تعديل</button><button class="ftab" onclick="filterReq('rejected',this)" style="color:#b91c1c">مرفوض</button><button class="ftab" onclick="filterReq('closed',this)" style="color:#64748b">🔒 مغلق</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button><button class="ftab" onclick="filterReq('notes',this)" style="color:#b45309">💡 ملاحظات مفتوحة</button><button class="ftab" onclick="filterReq('nosaai',this)" style="color:#dc2626">💰 بدون سعي</button></div>
         <div class="ufilters" id="req-filters">
           <div class="search-box" style="min-width:180px"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="req-search" placeholder="ابحث بالعنوان أو العميل..." oninput="renderRequests()"></div>
           <select id="rf-city" onchange="renderRequests()"><option value="">كل المدن</option></select>
@@ -2764,6 +2764,22 @@ function renderRequests(){
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('r',_rTotal);
 }
+// ═══ كل إجراءات المشروع داخل لوحة التفاصيل ═══
+function _rqActs(r){
+  var id=r.id, st=r.status;
+  var ic=function(d){return '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+d+'</svg>';};
+  var b=function(label,fn,svg,col){return '<button class="btn-g" onclick="_rqClose();'+fn+'" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;padding:9px 8px'+(col?';color:'+col+';border-color:'+col+'33':'')+'">'+ic(svg)+label+'</button>';};
+  var items=[];
+  if(st==='open') items.push(b('دعوة المزوّدين','openInvite('+id+')','<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/>','#1d4ed8'));
+  if(st==='needs_edit') items.push(b('تذكير العميل','remindClient('+id+')','<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>','#059669'));
+  if(st==='completed') items.push(b(r.featured?'إزالة من المعرض':'تثبيت في المعرض','toggleFeaturedRow('+id+')','<polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/>','#a16207'));
+  items.push(b('تقرير العروض','printOffersReport('+id+')','<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'));
+  items.push(b('إرسال للعميل','sendOffersReport('+id+')','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'));
+  items.push(b('كراسة لمزوّدين','_oBriefFromReq('+id+')','<path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/>'));
+  items.push(b('رابط دخول العميل','_clientLoginLink('+id+')','<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>'));
+  items.push(b('حذف المشروع','deleteRequest('+id+')','<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>','#dc2626'));
+  return '<div class="rq-ds"><h4>⚡ إجراءات</h4><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">'+items.join('')+'</div></div>';
+}
 // ═══ إعادة فتح / تمديد مدة العروض ═══
 var _RQ_CLOSED=['closed_auto','expired','cancelled','closed'];
 var _RO_REASONS={chose_outside:'اتفق مع مزوّد من برا المنصة',price_high:'الأسعار عالية',postponed:'أجّل المشروع',no_suitable_offers:'ما لقى عرض مناسب',other:'سبب آخر',admin_closed:'أغلقته الإدارة'};
@@ -2935,6 +2951,7 @@ function _rqOpen(id){
       +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><span class="pl" style="background:'+sm[1]+';color:'+sm[2]+'">'+sm[0]+'</span>'+(r.category?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.category)+'</span>':'')+(r.city?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.city)+'</span>':'')+'</div></div><button class="rq-x" onclick="_rqClose()" aria-label="إغلاق">×</button></div>'
       +'<div class="rq-ds" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button class="btn-g" style="flex:1" onclick="_rqClose();openReqEdit('+r.id+')">تعديل</button><a class="btn-g" style="flex:1;text-align:center;text-decoration:none" href="/project/x-'+r.id+'?id='+r.id+'" target="_blank" rel="noopener">فتح الصفحة</a>'
         +(r.status==='open'?'<button class="btn-g" style="flex:1;color:#c2410c" onclick="_rqClose();pullbackFromRow('+r.id+')">طلب تعديل</button>':'')+'</div>'
+      +_rqActs(r)
       +_roSection(r)
       +_saSection(r,x.saai,x.saai_suggest)
       +_cnSection(r)
