@@ -5956,16 +5956,21 @@ const ACCEPT_AFTER_CLOSE_DAYS = 90;
 const SAAI_RATE = 0.03;
 function _saaiSuggest(rq, bids){
   const acc = bids.find(b => b.status === 'accepted');
-  const totals = bids.filter(b => (!b.price_unit || b.price_unit === 'total') && parseFloat(b.price) >= 50).map(b => parseFloat(b.price)).sort((a,b)=>a-b);
-  const med = totals.length ? totals[Math.floor(totals.length/2)] : null;
+  const accUnit = acc ? (acc.price_unit || 'total') : 'total';
+  const accRaw = acc ? (parseFloat(acc.price) || 0) : 0;
+  // العروض الإجمالية الواقعية فقط (500 ريال فأكثر) — تستبعد أسعار المتر اللي انكتبت كإجمالي بالغلط
+  const totals = bids.filter(b => (!b.price_unit || b.price_unit === 'total') && parseFloat(b.price) >= 500).map(b => parseFloat(b.price)).sort((a,b)=>a-b);
+  let med = totals.length ? totals[Math.floor(totals.length/2)] : null;
+  if (med && accUnit !== 'total' && accRaw > 0 && med < accRaw * 20) med = null; // متوسط أقل من سعر 20 متر = غير منطقي
   const opts = [];
-  const accTotal = acc && (!acc.price_unit || acc.price_unit === 'total') ? parseFloat(acc.price) || 0 : 0;
+  const accTotal = accUnit === 'total' ? accRaw : 0;
   const accOk = accTotal >= 50 && (!med || accTotal >= med * 0.3);
-  if (acc) opts.push({ key:'accepted', label:'العرض المقبول', value: accTotal || null, unit: acc.price_unit || 'total', raw: parseFloat(acc.price)||0, ok: accOk });
-  if (med) opts.push({ key:'median', label:'متوسط عروض المشروع', value: Math.round(med), ok: true });
+  if (acc) opts.push({ key:'accepted', label:'العرض المقبول', value: accTotal || null, unit: accUnit, raw: accRaw, ok: accOk });
+  if (med) opts.push({ key:'median', label:'متوسط العروض الإجمالية', value: Math.round(med), ok: true });
   if (parseFloat(rq.budget_max) > 0) opts.push({ key:'budget', label:'ميزانية العميل', value: Math.round(parseFloat(rq.budget_max)), ok: true });
-  const best = (accOk && accTotal) || (med && Math.round(med)) || (parseFloat(rq.budget_max) > 0 ? Math.round(parseFloat(rq.budget_max)) : null);
-  return { rate: SAAI_RATE, best, options: opts, provider_id: rq.assigned_provider_id, provider_name: acc ? acc.provider_name : null, accepted_bid_id: acc ? acc.id : null };
+  // بالمتر/بالوحدة: ما نعبّي رقم تلقائي — الأدمن يحسبها بالحاسبة (الكمية × السعر)
+  const best = accUnit !== 'total' ? null : ((accOk && accTotal) || (med && Math.round(med)) || (parseFloat(rq.budget_max) > 0 ? Math.round(parseFloat(rq.budget_max)) : null));
+  return { rate: SAAI_RATE, best, options: opts, unit: accUnit, unit_price: accUnit !== 'total' ? accRaw : null, provider_id: rq.assigned_provider_id, provider_name: acc ? acc.provider_name : null, accepted_bid_id: acc ? acc.id : null };
 }
 // إعادة فتح مشروع مغلق (أو تمديد مشروع مفتوح) لعدد أيام يحدده الأدمن
 app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), async (req, res) => {
