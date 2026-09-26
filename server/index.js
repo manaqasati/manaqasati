@@ -463,7 +463,7 @@ app.post('/api/requests/:id/extend', auth, async (req, res) => {
     const cur = q.close_at ? new Date(q.close_at) : new Date(new Date(q.created_at).getTime()+closeDays*86400000);
     const from = cur > new Date() ? cur : new Date();
     const nx = new Date(from.getTime() + 7*86400000);
-    await pool.query(`UPDATE requests SET close_at=$1, status='open' WHERE id=$2`, [nx, id]);
+    await pool.query(`UPDATE requests SET close_at=$1, status='open', close_set_by='client_extend', closed_at=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [nx, id]);
     res.json({ ok:true, close_at: nx });
   } catch(e){ console.error('extend:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
@@ -1826,10 +1826,10 @@ async function runReminders(){
       }
       // الإغلاق الفعلي
       const cl = await pool.query(
-        `UPDATE requests SET status='closed_auto'
+        `UPDATE requests SET status='closed_auto', closed_at=NOW(), close_auto_kind='default', close_auto_days=$2
          WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL
            AND created_at <= NOW() - ($1 || ' days')::interval
-         RETURNING id, client_id, title`, [String(closeDays)]);
+         RETURNING id, client_id, title`, [String(closeDays), closeDays]);
       for(const x of cl.rows){
         try{ await notify(x.client_id, 'أُغلق مشروعك', `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`, 'request', x.id); }catch(e){}
         try{ await remindClosedContacts(x.id, x.title); }catch(e){}
@@ -1839,7 +1839,8 @@ async function runReminders(){
     // ب) مشاريع لها تاريخ إغلاق خاص حدّده صاحبها (close_at) — مستقلة عن الإعداد العام
     {
       const clC = await pool.query(
-        `UPDATE requests SET status='closed_auto'
+        `UPDATE requests SET status='closed_auto', closed_at=NOW(), close_auto_kind=COALESCE(close_set_by,'client'),
+             close_auto_days=GREATEST(1, ROUND(EXTRACT(EPOCH FROM (close_at - created_at))/86400))::int
          WHERE status='open' AND assigned_provider_id IS NULL
            AND close_at IS NOT NULL AND close_at <= NOW()
          RETURNING id, client_id, title`);
@@ -2203,7 +2204,7 @@ async function setupDatabase() {
     try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
     try { await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
-    for (const _c of ['client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
+    for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
       try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS ' + _c); } catch(e){}
     }
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
@@ -3243,6 +3244,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null, pxCloseAt]);
     await client.query('COMMIT');
+    try { if (pxCloseAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='admin' WHERE id=$1", [r.rows[0].id]); } catch(e){}
 
     // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
     const magicTok = await getMagicToken(clientId);
@@ -3301,6 +3303,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     }
     const pn = generateProjectNumber();
     const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
+    try { if (closeAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='client' WHERE id=$1", [r.rows[0].id]); } catch(e){}
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
@@ -3349,6 +3352,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
       const _cd = parseInt(req.body.close_days)||0;
       if (_cd>0) {
         sets.push("close_at = created_at + ($"+i+" || ' days')::interval"); params.push(String(_cd)); i++;
+        sets.push("close_set_by = '" + (req.user.role === 'admin' ? 'admin' : 'client') + "'");
         // تمديد المدة يعيد فتح مشروع أُغلق تلقائياً (طالما لم يُعتمد مزوّد)
         const _st = await pool.query("SELECT status, assigned_provider_id FROM requests WHERE id=$1", [id]);
         if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { sets.push("status='open'"); }
@@ -3458,7 +3462,7 @@ app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(
-      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL
+      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
        RETURNING id, title, category, city, client_id`, [id, req.user.id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
@@ -5649,7 +5653,7 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
     q += ' ORDER BY r.created_at DESC';
     const r = await pool.query(q, params);
     const _cd = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
-    res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status), close_time: x.close_at || (x.created_at ? new Date(new Date(x.created_at).getTime()+_cd*86400000) : null)})));
+    res.json(r.rows.map(x=>({...x,status:normalizeStatus(x.status), close_time: x.close_at || (x.created_at ? new Date(new Date(x.created_at).getTime()+_cd*86400000) : null), close_info: _closeInfo(x, _cd)})));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -5870,6 +5874,22 @@ app.put('/api/admin/requests/:id/client-note', requirePermission('requests.revie
   } catch(e) { console.error('client-note:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // اقتراح قيمة العقد لإنشاء سعي يدوي: العرض المقبول (لو إجمالي ومنطقي) ← متوسط العروض الإجمالية ← ميزانية العميل
+// شرح واضح لسبب إغلاق المشروع (للأدمن)
+const _CLOSE_REASON_AR = { chose_outside:'اتفق مع مزوّد من برا المنصة', price_high:'الأسعار أعلى من ميزانيته', postponed:'أجّل أو ألغى المشروع', no_suitable_offers:'ما لقى عرض مناسب', other:'سبب آخر' };
+function _dTxt(d){ const m={7:'أسبوع (7 أيام)',14:'أسبوعين (14 يوم)',30:'شهر (30 يوم)',60:'شهرين (60 يوم)',90:'3 أشهر (90 يوم)',120:'4 أشهر',180:'6 أشهر'}; return m[d] || (d + (d>=3&&d<=10?' أيام':' يوم')); }
+function _closeInfo(r, defDays){
+  if (!r || !['closed_auto','expired','cancelled','closed'].includes(r.status)) return null;
+  const openDays = (r.closed_at && r.created_at) ? Math.max(0, Math.round((new Date(r.closed_at) - new Date(r.created_at)) / 86400000)) : null;
+  if (r.close_reason === 'admin_closed') return { by:'admin', short:'أغلقته الإدارة', text:'أغلقته الإدارة يدوياً', open_days: openDays };
+  if (r.close_reason && _CLOSE_REASON_AR[r.close_reason]) return { by:'client', short:'أغلقه العميل', text:'العميل أغلقه بنفسه — السبب: ' + _CLOSE_REASON_AR[r.close_reason] + (r.close_reason_note ? ' («' + String(r.close_reason_note).slice(0,200) + '»)' : ''), open_days: openDays };
+  const durDays = r.close_at && r.created_at ? Math.max(1, Math.round((new Date(r.close_at) - new Date(r.created_at)) / 86400000)) : null;
+  const kind = r.close_auto_kind || (r.close_at ? (r.close_set_by || 'client') : 'default');
+  const d = r.close_auto_days || durDays;
+  if (kind === 'default') return { by:'auto', short:'انتهت مدة المنصة الافتراضية', text:'العميل ما اختار مدة خاصة، فانطبقت مدة المنصة الافتراضية' + (r.close_auto_days ? ' (' + _dTxt(r.close_auto_days) + ' وقت الإغلاق)' : '') + ' وانتهت بدون ما يختار عرض', open_days: openDays };
+  if (kind === 'admin') return { by:'auto', short:'انتهت مدة حددتها الإدارة', text:'انتهت المدة اللي حددتها الإدارة' + (d ? ' — ' + _dTxt(d) + ' من تاريخ النشر' : '') + ' بدون ما يختار عرض', open_days: openDays };
+  if (kind === 'client_extend') return { by:'auto', short:'انتهت بعد تمديد العميل', text:'العميل مدّد المدة بنفسه وانتهت' + (d ? ' — إجمالي ' + _dTxt(d) + ' من تاريخ النشر' : '') + ' بدون ما يختار عرض', open_days: openDays };
+  return { by:'auto', short:'العميل اختار مدة ' + (d ? _dTxt(d) : '') , text:'العميل اختار بنفسه عند النشر أو التعديل مدة استقبال العروض' + (d ? ': «' + _dTxt(d) + '»' : '') + '، وانتهت بدون ما يختار عرض', open_days: openDays };
+}
 const SAAI_RATE = 0.03;
 function _saaiSuggest(rq, bids){
   const acc = bids.find(b => b.status === 'accepted');
@@ -5903,7 +5923,7 @@ app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), a
       if (cur && new Date(cur) > base) base = new Date(cur);
     }
     const until = new Date(base.getTime() + days * 86400000);
-    await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL WHERE id=$2`, [until, id]);
+    await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL, close_set_by='admin', close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [until, id]);
     try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn')`, [id]); } catch(e){}
     if (!wasOpen && req.body.notify_client) { try { await notify(q.client_id, '🔓 أعدنا فتح مشروعك', `«${q.title}» مفتوح للعروض من جديد لمدة ${days} يوم`, 'request', id); } catch(e){} }
     let sent = 0;
@@ -5953,7 +5973,7 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     } catch(e){}
     let close_time = rq.close_at;
     try { if (!close_time) { const _cd = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20); close_time = new Date(new Date(rq.created_at).getTime()+_cd*86400000); } } catch(e){}
-    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status), close_time }), bids, timeline, saai, saai_suggest });
+    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status), close_time, close_info: _closeInfo(rq) }), bids, timeline, saai, saai_suggest });
   } catch(e) { console.error('req-detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
@@ -6112,7 +6132,7 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
     const _cd=parseInt(req.body.close_days);
     if (req.body.close_days!==undefined && !isNaN(_cd)) {
       if (_cd>0) {
-        _closeClause = ", close_at = created_at + '"+_cd+" days'::interval";
+        _closeClause = ", close_at = created_at + '"+_cd+" days'::interval, close_set_by='admin'";
         const _st = await pool.query("SELECT status, assigned_provider_id FROM requests WHERE id=$1", [id]);
         if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { _closeClause += ", status='open'"; }
       } else { _closeClause = ', close_at = NULL'; }
