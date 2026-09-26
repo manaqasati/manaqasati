@@ -3142,7 +3142,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.client_note,r.client_note_at,r.client_note_done_at,r.client_note_hidden,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3187,6 +3187,9 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!isAdmin) delete row.admin_notes;
     // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
     if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
+    // ملاحظات الإدارة للعميل: لصاحب المشروع والأدمن فقط
+    if (!(isOwner || isAdmin)) _stripClientNote(row);
+    else if (isOwner && row.client_note && !row.client_note_seen_at) { try { await pool.query('UPDATE requests SET client_note_seen_at=NOW() WHERE id=$1', [id]); row.client_note_seen_at = new Date(); } catch(e){} }
     res.json({ ...row, status: normalizeStatus(row.status) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3518,6 +3521,8 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
 // أقل سعر إجمالي مقبول للعرض — يمنع «1 ريال» اللي يُستخدم لفتح رقم العميل ويخرّب مقارنة الأسعار
 const BID_MIN_TOTAL = 50;
 async function _clientNoteDone(reqId){ try { await pool.query('UPDATE requests SET client_note_done_at=NOW() WHERE id=$1 AND client_note IS NOT NULL AND client_note_done_at IS NULL', [reqId]); } catch(e){} }
+const _CN_COLS=['client_note','client_note_at','client_note_seen_at','client_note_done_at','client_note_hidden'];
+function _stripClientNote(row){ if(row){ for(const k of _CN_COLS) delete row[k]; } return row; }
 function _matVal(v){ if(v==='yes'||v===true||v==='1') return 'yes'; if(v==='no'||v===false||v==='0') return 'no'; return null; }
 function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
@@ -4122,7 +4127,7 @@ app.get('/api/saved-requests', auth, async (req, res) => {
       SELECT rq.*, (SELECT COUNT(*) FROM bids WHERE request_id=rq.id) AS bid_count
       FROM saved_requests s JOIN requests rq ON rq.id=s.request_id
       WHERE s.user_id=$1 ORDER BY s.created_at DESC LIMIT 100`, [req.user.id]);
-    res.json(r.rows);
+    res.json(r.rows.map(x => { _stripClientNote(x); delete x.admin_notes; delete x.review_notes; delete x.agent_name; delete x.agent_pct; delete x.agent_phone; return x; }));
   } catch(e) { res.status(500).json([]); }
 });
 app.post('/api/favorites/provider/:id', auth, async (req, res) => {
