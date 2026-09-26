@@ -748,6 +748,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         </div>
         <div class="form-grid">
           <div class="fg ff">
+            <label style="font-size:15px;font-weight:900">وش تبي تسوي؟ <span style="color:var(--red)">*</span></label>
+            <input type="text" id="n-title" placeholder="مثال: تركيب 4 مكيفات سبليت لفيلا" autocomplete="off">
+            <div id="n-catbox" style="margin-top:10px"></div>
+          </div>
+          <div class="fg ff" id="n-cat-wrap">
             <label>التصنيف <span style="color:var(--red)">*</span></label>
             <select id="n-cat" onchange="checkOther();updateGuide();renderSmart(this.value);updateQuality()">
               <option value="">اختر التصنيف</option>
@@ -773,10 +778,6 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           <div class="fg ff" id="other-wrap" style="display:none">
             <label>وش الخدمة المطلوبة؟</label>
             <input type="text" id="n-cat-other" placeholder="اكتب نوع الخدمة المطلوبة" oninput="_catSug()" maxlength="120"><div id="n-cat-sug"></div>
-          </div>
-          <div class="fg ff">
-            <label>عنوان المشروع <span style="color:var(--red)">*</span></label>
-            <input type="text" id="n-title" placeholder="مثال: تركيب مكيف غرفة نوم">
           </div>
           <div class="fg ff">
             <label>التفاصيل <span style="color:var(--red)">*</span></label>
@@ -2444,8 +2445,8 @@ function submitReq(){
   var msg=document.getElementById('new-msg');
   var cityErr=document.getElementById('city-err');
   var err='';
-  if(!cat)err='يرجى اختيار التصنيف';
-  else if(!title)err='يرجى كتابة عنوان المشروع';
+  if(!title)err='يرجى كتابة عنوان المشروع';
+  else if(!cat){err='حدّد التخصص — اضغط «اختر التخصص» تحت العنوان';try{var _cb=document.getElementById('n-catbox');if(_cb){_cb.scrollIntoView({behavior:'smooth',block:'center'});_cb.style.outline='2px solid #dc2626';_cb.style.borderRadius='14px';setTimeout(function(){_cb.style.outline='';},2500);}}catch(e){}}
   else if(!desc)err='يرجى كتابة تفاصيل المشروع';
   else if(!city){err='يرجى اختيار المدينة';document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
@@ -2479,7 +2480,7 @@ function acceptAgree(){
   var deadline=document.getElementById('n-deadline').value;
   var msg=document.getElementById('new-msg');
   var btn=document.getElementById('submitBtn');if(btn){btn.disabled=true;btn.textContent='جاري النشر...';}
-  var body={title:title,description:desc,category:cat,city:city}; if(catOther)body.category_other=catOther;
+  var body={title:title,description:desc,category:cat,city:city}; if(catOther)body.category_other=catOther; try{ if(window._cpExtras){ var _ex=_cpExtras(); if(_ex.length)body.extra_categories=_ex; } }catch(e){}
   var _cd=(document.getElementById('n-closedur')||{}).value; if(_cd)body.close_days=parseInt(_cd);
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
@@ -2493,7 +2494,7 @@ function acceptAgree(){
       if(r&&r.id){
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
-        ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+        ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
         showToast('تم نشر المشروع','success');
         if(window.track)track('Lead');
@@ -3639,5 +3640,6 @@ function initAppDownload(){
 }
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(initAppDownload, 1200); });
 </script>
+<script src="/catpick.js?v=1" defer></script>
 </body>
 </html>
