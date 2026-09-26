@@ -5141,7 +5141,7 @@ app.get('/api/admin/duplicates', requirePermission('users.view'), async (req, re
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND (category IS DISTINCT FROM 'direct')) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
+    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND (category IS DISTINCT FROM 'direct')) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
@@ -6496,6 +6496,124 @@ app.put('/api/admin/settings', requirePermission('settings.manage'), async (req,
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ لوحة الأدمن الرئيسية — كل الأرقام في طلب واحد خفيف ═══
+async function _adminOverview(){
+    const one = (sql, p) => pool.query(sql, p||[]).then(r => r.rows[0] || {}).catch(e => { console.error('overview:', e.message); return {}; });
+    const many = (sql, p) => pool.query(sql, p||[]).then(r => r.rows).catch(e => { console.error('overview:', e.message); return []; });
+    const D = (c) => `(timezone('Asia/Riyadh', timezone('UTC', ${c})))::date`;
+    const T = `(timezone('Asia/Riyadh', now()))::date`;
+    const ND = `(r.category IS DISTINCT FROM 'direct')`;
+    const [needs, kpi, series, funnel, saai, feed, recent, cover] = await Promise.all([
+      one(`SELECT
+        (SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review'))::int AS review,
+        (SELECT MIN(created_at) FROM requests WHERE status IN ('pending_review','review')) AS review_oldest,
+        (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
+        (SELECT COUNT(*) FROM request_questions WHERE answer IS NULL OR answer='')::int AS questions,
+        (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,
+        (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flag_providers,
+        (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,
+        (SELECT COUNT(*) FROM saai_ledger WHERE status='submitted')::int AS saai_submitted,
+        (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='submitted')::float AS saai_submitted_sum`),
+      one(`SELECT
+        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=${T})::int AS users_t,
+        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=${T}-1)::int AS users_y,
+        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=${T})::int AS req_t,
+        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=${T}-1)::int AS req_y,
+        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=${T})::int AS bids_t,
+        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=${T}-1)::int AS bids_y,
+        (SELECT COUNT(*) FROM users)::int AS users_all,
+        (SELECT COUNT(*) FROM users WHERE role='provider')::int AS providers,
+        (SELECT COUNT(*) FROM users WHERE role='client')::int AS clients`),
+      many(`SELECT to_char(d,'YYYY-MM-DD') AS day,
+        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=d::date)::int AS users,
+        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=d::date)::int AS requests,
+        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=d::date)::int AS bids
+        FROM generate_series(${T}-13, ${T}, INTERVAL '1 day') d ORDER BY d`),
+      one(`WITH p AS (SELECT r.id, r.status, r.assigned_provider_id FROM requests r
+             WHERE ${ND} AND r.created_at >= NOW() - INTERVAL '30 days'
+               AND r.status NOT IN ('pending_review','review','needs_edit','rejected'))
+        SELECT COUNT(*)::int AS published,
+          COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=p.id))::int AS got_bid,
+          COUNT(*) FILTER (WHERE p.assigned_provider_id IS NOT NULL OR p.status IN ('in_progress','completed'))::int AS awarded,
+          COUNT(*) FILTER (WHERE p.status='completed')::int AS completed,
+          COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM saai_ledger s WHERE s.request_id=p.id AND s.status IN ('submitted','approved')))::int AS saai_paid
+        FROM p`),
+      one(`SELECT
+        COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= date_trunc('month', timezone('Asia/Riyadh', now()))),0)::float AS collected_month,
+        COALESCE(SUM(saai_amount) FILTER (WHERE status='pending'),0)::float AS due,
+        COUNT(*) FILTER (WHERE status='pending')::int AS due_n
+        FROM saai_ledger WHERE request_id IS NOT NULL`),
+      many(`SELECT * FROM (
+          (SELECT 'request' AS k, r.created_at AS at, u.name AS who, r.title AS what, NULL::numeric AS amount, r.id AS rid, NULL::text AS unit FROM requests r JOIN users u ON u.id=r.client_id WHERE ${ND} ORDER BY r.created_at DESC LIMIT 6)
+          UNION ALL
+          (SELECT 'bid', b.created_at, COALESCE(NULLIF(u.business_name,''),u.name), r.title, b.price, r.id, b.price_unit FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id ORDER BY b.created_at DESC LIMIT 6)
+          UNION ALL
+          (SELECT 'award', r.assigned_at, cu.name, COALESCE(NULLIF(pu.business_name,''),pu.name), NULL, r.id, NULL FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id WHERE r.assigned_at IS NOT NULL ORDER BY r.assigned_at DESC LIMIT 4)
+          UNION ALL
+          (SELECT 'flag', f.created_at, COALESCE(NULLIF(u.business_name,''),u.name), f.reason, NULL, f.request_id, NULL FROM offer_flags f JOIN users u ON u.id=f.provider_id ORDER BY f.created_at DESC LIMIT 4)
+        ) x WHERE at IS NOT NULL ORDER BY at DESC LIMIT 10`),
+      many(`SELECT id, name, business_name, email, role, city, created_at, profile_image,
+          (role='client' AND COALESCE(can_provide,FALSE)=FALSE AND (NULLIF(TRIM(business_name),'') IS NOT NULL OR char_length(COALESCE(bio,''))>=20)) AS looks_prov,
+          CASE WHEN role='provider' THEN (
+            (CASE WHEN profile_image IS NOT NULL AND profile_image<>'' THEN 1 ELSE 0 END)+(CASE WHEN COALESCE(array_length(specialties,1),0)>0 THEN 1 ELSE 0 END)+
+            (CASE WHEN char_length(COALESCE(bio,''))>0 THEN 1 ELSE 0 END)+(CASE WHEN COALESCE(array_length(portfolio_images,1),0)>0 THEN 1 ELSE 0 END)+
+            (CASE WHEN experience_years IS NOT NULL THEN 1 ELSE 0 END))*20 END AS profile_pct
+        FROM users WHERE role<>'admin' ORDER BY created_at DESC LIMIT 6`),
+      one(`SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id))::int AS with_bids
+        FROM requests r WHERE ${ND} AND r.created_at >= NOW() - INTERVAL '30 days' AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`)
+    ]);
+    let storage = null; try { storage = await storageStatus(); } catch(e){}
+    return { needs: Object.assign({}, needs, { storage }), kpi, series, funnel, saai, feed, recent, cover };
+}
+app.get('/api/admin/overview', requirePermission('dashboard.view'), async (req, res) => {
+  try { res.json(await _adminOverview()); }
+  catch(e) { console.error('overview:', e.message); res.status(500).json({ message: 'تعذّر تحميل اللوحة' }); }
+});
+
+// ═══ الملخص الصباحي للإدارة (إيميل يومي 8 صباحاً بتوقيت الرياض) ═══
+async function sendMorningDigest(force){
+  try {
+    if (!force && (await getSetting('digest_enabled','1')) === '0') return { skipped: 'disabled' };
+    const nowR = new Date(Date.now() + 3*3600*1000);
+    const day = nowR.toISOString().slice(0,10);
+    if (!force) {
+      if (nowR.getUTCHours() < 8) return { skipped: 'early' };
+      if ((await getSetting('digest_sent_day','')) === day) return { skipped: 'sent' };
+      await setSetting('digest_sent_day', day);
+    }
+    const o = await _adminOverview();
+    const n = o.needs||{}, k = o.kpi||{}, f = o.funnel||{}, sa = o.saai||{};
+    const fmt = (x) => Math.round(Number(x)||0).toLocaleString('en-US');
+    const row = (l, v, c) => `<tr><td style="padding:8px 0;color:#475569">${l}</td><td style="padding:8px 0;font-weight:800;text-align:left;color:${c||'#0f172a'}">${v}</td></tr>`;
+    const todo = [
+      n.review ? row('مشاريع تنتظر المراجعة', n.review, '#dc2626') : '',
+      n.flags ? row('عروض مرصودة', n.flags, '#c2410c') : '',
+      n.saai_submitted ? row('سداد ينتظر الاعتماد', n.saai_submitted+' ('+fmt(n.saai_submitted_sum)+' ر.س)', '#1d4ed8') : '',
+      n.reports ? row('بلاغات مفتوحة', n.reports, '#b45309') : '',
+      n.questions ? row('أسئلة بدون رد', n.questions, '#b45309') : ''
+    ].join('');
+    const html = `<p style="font-size:15px">صباح الخير 👋 هذا ملخص مناقصة.</p>
+      <h3 style="margin:18px 0 6px;font-size:15px">أمس</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">${row('مستخدمون جدد', fmt(k.users_y))}${row('مشاريع جديدة', fmt(k.req_y))}${row('عروض جديدة', fmt(k.bids_y))}</table>
+      <h3 style="margin:18px 0 6px;font-size:15px">يحتاج إجراء منك</h3>
+      ${todo ? `<table style="width:100%;border-collapse:collapse;font-size:14px">${todo}</table>` : '<p style="color:#15803d;font-weight:700">ما فيه شي ينتظرك ✓</p>'}
+      <h3 style="margin:18px 0 6px;font-size:15px">مسار المشاريع (30 يوم)</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">${row('نُشر', fmt(f.published))}${row('جاه عرض', fmt(f.got_bid))}${row('تمت الترسية', fmt(f.awarded))}${row('اكتمل', fmt(f.completed))}${row('سدّد السعي', fmt(f.saai_paid))}</table>
+      <h3 style="margin:18px 0 6px;font-size:15px">السعي</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">${row('محصّل هذا الشهر', fmt(sa.collected_month)+' ر.س', '#15803d')}${row('مستحق غير مسدّد', fmt(sa.due)+' ر.س', '#b45309')}</table>`;
+    const title = 'ملخص مناقصة الصباحي — ' + day;
+    const admins = await pool.query(`SELECT id, email FROM users WHERE role='admin' AND email IS NOT NULL`);
+    let to = admins.rows.filter(a => a.email === OWNER_EMAIL);
+    if (!to.length) to = admins.rows;
+    for (const a of to) sendEmail(a.email, title, emailTpl(title, html, 'فتح لوحة الإدارة', SITE_URL + '/dashboard-admin.html')).catch(()=>{});
+    return { ok: true, sent: to.length };
+  } catch(e){ console.error('morningDigest:', e.message); return { ok: false }; }
+}
+setInterval(() => { sendMorningDigest(false); }, 15*60*1000);
+app.post('/api/admin/digest/test', requirePermission('settings.manage'), async (req, res) => {
+  res.json(await sendMorningDigest(true));
+});
+
 app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req, res) => {
   try {
     const q = (sql) => pool.query(sql).then(r => +r.rows[0].count).catch(() => 0);
@@ -6582,9 +6700,11 @@ app.put('/api/admin/reports/:id', requirePermission('reports.resolve'), async (r
 
 app.get('/api/admin/search', requirePermission('users.view'), async (req, res) => {
   try {
-    const { q } = req.query; if (!q||q.length<2) return res.json({ requests:[], users:[] });
+    const q = String(req.query.q||'').trim(); if (!q||q.length<2) return res.json({ requests:[], users:[] });
     const p='%'+q+'%';
-    const [reqs,users]=await Promise.all([pool.query(`SELECT r.id, r.title, r.status, u.name as client_name FROM requests r LEFT JOIN users u ON r.client_id=u.id WHERE r.title ILIKE $1 OR r.description ILIKE $1 OR r.project_number ILIKE $1 ORDER BY r.created_at DESC LIMIT 20`,[p]),pool.query(`SELECT id, name, email, role FROM users WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1 ORDER BY created_at DESC LIMIT 20`,[p])]);
+    const qid = /^#?\d+$/.test(q) ? parseInt(q.replace('#','')) : -1;
+    const qph = q.replace(/\D/g,'').replace(/^(966|0)/,'');
+    const [reqs,users]=await Promise.all([pool.query(`SELECT r.id, r.title, r.status, u.name as client_name FROM requests r LEFT JOIN users u ON r.client_id=u.id WHERE r.id=$2 OR r.title ILIKE $1 OR r.description ILIKE $1 OR r.project_number ILIKE $1 ORDER BY (r.id=$2) DESC, r.created_at DESC LIMIT 20`,[p,qid]),pool.query(`SELECT id, name, business_name, email, phone, role, city FROM users WHERE id=$2 OR name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1 OR ($3<>'' AND char_length($3)>=5 AND regexp_replace(COALESCE(phone,''),'\\D','','g') LIKE '%'||$3||'%') ORDER BY (id=$2) DESC, created_at DESC LIMIT 20`,[p,qid,qph])]);
     res.json({ requests:reqs.rows.map(r=>({...r,status:normalizeStatus(r.status)})), users:users.rows });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
