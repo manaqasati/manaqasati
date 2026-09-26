@@ -379,9 +379,84 @@ app.get('/api/requests/public/:id', async (req, res) => {
         row.contact_unlocked=true;
       } else { row.contact_unlocked=false; }
       if(uid){ try{ const sv=await pool.query('SELECT 1 FROM saved_requests WHERE user_id=$1 AND request_id=$2',[uid,id]); row.is_saved=sv.rows.length>0; }catch(e){ row.is_saved=false; } }
+      // صاحب المشروع فتح الصفحة = شاف العروض → نسجّل «شاف عرضك» ونبلّغ المزوّد مرة وحدة
+      if(isOwner){ try{
+        const sn=await pool.query('UPDATE bids SET seen_at=NOW() WHERE request_id=$1 AND seen_at IS NULL RETURNING provider_id',[id]);
+        for(const x of sn.rows){ try{ await notify(x.provider_id,'👁 صاحب المشروع شاف عرضك',`«${row.title}» — الوقت مناسب تتواصل معه`,'request',id); }catch(e){} }
+      }catch(e){} }
     } catch(e){}
+    // إحصاءات إضافية للصفحة (بدون أسعار)
+    try {
+      const cs=(await pool.query(`SELECT COUNT(*) FILTER (WHERE status NOT IN ('pending_review','review','rejected','deleted'))::int AS posted_n,
+          COUNT(*) FILTER (WHERE assigned_provider_id IS NOT NULL OR status IN ('in_progress','completed'))::int AS chosen_n,
+          (SELECT created_at FROM users WHERE id=$1) AS member_since,
+          (SELECT GREATEST(last_seen_at,last_active) FROM users WHERE id=$1) AS last_seen
+        FROM requests WHERE client_id=$1`,[row.client_id])).rows[0]||{};
+      if(row.client){ row.client.posted_n=cs.posted_n||0; row.client.chosen_n=cs.chosen_n||0; row.client.member_since=cs.member_since||null; row.client.last_seen=cs.last_seen||null; }
+      const bs=(await pool.query(`SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours')::int AS today, MAX(created_at) AS last_at FROM bids WHERE request_id=$1`,[id])).rows[0]||{};
+      row.bids_n=bs.n||0; row.bids_today=bs.today||0; row.last_bid_at=bs.last_at||null;
+      const closeDays=Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+      row.close_time = row.close_at || new Date(new Date(row.created_at).getTime()+closeDays*86400000);
+      const bz=(await pool.query('SELECT boosted_at FROM requests WHERE id=$1',[id])).rows[0]||{};
+      row.boosted_at=bz.boosted_at||null;
+    } catch(e){ console.error('public stats:', e.message); }
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// مشاريع مشابهة مفتوحة (نفس التصنيف، والأقرب مدينةً أولاً)
+app.get('/api/requests/public/:id/similar', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const base = (await pool.query('SELECT category, city FROM requests WHERE id=$1',[id])).rows[0];
+    if (!base) return res.json([]);
+    const r = await pool.query(`SELECT r.id, r.title, r.city, r.district, r.created_at,
+        (SELECT img FROM unnest(r.images) img WHERE img LIKE 'http%' LIMIT 1) AS thumb,
+        (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids_n
+      FROM requests r WHERE r.status='open' AND r.id<>$1 AND r.category=$2
+      ORDER BY (r.city=$3) DESC NULLS LAST, r.created_at DESC LIMIT 4`, [id, base.category, base.city]);
+    res.json(r.rows);
+  } catch(e){ res.json([]); }
+});
+// تمديد استقبال العروض 7 أيام (لصاحب المشروع)
+app.post('/api/requests/:id/extend', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query('SELECT client_id, status, assigned_provider_id, created_at, close_at FROM requests WHERE id=$1',[id])).rows[0];
+    if (!q) return res.status(404).json({ message:'غير موجود' });
+    if (String(q.client_id)!==String(req.user.id)) return res.status(403).json({ message:'ليس مشروعك' });
+    if (q.assigned_provider_id || ['in_progress','completed'].includes(q.status)) return res.status(400).json({ message:'المشروع تم اختيار مزوّد له' });
+    if (!['open','closed_auto','expired'].includes(q.status)) return res.status(400).json({ message:'لا يمكن تمديد هذا المشروع' });
+    const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
+    const cur = q.close_at ? new Date(q.close_at) : new Date(new Date(q.created_at).getTime()+closeDays*86400000);
+    const from = cur > new Date() ? cur : new Date();
+    const nx = new Date(from.getTime() + 7*86400000);
+    await pool.query(`UPDATE requests SET close_at=$1, status='open' WHERE id=$2`, [nx, id]);
+    res.json({ ok:true, close_at: nx });
+  } catch(e){ console.error('extend:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
+});
+// «أبي عروض أكثر»: يبلّغ المزوّدين المطابقين اللي ما قدّموا — مرة كل 48 ساعة
+app.post('/api/requests/:id/boost', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query('SELECT id, client_id, status, title, category, city, boosted_at FROM requests WHERE id=$1',[id])).rows[0];
+    if (!q) return res.status(404).json({ message:'غير موجود' });
+    if (String(q.client_id)!==String(req.user.id)) return res.status(403).json({ message:'ليس مشروعك' });
+    if (q.status!=='open') return res.status(400).json({ message:'المشروع غير مفتوح للعروض' });
+    if (q.boosted_at && (Date.now()-new Date(q.boosted_at).getTime()) < 48*3600000) {
+      const hrs = Math.ceil((48*3600000-(Date.now()-new Date(q.boosted_at).getTime()))/3600000);
+      return res.status(429).json({ message:'أرسلنا تنبيه قريب — تقدر تعيده بعد '+hrs+' ساعة' });
+    }
+    const provs = await matchingProviders(q.category ? [q.category] : [], q.city, false, null);
+    const bidders = new Set((await pool.query('SELECT provider_id FROM bids WHERE request_id=$1',[id])).rows.map(x=>String(x.provider_id)));
+    let sent = 0;
+    for (const p of provs) {
+      if (bidders.has(String(p.id)) || String(p.id)===String(q.client_id)) continue;
+      try { await notify(p.id, '📣 عميل ينتظر عروضك', `«${q.title}»${q.city?' · '+q.city:''} — صاحب المشروع يبي عروض أكثر، قدّم عرضك`, 'request', id); sent++; } catch(e){}
+    }
+    await pool.query('UPDATE requests SET boosted_at=NOW() WHERE id=$1',[id]);
+    res.json({ ok:true, sent });
+  } catch(e){ console.error('boost:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
 
 app.get('/api/bids/public/:id', async (req, res) => {
@@ -404,10 +479,13 @@ app.get('/api/bids/public/:id', async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.days, b.status, b.created_at,
         CASE WHEN $2::boolean THEN u.phone ELSE NULL END as provider_phone,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.price ELSE NULL END as price,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.price ELSE NULL END as price,
         COALESCE(b.price_visibility,'client') as price_visibility,
         COALESCE(b.price_unit,'total') as price_unit,
-        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean THEN b.attachment_url ELSE NULL END as attachment_url,
+        b.materials,
+        (b.provider_id = $4::int) as is_mine,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.seen_at ELSE NULL END as seen_at,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -417,18 +495,21 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float as avg_rating,
-        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count
+        COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int as review_count,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed')::int as completed_projects,
+        (u.badge IN ('verified','موثق')) as provider_verified
       FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.created_at ASC
-    `, [id, isLoggedIn, isPrivileged]);
+    `, [id, isLoggedIn, isPrivileged, parseInt(viewerId)||0]);
     // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.map(x => parseFloat(x._p)).filter(v => v > 0);
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
     const rows = r.rows.map(x => {
       const { _p, ...rest } = x;
       // إخفاء نص العرض كاملاً للزائر/المنافس إن كان السعر خاصاً — يمنع تسريب السعر داخل النص (يبقى ظاهراً لصاحب المشروع والأدمن)
-      const locked = (String(rest.price_visibility) === 'client') && !isPrivileged;
+      const locked = (String(rest.price_visibility) === 'client') && !isPrivileged && !rest.is_mine;
       if (locked) {
         rest.proposal = '🔒 تفاصيل هذا العرض خاصة — تظهر لصاحب المشروع فقط.';
+        rest.materials = null;
         rest.note_locked = true;
       } else {
         rest.note_locked = false;
@@ -2085,6 +2166,10 @@ async function setupDatabase() {
     try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_hash TEXT`); } catch(e){}
     // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
     await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
+    // «شامل المواد؟» (yes/no — اختياري) · متى شاف صاحب المشروع العرض · آخر «أبي عروض أكثر»
+    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
+    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
+    try { await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false`);
@@ -2875,7 +2960,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)) OR b.status='accepted') as contact_unlocked
       FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
@@ -3396,6 +3481,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
 
 // أقل سعر إجمالي مقبول للعرض — يمنع «1 ريال» اللي يُستخدم لفتح رقم العميل ويخرّب مقارنة الأسعار
 const BID_MIN_TOTAL = 50;
+function _matVal(v){ if(v==='yes'||v===true||v==='1') return 'yes'; if(v==='no'||v===false||v==='0') return 'no'; return null; }
 function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
@@ -3439,6 +3525,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, attachment_hash, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,$9,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl, attHash]);
       row = ins.rows[0];
     }
+    if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), row.id]); row.materials=_matVal(req.body.materials); } catch(e){} }
     const provInfo = await pool.query('SELECT name, city, service_cities, serves_all_cities FROM users WHERE id=$1', [req.user.id]);
     // رصد العروض خارج نطاق الخدمة (يُسمح + تنبيه تلقائي + تسجيل للأدمن)
     if (!isUpdate) { try {
@@ -3541,6 +3628,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     const r = await pool.query(
       'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url), attachment_hash=CASE WHEN $5::text IS NOT NULL THEN $7 ELSE attachment_hash END WHERE id=$6 RETURNING *',
       [price||null, days||null, note||null, priceVis, attUrl||null, id, attHash]);
+    if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), id]); if(r.rows[0]) r.rows[0].materials=_matVal(req.body.materials); } catch(e){} }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4393,6 +4481,22 @@ app.get('/api/providers/:id', async (req, res) => {
     }
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+app.get('/api/providers/:id/similar', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const me = (await pool.query("SELECT city, specialties FROM users WHERE id=$1 AND role='provider'",[id])).rows[0];
+    if (!me) return res.json([]);
+    const r = await pool.query(`SELECT id, name, business_name, city, profile_image, specialties,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float AS avg_rating,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int AS completed_projects
+      FROM users WHERE role='provider' AND is_active=TRUE AND id<>$1
+        AND COALESCE(specialties,'{}') && COALESCE($2::text[],'{}') AND ($3::text IS NULL OR city=$3)
+        AND profile_image IS NOT NULL AND length(profile_image)>0
+      ORDER BY completed_projects DESC, avg_rating DESC, COALESCE(last_active, created_at) DESC LIMIT 4`, [id, me.specialties||[], me.city||null]);
+    res.json(r.rows);
+  } catch(e){ res.json([]); }
 });
 
 // ═══ NOTIFICATIONS ═══
