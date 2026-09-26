@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="rq-kpis"></div>
       <div class="card">
         
-        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button></div>
+        <div class="filter-tabs"><button class="ftab on" onclick="filterReq('all',this)">الكل</button><button class="ftab" onclick="filterReq('open',this)">مفتوح</button><button class="ftab" onclick="filterReq('in_progress',this)">قيد التنفيذ</button><button class="ftab" onclick="filterReq('completed',this)">مكتمل</button><button class="ftab" onclick="filterReq('stale',this)" style="color:#dc2626">بلا عروض +3 أيام</button><button class="ftab" onclick="filterReq('notes',this)" style="color:#b45309">💡 ملاحظات مفتوحة</button></div>
         <div class="ufilters" id="req-filters">
           <div class="search-box" style="min-width:180px"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="req-search" placeholder="ابحث بالعنوان أو العميل..." oninput="renderRequests()"></div>
           <select id="rf-city" onchange="renderRequests()"><option value="">كل المدن</option></select>
@@ -2612,7 +2612,7 @@ function renderProjReview(){
       +'<div class="pr-desc">'+(sel.description?hl(sel.description):'<span style="color:var(--muted)">بدون وصف</span>')+'</div>'
       +(imgs.length?'<div class="pr-imgs">'+imgs.slice(0,6).map(function(u){return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="صورة المشروع" loading="lazy"></a>';}).join('')+'</div>':'')
       +'<div class="pr-facts"><div><small>الميزانية</small>'+(sel.budget_max?fmtNum(sel.budget_max)+' ر.س':'غير محددة')+'</div><div><small>الموعد</small>'+(sel.deadline?new Date(sel.deadline).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'مرن')+'</div><div><small>المزوّدون المطابقون</small><span style="color:#1d4ed8">'+(info&&info.matches!=null?info.matches+' مزوّد':'…')+'</span></div><div><small>العميل</small>'+(info&&info.client_prev!=null?(info.client_prev?info.client_prev+' مشاريع سابقة':'أول مشروع له'):'…')+'</div></div>'
-      +'<details style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:10px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#166534">💡 ملاحظة للعميل مع النشر (اختيارية)</summary>'+tipChips('rv-tip-'+sel.id)+'<textarea id="rv-tip-'+sel.id+'" placeholder="مثال: أرفق المخططات لتحصل على عروض أدق..." style="width:100%;padding:9px 11px;border:1.5px solid #bbf7d0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;min-height:44px;resize:vertical;background:#fff;box-sizing:border-box"></textarea></details>'
+      +'<details style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:10px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#166534">💡 ملاحظة للعميل مع النشر (اختيارية — تظهر له في صفحة مشروعه)</summary>'+tipChips('rv-tip-'+sel.id)+'<textarea id="rv-tip-'+sel.id+'" placeholder="مثال: أرفق المخططات لتحصل على عروض أدق..." style="width:100%;padding:9px 11px;border:1.5px solid #bbf7d0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;min-height:44px;resize:vertical;background:#fff;box-sizing:border-box"></textarea></details>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
         +'<textarea id="rv-notes-'+sel.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:54px;resize:vertical;box-sizing:border-box"></textarea></div>'
       +'<div class="pr-btns"><button style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
@@ -2670,6 +2670,7 @@ function getFilteredRequests(){
   var cat=(document.getElementById('rf-cat')||{}).value||'';
   return (_allReq||[]).filter(function(r){
     if(_reqFilter==='stale'){ if(!_rqStale(r))return false; }
+    else if(_reqFilter==='notes'){ if(!(r.client_note&&!r.client_note_done_at))return false; }
     else if(_reqFilter!=='all'&&r.status!==_reqFilter)return false;
     if(ci&&r.city!==ci)return false;
     if(cat&&r.category!==cat)return false;
@@ -2749,7 +2750,7 @@ function renderRequests(){
     var th=_rqThumb(r);
     var sel=(window._rqSel===r.id)?' class="sel"':'';
     return '<tr'+sel+' data-rid="'+r.id+'" onclick="_rqRowClick(event,'+r.id+')"'+(_stale?' style="background:#fffafa"':'')+'>'
-      +'<td><div style="display:flex;gap:10px;align-items:center;min-width:0"><div class="rq-th">'+(th?'<img loading="lazy" src="'+esc(th)+'" alt="">':'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>')+'</div><div style="min-width:0"><div style="font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px">'+esc(r.title)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px"><b style="color:var(--p)">#'+r.id+'</b> · '+esc(r.category||'')+(r.city?' · '+esc(r.city):'')+'</div></div></div></td>'
+      +'<td><div style="display:flex;gap:10px;align-items:center;min-width:0"><div class="rq-th">'+(th?'<img loading="lazy" src="'+esc(th)+'" alt="">':'<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>')+'</div><div style="min-width:0"><div style="font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px">'+esc(r.title)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px"><b style="color:var(--p)">#'+r.id+'</b> · '+esc(r.category||'')+(r.city?' · '+esc(r.city):'')+_cnPill(r)+'</div></div></div></td>'
       +'<td style="font-size:12.5px">'+esc(r.client_name||'—')+'</td>'
       +'<td><span class="badge '+st[1]+'">'+st[0]+'</span></td>'
       +'<td style="text-align:center">'+(_stale?'<span class="rq-stale">0 · '+_days+' أيام</span>':(_bc===0?'<span style="color:var(--muted);font-weight:600">0</span>':'<span style="font-weight:900;color:#059669">'+_bc+'</span>'))+'</td>'
@@ -2760,6 +2761,61 @@ function renderRequests(){
         +'<button class="act-btn ab-default" onclick="_rowMenu(this,'+r.id+',\''+r.status+'\')" title="إجراءات أخرى" style="font-weight:900;font-size:17px;line-height:1;padding:5px 11px">⋯</button></div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('r',_rTotal);
+}
+// ═══ ملاحظات الإدارة للعميل (تظهر لصاحب المشروع فقط، بدون إشعار) ═══
+var _CN_TPL=[['📐 المساحة','أضف المساحة التقريبية بالمتر المربع'],['🗺️ مخطط','أرفق مخطط أو كروكي — حتى لو رسمة يد بالجوال'],['📷 صور','أضف صور واضحة للموقع الحالي'],['🧱 المواد','حدّد المواد المطلوبة ومستوى الجودة'],['📅 الموعد','وضّح الموعد المطلوب للتنفيذ'],['📍 الموقع','حدّد موقع المشروع على الخريطة'],['📝 التفاصيل','اشرح المطلوب بتفصيل أكثر (الكميات والأبعاد)']];
+function _cnState(r){ if(!r||!r.client_note)return null; if(r.client_note_done_at)return ['عدّل ✓','#dcfce7','#15803d']; if(r.client_note_hidden)return ['أخفاها','#f1f5f9','#475569']; if(r.client_note_seen_at)return ['شافها','#fef3c7','#92400e']; return ['ما شافها بعد','#eef3fb','#334766']; }
+function _cnPill(r){ var st=_cnState(r); return st?' <span class="pl" style="background:'+st[1]+';color:'+st[2]+';font-size:10.5px">💡 '+st[0]+'</span>':''; }
+function _cnFmt(d){ if(!d)return ''; try{ return new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+function _cnSection(r){
+  var has=!!r.client_note;
+  var h='<div class="rq-ds" style="border:1.5px solid '+(has?'#f59e0b':'#fde68a')+';background:#fffdf7;border-radius:14px;padding:12px 14px"><h4 style="color:#92400e">💡 ملاحظة للعميل<span style="font-size:11px;color:#1e3a8a;background:#eef3ff;border-radius:999px;padding:2px 8px">🔒 لصاحب المشروع فقط</span></h4>';
+  if(has){
+    h+='<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;color:var(--text2);background:#fff;border:1px solid #fde68a;border-radius:10px;padding:8px 10px">'+esc(r.client_note)+'</div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:800;margin-top:6px"><span style="color:#15803d">✓ أُضيفت '+_cnFmt(r.client_note_at)+'</span>'
+      +(r.client_note_seen_at?'<span style="color:#15803d">👁 شافها '+_cnFmt(r.client_note_seen_at)+'</span>':'<span style="color:#94a3b8">○ ما شافها بعد</span>')
+      +(r.client_note_done_at?'<span style="color:#15803d">✏️ عدّل المشروع '+_cnFmt(r.client_note_done_at)+'</span>':(r.client_note_hidden?'<span style="color:#64748b">أخفاها بدون تعديل</span>':'<span style="color:#94a3b8">○ ما عدّل بعد</span>'))+'</div>';
+  } else {
+    h+='<div style="font-size:12.5px;color:var(--muted);font-weight:700">المشروع ناقص معلومات؟ اترك له ملاحظة تظهر في صفحة مشروعه فوق العروض — بدون إشعار ولا إزعاج.</div>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:8px"><button class="btn-g" style="flex:1;color:#92400e;border-color:#fcd34d" onclick="_cnOpen('+r.id+')">'+(has?'تعديل الملاحظة':'+ إضافة ملاحظة')+'</button>'+(has?'<button class="btn-g" style="color:#dc2626;border-color:#fecaca" onclick="_cnSave('+r.id+',true)">حذف</button>':'')+'</div></div>';
+  return h;
+}
+function _cnFind(id){ return (_allReq||[]).filter(function(x){return x.id===id;})[0]||(window._projReview||[]).filter(function(x){return x.id===id;})[0]||{id:id}; }
+function _cnOpen(id){
+  var r=_cnFind(id);
+  var old=document.getElementById('cnModal'); if(old)old.remove();
+  var d=document.createElement('div'); d.id='cnModal';
+  d.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px;direction:rtl">'
+    +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">💡</span><b style="font-size:17px;flex:1">ملاحظة للعميل · #'+id+'</b><span class="pl" style="background:#eef3ff;color:#1e3a8a">🔒 لصاحب المشروع فقط</span><button onclick="document.getElementById(\'cnModal\').remove()" style="border:0;background:#f1f5f9;border-radius:10px;width:32px;height:32px;cursor:pointer">✕</button></div>'
+    +(r.title?'<div style="font-size:13px;color:var(--muted);font-weight:700">'+esc(r.title)+'</div>':'')
+    +'<div style="font-size:12.5px;font-weight:800;color:var(--muted)">قوالب سريعة — اضغط لإضافتها:</div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+_CN_TPL.map(function(t,i){return '<button type="button" class="ftab" onclick="_cnAdd('+i+')" style="border:1.5px solid #fde68a;background:#fffbeb;color:#92400e">'+t[0]+'</button>';}).join('')+'</div>'
+    +'<textarea id="cn-text" rows="6" placeholder="اكتب الملاحظة — كل نقطة في سطر" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;line-height:1.9;resize:vertical">'+esc(r.client_note||'')+'</textarea>'
+    +'<div style="font-size:12px;color:var(--muted);font-weight:700;background:#f8fafd;border-radius:10px;padding:8px 10px">تظهر للعميل في صفحة مشروعه فوق العروض، مع زر «أضف المعلومات الآن». ما يوصله إشعار ولا رسالة، ولا تظهر لأي مزوّد.</div>'
+    +'<div style="display:flex;gap:8px"><button id="cn-save" onclick="_cnSave('+id+')" style="flex:1;border:0;background:#f59e0b;color:#fff;border-radius:11px;padding:12px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">حفظ وإظهارها للعميل</button>'
+    +(r.client_note?'<button onclick="_cnSave('+id+',true)" class="btn-g" style="color:#dc2626;border-color:#fecaca">حذف الملاحظة</button>':'')+'</div></div>';
+  d.onclick=function(e){if(e.target===d)d.remove();};
+  document.body.appendChild(d);
+  setTimeout(function(){var t=document.getElementById('cn-text');if(t)t.focus();},50);
+}
+function _cnAdd(i){ var t=document.getElementById('cn-text'); if(!t)return; var line=_CN_TPL[i][1]; if(t.value.indexOf(line)>=0)return; t.value=(t.value.trim()?t.value.replace(/\s+$/,'')+'\n':'')+line; t.focus(); }
+async function _cnSave(id,del){
+  var note='';
+  if(!del){ note=((document.getElementById('cn-text')||{}).value||'').trim(); if(!note){toast('اكتب الملاحظة أو اختر قالب','error');return;} }
+  else if(!await askConfirm({title:'حذف الملاحظة',message:'تختفي الملاحظة من صفحة العميل.',confirmText:'احذف'}))return;
+  var b=document.getElementById('cn-save'); if(b){b.disabled=true;b.textContent='جاري الحفظ...';}
+  fetch(API+'/api/admin/requests/'+id+'/client-note',Object.assign({method:'PUT',body:JSON.stringify({note:note})},hdr()))
+    .then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});})
+    .then(function(x){
+      if(!x.ok){toast((x.d&&x.d.message)||'تعذّر الحفظ','error'); if(b){b.disabled=false;b.textContent='حفظ وإظهارها للعميل';} return;}
+      var m=document.getElementById('cnModal'); if(m)m.remove();
+      toast(del?'حُذفت الملاحظة':'تم — تظهر للعميل في صفحة مشروعه ✓','success');
+      [_allReq||[],window._projReview||[]].forEach(function(list){list.forEach(function(r){ if(r.id===id){ r.client_note=del?null:note; r.client_note_at=del?null:new Date().toISOString(); r.client_note_seen_at=null; r.client_note_done_at=null; r.client_note_hidden=false; } });});
+      if(window._rqSel===id&&document.getElementById('rqDrawer')&&document.getElementById('rqDrawer').classList.contains('on'))_rqOpen(id);
+      try{renderRequests();}catch(e){}
+    }).catch(function(){toast('تعذّر الاتصال','error'); if(b){b.disabled=false;b.textContent='حفظ وإظهارها للعميل';}});
 }
 function _rqRowClick(e,id){ if(e.target.closest('.act-btns,a,button,input'))return; _rqOpen(id); }
 function _rqClose(){ var d=document.getElementById('rqDrawer'),o=document.getElementById('rqOv'); if(d)d.classList.remove('on'); if(o)o.style.display='none'; window._rqSel=null; document.querySelectorAll('#requests-table tr.sel').forEach(function(x){x.classList.remove('sel');}); }
@@ -2784,6 +2840,7 @@ function _rqOpen(id){
       +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><span class="pl" style="background:'+sm[1]+';color:'+sm[2]+'">'+sm[0]+'</span>'+(r.category?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.category)+'</span>':'')+(r.city?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.city)+'</span>':'')+'</div></div><button class="rq-x" onclick="_rqClose()" aria-label="إغلاق">×</button></div>'
       +'<div class="rq-ds" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button class="btn-g" style="flex:1" onclick="_rqClose();openReqEdit('+r.id+')">تعديل</button><a class="btn-g" style="flex:1;text-align:center;text-decoration:none" href="/project/x-'+r.id+'?id='+r.id+'" target="_blank" rel="noopener">فتح الصفحة</a>'
         +(r.status==='open'?'<button class="btn-g" style="flex:1;color:#c2410c" onclick="_rqClose();pullbackFromRow('+r.id+')">طلب تعديل</button>':'')+'</div>'
+      +_cnSection(r)
       +(r.description?'<div class="rq-ds"><h4>الوصف</h4><div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;max-height:180px;overflow:auto;color:var(--text2)">'+esc(r.description)+'</div>'
         +(imgs.length?'<div style="display:flex;gap:8px;flex-wrap:wrap">'+imgs.slice(0,4).map(function(u){return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="" style="width:86px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--border)"></a>';}).join('')+'</div>':'')+'</div>':'')
       +'<div class="rq-ds"><h4>العميل</h4><div style="display:flex;align-items:center;gap:10px"><span class="ad-av">'+esc((r.client_name||'?').charAt(0))+'</span><div style="flex:1;min-width:0"><b>'+esc(r.client_name||'—')+'</b><div style="font-size:12px;color:var(--muted);direction:ltr;text-align:right">'+esc(r.client_phone||'')+(r.client_prev?' · '+r.client_prev+' مشاريع سابقة':'')+'</div></div>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" href="https://wa.me/'+ph+'" target="_blank" rel="noopener">واتساب</a>':'')+'</div></div>'
