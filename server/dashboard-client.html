@@ -1002,6 +1002,23 @@ var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
 if(!token||!user.id){location.href='/auth.html';}
 
+// ═══ ?edit=ID — فتح تعديل مشروع مباشرة (من صفحة المشروع) ═══
+(function(){
+  try{
+    var id=parseInt(new URLSearchParams(location.search).get('edit'));
+    if(!id) return;
+    var tries=0;
+    (function step(){
+      tries++;
+      if(typeof openEditReq==='function'&&typeof jFetch==='function'&&document.getElementById('e-title')){
+        try{ openEditReq(id); }catch(e){}
+        try{ history.replaceState(null,'',location.pathname); }catch(e){}
+        return;
+      }
+      if(tries<40) setTimeout(step,250);
+    })();
+  }catch(e){}
+})();
 // ═══ فتح نموذج المشروع معبّأً بالمسودّة بعد التسجيل (تدفّق: انشر أولاً ← سجّل ← راجع وانشر) ═══
 (function(){
   function _runDraft(){
