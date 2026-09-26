@@ -4012,8 +4012,8 @@ function _fuAgo(iso){
   if(!iso)return ''; var d=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
   if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; return 'قبل '+d+' يوم';
 }
-var CR_LABELS={chose_outside:'اختار من خارج المنصة',price_high:'الأسعار أعلى من الميزانية',postponed:'أجّل/ألغى المشروع',no_suitable_offers:'لا عروض مناسبة',other:'سبب آخر',auto_expired:'انتهت المدة',admin_closed:'أُغلق من الإدارة',completed:'✓ تمت الترسية بنجاح'};
-var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',auto_expired:'#94a3b8',admin_closed:'#0f766e',completed:'#16a34a'};
+var CR_LABELS={chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
+var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
 function loadCloseReasons(){
   var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })
@@ -4038,8 +4038,12 @@ function renderCloseReasons(d){
   h+='<div style="font-weight:900;font-size:14px;margin-bottom:10px">آخر المشاريع المُغلقة</div>';
   h+=list.map(function(p){
     var lbl=CR_LABELS[p.close_reason]||p.close_reason; var col=CR_COLORS[p.close_reason]||'#64748b';
-    var when=p.closed_at?new Date(p.closed_at).toLocaleDateString('ar-SA'):'';
-    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض · '+when+'</div>'+(p.close_reason_note?'<div style="font-size:11.5px;color:var(--text2);margin-top:4px;font-style:italic">"'+esc(p.close_reason_note)+'"</div>':'')+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
+    var _fd=function(d){return d?new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',year:'numeric'}):'';};
+    var when=p.closed_at?'أُغلق '+_fd(p.closed_at):'';
+    var ci=p.close_info||{};
+    var who={client:['👤 العميل أغلقه','#b45309'],admin:['🛡 الإدارة','#0f766e'],auto:['⏱ تلقائي','#475569'],done:['✓ ترسية','#15803d']}[ci.by]||['',''];
+    var expl=(ci.text&&ci.by!=='done')?'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:6px;line-height:1.7;background:var(--bg);border-radius:9px;padding:6px 9px"><b style="color:'+who[1]+'">'+who[0]+':</b> '+esc(ci.text)+(ci.open_days!=null?' · <span style="color:var(--muted)">ظل مفتوح '+ci.open_days+' يوم</span>':'')+'</div>':'';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض'+(p.created_at?' · نُشر '+_fd(p.created_at):'')+(when?' · '+when:'')+'</div>'+expl+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
   }).join('');
   b.innerHTML=h;
 }
