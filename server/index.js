@@ -253,15 +253,17 @@ async function notifyMatchingProviders(request){
   try{
     if(!request || !request.id) return;
     if((await getSetting('match_notify_on','1'))==='0') return;
-    const cat = request.category || null;
+    let _ex = [];
+    try { const _q = await pool.query('SELECT category, extra_categories FROM requests WHERE id=$1', [request.id]); if (_q.rows.length) _ex = _reqCats(_q.rows[0]); } catch(_e){}
+    const cats = _ex.length ? _ex : (request.category ? [request.category] : []);
     const city = request.city || null;
-    // مزوّد يطابق الفئة (ضمن تخصصاته أو فئات إشعاره) ونفس المدينة إن توفّرت
+    // مزوّد يطابق أحد تخصصات المشروع (الرئيسي أو الإضافية) ونفس المدينة إن توفّرت
     const r = await pool.query(
       `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
         WHERE role='provider' AND is_active=TRUE
-          AND ($1::text IS NULL OR $1 = ANY(COALESCE(notify_categories, specialties, ARRAY[]::text[])) OR $1 = ANY(COALESCE(specialties, ARRAY[]::text[])))
+          AND (cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])
           AND (COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))`,
-      [cat, city]);
+      [cats, city]);
     let sent=0;
     const link = SITE_URL + '/project/x-' + request.id + '?id=' + request.id;
     for(const p of r.rows){
@@ -398,7 +400,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.category_other, r.city, r.district, r.client_id,
+      SELECT r.id, r.title, r.description, r.category, r.category_other, r.extra_categories, r.city, r.district, r.client_id,
         r.budget_max, r.geo_lat, r.geo_lng,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.close_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
@@ -2062,7 +2064,7 @@ async function runReminders(){
             `SELECT r.id, r.title, r.city FROM requests r
              WHERE r.status='open' AND r.assigned_provider_id IS NULL
                AND r.created_at > COALESCE($3::timestamp, NOW() - INTERVAL '24 hours')
-               AND r.category = ANY($1::text[])
+               AND (r.category = ANY($1::text[]) OR COALESCE(r.extra_categories,'{}') && $1::text[])
                AND ($4::boolean OR r.city IS NULL OR ($2::text IS NULL AND ($5::text[] IS NULL OR cardinality($5::text[])=0)) OR r.city = $2 OR r.city = ANY(COALESCE($5::text[],ARRAY[]::text[])))
              ORDER BY r.created_at DESC LIMIT 12`,
             [cats, p.city||null, p.last_match_email_at||null, p.allcities, p.service_cities||null]);
@@ -2322,6 +2324,8 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
     // «أخرى»: النص اللي كتبه العميل ينحفظ منفصل — التصنيف يبقى من قائمتنا
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS category_other TEXT`);
+    // تخصصات إضافية (حتى 2) — توسّع وصول المشروع للمزوّدين؛ الرئيسي يبقى category
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
     try { await pool.query(`UPDATE requests SET category_other=LEFT(category,120), category='أخرى' WHERE category IS NOT NULL AND category<>'' AND category<>'direct' AND category<>'صيانة مصاعد' AND category<>'أبواب' AND category<>'جبس وطباشير' AND NOT (category = ANY($1::text[]))`, [CATEGORIES]); } catch(_e){ console.error('cat_other migrate:', _e.message); }
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
@@ -3226,13 +3230,13 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
       else if (status === 'done') { query += ` AND r.status IN ('completed','in_progress','done')`; }
     }
-    if (category) { params.push(category); query += ` AND r.category=$${params.length}`; }
+    if (category) { params.push(category); query += ` AND (r.category=$${params.length} OR $${params.length}=ANY(COALESCE(r.extra_categories,'{}')))`; }
     if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
     query += ' ORDER BY r.created_at DESC LIMIT 100';
     const result = await pool.query(query, params);
@@ -3353,6 +3357,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     await client.query('COMMIT');
     try { if (pxCloseAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='admin' WHERE id=$1", [r.rows[0].id]); } catch(e){}
     try { if (_nc.category_other && r.rows[0]) await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); } catch(e){}
+    try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); } catch(e){}
 
     // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
     const magicTok = await getMagicToken(clientId);
@@ -3414,6 +3419,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
     try { if (closeAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='client' WHERE id=$1", [r.rows[0].id]); } catch(e){}
     try { if (_nc.category_other && r.rows[0]) { await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); r.rows[0].category_other = _nc.category_other; } } catch(e){}
+    try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
     const newReq = r.rows[0];
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
@@ -3460,6 +3466,8 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
     if (category !== 'أخرى' || _nc.category_other) { sets.push('category_other=$'+i); params.push(category === 'أخرى' ? _nc.category_other : null); i++; }
+    { const _ex = _normExtras(req.body.extra_categories, category); if (_ex) { sets.push('extra_categories=$'+i); params.push(_ex.length ? _ex : null); i++; }
+      else if (category) { sets.push('extra_categories=array_remove(extra_categories,$'+i+')'); params.push(category); i++; } }
     if (req.body.close_days !== undefined) {
       const _cd = parseInt(req.body.close_days)||0;
       if (_cd>0) {
@@ -4767,6 +4775,17 @@ function _normCat(cat, other){
   if (CATEGORIES.includes(c)) return { category: c, category_other: null };
   return { category: 'أخرى', category_other: c.slice(0, 120) };
 }
+function _normExtras(arr, primary){
+  if (!Array.isArray(arr)) return null;
+  const out = [];
+  for (let c of arr) {
+    c = String(c == null ? '' : c).trim(); if (_CAT_ALIASES[c]) c = _CAT_ALIASES[c];
+    if (!c || c === 'أخرى' || c === 'direct' || c === primary || !CATEGORIES.includes(c) || out.includes(c)) continue;
+    out.push(c); if (out.length >= 2) break;
+  }
+  return out;
+}
+function _reqCats(r){ return [r && r.category].concat((r && Array.isArray(r.extra_categories)) ? r.extra_categories : []).filter(c => c && c !== 'أخرى' && c !== 'direct'); }
 app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-age=300'); res.json({ categories: CATEGORIES }); });
 
 app.get('/api/stats', async (req, res) => {
@@ -5193,7 +5212,7 @@ app.get('/api/admin/coverage-gaps', requirePermission('outreach.manage'), async 
     const r = await pool.query(`
       SELECT r.id, r.title, r.category, r.city, r.budget_max, r.created_at,
         (SELECT COUNT(*)::int FROM users u WHERE u.role='provider' AND u.is_active=true
-          AND (u.city = r.city) AND (u.specialties IS NULL OR r.category = ANY(u.specialties))) AS providers,
+          AND (u.city = r.city) AND (u.specialties IS NULL OR r.category = ANY(u.specialties) OR COALESCE(r.extra_categories,'{}') && u.specialties)) AS providers,
         (SELECT COUNT(*)::int FROM bids b WHERE b.request_id = r.id) AS bids
       FROM requests r
       WHERE r.status='open'
@@ -5816,9 +5835,9 @@ app.post('/api/admin/requests/:id/remind', requirePermission('requests.review'),
 app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const rq = await pool.query('SELECT category, city FROM requests WHERE id=$1', [id]);
+    const rq = await pool.query('SELECT category, extra_categories, city FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [rq.rows[0].category];
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : _reqCats(rq.rows[0]);
     const rows = await matchingProviders(_cats, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
     res.json({ count: rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
@@ -5830,11 +5849,11 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     const doEmail = !!req.body.email;
     const allCities = !!req.body.all_cities;
     if (!doNotify && !doEmail) return res.status(400).json({ message: 'اختر قناة واحدة على الأقل' });
-    const rq = await pool.query('SELECT title, category, city, status FROM requests WHERE id=$1', [id]);
+    const rq = await pool.query('SELECT title, category, extra_categories, city, status FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = rq.rows[0];
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
-    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : [row.category];
+    const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : _reqCats(row);
     const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;
@@ -6295,6 +6314,8 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
     const _xs = []; const _xp = []; let _xi = 12; let _dropped = 0;
     if ('deadline' in req.body) { _xs.push('deadline=$'+_xi++); _xp.push(deadline||null); }
     if (category !== 'أخرى' || _nc.category_other) { _xs.push('category_other=$'+_xi++); _xp.push(category === 'أخرى' ? _nc.category_other : null); }
+    { const _ex = _normExtras(req.body.extra_categories, category); if (_ex) { _xs.push('extra_categories=$'+_xi++); _xp.push(_ex.length ? _ex : null); }
+      else if (category) { _xs.push('extra_categories=array_remove(extra_categories,$'+_xi+')'); _xi++; _xp.push(category); } }
     if ('district' in req.body) { _xs.push('district=$'+_xi++); _xp.push((req.body.district||'').toString().trim().slice(0,80)||null); }
     if (Array.isArray(req.body.images)) {
       const imgs = [];
