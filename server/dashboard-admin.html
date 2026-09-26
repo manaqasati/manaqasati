@@ -705,7 +705,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="ufilters" id="bid-filters">
           <select id="bf-sort" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="new">🕒 الأحدث أولاً</option><option value="old">الأقدم أولاً</option><option value="sus">🚩 المزعجة أولاً</option><option value="pdesc">الأعلى سعراً</option><option value="pasc">الأقل سعراً</option></select>
           <select id="bf-time" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل الأوقات</option><option value="seen">🆕 الجديد منذ آخر زيارة</option><option value="1">آخر 24 ساعة</option><option value="3">آخر 3 أيام</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select>
-          <select id="bf-flag" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل العروض</option><option value="sus">🚩 المزعجة فقط</option><option value="any">كل ما فيه راية</option><option value="clean">✅ النظيفة فقط</option><option value="tpl">قالب غير معبّأ</option><option value="copy">نص منسوخ</option><option value="attdup">مرفق مكرر</option><option value="contact">تواصل خارج المنصة</option><option value="empty">نص فارغ</option><option value="short">نص قصير جداً</option><option value="token">سعر رمزي</option></select>
+          <select id="bf-flag" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل العروض</option><option value="sus">🚩 المزعجة فقط</option><option value="any">كل ما فيه راية</option><option value="clean">✅ النظيفة فقط</option><option value="tpl">قالب غير معبّأ</option><option value="copy">نص منسوخ</option><option value="attdup">مرفق مكرر</option><option value="contact">تواصل خارج المنصة</option><option value="empty">نص فارغ</option><option value="short">نص قصير جداً</option><option value="fake">سعر وهمي (أقل من 50)</option><option value="token">سعر رمزي</option></select>
           <select id="bf-att" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">المرفق: الكل</option><option value="yes">📎 مع مرفق</option><option value="no">بدون مرفق</option></select>
           <select id="bf-vis" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">ظهور السعر: الكل</option><option value="public">🌐 السعر ظاهر</option><option value="private">🔒 السعر خاص</option></select>
           <select id="bf-city" onchange="renderBids()"><option value="">كل مدن المزودين</option></select>
@@ -3084,6 +3084,7 @@ function adminBidEdit(id){
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
 var WARN_PRESETS=[
+  'السعر اللي كتبته (مثل 1 ريال) مو سعر حقيقي — اكتب سعرك الفعلي للمشروع، العميل يبي يقارن أسعار واضحة. تكرارها يعرّض حسابك للإيقاف.',
   'المرفق غير واضح أو لا علاقة له بالمشروع — أعد رفع ملف مناسب أو احذفه.',
   'لا تكتب رقم جوالك في نص العرض — التواصل يتم عبر المنصة فقط.',
   'لا تكتب السعر داخل نص العرض عند اختيار «السعر خاص».',
@@ -3187,7 +3188,8 @@ function _bidFlags(b){
   var dn=note.replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[\s\-\.\(\)+_]/g,'');
   if(/\d{9,}/.test(dn)) f.push({k:'contact',t:'تواصل خارج المنصة',sev:'high'});
   if(note && nn.replace(/\s/g,'').length<40 && !f.some(function(x){return x.k==='tpl';})) f.push({k:'short',t:'نص قصير جداً',sev:'med'});
-  if(b.price!=null&&b.price>0&&b.price<100&&(!b.price_unit||b.price_unit==='total')) f.push({k:'token',t:'سعر رمزي',sev:'med'});
+  if(b.price!=null&&b.price>0&&b.price<50&&(!b.price_unit||b.price_unit==='total')) f.push({k:'fake',t:'سعر وهمي ('+Math.round(b.price)+' ر.س)',sev:'high'});
+  else if(b.price!=null&&b.price>0&&b.price<100&&(!b.price_unit||b.price_unit==='total')) f.push({k:'token',t:'سعر رمزي',sev:'med'});
   return f;
 }
 function _bidSev(fl){return fl.some(function(x){return x.sev==='high';})?'high':(fl.length?'med':'');}
