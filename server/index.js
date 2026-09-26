@@ -370,7 +370,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
       const isAssigned=uid&&asg.assigned_provider_id&&String(uid)===String(asg.assigned_provider_id);
       let isRealBidder=false;
       if(uid&&!isOwner&&!isAdmin){
-        const rb=await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`,[id,uid]);
+        const rb=await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (COALESCE(price_unit,'total')<>'total' OR price>=50) AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`,[id,uid]);
         if(rb.rows.length){ isRealBidder=true; try{ const _i=await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING',[uid,row.client_id,id,rb.rows[0].id]); if(_i.rowCount>0)sendCommissionReminder(uid,id); }catch(e){} }
       }
       if(isOwner||isAdmin||isAssigned||isRealBidder){
@@ -3046,7 +3046,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     let isRealBidder = false;
     if (uid && !isOwner && !isAdmin) {
       try {
-        const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`, [id, uid]);
+        const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (COALESCE(price_unit,'total')<>'total' OR price>=50) AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) ORDER BY created_at DESC LIMIT 1`, [id, uid]);
         if (rb.rows.length) {
           isRealBidder = true;
           try { const _ins = await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING', [uid, row.client_id, id, rb.rows[0].id]); if (_ins.rowCount > 0) sendCommissionReminder(uid, id); } catch(e){}
@@ -3394,6 +3394,9 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// أقل سعر إجمالي مقبول للعرض — يمنع «1 ريال» اللي يُستخدم لفتح رقم العميل ويخرّب مقارنة الأسعار
+const BID_MIN_TOTAL = 50;
+function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
@@ -3411,6 +3414,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
+    if (priceUnit==='total' && price < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
     // جودة الرسالة: نمنع العروض العشوائية/الفارغة (حارس أساسي — يُطبَّق مهما كانت الصفحة)
     note = (note || '').trim();
     const _noteBare = note.replace(/\s+/g, '');
@@ -3521,11 +3525,12 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
 app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
+    const own = await pool.query("SELECT provider_id, status, COALESCE(price_unit,'total') AS price_unit FROM bids WHERE id=$1", [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
     const { price, days, note } = req.body;
+    if (price!=null && price!=='' && own.rows[0].price_unit==='total' && (parseFloat(price)||0) < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
     if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الحفظ — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية.', code: 'template_unfilled' });
     let attUrl, attHash = null;
