@@ -208,6 +208,18 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 @media(max-width:640px){.loc-map{display:none!important}}
+.pj-cn{background:linear-gradient(160deg,#fffbeb,#fef3c7);border:2px solid #f59e0b;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 24px rgba(245,158,11,.15)}
+.pj-cn .hd{display:flex;align-items:center;gap:9px}
+.pj-cn .ic{width:38px;height:38px;border-radius:12px;background:#f59e0b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.pj-cn .tt{font-family:'Cairo',sans-serif;font-size:16px;font-weight:900;color:#78350f}
+.pj-cn .sb{font-size:11.5px;font-weight:800;color:#92400e}
+.pj-cn .it{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid #fde68a;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;line-height:1.7;color:#422006;white-space:pre-line;word-break:break-word}
+.pj-cn .it b{width:22px;height:22px;border-radius:22px;background:#f59e0b;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.pj-cn .go{border:0;background:#1d4ed8;color:#fff;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:15px;cursor:pointer;text-align:center;text-decoration:none;display:block}
+.pj-cn .ft{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:700;color:#92400e}
+.pj-cn .ft button{border:0;background:none;padding:0;font-family:inherit;font-size:11.5px;font-weight:800;color:#92400e;text-decoration:underline;cursor:pointer}
+.pj-cn-ok{background:#f0fdf4;border:1.5px solid #86efac;border-radius:18px;padding:14px;display:flex;align-items:center;gap:10px}
+.pj-cn-ok .ic{width:36px;height:36px;border-radius:12px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 /* ═══ صفحة المشروع — تصميم 2026 ═══ */
 .pj-cover.cover{aspect-ratio:16/10;max-height:340px;cursor:zoom-in}
 .pj-cover .cover-overlay,.pj-cover .cover-bar,.pj-cover .cover-net{display:none}
@@ -802,6 +814,26 @@ function _pjMyBidHtml(req){
   h+='<div class="pj-bs">سعي المنصة تقديري — المبلغ النهائي حسب اتفاقك الفعلي مع العميل</div>';
   return h+'</div>';
 }
+function _pjNoteHtml(req){
+  var n=req.client_note; if(!n||!n.text) return '';
+  if(n.done_at){
+    if((Date.now()-new Date(n.done_at))/86400000>2) return '';
+    return '<div class="pj-cn-ok" id="pj-cn"><span class="ic">✓</span><div style="flex:1"><b style="font-size:14.5px;color:#14532d">شكراً! تم تحديث مشروعك</b><div style="font-size:12px;font-weight:700;color:#166534;line-height:1.6">المزوّدين يشوفون المعلومات الجديدة الحين</div></div></div>';
+  }
+  if(n.hidden) return '';
+  var items=String(n.text).split(/\n+/).map(function(t){return t.replace(/^\s*[•\-\*·–]+\s*/,'').trim();}).filter(Boolean);
+  var when='';try{when=new Date(n.at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'});}catch(e){}
+  var h='<div class="pj-cn" id="pj-cn"><div class="hd"><span class="ic">💡</span><div style="flex:1"><div class="tt">ملاحظات الإدارة لتحسين مشروعك</div><div class="sb">تظهر لك أنت فقط 🔒</div></div></div>';
+  h+='<div style="font-size:13px;font-weight:700;color:#78350f;line-height:1.7">إضافة هذي المعلومات تخلّي المزوّدين يعطونك أسعار أدق ويوصلك عروض أكثر:</div>';
+  items.forEach(function(t,i){h+='<div class="it">'+(items.length>1?'<b>'+(i+1)+'</b>':'')+'<span>'+esc(t)+'</span></div>';});
+  if(req.status==='open'||req.status==='pending_review'||req.status==='review'||req.status==='needs_edit')h+='<a class="go" href="/dashboard-client.html?edit='+req.id+'">✏️ أضف المعلومات الآن</a>';
+  h+='<div class="ft"><span>من فريق مناقصة'+(when?' · '+when:'')+'</span><button onclick="_pjNoteHide()">تم، أخفِ الملاحظة</button></div></div>';
+  return h;
+}
+function _pjNoteHide(){
+  var el=document.getElementById('pj-cn');if(el)el.style.display='none';
+  fetch(API+'/api/requests/'+_rid+'/client-note/hide',{method:'POST',headers:{'Authorization':'Bearer '+getToken()}}).then(function(){if(_req&&_req.client_note)_req.client_note.hidden=true;}).catch(function(){});
+}
 function render(){
   var req=_req;
   if(!req||!req.id) return;
@@ -841,6 +873,7 @@ function render(){
     h+='</div>';
   }
   if(isOwner){
+    h+=_pjNoteHtml(req);
     var bs=_bidStats();
     if(_bids.length){
       h+='<div class="pj-sum"><div style="display:flex;align-items:center;gap:8px"><b class="t">وصلك '+_bids.length+' '+(_bids.length>=3&&_bids.length<=10?'عروض':'عرض')+'</b>'+(req.bids_today?'<span class="pj-pill" style="margin-right:auto;background:rgba(255,255,255,.16);color:#fff">+'+req.bids_today+' اليوم</span>':'')+'</div>';
