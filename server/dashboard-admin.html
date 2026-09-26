@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="ufilters" id="bid-filters">
           <select id="bf-sort" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="new">🕒 الأحدث أولاً</option><option value="old">الأقدم أولاً</option><option value="sus">🚩 المشبوهة أولاً</option><option value="pdesc">الأعلى سعراً</option><option value="pasc">الأقل سعراً</option></select>
           <select id="bf-time" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل الأوقات</option><option value="seen">🆕 الجديد منذ آخر زيارة</option><option value="1">آخر 24 ساعة</option><option value="3">آخر 3 أيام</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select>
-          <select id="bf-flag" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل العروض</option><option value="sus">🚩 المشبوهة فقط</option><option value="clean">✅ النظيفة فقط</option><option value="نص فارغ">نص فارغ</option><option value="سعر رمزي">سعر رمزي</option><option value="سعر داخل النص">سعر داخل النص</option><option value="عرض مكرر">عرض مكرر</option><option value="تواصل خارج المنصة">تواصل خارج المنصة</option></select>
+          <select id="bf-flag" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">كل العروض</option><option value="sus">🚩 المشبوهة فقط</option><option value="clean">✅ النظيفة فقط</option><option value="نص فارغ">نص فارغ</option><option value="سعر رمزي">سعر رمزي</option><option value="عرض مكرر">عرض مكرر</option><option value="تواصل خارج المنصة">تواصل خارج المنصة</option></select>
           <select id="bf-att" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">المرفق: الكل</option><option value="yes">📎 مع مرفق</option><option value="no">بدون مرفق</option></select>
           <select id="bf-vis" onchange="renderBids()" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;background:var(--card);color:var(--text)"><option value="">ظهور السعر: الكل</option><option value="public">🌐 السعر ظاهر</option><option value="private">🔒 السعر خاص</option></select>
           <select id="bf-city" onchange="renderBids()"><option value="">كل مدن المزودين</option></select>
@@ -2712,9 +2712,8 @@ function _bidFlags(b,dupMap){
   var f=[];
   var note=(b.note||'').trim();
   if(!note) f.push(['نص فارغ','#b91c1c']);
-  if(b.price!=null && b.price>0 && b.price<100) f.push(['سعر رمزي','#b45309']);
-  // سعر مكتوب داخل النص رغم أن السعر «خاص»
-  if(b.price_visibility && b.price_visibility!=='public' && /\d[\d.,\s]{2,}/.test(note)) f.push(['سعر داخل النص','#b45309']);
+  // سعر رمزي: للسعر الإجمالي فقط — سعر المتر/الوحدة الصغير طبيعي
+  if(b.price!=null && b.price>0 && b.price<100 && (!b.price_unit || b.price_unit==='total')) f.push(['سعر رمزي','#b45309']);
   // عرض مكرر: نفس المزوّد بنفس النص أكثر من مرة
   if(note && dupMap[b.provider_id+'|'+note]>1) f.push(['عرض مكرر','#7c3aed']);
   var _dn=note.replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[\s\-\.\(\)+_]/g,'');
