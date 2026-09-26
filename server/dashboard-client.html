@@ -1010,7 +1010,7 @@ if(!token||!user.id){location.href='/auth.html';}
       var raw=null; try{ raw=sessionStorage.getItem('mnq_req_draft'); }catch(e){}
       if(!raw) return;
       var draft=null; try{ draft=JSON.parse(raw); }catch(e){}
-      if(!draft||!draft.title||!draft.category){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
+      if(!draft||(!draft.title&&!draft.category)){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
       var done=false, tries=0;
       function step(){
         if(done) return;
@@ -1021,10 +1021,10 @@ if(!token||!user.id){location.href='/auth.html';}
         var ready = t&&c&&ct && c.options.length>1 && ct.options.length>1;
         if(!ready){ if(tries<40) return setTimeout(step,250); return; }
         // عبّئ
-        t.value=String(draft.title).slice(0,200);
+        if(draft.title) t.value=String(draft.title).slice(0,200);
         if(d) d.value=String(draft.description||'').slice(0,4000);
         for(var i=0;i<c.options.length;i++){ if(c.options[i].value===draft.category){ c.value=draft.category; break; } }
-        if(typeof checkOther==='function') checkOther();
+        if(draft.category){ try{ c.dispatchEvent(new Event('change')); }catch(e){ if(typeof checkOther==='function') checkOther(); } } else { try{ t.focus(); }catch(e){} }
         if(draft.city){ for(var j=0;j<ct.options.length;j++){ if(ct.options[j].value===draft.city){ ct.value=draft.city; ct.style.borderColor='var(--green)'; break; } } }
         done=true;
         // نجحت التعبئة → امسح المسودّة ونظّف الرابط
