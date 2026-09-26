@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
-const { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 
 // Cloudflare R2 Setup
@@ -1462,6 +1462,51 @@ async function runOffsiteBackup(force){
     return { ok:false, message: e.message };
   } finally { global._offsiteRunning = false; }
 }
+// ═══ نسخة الصور والمرفقات إلى مخزن ثاني (R2_BACKUP_BUCKET) — ينسخ الجديد فقط، ولا يحذف منه أبداً ═══
+const R2_BACKUP_BUCKET = process.env.R2_BACKUP_BUCKET || '';
+async function _listKeys(bucket, prefix){
+  const out = new Map(); let token, pages = 0;
+  do {
+    const r = await r2Client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: token, MaxKeys: 1000 }));
+    for (const o of (r.Contents||[])) out.set(o.Key, Number(o.Size)||0);
+    token = r.IsTruncated ? r.NextContinuationToken : undefined; pages++;
+  } while (token && pages < 500);
+  return out;
+}
+async function syncFilesBackup(force){
+  if (!r2Client || !R2_BACKUP_BUCKET) return { ok:false, skipped:true, message: R2_BACKUP_BUCKET ? 'R2 غير متصل' : 'المخزن الاحتياطي غير مضبوط' };
+  if (global._filesSyncRunning) return { ok:false, message:'مزامنة قيد التنفيذ' };
+  if (!force) { const last = parseInt(await getSetting('files_backup_at','0'))||0; if (Date.now()-last < 20*3600*1000) return { ok:false, skipped:true }; }
+  global._filesSyncRunning = true;
+  const t0 = Date.now(); let copied = 0, copiedBytes = 0, failed = 0;
+  try {
+    const src = await _listKeys(R2_BUCKET, undefined);
+    const dst = await _listKeys(R2_BACKUP_BUCKET, undefined);
+    const todo = [];
+    for (const [k, sz] of src) { if (k.indexOf(OFFSITE_PREFIX) === 0) continue; if (!dst.has(k) || dst.get(k) !== sz) todo.push([k, sz]); }
+    for (const [k] of todo) {
+      if (Date.now() - t0 > 25*60*1000) break; // حد أقصى 25 دقيقة لكل تشغيل، الباقي يكمل المرة الجاية
+      try {
+        const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: k }));
+        await r2Client.send(new PutObjectCommand({ Bucket: R2_BACKUP_BUCKET, Key: k, Body: g.Body, ContentLength: g.ContentLength, ContentType: g.ContentType, ContentDisposition: g.ContentDisposition }));
+        copied++; copiedBytes += Number(g.ContentLength)||0;
+      } catch(e){ failed++; if (failed <= 3) console.error('filesBackup copy', k, e.message); }
+    }
+    let total = 0, totalBytes = 0; for (const [k, sz] of src) { if (k.indexOf(OFFSITE_PREFIX) === 0) continue; total++; totalBytes += sz; }
+    const remaining = Math.max(0, todo.length - copied - failed);
+    const info = { at: new Date().toISOString(), total, totalBytes, copied, copiedBytes, failed, remaining, backupCount: dst.size + copied, sec: Math.round((Date.now()-t0)/1000) };
+    await setSetting('files_backup_at', String(Date.now()));
+    await setSetting('files_backup_last', JSON.stringify(info));
+    if (failed > 0 && copied === 0) throw new Error(failed + ' ملف فشل نسخه — تأكد إن مفتاح R2 له صلاحية على المخزن ' + R2_BACKUP_BUCKET);
+    console.log('✅ files backup:', copied, 'copied,', remaining, 'remaining,', failed, 'failed');
+    return { ok:true, ...info };
+  } catch(e){
+    console.error('files backup failed:', e.message);
+    await setSetting('files_backup_error', JSON.stringify({ at: new Date().toISOString(), msg: String(e.message||'').slice(0,200) })).catch(()=>{});
+    try { await _alertAdmins('alert_files_backup_at', '🚨 فشلت نسخة الصور والمرفقات', String(e.message||'').slice(0,180)); } catch(_){}
+    return { ok:false, message: e.message };
+  } finally { global._filesSyncRunning = false; }
+}
 async function listOffsiteBackups(){
   if (!r2Client) return [];
   const out = []; let token, pages = 0;
@@ -1484,6 +1529,7 @@ async function pruneOffsiteBackups(){
 async function checkStorageAlert(){
   try { await checkUploadGuards(); } catch(e){}
   try { await runOffsiteBackup(false); } catch(e){}
+  try { await syncFilesBackup(false); } catch(e){}
   try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
@@ -5738,12 +5784,17 @@ app.get('/api/admin/offsite-backups', requirePermission('settings.manage'), asyn
     let last = null, err = null;
     try { last = JSON.parse(await getSetting('offsite_backup_last','null')); } catch(e){}
     try { err = JSON.parse(await getSetting('offsite_backup_error','null')); } catch(e){}
-    res.json({ r2: !!r2Client, running: !!global._offsiteRunning, last, error: err, backups: list.map(b => ({ key: b.key, bytes: b.bytes, at: b.at, url: R2_PUBLIC_URL ? (R2_PUBLIC_URL + '/' + b.key) : null })) });
+    let fLast = null, fErr = null;
+    try { fLast = JSON.parse(await getSetting('files_backup_last','null')); } catch(e){}
+    try { fErr = JSON.parse(await getSetting('files_backup_error','null')); } catch(e){}
+    const files = { configured: !!R2_BACKUP_BUCKET, bucket: R2_BACKUP_BUCKET || null, running: !!global._filesSyncRunning, last: fLast, error: fErr };
+    res.json({ files, r2: !!r2Client, running: !!global._offsiteRunning, last, error: err, backups: list.map(b => ({ key: b.key, bytes: b.bytes, at: b.at, url: R2_PUBLIC_URL ? (R2_PUBLIC_URL + '/' + b.key) : null })) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/offsite-backups/run', requirePermission('settings.manage'), async (req, res) => {
   if (global._offsiteRunning) return res.status(409).json({ message: 'نسخة قيد التنفيذ الآن' });
   runOffsiteBackup(true).then(r => { if (r && r.ok) logAdmin(req, 'offsite_backup', 'system', null, 'نسخة احتياطية خارجية يدوية').catch(()=>{}); }).catch(()=>{});
+  if (R2_BACKUP_BUCKET && !global._filesSyncRunning) syncFilesBackup(true).catch(()=>{});
   res.json({ ok: true, started: true });
 });
 app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
