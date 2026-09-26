@@ -2778,6 +2778,7 @@ function _rqActs(r){
   var ic=function(d){return '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+d+'</svg>';};
   var b=function(label,fn,svg,col){return '<button class="btn-g" onclick="_rqClose();'+fn+'" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;padding:9px 8px'+(col?';color:'+col+';border-color:'+col+'33':'')+'">'+ic(svg)+label+'</button>';};
   var items=[];
+  var _apv=(st==='needs_edit'||st==='pending_review'||st==='rejected')?'<button class="btn-g" onclick="_rqApprove('+id+')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:900;padding:12px;margin-bottom:7px;background:#16a34a;color:#fff;border-color:#16a34a">'+ic('<polyline points="20 6 9 17 4 12"/>')+'اعتماد ونشر للمزوّدين</button>':'';
   if(st==='open') items.push(b('دعوة المزوّدين','openInvite('+id+')','<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/>','#1d4ed8'));
   if(st==='needs_edit') items.push(b('تذكير العميل','remindClient('+id+')','<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>','#059669'));
   if(st==='completed') items.push(b(r.featured?'إزالة من المعرض':'تثبيت في المعرض','toggleFeaturedRow('+id+')','<polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/>','#a16207'));
@@ -2786,7 +2787,19 @@ function _rqActs(r){
   items.push(b('كراسة لمزوّدين','_oBriefFromReq('+id+')','<path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/>'));
   items.push(b('رابط دخول العميل','_clientLoginLink('+id+')','<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>'));
   items.push(b('حذف المشروع','deleteRequest('+id+')','<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>','#dc2626'));
-  return '<div class="rq-ds"><h4>⚡ إجراءات</h4><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">'+items.join('')+'</div></div>';
+  return '<div class="rq-ds"><h4>⚡ إجراءات</h4>'+_apv+'<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">'+items.join('')+'</div></div>';
+}
+async function _rqApprove(id){
+  var r=(_allReq||[]).find(function(x){return x.id===id;})||{};
+  var msg=(r.status==='rejected'?'المشروع مرفوض سابقاً — ':'')+'سيُنشر المشروع ويُرسل إشعار للعميل وللمزوّدين المطابقين ('+(r.category||'')+(r.city?' · '+r.city:'')+').';
+  if(!await askConfirm({title:'اعتماد ونشر',message:msg,confirmText:'نعم، انشر'}))return;
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:'approve',reason:null})},hdr()))
+    .then(function(x){return x.json().then(function(d){return{ok:x.ok,d:d};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر الاعتماد','error');return;}
+      toast('تم الاعتماد والنشر ✓ — وصل إشعار للمزوّدين المطابقين','success');
+      r.status='open'; _rqClose(); loadRequests(); setTimeout(function(){try{_rqOpen(id);}catch(e){}},700);
+    }).catch(function(){toast('تعذّر الاعتماد','error');});
 }
 // ═══ إعادة فتح / تمديد مدة العروض ═══
 var _RQ_CLOSED=['closed_auto','expired','cancelled','closed'];
@@ -2972,6 +2985,7 @@ function _rqOpen(id){
     var prices=bids.filter(function(b){return (!b.price_unit||b.price_unit==='total')&&parseFloat(b.price)>0;}).map(function(b){return parseFloat(b.price);});
     var mn=prices.length?Math.min.apply(null,prices):0, av=prices.length?prices.reduce(function(a,b){return a+b;},0)/prices.length:0;
     var FL={outside_region:'خارج المنطقة',spam_speed:'عروض سريعة',contact_share:'رقم في العرض'};
+    var atts=[]; try{ var at=r.attachments; if(typeof at==='string')at=JSON.parse(at); if(Array.isArray(at))atts=at.filter(function(a){return a&&a.url;}); }catch(e){}
     var imgs=[]; try{ var a=r.images; if(typeof a==='string')a=JSON.parse(a); if(Array.isArray(a))imgs=a.filter(function(u){return typeof u==='string'&&u.indexOf('http')===0;}); }catch(e){}
     var h='<div class="rq-dh"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+r.id+' · نُشر '+_adAgo(r.created_at)+'</div><div style="font-size:18px;font-weight:900;line-height:1.4">'+esc(r.title||'')+'</div>'
       +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><span class="pl" style="background:'+sm[1]+';color:'+sm[2]+'">'+sm[0]+'</span>'+(r.category?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.category)+'</span>':'')+(r.city?'<span class="pl" style="background:#eef3fb;color:#334766">'+esc(r.city)+'</span>':'')+'</div></div><button class="rq-x" onclick="_rqClose()" aria-label="إغلاق">×</button></div>'
@@ -2983,6 +2997,7 @@ function _rqOpen(id){
       +_cnSection(r)
       +(r.description?'<div class="rq-ds"><h4>الوصف</h4><div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;max-height:180px;overflow:auto;color:var(--text2)">'+esc(r.description)+'</div>'
         +(imgs.length?'<div style="display:flex;gap:8px;flex-wrap:wrap">'+imgs.slice(0,4).map(function(u){return '<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="" style="width:86px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--border)"></a>';}).join('')+'</div>':'')+'</div>':'')
+      +(atts.length?'<div class="rq-ds"><h4>📎 المرفقات والمخططات ('+atts.length+')</h4>'+atts.map(function(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:800;color:var(--p);text-decoration:none">📄 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name||'ملف')+'</span><span style="font-size:11.5px;color:var(--muted)">فتح ↗</span></a>';}).join('')+'</div>':'')
       +'<div class="rq-ds"><h4>العميل</h4><div style="display:flex;align-items:center;gap:10px"><span class="ad-av">'+esc((r.client_name||'?').charAt(0))+'</span><div style="flex:1;min-width:0"><b>'+esc(r.client_name||'—')+'</b><div style="font-size:12px;color:var(--muted);direction:ltr;text-align:right">'+esc(r.client_phone||'')+(r.client_prev?' · '+r.client_prev+' مشاريع سابقة':'')+'</div></div>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" href="https://wa.me/'+ph+'" target="_blank" rel="noopener">واتساب</a>':'')+'</div></div>'
       +'<div class="rq-ds"><h4>العروض ('+bids.length+')'+(prices.length?'<span style="color:#15803d">الأقل '+fmtNum(mn)+' · المتوسط '+fmtNum(av)+'</span>':'')+'</h4>'
         +(bids.length?bids.map(function(b){ var fl=(b.flags||'').split(',').filter(Boolean); var unit=b.price_unit&&b.price_unit!=='total'?(b.price_unit==='meter'?'/متر':'/وحدة'):'';
@@ -3140,8 +3155,19 @@ function saveReqEdit(){
   var btn=document.getElementById('re-save');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:document.getElementById('re-title').value.trim(),description:document.getElementById('re-desc').value.trim(),category:document.getElementById('re-cat').value.trim()||null,city:document.getElementById('re-city').value.trim()||null,budget_max:parseInt(document.getElementById('re-budget').value)||null,admin_notes:document.getElementById('re-notes').value.trim()||null,agent_name:document.getElementById('re-agent-name').value.trim()||null,agent_phone:document.getElementById('re-agent-phone').value.trim()||null,agent_pct:document.getElementById('re-agent-pct').value.trim()||null,close_days:_cdVal('re-closedur'),deadline:document.getElementById('re-deadline').value||null,district:document.getElementById('re-district').value.trim()||null,images:_reImgs.map(function(m){return m.url||m.data;}),attachments:_reAtts.map(function(a){return a.url?{name:a.name,url:a.url}:{name:a.name,data:a.data};})};
   if(_reAtts.some(function(a){return !a.url&&!a.data;})){toast('انتظر ثواني حتى يجهز الملف','error');btn.disabled=false;btn.textContent='حفظ التعديلات';return;}
-  if(body.images.some(function(x){return String(x).indexOf('data:')===0;})||body.attachments.some(function(a){return a.data;}))btn.textContent='جاري رفع الملفات...';
-  fetch(API+'/api/admin/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(d){if(d&&d._dropped)toast('تم الحفظ — لكن '+d._dropped+' ملف ما انرفع (نوع غير مسموح أو مشكلة رفع)','error');else toast('تم حفظ التعديلات','success');closeModal('reqModal');loadRequests();}).catch(function(){toast('تعذر الحفظ','error');}).finally(function(){btn.disabled=false;btn.textContent='حفظ التعديلات';});
+  if(body.images.some(function(x){return String(x).indexOf('data:')===0;})||body.attachments.some(function(a){return a.data;}))btn.textContent='جاري رفع الملفات... 0%';
+  var _hasUp=body.images.some(function(x){return String(x).indexOf('data:')===0;})||body.attachments.some(function(a){return a.data;});
+  var _done=function(){btn.disabled=false;btn.textContent='حفظ التعديلات';};
+  var xhr=new XMLHttpRequest(); xhr.open('PUT',API+'/api/admin/requests/'+_editReqId);
+  var _hh=(hdr().headers)||{}; Object.keys(_hh).forEach(function(k){try{xhr.setRequestHeader(k,_hh[k]);}catch(e){}});
+  xhr.upload.onprogress=function(ev){ if(!_hasUp||!ev.lengthComputable)return; var pct=Math.round(ev.loaded/ev.total*100); btn.textContent=pct<100?('جاري رفع الملفات... '+pct+'%'):'تم الرفع — جاري الحفظ...'; };
+  xhr.onload=function(){ _done(); var d={}; try{d=JSON.parse(xhr.responseText);}catch(e){}
+    if(xhr.status<200||xhr.status>=300){toast((d&&d.message)||'تعذر الحفظ','error');return;}
+    if(d&&d._dropped)toast('تم الحفظ — لكن '+d._dropped+' ملف ما انرفع (نوع غير مسموح أو مشكلة رفع)','error');else toast('تم حفظ التعديلات','success');
+    var _id=_editReqId; closeModal('reqModal');loadRequests(); setTimeout(function(){try{_rqOpen(_id);}catch(e){}},700); };
+  xhr.onerror=function(){_done();toast('تعذّر الحفظ — تحقّق من اتصالك','error');};
+  xhr.ontimeout=function(){_done();toast('انتهت المهلة — الملف كبير أو الاتصال بطيء','error');};
+  xhr.timeout=180000; xhr.send(JSON.stringify(body));
 }
 async function deleteRequest(id){
   if(!await askConfirm({title:'حذف المشروع',message:'سيُحذف المشروع نهائياً. لا يمكن التراجع.',confirmText:'نعم، احذف'}))return;
