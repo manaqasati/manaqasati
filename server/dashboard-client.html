@@ -1010,7 +1010,7 @@ if(!token||!user.id){location.href='/auth.html';}
       var raw=null; try{ raw=sessionStorage.getItem('mnq_req_draft'); }catch(e){}
       if(!raw) return;
       var draft=null; try{ draft=JSON.parse(raw); }catch(e){}
-      if(!draft||(!draft.title&&!draft.category)){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
+      if(!draft||(!draft.title&&!draft.category&&!draft.open)){ try{sessionStorage.removeItem('mnq_req_draft');}catch(e){} return; }
       var done=false, tries=0;
       function step(){
         if(done) return;
