@@ -3800,20 +3800,65 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.edits_log, s.created_at, s.submitted_at, s.approved_at,
-              r.title AS project_title, r.city,
-              COALESCE(u.business_name, u.name) AS provider_name, u.id AS provider_id
+              r.title AS project_title, r.city, b.price AS offer_price, b.price_unit,
+              COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.id AS provider_id, u.phone AS provider_phone,
+              (SELECT COUNT(*) FROM saai_ledger s2 WHERE s2.provider_id=s.provider_id AND s2.status='approved' AND s2.id<>s.id)::int AS provider_paid_n,
+              GREATEST(0, EXTRACT(EPOCH FROM (NOW() - s.created_at))/86400)::int AS age_days
        FROM saai_ledger s
        JOIN requests r ON r.id=s.request_id
        JOIN users u ON u.id=s.provider_id
+       LEFT JOIN bids b ON b.id=s.bid_id
        ORDER BY CASE s.status WHEN 'submitted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, s.submitted_at DESC NULLS LAST, s.created_at DESC
-       LIMIT 300`);
-    const sum = await pool.query(
-      `SELECT COALESCE(SUM(saai_amount) FILTER (WHERE status='approved'),0)::int AS collected,
-              COALESCE(SUM(saai_amount) FILTER (WHERE status='submitted'),0)::int AS awaiting,
-              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending'),0)::int AS due
-       FROM saai_ledger`);
-    res.json({ items: r.rows, summary: sum.rows[0] || {} });
-  } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {} }); }
+       LIMIT 1000`);
+    const sum = (await pool.query(
+      `SELECT COALESCE(SUM(saai_amount) FILTER (WHERE status='approved'),0)::float AS collected,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= date_trunc('month', timezone('Asia/Riyadh', now()))),0)::float AS collected_month,
+              COUNT(*) FILTER (WHERE status='submitted')::int AS awaiting_n,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='submitted'),0)::float AS awaiting,
+              COUNT(*) FILTER (WHERE status='pending' AND created_at >= NOW()-INTERVAL '10 days')::int AS due_n,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND created_at >= NOW()-INTERVAL '10 days'),0)::float AS due,
+              COUNT(*) FILTER (WHERE status='pending' AND created_at < NOW()-INTERVAL '10 days')::int AS overdue_n,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND created_at < NOW()-INTERVAL '10 days'),0)::float AS overdue,
+              COALESCE(MAX(EXTRACT(EPOCH FROM (NOW()-created_at))/86400) FILTER (WHERE status='pending'),0)::int AS oldest_days,
+              COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND (status<>'pending' OR created_at < NOW()-INTERVAL '10 days'))::int AS c90_total,
+              COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND status IN ('submitted','approved') AND COALESCE(submitted_at,approved_at) <= created_at + INTERVAL '10 days')::int AS c90_ok
+       FROM saai_ledger WHERE request_id IS NOT NULL`)).rows[0] || {};
+    const monthly = (await pool.query(
+      `SELECT to_char(m,'YYYY-MM') AS month,
+              COALESCE((SELECT SUM(saai_amount) FROM saai_ledger WHERE status='approved' AND date_trunc('month', approved_at)=m),0)::float AS collected
+       FROM generate_series(date_trunc('month', NOW()) - INTERVAL '5 months', date_trunc('month', NOW()), INTERVAL '1 month') m ORDER BY m`)).rows;
+    sum.due_total = (sum.due||0) + (sum.overdue||0);
+    res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly });
+  } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {}, monthly: [] }); }
+});
+app.post('/api/admin/saai/:id/reject', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300) || 'الإيصال غير واضح أو المبلغ غير مطابق';
+    const r = await pool.query("UPDATE saai_ledger SET status='pending', submitted_at=NULL WHERE id=$1 AND status='submitted' RETURNING provider_id, request_id", [id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود أو ليس بانتظار الاعتماد' });
+    try { await notify(r.rows[0].provider_id, 'لم نعتمد إيصال السداد', 'السبب: ' + reason + ' — ارفع الإيصال من جديد من «محفظة السعي».', 'saai', r.rows[0].request_id); } catch(e){}
+    try { await logAdmin(req, 'saai_reject', 'saai', id, reason); } catch(e){}
+    res.json({ ok: true });
+  } catch(e){ console.error('admin-saai-reject:', e.message); res.status(500).json({ message: 'تعذّر الرفض' }); }
+});
+app.post('/api/admin/saai/remind', auth, adminOnly, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : null;
+    const q = ids && ids.length
+      ? await pool.query(`SELECT s.id, s.provider_id, s.request_id, s.saai_amount, r.title, u.email, u.name FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id WHERE s.id = ANY($1) AND s.status='pending'`, [ids])
+      : await pool.query(`SELECT s.id, s.provider_id, s.request_id, s.saai_amount, r.title, u.email, u.name FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id WHERE s.status='pending' AND s.created_at < NOW()-INTERVAL '10 days'`);
+    let n = 0;
+    for (const x of q.rows) {
+      const amt = Math.round(Number(x.saai_amount)||0);
+      const t = 'تذكير: سعي المنصة مستحق';
+      const b = 'سعي المنصة على «' + (x.title||'مشروعك') + '»' + (amt>0 ? ' (' + amt.toLocaleString('en-US') + ' ر.س تقديرياً)' : '') + ' تجاوز مهلة الـ10 أيام. سدّده من «محفظة السعي»، ولو اختلف مبلغ الاتفاق عدّله هناك.';
+      try { await notify(x.provider_id, t, b, 'saai', x.request_id); n++; } catch(e){}
+      if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'محفظة السعي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+    }
+    try { await logAdmin(req, 'saai_remind', 'saai', null, n + ' reminders'); } catch(e){}
+    res.json({ ok: true, sent: n });
+  } catch(e){ console.error('admin-saai-remind:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 app.post('/api/admin/saai/:id/approve', auth, adminOnly, async (req, res) => {
   try {
@@ -5447,7 +5492,7 @@ app.get('/api/admin/providers', requirePermission('users.view'), async (req, res
 app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
   try {
     const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
+    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price, (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) as min_bid, u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
     if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
@@ -5657,6 +5702,40 @@ app.post('/api/admin/requests/:id/advise', requirePermission('requests.review'),
     await logAdmin(req, 'advise_request', 'request', id, 'ملاحظة للعميل (بقاء منشور)');
     res.json({ ok: true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query(`SELECT r.*, u.name AS client_name, u.phone AS client_phone, u.email AS client_email,
+        (SELECT COUNT(*) FROM requests x WHERE x.client_id=r.client_id AND x.id<>r.id AND (x.category IS DISTINCT FROM 'direct'))::int AS client_prev
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];
+    if (!rq) return res.status(404).json({ message: 'غير موجود' });
+    const bids = (await pool.query(`SELECT b.id, b.price, b.price_unit, b.days, b.status, b.note, b.created_at, b.provider_id,
+        COALESCE(NULLIF(u.business_name,''),u.name) AS provider_name, u.phone AS provider_phone,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float AS rating,
+        (SELECT string_agg(DISTINCT reason, ',') FROM offer_flags f WHERE f.bid_id=b.id) AS flags
+      FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 ORDER BY b.price ASC NULLS LAST`, [id])).rows;
+    let timeline = [];
+    try { timeline = (await pool.query('SELECT event, description, created_at FROM request_timeline WHERE request_id=$1 ORDER BY created_at ASC LIMIT 30', [id])).rows; } catch(e){}
+    delete rq.password; 
+    res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status) }), bids, timeline });
+  } catch(e) { console.error('req-detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT id, client_id, title, category, city FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq) return res.status(404).json({ message: 'غير موجود' });
+    const [m, prev, dup] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE role='provider' AND is_active IS NOT FALSE
+          AND ($1::text IS NULL OR $1 = ANY(COALESCE(specialties,'{}')) OR $1 = ANY(COALESCE(notify_categories,'{}')))
+          AND ($2::text IS NULL OR COALESCE(serves_all_cities,FALSE) OR city=$2 OR $2 = ANY(COALESCE(service_cities,'{}')))`, [rq.category||null, rq.city||null]),
+      pool.query(`SELECT COUNT(*)::int AS n FROM requests WHERE client_id=$1 AND id<>$2 AND (category IS DISTINCT FROM 'direct')`, [rq.client_id, id]),
+      pool.query(`SELECT id, title, status, created_at FROM requests WHERE client_id=$1 AND id<>$2 AND created_at >= NOW()-INTERVAL '30 days'
+          AND (lower(title)=lower($3) OR (category IS NOT DISTINCT FROM $4 AND city IS NOT DISTINCT FROM $5)) ORDER BY created_at DESC LIMIT 3`, [rq.client_id, id, rq.title||'', rq.category||null, rq.city||null])
+    ]);
+    res.json({ matches: m.rows[0].n, client_prev: prev.rows[0].n, duplicates: dup.rows });
+  } catch(e) { console.error('review-info:', e.message); res.json({ matches: null, client_prev: null, duplicates: [] }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
