@@ -809,6 +809,7 @@ async function maybeShowPushBanner(){
   }catch(e){}
 }
 
+function _rCatHit(r,specs){ if(specs.indexOf(r.category)>=0)return true; var x=r.extra_categories||[]; for(var i=0;i<x.length;i++){ if(specs.indexOf(x[i])>=0)return true; } return false; }
 var CATS=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','تركيب وصيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','أخرى'];
 // المصدر الموحّد: حدّث التخصصات من السيرفر (وأعد تعبئة قائمة الملف إن كانت مفتوحة)
 fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
@@ -1020,7 +1021,7 @@ function _renderHome(data){
   }
   var _bidIds={};_myBids.forEach(function(b){_bidIds[b.request_id]=1;});
   var openAll=allReq.filter(function(r){return r&&r.status==='open'&&!_bidIds[r.id];});
-  var matches=specs.length?openAll.filter(function(r){return specs.indexOf(r.category)>=0&&_inMyArea(r.city);}):[];
+  var matches=specs.length?openAll.filter(function(r){return _rCatHit(r,specs)&&_inMyArea(r.city);}):[];
   var matchedBySpec=matches.length>0;
   var pool=matchedBySpec?matches:openAll;
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
@@ -1371,12 +1372,12 @@ function _filterBrowse(){
   var f=_allProjs.filter(function(p){
     if(p.status!=='open')return false;
     if(q&&!((p.title||'').toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q)))return false;
-    if(cat&&p.category!==cat)return false;
+    if(cat&&p.category!==cat&&(p.extra_categories||[]).indexOf(cat)<0)return false;
     if(cit&&p.city!==cit)return false;
     if(_savedOn&&!(window._savedIds&&window._savedIds.indexOf(p.id)>=0))return false;
     if(_smartOn){
       var specs=(window._prof&&window._prof.specialties)||[];
-      if(specs.length&&specs.indexOf(p.category)<0)return false;
+      if(specs.length&&!_rCatHit(p,specs))return false;
       if(!_inMyAreaG(p.city))return false;
     }
     return true;
