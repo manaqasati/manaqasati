@@ -2843,7 +2843,12 @@ function _noSaai(r){ return (r.status==='in_progress'||r.status==='completed')&&
 function _saSection(r,sa,sg){
   if(sa){
     var stl={pending:['بانتظار السداد','#fef3c7','#92400e'],submitted:['أرسل إثبات — راجعه','#e6eeff','#1d4ed8'],approved:['مسدّد ✓','#dcfce7','#15803d'],rejected:['مرفوض','#fef2f2','#b91c1c']}[sa.status]||[sa.status,'#f1f5f9','#334766'];
-    return '<div class="rq-ds"><h4>💰 سعي المنصة<span class="pl" style="background:'+stl[1]+';color:'+stl[2]+'">'+stl[0]+'</span></h4><div style="display:flex;gap:16px;font-size:13.5px"><div>قيمة العقد <b>'+fmtNum(sa.contract_value)+'</b></div><div>السعي <b style="color:#15803d">'+fmtNum(sa.saai_amount)+' ر.س</b></div></div></div>';
+    var act='';
+    if(sa.status!=='approved'){
+      act='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="sa-ap-'+sa.id+'" onclick="_saApprove('+sa.id+','+r.id+')" style="flex:1;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">✅ تأكيد استلام السعي</button><button class="btn-g" onclick="_rqClose();_niGo(\'saai\')">صفحة سداد السعي</button></div>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">'+(sa.status==='submitted'?'المزوّد أرسل إثبات السداد — راجعه في «سداد السعي» قبل التأكيد.':'اضغط التأكيد لما يوصلك المبلغ (تحويل أو غيره)، حتى لو المزوّد ما رفع إثبات.')+'</div>';
+    }
+    return '<div class="rq-ds"><h4>💰 سعي المنصة<span class="pl" style="background:'+stl[1]+';color:'+stl[2]+'">'+stl[0]+'</span></h4><div style="display:flex;gap:16px;font-size:13.5px"><div>قيمة العقد <b>'+fmtNum(sa.contract_value)+'</b></div><div>السعي <b style="color:#15803d">'+fmtNum(sa.saai_amount)+' ر.س</b></div></div>'+act+'</div>';
   }
   if(!sg) return '';
   var opts=(sg.options||[]).map(function(o){
@@ -2858,6 +2863,13 @@ function _saSection(r,sa,sg){
     +'<span id="sa-fee-'+r.id+'" style="font-size:13px;font-weight:900;color:#15803d">'+(v?'السعي '+fmtNum(Math.round(v*sg.rate))+' ر.س':'')+'</span></div>'
     +'<button id="sa-btn-'+r.id+'" onclick="_saCreate('+r.id+')" style="margin-top:10px;width:100%;border:0;background:#dc2626;color:#fff;border-radius:11px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">إنشاء سعي</button>'
     +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">يوصل المزوّد إشعار بالمبلغ، ويظهر في محفظته ويقدر يعدّله لو الاتفاق النهائي مختلف.</div></div>';
+}
+async function _saApprove(sid,rid){
+  if(!await askConfirm({title:'تأكيد استلام السعي',message:'يتسجّل السعي «مسدّد» ويوصل المزوّد إشعار شكر.',confirmText:'تأكيد الاستلام'}))return;
+  var b=document.getElementById('sa-ap-'+sid); if(b){b.disabled=true;b.textContent='...';}
+  fetch(API+'/api/admin/saai/'+sid+'/approve',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error'); if(b){b.disabled=false;b.textContent='✅ تأكيد استلام السعي';} return;} toast('تم تأكيد استلام السعي ✓','success'); _rqOpen(rid); })
+    .catch(function(){toast('تعذّر الاتصال','error'); if(b)b.disabled=false;});
 }
 function _saPick(id,v){ var i=document.getElementById('sa-cv-'+id); if(i){i.value=v;_saCalc(id);} }
 function _saCalc(id){ var i=document.getElementById('sa-cv-'+id),f=document.getElementById('sa-fee-'+id); if(!i||!f)return; var v=parseFloat(i.value)||0; f.textContent=v>=50?'السعي '+fmtNum(Math.round(v*0.03))+' ر.س':''; }
