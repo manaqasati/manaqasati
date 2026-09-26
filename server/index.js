@@ -6072,14 +6072,23 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
 });
 app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
   try {
-    const agg = await pool.query(`SELECT reason AS close_reason, COUNT(*)::int AS c FROM (
-        SELECT CASE WHEN status='completed' THEN 'completed' ELSE COALESCE(close_reason,'auto_expired') END AS reason FROM requests
-        WHERE close_reason IS NOT NULL OR status IN ('closed_auto','expired','cancelled','completed')
-      ) t GROUP BY reason ORDER BY c DESC`);
-    const list = await pool.query(`SELECT r.id, r.title, CASE WHEN r.status='completed' THEN 'completed' ELSE COALESCE(r.close_reason,'auto_expired') END AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, COALESCE(u.name,'عميل') AS client_name,
+    // مفتاح السبب: الإغلاقات التلقائية تنقسم حسب مين حدد المدة (العميل / المنصة / الإدارة)
+    const KEY = `CASE WHEN r.status='completed' THEN 'completed'
+        WHEN r.close_reason IS NOT NULL THEN r.close_reason
+        WHEN r.close_auto_kind IS NOT NULL THEN 'auto_' || r.close_auto_kind
+        WHEN r.close_at IS NOT NULL THEN 'auto_' || COALESCE(r.close_set_by,'client')
+        ELSE 'auto_default' END`;
+    const WHERE = `(r.close_reason IS NOT NULL AND r.status <> 'open') OR r.status IN ('closed_auto','expired','cancelled','completed')`;
+    const agg = await pool.query(`SELECT ${KEY} AS close_reason, COUNT(*)::int AS c FROM requests r WHERE ${WHERE} GROUP BY 1 ORDER BY c DESC`);
+    const list = await pool.query(`SELECT r.id, r.title, r.status, r.created_at, r.close_at, r.close_set_by, r.close_auto_kind, r.close_auto_days, r.close_reason AS raw_reason,
+        ${KEY} AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, r.closed_at AS closed_at_raw, COALESCE(u.name,'عميل') AS client_name,
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
-      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.close_reason IS NOT NULL OR r.status IN ('closed_auto','expired','cancelled','completed') ORDER BY COALESCE(r.closed_at, r.completed_at) DESC NULLS LAST LIMIT 300`);
-    res.json({ summary: agg.rows, list: list.rows });
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE ${WHERE} ORDER BY COALESCE(r.closed_at, r.completed_at, r.close_at, r.created_at) DESC NULLS LAST LIMIT 300`);
+    const rows = list.rows.map(x => {
+      const info = x.status === 'completed' ? { by:'done', short:'تمت الترسية', text:'اختار مزوّد وتمت الترسية' } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
+      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info };
+    });
+    res.json({ summary: agg.rows, list: rows });
   } catch(e){ console.error('close-reasons:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
 app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), async (req, res) => {
