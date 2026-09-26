@@ -872,6 +872,7 @@ async function submitBid(btn){
   var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
   var _vis=((document.querySelector('input[name="bidVis"]:checked')||{}).value)||'client';
   var unit=((document.getElementById('bid-unit')||{}).value||'total');
+  if(unit==='total'&&Number(price)<50){al.textContent='اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي 50 ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة غيّر «نوع السعر».';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}return;}
   window._pendingBidP={price:Math.max(1,Math.round(Number(price))),days:Math.max(1,Math.round(Number(days))),note:note,vis:_vis,unit:unit};
   _showBidConfirmP();
 }
