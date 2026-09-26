@@ -1507,6 +1507,81 @@ async function syncFilesBackup(force){
     return { ok:false, message: e.message };
   } finally { global._filesSyncRunning = false; }
 }
+// ═══ نقل الصور القديمة المحفوظة داخل القاعدة (base64) إلى R2 ═══
+// يكتشف تلقائياً كل عمود فيه صور مضمّنة (TEXT / TEXT[] / JSONB / نص JSON)، يرفع كل صورة، ويستبدلها برابط.
+// آمن: ما يستبدل إلا لو الرفع نجح ورجع رابط http؛ غير كذا يترك القيمة كما هي.
+const _B64_RE = /^data:[a-z0-9.+\/-]+;base64,/i;
+global._inlineMig = global._inlineMig || { running:false };
+async function scanInlineMedia(){
+  const cols = await pool.query(`SELECT c.table_name t, c.column_name c, c.data_type dt, c.udt_name u
+    FROM information_schema.columns c
+    JOIN information_schema.columns pk ON pk.table_schema='public' AND pk.table_name=c.table_name AND pk.column_name='id'
+    WHERE c.table_schema='public' AND c.column_name<>'id'
+      AND (c.data_type IN ('text','character varying','jsonb','json') OR c.udt_name IN ('_text','_varchar'))`);
+  const found = [];
+  for (const r of cols.rows) {
+    try {
+      const q = await pool.query(`SELECT COUNT(*)::int n, COALESCE(SUM(length("${r.c}"::text)),0)::bigint b FROM public."${r.t}" WHERE "${r.c}"::text LIKE '%data:%;base64,%'`);
+      if (q.rows[0].n > 0) found.push({ table: r.t, column: r.c, type: r.u || r.dt, rows: q.rows[0].n, mb: Math.round(Number(q.rows[0].b)/1e6*10)/10 });
+    } catch(e){}
+  }
+  return found;
+}
+async function _replaceInline(val, folder, stat){
+  if (typeof val === 'string') {
+    if (_B64_RE.test(val)) {
+      const url = await uploadToCloud(val, folder);
+      if (url && /^https?:\/\//.test(url)) { stat.images++; stat.bytes += val.length; return url; }
+      stat.failed++; return val;
+    }
+    return val;
+  }
+  if (Array.isArray(val)) { const out = []; for (const x of val) out.push(await _replaceInline(x, folder, stat)); return out; }
+  if (val && typeof val === 'object') { const out = {}; for (const k of Object.keys(val)) out[k] = await _replaceInline(val[k], folder, stat); return out; }
+  return val;
+}
+async function migrateInlineMedia(){
+  const M = global._inlineMig;
+  if (M.running) return;
+  if (!r2Client) { M.error = 'R2 غير متصل'; return; }
+  Object.assign(M, { running:true, startedAt:new Date().toISOString(), finishedAt:null, error:null, images:0, bytes:0, failed:0, rows:0, current:null });
+  try {
+    const targets = await scanInlineMedia();
+    M.plan = targets;
+    for (const tg of targets) {
+      let lastId = -1;
+      const isArr = /^_/.test(tg.type), isJson = /json/.test(tg.type);
+      const folder = 'manaqasa/migrated-' + tg.table;
+      for (let guard = 0; guard < 100000; guard++) {
+        M.current = tg.table + '.' + tg.column;
+        const r = await pool.query(`SELECT id, "${tg.column}" v FROM public."${tg.table}" WHERE id > $1 AND "${tg.column}"::text LIKE '%data:%;base64,%' ORDER BY id LIMIT 5`, [lastId]);
+        if (!r.rows.length) break;
+        for (const row of r.rows) {
+          lastId = row.id;
+          const stat = { images:0, bytes:0, failed:0 };
+          let v = row.v, nv, changed = false;
+          if (isArr || isJson) { nv = await _replaceInline(v, folder, stat); changed = stat.images > 0; }
+          else if (typeof v === 'string') {
+            const t = v.trim();
+            if ((t[0] === '[' || t[0] === '{') && t.indexOf('data:') > 0) {
+              let parsed = null; try { parsed = JSON.parse(t); } catch(e){}
+              if (parsed !== null) { const p2 = await _replaceInline(parsed, folder, stat); if (stat.images) { nv = JSON.stringify(p2); changed = true; } }
+            } else if (_B64_RE.test(t)) { nv = await _replaceInline(t, folder, stat); changed = stat.images > 0; }
+          }
+          if (changed) {
+            await pool.query(`UPDATE public."${tg.table}" SET "${tg.column}"=$1 WHERE id=$2`, [isJson ? JSON.stringify(nv) : nv, row.id]);
+            M.rows++;
+          }
+          M.images += stat.images; M.bytes += stat.bytes; M.failed += stat.failed;
+        }
+      }
+    }
+    M.after = await scanInlineMedia();
+    await logAdminSystem('inline_migrate', 'نقل '+M.images+' صورة من القاعدة إلى R2 ('+Math.round(M.bytes/1e6)+'MB)').catch(()=>{});
+  } catch(e){ M.error = e.message; console.error('inlineMigrate:', e.message); }
+  finally { M.running = false; M.current = null; M.finishedAt = new Date().toISOString(); try { await setSetting('inline_count_last', ''); } catch(_){} }
+}
+async function logAdminSystem(){ /* تسجيل اختياري */ }
 async function listOffsiteBackups(){
   if (!r2Client) return [];
   const out = []; let token, pages = 0;
@@ -5777,6 +5852,23 @@ app.get('/api/uptime', async (req, res) => {
   } catch(e) {
     res.status(503).json({ ok: false, db: 'down', error: String(e.message||'').slice(0,80) });
   }
+});
+app.get('/api/admin/inline-migrate', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const M = global._inlineMig || {};
+    const found = M.running ? (M.plan || []) : await scanInlineMedia();
+    const lastBk = parseInt(await getSetting('offsite_backup_at','0'))||0;
+    res.json({ found, running: !!M.running, state: { startedAt:M.startedAt||null, finishedAt:M.finishedAt||null, images:M.images||0, mb:Math.round((M.bytes||0)/1e6*10)/10, failed:M.failed||0, rows:M.rows||0, current:M.current||null, error:M.error||null }, backupFresh: (Date.now()-lastBk) < 24*3600*1000, r2: !!r2Client });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/inline-migrate/run', requirePermission('settings.manage'), async (req, res) => {
+  if (global._inlineMig && global._inlineMig.running) return res.status(409).json({ message: 'النقل شغّال الآن' });
+  if (!r2Client) return res.status(400).json({ message: 'R2 غير متصل' });
+  const lastBk = parseInt(await getSetting('offsite_backup_at','0'))||0;
+  if (Date.now()-lastBk > 24*3600*1000) return res.status(400).json({ message: 'لازم تكون فيه نسخة احتياطية خلال آخر 24 ساعة قبل النقل — اضغط «نسخة الآن» أولاً' });
+  migrateInlineMedia().catch(()=>{});
+  logAdmin(req, 'inline_migrate', 'system', null, 'بدء نقل الصور القديمة إلى R2').catch(()=>{});
+  res.json({ ok: true, started: true });
 });
 app.get('/api/admin/offsite-backups', requirePermission('settings.manage'), async (req, res) => {
   try {
