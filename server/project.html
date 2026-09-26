@@ -264,7 +264,10 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-imgs .pimg{aspect-ratio:1;border-radius:12px;overflow:hidden;position:relative;cursor:zoom-in}
 .pj-imgs .pimg img{width:100%;height:100%;object-fit:cover}
 .pj-imgs .mr{position:absolute;inset:0;background:rgba(15,23,42,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px}
-.pj-file{display:flex;align-items:center;gap:10px;border:1px solid #e1e9f6;border-radius:12px;padding:10px 12px;text-decoration:none;color:#14223d}
+.pj-file{display:flex;align-items:center;gap:8px;border:1px solid #e1e9f6;border-radius:12px;padding:10px 12px;text-decoration:none;color:#14223d}
+.pj-fo{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit}
+.pj-fb{flex-shrink:0;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap}
+.pj-fd{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
 .pj-file b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pj-file small{font-size:11px;color:#5b6b85}
 .pj-cav{width:46px;height:46px;border-radius:14px;background:#0ea5e9;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;overflow:hidden;flex-shrink:0}
 .pj-cav img{width:100%;height:100%;object-fit:cover}
@@ -762,7 +765,8 @@ function _pjDetailsHtml(req){
       if(!/^https?:/i.test(String(url)))return;
       var ext=String(nm).split('.').pop().toLowerCase();
       var ic=ext==='pdf'?'📄':(['doc','docx'].indexOf(ext)>-1?'📝':(['xls','xlsx'].indexOf(ext)>-1?'📊':'📎'));
-      h+='<a class="pj-file" href="'+esc(url)+'" target="_blank" rel="noopener"><span style="font-size:22px">'+ic+'</span><div style="flex:1;min-width:0"><b>'+esc(nm)+'</b><small>اضغط للفتح أو التحميل</small></div></a>';
+      var dl=API+'/api/dl?u='+encodeURIComponent(url)+'&n='+encodeURIComponent(nm);
+      h+='<div class="pj-file"><a class="pj-fo" href="'+esc(url)+'" target="_blank" rel="noopener"><span style="font-size:22px">'+ic+'</span><div style="flex:1;min-width:0"><b>'+esc(nm)+'</b><small>'+(ext?esc(ext.toUpperCase())+' · ':'')+'اضغط للعرض</small></div></a><a class="pj-fb" href="'+esc(url)+'" target="_blank" rel="noopener">فتح</a><a class="pj-fb pj-fd" href="'+esc(dl)+'">⬇ تحميل</a></div>';
     });
   }
   if(req.geo_lat&&req.geo_lng){
