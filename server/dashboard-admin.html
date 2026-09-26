@@ -1549,12 +1549,15 @@ var _MS={};
 function msSetup(key,labelAll,opts,cb){ _MS[key]={sel:(_MS[key]&&_MS[key].sel)||[],opts:opts||[],labelAll:labelAll,cb:cb}; msRender(key); }
 function msRender(key){
   var m=_MS[key],panel=document.getElementById('ms-'+key+'-panel'); if(!m||!panel)return;
-  panel.innerHTML=m.opts.map(function(o,i){return '<label class="ms-item"><input type="checkbox" data-i="'+i+'"'+(m.sel.indexOf(o)>=0?' checked':'')+'><span>'+esc(o)+'</span></label>';}).join('')||'<div style="padding:8px;color:var(--muted);font-size:12px">لا خيارات</div>';
+  var _q=(m.opts.length>12)?'<div style="position:sticky;top:-6px;background:var(--card,#fff);padding:2px 0 6px;z-index:1"><input class="ms-q" type="search" autocomplete="off" placeholder="ابحث… مثل: خف، الشرقية" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border,#e2e8f0);border-radius:9px;padding:8px 10px;font-family:inherit;font-size:13px;outline:none"></div>':'';
+  panel.innerHTML=_q+(m.opts.map(function(o,i){return '<label class="ms-item" data-n="'+esc(_msNorm(o))+'"><input type="checkbox" data-i="'+i+'"'+(m.sel.indexOf(o)>=0?' checked':'')+'><span>'+esc(o)+'</span></label>';}).join('')||'<div style="padding:8px;color:var(--muted);font-size:12px">لا خيارات</div>');
+  var _qi=panel.querySelector('.ms-q'); if(_qi){ _qi.addEventListener('click',function(e){e.stopPropagation();}); _qi.addEventListener('input',function(){ var q=_msNorm(_qi.value).replace(/^ال/,''); panel.querySelectorAll('.ms-item').forEach(function(it){ var n=it.getAttribute('data-n'); it.style.display=(!q||n.indexOf(q)>=0)?'':'none'; }); }); }
   panel.querySelectorAll('input').forEach(function(inp){ inp.onchange=function(){ var o=m.opts[+inp.getAttribute('data-i')]; var k=m.sel.indexOf(o); if(inp.checked){if(k<0)m.sel.push(o);}else{if(k>=0)m.sel.splice(k,1);} msLabel(key); if(m.cb)m.cb(); }; });
   msLabel(key);
 }
 function msLabel(key){ var m=_MS[key],l=document.getElementById('ms-'+key+'-lbl'); if(m&&l)l.textContent=m.sel.length?(m.sel.length+' محدّد'):m.labelAll; }
-function msToggle(key){ var p=document.getElementById('ms-'+key+'-panel'); if(!p)return; var open=p.style.display==='block'; document.querySelectorAll('.ms-panel').forEach(function(x){x.style.display='none';}); p.style.display=open?'none':'block'; }
+function _msNorm(t){ return String(t||'').replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase(); }
+function msToggle(key){ var p=document.getElementById('ms-'+key+'-panel'); if(!p)return; var open=p.style.display==='block'; document.querySelectorAll('.ms-panel').forEach(function(x){x.style.display='none';}); p.style.display=open?'none':'block'; if(!open){ var q=p.querySelector('.ms-q'); if(q){ q.value=''; q.dispatchEvent(new Event('input')); setTimeout(function(){try{q.focus();}catch(e){}},30); } } }
 function msVals(key){ return (_MS[key]&&_MS[key].sel)||[]; }
 function msClear(key){ if(_MS[key]){_MS[key].sel=[];msRender(key);} }
 document.addEventListener('click',function(e){ if(!e.target.closest('.ms')){ document.querySelectorAll('.ms-panel').forEach(function(x){x.style.display='none';}); } });
