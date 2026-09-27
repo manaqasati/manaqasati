@@ -36,7 +36,7 @@
   --gold:#1d4ed8;--gold-d:#1e40af;--gold-l:#eff4ff;--gold-soft:#bfdbfe;
   --accent:#0ea5e9;--accent-l:#e0f2fe;--sky:#0ea5e9;--star:#F0A500;
   --text:#1e293b;--text2:#1e293b;--muted:#64748b;--hint:#94a3b8;
-  --border:#e6eefb;--border2:#cdd9ef;--bg:#f0f5ff;--white:#FFFFFF;
+  --border:#e6eefb;--border2:#cdd9ef;--bg:#f0f5ff;--white:#FFFFFF;--card:#FFFFFF;
   --green:#16a34a;--green-l:#dcfce7;--red:#dc2626;--red-l:#fef2f2;
   --blue:#2E90FA;--blue-l:#EFF8FF;--amber:#d97706;--amber-l:#fef3c7;
   --radius:16px;--radius-sm:10px;--radius-lg:18px;
@@ -51,7 +51,7 @@
   --gold:#60a5fa;--gold-l:#1e293b;--gold-soft:#334155;
   --accent:#38bdf8;--accent-l:#1e293b;
   --text:#e2e8f0;--text2:#e2e8f0;--muted:#94a3b8;--hint:#64748b;
-  --border:#334155;--border2:#475569;--bg:#0f172a;--white:#1e293b;
+  --border:#334155;--border2:#475569;--bg:#0f172a;--white:#1e293b;--card:#1e293b;
   --green-l:#14251c;--red-l:#2a1616;--blue-l:#132436;--amber-l:#2a2210;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -4020,58 +4020,324 @@ var _healthTimer=null;
 var _ORT='provider', _OQ=[], _OQi=0, _OSearch=[];
 var _OSTAT={new:'لم يُتواصل',contacted:'أُرسلت',replied:'ردّ',interested:'مهتم',converted:'سجّل ✅',rejected:'رفض',followup:'متابعة'};
 
-/* ═══════════ متابعة العملاء (تذكير واتساب حسب المرحلة) ═══════════ */
+/* ═══════════ متابعة العملاء — قائمة عمل يومية مرتّبة بالأولوية ═══════════ */
 var _fuData=null, _fuTab='few';
-var FU_TABS=[
-  {k:'few',      label:'عروض قليلة',  color:'#0891b2', icon:'🆕'},
-  {k:'offers',   label:'وصول عروض',   color:'#2563eb', icon:'📥'},
-  {k:'delayed',  label:'تأخر الاختيار',color:'#d97706', icon:'⏳'},
-  {k:'executing',label:'قيد التنفيذ',  color:'#7c3aed', icon:'🛠️'},
-  {k:'review',   label:'طلب التقييم',  color:'#059669', icon:'⭐'}
+var _fuStage='', _fuFilter='due', _fuQ='', _fuCity='', _fuSort='prio', _fuDet={}, _fuCur=null;
+var FU_STAGES=[
+  {k:'few',label:'عروض قليلة',bg:'#ecfeff',fg:'#0e7490'},
+  {k:'offers',label:'وصلته عروض',bg:'#eef3ff',fg:'#1e3a8a'},
+  {k:'delayed',label:'تأخر الاختيار',bg:'#fff7ed',fg:'#c2410c'},
+  {k:'executing',label:'قيد التنفيذ',bg:'#f5f3ff',fg:'#6d28d9'},
+  {k:'review',label:'بانتظار التقييم',bg:'#ecfdf5',fg:'#047857'}
 ];
-function _fuTmpl(stage, p){
-  var name=p.client_name||'', title=p.title||'', n=p.bid_count||0;
-  var link='https://manaqasa.com/project/'+p.id;
-  if(stage==='few'){
-    var msg;
-    if(n===0){
-      msg='السلام عليكم '+name+' 👋\n'+
-        'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\n'+
-        'مشروعك «'+title+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو ملفات أو مخططات متاحة لمساعدة المزوّدين على التسعير بشكل أفضل.\n'+
-        '🔗 تحديث المشروع:\n'+link;
-    } else {
-      msg='السلام عليكم '+name+' 👋\n'+
-        'مشروعك «'+title+'» استقبل '+(n===1?'عرضًا واحدًا':'عرضين')+' حتى الآن.\n'+
-        'إذا ناسبك أحدها، تقدر قبوله مباشرة ليبدأ التنفيذ. وإن رغبت بمزيد من العروض، أضف تفاصيل أو ملفات أوضح لجذب عروض أكثر ودقّة.\n'+
-        '🔗 راجع العروض:\n'+link;
-    }
-    return msg;
+var FU_OUT={replied:'ردّ وبيختار قريب',no_reply:'ما ردّ',needs_time:'يبي وقت',outside:'اتفق برا المنصة',postponed:'أجّل المشروع'};
+function _fuSt(k){ return FU_STAGES.filter(function(s){return s.k===k;})[0]||{label:k,bg:'#f1f5f9',fg:'#475569'}; }
+function _fuPill(t,bg,fg){ return '<span style="font-size:11px;font-weight:900;padding:4px 10px;border-radius:999px;white-space:nowrap;display:inline-block;background:'+bg+';color:'+fg+'">'+t+'</span>'; }
+function _fuN(n,one,two,few){ n=n||0; if(n===1)return one; if(n===2)return two; if(n>=3&&n<=10)return n+' '+few; return n+' '+one; }
+function _fuD(iso){ if(!iso)return null; return Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/86400000)); }
+function _fuAgo(iso){ var d=_fuD(iso); if(d===null)return ''; if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; if(d===2)return 'قبل يومين'; return 'قبل '+d+' أيام'; }
+function _fuLink(p){ return 'https://manaqasa.com/project/x-'+p.id+'?id='+p.id; }
+function _fuAll(){ var out=[]; if(!_fuData)return out; FU_STAGES.forEach(function(s){ (_fuData[s.k]||[]).forEach(function(p){ p.stage=s.k; out.push(p); }); }); return out; }
+function _fuFind(id){ var a=_fuAll().concat((_fuData&&_fuData.moved)||[]); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
+// الأولوية + السبب
+function _fuInfo(p){
+  var age=_fuD(p.created_at)||0, since=_fuD(p.reminder_at), n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0;
+  var snoozed=!!(p.followup_snooze_until&&new Date(p.followup_snooze_until)>new Date());
+  var why=[], hot=false, need=true;
+  if(p.stage==='few'){ why.push('<b>'+(n?n+(n===1?' عرض':' عروض'):'0 عروض')+'</b> من '+(age===0?'اليوم':age+' يوم')); if(age<1)need=false; if(age>=3&&!n){hot=true;why.push('<span style="color:#c2410c">يحتاج تفاصيل أوضح أو مخطط</span>');} }
+  else if(p.stage==='offers'||p.stage==='delayed'){
+    why.push('<b>'+_fuN(n,'عرض واحد','عرضين','عروض')+'</b>');
+    if(ue>0){ why.push('<span style="color:#b91c1c">'+(ue>=n?'ما فتح العروض أبداً':_fuN(ue,'عرض','عرضين','عروض')+' ما شافها')+'</span>'); hot=true; }
+    else if(p.last_seen_bids_at){ why.push('<span style="color:#c2410c">فتح العروض '+_fuAgo(p.last_seen_bids_at)+' وما اختار</span>'); if(p.stage==='delayed')hot=true; }
   }
-  if(stage==='offers')
-    return 'السلام عليكم '+name+' 👋\n'+
-      'وصلك '+n+' عروض على مشروعك «'+title+'».\n'+
-      'اطّلع على الأسعار، مدة التنفيذ، وتقييمات المزوّدين، ثم اختر العرض الأنسب لبدء العمل مباشرة.\n'+
-      '🔗 '+link;
-  if(stage==='delayed')
-    return 'السلام عليكم '+name+' 👋\n'+
-      'ما زالت العروض متاحة على مشروعك «'+title+'».\n'+
-      'اختر المزوّد الأنسب الآن للانتقال إلى مرحلة التنفيذ، فبعض العروض قد تتغير أو تنتهي صلاحيتها مع الوقت.\n'+
-      '🔗 '+link;
-  if(stage==='executing')
-    return 'السلام عليكم '+name+' 👋\n'+
-      'نأمل أن أعمال مشروعك «'+title+'» تسير كما هو مخطط لها.\n'+
-      'في حال تم الانتهاء من التنفيذ، يرجى تحديث حالة المشروع إلى مكتمل من خلال لوحة التحكم.\n'+
-      '🔗 '+link;
-  return 'السلام عليكم '+name+' 👋\n'+
-    'تم الانتهاء من مشروعك «'+title+'» بنجاح 🎉\n'+
-    'نسعد بمشاركتك لتجربتك عبر تقييم المزوّد، فملاحظاتك تساعد أصحاب المشاريع الآخرين على اتخاذ قرارات أفضل.\n'+
-    '⭐ قيّم المزوّد:\n🔗 '+link;
+  else if(p.stage==='executing'){ var ex=_fuD(p.assigned_at)||0; why.push('<b>'+ex+' يوم في التنفيذ</b>'); why.push('ما حدّث الحالة'); if(ex>=21)hot=true; }
+  else if(p.stage==='review'){ var cd=_fuD(p.completed_at||p.created_at)||0; why.push('<b>اكتمل '+(cd===0?'اليوم':'قبل '+cd+' يوم')+'</b>'); why.push('ما قيّم المزوّد'); }
+  if(um>0){ why.push('<span style="color:#b91c1c">'+_fuN(um,'رسالة','رسالتين','رسائل')+' من مزوّدين ما قرأها</span>'); hot=true; }
+  var level;
+  if(snoozed||!need) level='later';
+  else if(since===null) level=(hot||age>=2)?'now':'today';
+  else if(since>=3) level=hot?'now':'today';
+  else level='later';
+  var nextIn=snoozed?Math.max(1,Math.ceil((new Date(p.followup_snooze_until)-Date.now())/86400000)):(since!==null&&since<3?3-since:0);
+  return {level:level, why:why, hot:hot, snoozed:snoozed, nextIn:nextIn, since:since, age:age};
 }
-function _fuDays(p){
-  var base = (_fuTab==='executing') ? p.assigned_at : ((_fuTab==='review') ? (p.completed_at||p.created_at) : p.created_at);
-  if(!base) return 0;
-  return Math.max(0, Math.floor((Date.now()-new Date(base).getTime())/86400000));
+var _FU_RANK={now:0,today:1,later:2};
+function _fuNextHtml(i){
+  if(i.level==='now')return _fuPill('الآن','#fef2f2','#b91c1c');
+  if(i.level==='today')return _fuPill('اليوم','#fff7ed','#c2410c');
+  return _fuPill(i.snoozed?('مؤجّل '+i.nextIn+' ي'):(i.nextIn?'بعد '+(i.nextIn===1?'يوم':i.nextIn===2?'يومين':i.nextIn+' أيام'):'لاحقاً'),'#f1f5f9','#475569');
 }
+function _fuDotC(l){ return l==='now'?'#dc2626':(l==='today'?'#f59e0b':'#cbd5e1'); }
+// ── الرسائل ──
+function _fuPrice(b){ var p=Math.round(parseFloat(b.price)||0).toLocaleString('en-US'); var u=b.price_unit&&b.price_unit!=='total'?(b.price_unit==='meter'?' للمتر':' للوحدة'):''; return p+' ر.س'+u; }
+function _fuKinds(p){
+  var ue=p.unseen_bids||0, um=p.unread_msgs||0, k=[];
+  if(p.stage==='few'){ k.push((p.bid_count||0)?'few':'few0'); k.push('help'); }
+  else if(p.stage==='offers'||p.stage==='delayed'){
+    if(ue&&um)k.push('unseen_unread'); if(ue)k.push('unseen'); if(um)k.push('unread');
+    k.push('top3'); k.push('friendly'); k.push('help');
+  }
+  else if(p.stage==='executing'){ k.push('executing'); if(um)k.push('unread'); }
+  else { k.push('review'); }
+  var seen={}; return k.filter(function(x){ if(seen[x])return false; seen[x]=1; return true; });
+}
+var FU_KIND_LBL={unseen_unread:'عروض ورسائل ما شافها',unseen:'عروض ما شافها',unread:'رسائل ما قرأها',top3:'مع أفضل 3 عروض',friendly:'ودّية قصيرة',help:'عرض مساعدة',few0:'بدون عروض — أضف تفاصيل',few:'عروض قليلة',executing:'تحديث التنفيذ',review:'طلب التقييم'};
+function _fuMsg(p,kind,det){
+  var nm=(p.client_name&&p.client_name!=='عميل')?' '+p.client_name:'', t=p.title||'مشروعك', n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0, L=_fuLink(p);
+  var top=(det&&det.top)||[];
+  var minTxt=p.min_price?Math.round(p.min_price).toLocaleString('en-US')+' ر.س':'';
+  var hi='السلام عليكم'+nm+' 👋\n';
+  if(kind==='unseen_unread') return hi+'مشروعك «'+t+'» وصله '+ue+(ue===1?' عرض':' عروض')+' ما اطّلعت عليها بعد، و'+um+(um===1?' رسالة من مزوّد تنتظر':' رسائل من مزوّدين تنتظر')+' ردّك.\nبعضهم يسأل عن تفاصيل عشان يعطيك سعر أدق، وكل ما تأخر الرد ممكن تتغيّر الأسعار.\n🔗 شوف العروض والرسائل:\n'+L;
+  if(kind==='unseen') return hi+'وصلك '+ue+(ue===1?' عرض':' عروض')+' على مشروعك «'+t+'» وما شفتها للحين.\n'+(minTxt?'أقل سعر '+minTxt+'، ':'')+'قارن الأسعار ومدة التنفيذ وتقييمات المزوّدين واختر اللي يناسبك.\n🔗 '+L;
+  if(kind==='unread') return hi+'عندك '+um+(um===1?' رسالة من مزوّد':' رسائل من مزوّدين')+' على مشروعك «'+t+'» ما قرأتها.\nممكن فيها أسئلة أو توضيح للسعر، ردّك يساعدهم يعطونك أفضل عرض.\n🔗 '+L;
+  if(kind==='top3'){
+    if(!top.length) return hi+'مشروعك «'+t+'» وصله '+n+' عرض ✅\nاطّلع على الأسعار ومدة التنفيذ وتقييمات المزوّدين، واختر الأنسب لبدء العمل.\n🔗 '+L;
+    return hi+'مشروعك «'+t+'» وصله '+n+' عرض، وهذي أفضل '+top.length+' حسب السعر:\n'+top.map(function(b,i){ return (i+1)+') '+b.provider+' — '+_fuPrice(b)+(b.rating>0?' · ★'+(Math.round(b.rating*10)/10):''); }).join('\n')+'\nتبي نساعدك تقارن؟ رد علينا هنا.\n🔗 '+L;
+  }
+  if(kind==='friendly') return hi+'ما زالت العروض متاحة على مشروعك «'+t+'» ('+n+' عرض).\nاختر المزوّد الأنسب للانتقال للتنفيذ، فبعض العروض قد تتغيّر مع الوقت.\n🔗 '+L;
+  if(kind==='help') return hi+'معك فريق منصة مناقصة بخصوص مشروعك «'+t+'».\nإذا محتار بين العروض أو تحتاج مساعدة في المقارنة أو تعديل تفاصيل المشروع، رد علينا هنا ونساعدك.\n🔗 '+L;
+  if(kind==='few0') return hi+'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\nمشروعك «'+t+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو صور أو مخططات متاحة لمساعدة المزوّدين على التسعير.\n🔗 تحديث المشروع:\n'+L;
+  if(kind==='few') return hi+'مشروعك «'+t+'» استقبل '+(n===1?'عرضًا واحدًا':n+' عروض')+' حتى الآن.\nإذا ناسبك أحدها تقدر تقبله مباشرة، وإن رغبت بعروض أكثر أضف تفاصيل أو ملفات أوضح.\n🔗 راجع العروض:\n'+L;
+  if(kind==='executing') return hi+'نأمل أن أعمال مشروعك «'+t+'» تسير كما هو مخطط لها.\nفي حال تم الانتهاء من التنفيذ، يرجى تحديث حالة المشروع إلى مكتمل من خلال لوحة التحكم.\n🔗 '+L;
+  return hi+'تم الانتهاء من مشروعك «'+t+'» بنجاح 🎉\nنسعد بمشاركتك لتجربتك عبر تقييم المزوّد، فملاحظاتك تساعد أصحاب المشاريع الآخرين على اتخاذ قرارات أفضل.\n⭐ قيّم المزوّد:\n🔗 '+L;
+}
+function _fuDetail(id,cb){ if(_fuDet[id]){cb(_fuDet[id]);return;} fetch(API+'/api/admin/followups/'+id,hdr()).then(function(r){return r.json();}).then(function(d){ _fuDet[id]=d||{}; cb(_fuDet[id]); }).catch(function(){ cb({}); }); }
+function _fuPhone(p){ var ph=String(p.client_phone||'').replace(/[^0-9]/g,''); if(!ph)return ''; if(ph.indexOf('966')!==0){ ph=ph.replace(/^0+/,''); ph='966'+ph; } return ph; }
+function _fuSend(id,text,after){
+  var p=_fuFind(id); if(!p)return;
+  var ph=_fuPhone(p); if(!ph){ toast('لا يوجد رقم جوال لهذا العميل','error'); return; }
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(text),'_blank');
+  fetch(API+'/api/admin/requests/'+id+'/mark-reminded',Object.assign({method:'POST',body:JSON.stringify({stage:p.stage})},hdr())).then(function(r){return r.json();}).then(function(){
+    p.reminder_at=new Date().toISOString(); p.reminder_stage=p.stage; p.reminder_count=(p.reminder_count||0)+1; p.followup_snooze_until=null;
+    if(_fuData.kpi)_fuData.kpi.sent_today=(_fuData.kpi.sent_today||0)+1; delete _fuDet[id];
+    renderFollowups(); if(after)after();
+  }).catch(function(){ toast('انفتح واتساب — لكن تعذّر تسجيل التذكير','error'); });
+}
+function _fuSnooze(id,days){
+  fetch(API+'/api/admin/requests/'+id+'/followup-snooze',Object.assign({method:'POST',body:JSON.stringify({days:days})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.ok){toast('تعذّر التأجيل','error');return;}
+    var p=_fuFind(id); if(p)p.followup_snooze_until=days?new Date(Date.now()+days*86400000).toISOString():null;
+    toast(days?('تأجّل التذكير '+(days===1?'يوم':days+' أيام')):'رجع للقائمة','success'); renderFollowups(); if(_fuCur===id)_fuOpen(id);
+  }).catch(function(){ toast('تعذّر التأجيل','error'); });
+}
+function _fuOutcome(id,o,btn){
+  fetch(API+'/api/admin/requests/'+id+'/followup-outcome',Object.assign({method:'POST',body:JSON.stringify({outcome:o})},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(x){
+    if(!x.ok){ toast((x.d&&x.d.message)||'تعذّر الحفظ','error'); return; }
+    toast('تم تسجيل النتيجة: '+FU_OUT[o],'success'); delete _fuDet[id];
+    if(o==='outside'||o==='postponed'){ _fuSnooze(id,14); } else if(o==='needs_time'){ _fuSnooze(id,5); } else if(_fuCur===id){ _fuOpen(id); }
+  }).catch(function(){ toast('تعذّر الحفظ','error'); });
+}
+// ── التحميل والعرض ──
+function loadFollowups(){
+  var b=document.getElementById('followup-body'); if(b&&!_fuData)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/followups',hdr()).then(function(r){return r.json();}).then(function(d){ _fuData=d||{}; _fuDet={}; renderFollowups(); })
+    .catch(function(){ if(b)b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function _fuList(){
+  var all=_fuAll(), q=(_fuQ||'').trim().toLowerCase(), qd=(typeof _phNorm==='function')?_phNorm(q):'';
+  if(_fuFilter==='moved') all=((_fuData&&_fuData.moved)||[]).map(function(p){ p.stage=p.stage||'moved'; return p; });
+  return all.filter(function(p){
+    var i=p._i=(p.stage==='moved'?{level:'later',why:[],nextIn:0}:_fuInfo(p));
+    if(_fuStage&&p.stage!==_fuStage)return false;
+    if(_fuCity&&p.city!==_fuCity)return false;
+    if(q){ var hit=(p.title||'').toLowerCase().indexOf(q)>=0||(p.client_name||'').toLowerCase().indexOf(q)>=0||(qd.length>=3&&typeof _phNorm==='function'&&_phNorm(p.client_phone).indexOf(qd)>=0)||String(p.id)===q.replace('#',''); if(!hit)return false; }
+    if(_fuFilter==='due')return i.level!=='later';
+    if(_fuFilter==='never')return !p.reminder_at;
+    if(_fuFilter==='nomove')return !!p.reminder_at;
+    if(_fuFilter==='unseen')return (p.unseen_bids||0)>0;
+    if(_fuFilter==='unread')return (p.unread_msgs||0)>0;
+    return true;
+  }).sort(function(a,b){
+    if(_fuSort==='old')return new Date(a.created_at)-new Date(b.created_at);
+    if(_fuSort==='new')return new Date(b.created_at)-new Date(a.created_at);
+    var r=_FU_RANK[a._i.level]-_FU_RANK[b._i.level]; if(r)return r;
+    var h=(b._i.hot?1:0)-(a._i.hot?1:0); if(h)return h;
+    return (b._i.age||0)-(a._i.age||0);
+  });
+}
+function _fuQueue(){ return _fuAll().filter(function(p){ p._i=_fuInfo(p); return p._i.level!=='later'; }).sort(function(a,b){ var r=_FU_RANK[a._i.level]-_FU_RANK[b._i.level]; if(r)return r; var h=(b._i.hot?1:0)-(a._i.hot?1:0); if(h)return h; return (b._i.age||0)-(a._i.age||0); }); }
+function renderFollowups(){
+  var b=document.getElementById('followup-body'); if(!b||!_fuData)return;
+  var all=_fuAll(); all.forEach(function(p){ p._i=_fuInfo(p); });
+  var due=all.filter(function(p){return p._i.level!=='later';}), late=due.filter(function(p){return p._i.age>7;}).length;
+  var k=_fuData.kpi||{}, sent=k.sent_today||0, rate=k.reminded_30?Math.round((k.moved_30||0)/k.reminded_30*100):null;
+  var c=function(f){ return all.filter(f).length; };
+  var focusEl=document.activeElement, hadQ=focusEl&&focusEl.id==='fu-q', qPos=hadQ?focusEl.selectionStart:0;
+  var h='';
+  // الرأس
+  h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+    +'<div style="font-size:13px;color:var(--muted);font-weight:700">مين يحتاج تذكير اليوم — ومين تحرّك بعد التذكير</div>'
+    +'<div style="margin-right:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +'<input id="fu-q" value="'+esc(_fuQ)+'" oninput="_fuQ=this.value;renderFollowups()" placeholder="ابحث بالاسم أو الجوال أو المشروع…" style="width:260px;max-width:100%;border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:11px;padding:10px 13px;font-family:inherit;font-size:13px;outline:none">'
+    +'<button onclick="_fuQuick()" '+(due.length?'':'disabled ')+'style="border:0;background:'+(due.length?'#1d4ed8':'#94a3b8')+';color:#fff;border-radius:11px;padding:11px 16px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer;box-shadow:0 8px 20px rgba(29,78,216,.22)">⚡ الإرسال السريع · '+due.length+'</button>'
+    +'</div></div>';
+  // المؤشرات
+  var kp=function(lbl,val,sub,st){ return '<div style="flex:1;min-width:170px;background:var(--card);border:1px solid '+(st||'var(--border)')+';border-radius:15px;padding:13px 15px;display:flex;flex-direction:column;gap:5px"><div style="font-size:12px;font-weight:800;color:var(--muted)">'+lbl+'</div><div style="font-family:Cairo,sans-serif;font-size:26px;font-weight:900;line-height:1.1">'+val+'</div>'+sub+'</div>'; };
+  h+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+    +kp('يحتاج تذكير الآن','<span style="color:#b91c1c">'+due.length+'</span>','<div style="font-size:12px;font-weight:800;color:'+(late?'#b91c1c':'var(--muted)')+'">'+(late?late+' منها عمرها أكثر من أسبوع':'ما فيه متأخر كثير 👍')+'</div>','#fecaca')
+    +kp('أُرسل اليوم',sent+' <span style="font-size:14px;color:var(--muted)">/ '+(sent+due.length)+'</span>','<div style="height:7px;border-radius:7px;background:var(--border)"><div style="width:'+((sent+due.length)?Math.round(sent/(sent+due.length)*100):0)+'%;height:7px;border-radius:7px;background:#1d4ed8"></div></div>')
+    +kp('تحرّكوا بعد التذكير <span style="color:#94a3b8">· 30 يوم</span>','<span style="color:#15803d">'+(rate===null?'—':rate+'%')+'</span>','<div style="font-size:12px;font-weight:800;color:var(--muted)">'+(k.reminded_30?(k.moved_30||0)+' من '+k.reminded_30+' اختاروا مزوّد خلال 3 أيام':'يبدأ الحساب مع أول تذكير')+'</div>')
+    +kp('ترسيات بعد تذكير <span style="color:#94a3b8">· 30 يوم</span>',(k.awarded_30||0),'<div style="font-size:12px;font-weight:800;color:#15803d">'+(k.awarded_total_30?'≈ '+Math.round(k.awarded_total_30).toLocaleString('en-US')+' ر.س قيمة عقود':'—')+'</div>')
+    +'</div>';
+  // المراحل
+  h+='<div style="display:flex;gap:6px;align-items:stretch;margin-bottom:14px;overflow-x:auto">';
+  FU_STAGES.forEach(function(s,ix){
+    var n=(_fuData[s.k]||[]).length, dn=all.filter(function(p){return p.stage===s.k&&p._i.level!=='later';}).length, on=_fuStage===s.k;
+    if(ix)h+='<span style="color:#9fb0cc;font-size:17px;font-weight:900;align-self:center">←</span>';
+    h+='<button onclick="_fuStage=(_fuStage===\''+s.k+'\'?\'\':\''+s.k+'\');renderFollowups()" style="flex:1;min-width:128px;text-align:right;background:'+(on?'#eef3ff':'var(--card)')+';border:1.5px solid '+(on?'#1d4ed8':'var(--border)')+';border-radius:13px;padding:10px 12px;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px'+(on?';box-shadow:0 6px 16px rgba(29,78,216,.12)':'')+'">'
+      +'<span style="font-size:12.5px;font-weight:900;color:'+(on?'#1e3a8a':'var(--text2)')+'">'+s.label+'</span><span style="font-family:Cairo,sans-serif;font-size:22px;font-weight:900;color:'+(on?'#1e3a8a':'var(--text)')+'">'+n+'</span>'
+      +'<span style="font-size:11.5px;font-weight:800;color:'+(dn?'#b91c1c':'#15803d')+'">'+(dn?dn+' يحتاج تذكير':'كلها تمام ✓')+'</span></button>';
+  });
+  h+='</div>';
+  // الفلاتر
+  var chips=[['due','يحتاج تذكير الآن',due.length],['never','ما ذُكّر أبداً',c(function(p){return !p.reminder_at;})],['nomove','ذُكّر وما تحرّك',c(function(p){return !!p.reminder_at;})],['unseen','ما فتح العروض',c(function(p){return (p.unseen_bids||0)>0;})],['unread','رسائل ما قرأها',c(function(p){return (p.unread_msgs||0)>0;})],['moved','تحرّك ✓',((_fuData.moved)||[]).length],['all','الكل',all.length]];
+  var cities={}; all.forEach(function(p){ if(p.city)cities[p.city]=1; });
+  h+='<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'+chips.map(function(x){ var on=_fuFilter===x[0]; return '<button onclick="_fuFilter=\''+x[0]+'\';renderFollowups()" style="border:1.5px solid '+(on?'#1d4ed8':'var(--border)')+';background:'+(on?'#1d4ed8':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;display:inline-flex;gap:6px;align-items:center">'+x[1]+' <span style="font-size:11px;background:'+(on?'rgba(255,255,255,.22)':'rgba(15,23,42,.07)')+';border-radius:999px;padding:0 7px">'+x[2]+'</span></button>'; }).join('')
+    +'<span style="margin-right:auto;display:flex;gap:7px">'
+    +'<select id="fu-city" onchange="_fuCity=this.value;renderFollowups()" style="border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:12.5px;font-weight:800"><option value="">كل المدن</option>'+Object.keys(cities).sort(function(a,b){return a.localeCompare(b,'ar');}).map(function(ct){return '<option'+(ct===_fuCity?' selected':'')+'>'+esc(ct)+'</option>';}).join('')+'</select>'
+    +'<select onchange="_fuSort=this.value;renderFollowups()" style="border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:12.5px;font-weight:800"><option value="prio"'+(_fuSort==='prio'?' selected':'')+'>الأهم أولاً</option><option value="old"'+(_fuSort==='old'?' selected':'')+'>الأقدم أولاً</option><option value="new"'+(_fuSort==='new'?' selected':'')+'>الأحدث أولاً</option></select>'
+    +'</span></div>';
+  // الجدول
+  var rows=_fuList();
+  var G='display:grid;grid-template-columns:14px minmax(0,2.2fr) 118px minmax(0,1.8fr) 120px 98px 150px;gap:12px;align-items:center;padding:0 16px';
+  h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden"><div class="fu-tbl" style="overflow-x:auto"><div style="min-width:980px">'
+    +'<div style="'+G+';padding:10px 16px;font-size:11.5px;font-weight:900;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border)"><span></span><span>المشروع والعميل</span><span>المرحلة</span><span>الوضع — ليش يحتاج متابعة</span><span>آخر تذكير</span><span>التذكير التالي</span><span style="text-align:left">إجراء</span></div>';
+  if(!rows.length) h+='<div style="padding:42px;text-align:center;color:var(--muted);font-weight:700">'+(_fuFilter==='due'?'ما فيه أحد يحتاج تذكير الحين 👍':'ما فيه مشاريع بهذا الفلتر')+'</div>';
+  rows.forEach(function(p){
+    var i=p._i, st=p.stage==='moved'?{label:'تحرّك ✓',bg:'#dcfce7',fg:'#15803d'}:_fuSt(p.stage), sel=_fuCur===p.id;
+    var why=p.stage==='moved'?'<span style="color:#15803d">اختار مزوّد '+_fuAgo(p.assigned_at)+' بعد التذكير</span>':i.why.join(' · ');
+    var last=p.reminder_at?(_fuAgo(p.reminder_at)+' <span style="color:var(--muted)">· مرة '+(p.reminder_count||1)+'</span>'):'<span style="color:#94a3b8">ما ذُكّر أبداً</span>';
+    var act=p.stage==='moved'?'<a href="/project/x-'+p.id+'?id='+p.id+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="border:1.5px solid var(--border);background:var(--card);color:var(--text2);border-radius:10px;padding:8px 11px;font-size:12.5px;font-weight:800;text-decoration:none">عرض</a>'
+      :'<button onclick="event.stopPropagation();_fuOpen('+p.id+')" style="border:0;background:#16a34a;color:#fff;border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;white-space:nowrap">💬 ذكّره</button>';
+    h+='<div onclick="_fuOpen('+p.id+')" style="'+G+';padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;'+(sel?'background:#f5f8ff;box-shadow:inset -4px 0 0 #1d4ed8':'')+'" onmouseover="this.style.background=\'#f8fafd\'" onmouseout="this.style.background=\''+(sel?'#f5f8ff':'')+'\'">'
+      +'<span style="width:10px;height:10px;border-radius:10px;background:'+(p.stage==='moved'?'#16a34a':_fuDotC(i.level))+'"></span>'
+      +'<div style="min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title||'مشروع')+'</div><div style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.client_name||'عميل')+(p.client_phone?' · <span dir="ltr">'+esc(p.client_phone)+'</span>':'')+(p.city?' · '+esc(p.city):'')+'</div></div>'
+      +'<div>'+_fuPill(st.label,st.bg,st.fg)+'</div>'
+      +'<div style="font-size:12.5px;font-weight:800;line-height:1.55">'+why+'</div>'
+      +'<div style="font-size:12.5px;font-weight:800">'+last+'</div>'
+      +'<div>'+(p.stage==='moved'?'<span style="font-size:12px;font-weight:800;color:#15803d">نجح ✓</span>':_fuNextHtml(i))+'</div>'
+      +'<div style="display:flex;gap:6px;justify-content:flex-end">'+act+'</div></div>';
+  });
+  h+='</div></div><div style="padding:10px 16px;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--bg)">'+rows.length+' مشروع · '+({prio:'مرتّبة: الأهم أولاً',old:'الأقدم أولاً',new:'الأحدث أولاً'}[_fuSort])+'</div></div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:10px;line-height:1.8">🔴 الآن = ما ذُكّر أو مرّ 3+ أيام على آخر تذكير والمشكلة قائمة (عروض/رسائل ما شافها، أو تأخر) · 🟠 اليوم · ⚪ لاحقاً أو مؤجّل. «تحرّك ✓» = اختار مزوّد بعد التذكير.</div>';
+  b.innerHTML=h;
+  if(hadQ){ var nq=document.getElementById('fu-q'); if(nq){ nq.focus(); try{nq.setSelectionRange(qPos,qPos);}catch(e){} } }
+}
+// ── لوحة التفاصيل والرسالة ──
+function _fuClose(){ var d=document.getElementById('fuDr'); if(d)d.remove(); _fuCur=null; renderFollowups(); }
+function _fuOpen(id){
+  var p=_fuFind(id); if(!p)return; _fuCur=id; if(!p._i)p._i=_fuInfo(p);
+  var old=document.getElementById('fuDr'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='fuDr';
+  ov.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(15,23,42,.35);display:flex;justify-content:flex-end';
+  ov.onclick=function(e){ if(e.target===ov)_fuClose(); };
+  ov.innerHTML='<div style="width:600px;max-width:100%;height:100%;background:var(--card);color:var(--text);box-shadow:20px 0 50px rgba(15,23,42,.2);display:flex;flex-direction:column" id="fuDrBox"><div style="padding:40px;text-align:center;color:var(--muted)">جاري التحميل…</div></div>';
+  document.body.appendChild(ov);
+  renderFollowups();
+  _fuDetail(id,function(det){ _fuDrawer(p,det); });
+}
+function _fuDrawer(p,det){
+  var box=document.getElementById('fuDrBox'); if(!box)return;
+  var i=p.stage==='moved'?{level:'later',why:[]}:_fuInfo(p), st=_fuSt(p.stage), s=det.stats||{};
+  var kinds=_fuKinds(p), kind=p._kind||kinds[0];
+  var ph=_fuPhone(p);
+  var tl=[['#16a34a','نُشر المشروع',new Date(p.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long',hour:'numeric',minute:'2-digit'})]];
+  if(s.first_bid_at){ var hrs=Math.max(0,Math.round((new Date(s.first_bid_at)-new Date(p.created_at))/3600000)); tl.push(['#16a34a','أول عرض وصل',hrs<1?'خلال أقل من ساعة':(hrs<24?'بعد '+_fuN(hrs,'ساعة','ساعتين','ساعات'):'بعد '+_fuN(Math.round(hrs/24),'يوم','يومين','أيام'))]); }
+  if(s.n) tl.push(['#1d4ed8','وصل '+_fuN(s.n,'عرض واحد','عرضين','عروض'),(p.min_price?'أقل سعر '+Math.round(p.min_price).toLocaleString('en-US'):'')+(s.avg_price?' · المتوسط '+Math.round(s.avg_price).toLocaleString('en-US'):'')]);
+  if(s.first_seen_at) tl.push(['#1d4ed8','صاحب المشروع فتح العروض',_fuAgo(s.first_seen_at)+((p.unseen_bids||0)?' — باقي '+p.unseen_bids+' ما شافها':'')]);
+  else if(s.n) tl.push(['#dc2626','ما فتح العروض أبداً','']);
+  if(p.unread_msgs) tl.push(['#dc2626',p.unread_msgs+' رسائل من مزوّدين ما قرأها','']);
+  (det.log||[]).slice().reverse().forEach(function(l,ix){ tl.push(['#f59e0b','تذكير '+(ix+1)+' — '+(_fuSt(l.stage).label||''),_fuAgo(l.created_at)+(l.admin_name?' · '+l.admin_name:'')+(l.outcome?' · النتيجة: '+(FU_OUT[l.outcome]||l.outcome):'')]); });
+  if(i.snoozed) tl.push(['#94a3b8','مؤجّل','يرجع بعد '+i.nextIn+' يوم']);
+  var tlh=tl.map(function(x){ return '<div style="display:flex;gap:10px;align-items:flex-start"><span style="width:11px;height:11px;border-radius:11px;background:'+x[0]+';margin-top:5px;flex-shrink:0"></span><div><div style="font-size:13px;font-weight:900">'+esc(x[1])+'</div>'+(x[2]?'<div style="font-size:12px;font-weight:700;color:var(--muted)">'+esc(x[2])+'</div>':'')+'</div></div>'; }).join('');
+  var lastLog=(det.log||[])[0];
+  var ch=function(lbl,on,oc){ return '<button onclick="'+oc+'" style="border:1.5px solid '+(on?'#1d4ed8':'var(--border)')+';background:'+(on?'#1d4ed8':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:6px 11px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer">'+lbl+'</button>'; };
+  var gb='border:1.5px solid var(--border);background:var(--card);color:var(--text2);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap';
+  var h='<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">'
+    +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+p.id+' · نُشر '+_fuAgo(p.created_at)+(p.city?' · '+esc(p.city):'')+'</div><div style="font-family:Cairo,sans-serif;font-size:19px;font-weight:900;line-height:1.4">'+esc(p.title||'مشروع')+'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'+_fuPill(st.label,st.bg,st.fg)+(p.stage!=='moved'?_fuNextHtml(i):'')+'</div></div>'
+    +'<button onclick="_fuClose()" aria-label="إغلاق" style="border:0;background:var(--bg);border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--text)">✕</button></div>'
+    +'<div style="padding:14px 20px;display:flex;flex-direction:column;gap:13px;overflow-y:auto;flex:1">'
+    +'<div style="display:flex;align-items:center;gap:11px;background:var(--bg);border:1px solid var(--border);border-radius:13px;padding:11px 13px">'
+    +'<span style="width:40px;height:40px;border-radius:40px;background:#1e3a8a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">'+esc((p.client_name||'?').charAt(0))+'</span>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:900">'+esc(p.client_name||'عميل')+'</div><div style="font-size:12.5px;font-weight:700;color:var(--muted)"><span dir="ltr">'+esc(p.client_phone||'بدون جوال')+'</span>'+(p.client_last_seen?' · آخر دخول: '+_fuAgo(p.client_last_seen):'')+'</div></div>'
+    +(ph?'<a href="tel:+'+ph+'" style="'+gb+';text-decoration:none">📞 اتصال</a>':'')+'</div>';
+  if(i.why&&i.why.length) h+='<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:13px;padding:11px 13px"><div style="font-size:12px;font-weight:900;color:#c2410c">ليش يحتاج متابعة؟</div><div style="font-size:13.5px;font-weight:800;color:#7c2d12;margin-top:3px;line-height:1.7">'+i.why.join(' · ')+'</div></div>';
+  h+='<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px">'
+    +'<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:13.5px;font-weight:900">رحلة المشروع</div>'+tlh+'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><div style="font-size:13.5px;font-weight:900">الرسالة</div>'
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+kinds.map(function(k){ return ch(FU_KIND_LBL[k]||k,k===kind,'_fuKind('+p.id+',\''+k+'\')'); }).join('')+'</div>'
+    +'<textarea id="fu-msg" style="width:100%;box-sizing:border-box;min-height:230px;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.85;color:var(--text);background:var(--card);resize:vertical">'+esc(_fuMsg(p,kind,det))+'</textarea>'
+    +'</div></div>';
+  if(p.stage!=='moved'){
+    h+='<div style="display:flex;gap:7px;flex-wrap:wrap">'
+      +'<button onclick="_fuSend('+p.id+',document.getElementById(\'fu-msg\').value,function(){_fuOpen('+p.id+')})" style="flex:1;min-width:160px;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:13px;font-family:inherit;font-size:14.5px;font-weight:900;cursor:pointer">💬 أرسل واتساب</button>'
+      +'<button onclick="var t=document.getElementById(\'fu-msg\');try{navigator.clipboard.writeText(t.value);toast(\'نُسخت الرسالة\',\'success\');}catch(e){t.select();document.execCommand(\'copy\');}" style="'+gb+'">نسخ</button>'
+      +'<select onchange="if(this.value!==\'\')_fuSnooze('+p.id+',parseInt(this.value));this.value=\'\'" style="'+gb+'"><option value="">⏰ أجّل</option><option value="1">يوم</option><option value="3">3 أيام</option><option value="7">أسبوع</option>'+(i.snoozed?'<option value="0">إلغاء التأجيل</option>':'')+'</select>'
+      +((p.stage==='few'||p.stage==='offers'||p.stage==='delayed')?'<button onclick="_fuTab=\''+p.stage+'\';_fuMoveMenu(event,'+p.id+')" style="'+gb+'">نقل ▾</button>':'')
+      +'<a href="/project/x-'+p.id+'?id='+p.id+'" target="_blank" rel="noopener" style="'+gb+';text-decoration:none">فتح المشروع</a>'
+      +'</div>';
+    if(lastLog){
+      h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:13px;padding:11px 13px;display:flex;flex-direction:column;gap:8px">'
+        +'<div style="font-size:12.5px;font-weight:900;color:var(--muted)">آخر تذكير '+_fuAgo(lastLog.created_at)+' — وش صار؟ <span style="font-weight:700">(اختياري، يرتّب الأولويات)</span></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+Object.keys(FU_OUT).map(function(o){ return ch(FU_OUT[o],lastLog.outcome===o,'_fuOutcome('+p.id+',\''+o+'\')'); }).join('')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--muted);font-weight:700">«يبي وقت» يأجّله 5 أيام · «اتفق برا» و«أجّل المشروع» يأجّلونه أسبوعين</div></div>';
+    }
+  }
+  h+='</div>';
+  box.innerHTML=h;
+}
+function _fuKind(id,k){ var p=_fuFind(id); if(!p)return; p._kind=k; _fuDetail(id,function(det){ _fuDrawer(p,det); }); }
+// ── الإرسال السريع ──
+var _fuQ_list=[], _fuQ_i=0, _fuQ_sent=0;
+function _fuQuick(){
+  _fuQ_list=_fuQueue().map(function(p){return p.id;}); _fuQ_i=0; _fuQ_sent=0;
+  if(!_fuQ_list.length){ toast('ما فيه أحد يحتاج تذكير الحين','success'); return; }
+  var old=document.getElementById('fuQk'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='fuQk';
+  ov.style.cssText='position:fixed;inset:0;z-index:950;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML='<div id="fuQkBox" style="width:760px;max-width:100%;max-height:92vh;overflow-y:auto;background:var(--card);color:var(--text);border-radius:22px;box-shadow:0 30px 80px rgba(2,8,23,.35)"></div>';
+  ov.onclick=function(e){ if(e.target===ov)_fuQuickClose(); };
+  document.body.appendChild(ov);
+  document.addEventListener('keydown',_fuQuickKey);
+  _fuQuickShow();
+}
+function _fuQuickClose(){ var o=document.getElementById('fuQk'); if(o)o.remove(); document.removeEventListener('keydown',_fuQuickKey); renderFollowups(); }
+function _fuQuickKey(e){
+  if(!document.getElementById('fuQk'))return;
+  if(e.target&&e.target.id==='fuqk-msg'&&e.key!=='Escape'&&!(e.key==='Enter'&&(e.ctrlKey||e.metaKey)))return;
+  if(e.key==='Escape'){ e.preventDefault(); _fuQuickClose(); }
+  else if(e.key==='Enter'){ e.preventDefault(); _fuQuickSend(); }
+  else if(e.key==='s'||e.key==='S'||e.key==='س'){ e.preventDefault(); _fuQuickNext(); }
+  else if(e.key==='l'||e.key==='L'||e.key==='م'){ e.preventDefault(); _fuQuickLater(); }
+}
+function _fuQuickShow(){
+  var box=document.getElementById('fuQkBox'); if(!box)return;
+  if(_fuQ_i>=_fuQ_list.length){
+    box.innerHTML='<div style="padding:40px 28px;text-align:center"><div style="font-size:44px">🎉</div><div style="font-family:Cairo,sans-serif;font-size:21px;font-weight:900;margin-top:8px">خلصت قائمة اليوم</div><div style="font-size:14px;color:var(--muted);font-weight:700;margin-top:6px">أُرسل '+_fuQ_sent+' تذكير من '+_fuQ_list.length+'</div><button onclick="_fuQuickClose()" style="margin-top:18px;border:0;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px 26px;font-family:inherit;font-size:14.5px;font-weight:900;cursor:pointer">تم</button></div>';
+    return;
+  }
+  var id=_fuQ_list[_fuQ_i], p=_fuFind(id); if(!p){ _fuQ_i++; return _fuQuickShow(); }
+  var i=_fuInfo(p), st=_fuSt(p.stage), pct=Math.round(_fuQ_i/_fuQ_list.length*100);
+  var up=_fuQ_list.slice(_fuQ_i+1,_fuQ_i+4).map(function(x,ix){ var q=_fuFind(x); if(!q)return ''; return '<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border)"><span style="width:22px;height:22px;border-radius:22px;background:#eef3ff;color:#1e3a8a;font-size:11.5px;font-weight:900;display:flex;align-items:center;justify-content:center">'+(_fuQ_i+ix+2)+'</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(q.title||'')+'</div><div style="font-size:11.5px;font-weight:700;color:var(--muted)">'+esc(_fuSt(q.stage).label)+'</div></div></div>'; }).join('');
+  var gb='border:1.5px solid var(--border);background:var(--card);color:var(--text2);border-radius:11px;padding:13px 16px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap';
+  box.innerHTML='<div style="padding:16px 22px;background:linear-gradient(135deg,#1e3a8a,#2554c7);color:#fff;border-radius:22px 22px 0 0">'
+    +'<div style="display:flex;align-items:center;gap:10px"><b style="font-family:Cairo,sans-serif;font-size:18px;flex:1">⚡ الإرسال السريع</b><span style="font-size:13px;font-weight:800;opacity:.92">'+(_fuQ_i+1)+' من '+_fuQ_list.length+' · أُرسل '+_fuQ_sent+'</span><button onclick="_fuQuickClose()" aria-label="إغلاق" style="border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:9px;width:32px;height:32px;cursor:pointer">✕</button></div>'
+    +'<div style="height:7px;border-radius:7px;background:rgba(255,255,255,.2);margin-top:11px"><div style="width:'+pct+'%;height:7px;border-radius:7px;background:#4ade80"></div></div></div>'
+    +'<div style="padding:16px 22px;display:flex;flex-direction:column;gap:11px">'
+    +'<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900">'+esc(p.title||'')+'</div><div style="font-size:13px;font-weight:700;color:var(--muted)">'+esc(p.client_name||'')+' · <span dir="ltr">'+esc(p.client_phone||'بدون جوال')+'</span>'+(p.city?' · '+esc(p.city):'')+'</div></div>'+_fuPill(st.label,st.bg,st.fg)+'</div>'
+    +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:9px 12px;font-size:13px;font-weight:800;color:#7c2d12">'+i.why.join(' · ')+' · '+(p.reminder_at?'آخر تذكير '+_fuAgo(p.reminder_at):'ما ذُكّر أبداً')+'</div>'
+    +'<textarea id="fuqk-msg" style="width:100%;box-sizing:border-box;min-height:190px;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.85;color:var(--text);background:var(--card);resize:vertical">جاري تجهيز الرسالة…</textarea>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="_fuQuickSend()" style="flex:1;min-width:200px;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:14px;font-family:inherit;font-size:15px;font-weight:900;cursor:pointer">💬 أرسل واتساب والتالي ←</button><button onclick="_fuQuickNext()" style="'+gb+'">تخطّي</button><button onclick="_fuQuickLater()" style="'+gb+'">⏰ بعد 3 أيام</button></div>'
+    +'<div style="font-size:11.5px;font-weight:800;color:var(--muted);text-align:center">Enter = أرسل والتالي · S = تخطّي · L = أجّل 3 أيام · Esc = إغلاق</div>'
+    +(up?'<div style="font-size:12.5px;font-weight:900;color:var(--muted);margin-top:2px">اللي بعده</div>'+up:'')
+    +'</div>';
+  _fuDetail(id,function(det){ var t=document.getElementById('fuqk-msg'); if(t&&_fuQ_list[_fuQ_i]===id){ var k=_fuKinds(p)[0]; t.value=_fuMsg(p,k,det); } });
+}
+function _fuQuickSend(){ var id=_fuQ_list[_fuQ_i], t=document.getElementById('fuqk-msg'); if(!id||!t||/^جاري تجهيز/.test(t.value))return; _fuQ_sent++; _fuSend(id,t.value); _fuQ_i++; _fuQuickShow(); }
+function _fuQuickNext(){ _fuQ_i++; _fuQuickShow(); }
+function _fuQuickLater(){ var id=_fuQ_list[_fuQ_i]; if(id)_fuSnooze(id,3); _fuQ_i++; _fuQuickShow(); }
+
 function _fuMoveMenu(ev, id){
   ev.stopPropagation();
   document.querySelectorAll('.fu-move-pop').forEach(function(x){x.remove();});
@@ -4092,21 +4358,6 @@ function _fuMove(id, stage){
     if(d&&d.ok){ toast(stage?'تم نقل المشروع':'رجع للتلقائي','success'); loadFollowups(); }
     else toast((d&&d.message)||'تعذّر النقل','error');
   }).catch(function(){ toast('تعذّر النقل','error'); });
-}
-function _fuWa(id, stage){
-  var p=(_fuData&&_fuData[stage]||[]).filter(function(x){return x.id===id;})[0]; if(!p)return;
-  if(!p.client_phone){ toast('لا يوجد رقم جوال لهذا العميل','error'); return; }
-  var ph=String(p.client_phone).replace(/[^0-9]/g,''); if(ph.indexOf('966')!==0){ ph=ph.replace(/^0/,''); if(ph.indexOf('966')!==0)ph='966'+ph; }
-  var msg=encodeURIComponent(_fuTmpl(stage,p));
-  window.open('https://wa.me/'+ph+'?text='+msg,'_blank');
-  // سجّل التذكير
-  fetch(API+'/api/admin/requests/'+id+'/mark-reminded',Object.assign({method:'POST',body:JSON.stringify({stage:stage})},hdr())).then(function(r){return r.json();}).then(function(){
-    p.reminder_at=new Date().toISOString(); p.reminder_stage=stage; renderFollowups();
-  }).catch(function(){});
-}
-function _fuAgo(iso){
-  if(!iso)return ''; var d=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
-  if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; return 'قبل '+d+' يوم';
 }
 var CR_LABELS={chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
 var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
@@ -4142,41 +4393,6 @@ function renderCloseReasons(d){
     return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض'+(p.created_at?' · نُشر '+_fd(p.created_at):'')+(when?' · '+when:'')+'</div>'+expl+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
   }).join('');
   b.innerHTML=h;
-}
-function loadFollowups(){
-  var b=document.getElementById('followup-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-  fetch(API+'/api/admin/followups',hdr()).then(function(r){return r.json();}).then(function(d){ _fuData=d||{}; renderFollowups(); })
-    .catch(function(){ if(b)b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
-}
-function renderFollowups(){
-  var b=document.getElementById('followup-body'); if(!b||!_fuData)return;
-  var c=_fuData.counts||{};
-  var tabs='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+FU_TABS.map(function(t){
-    var on=_fuTab===t.k, cnt=c[t.k]||0;
-    return '<button onclick="_fuTab=\''+t.k+'\';renderFollowups()" style="display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;border:1.5px solid '+(on?t.color:'var(--border)')+';background:'+(on?t.color:'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">'+t.icon+' '+t.label+'<span style="background:'+(on?'rgba(255,255,255,.25)':'var(--bg)')+';padding:1px 8px;border-radius:10px;font-size:12px">'+cnt+'</span></button>';
-  }).join('')+'</div>';
-  var rows=_fuData[_fuTab]||[];
-  var tcolor=(FU_TABS.filter(function(t){return t.k===_fuTab;})[0]||{}).color||'#2563eb';
-  var body;
-  if(!rows.length){ body='<div style="padding:40px;text-align:center;color:var(--muted)">لا مشاريع في هذه المرحلة حالياً 👍</div>'; }
-  else body=rows.map(function(p){
-    var days=_fuDays(p);
-    var rem = p.reminder_at ? ('📩 آخر تذكير: '+_fuAgo(p.reminder_at)) : '<span style="color:#94a3b8">📭 لم يُرسل تذكير بعد</span>';
-    var stageWord=(_fuTab==='executing'?'في التنفيذ':(_fuTab==='review'?'منذ الاكتمال':(_fuTab==='few'?'منذ النشر':'في هذه المرحلة')));
-    return '<div style="background:var(--card);border:1px solid var(--border);border-right:4px solid '+tcolor+';border-radius:14px;padding:15px 17px;margin-bottom:11px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'
-      +'<div style="flex:1;min-width:200px">'
-      +'<div style="font-weight:900;font-size:14.5px;margin-bottom:3px">'+esc(p.title||'مشروع')+'</div>'
-      +'<div style="font-size:12.5px;color:var(--muted)">'+esc(p.client_name||'عميل')+(p.client_phone?' · '+esc(p.client_phone):'')+(p.bid_count?' · '+p.bid_count+' عروض':'')+'</div>'
-      +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">⏱️ صار له '+days+' يوم '+stageWord+' &nbsp;·&nbsp; '+rem+'</div>'
-      +'</div>'
-      +'<div style="display:flex;gap:7px;flex-shrink:0">'
-      +'<button onclick="_fuWa('+p.id+',\''+_fuTab+'\')" style="display:flex;align-items:center;gap:6px;background:#25d366;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer"><svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.5 15.2L2 22l4.9-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 01-3.2-2.8c-.1-.2 0-.4.1-.5l.4-.5.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3a3 3 0 00-.9 2.2c0 1.3 1 2.6 1.1 2.8.1.2 1.9 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.4-.6 1.6-1.2.2-.6.2-1.1.1-1.2l-.4-.2z"/></svg>واتساب</button>'
-      +((_fuTab==='few'||_fuTab==='offers'||_fuTab==='delayed')?'<button onclick="_fuMoveMenu(event,'+p.id+')" title="نقل لمرحلة أخرى" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer">↔ نقل</button>':'')
-      +'<button onclick="location.href=\'/project/\'+'+p.id+'" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer">عرض</button>'
-      +'</div></div></div>';
-  }).join('');
-  b.innerHTML=tabs+body;
 }
 function loadOutreach(){
   var b=document.getElementById('outreach-body');if(!b)return;
