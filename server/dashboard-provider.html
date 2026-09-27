@@ -1664,8 +1664,9 @@ async function loadWorks(){
   if(cached){_myBids=Array.isArray(cached.bids)?cached.bids:[];_myProjs=Array.isArray(cached.projs)?cached.projs:[];}
   else{pg.innerHTML=_skList(4);}
   try{
-    var r=await Promise.all([_api('/api/provider/bids'),_api('/api/provider/projects')]);
+    var r=await Promise.all([_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/provider/bid-standing').catch(function(){return null;})]);
     _myBids=Array.isArray(r[0])?r[0]:[];_myProjs=Array.isArray(r[1])?r[1]:[];
+    window._bidStanding=r[2]||null;
     var hc=_cacheGet('home_data')||{profile:{}};_cacheSet('home_data',{profile:hc.profile,bids:_myBids,projs:_myProjs});
   }catch(e){}
   var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
@@ -1679,6 +1680,7 @@ async function loadWorks(){
       +'<button onclick="var e=document.getElementById(&quot;contact-banner&quot;);if(e)e.remove();try{localStorage.setItem(&quot;mnq_contact_banner_seen&quot;,&quot;1&quot;);}catch(x){}" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">فهمت ✓</button>'
     +'</div>';
   }
+  html+=_bidStandingBanner();
   html+='<div class="stat-grid"><div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div><div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div><div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div><div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div></div>';
   html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
@@ -1743,21 +1745,36 @@ async function _saveBidEdit(id){
     if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';}
   }
 }
+// تنبيه جودة العروض (بعد بلاغات من أصحاب مشاريع) — بدون اسم المبلّغ ولا المشروع
+function _bidStandingBanner(){
+  var st=window._bidStanding;if(!st||!st.warned)return '';
+  return '<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:16px;padding:15px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
+    +'<div style="width:32px;height:32px;border-radius:32px;background:#ea580c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">!</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:14.5px;color:#9a3412;margin-bottom:4px">'+(st.review?'عروضك الجديدة تحت المراجعة':'عروضك تحتاج تحسين')+'</div>'
+    +'<div style="font-size:12.5px;color:#7c2d12;line-height:1.8;font-weight:600">أصحاب مشاريع أبلغوا إن بعض عروضك عامة وما تخص مشاريعهم. العروض المنسوخة نادراً تنقبل.</div>'
+    +'<div style="display:flex;flex-direction:column;gap:5px;margin-top:9px;font-size:12.5px;font-weight:800;color:#15803d"><span>✓ اذكر تفاصيل من وصف المشروع نفسه</span><span>✓ عبّ أي فراغ في النص مثل «(عدد)» قبل الإرسال</span><span>✓ قدّم على المشاريع اللي في تخصصك بس</span></div>'
+    +'<div style="font-size:12px;color:#9a3412;font-weight:700;margin-top:9px;line-height:1.7">'+(st.review?'عروضك الجديدة تظهر للعملاء بعد موافقة الإدارة (خلال ساعات).':'لو استمرت البلاغات، عروضك الجديدة بتنتظر مراجعة الإدارة قبل ما تظهر للعملاء.')+'</div></div></div>';
+}
 function _renderBids(list){
   if(!list.length)return _empty('لا يوجد عروض','ابدأ بتصفح المشاريع');
   return list.map(function(b){
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
     var stCls=isAcc?'wst-acc':isRej?'wst-rej':'wst-pend';
     var stLbl=isAcc?'مقبول':isRej?'مرفوض':'قيد المراجعة';
+    var isHeld=b.hold_state==='held',isHRej=b.hold_state==='rejected';
+    var stSty=isHeld?' style="background:#fef3c7;color:#92400e"':(isHRej?' style="background:#fef2f2;color:#b91c1c"':'');
+    if(isHeld)stLbl='تحت المراجعة';else if(isHRej)stLbl='لم يُعتمد';
     var h='<div class="wz-item">';
-    h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'">'+stLbl+'</span></div>';
+    h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'"'+stSty+'>'+stLbl+'</span></div>';
+    if(isHeld)h+='<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">⏳ عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة</div>';
+    if(isHRej)h+='<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+_esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع ويرجع للمراجعة.</div>';
     h+='<div class="wz-summary">';
     h+='<div class="wz-cell"><div class="wz-lbl">المبلغ</div><div class="wz-val gold">'+fmtN(b.price)+' <span class="wz-u">ر.س</span></div></div>';
     if(b.days)h+='<div class="wz-cell"><div class="wz-lbl">مدة التنفيذ</div><div class="wz-val">'+b.days+' <span class="wz-u">يوم</span></div></div>';
     h+='<div class="wz-cell"><div class="wz-lbl">تاريخ العرض</div><div class="wz-val sm">'+_fdt(b.created_at)+'</div></div>';
     h+='</div>';
     if(b.note)h+='<div class="wz-note fmt-text">'+fmtText(b.note)+'</div>';
-    if(b.status==='pending'||!b.status){h+=b.seen_at?'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#15803d;font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">👁 العميل شاف عرضك — وقت مناسب تتواصل</div>':'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:var(--bg);color:var(--muted);font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">لم يطّلع عليه العميل بعد</div>';}
+    if((b.status==='pending'||!b.status)&&!isHeld&&!isHRej){h+=b.seen_at?'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#15803d;font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">👁 العميل شاف عرضك — وقت مناسب تتواصل</div>':'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:var(--bg);color:var(--muted);font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">لم يطّلع عليه العميل بعد</div>';}
     if(b.contact_unlocked && b.client_phone){
       var _pc=String(b.client_phone).replace(/[^0-9]/g,'');
       var _wn=_pc.indexOf('966')===0?_pc:(_pc.indexOf('0')===0?'966'+_pc.slice(1):'966'+_pc);
