@@ -2976,7 +2976,10 @@ app.get('/api/admin/followups/:id', requirePermission('requests.edit'), async (r
     const st = await pool.query(`SELECT MIN(created_at) AS first_bid_at, MIN(seen_at) AS first_seen_at, COUNT(*)::int AS n,
         AVG(price) FILTER (WHERE price>0 AND (price_unit IS NULL OR price_unit='total'))::float AS avg_price FROM bids WHERE request_id=$1`, [id]);
     const log = await pool.query(`SELECT l.id, l.stage, l.outcome, l.created_at, COALESCE(a.name,'') AS admin_name FROM followup_log l LEFT JOIN users a ON a.id=l.admin_id WHERE l.request_id=$1 ORDER BY l.created_at DESC LIMIT 20`, [id]);
-    res.json({ top: top.rows, stats: st.rows[0]||{}, log: log.rows });
+    // رابط دخول مباشر لحساب العميل (بدون كلمة مرور) — يوصله للوحته وعروضه ورسائله
+    let magic_link = null;
+    try { const cid = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [id])).rows[0]; if (cid) { const tk = await getMagicToken(cid.client_id); if (tk) magic_link = SITE_URL + '/m/' + tk; } } catch(_){}
+    res.json({ top: top.rows, stats: st.rows[0]||{}, log: log.rows, magic_link });
   } catch(e){ console.error('followup detail:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
 // نتيجة آخر تذكير (ردّ / ما ردّ / يبي وقت …)
