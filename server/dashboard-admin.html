@@ -4106,10 +4106,10 @@ function _fuKinds(p){
 }
 var FU_KIND_LBL={unseen_unread:'عروض ورسائل ما شافها',unseen:'عروض ما شافها',unread:'رسائل ما قرأها',top3:'مع أفضل 3 عروض',friendly:'ودّية قصيرة',help:'عرض مساعدة',few0:'بدون عروض — أضف تفاصيل',few:'عروض قليلة',executing:'تحديث التنفيذ',review:'طلب التقييم'};
 function _fuMsg(p,kind,det){
-  // بدون أسعار وبدون تقييمات، وبدون إيموجي (تطلع � في واتساب الكمبيوتر). الرابط = دخول مباشر لحساب العميل
+  // بدون أسعار وبدون تقييمات، وبدون إيموجي (تطلع � في واتساب الكمبيوتر). الرابط = صفحة تسجيل الدخول (العميل يسجّل دخوله بنفسه)
   var nm=(p.client_name&&p.client_name!=='عميل')?' '+p.client_name:'', t=p.title||'مشروعك', n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0;
-  var L=(det&&det.magic_link)||'https://manaqasa.com/auth.html';
-  var go='\nادخل حسابك مباشرة من هنا:\n'+L;
+  var L='https://manaqasa.com/auth.html';
+  var go='\nسجّل دخولك للمنصة من هنا:\n'+L;
   var hi='السلام عليكم'+nm+'\n';
   var offers=function(x){ return _fuN(x,'عرض سعر واحد','عرضين أسعار','عروض أسعار','عرض سعر'); };
   var msgs=function(x){ return _fuN(x,'رسالة من مزوّد','رسالتين من مزوّدين','رسائل من مزوّدين','رسالة من مزوّدين'); };
