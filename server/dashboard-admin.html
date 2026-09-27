@@ -2795,6 +2795,7 @@ function _rqActs(r){
   items.push(b('إرسال للعميل','sendOffersReport('+id+')','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'));
   items.push(b('كراسة لمزوّدين','_oBriefFromReq('+id+')','<path d="M9 2h6a2 2 0 012 2v16a2 2 0 01-2 2H9a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/>'));
   items.push(b('رابط دخول العميل','_clientLoginLink('+id+')','<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>'));
+  if(st==='open'||st==='pending_review'||st==='needs_edit') items.push(b('إغلاق المشروع','_rqCloseProj('+id+')','<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>','#b45309'));
   items.push(b('حذف المشروع','deleteRequest('+id+')','<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>','#dc2626'));
   return '<div class="rq-ds"><h4>⚡ إجراءات</h4>'+_apv+'<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">'+items.join('')+'</div></div>';
 }
@@ -3133,13 +3134,35 @@ function submitPullback(){
     })
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
-function closeReqAdmin(){
-  if(!_editReqId)return;
-  if(!confirm('إغلاق هذا المشروع؟ سيتوقف استقبال العروض (استخدمه إذا اختار العميل من خارج المنصة).'))return;
-  fetch(API+'/api/admin/requests/'+_editReqId+'/close',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.ok){toast('تم إغلاق المشروع','success');closeModal('reqModal');loadRequests();}
-    else toast((d&&d.message)||'تعذّر الإغلاق','error');
-  }).catch(function(){toast('تعذّر الإغلاق','error');});
+function closeReqAdmin(){ if(!_editReqId)return; var id=_editReqId; closeModal('reqModal'); _rqCloseProj(id); }
+// ═══ إغلاق مشروع من الإدارة — مع السبب (يظهر في «أسباب الإغلاق») وخيار إشعار العميل ═══
+var _CLOSE_ADM_REASONS=['اتفق مع مزوّد من برا المنصة','طلب العميل إغلاقه','مشروع مكرر','مشروع تجريبي أو غير جاد','بيانات غير كافية والعميل ما تجاوب','تأجّل أو أُلغي'];
+function _rqCloseProj(id){
+  var r=(_allReq||[]).find(function(x){return x.id===id;})||{};
+  var old=document.getElementById('clsAdm'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='clsAdm';
+  ov.style.cssText='position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick=function(e){ if(e.target===ov)ov.remove(); };
+  var chip='border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:999px;padding:8px 13px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer';
+  ov.innerHTML='<div style="width:480px;max-width:100%;background:var(--white);color:var(--text);border-radius:18px;box-shadow:0 24px 60px rgba(2,8,23,.3);overflow:hidden">'
+    +'<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+id+'</div><div style="font-size:16px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">إغلاق: '+esc(r.title||'مشروع')+'</div></div><button onclick="document.getElementById(\'clsAdm\').remove()" aria-label="إغلاق" style="border:0;background:var(--bg);border-radius:10px;width:34px;height:34px;cursor:pointer;color:var(--text)">✕</button></div>'
+    +'<div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">'
+    +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:9px 12px;font-size:12.5px;font-weight:800;color:#9a3412;line-height:1.7">يتوقف استقبال العروض ويختفي من المشاريع المفتوحة. العروض الموجودة تبقى، وتقدر تعيد فتحه لاحقاً من نفس اللوحة.'+(r.bid_count?' <b>عليه '+r.bid_count+' عرض.</b>':'')+'</div>'
+    +'<div><div style="font-size:13px;font-weight:900;margin-bottom:7px">السبب</div><div id="cls-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+_CLOSE_ADM_REASONS.map(function(t){return '<button type="button" data-r="'+esc(t)+'" onclick="document.getElementById(\'cls-note\').value=this.getAttribute(\'data-r\');[].forEach.call(document.querySelectorAll(\'#cls-chips button\'),function(x){x.style.borderColor=\'var(--border)\';x.style.background=\'var(--white)\';x.style.color=\'var(--text2)\';});this.style.borderColor=\'#b45309\';this.style.background=\'#fff7ed\';this.style.color=\'#9a3412\'" style="'+chip+'">'+esc(t)+'</button>';}).join('')+'</div></div>'
+    +'<textarea id="cls-note" maxlength="300" placeholder="أو اكتب السبب…" style="width:100%;box-sizing:border-box;min-height:64px;border:1.5px solid var(--border);border-radius:11px;padding:9px 11px;font-family:inherit;font-size:13px;background:var(--white);color:var(--text);resize:vertical"></textarea>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;cursor:pointer"><input type="checkbox" id="cls-notify" style="width:17px;height:17px"> أرسل إشعار للعميل بالإغلاق والسبب</label>'
+    +'<div style="display:flex;gap:8px"><button id="cls-go" onclick="_rqCloseGo('+id+')" style="flex:1;border:0;background:#b45309;color:#fff;border-radius:11px;padding:12px;font-family:inherit;font-size:14.5px;font-weight:900;cursor:pointer">🔒 إغلاق المشروع</button><button onclick="document.getElementById(\'clsAdm\').remove()" style="border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:11px;padding:12px 18px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer">إلغاء</button></div>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+}
+function _rqCloseGo(id){
+  var note=(document.getElementById('cls-note')||{}).value||'', ntf=!!(document.getElementById('cls-notify')||{}).checked;
+  if(!note.trim()){ toast('اختر السبب أو اكتبه','error'); return; }
+  var btn=document.getElementById('cls-go'); if(btn){btn.disabled=true;btn.textContent='جاري الإغلاق…';}
+  fetch(API+'/api/admin/requests/'+id+'/close',Object.assign({method:'POST',body:JSON.stringify({reason:note.trim(),notify_client:ntf})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ toast('تم إغلاق المشروع'+(ntf?' وإشعار العميل':''),'success'); var o=document.getElementById('clsAdm'); if(o)o.remove(); try{_rqClose();}catch(e){} loadRequests(); setTimeout(function(){try{_rqOpen(id);}catch(e){}},700); }
+    else { toast((d&&d.message)||'تعذّر الإغلاق','error'); if(btn){btn.disabled=false;btn.textContent='🔒 إغلاق المشروع';} }
+  }).catch(function(){ toast('تعذّر الإغلاق','error'); if(btn){btn.disabled=false;btn.textContent='🔒 إغلاق المشروع';} });
 }
 var _reImgs=[],_reAtts=[];
 function _reMediaRender(){
