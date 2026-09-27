@@ -2358,6 +2358,11 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
+    // متابعة العملاء: عدد التذكيرات + تأجيل + سجل كل تذكير ونتيجته
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_count INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_snooze_until TIMESTAMP`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS followup_log (id SERIAL PRIMARY KEY, request_id INTEGER, stage VARCHAR(20), admin_id INTEGER, outcome VARCHAR(30), created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_followup_log_req ON followup_log(request_id, created_at)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason VARCHAR(60)`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason_note TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
@@ -2902,10 +2907,15 @@ app.delete('/api/account/delete', auth, async (req, res) => {
 // ═══ PROFILES ═══
 app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, res) => {
   try {
-    const base = `SELECT r.id, r.title, r.status, r.created_at, r.assigned_at, r.completed_at, r.close_at,
-        r.reminder_at, r.reminder_stage, r.client_id,
-        COALESCE(u.name,'عميل') AS client_name, u.phone AS client_phone,
-        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
+    const base = `SELECT r.id, r.title, r.status, r.created_at, r.assigned_at, r.completed_at, r.close_at, r.city, r.category, r.followup_stage,
+        r.reminder_at, r.reminder_stage, r.client_id, COALESCE(r.reminder_count,0)::int AS reminder_count, r.followup_snooze_until,
+        COALESCE(u.name,'عميل') AS client_name, u.phone AS client_phone, GREATEST(u.last_seen_at,u.last_active) AS client_last_seen,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id AND seen_at IS NULL AND COALESCE(status,'pending')<>'rejected')::int AS unseen_bids,
+        (SELECT COUNT(*) FROM messages m WHERE m.request_id=r.id AND m.receiver_id=r.client_id AND m.sender_id<>r.client_id AND COALESCE(m.is_read,false)=false)::int AS unread_msgs,
+        (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) AS min_price,
+        (SELECT MIN(created_at) FROM bids WHERE request_id=r.id) AS first_bid_at,
+        (SELECT MAX(seen_at) FROM bids WHERE request_id=r.id) AS last_seen_bids_at
       FROM requests r JOIN users u ON u.id=r.client_id`;
     const run = async (label, sql) => { try { return (await pool.query(sql)).rows; } catch(e){ console.error('[followups '+label+']', e.message); return []; } };
     // كل بطاقة تظهر في مرحلتها اليدوية إن وُجدت، وإلا في المرحلة المحسوبة تلقائياً
@@ -2924,7 +2934,18 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
     const executing = await run('executing', base + ` WHERE r.status IN ('in_progress','accepted') AND r.assigned_at IS NOT NULL AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 200`);
     const review = await run('review', base + ` WHERE r.status='completed' AND NOT EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewer_id=r.client_id) ORDER BY r.created_at DESC LIMIT 200`);
     const tag = (rows, stage) => rows.map(x => ({ ...x, stage }));
+    // نتائج التذكير: مين تحرّك (اختار مزوّد خلال 3 أيام من آخر تذكير)
+    const moved = await run('moved', base + ` WHERE r.reminder_at IS NOT NULL AND r.reminder_at > NOW() - INTERVAL '14 days' AND r.assigned_at IS NOT NULL AND r.assigned_at >= r.reminder_at ORDER BY r.assigned_at DESC LIMIT 50`);
+    const kq = async (sql) => { try { return (await pool.query(sql)).rows[0] || {}; } catch(e){ console.error('[followups kpi]', e.message); return {}; } };
+    const k1 = await kq(`SELECT COUNT(*)::int AS n FROM followup_log WHERE created_at::date = (NOW() AT TIME ZONE 'Asia/Riyadh')::date`);
+    const k2 = await kq(`SELECT COUNT(DISTINCT l.request_id)::int AS reminded,
+        COUNT(DISTINCT l.request_id) FILTER (WHERE r.assigned_at IS NOT NULL AND r.assigned_at >= l.created_at AND r.assigned_at <= l.created_at + INTERVAL '3 days')::int AS moved
+      FROM followup_log l JOIN requests r ON r.id=l.request_id WHERE l.created_at > NOW() - INTERVAL '30 days'`);
+    const k3 = await kq(`SELECT COUNT(*)::int AS n, COALESCE(SUM((SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1)),0)::float AS total
+      FROM requests r WHERE r.reminder_at IS NOT NULL AND r.assigned_at IS NOT NULL AND r.assigned_at >= r.reminder_at AND r.assigned_at > NOW() - INTERVAL '30 days'`);
     res.json({
+      moved: tag(moved, 'moved'),
+      kpi: { sent_today: k1.n||0, reminded_30: k2.reminded||0, moved_30: k2.moved||0, awarded_30: k3.n||0, awarded_total_30: k3.total||0 },
       few: tag(few, 'few'),
       offers: tag(offers, 'offers'),
       delayed: tag(delayed, 'delayed'),
@@ -2937,9 +2958,43 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
 app.post('/api/admin/requests/:id/mark-reminded', requirePermission('requests.edit'), async (req, res) => {
   try {
     const stage = String(req.body.stage||'').slice(0,20);
-    await pool.query('UPDATE requests SET reminder_at=NOW(), reminder_stage=$1 WHERE id=$2', [stage, parseInt(req.params.id)]);
-    res.json({ ok: true });
+    const rid = parseInt(req.params.id);
+    await pool.query('UPDATE requests SET reminder_at=NOW(), reminder_stage=$1, reminder_count=COALESCE(reminder_count,0)+1, followup_snooze_until=NULL WHERE id=$2', [stage, rid]);
+    const lg = await pool.query('INSERT INTO followup_log (request_id, stage, admin_id) VALUES ($1,$2,$3) RETURNING id', [rid, stage, req.user && req.user.id || null]);
+    res.json({ ok: true, log_id: lg.rows[0].id });
   } catch(e){ res.status(500).json({ message: 'تعذّر التسجيل' }); }
+});
+// تفاصيل مشروع للمتابعة: أفضل العروض + رحلة المشروع + سجل التذكيرات
+app.get('/api/admin/followups/:id', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const top = await pool.query(`SELECT b.price, b.price_unit, b.days, COALESCE(NULLIF(u.business_name,''),u.name,'مزوّد') AS provider,
+        COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=b.provider_id),0)::float AS rating
+      FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.request_id=$1 AND b.price>0 AND COALESCE(b.status,'pending')<>'rejected'
+      ORDER BY (CASE WHEN b.price_unit IS NULL OR b.price_unit='total' THEN 0 ELSE 1 END), b.price ASC LIMIT 3`, [id]);
+    const st = await pool.query(`SELECT MIN(created_at) AS first_bid_at, MIN(seen_at) AS first_seen_at, COUNT(*)::int AS n,
+        AVG(price) FILTER (WHERE price>0 AND (price_unit IS NULL OR price_unit='total'))::float AS avg_price FROM bids WHERE request_id=$1`, [id]);
+    const log = await pool.query(`SELECT l.id, l.stage, l.outcome, l.created_at, COALESCE(a.name,'') AS admin_name FROM followup_log l LEFT JOIN users a ON a.id=l.admin_id WHERE l.request_id=$1 ORDER BY l.created_at DESC LIMIT 20`, [id]);
+    res.json({ top: top.rows, stats: st.rows[0]||{}, log: log.rows });
+  } catch(e){ console.error('followup detail:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
+});
+// نتيجة آخر تذكير (ردّ / ما ردّ / يبي وقت …)
+app.post('/api/admin/requests/:id/followup-outcome', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const ok = ['replied','no_reply','needs_time','outside','postponed'];
+    const o = String(req.body.outcome||''); if (!ok.includes(o)) return res.status(400).json({ message: 'نتيجة غير صحيحة' });
+    const r = await pool.query(`UPDATE followup_log SET outcome=$1 WHERE id=(SELECT id FROM followup_log WHERE request_id=$2 ORDER BY created_at DESC LIMIT 1) RETURNING id`, [o, parseInt(req.params.id)]);
+    if (!r.rows.length) return res.status(400).json({ message: 'ما فيه تذكير مسجّل لهذا المشروع' });
+    res.json({ ok: true });
+  } catch(e){ res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+// تأجيل التذكير (أيام) — 0 يلغي التأجيل
+app.post('/api/admin/requests/:id/followup-snooze', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const d = Math.max(0, Math.min(60, parseInt(req.body.days)||0));
+    await pool.query(`UPDATE requests SET followup_snooze_until = CASE WHEN $1::int>0 THEN NOW() + ($1::int || ' days')::interval ELSE NULL END WHERE id=$2`, [d, parseInt(req.params.id)]);
+    res.json({ ok: true });
+  } catch(e){ res.status(500).json({ message: 'تعذّر التأجيل' }); }
 });
 app.post('/api/me/enable-provider', auth, async (req, res) => {
   try {
