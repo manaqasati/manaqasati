@@ -4056,7 +4056,7 @@ var FU_STAGES=[
 var FU_OUT={replied:'ردّ وبيختار قريب',no_reply:'ما ردّ',needs_time:'يبي وقت',outside:'اتفق برا المنصة',postponed:'أجّل المشروع'};
 function _fuSt(k){ return FU_STAGES.filter(function(s){return s.k===k;})[0]||{label:k,bg:'#f1f5f9',fg:'#475569'}; }
 function _fuPill(t,bg,fg){ return '<span style="font-size:11px;font-weight:900;padding:4px 10px;border-radius:999px;white-space:nowrap;display:inline-block;background:'+bg+';color:'+fg+'">'+t+'</span>'; }
-function _fuN(n,one,two,few){ n=n||0; if(n===1)return one; if(n===2)return two; if(n>=3&&n<=10)return n+' '+few; return n+' '+one; }
+function _fuN(n,one,two,few,many){ n=n||0; if(n===1)return one; if(n===2)return two; if(n===0||(n>=3&&n<=10))return n+' '+few; return n+' '+(many||one.replace(/ واحد(ة)?$/,'')); }
 function _fuD(iso){ if(!iso)return null; return Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/86400000)); }
 function _fuAgo(iso){ var d=_fuD(iso); if(d===null)return ''; if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; if(d===2)return 'قبل يومين'; return 'قبل '+d+' أيام'; }
 function _fuLink(p){ return 'https://manaqasa.com/project/x-'+p.id+'?id='+p.id; }
@@ -4098,7 +4098,7 @@ function _fuKinds(p){
   if(p.stage==='few'){ k.push((p.bid_count||0)?'few':'few0'); k.push('help'); }
   else if(p.stage==='offers'||p.stage==='delayed'){
     if(ue&&um)k.push('unseen_unread'); if(ue)k.push('unseen'); if(um)k.push('unread');
-    k.push('top3'); k.push('friendly'); k.push('help');
+    k.push('friendly'); k.push('help');
   }
   else if(p.stage==='executing'){ k.push('executing'); if(um)k.push('unread'); }
   else { k.push('review'); }
@@ -4106,23 +4106,26 @@ function _fuKinds(p){
 }
 var FU_KIND_LBL={unseen_unread:'عروض ورسائل ما شافها',unseen:'عروض ما شافها',unread:'رسائل ما قرأها',top3:'مع أفضل 3 عروض',friendly:'ودّية قصيرة',help:'عرض مساعدة',few0:'بدون عروض — أضف تفاصيل',few:'عروض قليلة',executing:'تحديث التنفيذ',review:'طلب التقييم'};
 function _fuMsg(p,kind,det){
-  var nm=(p.client_name&&p.client_name!=='عميل')?' '+p.client_name:'', t=p.title||'مشروعك', n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0, L=_fuLink(p);
-  var top=(det&&det.top)||[];
-  var minTxt=p.min_price?Math.round(p.min_price).toLocaleString('en-US')+' ر.س':'';
-  var hi='السلام عليكم'+nm+' 👋\n';
-  if(kind==='unseen_unread') return hi+'مشروعك «'+t+'» وصله '+ue+(ue===1?' عرض':' عروض')+' ما اطّلعت عليها بعد، و'+um+(um===1?' رسالة من مزوّد تنتظر':' رسائل من مزوّدين تنتظر')+' ردّك.\nبعضهم يسأل عن تفاصيل عشان يعطيك سعر أدق، وكل ما تأخر الرد ممكن تتغيّر الأسعار.\n🔗 شوف العروض والرسائل:\n'+L;
-  if(kind==='unseen') return hi+'وصلك '+ue+(ue===1?' عرض':' عروض')+' على مشروعك «'+t+'» وما شفتها للحين.\n'+(minTxt?'أقل سعر '+minTxt+'، ':'')+'قارن الأسعار ومدة التنفيذ وتقييمات المزوّدين واختر اللي يناسبك.\n🔗 '+L;
-  if(kind==='unread') return hi+'عندك '+um+(um===1?' رسالة من مزوّد':' رسائل من مزوّدين')+' على مشروعك «'+t+'» ما قرأتها.\nممكن فيها أسئلة أو توضيح للسعر، ردّك يساعدهم يعطونك أفضل عرض.\n🔗 '+L;
-  if(kind==='top3'){
-    if(!top.length) return hi+'مشروعك «'+t+'» وصله '+n+' عرض ✅\nاطّلع على الأسعار ومدة التنفيذ وتقييمات المزوّدين، واختر الأنسب لبدء العمل.\n🔗 '+L;
-    return hi+'مشروعك «'+t+'» وصله '+n+' عرض، وهذي أفضل '+top.length+' حسب السعر:\n'+top.map(function(b,i){ return (i+1)+') '+b.provider+' — '+_fuPrice(b)+(b.rating>0?' · ★'+(Math.round(b.rating*10)/10):''); }).join('\n')+'\nتبي نساعدك تقارن؟ رد علينا هنا.\n🔗 '+L;
-  }
-  if(kind==='friendly') return hi+'ما زالت العروض متاحة على مشروعك «'+t+'» ('+n+' عرض).\nاختر المزوّد الأنسب للانتقال للتنفيذ، فبعض العروض قد تتغيّر مع الوقت.\n🔗 '+L;
-  if(kind==='help') return hi+'معك فريق منصة مناقصة بخصوص مشروعك «'+t+'».\nإذا محتار بين العروض أو تحتاج مساعدة في المقارنة أو تعديل تفاصيل المشروع، رد علينا هنا ونساعدك.\n🔗 '+L;
-  if(kind==='few0') return hi+'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\nمشروعك «'+t+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو صور أو مخططات متاحة لمساعدة المزوّدين على التسعير.\n🔗 تحديث المشروع:\n'+L;
-  if(kind==='few') return hi+'مشروعك «'+t+'» استقبل '+(n===1?'عرضًا واحدًا':n+' عروض')+' حتى الآن.\nإذا ناسبك أحدها تقدر تقبله مباشرة، وإن رغبت بعروض أكثر أضف تفاصيل أو ملفات أوضح.\n🔗 راجع العروض:\n'+L;
-  if(kind==='executing') return hi+'نأمل أن أعمال مشروعك «'+t+'» تسير كما هو مخطط لها.\nفي حال تم الانتهاء من التنفيذ، يرجى تحديث حالة المشروع إلى مكتمل من خلال لوحة التحكم.\n🔗 '+L;
-  return hi+'تم الانتهاء من مشروعك «'+t+'» بنجاح 🎉\nنسعد بمشاركتك لتجربتك عبر تقييم المزوّد، فملاحظاتك تساعد أصحاب المشاريع الآخرين على اتخاذ قرارات أفضل.\n⭐ قيّم المزوّد:\n🔗 '+L;
+  // بدون أسعار وبدون تقييمات، وبدون إيموجي (تطلع � في واتساب الكمبيوتر). الرابط = دخول مباشر لحساب العميل
+  var nm=(p.client_name&&p.client_name!=='عميل')?' '+p.client_name:'', t=p.title||'مشروعك', n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0;
+  var L=(det&&det.magic_link)||'https://manaqasa.com/auth.html';
+  var go='\nادخل حسابك مباشرة من هنا:\n'+L;
+  var hi='السلام عليكم'+nm+'\n';
+  var offers=function(x){ return _fuN(x,'عرض سعر واحد','عرضين أسعار','عروض أسعار','عرض سعر'); };
+  var msgs=function(x){ return _fuN(x,'رسالة من مزوّد','رسالتين من مزوّدين','رسائل من مزوّدين','رسالة من مزوّدين'); };
+  var ask=function(x){ return x>1?('توجد استفسارات من المنفّذين في قسم المحادثات ('+msgs(x)+')، اطّلع عليها — بانتظار ردّك.'):'يوجد استفسار من أحد المنفّذين في قسم المحادثات، اطّلع عليه — بانتظار ردّك.'; };
+  if(kind==='unseen_unread') return hi+'مشروعك «'+t+'» وصله '+offers(ue)+' ما اطّلعت عليها بعد.\n'+ask(um)+'\nكل ما تأخر الرد ممكن تتغيّر العروض.'+go;
+  if(kind==='unseen') return hi+'وصلك '+offers(ue)+' على مشروعك «'+t+'» وما شفتها للحين.\nقارن العروض ومدة التنفيذ واختر اللي يناسبك.'+go;
+  if(kind==='unread') return hi+'بخصوص مشروعك «'+t+'»:\n'+ask(um)+'\nردّك يساعدهم يعطونك عرض أدق.'+go;
+  // أي رسالة ثانية: إذا عنده رسائل ما قرأها نضيف سطر الاستفسارات قبل الرابط
+  var extra=(um>0&&kind!=='unseen'&&kind!=='review')?'\n'+ask(um):'';
+  go=extra+go;
+  if(kind==='friendly') return hi+'ما زالت العروض متاحة على مشروعك «'+t+'» ('+offers(n)+').\nاختر المزوّد الأنسب للانتقال للتنفيذ، فبعض العروض قد تتغيّر مع الوقت.'+go;
+  if(kind==='help') return hi+'معك فريق منصة مناقصة بخصوص مشروعك «'+t+'».\nإذا محتار بين العروض أو تحتاج مساعدة في المقارنة أو تعديل تفاصيل المشروع، رد علينا هنا ونساعدك.'+go;
+  if(kind==='few0') return hi+'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\nمشروعك «'+t+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو صور أو مخططات متاحة لمساعدة المزوّدين على التسعير.'+go;
+  if(kind==='few') return hi+'مشروعك «'+t+'» استقبل '+offers(n)+' حتى الآن.\nإذا ناسبك أحدها تقدر تقبله مباشرة، وإن رغبت بعروض أكثر أضف تفاصيل أو ملفات أوضح.'+go;
+  if(kind==='executing') return hi+'نأمل أن أعمال مشروعك «'+t+'» تسير كما هو مخطط لها.\nفي حال تم الانتهاء من التنفيذ، يرجى تحديث حالة المشروع إلى مكتمل من لوحة التحكم.'+go;
+  return hi+'تم الانتهاء من مشروعك «'+t+'» بنجاح.\nنسعد بمشاركتك لتجربتك عبر تقييم المزوّد، فملاحظاتك تساعد أصحاب المشاريع الآخرين على اتخاذ قرارات أفضل.'+go;
 }
 function _fuDetail(id,cb){ if(_fuDet[id]){cb(_fuDet[id]);return;} fetch(API+'/api/admin/followups/'+id,hdr()).then(function(r){return r.json();}).then(function(d){ _fuDet[id]=d||{}; cb(_fuDet[id]); }).catch(function(){ cb({}); }); }
 function _fuPhone(p){ var ph=String(p.client_phone||'').replace(/[^0-9]/g,''); if(!ph)return ''; if(ph.indexOf('966')!==0){ ph=ph.replace(/^0+/,''); ph='966'+ph; } return ph; }
