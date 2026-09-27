@@ -4255,7 +4255,7 @@ function _renderOutreach(st, cov){
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:10px 12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #a7f3d0;border-radius:10px">'
       +'<span style="font-size:12.5px;font-weight:800;color:#065f46">🧹 كنس مدينة أو منطقة كاملة</span>'
-      +'<select id="o-sweep-city" style="padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:#fff;color:var(--text);cursor:pointer"><optgroup label="🗺️ مناطق كاملة">'+Object.keys(INV_REGIONS).map(function(rg){var cnt=INV_REGIONS[rg].filter(function(c){return _OAREAS[c];}).length;return '<option value="region:'+rg+'">'+rg+' — كل مدنها ('+cnt+' مدينة)</option>';}).join('')+'</optgroup><optgroup label="🏙️ مدينة واحدة">'+Object.keys(_OAREAS).map(function(c){return '<option value="'+c+'">'+c+' ('+_OAREAS[c].length+' حي)</option>';}).join('')+'</optgroup></select>'
+      +'<select id="o-sweep-city" style="padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;font-weight:700;background:#fff;color:var(--text);cursor:pointer"><optgroup label="🗺️ مناطق كاملة">'+Object.keys(INV_REGIONS).map(function(rg){var cnt=INV_REGIONS[rg].length;return '<option value="region:'+rg+'">'+rg+' — كل مدنها ('+cnt+' مدينة)</option>';}).join('')+'</optgroup>'+Object.keys(INV_REGIONS).map(function(rg){return '<optgroup label="'+rg+'">'+INV_REGIONS[rg].map(function(c){return '<option value="'+c+'">'+c+(_OAREAS[c]?' ('+_OAREAS[c].length+' حي)':' (المدينة كاملة)')+'</option>';}).join('')+'</optgroup>';}).join('')+'</select>'
       +'<span style="font-size:11.5px;color:#065f46;font-weight:700">الهدف:</span>'
       +'<input id="o-sweep-target" type="number" value="300" min="20" max="1000" style="width:74px;padding:8px 10px;border:1px solid #a7f3d0;border-radius:9px;font-family:Tajawal;font-size:12.5px;background:#fff;color:var(--text);text-align:center">'
       +'<button id="o-sweep-btn" onclick="_oSweep()" style="background:#059669;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-family:Tajawal;font-weight:800;font-size:12.5px;cursor:pointer">🧹 ابدأ الكنس</button>'
@@ -4464,11 +4464,12 @@ async function _oSweep(){
   var sel=(document.getElementById('o-sweep-city')||{}).value||'';
   var targets=[];
   if(sel.indexOf('region:')===0){
-    var _rg=sel.slice(7); (INV_REGIONS[_rg]||[]).forEach(function(c){ (_OAREAS[c]||[]).forEach(function(a){ targets.push({city:c,area:a}); }); });
-    if(!targets.length){ toast('لا توجد بيانات أحياء لمدن هذه المنطقة','error'); return; }
+    var _rg=sel.slice(7); (INV_REGIONS[_rg]||[]).forEach(function(c){ if(_OAREAS[c]) _OAREAS[c].forEach(function(a){ targets.push({city:c,area:a}); }); else targets.push({city:c,area:''}); });
+    if(!targets.length){ toast('لا توجد مدن في هذه المنطقة','error'); return; }
   } else {
-    (_OAREAS[sel]||[]).forEach(function(a){ targets.push({city:sel,area:a}); });
-    if(!targets.length){ toast('لا توجد قائمة أحياء لهذه المدينة','error'); return; }
+    if(!sel){ toast('اختر مدينة أو منطقة','error'); return; }
+    // مدينة بدون قائمة أحياء: نبحث فيها كاملة
+    if(_OAREAS[sel]) _OAREAS[sel].forEach(function(a){ targets.push({city:sel,area:a}); }); else targets.push({city:sel,area:''});
   }
   var target=parseInt((document.getElementById('o-sweep-target')||{}).value)||300;
   _oSweepStop=false;
@@ -4482,9 +4483,9 @@ async function _oSweep(){
     if(_oSweepStop) break;
     if(acc.length>=target) break;
     var _tc=targets[i].city, area=targets[i].area;
-    if(prog)prog.innerHTML='⏳ يكنس: <b>'+esc(area)+'</b> — '+esc(_tc)+' ('+(i+1)+'/'+targets.length+') · جُمِع <b style="color:#059669">'+acc.length+'</b> · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b>';
+    if(prog)prog.innerHTML='⏳ يكنس: <b>'+esc(area||'المدينة كاملة')+'</b> — '+esc(_tc)+' ('+(i+1)+'/'+targets.length+') · جُمِع <b style="color:#059669">'+acc.length+'</b> · جديد بأرقام <b style="color:#16a34a">'+newCnt+'</b>';
     try{
-      var d=await fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:term+' '+area+' '+_tc,pages:2})}).then(function(r){return r.json();});
+      var d=await fetch(API+'/api/admin/leads/search',{method:'POST',headers:hdr().headers,body:JSON.stringify({query:(term+' '+(area?area+' ':'')+_tc).trim(),pages:area?2:3})}).then(function(r){return r.json();});
       (d.results||[]).forEach(function(p){
         if(p.place_id && !seen[p.place_id]){ seen[p.place_id]=1; acc.push(p); if(!p.exists && p.phone_norm) newCnt++; }
       });
