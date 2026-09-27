@@ -515,6 +515,24 @@ kbd{font-family:inherit;font-size:11px;font-weight:800;border:1px solid #cdd9ef;
 .sa-bars>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
 .sa-bars i{display:block;width:100%;border-radius:7px 7px 0 0;background:#93b0ee;min-height:3px}
 .sa-bars span{font-size:11px;color:var(--muted);font-weight:700}
+.ow-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border)}
+.ow-tab{border:1.5px solid var(--border);background:var(--card);border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13px;font-weight:800;color:var(--text2);cursor:pointer}
+.ow-tab.on{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.ow-row{display:grid;grid-template-columns:minmax(180px,2fr) 70px 70px minmax(150px,2fr) 150px;gap:10px;align-items:center;width:100%;text-align:right;background:var(--card);border:0;border-top:1px solid var(--border);padding:12px 16px;font-family:inherit;color:var(--text);cursor:pointer}
+.ow-row:hover{background:var(--bg)}
+.ow-hd{cursor:default;font-size:11.5px;font-weight:800;color:var(--muted);border-top:0;background:var(--bg)}
+.ow-num{font-size:16px;font-weight:900}
+.ow-av{width:38px;height:38px;border-radius:38px;background:#1e3a8a;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0}
+.ow-foot{font-size:12px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px dashed #c4b5fd;border-radius:12px;padding:10px 13px;line-height:1.8;margin-top:12px}
+.ow-note{font-size:13px;font-weight:700;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:11px 14px;line-height:1.8;margin-bottom:12px}
+.ow-hc{margin-bottom:12px;padding:14px 16px}
+.ow-bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+.ow-bc{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:6px}
+.ow-bn{font-size:12.5px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+mark.ow-blank{background:#fee2e2;color:#b91c1c;border-radius:4px;padding:0 3px;font-weight:800}
+.ow-mi{display:block;width:100%;text-align:right;border:0;background:none;padding:9px 10px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:800;color:var(--text);cursor:pointer}
+.ow-mi:hover{background:var(--bg)}
+@media(max-width:760px){.ow-row{grid-template-columns:1fr 44px 44px;}.ow-row>span:nth-child(4),.ow-row>span:nth-child(5){grid-column:1/-1}.ow-hd>span:nth-child(4),.ow-hd>span:nth-child(5){display:none}}
 </style>
 </head>
 <body>
@@ -648,7 +666,15 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-offerwatch">
       <div class="card" style="margin-bottom:14px">
-        <div class="card-head"><h3>🛡️ مراقبة العروض</h3>
+        <div class="card-head" style="flex-wrap:wrap;gap:6px"><h3>🛡️ مراقبة العروض</h3><span style="font-size:12.5px;font-weight:700;color:var(--muted)">العروض المشبوهة — من الكشف التلقائي وبلاغات أصحاب المشاريع</span></div>
+        <div class="ow-tabs" id="ow-tabs"></div>
+      </div>
+      <div id="ow-t-reports"></div>
+      <div id="ow-t-held" style="display:none"></div>
+      <div id="ow-t-done" style="display:none"></div>
+      <div id="ow-t-auto" style="display:none">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-head"><h3>الكشف التلقائي</h3>
           <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center">
             <span id="ow-count" style="font-size:12.5px;font-weight:700;color:var(--muted)"></span>
             <button class="act-btn ab-default" style="padding:6px 12px;font-size:12px;color:#dc2626;border-color:#fecaca" onclick="clearOfferFlags()">🗑️ مسح القديمة</button>
@@ -657,6 +683,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج منطقة خدمة المزوّد</b> (نفس المنطقة = عادي، لا يُرصد — مثلاً الرياض والخرج). يُرسَل تنبيه تلقائي لحظة المخالفة. تقدر تنبّه يدوياً أو عبر واتساب.</div>
       </div>
       <div id="offerwatch-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
+      </div>
     </div>
 
     <div class="page" id="page-engagement">
@@ -1137,7 +1164,7 @@ function showPage(pg,el){
   document.getElementById('page-'+pg).classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['مراقبة العروض','رصد العروض خارج نطاق الخدمة وتنبيه المزوّدين'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['مراقبة العروض','بلاغات العملاء · الكشف التلقائي · العروض تحت المراجعة'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=meta[pg][0];
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
@@ -1157,7 +1184,7 @@ function showPage(pg,el){
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
   if(pg==='projreview')loadProjReview();
-  if(pg==='offerwatch')loadOfferFlags();
+  if(pg==='offerwatch')loadOfferWatch();
   if(pg==='engagement')loadEngagement();
   if(pg==='contactlog')loadContactLog();
   if(pg==='agents')loadAgents();
@@ -1398,12 +1425,14 @@ function _renderDash(o){
   var st=n.storage||{};
   [['قاعدة البيانات',st.dbPct],['تخزين الملفات',st.r2Pct]].forEach(function(x){ var p=parseFloat(x[1])||0; if(p>=70) q.push({c:p>=85?'red':'org',t:x[0]+' ممتلئة',s:'راجع صفحة صحة النظام',n:Math.round(p)+'%',pg:'health',ic:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>'}); });
   if(n.review) q.push({c:'red',t:'مشاريع تنتظر المراجعة',s:n.review_oldest?'أقدمها '+_adAgo(n.review_oldest):'',n:n.review,pg:'projreview',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'});
-  if(n.flags) q.push({c:'org',t:'عروض مرصودة',s:(n.flag_providers||0)+' مزوّد',n:n.flags,pg:'offerwatch',ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'});
+  if(n.held_bids) q.push({c:'red',t:'عروض تنتظر مراجعتك',s:n.held_next_sec!=null?'أقربها ينعتمد تلقائياً '+_owLeft(n.held_next_sec).replace(/^باقي /,'بعد '):'',n:n.held_bids,pg:'offerwatch',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',tab:'held'});
+  if(n.bid_report_providers) q.push({c:'org',t:'بلاغات عملاء على عروض',s:'مزوّدين تحتاج قرارك',n:n.bid_report_providers,pg:'offerwatch',ic:'<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>',tab:'reports'});
+  if(n.flags) q.push({c:'org',t:'عروض مرصودة',s:(n.flag_providers||0)+' مزوّد',n:n.flags,pg:'offerwatch',ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',tab:'auto'});
   if(n.saai_submitted) q.push({c:'blu',t:'سداد ينتظر الاعتماد',s:fmtNum(n.saai_submitted_sum)+' ر.س',n:n.saai_submitted,pg:'saai',ic:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'});
   if(n.reports) q.push({c:'amb',t:'بلاغات مفتوحة',s:'تحتاج مراجعة وإجراء',n:n.reports,pg:'reports',ic:'<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'});
   if(n.questions) q.push({c:'amb',t:'أسئلة بدون رد',s:'عملاء ومزوّدون ينتظرون',n:n.questions,pg:'questions',ic:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>'});
   var na=document.getElementById('needs-action');
-  if(na) na.innerHTML='<div class="ad-q">'+(q.length?q.map(function(x){return '<button class="ad-qc '+x.c+'" onclick="_niGo(\''+x.pg+'\')"><span class="ad-qi">'+_adIcon(x.ic)+'</span><span><div class="ad-qt">'+x.t+'</div><div class="ad-qs">'+esc(x.s||'')+'</div></span><span class="ad-qn">'+x.n+'</span></button>';}).join(''):'<div class="ad-qc ok"><span class="ad-qi">'+_adIcon('<path d="M20 6L9 17l-5-5"/>')+'</span><span><div class="ad-qt">ما فيه شي ينتظرك</div><div class="ad-qs">كل المراجعات والبلاغات منتهية</div></span></div>')+'</div>';
+  if(na) na.innerHTML='<div class="ad-q">'+(q.length?q.map(function(x){return '<button class="ad-qc '+x.c+'" onclick="'+(x.tab?'_owCur=\''+x.tab+'\';':'')+'_niGo(\''+x.pg+'\')"><span class="ad-qi">'+_adIcon(x.ic)+'</span><span><div class="ad-qt">'+x.t+'</div><div class="ad-qs">'+esc(x.s||'')+'</div></span><span class="ad-qn">'+x.n+'</span></button>';}).join(''):'<div class="ad-qc ok"><span class="ad-qi">'+_adIcon('<path d="M20 6L9 17l-5-5"/>')+'</span><span><div class="ad-qt">ما فيه شي ينتظرك</div><div class="ad-qs">كل المراجعات والبلاغات منتهية</div></span></div>')+'</div>';
   // المؤشرات
   var ser=o.series||[];
   var pc=cv.n?Math.round(cv.with_bids/cv.n*100):0;
@@ -2361,6 +2390,209 @@ function sendEngRemind(){
 }
 function _waNorm(p){if(!p)return null;var d=(''+p).replace(/[^\d]/g,'');if(d.indexOf('00966')===0)d=d.slice(2);else if(d.indexOf('966')===0){}else if(d.indexOf('05')===0)d='966'+d.slice(1);else if(d.length===9&&d.charAt(0)==='5')d='966'+d;else if(d.charAt(0)==='0')d='966'+d.slice(1);if(d.indexOf('966')!==0)return null;var r=d.slice(3);if(r.length!==9||r.charAt(0)!=='5')return null;return d;}
 function engWa(uid){var u=(_engList||[]).find(function(x){return x.user_id===uid;});var ph=_waNorm(u&&u.user_phone);if(!ph){toast('لا يوجد رقم واتساب صالح لهذا المستخدم','error');return;}var msg='السلام عليكم، لديك رسائل وعروض بانتظارك في منصة مناقصة — ادخل وتفاعل معها.';window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');}
+// ═══ مراقبة العروض: بلاغات العملاء + الكشف التلقائي + تحت المراجعة قبل النشر ═══
+var _owCur='reports', _owCounts={}, _owRep=[], _owHeld=null, _owDetCur=null;
+function loadOfferWatch(){ _owLoadCounts(); _owTab(_owCur); }
+function _owLoadCounts(cb){
+  fetch(API+'/api/admin/bid-watch-counts',hdr()).then(function(r){return r.json();}).then(function(c){
+    _owCounts=c||{}; _owTabsRender(); _owBadge(); if(cb)cb();
+  }).catch(function(){});
+}
+function _owBadge(){
+  var n=(parseInt(_owCounts.held)||0)+(parseInt(_owCounts.report_providers)||0);
+  var b=document.getElementById('offerwatch-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}
+}
+function _owTabsRender(){
+  var host=document.getElementById('ow-tabs');if(!host)return;
+  var c=_owCounts||{};
+  var T=[['reports','بلاغات العملاء',c.report_providers],['auto','الكشف التلقائي',c.flags],['held','تحت المراجعة قبل النشر',c.held],['done','تمت معالجتها',null]];
+  host.innerHTML=T.map(function(t){var on=_owCur===t[0];var hot=(t[0]==='held'&&t[2]);
+    return '<button class="ow-tab'+(on?' on':'')+'" onclick="_owTab(\''+t[0]+'\')">'+t[1]+(t[2]!=null?' · <b'+(hot&&!on?' style="color:#dc2626"':'')+'>'+(t[2]||0)+'</b>':'')+'</button>';}).join('');
+}
+function _owTab(t){
+  _owCur=t; _owTabsRender();
+  ['reports','auto','held','done'].forEach(function(k){var p=document.getElementById('ow-t-'+k);if(p)p.style.display=(k===t||(k==='reports'&&t==='done'))?'':'none';});
+  if(t==='auto')loadOfferFlags();
+  else if(t==='held')_owLoadHeld();
+  else _owLoadReports();
+}
+var OW_RS_COL={spam:['#fff7ed','#c2410c'],scope:['#eff6ff','#1d4ed8'],price:['#fefce8','#a16207'],abuse:['#fef2f2','#b91c1c']};
+var OW_RS_SHORT={spam:'عشوائي/منسوخ',scope:'خارج التخصص',price:'سعر غير منطقي',abuse:'إساءة أو إزعاج'};
+function _owPill(t,bg,fg){return '<span style="display:inline-block;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;white-space:nowrap;background:'+bg+';color:'+fg+'">'+t+'</span>';}
+function _owState(p){
+  if(p.is_active===false)return _owPill('موقوف','#1f2937','#fff');
+  if(p.bid_review)return _owPill('عروضه تحت المراجعة','#fef3c7','#92400e');
+  if(p.open_reports===0&&p.dismissed>=p.reports)return _owPill('البلاغات غير صحيحة','#f1f5f9','#475569');
+  if(p.bid_warned_at)return _owPill('أُرسل له تنبيه','#eff6ff','#1d4ed8');
+  return _owPill('جديد','#fef2f2','#b91c1c');
+}
+function _owLoadReports(){
+  var host=document.getElementById('ow-t-reports');if(!host)return;
+  host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/bid-reports',hdr()).then(function(r){return r.json();}).then(function(list){
+    if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _owRep=list;
+    var done=_owCur==='done';
+    var arr=list.filter(function(p){return done?p.open_reports===0:p.open_reports>0;});
+    if(!arr.length){host.innerHTML=emptyState(done?'ما فيه بلاغات معالجة بعد':'ما فيه بلاغات جديدة من العملاء 🎉');return;}
+    host.innerHTML='<div class="card" style="padding:0;overflow:hidden">'
+      +'<div class="ow-row ow-hd"><span>المزوّد</span><span>البلاغات</span><span>من عملاء</span><span>الأسباب</span><span>الحالة</span></div>'
+      +arr.map(function(p){
+        var nm=p.business_name||p.name||'مزوّد';
+        var rs=(p.reasons||[]).map(function(x){var c=OW_RS_COL[x.key]||['#f1f5f9','#475569'];return _owPill((OW_RS_SHORT[x.key]||x.label)+' · '+x.n,c[0],c[1]);}).join(' ');
+        return '<button class="ow-row" onclick="_owRepOpen('+p.id+')">'
+          +'<span style="display:flex;align-items:center;gap:10px;min-width:0"><span class="ow-av">'+esc(nm.charAt(0))+'</span><span style="min-width:0"><b style="display:block;font-size:14px">'+esc(nm)+'</b><small style="color:var(--muted);font-weight:700;font-size:11.5px">'+_fuN(p.bids_30d,'عرض واحد','عرضين','عروض','عرض')+' خلال شهر'+(p.city?' · '+esc(p.city):'')+'</small></span></span>'
+          +'<span class="ow-num">'+p.reports+'</span><span class="ow-num">'+p.clients+'</span>'
+          +'<span style="display:flex;gap:4px;flex-wrap:wrap">'+rs+'</span><span>'+_owState(p)+'</span></button>';
+      }).join('')+'</div>'
+      +'<div class="ow-foot">العقوبات تلقائية ومتدرجة: بلاغين من عميلين مختلفين ← تنبيه للمزوّد · 3 عملاء خلال 30 يوم ← عروضه الجديدة تنتظر موافقتك قبل ما تظهر (مهلة 7 ساعات ثم تنعتمد تلقائياً) · الإيقاف قرارك أنت. العميل الواحد ينحسب مرة وحدة لكل مزوّد. «البلاغات غير صحيحة» يلغي أثرها.</div>';
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function _owHl(t){ return esc(t||'').replace(/\(([^)]{0,60})\)/g,'<mark class="ow-blank">($1)</mark>'); }
+function _owClose(){ var o=document.getElementById('owDr'); if(o)o.remove(); _owDetCur=null; }
+function _owRepOpen(pid){
+  _owClose(); _owDetCur=pid;
+  var ov=document.createElement('div'); ov.id='owDr';
+  ov.style.cssText='position:fixed;inset:0;z-index:900;background:rgba(15,23,42,.35);display:flex;justify-content:flex-end';
+  ov.onclick=function(e){ if(e.target===ov)_owClose(); };
+  ov.innerHTML='<div id="owDrBox" style="width:680px;max-width:100%;height:100%;background:var(--card);color:var(--text);box-shadow:20px 0 50px rgba(15,23,42,.2);display:flex;flex-direction:column;overflow:auto"><div style="padding:40px;text-align:center;color:var(--muted)">جاري التحميل...</div></div>';
+  document.body.appendChild(ov);
+  fetch(API+'/api/admin/bid-reports/provider/'+pid,hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.user){document.getElementById('owDrBox').innerHTML='<div style="padding:40px;text-align:center">تعذر التحميل</div>';return;}
+    _owDrawer(d);
+  }).catch(function(){var b=document.getElementById('owDrBox');if(b)b.innerHTML='<div style="padding:40px;text-align:center">تعذر التحميل</div>';});
+}
+function _owDrawer(d){
+  var box=document.getElementById('owDrBox');if(!box)return;
+  var u=d.user, nm=u.business_name||u.name||'مزوّد';
+  var open=d.reports.filter(function(r){return r.status!=='dismissed';});
+  var clients={};open.forEach(function(r){clients[r.client_name||r.request_id]=1;});
+  var since=u.created_at?new Date(u.created_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{month:'long',year:'numeric'}):'';
+  var sim=d.similarity||{};
+  var gb='border:1.5px solid var(--border);background:var(--card);color:var(--text2);border-radius:11px;padding:10px 13px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap';
+  var h='<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start;position:sticky;top:0;background:var(--card);z-index:1">'
+    +'<span class="ow-av" style="width:46px;height:46px;font-size:18px">'+esc(nm.charAt(0))+'</span>'
+    +'<div style="flex:1;min-width:0"><div style="font-family:Cairo,sans-serif;font-size:19px;font-weight:900">'+esc(nm)+'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-top:2px">'+(since?'عضو منذ '+since+' · ':'')+_fuN(u.bids_total,'عرض واحد','عرضين','عروض','عرض')+' · '+(u.accepted?_fuN(u.accepted,'ترسية واحدة','ترسيتين','ترسيات','ترسية'):'0 ترسية')+' · '+(u.reviews?_fuN(u.reviews,'تقييم واحد','تقييمين','تقييمات','تقييم'):'لا تقييمات')+(u.city?' · '+esc(u.city):'')+'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">'+_owPill(_fuN(open.length,'بلاغ واحد','بلاغين','بلاغات','بلاغ')+' · '+_fuN(Object.keys(clients).length,'عميل واحد','عميلين','عملاء','عميل'),'#fef2f2','#b91c1c')+(u.bid_review?_owPill('عروضه تحت المراجعة','#fef3c7','#92400e'):'')+(u.is_active===false?_owPill('موقوف','#1f2937','#fff'):'')+'</div></div>'
+    +'<button onclick="_owClose()" style="border:0;background:var(--bg);color:var(--text);border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer" aria-label="إغلاق">✕</button></div>';
+  h+='<div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px">';
+  // التطابق
+  var simCol=sim.pct>=60?'#b91c1c':(sim.pct>=30?'#c2410c':'#15803d');
+  h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:13px 15px;font-size:13px;font-weight:700;line-height:1.9">تطابق النصوص بين عروضه: <b style="font-size:20px;color:'+simCol+'">'+(sim.pct||0)+'%</b>'
+    +(sim.total>1?' — نفس القالب في '+sim.same+' من '+sim.total+' عرض':' — عرض واحد فقط')
+    +(d.blanks?'، وفيه فراغات ما تعبّت في '+_fuN(d.blanks,'عرض واحد','عرضين','عروض','عرض'):'')+'</div>';
+  // آخر العروض جنب بعض
+  h+='<div><div style="font-size:13px;font-weight:900;margin-bottom:8px">آخر عروضه جنب بعض</div><div class="ow-bgrid">'
+    +(d.bids||[]).map(function(b){
+      var hs=b.hold_state==='held'?_owPill('معلّق','#fef3c7','#92400e'):(b.hold_state==='rejected'?_owPill('مرفوض','#fef2f2','#b91c1c'):'');
+      return '<div class="ow-bc"><div style="display:flex;gap:6px;align-items:center;justify-content:space-between"><b style="font-size:12.5px">'+esc(b.request_title||'مشروع')+(b.request_city?' · '+esc(b.request_city):'')+'</b>'+(b.reported?_owPill('مُبلّغ','#fef2f2','#b91c1c'):'')+hs+'</div>'
+        +'<div class="ow-bn">'+_owHl(b.note||'—')+'</div><div style="font-size:11.5px;color:var(--muted);font-weight:700">'+(b.price?fmtNum(b.price)+' ر.س':'')+(b.days?' · '+b.days+' يوم':'')+' · '+_fuAgo(b.created_at)+'</div></div>';
+    }).join('')+'</div></div>';
+  // البلاغات
+  h+='<div><div style="font-size:13px;font-weight:900;margin-bottom:8px">البلاغات</div>'
+    +d.reports.map(function(r){ return '<div style="font-size:12.5px;font-weight:700;padding:7px 0;border-bottom:1px dashed var(--border);'+(r.status==='dismissed'?'opacity:.5;text-decoration:line-through':'')+'">• '+esc(r.reason_label)+' — '+esc(r.client_name||'عميل')+' على مشروع «'+esc(r.request_title||'')+'» · '+_fuAgo(r.created_at)+(r.status==='actioned'?' · <span style="color:var(--green)">تمت المعالجة</span>':'')+'</div>'; }).join('')+'</div>';
+  // الإجراءات
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button style="'+gb+';color:#1d4ed8;border-color:#bfdbfe" onclick="_owAct('+u.id+',\'warn\',this)">📩 أرسل تنبيه + نصائح</button>'
+    +(u.bid_review?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0" onclick="_owAct('+u.id+',\'lift\',this)">▶ رفع المراجعة</button>':'<button style="'+gb+';color:#92400e;border-color:#fde68a" onclick="_owAct('+u.id+',\'review\',this)">⏸ عروضه تنتظر موافقتي</button>')
+    +(u.is_active!==false?'<button style="'+gb+';color:#dc2626;border-color:#fecaca" onclick="_owAct('+u.id+',\'suspend\',this)">⛔ إيقاف الحساب</button>':'')
+    +'<button style="'+gb+'" onclick="_owAct('+u.id+',\'dismiss\',this)">✓ البلاغات غير صحيحة</button>'
+    +'</div>';
+  h+='<div class="ow-foot" style="margin:0">المزوّد ما يشوف اسم المبلّغ ولا المشروع اللي انبلّغ منه.</div></div>';
+  box.innerHTML=h;
+}
+async function _owAct(pid,act,btn){
+  if(act==='suspend'){ var ok=await askConfirm({title:'إيقاف الحساب',message:'إيقاف حساب هذا المزوّد؟ ما يقدر يدخل المنصة لين ترجّعه من صفحة المستخدمين.',confirmText:'إيقاف'}); if(!ok)return; }
+  if(act==='dismiss'){ var ok2=await askConfirm({title:'البلاغات غير صحيحة',message:'يلغي أثر كل بلاغاته (التنبيه والمراجعة) ويعتمد عروضه المعلّقة.',confirmText:'تأكيد',safe:true}); if(!ok2)return; }
+  if(btn){btn.disabled=true;}
+  fetch(API+'/api/admin/bid-reports/provider/'+pid+'/action',Object.assign({method:'POST',body:JSON.stringify({action:act})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(x){
+      if(btn)btn.disabled=false;
+      if(!x.ok){toast((x.d&&x.d.message)||'تعذّر التنفيذ','error');return;}
+      toast((x.d&&x.d.message)||'تم ✓','success');
+      _owLoadCounts(); if(_owCur==='held')_owLoadHeld(); else if(_owCur!=='auto')_owLoadReports();
+      if(_owDetCur===pid)_owRepOpen(pid);
+    }).catch(function(){if(btn)btn.disabled=false;toast('تعذّر الاتصال','error');});
+}
+// ─── تحت المراجعة قبل النشر ───
+// sec: الثواني المتبقية (محسوبة في السيرفر — تتفادى فرق التوقيت)
+function _owLeft(sec){
+  var ms=(parseInt(sec)||0)*1000; if(ms<=0)return 'ينعتمد الآن';
+  var m=Math.round(ms/60000), h=Math.floor(m/60); m=m%60;
+  var hs=h===0?'':(h===1?'ساعة':(h===2?'ساعتين':h+' ساعات'));
+  var ms2=m===0?'':(m===1?'دقيقة':(m===2?'دقيقتين':(m<=10?m+' دقائق':m+' دقيقة')));
+  return 'باقي '+(hs&&ms2?hs+' و'+ms2:(hs||ms2));
+}
+function _owLoadHeld(){
+  var host=document.getElementById('ow-t-held');if(!host)return;
+  host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/held-bids',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!Array.isArray(d.bids)){host.innerHTML=emptyState('تعذر التحميل');return;}
+    _owHeld=d;
+    var hrs=d.hours||7;
+    var h='<div class="ow-note">هذي العروض مخفية عن العملاء لين تراجعها. إذا ما راجعتها خلال '+hrs+' ساعات <b>تنعتمد تلقائياً</b> وتظهر للعميل — ويوصلك تنبيه.</div>';
+    if(!d.bids.length)h+=emptyState('ما فيه عروض تنتظر مراجعتك');
+    h+=d.bids.map(function(b){
+      var nm=b.provider_business_name||b.provider_name||'مزوّد';
+      var urgent=(parseInt(b.left_sec)||0)<2*3600;
+      return '<div class="card ow-hc" id="owh-'+b.id+'">'
+        +'<div style="display:flex;gap:10px;align-items:flex-start"><span class="ow-av">'+esc(nm.charAt(0))+'</span><div style="flex:1;min-width:0"><b style="font-size:14.5px">'+esc(nm)+'</b>'
+        +'<div style="font-size:12.5px;color:var(--muted);font-weight:700">← على مشروع «'+esc(b.request_title||'')+'»'+(b.request_city?' · '+esc(b.request_city):'')+'</div>'
+        +(b.reports?'<div style="font-size:12px;color:#b91c1c;font-weight:800;margin-top:2px">'+_fuN(b.reports,'بلاغ واحد','بلاغين','بلاغات','بلاغ')+' من '+_fuN(b.clients,'عميل واحد','عميلين','عملاء','عميل')+(b.top_reason?' · '+esc(OW_RS_SHORT[b.top_reason]||b.top_reason_label):'')+'</div>':'')
+        +'</div>'+_owPill('⏱ '+_owLeft(b.left_sec),urgent?'#fef2f2':'#f1f5f9',urgent?'#b91c1c':'#475569')+'</div>'
+        +'<div style="display:flex;gap:18px;margin:10px 0 6px;font-size:12.5px;font-weight:700;color:var(--muted)"><span><b style="color:var(--text);font-size:15px">'+(b.price?fmtNum(b.price):'—')+'</b> السعر'+(b.price_visibility!=='public'?' (خاص)':'')+'</span><span><b style="color:var(--text);font-size:15px">'+(b.days||'—')+'</b> يوم مدة التنفيذ</span></div>'
+        +'<div class="ow-bn" style="-webkit-line-clamp:unset">'+_owHl(b.note||'—')+'</div>'
+        +(b.attachment_url?'<a href="'+esc(b.attachment_url)+'" target="_blank" rel="noopener" style="font-size:12px;font-weight:800">📎 الملف المرفق</a>':'')
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;position:relative">'
+        +'<button class="act-btn ab-default" style="color:#fff;background:#16a34a;border-color:#16a34a" onclick="_owHeldOk('+b.id+',this)">✓ اعتماد — يظهر للعميل</button>'
+        +'<button class="act-btn ab-default" style="color:#dc2626;border-color:#fecaca" onclick="_owRejMenu('+b.id+',this)">✕ رفض ▾</button>'
+        +'<a class="act-btn ab-default" style="text-decoration:none" href="/project/x-'+b.request_id+'?id='+b.request_id+'" target="_blank" rel="noopener">فتح المشروع</a>'
+        +'<button class="act-btn ab-default" onclick="_owRepOpen('+b.provider_id+')">ملف البلاغات</button>'
+        +'</div></div>';
+    }).join('');
+    if(d.providers&&d.providers.length){
+      h+='<div class="card" style="margin-top:6px"><div style="font-size:14px;font-weight:900;margin-bottom:8px">المزوّدين تحت المراجعة</div>'
+        +d.providers.map(function(p){var nm=p.business_name||p.name||'مزوّد';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border)"><span class="ow-av">'+esc(nm.charAt(0))+'</span><div style="flex:1;min-width:0"><b>'+esc(nm)+'</b><div style="font-size:12px;color:var(--muted);font-weight:700">'+(p.held?_fuN(p.held,'عرض معلّق','عرضين معلّقين','عروض معلّقة','عرض معلّق'):'ما عنده عروض معلّقة')+(p.bid_review_at?' · من '+_fuAgo(p.bid_review_at).replace(/^قبل /,''):'')+'</div></div>'
+            +'<button class="act-btn ab-default" style="color:#15803d;border-color:#bbf7d0" onclick="_owAct('+p.id+',\'lift\',this)">رفع المراجعة</button></div>';}).join('')+'</div>';
+    }
+    h+='<div class="ow-foot">«رفع المراجعة» يعتمد كل عروضه المعلّقة ويرجّع عروضه الجديدة تظهر مباشرة. المراجعة ترتفع تلقائياً بعد 30 يوم بدون بلاغات جديدة.</div>';
+    host.innerHTML=h;
+  }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
+}
+function _owHeldOk(id,btn){
+  if(btn)btn.disabled=true;
+  fetch(API+'/api/admin/held-bids/'+id+'/approve',Object.assign({method:'POST'},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(x){ if(!x.ok){if(btn)btn.disabled=false;toast((x.d&&x.d.message)||'تعذّر','error');_owLoadHeld();return;} toast('اعتُمد العرض ووصل العميل إشعار ✓','success'); var c=document.getElementById('owh-'+id);if(c)c.remove(); _owLoadCounts(); })
+    .catch(function(){if(btn)btn.disabled=false;toast('تعذّر الاتصال','error');});
+}
+function _owRejMenu(id,btn){
+  var old=document.getElementById('owRejM');if(old){old.remove();if(old._id===id)return;}
+  var R=(_owHeld&&_owHeld.rej_reasons)||{};
+  var m=document.createElement('div');m.id='owRejM';m._id=id;
+  var rc=btn.getBoundingClientRect();
+  m.style.cssText='position:fixed;top:'+Math.min(rc.bottom+6,window.innerHeight-260)+'px;left:'+Math.max(8,Math.min(rc.right-280,window.innerWidth-290))+'px;z-index:950;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(15,23,42,.18);padding:8px;width:280px;max-width:90vw';
+  m.innerHTML='<div style="font-size:11.5px;font-weight:800;color:var(--muted);padding:4px 8px">أسباب الرفض</div>'
+    +Object.keys(R).map(function(k){return '<button class="ow-mi" onclick="_owHeldRej('+id+',\''+k+'\')">'+esc(R[k])+'</button>';}).join('')
+    +'<button class="ow-mi" onclick="_owHeldRejOther('+id+')">سبب آخر… (تكتبه)</button>'
+    +'<div style="font-size:11px;color:var(--muted);font-weight:700;padding:6px 8px 2px;line-height:1.6">المزوّد يوصله السبب مع نصيحة، والعرض ما يظهر للعميل.</div>';
+  document.body.appendChild(m);
+  setTimeout(function(){document.addEventListener('click',function _c(e){if(!m.contains(e.target)&&e.target!==btn){m.remove();document.removeEventListener('click',_c);}});},0);
+}
+function _owHeldRejOther(id){
+  var t=prompt('اكتب سبب الرفض (يوصل للمزوّد):');
+  if(t&&t.trim())_owHeldRej(id,null,t.trim());
+}
+function _owHeldRej(id,key,text){
+  var m=document.getElementById('owRejM');if(m)m.remove();
+  fetch(API+'/api/admin/held-bids/'+id+'/reject',Object.assign({method:'POST',body:JSON.stringify(key?{reason:key}:{text:text})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');_owLoadHeld();return;} toast('رُفض العرض ووصل المزوّد السبب','success'); var c=document.getElementById('owh-'+id);if(c)c.remove(); _owLoadCounts(); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function loadOfferFlags(){
   var host=document.getElementById('offerwatch-list');if(!host)return;
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
@@ -2368,7 +2600,6 @@ function loadOfferFlags(){
     if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
     _owFlags=list;
     var cnt=document.getElementById('ow-count');if(cnt)cnt.textContent=list.length?(list.length+' مخالفة'):'';
-    var b=document.getElementById('offerwatch-badge');if(b){b.textContent=list.length;b.style.display=list.length?'flex':'none';}
     if(!list.length){host.innerHTML=emptyState('لا توجد مخالفات — كل العروض ضمن النطاق 🎉');return;}
     host.innerHTML=list.map(function(f){
       var v=parseInt(f.violations)||1;
@@ -2397,12 +2628,7 @@ function loadOfferFlags(){
     }).join('');
   }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
 }
-function loadOwBadge(){
-  fetch(API+'/api/admin/offer-flags',hdr()).then(function(r){return r.json();}).then(function(l){
-    var n=Array.isArray(l)?l.length:0;
-    var b=document.getElementById('offerwatch-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}
-  }).catch(function(){});
-}
+function loadOwBadge(){ _owLoadCounts(); }
 function openOwAlert(id){
   _owFlagId=id;
   var f=_owFlags.find(function(x){return x.id===id;});
@@ -4057,6 +4283,7 @@ var FU_OUT={replied:'ردّ وبيختار قريب',no_reply:'ما ردّ',need
 function _fuSt(k){ return FU_STAGES.filter(function(s){return s.k===k;})[0]||{label:k,bg:'#f1f5f9',fg:'#475569'}; }
 function _fuPill(t,bg,fg){ return '<span style="font-size:11px;font-weight:900;padding:4px 10px;border-radius:999px;white-space:nowrap;display:inline-block;background:'+bg+';color:'+fg+'">'+t+'</span>'; }
 function _fuN(n,one,two,few,many){ n=n||0; if(n===1)return one; if(n===2)return two; if(n===0||(n>=3&&n<=10))return n+' '+few; return n+' '+(many||one.replace(/ واحد(ة)?$/,'')); }
+function _fuDate(iso){ if(!iso)return ''; var d=_fuD(iso); return 'نُشر '+new Date(iso).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'})+' · '+(d===0?'اليوم':d===1?'أمس':'قبل '+_fuN(d,'يوم','يومين','أيام','يوم')); }
 function _fuD(iso){ if(!iso)return null; return Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/86400000)); }
 function _fuAgo(iso){ var d=_fuD(iso); if(d===null)return ''; if(d<=0)return 'اليوم'; if(d===1)return 'أمس'; if(d===2)return 'قبل يومين'; return 'قبل '+d+' أيام'; }
 function _fuLink(p){ return 'https://manaqasa.com/project/x-'+p.id+'?id='+p.id; }
@@ -4067,7 +4294,7 @@ function _fuInfo(p){
   var age=_fuD(p.created_at)||0, since=_fuD(p.reminder_at), n=p.bid_count||0, ue=p.unseen_bids||0, um=p.unread_msgs||0;
   var snoozed=!!(p.followup_snooze_until&&new Date(p.followup_snooze_until)>new Date());
   var why=[], hot=false, need=true;
-  if(p.stage==='few'){ why.push('<b>'+(n?n+(n===1?' عرض':' عروض'):'0 عروض')+'</b> من '+(age===0?'اليوم':age+' يوم')); if(age<1)need=false; if(age>=3&&!n){hot=true;why.push('<span style="color:#c2410c">يحتاج تفاصيل أوضح أو مخطط</span>');} }
+  if(p.stage==='few'){ why.push('<b>'+(n?_fuN(n,'عرض واحد','عرضين','عروض'):'بدون عروض')+'</b> '+(age===0?'من اليوم':'خلال '+_fuN(age,'يوم','يومين','أيام','يوم'))); if(age<1)need=false; if(age>=3&&!n){hot=true;why.push('<span style="color:#c2410c">يحتاج تفاصيل أوضح أو مخطط</span>');} }
   else if(p.stage==='offers'||p.stage==='delayed'){
     why.push('<b>'+_fuN(n,'عرض واحد','عرضين','عروض')+'</b>');
     if(ue>0){ why.push('<span style="color:#b91c1c">'+(ue>=n?'ما فتح العروض أبداً':_fuN(ue,'عرض','عرضين','عروض')+' ما شافها')+'</span>'); hot=true; }
@@ -4117,11 +4344,12 @@ function _fuMsg(p,kind,det){
   var msgs=function(x){ return _fuN(x,'رسالة من مزوّد','رسالتين من مزوّدين','رسائل من مزوّدين','رسالة من مزوّدين'); };
   var ask=function(x){ return 'توجد محادثات من منفّذين يرغبون بالتواصل معك، اطّلع عليها في قسم المحادثات — بانتظار ردّك.'; };
   if(kind==='unseen_unread') return hi+'مشروعك «'+t+'» وصله '+offers(n)+unseenTxt()+'.\n'+ask(um)+'\nكل ما تأخر الرد ممكن تتغيّر العروض.'+go;
+  // أي رسالة ثانية: إذا عنده رسائل ما قرأها نضيف سطر الاستفسارات قبل الرابط
+  var extra=(um>0&&kind!=='unseen_unread'&&kind!=='unread')?'\n'+ask(um):'';
+  go=extra+go;
   if(kind==='unseen') return hi+'وصلك '+offers(n)+' على مشروعك «'+t+'»'+unseenTxt()+'.\nقارن العروض ومدة التنفيذ واختر اللي يناسبك.'+go;
   if(kind==='unread') return hi+'بخصوص مشروعك «'+t+'»:\n'+ask(um)+'\nردّك يساعدهم يعطونك عرض أدق.'+go;
-  // أي رسالة ثانية: إذا عنده رسائل ما قرأها نضيف سطر الاستفسارات قبل الرابط
-  var extra=(um>0&&kind!=='unseen'&&kind!=='review')?'\n'+ask(um):'';
-  go=extra+go;
+
   if(kind==='friendly') return hi+'ما زالت العروض متاحة على مشروعك «'+t+'» ('+offers(n)+').\nاختر المزوّد الأنسب للانتقال للتنفيذ، فبعض العروض قد تتغيّر مع الوقت.'+go;
   if(kind==='help') return hi+'معك فريق منصة مناقصة بخصوص مشروعك «'+t+'».\nإذا محتار بين العروض أو تحتاج مساعدة في المقارنة أو تعديل تفاصيل المشروع، رد علينا هنا ونساعدك.'+go;
   if(kind==='few0') return hi+'كلما كانت تفاصيل المشروع أوضح، زادت فرص الحصول على عروض دقيقة ومنافسة.\nمشروعك «'+t+'» لم يستقبل عروضًا حتى الآن، لذلك ننصح بإضافة أي تفاصيل أو صور أو مخططات متاحة لمساعدة المزوّدين على التسعير.'+go;
@@ -4239,7 +4467,7 @@ function renderFollowups(){
       :'<button onclick="event.stopPropagation();_fuOpen('+p.id+')" style="border:0;background:#16a34a;color:#fff;border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;white-space:nowrap">💬 ذكّره</button>';
     h+='<div onclick="_fuOpen('+p.id+')" style="'+G+';padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;'+(sel?'background:#f5f8ff;box-shadow:inset -4px 0 0 #1d4ed8':'')+'" onmouseover="this.style.background=\'#f8fafd\'" onmouseout="this.style.background=\''+(sel?'#f5f8ff':'')+'\'">'
       +'<span style="width:10px;height:10px;border-radius:10px;background:'+(p.stage==='moved'?'#16a34a':_fuDotC(i.level))+'"></span>'
-      +'<div style="min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title||'مشروع')+'</div><div style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.client_name||'عميل')+(p.client_phone?' · <span dir="ltr">'+esc(p.client_phone)+'</span>':'')+(p.city?' · '+esc(p.city):'')+'</div></div>'
+      +'<div style="min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title||'مشروع')+'</div><div style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.client_name||'عميل')+(p.client_phone?' · <span dir="ltr">'+esc(p.client_phone)+'</span>':'')+(p.city?' · '+esc(p.city):'')+'</div><div style="font-size:11.5px;font-weight:800;color:#64748b;margin-top:2px">📅 '+_fuDate(p.created_at)+'</div></div>'
       +'<div>'+_fuPill(st.label,st.bg,st.fg)+'</div>'
       +'<div style="font-size:12.5px;font-weight:800;line-height:1.55">'+why+'</div>'
       +'<div style="font-size:12.5px;font-weight:800">'+last+'</div>'
@@ -4282,7 +4510,7 @@ function _fuDrawer(p,det){
   var ch=function(lbl,on,oc){ return '<button onclick="'+oc+'" style="border:1.5px solid '+(on?'#1d4ed8':'var(--border)')+';background:'+(on?'#1d4ed8':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:6px 11px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer">'+lbl+'</button>'; };
   var gb='border:1.5px solid var(--border);background:var(--card);color:var(--text2);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap';
   var h='<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">'
-    +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+p.id+' · نُشر '+_fuAgo(p.created_at)+(p.city?' · '+esc(p.city):'')+'</div><div style="font-family:Cairo,sans-serif;font-size:19px;font-weight:900;line-height:1.4">'+esc(p.title||'مشروع')+'</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+p.id+' · '+_fuDate(p.created_at)+(p.city?' · '+esc(p.city):'')+'</div><div style="font-family:Cairo,sans-serif;font-size:19px;font-weight:900;line-height:1.4">'+esc(p.title||'مشروع')+'</div>'
     +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'+_fuPill(st.label,st.bg,st.fg)+(p.stage!=='moved'?_fuNextHtml(i):'')+'</div></div>'
     +'<button onclick="_fuClose()" aria-label="إغلاق" style="border:0;background:var(--bg);border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;color:var(--text)">✕</button></div>'
     +'<div style="padding:14px 20px;display:flex;flex-direction:column;gap:13px;overflow-y:auto;flex:1">'
@@ -4353,7 +4581,7 @@ function _fuQuickShow(){
     +'<div style="display:flex;align-items:center;gap:10px"><b style="font-family:Cairo,sans-serif;font-size:18px;flex:1">⚡ الإرسال السريع</b><span style="font-size:13px;font-weight:800;opacity:.92">'+(_fuQ_i+1)+' من '+_fuQ_list.length+' · أُرسل '+_fuQ_sent+'</span><button onclick="_fuQuickClose()" aria-label="إغلاق" style="border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:9px;width:32px;height:32px;cursor:pointer">✕</button></div>'
     +'<div style="height:7px;border-radius:7px;background:rgba(255,255,255,.2);margin-top:11px"><div style="width:'+pct+'%;height:7px;border-radius:7px;background:#4ade80"></div></div></div>'
     +'<div style="padding:16px 22px;display:flex;flex-direction:column;gap:11px">'
-    +'<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900">'+esc(p.title||'')+'</div><div style="font-size:13px;font-weight:700;color:var(--muted)">'+esc(p.client_name||'')+' · <span dir="ltr">'+esc(p.client_phone||'بدون جوال')+'</span>'+(p.city?' · '+esc(p.city):'')+'</div></div>'+_fuPill(st.label,st.bg,st.fg)+'</div>'
+    +'<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900">'+esc(p.title||'')+'</div><div style="font-size:13px;font-weight:700;color:var(--muted)">'+esc(p.client_name||'')+' · <span dir="ltr">'+esc(p.client_phone||'بدون جوال')+'</span>'+(p.city?' · '+esc(p.city):'')+' · 📅 '+_fuDate(p.created_at)+'</div></div>'+_fuPill(st.label,st.bg,st.fg)+'</div>'
     +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;padding:9px 12px;font-size:13px;font-weight:800;color:#7c2d12">'+i.why.join(' · ')+' · '+(p.reminder_at?'آخر تذكير '+_fuAgo(p.reminder_at):'ما ذُكّر أبداً')+'</div>'
     +'<textarea id="fuqk-msg" style="width:100%;box-sizing:border-box;min-height:190px;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.85;color:var(--text);background:var(--card);resize:vertical">جاري تجهيز الرسالة…</textarea>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="_fuQuickSend()" style="flex:1;min-width:200px;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:14px;font-family:inherit;font-size:15px;font-weight:900;cursor:pointer">💬 أرسل واتساب والتالي ←</button><button onclick="_fuQuickNext()" style="'+gb+'">تخطّي</button><button onclick="_fuQuickLater()" style="'+gb+'">⏰ بعد 3 أيام</button></div>'
