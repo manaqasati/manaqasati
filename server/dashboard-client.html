@@ -2968,7 +2968,7 @@ function _compareBids(){
   d.id='cmpModal';
   d.style.cssText='position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center';
   var best='background:#dcfce7;color:#15803d;font-weight:900;border-radius:6px';
-  var rows=list.slice(0,6).map(function(b){
+  var rows=list.map(function(b){
     var p=parseFloat(b.price)||0, dy=parseInt(b.days)||0, rt=parseFloat(b.provider_rating)||0;
     return '<tr style="border-bottom:1px solid var(--border)">'
       +'<td style="padding:11px 8px;font-size:12.5px;font-weight:800;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(b.provider_business_name||b.provider_name||'مزوّد')+'</td>'
