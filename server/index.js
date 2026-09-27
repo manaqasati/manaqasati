@@ -2360,6 +2360,7 @@ async function setupDatabase() {
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
     // متابعة العملاء: عدد التذكيرات + تأجيل + سجل كل تذكير ونتيجته
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_count INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_note TEXT`);
     await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_snooze_until TIMESTAMP`);
     await pool.query(`CREATE TABLE IF NOT EXISTS followup_log (id SERIAL PRIMARY KEY, request_id INTEGER, stage VARCHAR(20), admin_id INTEGER, outcome VARCHAR(30), created_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_followup_log_req ON followup_log(request_id, created_at)`);
@@ -6092,7 +6093,7 @@ function _dTxt(d){ const m={7:'أسبوع (7 أيام)',14:'أسبوعين (14 �
 function _closeInfo(r, defDays){
   if (!r || !['closed_auto','expired','cancelled','closed'].includes(r.status)) return null;
   const openDays = (r.closed_at && r.created_at) ? Math.max(0, Math.round((new Date(r.closed_at) - new Date(r.created_at)) / 86400000)) : null;
-  if (r.close_reason === 'admin_closed') return { by:'admin', short:'أغلقته الإدارة', text:'أغلقته الإدارة يدوياً', open_days: openDays };
+  if (r.close_reason === 'admin_closed') return { by:'admin', short:'أغلقته الإدارة', text:'أغلقته الإدارة يدوياً' + (r.close_note ? ' — ' + r.close_note : ''), open_days: openDays };
   if (r.close_reason && _CLOSE_REASON_AR[r.close_reason]) return { by:'client', short:'أغلقه العميل', text:'العميل أغلقه بنفسه — السبب: ' + _CLOSE_REASON_AR[r.close_reason] + (r.close_reason_note ? ' («' + String(r.close_reason_note).slice(0,200) + '»)' : ''), open_days: openDays };
   const durDays = r.close_at && r.created_at ? Math.max(1, Math.round((new Date(r.close_at) - new Date(r.created_at)) / 86400000)) : null;
   const kind = r.close_auto_kind || (r.close_at ? (r.close_set_by || 'client') : 'default');
@@ -6317,7 +6318,12 @@ app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), as
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     const st = r.rows[0].status;
     if (['completed','in_progress','assigned'].includes(st)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
-    await pool.query("UPDATE requests SET status='closed_auto', close_reason='admin_closed', closed_at=NOW() WHERE id=$1", [id]);
+    const note = String(req.body && req.body.reason || '').trim().slice(0, 300) || null;
+    const up = await pool.query("UPDATE requests SET status='closed_auto', close_reason='admin_closed', close_note=$2, closed_at=NOW() WHERE id=$1 RETURNING client_id, title", [id, note]);
+    try { await logAdmin(req, 'close_request', 'request', id, 'إغلاق مشروع: ' + ((up.rows[0]||{}).title||'') + (note ? ' — ' + note : '')); } catch(_){}
+    if (req.body && req.body.notify_client && up.rows[0]) {
+      try { await notify(up.rows[0].client_id, 'تم إغلاق مشروعك', `أُغلق مشروعك "${up.rows[0].title}" من فريق المنصة${note ? ' — ' + note : ''}. تقدر تتواصل معنا لو تحتاج مساعدة.`, 'request', id); } catch(_){}
+    }
     res.json({ ok: true });
   } catch(e){ console.error('close req:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
 });
