@@ -680,7 +680,8 @@ function _renderBidsList(mode){
   var accB=_bids.filter(function(b){return b.status==='accepted';})[0];
   if(accB){ html+='<div class="bid-accepted-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> تم اختيار عرض <b>'+esc(accB.provider_business_name||accB.provider_name||'مزود')+'</b> — المشروع الآن قيد التنفيذ</div>'; }
   else if(['closed_auto','closed','expired','cancelled'].indexOf(req.status)>=0){ html+='<div class="bid-closed-banner"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg> أُغلق هذا المشروع — لم يعد يستقبل عروضاً جديدة</div>'; }
-  var LIM=5, showAll=window._pjAllBids||arr.length<=LIM+1;
+  // كل العروض ظاهرة مباشرة (بدون «عرض X عروض أخرى») — صاحب المشروع لازم يشوفها كلها
+  var LIM=5, showAll=true;
   arr.forEach(function(b,i){ if(showAll||i<LIM) html+=_bidCard(b,String(b.id)===String(bestId),isOwner,req.status); });
   if(!showAll)html+='<button class="pj-more" onclick="window._pjAllBids=1;_renderBidsList(_bidSort)">عرض '+(arr.length-LIM)+' عروض أخرى</button>';
   wrap.innerHTML=html;
