@@ -126,7 +126,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   // يمنع تسريب الروابط السرية (رموز الكرت/الكراسة) للمواقع الخارجية عبر ترويسة الإحالة
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self)'); // (self) = مسموح لموقعنا فقط — كان مقفول حتى على صفحاتنا (زر الموقع والتسجيل الصوتي)
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
@@ -1053,16 +1053,18 @@ app.get('/api/card/:token', async (req, res) => {
     const r = await pool.query(
       `SELECT name, phone, phone_norm, category, city, rating, reviews_count, website,
               card_bio, card_logo, card_links, card_published
-       FROM leads WHERE card_token=$1 LIMIT 1`, [req.params.token]);
+       , card_edit_key FROM leads WHERE card_token=$1 LIMIT 1`, [req.params.token]);
     if(!r.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
     const l = r.rows[0];
+    // التعديل لصاحب الكرت فقط (الرابط الخاص فيه ?k=) — الرابط العام للعرض فقط
+    const canEdit = !l.card_edit_key || String(req.query.k||'') === l.card_edit_key;
     if(l.card_published === false) return res.status(410).json({ unpublished:true, message:'الكرت غير متاح' });
     let views = 0;
     try{ const uv = await pool.query('UPDATE leads SET card_views=COALESCE(card_views,0)+1 WHERE card_token=$1 RETURNING card_views', [req.params.token]); views = (uv.rows[0] && uv.rows[0].card_views) || 0; }catch(e){}
     res.json({
       name: l.name, phone: l.phone, phone_norm: l.phone_norm, category: l.category, city: l.city,
       rating: l.rating, reviews_count: l.reviews_count, website: l.website,
-      bio: l.card_bio || '', logo: l.card_logo || '', links: l.card_links || {}, views: views
+      bio: l.card_bio || '', logo: l.card_logo || '', links: l.card_links || {}, views: views, can_edit: canEdit
     });
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
@@ -1071,21 +1073,23 @@ app.get('/api/card/:token', async (req, res) => {
 app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
   try{
     const token = req.params.token;
-    const chk = await pool.query('SELECT id FROM leads WHERE card_token=$1 LIMIT 1', [token]);
+    const chk = await pool.query('SELECT id, card_edit_key FROM leads WHERE card_token=$1 LIMIT 1', [token]);
     if(!chk.rows.length) return res.status(404).json({ message:'الكرت غير موجود' });
+    if(chk.rows[0].card_edit_key && String(req.body.k||req.query.k||'') !== chk.rows[0].card_edit_key) return res.status(403).json({ message:'التعديل من الرابط الخاص بصاحب الصفحة فقط' });
     const bio = typeof req.body.bio === 'string' ? req.body.bio.slice(0,600) : null;
     const inLinks = (req.body.links && typeof req.body.links === 'object') ? req.body.links : {};
     const allow = ['instagram','snapchat','tiktok','twitter','whatsapp','maps','website'];
     const links = {};
-    allow.forEach(k => { if(typeof inLinks[k]==='string' && inLinks[k].trim()) links[k] = inLinks[k].trim().slice(0,300); });
+    // الروابط: نقبل نص عادي (يوزر/رقم) أو رابط http(s) — نرفض javascript: وأي علامات تكسر الصفحة
+    allow.forEach(k => { if(typeof inLinks[k]==='string' && inLinks[k].trim()) { const val = inLinks[k].trim().slice(0,300); if(!/^[a-z][a-z0-9+.-]*:/i.test(val) || /^https?:\/\//i.test(val)) { if(!/["'<>`\s]/.test(val)) links[k] = val; } } });
     const sets = ['card_updated_at=NOW()'], v = [];
     if(bio !== null){ v.push(bio); sets.push(`card_bio=$${v.length}`); }
     if(typeof req.body.logo === 'string'){
       let logo = req.body.logo.trim();
-      if(logo.startsWith('data:')) logo = await uploadToCloud(logo, 'manaqasa/cards'); // لا نحفظ base64 في القاعدة أبداً
+      logo = logo ? await uploadToCloud(logo, 'manaqasa/cards') : ''; // لا نحفظ base64 في القاعدة أبداً + رابط آمن فقط
       v.push(logo || null); sets.push(`card_logo=$${v.length}`);
     }
-    v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`);
+    if (req.body.links !== undefined) { v.push(JSON.stringify(links)); sets.push(`card_links=$${v.length}`); } // الإخفاء بدون روابط ما يمسحها
     if(req.body.unpublish === true) sets.push('card_published=false');
     if(req.body.unpublish === false) sets.push('card_published=true');
     v.push(token);
@@ -1098,7 +1102,7 @@ app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
 app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const id = parseInt(req.params.id);
-    const r = await pool.query('SELECT card_token, card_views, card_published FROM leads WHERE id=$1', [id]);
+    const r = await pool.query('SELECT card_token, card_views, card_published, card_edit_key FROM leads WHERE id=$1', [id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود' });
     let token = r.rows[0].card_token;
     if(!token){
@@ -1111,7 +1115,10 @@ app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), asyn
       }
     }
     if(!token) return res.status(500).json({ message:'تعذّر توليد الرمز' });
-    res.json({ token, url: `${SITE_URL}/card/${token}`, views: r.rows[0].card_views || 0, published: r.rows[0].card_published !== false });
+    // مفتاح تعديل خاص يوصل لصاحب الكرت فقط — الرابط اللي يشاركه للناس بدونه
+    let ek = r.rows[0].card_edit_key;
+    if(!ek){ ek = require('crypto').randomBytes(12).toString('hex'); try{ await pool.query('UPDATE leads SET card_edit_key=$1 WHERE id=$2 AND card_edit_key IS NULL', [ek, id]); ek = (await pool.query('SELECT card_edit_key FROM leads WHERE id=$1',[id])).rows[0].card_edit_key; }catch(e){} }
+    res.json({ token, url: `${SITE_URL}/card/${token}?k=${ek}`, public_url: `${SITE_URL}/card/${token}`, views: r.rows[0].card_views || 0, published: r.rows[0].card_published !== false });
   }catch(e){ res.status(500).json({ message:'تعذّر' }); }
 });
 
@@ -2503,6 +2510,7 @@ async function setupDatabase() {
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
+      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_edit_key VARCHAR(40)"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_logo TEXT"); } catch(e){}
       try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
@@ -2807,6 +2815,7 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, 
   try {
     const { old_password, new_password } = req.body;
     if (!old_password || !new_password) return res.status(400).json({ message: 'البيانات ناقصة' });
+    if (String(new_password).length < 6) return res.status(400).json({ message: 'كلمة المرور الجديدة 6 أحرف على الأقل' });
     const r = await pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
     const storedHash = r.rows[0].password || r.rows[0].password_hash || '';
     const ok = await bcrypt.compare(old_password, storedHash);
@@ -3938,6 +3947,8 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     const { price, days, note } = req.body;
     if (price!=null && price!=='' && own.rows[0].price_unit==='total' && (parseFloat(price)||0) < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
+    { const _n = String(note||'').trim(), _nb = _n.replace(/\s+/g,'');
+      if (!_n || _nb.length < 15 || /^[\d\s.,\-ريالر.س﷼]+$/.test(_n) || /^(.)\1{4,}$/.test(_nb)) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (١٥ حرفاً على الأقل) توضّح خبرتك وطريقة تنفيذك.' }); }
     if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الحفظ — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية.', code: 'template_unfilled' });
     let attUrl, attHash = null;
     if (req.body.attachment && typeof req.body.attachment==='string' && req.body.attachment.indexOf('data:')===0) {
