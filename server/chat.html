@@ -13,7 +13,7 @@
 </script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,interactive-widget=resizes-content">
 <meta name="theme-color" content="#1e3a8a">
 <title>المحادثات — مناقصة</title>
 <link rel="icon" href="/favicon.ico">
@@ -217,13 +217,18 @@ var token=localStorage.getItem('token')||'';
 var user={};
 try{ user=JSON.parse(localStorage.getItem('user')||'{}'); }catch(e){}
 if(!token||!user.id){ location.replace('/auth.html'); }
-var isProvider=(user.role==='provider');
+// الدور الفعلي: يحترم الوضع النشط (activeMode) لأصحاب الحسابين — نفس منطق effRole في باقي الصفحات
+var isProvider=(function(u){ var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return true; if(m==='client'&&(u.role==='client'||u.can_request))return false; return u.role==='provider'; })(user);
 
 var convs=[], msgs=[], curReq=null, curWith=null, curName='', curProj='';
 var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false, _openedReq=0, _msgsSig='';
 
 function hdr(){ return {headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'}; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+// رابط آمن فقط (http/https أو مسار داخلي أو صورة data)
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
+// نص آمن كوسيط JS داخل onclick (بدون علامات تنصيص حوله)
+function _jsa(s){return esc(JSON.stringify(String(s==null?'':s)));}
 function toast(m,t){ var e=document.getElementById('toast'); if(!e)return; e.textContent=m; e.className='on '+(t||''); setTimeout(function(){e.className='';},2400); }
 function api(path,opts){
   return fetch(API+path,Object.assign({},hdr(),opts||{})).then(function(r){
@@ -286,7 +291,7 @@ function renderList(){
     var wid=isProvider?c.client_id:c.provider_id;
     var un=parseInt(c.unread)||0;
     var av=isAdm?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>':((img&&/^(https?:|data:)/.test(img))?'<img loading="lazy" src="'+esc(img)+'">':esc(nm.charAt(0)||'؟'));
-    return '<div class="conv" onclick="openChat('+c.request_id+','+wid+',\''+esc(nm).replace(/'/g,"\\'")+'\',\''+esc(c.request_title||'').replace(/'/g,"\\'")+'\')">'
+    return '<div class="conv" onclick="openChat('+c.request_id+','+wid+','+_jsa(nm)+','+_jsa(c.request_title||'')+')">'
       +'<div class="conv-av"'+(isAdm?' style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff"':'')+'>'+av+'</div>'
       +'<div class="conv-body">'
         +'<div class="conv-top"><div class="conv-name">'+esc(nm)+(isAdm?' <span style="font-size:9px;font-weight:800;color:#1d4ed8;background:#eaf1fe;padding:1px 6px;border-radius:10px">رسمي</span>':'')+'</div><div class="conv-time">'+ago(c.last_time)+'</div></div>'
@@ -322,7 +327,7 @@ function doSearch(q){
       var av=(p.profile_image&&/^(https?:|data:)/.test(p.profile_image))?'<img loading="lazy" src="'+esc(p.profile_image)+'">':esc((p.name||'؟').charAt(0));
       var spec=(p.specialties&&p.specialties.length)?p.specialties.slice(0,2).join(' · '):'';
       var rate=(p.avg_rating>0)?('⭐ '+p.avg_rating.toFixed(1)+' ('+p.review_count+')'):'مزوّد جديد';
-      return '<div class="conv" onclick="startNew('+p.id+',\''+esc(p.name||'مزوّد').replace(/'/g,"\\'")+'\')">'
+      return '<div class="conv" onclick="startNew('+p.id+','+_jsa(p.name||'مزوّد')+')">'
         +'<div class="conv-av">'+av+'</div>'
         +'<div class="conv-body">'
           +'<div class="conv-name">'+esc(p.name||'مزوّد')+'</div>'
@@ -350,7 +355,7 @@ function startNew(provId,provName){
     s.innerHTML='<div class="sheet-card"><div class="sheet-grip"></div>'
       +'<div style="padding:6px 20px 10px;font-size:12.5px;color:var(--muted);font-weight:700">لديكما محادثات على عدة مشاريع — اختر:</div>'
       +existing.slice(0,8).map(function(c){
-        return '<button class="sheet-btn" onclick="closeSheet();closeNew();openChat('+c.request_id+','+provId+',\''+esc(provName).replace(/'/g,"\\'")+'\',\''+esc(c.request_title||'').replace(/'/g,"\\'")+'\')"><span style="font-size:17px">💬</span> '+esc(String(c.request_title||'مشروع').slice(0,40))+'</button>';
+        return '<button class="sheet-btn" onclick="closeSheet();closeNew();openChat('+c.request_id+','+provId+','+_jsa(provName)+','+_jsa(c.request_title||'')+')"><span style="font-size:17px">💬</span> '+esc(String(c.request_title||'مشروع').slice(0,40))+'</button>';
       }).join('')
       +'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>';
     s.classList.add('on');
@@ -367,7 +372,7 @@ function startNew(provId,provName){
     // أكثر من مشروع → اختر
     var s=document.getElementById('sheet');
     var btns=open.slice(0,8).map(function(r){
-      return '<button class="sheet-btn" onclick="location.href=\'/chat?req='+r.id+'&with='+provId+'&name='+encodeURIComponent(provName)+'\'"><span style="font-size:17px">📁</span> '+esc(String(r.title||'مشروع').slice(0,40))+'</button>';
+      return '<button class="sheet-btn" onclick="location.href=\'/chat?req='+r.id+'&with='+provId+'&name='+encodeURIComponent(provName).replace(/'/g,'%27')+'\'"><span style="font-size:17px">📁</span> '+esc(String(r.title||'مشروع').slice(0,40))+'</button>';
     }).join('');
     s.innerHTML='<div class="sheet-card"><div class="sheet-grip"></div>'
       +'<div style="padding:6px 20px 10px;font-size:12.5px;color:var(--muted);font-weight:700">اختر المشروع الذي تريد مراسلته بشأنه:</div>'
@@ -494,20 +499,19 @@ function renderMsgs(scroll){
       if((m.attachment_type||'').indexOf('audio')===0){
         h+=vpHtml(m.attachment_url,m.waveform,isMe)+(m.content?'<div style="height:6px"></div>':'');
       } else if((m.attachment_type||'').indexOf('image')===0){
-        h+='<img loading="lazy" src="'+esc(m.attachment_url)+'" onclick="window.open(this.src,\'_blank\')" style="margin-bottom:'+(m.content?'6px':'0')+'">';
+        h+='<img loading="lazy" src="'+esc(_safeUrl(m.attachment_url))+'" onclick="window.open(this.src,\'_blank\')" style="margin-bottom:'+(m.content?'6px':'0')+'">';
       } else {
-        h+='<a class="bub-file" href="'+esc(m.attachment_url)+'" target="_blank" style="margin-bottom:'+(m.content?'6px':'0')+'"><span style="font-size:18px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف')+'</span></a>';
+        h+='<a class="bub-file" href="'+esc(_safeUrl(m.attachment_url))+'" target="_blank" rel="noopener" style="margin-bottom:'+(m.content?'6px':'0')+'"><span style="font-size:18px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف')+'</span></a>';
       }
     }
     if(m.content){
       var _qr=String(m.content).match(/^\[\[qr:(\d+)\|([\s\S]*?)\]\]/);
       if(_qr){
         var _qid=_qr[1], _qt=esc(String(_qr[2]||'مشروع')), _dk=isMe;
-        var _pslug=encodeURIComponent(String(_qr[2]||'مشروع').trim().replace(/\s+/g,'-').slice(0,40));
         var _act=isProvider
           ? '<button onclick="event.stopPropagation();location.href=\'/dashboard-provider.html?bid='+_qid+'\'" style="margin-top:10px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:10px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">قدّم عرض سعر الآن</button>'
           : '<div style="margin-top:8px;font-size:11.5px;color:'+(_dk?'rgba(255,255,255,.8)':'var(--muted)')+'">📨 بانتظار عرض المزوّد</div>';
-        h+='<div onclick="location.href=\'/project/'+_pslug+'?id='+_qid+'\'" style="cursor:pointer;background:'+(_dk?'rgba(255,255,255,.13)':'var(--bg)')+';border:1px solid '+(_dk?'rgba(255,255,255,.22)':'var(--border)')+';border-radius:12px;padding:12px;min-width:210px"><div style="font-size:11px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.75)':'var(--muted)')+';margin-bottom:5px">📋 طلب عرض سعر على مشروع</div><div style="font-weight:800;font-size:13.5px;line-height:1.45">'+_qt+'</div><div style="margin-top:7px;font-size:10.5px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.8)':'var(--accent,#1d4ed8)')+';display:flex;align-items:center;gap:4px">اضغط لعرض المشروع <span style="font-size:12px">←</span></div>'+_act+'</div>';
+        h+='<div onclick="location.href=\'/project/x-'+_qid+'?id='+_qid+'\'" style="cursor:pointer;background:'+(_dk?'rgba(255,255,255,.13)':'var(--bg)')+';border:1px solid '+(_dk?'rgba(255,255,255,.22)':'var(--border)')+';border-radius:12px;padding:12px;min-width:210px"><div style="font-size:11px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.75)':'var(--muted)')+';margin-bottom:5px">📋 طلب عرض سعر على مشروع</div><div style="font-weight:800;font-size:13.5px;line-height:1.45">'+_qt+'</div><div style="margin-top:7px;font-size:10.5px;font-weight:700;color:'+(_dk?'rgba(255,255,255,.8)':'var(--accent,#1d4ed8)')+';display:flex;align-items:center;gap:4px">اضغط لعرض المشروع <span style="font-size:12px">←</span></div>'+_act+'</div>';
       } else { h+=esc(m.content); }
     }
     var tick='';
@@ -710,7 +714,7 @@ function askQuote(){
     +'<div style="padding:4px 20px 10px"><div style="font-family:Cairo,sans-serif;font-weight:800;font-size:16px">اطلب عرض سعر</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px">اختر مشروعاً لإرساله للمزوّد ليقدّم عرضه عليه</div></div>'
     +list.slice(0,12).map(function(p){
        var b=p.provider_bid;
-       return '<button class="sheet-btn" '+(b?'disabled style="opacity:.5;cursor:default"':'onclick="closeSheet();sendQuote('+p.id+',\''+esc(String(p.title||'مشروع')).replace(/'/g,"\\'")+'\')"')+'><span style="font-size:16px">📋</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(p.title||'مشروع').slice(0,38))+'</span>'+(b?'<span style="font-size:10.5px;color:var(--green);font-weight:800">قدّم عرضاً ✓</span>':'<span style="font-size:10.5px;color:var(--p);font-weight:800">اطلب ←</span>')+'</button>';
+       return '<button class="sheet-btn" '+(b?'disabled style="opacity:.5;cursor:default"':'onclick="closeSheet();sendQuote('+p.id+','+_jsa(String(p.title||'مشروع'))+')"')+'><span style="font-size:16px">📋</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(p.title||'مشروع').slice(0,38))+'</span>'+(b?'<span style="font-size:10.5px;color:var(--green);font-weight:800">قدّم عرضاً ✓</span>':'<span style="font-size:10.5px;color:var(--p);font-weight:800">اطلب ←</span>')+'</button>';
      }).join('')
     +'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>';
   s.classList.add('on');
