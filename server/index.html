@@ -13,7 +13,11 @@
     var ref=document.referrer||'';
     if(ref && ref.indexOf(location.origin)===0 && /(project|pro|chat|dalil|post|auth)/.test(ref)) return;
     var p=new URLSearchParams(location.search); if(p.get('src')||p.get('post')) return;
-    var d = _dashFor(u);
+    // نفس منطق effRole/_dashFor (معرّفة تحت، فما نقدر نستدعيها هنا)
+    var m=null; try{m=localStorage.getItem('activeMode');}catch(e){}
+    var r=u.role;
+    if(u.role!=='admin'){ if(m==='provider'&&(u.role==='provider'||u.can_provide))r='provider'; else if(m==='client'&&(u.role==='client'||u.can_request))r='client'; }
+    var d = r==='provider'?'/dashboard-provider.html':(r==='admin'?'/dashboard-admin.html':'/dashboard-client.html');
     document.documentElement.style.visibility='hidden';
     location.replace(d);
   }catch(e){}
@@ -43,7 +47,6 @@
 <meta name="twitter:description" content="انشر مشروعك مجاناً، تصلك عروض من مزوّدين موثوقين، قارن الأسعار والتقييمات واختر الأنسب.">
 <meta property="og:image" content="https://www.manaqasa.com/og-image.png">
 <meta property="og:url" content="https://www.manaqasa.com">
-<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://www.manaqasa.com/og-image.png">
 <script src="/track.js" defer></script>
 <meta name="description" content="منصة مناقصة السعودية — انشر مشروعك مجاناً، تصلك عروض من مزوّدين موثوقين، قارن الأسعار والتقييمات واختر الأنسب.">
@@ -663,7 +666,7 @@
   .hzp-img img{width:100%;height:100%;object-fit:cover}
   .hzp-noimg{display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#eaf0fd,#dbe6fb);color:#1d4ed8}
   .hzp-cat-ic{transform:scale(1.3)}
-  .hzp-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
+  .hzp-badge{position:absolute;top:5px;right:5px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
   .hzp-open{background:rgba(22,163,74,.92)}
   .hzp-rev{background:rgba(217,119,6,.92)}
   .hzp-done{background:rgba(100,116,139,.88)}
@@ -678,7 +681,7 @@
   .hzp-meta span+span::before{content:'·';margin-left:6px;opacity:.55}
   .hzp-side{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:11px;flex-shrink:0}
   .hzp-price{font-family:'Cairo',sans-serif;font-size:17px;font-weight:800;color:#16a34a;line-height:1;white-space:nowrap;text-align:left}
-  .hzp-price span{font-size:10px;font-weight:600;color:var(--muted);margin-right:2px}
+  .hzp-price span{font-size:11px;font-weight:600;color:var(--muted);margin-right:2px}
   .hzp-bid{padding:11px 20px;background:#1e3a8a;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:800;font-family:'Tajawal',sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(30,58,138,.25);transition:background .15s,box-shadow .15s,transform .2s}
   .hzp-save{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;padding:0}
   .hzp-save:hover{color:#1e3a8a;border-color:#1e3a8a}
@@ -693,11 +696,11 @@
   .pv-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:5px}
   .pv-city{font-size:11px;color:var(--muted);margin-bottom:8px}
   .pv-specs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
-  .pv-spec{padding:4px 11px;border-radius:100px;font-size:10.5px;font-weight:700;background:#dbeafe;color:var(--accent2);border:1px solid rgba(37,99,235,.2)}
+  .pv-spec{padding:4px 11px;border-radius:100px;font-size:11px;font-weight:700;background:#dbeafe;color:var(--accent2);border:1px solid rgba(37,99,235,.2)}
   .pv-stars{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:6px;flex-wrap:wrap;font-size:13px}
-  .pv-stats{font-size:10px;color:var(--muted);margin-top:3px}
-  .pv-verified{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px}
-  .pv-tier{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+  .pv-stats{font-size:11px;color:var(--muted);margin-top:3px}
+  .pv-verified{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:3px}
+  .pv-tier{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:8px}
   .pv-seal{display:inline-flex;vertical-align:middle;margin:0 3px 2px 0}
 
   .lv-more{text-align:center;margin-top:22px}
@@ -753,7 +756,7 @@
 .ph-chk.ok{background:#dcfce7;color:#15803d}
 .ph-chk.no{background:#f1f5f9;color:#64748b}
 .ph-bidsum{flex:1;background:var(--b);color:var(--c);border-radius:11px;padding:9px;text-align:center;font-size:20px;font-weight:900;line-height:1}
-.ph-bidsum span{display:block;font-size:10.5px;font-weight:700;margin-top:3px;opacity:.85}
+.ph-bidsum span{display:block;font-size:11px;font-weight:700;margin-top:3px;opacity:.85}
 .ph-inbox{display:flex;gap:8px;margin-bottom:10px}
 .ph-inbox-c{flex:1;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:11px 12px;font-family:inherit;font-size:12.5px;font-weight:800;color:#1e3a8a;cursor:pointer}
 .ph-inbox-c:hover{border-color:#93c5fd}
@@ -772,10 +775,10 @@
 .store-badge:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.28)}
 .store-badge svg{flex-shrink:0}
 .store-badge .sb-txt{text-align:right;line-height:1.15}
-.store-badge .sb-small{display:block;font-size:10.5px;color:#cbd5e1;font-weight:500}
+.store-badge .sb-small{display:block;font-size:11px;color:#cbd5e1;font-weight:500}
 .store-badge .sb-big{display:block;font-size:16px;color:#fff;font-weight:800;font-family:'Cairo',sans-serif}
 @media(max-width:560px){.app-badges{flex-direction:column;align-items:center}.store-badge{width:100%;max-width:260px;justify-content:center}}
- .hzp-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);width:64px;height:64px;border-radius:50%;border:3px double #059669;color:#059669;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:10.5px;line-height:1.2;background:rgba(255,255,255,.93);box-shadow:0 2px 10px rgba(5,150,105,.25);z-index:2}
+ .hzp-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);width:64px;height:64px;border-radius:50%;border:3px double #059669;color:#059669;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;font-size:11px;line-height:1.2;background:rgba(255,255,255,.93);box-shadow:0 2px 10px rgba(5,150,105,.25);z-index:2}
 
   .sc-done-badge .sc-shine{position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:scShine 3.2s ease-in-out infinite}
   @keyframes scShine{0%,72%{left:-60%}88%,100%{left:130%}}
@@ -1015,7 +1018,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 <script>
 (function(){
   var API='https://manaqasati-production.up.railway.app';
-  function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+  function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   fetch(API+'/api/showcase').then(function(r){return r.ok?r.json():[];}).then(function(list){
     if(!Array.isArray(list)||!list.length)return;
     var grid=document.getElementById('showcase-grid');if(!grid)return;
@@ -1029,7 +1032,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       var _link=x.id?('/project/'+_slug+'?id='+x.id):'';
       var _btns='<div style="margin-top:16px;padding-top:15px;border-top:1px dashed var(--border)">'
         +'<div style="font-family:\'Cairo\',sans-serif;font-size:12.5px;font-weight:800;color:var(--accent);text-align:center;margin-bottom:12px">✦ مناقصة تعطيك الخيارات — والقرار لك</div>'
-        +(_link?'<a href="'+_link+'" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--accent);color:#fff;text-decoration:none;border-radius:12px;padding:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13.5px;margin-bottom:8px">شاهد تفاصيل المشروع <span style="font-size:15px">←</span></a>':'')
+        +(_link?'<a href="'+esc(_link)+'" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--accent);color:#fff;text-decoration:none;border-radius:12px;padding:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13.5px;margin-bottom:8px">شاهد تفاصيل المشروع <span style="font-size:15px">←</span></a>':'')
         +'<a href="/dashboard-client.html" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--card);color:var(--accent);text-decoration:none;border:1.5px solid var(--border);border-radius:12px;padding:11px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px">انشر مشروعك واستقبل عروضك</a>'
         +'</div>';
       return '<div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 2px 12px var(--glow);position:relative;overflow:hidden;display:flex;flex-direction:column">'
@@ -1146,7 +1149,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 <section style="max-width:1100px;margin:10px auto 40px;padding:0 20px">
   <h2 style="color:#1e3a8a;font-size:24px;font-weight:900;text-align:center;margin-bottom:8px">خدمات شائعة حسب المدينة</h2>
   <p style="text-align:center;color:#475569;font-size:14px;margin-bottom:20px">تصفّح المزوّدين وانشر مشروعك في مدينتك</p>
-  <div id="cityLinks" style="text-align:center;line-height:2.4"><a href="/dalil/كهرباء/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء الرياض</a><a href="/dalil/كهرباء/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء جدة</a><a href="/dalil/كهرباء/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء الدمام</a><a href="/dalil/كهرباء/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء مكة المكرمة</a><a href="/dalil/كهرباء/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء المدينة المنورة</a><a href="/dalil/كهرباء/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء بريدة</a><a href="/dalil/كهرباء/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء تبوك</a><a href="/dalil/كهرباء/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء أبها</a><a href="/dalil/سباكة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة الرياض</a><a href="/dalil/سباكة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة جدة</a><a href="/dalil/سباكة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة الدمام</a><a href="/dalil/سباكة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة مكة المكرمة</a><a href="/dalil/سباكة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة المدينة المنورة</a><a href="/dalil/سباكة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة بريدة</a><a href="/dalil/سباكة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة تبوك</a><a href="/dalil/سباكة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة أبها</a><a href="/dalil/تكييف-وتبريد/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد الرياض</a><a href="/dalil/تكييف-وتبريد/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد جدة</a><a href="/dalil/تكييف-وتبريد/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد الدمام</a><a href="/dalil/تكييف-وتبريد/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد مكة المكرمة</a><a href="/dalil/تكييف-وتبريد/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد المدينة المنورة</a><a href="/dalil/تكييف-وتبريد/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد بريدة</a><a href="/dalil/تكييف-وتبريد/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد تبوك</a><a href="/dalil/تكييف-وتبريد/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد أبها</a><a href="/dalil/دهانات/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات الرياض</a><a href="/dalil/دهانات/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات جدة</a><a href="/dalil/دهانات/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات الدمام</a><a href="/dalil/دهانات/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات مكة المكرمة</a><a href="/dalil/دهانات/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات المدينة المنورة</a><a href="/dalil/دهانات/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات بريدة</a><a href="/dalil/دهانات/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات تبوك</a><a href="/dalil/دهانات/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات أبها</a><a href="/dalil/نجارة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة الرياض</a><a href="/dalil/نجارة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة جدة</a><a href="/dalil/نجارة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة الدمام</a><a href="/dalil/نجارة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة مكة المكرمة</a><a href="/dalil/نجارة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة المدينة المنورة</a><a href="/dalil/نجارة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة بريدة</a><a href="/dalil/نجارة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة تبوك</a><a href="/dalil/نجارة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة أبها</a><a href="/dalil/حدادة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة الرياض</a><a href="/dalil/حدادة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة جدة</a><a href="/dalil/حدادة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة الدمام</a><a href="/dalil/حدادة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة مكة المكرمة</a><a href="/dalil/حدادة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة المدينة المنورة</a><a href="/dalil/حدادة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة بريدة</a><a href="/dalil/حدادة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة تبوك</a><a href="/dalil/حدادة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة أبها</a></div>
+  <div id="cityLinks" style="text-align:center;line-height:2.4"><a href="/dalil/كهرباء/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء الرياض</a><a href="/dalil/كهرباء/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء جدة</a><a href="/dalil/كهرباء/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء الدمام</a><a href="/dalil/كهرباء/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء مكة المكرمة</a><a href="/dalil/كهرباء/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء المدينة المنورة</a><a href="/dalil/كهرباء/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء بريدة</a><a href="/dalil/كهرباء/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء تبوك</a><a href="/dalil/كهرباء/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">كهرباء أبها</a><a href="/dalil/سباكة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة الرياض</a><a href="/dalil/سباكة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة جدة</a><a href="/dalil/سباكة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة الدمام</a><a href="/dalil/سباكة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة مكة المكرمة</a><a href="/dalil/سباكة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة المدينة المنورة</a><a href="/dalil/سباكة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة بريدة</a><a href="/dalil/سباكة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة تبوك</a><a href="/dalil/سباكة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">سباكة أبها</a><a href="/dalil/تبريد-وتكييف/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد الرياض</a><a href="/dalil/تبريد-وتكييف/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد جدة</a><a href="/dalil/تبريد-وتكييف/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد الدمام</a><a href="/dalil/تبريد-وتكييف/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد مكة المكرمة</a><a href="/dalil/تبريد-وتكييف/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد المدينة المنورة</a><a href="/dalil/تبريد-وتكييف/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد بريدة</a><a href="/dalil/تبريد-وتكييف/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد تبوك</a><a href="/dalil/تبريد-وتكييف/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">تكييف وتبريد أبها</a><a href="/dalil/دهانات-وديكور/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات الرياض</a><a href="/dalil/دهانات-وديكور/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات جدة</a><a href="/dalil/دهانات-وديكور/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات الدمام</a><a href="/dalil/دهانات-وديكور/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات مكة المكرمة</a><a href="/dalil/دهانات-وديكور/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات المدينة المنورة</a><a href="/dalil/دهانات-وديكور/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات بريدة</a><a href="/dalil/دهانات-وديكور/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات تبوك</a><a href="/dalil/دهانات-وديكور/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">دهانات أبها</a><a href="/dalil/نجارة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة الرياض</a><a href="/dalil/نجارة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة جدة</a><a href="/dalil/نجارة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة الدمام</a><a href="/dalil/نجارة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة مكة المكرمة</a><a href="/dalil/نجارة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة المدينة المنورة</a><a href="/dalil/نجارة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة بريدة</a><a href="/dalil/نجارة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة تبوك</a><a href="/dalil/نجارة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">نجارة أبها</a><a href="/dalil/حدادة/الرياض" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة الرياض</a><a href="/dalil/حدادة/جدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة جدة</a><a href="/dalil/حدادة/الدمام" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة الدمام</a><a href="/dalil/حدادة/مكة-المكرمة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة مكة المكرمة</a><a href="/dalil/حدادة/المدينة-المنورة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة المدينة المنورة</a><a href="/dalil/حدادة/بريدة" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة بريدة</a><a href="/dalil/حدادة/تبوك" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة تبوك</a><a href="/dalil/حدادة/أبها" style="display:inline-block;margin:4px;padding:6px 13px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px;font-weight:600">حدادة أبها</a></div>
   <p style="text-align:center;margin-top:14px"><button type="button" class="btn-more" onclick="var c=document.getElementById('cityLinks');c.classList.toggle('open');this.textContent=c.classList.contains('open')?'عرض أقل':'عرض كل المدن'">عرض كل المدن</button></p><p style="text-align:center;margin-top:10px"><a href="/dalil" style="color:#1e40af;font-weight:800;text-decoration:none;font-size:13.5px">تصفّح كل الخدمات والمدن ←</a></p>
 </section>
 <!-- FOOTER -->
@@ -1181,11 +1184,11 @@ var API='https://manaqasati-production.up.railway.app';
 // المصدر الموحّد للتخصصات — يعبّي قوائم التصنيف (مع احتياطي)
 (function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
   if(!d||!Array.isArray(d.categories)||!d.categories.length)return;
-  var opts=d.categories.map(function(c){return '<option>'+c+'</option>';}).join('');
+  var opts=d.categories.map(function(c){return '<option>'+_esc(c)+'</option>';}).join('');
   function fill(id,keepFirst){ var sel=document.getElementById(id); if(!sel)return; var first=(keepFirst&&sel.options.length)?sel.options[0].outerHTML:''; sel.innerHTML=first+opts; }
   fill('d-cat',false); fill('fcat',true); fill('pf-cat',true);
 }).catch(function(){}); })();
-function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function isImg(s){return !!(s&&typeof s==='string'&&(s.startsWith('http')||s.startsWith('data:'))&&_safeUrl(s));}
 var ALL=[],CUR=[],PAGE=8,F_ST='all',F_CI='',F_Q='',F_CAT='';
 var PROV_ALL=[],PROV_PAGE=8,ALL_PROVS=[];
 
@@ -1292,15 +1295,15 @@ function card(p){
   var bidN=parseInt(p.bid_count)||0;
   var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
   var imgBox=img
-    ? '<div class="hzp-img"><img src="'+img+'" loading="lazy">'+_overlay+'</div>'
+    ? '<div class="hzp-img"><img src="'+_esc(_safeUrl(img))+'" loading="lazy">'+_overlay+'</div>'
     : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">'+catIcon+'</span>'+_overlay+'</div>';
   return '<div class="hzp" data-slug="'+projSlug+'" onclick="goProject(this)">'
     +imgBox
     +'<div class="hzp-body">'
-      +'<div class="hzp-title">'+p.title+'</div>'
-      +(p.category?'<div class="hzp-catrow"><span class="hzp-cat">'+p.category+'</span></div>':'')
+      +'<div class="hzp-title">'+_esc(p.title)+'</div>'
+      +(p.category?'<div class="hzp-catrow"><span class="hzp-cat">'+_esc(p.category)+'</span></div>':'')
       +'<div class="hzp-meta">'
-        +(p.city?'<span>'+p.city+'</span>':'')
+        +(p.city?'<span>'+_esc(p.city)+'</span>':'')
         +'<span>'+_arN(bidN,'b')+'</span>'
         +(p.created_at?'<span>'+(function(t){return t==='الآن'?t:'منذ '+t;})(ago(p.created_at))+'</span>':'')
       +'</div>'
@@ -1355,7 +1358,7 @@ function starRating(avg,count,size){
   }
   s+='</span>';
   if(avg>0)s+='<span style="font-size:'+(size-1)+'px;font-weight:800;color:#1e3a8a;margin-right:5px">'+avg.toFixed(1)+'</span>';
-  s+='<span style="font-size:'+(size-2)+'px;color:#64748b;margin-right:3px">('+count+')</span>';
+  s+='<span style="font-size:'+Math.max(11,size-2)+'px;color:#64748b;margin-right:3px">('+count+')</span>';
   return s;
 }
 function provTierPill(t){
@@ -1367,19 +1370,19 @@ function provTierPill(t){
 function provCard(p){
   var avg=parseFloat(p.avg_rating)||0;
   var initials=(p.business_name||p.name||'م')[0];
-  var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+s+'</span>';}).join('');
+  var specs=(p.specialties||[]).slice(0,2).map(function(s){return '<span class="pv-spec">'+_esc(s)+'</span>';}).join('');
   var isVerified=(p.badge==='verified'||p.badge==='موثق')||!!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseInt(p.review_count||p.reviews_count)||0)>=3);
   var vseal=isVerified?'<span class="pv-seal" title="موثّق"><svg width="15" height="15" viewBox="-2 -2 28 28" aria-label="موثّق"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
-  var avHtml=isImg(p.profile_image)?'<img src="'+p.profile_image+'" loading="lazy">':initials;
+  var avHtml=isImg(p.profile_image)?'<img src="'+_esc(_safeUrl(p.profile_image))+'" loading="lazy">':_esc(initials);
   var pvSlug=encodeURIComponent((p.business_name||p.name||'مزود').replace(/\s+/g,'-'))+'-'+p.id;
   return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
     +'<div class="pv-av">'+avHtml+'</div>'
-    +'<div class="pv-name">'+(p.business_name||p.name||'—')+vseal+'</div>'
+    +'<div class="pv-name">'+_esc(p.business_name||p.name||'—')+vseal+'</div>'
     +provTierPill(p.tier)
-    +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+p.city+'</div>':'')
+    +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+_esc(p.city)+'</div>':'')
     +(specs?'<div class="pv-specs">'+specs+'</div>':'')
     +'<div class="pv-stars">'+starRating(avg,p.review_count||p.reviews_count||0,12)+'</div>'
-    +(p.completed_projects>0?'<div class="pv-stats">'+p.completed_projects+' مشروع منجز</div>':'')
+    +(p.completed_projects>0?'<div class="pv-stats">'+(parseInt(p.completed_projects)||0)+' مشروع منجز</div>':'')
     +'</div>';
 }
 async function loadProviders(){
@@ -1451,7 +1454,7 @@ function hxGo(cat){
   try{ sessionStorage.setItem('auth_mode','register'); sessionStorage.setItem('auth_role','client'); }catch(e){}
   location.href='auth.html?redirect=postdraft';
 }
-function _hxEsc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
+function _hxEsc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function _hxFeed(all){
   all=Array.isArray(all)?all:[];
   var day=Date.now()-86400000;
@@ -1560,11 +1563,11 @@ function demoTab(btn,which){
 }
 function _myReqRow(r){
   var n=parseInt(r.bid_count)||0;
-  var slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;
+  var slug=encodeURIComponent((r.title||'مشروع').replace(/\s+/g,'-').substring(0,40)).replace(/'/g,'%27')+'-'+parseInt(r.id);
   var st=r.status==='open'?'<span class="tag">مفتوح</span>':'<span class="tag" style="background:#e2e8f0;color:#475569;border-color:#cbd5e1">'+(r.status==='completed'?'مكتمل':'مغلق')+'</span>';
-  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+r.id+'\'" style="cursor:pointer">'
-    +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:6px">'+(r.title||'')+'</div>'
-    +'<div class="req-tags">'+(r.category?'<span class="tag">'+r.category+'</span>':'')+(r.city?'<span class="tag">'+r.city+'</span>':'')+st+'</div></div>'
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+parseInt(r.id)+'\'" style="cursor:pointer">'
+    +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:6px">'+_esc(r.title||'')+'</div>'
+    +'<div class="req-tags">'+(r.category?'<span class="tag">'+_esc(r.category)+'</span>':'')+(r.city?'<span class="tag">'+_esc(r.city)+'</span>':'')+st+'</div></div>'
     +'<div style="text-align:left"><div class="price-num">'+n+'</div><div class="price-label">'+(n===1?'عرض':'عروض')+'</div></div>'
   +'</div>';
 }
@@ -1581,9 +1584,9 @@ function _convRow(c){
   var other=(c.provider_name||c.client_name||'مستخدم');
   var last=c.last_message||'ابدأ المحادثة';
   var unread=parseInt(c.unread)||0;
-  var slug=encodeURIComponent((c.request_title||'محادثة').replace(/\s+/g,'-').substring(0,40))+'-'+c.request_id;
+  var slug=encodeURIComponent((c.request_title||'محادثة').replace(/\s+/g,'-').substring(0,40)).replace(/'/g,'%27')+'-'+parseInt(c.request_id);
   var initials=(String(other).trim().charAt(0)||'?');
-  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+c.request_id+'\'" style="cursor:pointer">'
+  return '<div class="bid-item" onclick="location.href=\'/project/'+slug+'?id='+parseInt(c.request_id)+'\'" style="cursor:pointer">'
     +'<div style="display:flex;align-items:center;gap:10px;min-width:0">'
       +'<div style="width:40px;height:40px;border-radius:50%;background:var(--card2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">'+_esc(initials)+'</div>'
       +'<div style="min-width:0"><div class="bid-name" style="margin-bottom:3px">'+_esc(other)+'</div>'
@@ -1634,7 +1637,8 @@ function demoPublish(){
 }
 
 // ===== الصفحة الرئيسية كانعكاس للوحة المستخدم =====
-function _esc(t){return (t==null?'':String(t)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _esc(t){return (t==null?'':String(t)).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 function _stars5(avg){avg=Math.round(parseFloat(avg)||0);var o='';for(var i=1;i<=5;i++)o+=(i<=avg?'\u2605':'\u2606');return o;}
 function _initials(n){return (n||'\u0645').trim().charAt(0)||'\u0645';}
 function _reqSlug(r){return encodeURIComponent((r.title||'\u0645\u0634\u0631\u0648\u0639').replace(/\s+/g,'-').substring(0,40))+'-'+r.id;}
@@ -1707,7 +1711,7 @@ function renderClientHome(u){
             +'<div style="display:flex;align-items:center;gap:9px"><div class="ph-sq">'+_esc(_initials(nm))+'</div>'
             +'<div><div style="font-size:14px;font-weight:900;color:#1e3a8a">'+_esc(nm)+'</div>'
             +'<div style="font-size:12px;color:#F0A500;margin-top:2px">'+_stars5(best.provider_rating)+' <span style="color:#3b82f6">'+(best.provider_rating?parseFloat(best.provider_rating).toFixed(1):'\u2014')+' \u00b7 '+(parseInt(best.provider_reviews)||0)+' \u062a\u0642\u064a\u064a\u0645</span></div></div></div>'
-            +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#16a34a">'+price+' <span style="font-size:12px">\u0631.\u0633</span></div>'+(best.days?'<div style="font-size:11px;color:#64748b">\u062e\u0644\u0627\u0644 '+best.days+' \u064a\u0648\u0645</div>':'')+'</div>'
+            +'<div style="text-align:left"><div style="font-size:18px;font-weight:900;color:#16a34a">'+price+' <span style="font-size:12px">\u0631.\u0633</span></div>'+(best.days?'<div style="font-size:11px;color:#64748b">\u062e\u0644\u0627\u0644 '+_esc(best.days)+' \u064a\u0648\u0645</div>':'')+'</div>'
             +'</div>'
             +'<div style="display:flex;gap:8px;margin-top:13px"><button class="ph-cta" style="flex:1;justify-content:center" onclick="_scrollTo(\'try\')">\u0639\u0631\u0636 \u0643\u0644 \u0627\u0644\u0639\u0631\u0648\u0636</button><button class="ph-cta o" style="flex:1;justify-content:center" onclick="_openReq({id:'+req.id+'})">\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628</button></div>'
             +'</div>';
@@ -1736,7 +1740,7 @@ function renderProviderHome(u){
     var match= specs.length ? open.filter(function(r){return specs.some(function(sp){return (r.category||'').indexOf(sp)>=0||sp.indexOf(r.category||'')>=0;});}) : open;
     match.sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
     var matchN=match.length;
-    var av=me.profile_image?('<img src="'+me.profile_image+'">'):_esc(_initials(name));
+    var av=_safeUrl(me.profile_image)?('<img src="'+_esc(_safeUrl(me.profile_image))+'">'):_esc(_initials(name));
     var band=''
       +'<div class="ph-band"><span class="ph-acc" style="background:#0ea5e9"></span>'
       +'<svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="12" y1="32" x2="95" y2="55" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="185" y2="26" stroke="#bae6fd" stroke-width="1.2"/><line x1="95" y1="55" x2="145" y2="96" stroke="#fde68a" stroke-width="1.2"/><circle cx="95" cy="55" r="4.5" fill="#7dd3fc"/><circle cx="185" cy="26" r="3.5" fill="#bae6fd"/><circle cx="145" cy="96" r="3.5" fill="#F0A500"/></svg>'
@@ -1881,12 +1885,12 @@ function _realBidRow(b,best){
   var price=b.price?Number(b.price).toLocaleString('en-US'):'—';
   return '<div class="bid-item'+(best?' best':'')+'">'
     +'<div class="bid-provider">'
-      +'<div class="avatar av2">'+name.charAt(0)+'</div>'
-      +'<div><div class="bid-name">'+name+(best?' <span class="best-badge">الأفضل</span>':'')+'</div>'
+      +'<div class="avatar av2">'+_esc(String(name).charAt(0))+'</div>'
+      +'<div><div class="bid-name">'+_esc(name)+(best?' <span class="best-badge">الأفضل</span>':'')+'</div>'
       +'<div class="bid-rating">'+_demoStars(rating)+' <span style="color:#3b82f6">('+(rating?rating.toFixed(1):'—')+') · '+reviews+' تقييم</span></div></div>'
     +'</div>'
     +'<div style="text-align:left"><div class="price-num">'+price+' ر.س</div>'
-    +(b.days?'<div class="price-label">خلال '+b.days+' يوم</div>':'')
+    +(b.days?'<div class="price-label">خلال '+_esc(b.days)+' يوم</div>':'')
     +'</div></div>';
 }
 function initDemoBids(){
@@ -1904,9 +1908,9 @@ function initDemoBids(){
       if(sub) sub.textContent='مشروعك: '+(req.title||'')+(req.city?' – '+req.city:'');
       var pv=document.getElementById('demo-req-preview');
       if(pv){
-        pv.innerHTML='<div class="req-title">'+(req.title||'')+'</div>'
-          +'<div style="color:var(--muted);font-size:13px;margin-top:4px">'+(req.city||'')+(req.created_at?' · نُشر منذ '+ago(req.created_at):'')+'</div>'
-          +'<div class="req-tags">'+(req.category?'<span class="tag">'+req.category+'</span>':'')+'<span class="tag">'+((parseInt(req.bid_count)||0))+' عروض</span></div>';
+        pv.innerHTML='<div class="req-title">'+_esc(req.title||'')+'</div>'
+          +'<div style="color:var(--muted);font-size:13px;margin-top:4px">'+_esc(req.city||'')+(req.created_at?' · نُشر منذ '+ago(req.created_at):'')+'</div>'
+          +'<div class="req-tags">'+(req.category?'<span class="tag">'+_esc(req.category)+'</span>':'')+'<span class="tag">'+((parseInt(req.bid_count)||0))+' عروض</span></div>';
       }
       var list=document.getElementById('demo-bids-list');
       if(!list) return;
@@ -1996,7 +2000,7 @@ initPersonalHome();
 })();
 </script>
 
-<button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="العودة للأعلى" style="position:fixed;bottom:22px;left:22px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:900;transition:opacity .25s,transform .25s;opacity:0">
+<button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="العودة للأعلى" style="position:fixed;bottom:88px;left:22px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border:none;box-shadow:0 6px 20px rgba(30,58,138,.4);cursor:pointer;display:none;align-items:center;justify-content:center;z-index:900;transition:opacity .25s,transform .25s;opacity:0">
   <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
 </button>
 <script>
