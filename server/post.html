@@ -8,7 +8,7 @@
   try{
     var t=localStorage.getItem('token');
     var u=JSON.parse(localStorage.getItem('user')||'{}');
-    if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/auth.html'); return; }
+    if(!t||!u||!u.id){ document.documentElement.style.visibility='hidden'; location.replace('/new.html'+location.search); return; }
     if(u.role==='provider'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-provider.html'); return; }
     if(u.role==='admin'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-admin.html'); return; }
   }catch(e){}
