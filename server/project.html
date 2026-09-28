@@ -722,7 +722,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   h+='<div class="pj-bh">';
   h+='<a class="pj-av" href="'+proUrl+'">'+(provImg?'<img src="'+esc(provImg)+'" loading="lazy" alt="">':esc(name.charAt(0)))+'</a>';
   h+='<div style="flex:1;min-width:0"><a href="'+proUrl+'" class="pj-bn">'+esc(name)+(b.provider_verified?' <span class="pj-vf">✓</span>':'')+'</a>';
-  var sub=[];if(avg>0)sub.push('★ '+avg.toFixed(1)+(reviews?' ('+reviews+')':''));if(cp)sub.push(cp+' مشروع منجز');if(!sub.length)sub.push('لا توجد تقييمات بعد');if(b.provider_city)sub.push(esc(b.provider_city));
+  var sub=[];if(avg>0)sub.push('★ '+avg.toFixed(1)+(reviews?' ('+reviews+')':''));if(cp)sub.push(cp+' مشروع منجز');if(!sub.length)sub.push('لا توجد تقييمات بعد');if(b.provider_city)sub.push(esc(b.provider_city));if(b.reply_speed)sub.push('<span style="color:#15803d;font-size:11.5px;font-weight:800">⚡ '+esc(b.reply_speed)+'</span>');
   h+='<div class="pj-bs">'+sub.join(' · ')+'</div></div>';
   var showPrice=price>0&&(isOwner||isMine||String(b.price_visibility)==='public');
   var canRep=isOwner&&!isAcc&&!isMine;
@@ -926,6 +926,32 @@ function _pjNoteHide(){
   var el=document.getElementById('pj-cn');if(el)el.style.display='none';
   fetch(API+'/api/requests/'+_rid+'/client-note/hide',{method:'POST',headers:{'Authorization':'Bearer '+getToken()}}).then(function(){if(_req&&_req.client_note)_req.client_note.hidden=true;}).catch(function(){});
 }
+// ═══ دعوة مزوّد محدد ═══
+function _pjHrs(sec){var n=Math.ceil((Number(sec)||0)/3600);if(n<=0)return 'أقل من ساعة';if(n===1)return 'ساعة';if(n===2)return 'ساعتين';return n+(n>=3&&n<=10?' ساعات':' ساعة');}
+function _pjTl(col,t,sm){return '<div style="display:flex;gap:11px;align-items:flex-start"><span style="width:14px;height:14px;border-radius:14px;margin-top:4px;flex-shrink:0;background:'+col+'"></span><div><b style="display:block;font-size:13.5px">'+t+'</b>'+(sm?'<small style="font-size:12px;font-weight:700;color:#5b6b85">'+sm+'</small>':'')+'</div></div>';}
+// كرت «وين وصل مشروعك» لصاحب المشروع
+function _pjInvHtml(req){
+  if(!req||!req.invited_name||!req.invite_state)return '';
+  var st=req.invite_state,nm=esc(req.invited_name);
+  var rh=Number(req.invite_remind_hours)||5,oh=Number(req.invite_open_hours)||24;
+  var left=Math.max(0,Number(req.invite_left_sec)||0);
+  var el=st==='pending'?0:Math.max(0,oh*3600-left);
+  var G='#16a34a',A='#f59e0b',N='#cbd5e1';
+  var h='<div class="pj-card" style="gap:14px"><span class="pj-pill" style="align-self:flex-start;background:#eef3ff;color:#1e3a8a">موجّه لمزوّد محدد</span><b style="font-size:14.5px">وين وصل مشروعك</b>';
+  // ١) الوصول للمزوّد
+  if(st==='pending')h+=_pjTl(N,'بيوصل لـ «'+nm+'» أول بعد اعتماد المشروع','نراجع المشروع وننشره قريباً');
+  else h+=_pjTl(G,'وصل لـ «'+nm+'» وحده',(st==='exclusive'&&el>0)?'قبل '+_pjHrs(Math.floor(el/3600)*3600):'');
+  // ٢) التذكير
+  if(req.invite_has_bid)h+=_pjTl(G,'قدّم عرضه ✓','شوف عرضه تحت في قائمة العروض');
+  else if(st==='exclusive'&&el>=rh*3600)h+=_pjTl(G,'بعد '+rh+' ساعات: نذكّره لو ما قدّم','تم التذكير ✓');
+  else h+=_pjTl(st==='exclusive'?A:N,'بعد '+rh+' ساعات: نذكّره لو ما قدّم',st==='exclusive'?'باقي '+_pjHrs(rh*3600-el):'');
+  // ٣) الفتح للجميع
+  if(st==='open')h+=_pjTl(G,'انفتح لباقي المزوّدين ✓','');
+  else h+=_pjTl(N,'بعد '+oh+' ساعة: ينفتح لباقي المزوّدين',st==='exclusive'?'باقي '+_pjHrs(left)+' — تلقائي':'تلقائي');
+  if(st==='exclusive')h+='<button class="pj-b" style="width:100%;min-height:46px;color:#1e3a8a" onclick="_pjOpenInvite(this)">افتحه للجميع الآن</button>';
+  return h+'</div>';
+}
+function _pjOpenInvite(btn){_pjPost('open-invite',btn,'انفتح مشروعك لكل المزوّدين ✓');}
 function render(){
   var req=_req;
   if(!req||!req.id) return;
@@ -972,6 +998,7 @@ function render(){
   }
   if(isOwner){
     h+=_pjNoteHtml(req);
+    h+=_pjInvHtml(req);
     var bs=_bidStats();
     if(_bids.length){
       h+='<div class="pj-sum"><div style="display:flex;align-items:center;gap:8px"><b class="t">وصلك '+_bids.length+' '+(_bids.length>=3&&_bids.length<=10?'عروض':'عرض')+'</b>'+(req.bids_today?'<span class="pj-pill" style="margin-right:auto;background:rgba(255,255,255,.16);color:#fff">+'+req.bids_today+' اليوم</span>':'')+'</div>';
@@ -984,6 +1011,9 @@ function render(){
       h+='<div class="pj-card" style="text-align:center;align-items:center"><div style="font-size:30px">⏳</div><b style="font-size:15px">مشروعك قيد المراجعة</b><div class="pj-bs">نراجعه وننشره للمزوّدين في أقرب وقت.</div></div>';
     }
   } else {
+    // مشروع موجّه: للمزوّد المدعو بانر، وللباقين تنبيه إنه محجوز
+    if(req.invited_me)h+='<div class="pj-card" style="background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border:0;gap:10px"><span class="pj-pill" style="align-self:flex-start;background:#facc15;color:#422006">⭐ مشروع طلبك أنت بالاسم</span><div style="background:rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;line-height:1.8">⭐ هذا المشروع موجّه لك خاصة — لك وحدك الحين، وينفتح لباقي المزوّدين بعد <span style="color:#fde68a">'+_pjHrs(req.invite_left_sec)+'</span></div>'+(!_bids.some(function(b){return b.is_mine;})&&req.status==='open'?'<button class="pj-b" style="width:100%;min-height:46px;background:#fff;color:#1e3a8a;border-color:#fff" onclick="openBid()">قدّم عرضك الآن</button>':'')+'</div>';
+    else if(req.invite_locked)h+='<div class="pj-card" style="background:#eff6ff;border:1.5px solid #93c5fd;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#1e3a8a;line-height:1.8">هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة</div></div>';
     if(req.status==='open'){
       var n=req.bids_n!=null?req.bids_n:_bids.length;
       var lvl=n<=2?['منخفضة','#15803d']:(n<=6?['متوسطة','#b45309']:['عالية','#b91c1c']);
@@ -1000,7 +1030,7 @@ function render(){
   h+='<div id="bids-section">';
   h+=_pjHidBar();
   if(!_bids.length){
-    if(!isOwner)h+='<div class="pj-card" style="text-align:center;align-items:center"><div style="font-size:28px">📭</div><b>لا توجد عروض بعد</b><div class="pj-bs">'+(req.status==='open'?'كن أول مزوّد يقدّم عرضه':'')+'</div></div>';
+    if(!isOwner)h+='<div class="pj-card" style="text-align:center;align-items:center"><div style="font-size:28px">📭</div><b>لا توجد عروض بعد</b><div class="pj-bs">'+(req.status==='open'&&!req.invite_locked?'كن أول مزوّد يقدّم عرضه':'')+'</div></div>';
     else h+='<div class="pj-bs" style="text-align:center;padding:10px">العروض بتظهر هنا أول ما توصل</div>';
   } else {
     if(_bids.length>1)h+='<div class="pj-sorts"><button class="pj-srt'+(_bidSort==='best'?' on':'')+'" data-m="best" onclick="_setSort(\'best\')">الأنسب</button><button class="pj-srt'+(_bidSort==='cheap'?' on':'')+'" data-m="cheap" onclick="_setSort(\'cheap\')">الأرخص</button><button class="pj-srt'+(_bidSort==='rating'?' on':'')+'" data-m="rating" onclick="_setSort(\'rating\')">الأعلى تقييم</button>'+(isOwner?'<button class="pj-srt cmp" onclick="_pjCompare()">⇆ قارن</button>':'')+'</div>';
@@ -1053,7 +1083,7 @@ function render(){
   var mine=_bids.some(function(b){return b.is_mine;});
   if(isOwner&&_pjCanAccept(req.status)&&!req.assigned_provider_id&&_bids.length>1){
     sh='<div style="flex:1;min-width:0"><div style="font-size:12px;color:#64748b;font-weight:800">اخترت؟</div><div style="font-size:13.5px;font-weight:900">اقبل العرض عشان يبدأ التنفيذ</div></div><button class="pj-sbtn" onclick="_pjCompare()">⇆ قارن العروض</button>';
-  } else if(!isOwner&&req.status==='open'&&!mine&&(!u||isProvider||u.can_provide)){
+  } else if(!isOwner&&req.status==='open'&&!mine&&!req.invite_locked&&(!u||isProvider||u.can_provide)){
     var n2=req.bids_n!=null?req.bids_n:_bids.length;
     sh='<div style="flex:1;min-width:0"><div style="font-size:12px;color:#64748b;font-weight:800">'+(dl!==null?(dl<=0?'آخر يوم':'باقي '+dl+' '+_dWord(dl))+' · ':'')+n2+' '+(n2>=3&&n2<=10?'عروض':'عرض')+'</div><div style="font-size:13.5px;font-weight:900">'+(n2<3?'كن من أول المتقدّمين':'قدّم عرض يميّزك')+'</div></div><button class="pj-sbtn" onclick="openBid()">قدّم عرضك</button>';
   }
@@ -1068,6 +1098,7 @@ function openBid(){
   var u=getUser();
   if(!u){goLogin();return;}
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
+  if(_req&&_req.invite_locked){_pjToast('هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة',1);return;}
   document.getElementById('bidOverlay').classList.add('on');
   document.body.style.overflow='hidden';
 }
