@@ -16,10 +16,10 @@
 <script type="application/ld+json" id="ld"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="alternate icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
 <style>
 :root{
   --p:#1e3a8a;--p2:#1e40af;--p3:#172554;
@@ -265,7 +265,7 @@ body{background:var(--bg)}
 <body>
 <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <nav class="nav">
-  <button class="back" onclick="_smartBack()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg><span id="backLbl">رجوع</span></button>
+  <button class="back" onclick="_smartBack()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span id="backLbl">رجوع</span></button>
   <a class="logo" href="/"><span class="logo-dot"></span>مناقصة</a>
   <button class="nav-in" onclick="location.href='/auth.html'">دخول</button>
 </nav>
@@ -279,13 +279,14 @@ body{background:var(--bg)}
 <div class="viewer" id="viewer" onclick="if(event.target===this)cImg()"><button class="vcl" onclick="cImg()">&#10005;</button><img id="vi" src="" alt=""></div>
 <script>
 var API='https://manaqasati-production.up.railway.app';
-function getId(){var slug=location.pathname.split('/').pop();var m=slug.match(/(\d+)$/);if(m)return m[1];return new URLSearchParams(location.search).get('id')||'';}
-function oImg(s){document.getElementById('vi').src=s;document.getElementById('viewer').classList.add('on');document.body.style.overflow='hidden';}
+function getId(){var slug=location.pathname.split('/').pop();var m=slug.match(/(\d+)$/);if(m)return m[1];var q=new URLSearchParams(location.search).get('id')||'';return /^\d+$/.test(q)?q:'';}
+function oImg(s){s=_safeUrl(s);if(!s)return;document.getElementById('vi').src=s;document.getElementById('viewer').classList.add('on');document.body.style.overflow='hidden';}
 function cImg(){document.getElementById('viewer').classList.remove('on');document.body.style.overflow='';}
 function mkStars(n,col,sz){var h='',c=col||'#F0A500',s=sz||'15px';for(var i=1;i<=5;i++)h+='<span style="color:'+(i<=Math.round(n)?c:'#E6E2D9')+';font-size:'+s+'">&#9733;</span>';return h;}
 function pill(d){var m=d?Math.floor((Date.now()-new Date(d))/60000):9999;if(m<60)return '<span class="apill a-now">&#9679; نشط الآن</span>';if(m<1440)return '<span class="apill a-rec">&#9679; نشط منذ '+Math.floor(m/60)+' ساعة</span>';return '<span class="apill a-old">&#9679; آخر نشاط منذ '+Math.floor(m/1440)+' يوم</span>';}
 function ph966(p){if(!p)return'';var n=p.replace(/\D/g,'');if(n.startsWith('966'))return n;if(n.startsWith('0'))return '966'+n.slice(1);return '966'+n;}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 function ago(d){if(!d)return'';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<2)return'نشط الآن';if(m<60)return'منذ '+m+' د';var h=Math.floor(m/60);if(h<24)return'منذ '+h+' ساعة';return'منذ '+Math.floor(h/24)+' يوم';}
 
 function openExternal(e,url){
@@ -327,22 +328,22 @@ function _ppMsg(){
 function _ppGalAll(){var g=document.getElementById('pp-gal');if(!g)return;g.innerHTML=_ppGalHtml(window._ppPorts||[],true);g.className='pp-gal all';var b=document.getElementById('pp-gal-more');if(b)b.style.display='none';_ppBindImgs();}
 function _ppGalHtml(ports,all){
   var h='';
-  if(all||ports.length<=3){ports.forEach(function(s,i){h+='<div class="g" data-s="'+esc(s)+'"><img src="'+esc(s)+'" loading="lazy" alt="عمل '+(i+1)+'"></div>';});return h;}
-  h+='<div class="g big" data-s="'+esc(ports[0])+'"><img src="'+esc(ports[0])+'" loading="lazy" alt="عمل 1"></div>';
-  h+='<div class="g" data-s="'+esc(ports[1])+'"><img src="'+esc(ports[1])+'" loading="lazy" alt="عمل 2"></div>';
+  if(all||ports.length<=3){ports.forEach(function(s,i){h+='<div class="g" data-s="'+esc(_safeUrl(s))+'"><img src="'+esc(_safeUrl(s))+'" loading="lazy" alt="عمل '+(i+1)+'"></div>';});return h;}
+  h+='<div class="g big" data-s="'+esc(_safeUrl(ports[0]))+'"><img src="'+esc(_safeUrl(ports[0]))+'" loading="lazy" alt="عمل 1"></div>';
+  h+='<div class="g" data-s="'+esc(_safeUrl(ports[1]))+'"><img src="'+esc(_safeUrl(ports[1]))+'" loading="lazy" alt="عمل 2"></div>';
   var rest=ports.length-3;
-  h+='<div class="g" '+(rest>0?'onclick="_ppGalAll()"':'data-s="'+esc(ports[2])+'"')+'><img src="'+esc(ports[2])+'" loading="lazy" alt="عمل 3">'+(rest>0?'<div class="more">+'+rest+'</div>':'')+'</div>';
+  h+='<div class="g" '+(rest>0?'onclick="_ppGalAll()"':'data-s="'+esc(_safeUrl(ports[2]))+'"')+'><img src="'+esc(_safeUrl(ports[2]))+'" loading="lazy" alt="عمل 3">'+(rest>0?'<div class="more">+'+rest+'</div>':'')+'</div>';
   return h;
 }
 function _ppBindImgs(){
   document.querySelectorAll('[data-s]').forEach(function(el){if(el._b)return;el._b=1;el.addEventListener('click',function(){oImg(el.getAttribute('data-s'));});});
 }
 function _ppRevHtml(rv){
-  var ra=rv.reviewer_image?'<img src="'+esc(rv.reviewer_image)+'" alt="">':esc((rv.reviewer_name||'ع').charAt(0));
+  var ra=_safeUrl(rv.reviewer_image)?'<img src="'+esc(_safeUrl(rv.reviewer_image))+'" alt="">':esc((rv.reviewer_name||'ع').charAt(0));
   var h='<div class="pp-rv"><div class="top"><span class="rav">'+ra+'</span><div style="min-width:0"><b style="font-size:14px;color:var(--text)">'+esc(rv.reviewer_name||'عميل')+'</b><div>'+mkStars(rv.rating,'#F0A500','13px')+'</div></div><span style="margin-right:auto;font-size:11.5px;color:var(--muted);font-weight:700">'+ago2(rv.created_at)+'</span></div>';
   if(rv.request_title)h+='<div class="vf">✓ مشروع منفّذ عبر مناقصة · '+esc(rv.request_title)+'</div>';
   if(rv.comment)h+='<p>'+esc(rv.comment)+'</p>';
-  if(rv.images&&rv.images.length){h+='<div class="ims">';rv.images.forEach(function(im){h+='<span data-s="'+esc(im)+'"><img src="'+esc(im)+'" loading="lazy" alt=""></span>';});h+='</div>';}
+  if(rv.images&&rv.images.length){h+='<div class="ims">';rv.images.forEach(function(im){h+='<span data-s="'+esc(_safeUrl(im))+'"><img src="'+esc(_safeUrl(im))+'" loading="lazy" alt=""></span>';});h+='</div>';}
   if(rv.provider_reply)h+='<div class="rp"><b>رد المزوّد:</b> '+esc(rv.provider_reply)+'</div>';
   return h+'</div>';
 }
@@ -355,10 +356,10 @@ function _ppSimilar(pid){
     var h='<div class="pp-h">مزوّدين مشابهين'+(city?' في '+esc(city):'')+'</div><div class="pp-sim">';
     list.forEach(function(s){
       var nm=s.business_name||s.name||'مزود';
-      var av=s.profile_image?'<img src="'+esc(s.profile_image)+'" alt="" loading="lazy">':esc(nm.charAt(0));
-      var slug=encodeURIComponent(String(nm).replace(/\s+/g,'-'))+'-'+s.id;
+      var av=_safeUrl(s.profile_image)?'<img src="'+esc(_safeUrl(s.profile_image))+'" alt="" loading="lazy">':esc(nm.charAt(0));
+      var slug=encodeURIComponent(String(nm).replace(/\s+/g,'-'))+'-'+(parseInt(s.id)||0);
       var r=parseFloat(s.avg_rating)||0;
-      h+='<a href="/pro/'+slug+'?id='+s.id+'"><span class="sa">'+av+'</span><b>'+esc(nm)+'</b><small>'+(r>0?'★ '+r.toFixed(1)+' · ':'')+(s.completed_projects||0)+' مشروع</small></a>';
+      h+='<a href="/pro/'+esc(slug)+'?id='+(parseInt(s.id)||0)+'"><span class="sa">'+av+'</span><b>'+esc(nm)+'</b><small>'+(r>0?'★ '+r.toFixed(1)+' · ':'')+(parseInt(s.completed_projects)||0)+' مشروع</small></a>';
     });
     w.innerHTML=h+'</div>';w.style.display='';
   }).catch(function(){});}catch(e){}
@@ -381,9 +382,9 @@ function render(p,rat){
   document.getElementById('ld').textContent=JSON.stringify(sc);
 
   // ── الواجهة ──
-  var avHtml=p.profile_image?'<img src="'+esc(p.profile_image)+'" alt="'+esc(nm)+'" loading="eager">':esc(nm.charAt(0));
+  var avHtml=_safeUrl(p.profile_image)?'<img src="'+esc(_safeUrl(p.profile_image))+'" alt="'+esc(nm)+'" loading="eager">':esc(nm.charAt(0));
   var hero='<button class="pp-share" onclick="_ppShare()" aria-label="مشاركة الصفحة">'+_IC.share+'</button>';
-  hero+='<div class="pp-hin"><div class="pp-av"><div class="im"'+(p.profile_image?' data-s="'+esc(p.profile_image)+'"':'')+'>'+avHtml+'</div>'+(vrf?'<span class="vd" title="موثّق">'+_IC.chk+'</span>':'')+'</div>';
+  hero+='<div class="pp-hin"><div class="pp-av"><div class="im"'+(_safeUrl(p.profile_image)?' data-s="'+esc(_safeUrl(p.profile_image))+'"':'')+'>'+avHtml+'</div>'+(vrf?'<span class="vd" title="موثّق">'+_IC.chk+'</span>':'')+'</div>';
   hero+='<div style="min-width:0">';
   if(p.business_name&&p.name&&p.business_name!==p.name)hero+='<div class="pp-hbiz">'+esc(p.name)+'</div>';
   hero+='<h1 class="pp-hname">'+esc(nm)+'</h1>';
