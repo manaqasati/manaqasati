@@ -1449,10 +1449,9 @@ function hxGo(cat){
   if(window.track){ try{ track('IntentClient'); track('StartPost'); }catch(e){} }
   var u=getUser();
   if(u && effRole(u)==='provider'){ location.href='dashboard-provider.html'; return; }
-  try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify({title:q.slice(0,120),category:cat||'',description:'',open:1})); }catch(e){}
-  if(u){ location.href='dashboard-client.html?postdraft=1'; return; }
-  try{ sessionStorage.setItem('auth_mode','register'); sessionStorage.setItem('auth_role','client'); }catch(e){}
-  location.href='auth.html?redirect=postdraft';
+  if(u){ try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify({title:q.slice(0,120),category:cat||'',description:'',open:1})); }catch(e){} location.href='dashboard-client.html?postdraft=1'; return; }
+  // الزائر: معالج النشر مباشرة (التسجيل آخر خطوة)
+  location.href='/new.html?q='+encodeURIComponent(q.slice(0,120))+(cat?'&cat='+encodeURIComponent(cat):'');
 }
 function _hxEsc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function _hxFeed(all){
@@ -1615,8 +1614,8 @@ function demoPublish(){
   var u=getUser();
   var cat=_val('d-cat'), title=_val('d-title'), desc=_val('d-desc'), loc=_val('d-loc');
   if(!u){
-    try{ localStorage.setItem('manaqasa_new_request_draft', JSON.stringify({category:cat,title:title,description:desc,location:loc})); }catch(e){}
-    goAuthRole('client'); return;
+    // الزائر → معالج النشر
+    location.href='/new.html?q='+encodeURIComponent(title.slice(0,120))+(cat?'&cat='+encodeURIComponent(cat):''); return;
   }
   if(u.role!=='client'){ demoMsg('النشر متاح لحسابات العملاء فقط','err'); return; }
   if(!title){ demoMsg('أدخل عنوان المشروع أولاً','err'); return; }
@@ -1946,7 +1945,7 @@ initPersonalHome();
   if(!gate) return;
   // ── تعريف دوال البوابة أولاً (قبل أي شرط أو خروج) ──
   window.mnqChooseGo=function(role){
-    if(role==='client'){ location.href='/post'; return; }
+    if(role==='client'){ location.href=hasToken()?'/post':'/new.html'; return; }
     if(typeof goAuthRole==='function'){ goAuthRole(role); }
     else { try{sessionStorage.setItem('auth_role',role);sessionStorage.setItem('auth_mode','register');}catch(e){} location.href='/auth.html'; }
   };
@@ -1973,7 +1972,7 @@ initPersonalHome();
   try{ _params=new URLSearchParams(location.search); _src=(_params.get('src')||_params.get('utm_source')||'').toLowerCase(); }catch(e){}
   if(!hasToken() && (_src==='tiktok' || _src==='tt' || _params && _params.get('post')==='1')){
     // مباشرة لصفحة نشر المشروع — يكمّل وعد الفيديو (اعرض مشروعك)، والتسجيل يجي بعد التعبئة
-    location.href='/post'; return;
+    location.href='/new.html'; return;
   }
 
   // لا نعرضها لو: مسجّل دخول، أو دخل عبر رابط قسم (#hash)
