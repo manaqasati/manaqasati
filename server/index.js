@@ -265,9 +265,22 @@ const _CITY_REGIONS = {
 const _C2RG = {};
 for (const _rg in _CITY_REGIONS) { for (const _c of _CITY_REGIONS[_rg]) _C2RG[_c] = _rg; }
 function cityRegion(c){ return c ? (_C2RG[String(c).trim()] || null) : null; }
-async function notifyMatchingProviders(request){
+async function notifyMatchingProviders(request, _force){
   try{
     if(!request || !request.id) return;
+    // مشروع موجّه لمزوّد محدد: عند النشر يوصله هو وحده، والباقين بعد انتهاء المهلة
+    if(!_force){ try{
+      const iv = (await pool.query(`SELECT invited_provider_id, invite_state, title FROM requests WHERE id=$1`, [request.id])).rows[0];
+      if(iv && iv.invited_provider_id && iv.invite_state !== 'open'){
+        if(!iv.invite_state || iv.invite_state === 'pending'){
+          await pool.query(`UPDATE requests SET invite_state='exclusive', invite_started_at=NOW() WHERE id=$1`, [request.id]);
+          const pv = (await pool.query('SELECT email, COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [iv.invited_provider_id])).rows[0];
+          await notify(iv.invited_provider_id, '⭐ عميل طلب عرضك أنت بالاسم', `مشروع «${iv.title}» موجّه لك خاصة — لك وحدك ${INVITE_OPEN_HOURS} ساعة قبل ما ينفتح لباقي المزوّدين. قدّم عرضك الآن.`, 'new_request', request.id);
+          if(pv && pv.email && !/@manaqasa\.local$/i.test(pv.email)){ const t='⭐ عميل طلب عرضك بالاسم'; sendEmail(pv.email, t, emailTpl(t, `<p>عزيزي <strong>${eEsc(pv.nm)}</strong>،</p><p>اختارك عميل من صفحتك على مناقصة وأرسل لك مشروع «<strong>${eEsc(iv.title)}</strong>». المشروع لك وحدك ${INVITE_OPEN_HOURS} ساعة قبل ما يوصل لباقي المزوّدين.</p>`, 'قدّم عرضك الآن', SITE_URL+'/project/x-'+request.id+'?id='+request.id)).catch(()=>{}); }
+        }
+        return;
+      }
+    }catch(e){ console.error('invite notify:', e.message); } }
     if((await getSetting('match_notify_on','1'))==='0') return;
     let _ex = [];
     try { const _q = await pool.query('SELECT category, extra_categories FROM requests WHERE id=$1', [request.id]); if (_q.rows.length) _ex = _reqCats(_q.rows[0]); } catch(_e){}
@@ -334,7 +347,8 @@ setInterval(async () => {
     const mins = Math.max(0, parseInt(await getSetting('review_minutes', '1440')) || 0);
     if (mins <= 0) return; // 0 = تعطيل النشر التلقائي — المراجعة اليدوية إجبارية
     const r = await pool.query(
-      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND COALESCE(submitted_at, created_at) <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title, category, city`,
+      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND COALESCE(submitted_at, created_at) <= NOW() - ($1 || ' minutes')::interval
+         AND EXISTS (SELECT 1 FROM users cu WHERE cu.id=requests.client_id AND COALESCE(cu.email_verified,TRUE)=TRUE) RETURNING id, client_id, title, category, city`,
       [String(mins)]
     );
     for (const row of r.rows) {
@@ -419,7 +433,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const r = await pool.query(`
-      SELECT r.id, r.title, r.description, r.category, r.category_other, r.extra_categories, r.city, r.district, r.client_id,
+      SELECT r.id, r.title, r.description, r.category, r.category_other, r.extra_categories, r.city, r.district, r.client_id, r.invited_provider_id, r.invite_state, r.invite_started_at,
         r.budget_max, r.geo_lat, r.geo_lng,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.close_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
@@ -440,6 +454,25 @@ app.get('/api/requests/public/:id', async (req, res) => {
         if (_tk) { try { _v = jwt.verify(_tk, JWT_SECRET); } catch(e) {} }
         const _ok = _v && (String(_v.id) === String(row.client_id) || _v.role === 'admin' || (_st.category === 'direct' && String(_v.id) === String(_st.assigned_provider_id)));
         if (!_ok) return res.status(404).json({ message: 'غير موجود' });
+      }
+    } catch(e) {}
+    // الدعوة المباشرة: التفاصيل لصاحب المشروع والأدمن فقط، والمزوّد المدعو يعرف إنه مدعو
+    try {
+      let _v2 = null; const _ah2 = req.headers.authorization || ''; const _tk2 = _ah2.startsWith('Bearer ') ? _ah2.slice(7) : null;
+      if (_tk2) { try { _v2 = jwt.verify(_tk2, JWT_SECRET); if (_v2 && _v2.purpose) _v2 = null; } catch(e) {} }
+      const _own2 = _v2 && (String(_v2.id) === String(row.client_id) || _v2.role === 'admin');
+      if (row.invited_provider_id && _own2) {
+        const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
+        if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
+        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = INVITE_OPEN_HOURS;
+        row.invite_has_bid = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0;
+      } else if (row.invited_provider_id && _v2 && String(_v2.id) === String(row.invited_provider_id)) {
+        row.invited_me = row.invite_state === 'exclusive';
+        if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
+        delete row.invited_provider_id;
+      } else {
+        if (row.invite_state === 'exclusive') row.invite_locked = true; // مشروع محجوز حالياً لمزوّد آخر
+        delete row.invited_provider_id; delete row.invite_started_at;
       }
     } catch(e) {}
     // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الأدمن، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
@@ -641,6 +674,8 @@ app.get('/api/bids/public/:id', async (req, res) => {
       }
       return rest;
     });
+    // سرعة رد المزوّد (من الكاش غالباً)
+    try { for (const x of rows) { const sp = await _replySpeed(x.provider_id); if (sp) x.reply_speed = sp.label; } } catch(e){}
     res.json({ bids: rows, range });
   } catch(e) { res.status(500).json([]); }
 });
@@ -2446,6 +2481,11 @@ async function setupDatabase() {
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_at TIMESTAMP`);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_warned_at TIMESTAMP`);
       await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
+      // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
+      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
+      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
+      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_started_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_reminded BOOLEAN DEFAULT FALSE`);
     } catch(e) { console.error('bid_reports migrate:', e.message); }
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
@@ -2793,7 +2833,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     try {
       const isProvider = role === 'provider';
-      const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
+      const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${eEsc(name)}!`;
       const welcomeBody = isProvider
         ? `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
         : `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
@@ -3364,6 +3404,9 @@ app.get('/api/requests', async (req, res) => {
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
     let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
+    // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
+    { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
+      params.push(_vid); query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`; }
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
       else if (status === 'done') { query += ` AND r.status IN ('completed','in_progress','done')`; }
@@ -3417,6 +3460,13 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!(isOwner || isAssigned || isAdmin)) {
       row.provider_phone = null;
     }
+    // معلومات الدعوة المباشرة (لصاحب المشروع والأدمن)
+    if (row.invited_provider_id && (isOwner || isAdmin)) {
+      try { const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
+        if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
+        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = INVITE_OPEN_HOURS;
+        row.invite_has_bid = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0; } catch(e){}
+    } else if (!(isAdmin || (uid && String(uid)===String(row.invited_provider_id)))) { delete row.invited_provider_id; }
     // المحادثات المباشرة: الأرقام ما تنكشف من خلالها (كانت تسمح بجمع جوال أي مستخدم)
     if (row.category === 'direct' && !isAdmin) { row.client_phone = null; row.provider_phone = null; }
     if (row.category === 'direct' && !(isOwner || isAssigned || isAdmin)) return res.status(404).json({ message: 'غير موجود' });
@@ -3523,7 +3573,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
-    try { const _v = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1',[req.user.id]); if(_v.rows.length && _v.rows[0].ev===false) return res.status(403).json({ message:'فعّل بريدك الإلكتروني قبل نشر مشروع', code:'email_unverified' }); } catch(_e){}
+    // الإيميل غير المفعّل ما يمنع النشر (كل مشروع يمر على المراجعة أصلاً) — بس ما ينشر تلقائياً لين يتفعّل أو تعتمده الإدارة
     const { title, description, city, address, budget_max, deadline, attachments } = req.body;
     const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const district = (req.body.district||'').toString().trim().slice(0,80) || null;
@@ -3559,6 +3609,14 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     try { if (_nc.category_other && r.rows[0]) { await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); r.rows[0].category_other = _nc.category_other; } } catch(e){}
     try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
     const newReq = r.rows[0];
+    // دعوة مزوّد مباشرة (من صفحته): يوصله أول بعد اعتماد المشروع
+    try {
+      const _inv = parseInt(req.body.invite_provider_id) || 0;
+      if (_inv && newReq && _inv !== req.user.id) {
+        const _ok = (await pool.query(`SELECT 1 FROM users WHERE id=$1 AND role='provider' AND is_active IS NOT FALSE`, [_inv])).rows.length;
+        if (_ok) { await pool.query(`UPDATE requests SET invited_provider_id=$1, invite_state='pending' WHERE id=$2`, [_inv, newReq.id]); newReq.invited_provider_id = _inv; newReq.invite_state = 'pending'; }
+      }
+    } catch(e) { console.error('invite set:', e.message); }
     try {
       const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [req.user.id]);
       if (clientInfo.rows.length && clientInfo.rows[0].email) {
@@ -3836,6 +3894,8 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'المشروع غير مفتوح للعروض' });
+    try { const _iv = (await pool.query('SELECT invited_provider_id, invite_state FROM requests WHERE id=$1', [requestId])).rows[0];
+      if (_iv && _iv.invite_state === 'exclusive' && String(_iv.invited_provider_id) !== String(req.user.id)) return res.status(403).json({ message: 'هذا المشروع موجّه لمزوّد محدد حالياً — ينفتح للجميع قريباً' }); } catch(e){}
     const existing = await pool.query('SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
     let row; let isUpdate = false;
     if (existing.rows.length) {
@@ -4858,6 +4918,7 @@ app.get('/api/providers/:id', async (req, res) => {
     if (Array.isArray(prov.portfolio_images)) {
       prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
     }
+    try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -6124,6 +6185,79 @@ app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async 
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══ دعوة مزوّد مباشرة ═══
+const INVITE_REMIND_HOURS = 5, INVITE_OPEN_HOURS = 24;
+async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (invite_started_at + ($2 || ' hours')::interval - NOW())))::int AS s FROM requests WHERE id=$1`, [id, String(INVITE_OPEN_HOURS)])).rows[0].s; } catch(e) { return null; } }
+async function _openInvite(id, why){
+  const r = await pool.query(`UPDATE requests SET invite_state='open' WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id]);
+  const x = r.rows[0]; if (!x) return false;
+  if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
+  return true;
+}
+setInterval(async () => {
+  try {
+    // تذكير المزوّد بعد 5 ساعات لو ما قدّم
+    const rem = await pool.query(`SELECT r.id, r.title, r.invited_provider_id FROM requests r WHERE r.invite_state='exclusive' AND COALESCE(r.invite_reminded,FALSE)=FALSE AND r.status='open'
+      AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_REMIND_HOURS)]);
+    for (const x of rem.rows) {
+      await pool.query('UPDATE requests SET invite_reminded=TRUE WHERE id=$1', [x.id]);
+      await notify(x.invited_provider_id, '⏰ باقي وقت على مشروعك الخاص', `العميل ينتظر عرضك على «${x.title}» — باقي ${INVITE_OPEN_HOURS-INVITE_REMIND_HOURS} ساعة قبل ما ينفتح لباقي المزوّدين.`, 'new_request', x.id);
+    }
+    // بعد 24 ساعة بدون عرض منه: ينفتح للجميع
+    const due = await pool.query(`SELECT r.id FROM requests r WHERE r.invite_state='exclusive' AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval
+      AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_OPEN_HOURS)]);
+    for (const x of due.rows) await _openInvite(x.id, 'timeout');
+  } catch(e) { console.error('invite timer:', e.message); }
+}, 10*60*1000);
+// العميل يفتح مشروعه الموجّه لباقي المزوّدين الآن
+app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query('SELECT client_id, invite_state FROM requests WHERE id=$1', [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (String(q.client_id) !== String(req.user.id) && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
+    if (q.invite_state === 'open' || !q.invite_state) return res.json({ ok: true, already: true });
+    await pool.query("UPDATE requests SET invite_state='open' WHERE id=$1", [id]);
+    const x = (await pool.query('SELECT id, title, category, city, status FROM requests WHERE id=$1', [id])).rows[0];
+    if (x && x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// المزوّد: المشاريع الموجّهة له (للبطاقة المميزة في رئيسيته)
+app.get('/api/provider/invites', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT r.id, r.title, r.category, r.city, r.invite_state, r.invite_started_at,
+      GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ($2 || ' hours')::interval - NOW())))::int AS left_sec,
+      EXISTS(SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=$1) AS has_bid,
+      COALESCE(cardinality(r.images),0) AS n_images
+      FROM requests r WHERE r.invited_provider_id=$1 AND r.status='open' AND r.invite_state IN ('exclusive','open') AND r.created_at > NOW() - INTERVAL '30 days'
+      ORDER BY (r.invite_state='exclusive') DESC, r.invite_started_at DESC LIMIT 10`, [req.user.id, String(INVITE_OPEN_HOURS)]);
+    res.json(r.rows);
+  } catch(e) { res.json([]); }
+});
+// سرعة الرد: وسيط الوقت بين رسالة العميل وأول رد من المزوّد (آخر 30 يوم) — كاش ساعة
+const _replyCache = new Map();
+async function _replySpeed(pid){
+  pid = parseInt(pid); if (!pid) return null;
+  const hit = _replyCache.get(pid); if (hit && Date.now() < hit.exp) return hit.v;
+  let v = null;
+  try {
+    const r = (await pool.query(`SELECT COUNT(*)::int AS n, percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (rp.created_at - m.created_at))) AS med
+      FROM messages m JOIN LATERAL (SELECT created_at FROM messages x WHERE x.sender_id=m.receiver_id AND x.receiver_id=m.sender_id AND x.request_id=m.request_id AND x.created_at>m.created_at ORDER BY x.created_at LIMIT 1) rp ON TRUE
+      WHERE m.receiver_id=$1 AND m.created_at > NOW() - INTERVAL '30 days'
+        AND NOT EXISTS (SELECT 1 FROM messages p WHERE p.sender_id=m.sender_id AND p.receiver_id=m.receiver_id AND p.request_id=m.request_id AND p.created_at < m.created_at AND p.created_at > m.created_at - INTERVAL '10 minutes')`, [pid])).rows[0];
+    const n = r ? r.n : 0, med = r ? parseFloat(r.med) : NaN;
+    if (n >= 3 && Number.isFinite(med)) {
+      if (med <= 3600) v = { key:'hour', label:'يرد عادة خلال ساعة' };
+      else if (med <= 4*3600) v = { key:'hours', label:'يرد عادة خلال ساعات' };
+      else if (med <= 24*3600) v = { key:'day', label:'يرد عادة خلال يوم' };
+    }
+  } catch(e) { console.error('reply speed:', e.message); }
+  _replyCache.set(pid, { v, exp: Date.now() + 3600000 });
+  return v;
+}
+app.get('/api/providers/:id/reply-speed', async (req, res) => { res.set('Cache-Control','public, max-age=600'); res.json(await _replySpeed(req.params.id) || {}); });
+
 // ═══ بلاغات العملاء على العروض + المراجعة قبل النشر ═══
 // العميل يبلّغ عن عرض → يختفي من قائمته فوراً. بلاغين من عميلين مختلفين خلال 30 يوم = تنبيه للمزوّد.
 // 3 عملاء = عروضه الجديدة «تحت المراجعة» (مخفية عن العملاء) وتنعتمد تلقائياً بعد 7 ساعات لو ما راجعها الأدمن.
@@ -6618,9 +6752,9 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     await logAdmin(req, 'review_request', 'request', id, logLabel);
     await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
-      const body = action==='approve' ? (`<p>تمت الموافقة على مشروعك "<strong>${row.title}</strong>" ونشره على المنصة.</p>`+(String(reason||'').trim()?`<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e40af;margin:10px 0">💡 <strong>نصيحة من الإدارة:</strong> ${reason}</p>`:''))
-                 : action==='needs_edit' ? `<p>🔒 مشروعك "<strong>${row.title}</strong>" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>المطلوب إكماله:</strong> ${reason}</p>`:''}<p>ادخل المنصة، أكمل التفاصيل، ثم أعد الإرسال — وسيعود مشروعك للنشر ويستقبل العروض.</p>`
-                 : `<p>للأسف، تم رفض مشروعك "<strong>${row.title}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
+      const body = action==='approve' ? (`<p>تمت الموافقة على مشروعك "<strong>${eEsc(row.title)}</strong>" ونشره على المنصة.</p>`+(String(reason||'').trim()?`<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e40af;margin:10px 0">💡 <strong>نصيحة من الإدارة:</strong> ${reason}</p>`:''))
+                 : action==='needs_edit' ? `<p>🔒 مشروعك "<strong>${eEsc(row.title)}</strong>" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>المطلوب إكماله:</strong> ${reason}</p>`:''}<p>ادخل المنصة، أكمل التفاصيل، ثم أعد الإرسال — وسيعود مشروعك للنشر ويستقبل العروض.</p>`
+                 : `<p>للأسف، تم رفض مشروعك "<strong>${eEsc(row.title)}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
       sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
     }
@@ -7235,7 +7369,7 @@ const BANK_DEFAULTS = {
   iban: 'SA6780000374608010891560',
   whatsapp: '966594011313'
 };
-app.get('/api/bank-info', auth, async (req, res) => {
+app.get('/api/bank-info', async (req, res) => {
   try {
     const out = {};
     for (const k of Object.keys(BANK_DEFAULTS)) {
@@ -7497,6 +7631,8 @@ async function _adminOverview(){
         (SELECT COUNT(*) FROM bids WHERE hold_state='held')::int AS held_bids,
         (SELECT GREATEST(0, EXTRACT(EPOCH FROM (MIN(held_until) - NOW())))::int FROM bids WHERE hold_state='held') AS held_next_sec,
         (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS bid_report_providers,
+        (SELECT COUNT(*) FROM messages m WHERE m.is_read=FALSE AND m.receiver_id IN (SELECT id FROM users WHERE role='admin'))::int AS inbox_unread,
+        (SELECT COUNT(*) FROM users WHERE COALESCE(bid_review,FALSE)=TRUE)::int AS review_providers,
         (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,
         (SELECT COUNT(*) FROM saai_ledger WHERE status='submitted')::int AS saai_submitted,
         (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='submitted')::float AS saai_submitted_sum`),
