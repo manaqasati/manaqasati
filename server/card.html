@@ -84,12 +84,26 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 <div class="toast" id="toast"></div>
 <script>
 var TOKEN=(location.pathname.split('/').filter(Boolean).pop()||'').split('?')[0];
-var CARD_URL=location.origin+'/card/'+TOKEN;
+var CARD_URL=location.origin+'/card/'+TOKEN; // الرابط العام (بدون مفتاح التعديل) — هو اللي ينشارك
+// مفتاح التعديل الخاص (موجود فقط في رابط صاحب الكرت)
+var K=''; try{K=new URLSearchParams(location.search).get('k')||'';}catch(e){}
 var _data=null, _logoData='';
-function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
+function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// رابط آمن فقط (http/https أو مسار داخلي أو صورة data)
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
+// رابط السوشال: لو يوزر نحوله لرابط المنصة، ولو رابط نتأكد إنه آمن
+function _socUrl(kind,v){
+  v=String(v==null?'':v).trim(); if(!v)return '';
+  if(/^https?:\/\//i.test(v))return _safeUrl(v);
+  if(/^[a-z][a-z0-9+.-]*:/i.test(v))return '';
+  var base={instagram:'https://instagram.com/',snapchat:'https://snapchat.com/add/',tiktok:'https://tiktok.com/@',twitter:'https://x.com/'}[kind];
+  if(!base)return '';
+  var u=v.replace(/^@+/,'').replace(/^\/+/,'');
+  return u?_safeUrl(base+encodeURIComponent(u)):'';
+}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},2200);}
 function normWa(p){if(!p)return'';var d=String(p).replace(/[^\d]/g,'');if(d.indexOf('966')===0)return d;if(d.indexOf('05')===0)return '966'+d.slice(1);if(d.indexOf('5')===0&&d.length===9)return '966'+d;if(d.indexOf('0')===0)return '966'+d.slice(1);return d;}
-function _setLogoPrev(src){var p=document.getElementById('logoPrev');if(p)p.innerHTML=src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">':'📷';}
+function _setLogoPrev(src){var p=document.getElementById('logoPrev');if(p)p.innerHTML=_safeUrl(src)?'<img src="'+esc(_safeUrl(src))+'" style="width:100%;height:100%;object-fit:cover">':'📷';}
 function _clearLogo(){_logoData='';_setLogoPrev('');}
 function _pickLogo(e){
   var f=e.target.files&&e.target.files[0];if(!f)return;
@@ -112,20 +126,22 @@ var NET='<svg viewBox="0 0 452 120" preserveAspectRatio="none"><line x1="30" y1=
 function render(d){
   _data=d; _logoData=d.logo||'';
   var initial=esc((d.name||'?').trim().charAt(0)||'?');
-  var av=d.logo?'<img src="'+esc(d.logo)+'">':initial;
+  var _lg=_safeUrl(d.logo);
+  var av=_lg?'<img src="'+esc(_lg)+'">':initial;
   var sub=[d.category,d.city].filter(Boolean).map(esc).join('  ·  ');
-  var wa=d.phone_norm||normWa(d.phone);
-  var maps=(d.links&&d.links.maps)||(d.website&&/google\.[^\/]+\/maps|maps\.app|goo\.gl\/maps/.test(d.website)?d.website:'')||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((d.name||'')+' '+(d.city||'')));
+  var wa=String(d.phone_norm||normWa(d.phone)||'').replace(/[^\d]/g,'');
+  var maps=_safeUrl(d.links&&d.links.maps)||(d.website&&/google\.[^\/]+\/maps|maps\.app|goo\.gl\/maps/.test(d.website)?_safeUrl(d.website):'')||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((d.name||'')+' '+(d.city||'')));
   var demand=[d.category,d.city].filter(Boolean).map(esc).join(' في ');
   var L=d.links||{};
+  var CE=!!d.can_edit; // صاحب الكرت فقط (الرابط الخاص) يشوف التعديل والتفعيل
 
   var h='<div class="card">';
-  h+='<div class="draft">✏️ مسودّة — معاينة خاصة بك · فعّلها لتصير رسمية</div>';
+  if(CE)h+='<div class="draft">✏️ مسودّة — معاينة خاصة بك · فعّلها لتصير رسمية</div>';
   h+='<div class="cover">'+NET+'<div class="cover-bar"></div></div>';
   h+='<div class="head an d1"><div class="ring"><div class="avatar">'+av+'</div></div>'
     +'<div class="pname">'+esc(d.name||'مزود خدمة')+'</div>'
     +(sub?'<div class="psub">'+sub+'</div>':'')
-    +(d.rating?'<div class="prating">⭐ '+Number(d.rating).toFixed(1)+(d.reviews_count?' ('+d.reviews_count+')':'')+' <small>من Google</small></div>':'')
+    +(d.rating?'<div class="prating">⭐ '+Number(d.rating).toFixed(1)+(parseInt(d.reviews_count)?' ('+parseInt(d.reviews_count)+')':'')+' <small>من Google</small></div>':'')
     +'</div>';
   h+='<div class="body">';
 
@@ -140,34 +156,38 @@ function render(d){
 
   // السوشال
   var soc='';
-  if(L.instagram)soc+='<a class="soc s-ig" href="'+esc(L.instagram)+'" target="_blank" rel="noopener noreferrer">📷</a>';
-  if(L.snapchat)soc+='<a class="soc s-sc" href="'+esc(L.snapchat)+'" target="_blank" rel="noopener noreferrer">👻</a>';
-  if(L.tiktok)soc+='<a class="soc s-tt" href="'+esc(L.tiktok)+'" target="_blank" rel="noopener noreferrer">🎵</a>';
-  if(L.twitter)soc+='<a class="soc s-tw" href="'+esc(L.twitter)+'" target="_blank" rel="noopener noreferrer">𝕏</a>';
-  var web=d.website&&!/google\.[^\/]+\/maps/.test(d.website)?d.website:'';
+  var _ig=_socUrl('instagram',L.instagram),_sc=_socUrl('snapchat',L.snapchat),_tt=_socUrl('tiktok',L.tiktok),_tw=_socUrl('twitter',L.twitter);
+  if(_ig)soc+='<a class="soc s-ig" href="'+esc(_ig)+'" target="_blank" rel="noopener noreferrer">📷</a>';
+  if(_sc)soc+='<a class="soc s-sc" href="'+esc(_sc)+'" target="_blank" rel="noopener noreferrer">👻</a>';
+  if(_tt)soc+='<a class="soc s-tt" href="'+esc(_tt)+'" target="_blank" rel="noopener noreferrer">🎵</a>';
+  if(_tw)soc+='<a class="soc s-tw" href="'+esc(_tw)+'" target="_blank" rel="noopener noreferrer">𝕏</a>';
+  var web=d.website&&!/google\.[^\/]+\/maps/.test(d.website)?_safeUrl(d.website):'';
   if(web)soc+='<a class="soc s-web" href="'+esc(web)+'" target="_blank" rel="noopener noreferrer">🌐</a>';
   if(soc)h+='<div class="sec an d3"><div class="socials">'+soc+'</div></div>';
 
   // النبذة
   if(d.bio)h+='<div class="sec an d3"><div class="sec-t">👤 نبذة</div><div class="bio-txt">'+esc(d.bio)+'</div></div>';
 
-  // تسويق
+  // تسويق + دعوة التفعيل (لصاحب الكرت فقط)
+  if(CE){
   h+='<div class="sec an d4"><div class="mkt-h">🔍 كم عميل يبحث عن خدمتك اليوم... وما لقى نشاطك؟</div>'
     +'<div class="mkt-p">أغلب العملاء يبدأون البحث من الإنترنت، ويختارون اللي يشوفون أعماله وتواصله بسهولة. فعّل صفحتك — <b>حضور رقمي احترافي</b>'+(demand?' يوصّلك عملاء يبحثون عن <b>'+demand+'</b>':'')+'، قبل ما تروح الفرصة لمنافسك.</div></div>';
 
   // دعوة
   h+='<div class="cta an d4"><div class="cta-t">فعّل صفحتك مجاناً وتبدأ تظهر في قوقل يلقاك فيها العملاء</div>'
     +'<a class="cta-btn" href="/auth.html?ref=card&t='+encodeURIComponent(TOKEN)+'">✅ فعّل صفحتي الآن</a></div>';
+  }
 
   // QR
   h+='<div class="sec qr-sec an d5"><div class="qr-cap">امسح الرمز للوصول لهذي الصفحة</div><div class="qr-frame"><div id="qr"></div></div><br><button class="share" onclick="shareCard()">🔗 مشاركة الرابط</button></div>';
-  if(d.views)h+='<div class="views an d5">👁 انفتحت صفحتك <b>'+d.views+'</b> مرة</div>';
+  if(CE&&d.views)h+='<div class="views an d5">👁 انفتحت صفحتك <b>'+(parseInt(d.views)||0)+'</b> مرة</div>';
 
-  // تعديل ذاتي
+  // تعديل ذاتي (لصاحب الكرت فقط)
+  if(CE){
   h+='<div class="editlink an d6">هذي بياناتك؟ <a onclick="toggleEdit()">✏️ عدّل صفحتك أو أخفِها</a></div>';
   h+='<div class="edit" id="editBox">'
     +'<label>الشعار / صورة</label>'
-    +'<div style="display:flex;align-items:center;gap:12px"><div id="logoPrev" style="width:60px;height:60px;border-radius:14px;background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+(d.logo?'<img src="'+esc(d.logo)+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</div>'
+    +'<div style="display:flex;align-items:center;gap:12px"><div id="logoPrev" style="width:60px;height:60px;border-radius:14px;background:var(--bg);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+(_lg?'<img src="'+esc(_lg)+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</div>'
       +'<input type="file" id="e-logo-file" accept="image/*" onchange="_pickLogo(event)" style="flex:1;font-size:12px">'
       +'<button type="button" onclick="_clearLogo()" style="background:#fff;color:#dc2626;border:1px solid #fecaca;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">إزالة</button></div>'
     +'<label>نبذة عنك</label><textarea id="e-bio" placeholder="مثال: متخصص في تكييف وصيانة السبليت، خبرة 10 سنوات، خدمة سريعة داخل الرياض.">'+esc(d.bio||'')+'</textarea>'
@@ -178,6 +198,7 @@ function render(d){
     +'<button class="e-save" onclick="saveCard()">حفظ التعديلات</button>'
     +'<button class="e-remove" onclick="removeCard()">أخفِ صفحتي نهائياً</button>'
     +'</div>';
+  }
 
   h+='<div class="foot">📇 بطاقة رقمية · <b>مناقصة</b></div>';
   h+='</div></div>';
@@ -185,26 +206,26 @@ function render(d){
   try{ new QRCode(document.getElementById('qr'),{text:CARD_URL,width:150,height:150,colorDark:'#1e3a8a',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
 }
 
-function toggleEdit(){document.getElementById('editBox').classList.toggle('on');}
+function toggleEdit(){var b=document.getElementById('editBox');if(b)b.classList.toggle('on');}
 function shareCard(){
   if(navigator.share){navigator.share({title:'الكرت الرقمي',url:CARD_URL}).catch(function(){});}
   else{navigator.clipboard.writeText(CARD_URL).then(function(){toast('تم نسخ الرابط');}).catch(function(){toast(CARD_URL);});}
 }
 function saveCard(){
-  var body={bio:document.getElementById('e-bio').value,logo:_logoData,links:{
+  var body={k:K,bio:document.getElementById('e-bio').value,logo:_logoData,links:{
     instagram:document.getElementById('e-ig').value,snapchat:document.getElementById('e-sc').value,
     tiktok:document.getElementById('e-tt').value,twitter:document.getElementById('e-tw').value,
     website:(_data&&_data.website)||'',maps:(_data&&_data.links&&_data.links.maps)||''}};
   fetch('/api/card/'+TOKEN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json();}).then(function(){toast('تم الحفظ ✅');setTimeout(function(){location.reload();},900);})
-    .catch(function(){toast('تعذّر الحفظ');});
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw j;return j;});}).then(function(){toast('تم الحفظ ✅');setTimeout(function(){location.reload();},900);})
+    .catch(function(e){toast((e&&e.message)||'تعذّر الحفظ');});
 }
 function removeCard(){
   if(!confirm('إخفاء صفحتك نهائياً؟ لن تكون متاحة بالرابط.'))return;
-  fetch('/api/card/'+TOKEN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({unpublish:true})})
-    .then(function(r){return r.json();}).then(function(){location.reload();}).catch(function(){toast('تعذّر');});
+  fetch('/api/card/'+TOKEN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({k:K,unpublish:true,links:(_data&&_data.links)||{}})})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw j;return j;});}).then(function(){location.reload();}).catch(function(e){toast((e&&e.message)||'تعذّر');});
 }
-fetch('/api/card/'+TOKEN).then(function(r){
+fetch('/api/card/'+TOKEN+(K?'?k='+encodeURIComponent(K):'')).then(function(r){
   if(r.status===410){document.getElementById('app').innerHTML='<div class="state">🚫 هذي الصفحة غير متاحة حالياً.</div>';throw 0;}
   if(!r.ok){document.getElementById('app').innerHTML='<div class="state">لم نجد هذا الكرت. تأكّد من الرابط.</div>';throw 0;}
   return r.json();
