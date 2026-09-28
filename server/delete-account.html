@@ -4,78 +4,81 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>حذف الحساب — مناقصة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --p:#16213E;--p2:#1A2F5E;--p3:#0D1829;
-  --gold:#C9920A;--gold-d:#A87000;--gold-l:#FFF8E6;
-  --text:#0F172A;--muted:#8896AA;
-  --border:#E6E2D9;--bg:#F5F5F0;--white:#FFFFFF;
+  --nav:#172554;--p:#1e3a8a;--accent:#1d4ed8;--accent-l:#eef3ff;
+  --text:#14223d;--muted:#5b6b85;--sub:#334766;
+  --border:#e1e9f6;--border2:#dbe5f5;--bg:#eef3fb;--white:#FFFFFF;
   --green:#16A34A;--green-l:#EDFBF0;
-  --red:#DC2626;--red-l:#FEF2F2;
+  --red:#b91c1c;--red-l:#fef2f2;
+  --warn:#9a3412;--warn-l:#fff7ed;--warn-b:#fdba74;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;color:var(--text)}
-.header{background:var(--p3);width:100%;max-width:520px;border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden}
-.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold)}
-.logo{font-size:20px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px}
-.logo-dot{width:9px;height:9px;border-radius:50%;background:var(--gold)}
-.back-link{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;margin-top:12px;font-family:inherit}
-.container{background:var(--white);width:100%;max-width:520px;border-radius:18px;padding:24px;border:1px solid var(--border);box-shadow:0 4px 16px rgba(15,23,42,.06)}
-.danger-icon{width:64px;height:64px;border-radius:50%;background:var(--red-l);border:2px solid #fca5a5;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-h1{font-size:22px;font-weight:900;color:var(--red);text-align:center;margin-bottom:8px}
-.subtitle{font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.7}
-.warning-box{background:#fef2f2;border:1.5px solid #fca5a5;border-right:4px solid var(--red);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.warning-title{font-size:13px;font-weight:900;color:var(--red);margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.warning-text{font-size:12px;color:#7f1d1d;line-height:1.9}
-.warning-text strong{font-weight:900}
-.list-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.list-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px}
-.list-box ul{list-style:none;padding:0;font-size:12px;color:#475569;line-height:2.2}
-.list-box li{display:flex;align-items:center;gap:8px;padding:3px 0}
-.list-box li::before{content:'•';color:var(--red);font-weight:900;font-size:18px}
-.alert{padding:11px 14px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:14px;display:none;line-height:1.7}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
+.header{background:var(--nav);color:#fff;padding:13px 16px;display:flex;align-items:center;gap:10px}
+.logo{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#fff;text-decoration:none}
+.back-link{margin-right:auto;display:inline-flex;align-items:center;gap:5px;color:#c9d8ff;font-size:13px;font-weight:800;text-decoration:none;font-family:inherit}
+.back-link:hover{color:#fff}
+.wrap{max-width:520px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.container,.card{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.container:empty{display:none}
+.head{display:flex;align-items:center;gap:10px}
+.danger-icon{width:44px;height:44px;border-radius:13px;background:var(--red-l);color:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+h1{font-family:'Cairo',sans-serif;font-size:17px;font-weight:900;color:var(--text);line-height:1.4}
+.who{font-size:12.5px;color:var(--muted);font-weight:700}
+.warn-box{background:var(--warn-l);border:1.5px solid var(--warn-b);border-radius:14px;padding:12px;font-size:13px;font-weight:800;color:var(--warn);line-height:1.8}
+.warn-box span{font-weight:700;display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:6px}
+.st{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 6px;text-align:center}
+.st b{display:block;font-family:'Cairo',sans-serif;font-size:22px;color:var(--p);line-height:1.3}
+.st small{font-size:11.5px;font-weight:700;color:var(--muted)}
+.desc{font-size:13px;font-weight:700;line-height:1.9;color:var(--sub)}
+.ttl{font-size:14px;font-weight:800;color:var(--text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid transparent;background:var(--accent-l);color:var(--p);border-radius:999px;padding:7px 12px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.chip.on{background:var(--accent);color:#fff}
+.tip{display:block;background:var(--accent-l);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:var(--p);text-decoration:none;line-height:1.7}
+.tip:hover{color:var(--p);background:#e3ebff}
+.tip.hl{box-shadow:0 0 0 2px var(--accent)}
+.alert{padding:11px 14px;border-radius:11px;font-size:12.5px;font-weight:700;display:none;line-height:1.7}
 .alert.show{display:block}
 .alert.ok{background:var(--green-l);color:var(--green);border:1px solid #BBF7D0}
 .alert.err{background:var(--red-l);color:var(--red);border:1px solid #fecaca}
-.confirm-section{margin-bottom:20px}
-.confirm-label{display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;text-align:center;line-height:1.7}
-.confirm-label strong{color:var(--red);font-size:16px;font-weight:900}
-.confirm-input{width:100%;padding:14px 18px;border:2px solid var(--red);border-radius:12px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;outline:none;text-align:center;background:#fff;color:var(--red);transition:all .15s}
-.confirm-input:focus{box-shadow:0 0 0 4px rgba(220,38,38,.15)}
+.confirm-label{display:block;font-size:13px;font-weight:800;color:var(--text)}
+.confirm-input{width:100%;padding:12px 14px;border:1.5px solid var(--border2);border-radius:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;outline:none;background:#fff;color:var(--text);transition:all .15s}
+.confirm-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(185,28,28,.12)}
 .btn-grp{display:flex;gap:8px;flex-direction:column}
-.btn{padding:14px 20px;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-delete{background:var(--red);color:#fff;box-shadow:0 4px 14px rgba(220,38,38,.25)}
-.btn-delete:hover:not(:disabled){background:#b91c1c;transform:translateY(-1px)}
-.btn-delete:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
-.btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.btn-cancel:hover{background:#e2e8f0}
-.contact{text-align:center;font-size:11px;color:var(--muted);margin-top:16px;line-height:1.8}
-.contact a{color:var(--gold-d);font-weight:700;text-decoration:none}
-.unauth{text-align:center;padding:40px 20px}
-.unauth h2{font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px}
+.btn{min-height:48px;padding:13px;border:none;border-radius:13px;font-family:'Tajawal',sans-serif;font-size:14.5px;font-weight:800;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;width:100%}
+.btn-delete{background:var(--red);color:#fff}
+.btn-delete:hover:not(:disabled){background:#991b1b}
+.btn-delete:disabled{opacity:.4;cursor:not-allowed}
+.btn-cancel{background:var(--bg);color:var(--p)}
+.btn-cancel:hover{background:#e3ebf8}
+.contact{text-align:center;font-size:12px;color:var(--muted);line-height:1.8}
+.contact a{color:var(--accent);font-weight:700;text-decoration:none}
+.unauth{text-align:center;padding:24px 8px}
+.unauth .danger-icon{margin:0 auto 12px}
+.unauth h2{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:var(--text);margin-bottom:8px}
 .unauth p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.8}
-.unauth a{display:inline-block;background:var(--p);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13px}
+.unauth a{display:inline-block;background:var(--accent);color:#fff;padding:11px 24px;border-radius:12px;text-decoration:none;font-weight:800;font-size:13.5px}
+.loading{text-align:center;padding:30px;color:var(--muted);font-size:13px}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.user-info{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text)}
-.user-info-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0}
-.user-info-label{color:var(--muted);font-weight:600}
-.user-info-value{font-weight:700;color:var(--text)}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="logo"><span class="logo-dot"></span>مناقصة</div>
+  <a href="/" class="logo">مناقصة</a>
   <a href="javascript:history.back()" class="back-link">
+    رجوع
     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-    العودة
   </a>
 </div>
 
-<div class="container" id="main-content">
-  <div class="loading" style="text-align:center;padding:30px">جاري التحميل...</div>
+<div class="wrap" id="main-content">
+  <div class="card"><div class="loading">جاري التحميل...</div></div>
 </div>
 
 <script>
@@ -84,65 +87,55 @@ var token=localStorage.getItem('token')||'';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
+var TRASH='<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
+var BTN_LBL='<span>حذف حسابي نهائياً</span>';
+var _reason='';   // سبب الحذف — يبقى محلي (السيرفر ما يستقبله)
+
 function render(){
   var c=document.getElementById('main-content');
 
   // Not logged in
   if(!token||!user.id){
     c.innerHTML=
-      '<div class="unauth">'+
-      '<div class="danger-icon"><svg width="32" height="32" fill="none" stroke="var(--red)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'+
+      '<div class="card"><div class="unauth">'+
+      '<div class="danger-icon"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'+
       '<h2>غير مسجّل دخول</h2>'+
-      '<p>يجب تسجيل الدخول إلى حسابك أولاً قبل أن تتمكن من حذفه.</p>'+
+      '<p>لازم تسجّل دخول لحسابك أول قبل ما تقدر تحذفه.</p>'+
       '<a href="auth.html">تسجيل الدخول</a>'+
-      '</div>';
+      '</div></div>';
     return;
   }
 
+  var isProv=user.role==='provider';
+  var dash=isProv?'/dashboard-provider.html#profile':'/dashboard-client.html';
+  var reasons=['ما وصلتني مشاريع','كثرة الإشعارات','حساب مكرر','سبب آخر'];
+
   // Logged in - show deletion form
   c.innerHTML=
-    '<div class="danger-icon">'+
-      '<svg width="32" height="32" fill="none" stroke="var(--red)" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>'+
-    '</div>'+
-    '<h1>حذف الحساب نهائياً</h1>'+
-    '<p class="subtitle">هذا الإجراء لا يمكن التراجع عنه. يرجى المراجعة بعناية قبل المتابعة.</p>'+
-
-    '<div class="user-info">'+
-      '<div class="user-info-row"><span class="user-info-label">الاسم:</span><span class="user-info-value">'+esc(user.name||'—')+'</span></div>'+
-      '<div class="user-info-row"><span class="user-info-label">نوع الحساب:</span><span class="user-info-value">'+(user.role==='provider'?'مزوّد خدمة':'عميل')+'</span></div>'+
-    '</div>'+
-
-    '<div class="warning-box">'+
-      '<div class="warning-title">تحذير مهم</div>'+
-      '<div class="warning-text">عند حذف حسابك، سيتم <strong>حذف جميع بياناتك نهائياً</strong> ولن تتمكن من استعادتها أو التراجع عن هذا الإجراء.</div>'+
+    '<div class="card">'+
+      '<div class="head"><div class="danger-icon">'+TRASH+'</div>'+
+        '<div><h1>حذف الحساب نهائياً</h1>'+
+        '<div class="who">'+esc(user.business_name||user.name||'—')+' · '+(isProv?'مزوّد':'عميل')+'</div></div>'+
+      '</div>'+
+      '<div id="warn-wrap"></div>'+
+      '<div id="stats-wrap"></div>'+
+      '<div class="desc">يُحذف نهائياً: بياناتك الشخصية، '+(isProv?'عروضك، محادثاتك، صورك وأعمالك':'طلباتك ومشاريعك، محادثاتك وصورك المرفوعة')+'، والإشعارات. التقييمات المرتبطة بحسابك تنحذف معك، وما تقدر ترجعها.</div>'+
     '</div>'+
 
-    '<div id="stats-wrap"></div>'+
+    '<div class="card">'+
+      '<div class="ttl">ليش تبي تحذف؟ (اختياري)</div>'+
+      '<div class="chips" id="reasons">'+reasons.map(function(r,i){return '<button type="button" class="chip" onclick="pickReason('+i+',this)">'+r+'</button>';}).join('')+'</div>'+
+      '<a class="tip" id="tip" href="'+dash+'">💡 تقدر بدال الحذف توقف الإشعارات من لوحتك</a>'+
 
-    '<div class="list-box">'+
-      '<div class="list-title">سيتم حذف:</div>'+
-      '<ul>'+
-        '<li>معلوماتك الشخصية (الاسم، الإيميل، الجوال)</li>'+
-        '<li>'+(user.role==='provider'?'جميع عروضك ومشاريعك':'جميع طلباتك ومشاريعك')+'</li>'+
-        '<li>الرسائل والمحادثات</li>'+
-        '<li>التقييمات والإشعارات</li>'+
-        '<li>'+(user.role==='provider'?'صور المعرض والملف الشخصي':'الصور المرفوعة')+'</li>'+
-      '</ul>'+
-    '</div>'+
+      '<div class="alert" id="msg"></div>'+
 
-    '<div class="alert" id="msg"></div>'+
+      '<label class="confirm-label" for="confirmInput">اكتب «حذف» للتأكيد</label>'+
+      '<input type="text" id="confirmInput" class="confirm-input" placeholder="حذف" autocomplete="off" oninput="checkConfirm()">'+
 
-    '<div class="confirm-section">'+
-      '<label class="confirm-label">للتأكيد، اكتب كلمة <strong>"حذف"</strong> في المربع أدناه:</label>'+
-      '<input type="text" id="confirmInput" class="confirm-input" placeholder="اكتب: حذف" autocomplete="off" oninput="checkConfirm()">'+
-    '</div>'+
-
-    '<div class="btn-grp">'+
-      '<button class="btn btn-delete" id="deleteBtn" disabled onclick="doDelete()">'+
-        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>'+
-        '<span>حذف الحساب نهائياً</span>'+
-      '</button>'+
-      '<a href="javascript:history.back()" class="btn btn-cancel">إلغاء والعودة</a>'+
+      '<div class="btn-grp">'+
+        '<button class="btn btn-delete" id="deleteBtn" disabled onclick="doDelete()">'+BTN_LBL+'</button>'+
+        '<a href="javascript:history.back()" class="btn btn-cancel">رجوع</a>'+
+      '</div>'+
     '</div>'+
 
     '<div class="contact">'+
@@ -152,20 +145,39 @@ function render(){
   loadStats();
 }
 
+function pickReason(i,el){
+  var on=el.classList.contains('on');
+  document.querySelectorAll('#reasons .chip').forEach(function(b){b.classList.remove('on');});
+  _reason=on?'':el.textContent;
+  if(!on) el.classList.add('on');
+  // لو السبب الإشعارات نبرز الاقتراح
+  var t=document.getElementById('tip'); if(t) t.classList.toggle('hl',_reason==='كثرة الإشعارات');
+}
+
+// تنبيهات قبل خطوة التأكيد: مشاريع قيد التنفيذ + سعي غير مسدد
+var _warns={active:'',saai:''};
+function renderWarns(){
+  var w=document.getElementById('warn-wrap'); if(!w) return;
+  var h=_warns.active+_warns.saai;
+  w.innerHTML=h?'<div class="warn-box">'+h+'</div>':'';
+}
+
 function loadStats(){
   fetch(API+'/api/account/deletion-preview',{
     headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}
   }).then(function(r){return r.json();}).then(function(d){
     if(d&&d.stats){
       var s=d.stats;
-      var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:16px">';
-      var labels={projects:'مشروع',bids:'عرض',messages:'رسالة',reviews:'تقييم',notifications:'إشعار'};
+      var act=parseInt(s.active_projects)||0;
+      if(act>0){
+        _warns.active='⚠️ عندك '+act+' '+(act===1?'مشروع':'مشاريع')+' قيد التنفيذ — لازم تكملها أو تتفق مع العميل قبل الحذف.';
+        renderWarns();
+      }
+      var html='<div class="stats">';
+      var labels={projects:'مشاريع',bids:'عروض',messages:'رسائل',reviews:'تقييمات',notifications:'إشعارات'};
       Object.keys(labels).forEach(function(k){
         if(typeof s[k]!=='undefined'){
-          html+='<div style="background:var(--red-l);border:1px solid #fecaca;border-radius:10px;padding:10px;text-align:center">'+
-            '<div style="font-size:18px;font-weight:900;color:var(--red)">'+(parseInt(s[k])||0)+'</div>'+
-            '<div style="font-size:10px;color:#991b1b;margin-top:2px;font-weight:700">'+labels[k]+'</div>'+
-          '</div>';
+          html+='<div class="st"><b>'+(parseInt(s[k])||0)+'</b><small>'+labels[k]+'</small></div>';
         }
       });
       html+='</div>';
@@ -173,6 +185,18 @@ function loadStats(){
       if(w)w.innerHTML=html;
     }
   }).catch(function(){});
+  // المزوّد: السعي المستحق غير المسدد
+  if(user.role==='provider'){
+    fetch(API+'/api/provider/saai',{headers:{'Authorization':'Bearer '+token}})
+      .then(function(r){return r.json();}).then(function(d){
+        var items=(d&&d.items)||[];
+        var due=0; items.forEach(function(x){ if(x.status!=='approved'&&x.status!=='submitted') due+=parseFloat(x.saai_amount)||0; });
+        if(due>0){
+          _warns.saai='<span>وعليك سعي منصة غير مسدد: '+Math.round(due).toLocaleString('en-US')+' ر.س</span>';
+          renderWarns();
+        }
+      }).catch(function(){});
+  }
 }
 
 function checkConfirm(){
@@ -189,7 +213,7 @@ function showMsg(text,type){
 function doDelete(){
   var confirmation=document.getElementById('confirmInput').value.trim();
   if(confirmation!=='حذف'&&confirmation!=='DELETE'){
-    showMsg('يجب كتابة "حذف" للتأكيد','err');
+    showMsg('اكتب «حذف» للتأكيد','err');
     return;
   }
   var btn=document.getElementById('deleteBtn');
@@ -210,12 +234,12 @@ function doDelete(){
     }else{
       showMsg((r.d&&r.d.message)||'حدث خطأ في حذف الحساب','err');
       btn.disabled=false;
-      btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg><span>حذف الحساب نهائياً</span>';
+      btn.innerHTML=BTN_LBL;
     }
   }).catch(function(){
     showMsg('تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.','err');
     btn.disabled=false;
-    btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg><span>حذف الحساب نهائياً</span>';
+    btn.innerHTML=BTN_LBL;
   });
 }
 
