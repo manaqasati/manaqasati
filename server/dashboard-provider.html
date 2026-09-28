@@ -929,7 +929,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات'};
+var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -974,7 +974,7 @@ function _gotoPageInner(page){
 // زر رجوع المتصفّح: يرجّع للقسم السابق داخل لوحة المزوّد بدل الخروج
 window.addEventListener('popstate',function(){
   var h=(location.hash||'').replace('#','');
-  var known=['home','browse','works','notifs','profile','chat'];
+  var known=['home','browse','works','notifs','profile','chat','saai'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
 });
@@ -1034,7 +1034,7 @@ function _renderHome(data){
   var newCount=pool.length;
   var avHtml=(profile&&_safeUrl(profile.profile_image))?'<img loading="lazy" src="'+_esc(_safeUrl(profile.profile_image))+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+_esc((_me.name||'م')[0])+'</span>';
   var firstName=String(_me.name||'المزود').split(' ')[0];
-  var html='';
+  var html='<div id="ph-invites"></div>';
 
   // ── الرئيسية الجديدة ──
   var _lowComp=pool.filter(function(r){return (parseInt(r.bid_count)||0)<=1;}).length;
@@ -1126,6 +1126,7 @@ function _renderHome(data){
   html+='<div id="ph-sharecard"></div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
+  _renderInvites();
   _renderProvNudges(_myBids,pool,matchedBySpec);
   _renderProvAnswerNudge();
   _profileNudge(profile);
@@ -1296,6 +1297,7 @@ async function _doBump(){
 
 async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
+  _loadInvites();
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
     var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests'),_api('/api/saved-requests/ids')]);
@@ -1310,6 +1312,38 @@ async function loadHome(){
 }
 
 function openBidFormDirectly(reqId){_openBidModal(reqId);}
+
+// المشاريع الموجّهة لي بالاسم — بطاقة مميزة أعلى الرئيسية (تفشل بصمت)
+window._provInvites=[];
+function _loadInvites(){
+  _api('/api/provider/invites').then(function(d){ window._provInvites=Array.isArray(d)?d:[]; _renderInvites(); }).catch(function(){});
+}
+function _invLeft(sec){
+  sec=parseInt(sec)||0;
+  if(sec<3600){ var m=Math.max(1,Math.ceil(sec/60)); return m+' دقيقة'; }
+  return Math.ceil(sec/3600)+' ساعة';
+}
+function _renderInvites(){
+  var box=_el('ph-invites'); if(!box) return;
+  var arr=window._provInvites||[], h='';
+  arr.forEach(function(x){
+    if(!x||!x.id) return;
+    var id=parseInt(x.id)||0; if(!id) return;
+    if(x.invite_state==='exclusive' && !x.has_bid){
+      var meta=[x.category,x.city].filter(Boolean).map(_esc).join(' · ');
+      h+='<div style="background:linear-gradient(135deg,#fffbeb,#fff);border:2px solid #f59e0b;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(245,158,11,.15)">'
+        +'<span style="display:inline-block;font-size:11.5px;font-weight:900;padding:4px 11px;border-radius:999px;background:#fef3c7;color:#92400e">⭐ مشروع طلبك أنت بالاسم</span>'
+        +'<div style="font-family:Cairo,sans-serif;font-weight:900;font-size:16px;color:#14223d;margin-top:9px;line-height:1.5">'+_esc(x.title||'مشروع')+'</div>'
+        +(meta?'<div style="font-size:12.5px;color:#5b6b85;font-weight:700;margin-top:2px">'+meta+'</div>':'')
+        +'<div style="font-size:13px;color:#334766;font-weight:700;line-height:1.8;margin-top:8px">العميل اختارك من صفحتك. المشروع لك وحدك الحين — ينفتح لباقي المزوّدين بعد '+_invLeft(x.left_sec)+' لو ما قدّمت.</div>'
+        +'<button onclick="openBidFormDirectly('+id+')" style="width:100%;margin-top:12px;background:#1d4ed8;color:#fff;border:none;border-radius:13px;padding:13px;min-height:46px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer">قدّم عرضك الآن</button>'
+        +'</div>';
+    } else if(x.has_bid){
+      h+='<div onclick="_viewProj('+id+')" style="cursor:pointer;background:#fff;border:1px solid #e1e9f6;border-radius:12px;padding:10px 13px;margin-bottom:10px;font-size:12.5px;font-weight:700;color:#5b6b85">⭐ قدّمت على مشروع موجّه لك: <b style="color:#14223d">'+_esc(x.title||'مشروع')+'</b></div>';
+    }
+  });
+  box.innerHTML=h;
+}
 
 async function loadBrowse(){
   var pg=_el('page-browse');if(!pg)return;
@@ -2346,11 +2380,11 @@ function loadSaai(){
     if(!items.length){ list='<div style="text-align:center;color:var(--muted);padding:30px;font-size:13.5px">لا يوجد سعي مستحق بعد. يظهر هنا عند قبول العميل لعرضك.</div>'; }
     else {
       list=items.map(function(x){
-        var st=x.status, pill, act='';
+        var st=x.status, pill, act='', due='';
         if(st==='approved'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dcfce7;color:#16a34a">مدفوع ومعتمد ✓ · '+fmtN(x.saai_amount)+' ر.س</span>'; }
         else if(st==='submitted'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار اعتماد الأدمن · '+fmtN(x.saai_amount)+' ر.س</span>'; }
-        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">صرف السعي</button>'; }
-        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:#0f2544">'+_esc(x.project_title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+(x.status==='pending'?((parseFloat(x.contract_value)||0)>0?'سعر عرضك: '+fmtN(x.contract_value)+' ر.س':'سعرك كان بالمتر/الوحدة — أدخل المبلغ الإجمالي'):'مبلغ الاتفاق: '+fmtN(x.contract_value)+' ر.س')+(x.city?' · '+_esc(x.city):'')+'</div><div style="margin-top:5px">'+pill+'</div></div>'+act+'</div>';
+        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">ارفع الإيصال</button>'; due=_saaiDue(x.created_at); }
+        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:#0f2544">'+_esc(x.project_title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+(x.status==='pending'?((parseFloat(x.contract_value)||0)>0?'سعر عرضك: '+fmtN(x.contract_value)+' ر.س':'سعرك كان بالمتر/الوحدة — أدخل المبلغ الإجمالي'):'مبلغ الاتفاق: '+fmtN(x.contract_value)+' ر.س')+(x.city?' · '+_esc(x.city):'')+'</div><div style="margin-top:5px">'+pill+due+'</div></div>'+act+'</div>';
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
     }
@@ -2367,15 +2401,22 @@ function loadSaai(){
         +'</div>'
         +'<div class="card" style="margin-top:14px;padding:20px">'
         +'<div style="font-weight:900;font-size:15px;color:var(--p);margin-bottom:6px">🏦 بيانات التحويل</div>'
-        +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">لمن يفضّل التحويل مباشرة — حوّل ثم أرسل الإيصال عبر «صرف السعي» أعلاه أو واتساب.</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">حوّل على الحساب ثم اضغط «ارفع الإيصال» على المشروع — يوصلنا مباشرة ونأكد الاستلام.</div>'
         +row('اسم صاحب الحساب', bk.account_name)
         +row('رقم الحساب', bk.account_number, true)
         +row('الآيبان (IBAN)', bk.iban, true)
         +row('البنك', bk.bank_name)
-        +(bk.whatsapp?'<a href="https://wa.me/'+_esc(bk.whatsapp)+'" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;text-decoration:none;border-radius:11px;padding:12px;font-weight:800;font-size:13.5px">إرسال الإيصال عبر واتساب</a>':'')
+        +(bk.whatsapp?'<div style="text-align:center;margin-top:12px"><a href="https://wa.me/'+_esc(String(bk.whatsapp).replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:var(--muted);text-decoration:underline">تحتاج مساعدة؟ واتساب</a></div>':'')
         +'</div>';
     }).catch(function(){});
   }).catch(function(){ pg.innerHTML='<div style="text-align:center;color:#dc2626;padding:30px">تعذّر تحميل المحفظة</div>'; });
+}
+// آخر موعد للسداد: 10 أيام من تاريخ الاستحقاق
+function _saaiDue(iso){
+  var t=Date.parse(iso||''); if(!t) return '';
+  var d=Math.ceil((t+10*86400000-Date.now())/86400000);
+  if(d<0) return '<span style="font-size:11px;font-weight:800;color:#dc2626;margin-right:8px">متأخر '+(-d)+' '+(-d===1?'يوم':'أيام')+'</span>';
+  return '<span style="font-size:11px;font-weight:800;color:#b45309;margin-right:8px">آخر موعد: '+(d===0?'اليوم':'بعد '+d+' '+(d===1?'يوم':'أيام'))+'</span>';
 }
 function _calcSaai(){ var v=parseFloat(_el('calc-val').value)||0; var r=_el('calc-res'),a=_el('calc-amt'); if(v>0){r.style.display='block';a.textContent=fmtN(Math.round(v*0.03))+' ر.س';}else r.style.display='none'; }
 function _copyTxt(t,btn){ if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){var o=btn.textContent;btn.textContent='تم النسخ';setTimeout(function(){btn.textContent=o;},1500);});} }
@@ -2716,7 +2757,9 @@ async function _sendChatMsg(){
 
 document.addEventListener('DOMContentLoaded',function(){
   var saved=sessionStorage.getItem('mnq_prov_page');
-  var pg=(saved&&_pages[saved])?saved:'home';
+  // رابط مباشر لقسم (مثل #saai من صفحة السداد) يتقدّم على آخر قسم محفوظ
+  var _h=(location.hash||'').replace('#','');
+  var pg=(_h&&_pages[_h])?_h:((saved&&_pages[saved])?saved:'home');
   gotoPage(pg);
 });
 
