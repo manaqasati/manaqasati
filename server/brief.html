@@ -72,9 +72,11 @@ body{background:linear-gradient(180deg,#e7effe,#eef4ff);color:var(--text);min-he
 <script>
 var API='https://manaqasati-production.up.railway.app';
 var RID=(location.pathname.split('/').filter(Boolean).pop()||'').split('?')[0];
-function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
+function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// رابط آمن فقط (http/https أو مسار داخلي أو صورة data)
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 function money(n){return n?Number(n).toLocaleString('en-US')+' ر.س':'';}
-function openV(s){document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
+function openV(s){s=_safeUrl(s);if(!s)return;document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
 function closeV(){document.getElementById('viewer').classList.remove('on');}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA');}catch(e){return'';}}
 function ago(d){if(!d)return'';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<60)return'قبل '+Math.max(m,1)+' دقيقة';var h=Math.floor(m/60);if(h<24)return'قبل '+h+' ساعة';return'قبل '+Math.floor(h/24)+' يوم';}
@@ -90,12 +92,17 @@ function _bid(){
   }
 }
 
+// شارة الحالة حسب حالة المشروع الفعلية
+function _stTag(st){
+  var t=st==='open'?'🔓 مشروع مفتوح لاستقبال العروض':(st==='in_progress'?'🔧 قيد التنفيذ':(st==='completed'?'✅ مكتمل':(['closed_auto','closed','expired','cancelled'].indexOf(st)>=0?'🔒 أُغلق':'')));
+  return t?'<span class="tag">'+t+'</span>':'';
+}
 function render(r){
   var imgs=Array.isArray(r.images)?r.images:[];
   var cat=r.category||'خدمة', city=r.city||'', budget=r.budget||r.budget_max;
   var h='<div class="card">';
   h+='<div class="head an d1"><svg class="headnet" style="z-index:0" viewBox="0 0 520 150" preserveAspectRatio="none"><line x1="40" y1="35" x2="180" y2="80" stroke="#fff" stroke-width="1.2"/><line x1="180" y1="80" x2="320" y2="38" stroke="#fff" stroke-width="1.2"/><line x1="320" y1="38" x2="470" y2="78" stroke="#fff" stroke-width="1"/><line x1="180" y1="80" x2="240" y2="48" stroke="#7dd3fc" stroke-width="1.2"/><circle cx="40" cy="35" r="4" fill="#fff" opacity=".4"/><circle cx="180" cy="80" r="7" fill="#fff" opacity=".45"/><circle cx="240" cy="48" r="5" fill="#7dd3fc" opacity=".9"/><circle cx="320" cy="38" r="4" fill="#fff" opacity=".35"/><circle cx="470" cy="78" r="4" fill="#fff" opacity=".3"/></svg><div class="brand"><span class="dot"></span> مناقصة · كراسة مشروع</div>'
-    +'<span class="tag">🔓 مشروع مفتوح لاستقبال العروض</span>'
+    +_stTag(r.status)
     +'<div class="ptitle">'+esc(r.title||'مشروع')+'</div>'
     +'<div class="pmeta">'
       +'<span class="chip">🧰 '+esc(cat)+'</span>'
@@ -106,7 +113,7 @@ function render(r){
 
   if(imgs.length){
     h+='<div class="imgs '+(imgs.length===1?'one':'')+' an d2">';
-    imgs.slice(0,6).forEach(function(im){ h+='<div class="im" onclick="openV(\''+esc(im)+'\')"><img src="'+esc(im)+'" loading="lazy" alt="صورة المشروع"></div>'; });
+    imgs.slice(0,6).forEach(function(im){ im=_safeUrl(im); if(!im)return; h+='<div class="im" data-src="'+esc(im)+'" onclick="openV(this.getAttribute(\'data-src\'))"><img src="'+esc(im)+'" loading="lazy" alt="صورة المشروع"></div>'; });
     h+='</div>';
   }
 
@@ -122,8 +129,8 @@ function render(r){
   if(Array.isArray(r.attachments)&&r.attachments.length){
     h+='<div class="sec an d3"><div class="sec-t">📎 مخططات وملفات</div>';
     r.attachments.forEach(function(a){
-      if(!a||!a.url)return;
-      h+='<a href="'+esc(a.url)+'" target="_blank" rel="noopener noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;text-decoration:none;color:var(--text);font-weight:700;font-size:13px;margin-bottom:8px"><span style="font-size:20px">📄</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.name||'ملف PDF')+'</span><span style="font-size:11px;color:var(--p);font-weight:800">تحميل ↓</span></a>';
+      if(!a||!_safeUrl(a.url))return;
+      h+='<a href="'+esc(_safeUrl(a.url))+'" target="_blank" rel="noopener noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;text-decoration:none;color:var(--text);font-weight:700;font-size:13px;margin-bottom:8px"><span style="font-size:20px">📄</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.name||'ملف PDF')+'</span><span style="font-size:11px;color:var(--p);font-weight:800">تحميل ↓</span></a>';
     });
     h+='</div>';
   }
@@ -134,7 +141,7 @@ function render(r){
     +'<div class="cta-s">قدّم عرض سعرك الآن — التسجيل مجاني، وتوصلك مشاريع مثله في تخصصك ومدينتك.</div>'
     +'<a class="cta-btn" href="javascript:void(0)" onclick="_bid()">💰 قدّم عرضك</a></div>';
   h+='<div class="urgency an d4">⚡ كن من أوائل المتقدّمين على هذا المشروع</div>';
-  if(r.brief_views)h+='<div class="views an d4">👁 <b>'+r.brief_views+'</b> شاهدوا هذا المشروع</div>';
+  if(r.brief_views)h+='<div class="views an d4">👁 <b>'+(parseInt(r.brief_views)||0)+'</b> شاهدوا هذا المشروع</div>';
 
   h+='<div class="foot">مدعوم من <b>مناقصة</b> · منصّة الخدمات السعودية</div>';
   h+='</div></div>';
