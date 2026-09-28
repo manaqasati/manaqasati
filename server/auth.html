@@ -9,6 +9,8 @@
     var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
     var p=new URLSearchParams(location.search);
     if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة
+    // روابط لازم تنعالج بالصفحة (دخول سحري/استعادة كلمة مرور/عرض/بطاقة/إحالة) — لا نحوّل
+    if(p.get('magic')||p.get('reset')||p.get('redirect')||p.get('t')||p.get('card')||p.get('ref')) return;
     var _m=''; try{_m=localStorage.getItem('activeMode')||'';}catch(e){}
     var _eff = (u.role==='admin') ? 'admin'
       : ((_m==='provider' && (u.role==='provider' || u.can_provide)) ? 'provider'
@@ -32,10 +34,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>مناقصة — الدخول</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="alternate icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://manaqasati-production.up.railway.app">
@@ -182,7 +184,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 </head>
 <body>
 <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
-<button onclick="history.length>1?history.back():location.href='/'" style="position:fixed;top:14px;right:14px;z-index:1000;background:rgba(30,58,138,.92);border:none;color:#fff;cursor:pointer;padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;backdrop-filter:blur(8px)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>
+<button onclick="history.length>1?history.back():location.href='/'" style="position:fixed;top:14px;right:14px;z-index:1000;background:rgba(30,58,138,.92);border:none;color:#fff;cursor:pointer;padding:9px 14px;border-radius:10px;display:flex;align-items:center;gap:5px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;backdrop-filter:blur(8px)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>رجوع</button>
 <div class="auth-page" id="auth-pg">
   <div class="auth-hero">
     <div class="hero-stripe"></div>
@@ -221,7 +223,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
         <div class="roles">
           <div class="role on" id="rc-c" onclick="selRole('client')">
             <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--gold-d)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <div class="role-nm">عميل</div><div class="role-ds">أنشر مشاريعك</div>
+            <div class="role-nm">عميل</div><div class="role-ds">انشر مشاريعك</div>
           </div>
           <div class="role" id="rc-p" onclick="selRole('provider')">
             <div class="role-ic"><svg width="24" height="24" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
@@ -339,7 +341,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
     </div>
   </div>
   <a href="index.html" class="back-a">
-    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
     تصفح المشاريع بدون تسجيل
   </a>
   <div class="auth-footer">
@@ -361,7 +363,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
       <button class="btn-submit" onclick="doReset()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>تعيين كلمة المرور</button>
     </div>
   </div>
-  <a href="auth.html" class="back-a"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>العودة لتسجيل الدخول</a>
+  <a href="auth.html" class="back-a"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>العودة لتسجيل الدخول</a>
 </div>
 
 <script>
@@ -369,6 +371,8 @@ var API='https://manaqasati-production.up.railway.app';
 var _savedMode='login',_savedRole='client';
 try{_savedMode=sessionStorage.getItem('auth_mode')||'login';_savedRole=sessionStorage.getItem('auth_role')||'client';}catch(e){}
 var MODE=_savedMode, ROLE=_savedRole, METHOD='email';
+function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 
 function _notifyMobileApp(token, user){
   try {
@@ -404,7 +408,7 @@ var CITIES=['الرياض','الخرج','الدوادمي','المجمعة','ا�
   if(ssel){ CITIES.forEach(function(c){ var o=document.createElement('option');o.value=c;o.textContent=c;ssel.appendChild(o); }); }
 })();
 window._svcSel=[];
-function _svcRender(){ var b=document.getElementById('svc-chips'); if(!b)return; b.innerHTML=_svcSel.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700">'+c+' <span onclick="_svcDel(\''+c+'\')" style="cursor:pointer;font-weight:900">\u00d7</span></span>';}).join(''); }
+function _svcRender(){ var b=document.getElementById('svc-chips'); if(!b)return; b.innerHTML=_svcSel.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700">'+esc(c)+' <span data-c="'+esc(c)+'" onclick="_svcDel(this.getAttribute(\'data-c\'))" style="cursor:pointer;font-weight:900">\u00d7</span></span>';}).join(''); }
 function _svcAdd(){ var sel=document.getElementById('svc-city-sel'); var c=sel.value; sel.value=''; if(!c)return; var prim=(document.getElementById('i-city')||{}).value; if(c===prim)return; if(_svcSel.indexOf(c)<0){_svcSel.push(c);_svcRender();} }
 function _svcDel(c){ _svcSel=_svcSel.filter(function(x){return x!==c;}); _svcRender(); }
 
@@ -416,13 +420,13 @@ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d
   if(d&&Array.isArray(d.categories)&&d.categories.length){
     CATS=d.categories;
     var s=document.getElementById('spec-sel');
-    if(s){ s.innerHTML='<option value="">أضف تخصصاً...</option>'+CATS.map(function(c){return '<option>'+c+'</option>';}).join(''); }
+    if(s){ s.innerHTML='<option value="">أضف تخصصاً...</option>'+CATS.map(function(c){return '<option>'+esc(c)+'</option>';}).join(''); }
   }
 }).catch(function(){});
 
 function _specRender(){
   var box=document.getElementById('spec-chips');
-  if(box){ box.innerHTML=(window._specSel||[]).map(function(c){return '<span class="spec-pill on" style="cursor:default">'+c+' <span onclick="_specDel(\''+c+'\')" style="cursor:pointer;font-weight:900;margin-inline-start:4px">\u00d7</span></span>';}).join(''); }
+  if(box){ box.innerHTML=(window._specSel||[]).map(function(c){return '<span class="spec-pill on" style="cursor:default">'+esc(c)+' <span data-c="'+esc(c)+'" onclick="_specDel(this.getAttribute(\'data-c\'))" style="cursor:pointer;font-weight:900;margin-inline-start:4px">\u00d7</span></span>';}).join(''); }
   var el=document.getElementById('specs-count');
   if(el){ var n=(window._specSel||[]).length; el.textContent=n+'/5'; el.className=n>=1?'specs-count done':'specs-count'; }
 }
@@ -468,11 +472,15 @@ async function apiFetch(p,o){
     .then(function(v){clearTimeout(_to);return v;});
 }
 
+var _resetting=false;
 async function doReset(){
+  if(_resetting)return;
   var p1=document.getElementById('rp1').value,p2=document.getElementById('rp2').value,al=document.getElementById('reset-al');
   if(!p1||p1.length<6){setAl(al,'كلمة المرور 6 أحرف على الأقل','err');return;}
   if(p1!==p2){setAl(al,'كلمتا المرور غير متطابقتين','err');return;}
-  var r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})});
+  _resetting=true;
+  var r;
+  try{ r=await apiFetch('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token:window._rt,new_password:p1})}); }finally{ _resetting=false; }
   if(r.ok){setAl(al,'تم التعيين، جاري التحويل...','ok');setTimeout(function(){location.href='auth.html';},1800);}
   else setAl(al,r.message||'حدث خطأ','err');
 }
@@ -563,12 +571,14 @@ function fmtPhone(v){
   return '966'+d;
 }
 
+var _submitting=false;   // يمنع الإرسال المكرر (Enter + ضغطة الزر)
 async function doSubmit(){
+  if(_submitting)return;
   clearAl();
   var pass=document.getElementById('i-pass').value;
   if(!pass||pass.length<6){setAl(null,'كلمة المرور 6 أحرف على الأقل','err');return;}
   var btn=document.getElementById('btn-s');
-  btn.disabled=true;
+  btn.disabled=true; _submitting=true;
   document.getElementById('btn-t').textContent='جاري...';
   try{
     var url, body;
@@ -697,7 +707,7 @@ async function doSubmit(){
   }catch(e){
     setAl(null,'تعذر الاتصال بالسيرفر','err');
   }finally{
-    btn.disabled=false;
+    btn.disabled=false; _submitting=false;
     document.getElementById('btn-t').textContent=MODE==='login'?'تسجيل الدخول':'إنشاء الحساب';
   }
 }
@@ -710,7 +720,14 @@ async function doForgot(){
   setAl(null,r.message||'تم إرسال رابط إعادة التعيين','ok');
 }
 
-document.addEventListener('keydown',function(e){if(e.key==='Enter')doSubmit();});
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||e.isComposing)return;
+  var tg=e.target; if(tg&&tg.tagName==='TEXTAREA')return;   // سطر جديد بالنبذة مو إرسال
+  var rp=document.getElementById('reset-pg');
+  if(rp&&rp.style.display!=='none'){ doReset(); return; }  // شاشة الاستعادة → تعيين كلمة المرور
+  if(_submitting)return;
+  doSubmit();
+});
 
 // تهيئة: استرجاع آخر وضع (دخول/إنشاء) ودور عند تحميل الصفحة
 (function(){
@@ -761,7 +778,7 @@ function _regAvatar(inp){
   _compressImg(f,512,0.85).then(function(data){
     _regAvatarData=data;
     var pv=document.getElementById('reg-av-preview');
-    if(pv)pv.innerHTML='<img src="'+_regAvatarData+'">';
+    if(pv)pv.innerHTML='<img src="'+esc(_safeUrl(_regAvatarData))+'">';
   }).catch(function(){setAl(null,'تعذّر قراءة الصورة','err');});
 }
 // يصغّر الصورة في المتصفح (كانفس) قبل الإرسال — يمنع تعليق الطلب بسبب الحجم
@@ -791,7 +808,7 @@ function _regWorks(inp){
 function _renderRegWorks(){
   var g=document.getElementById('reg-works-grid');if(!g)return;
   g.innerHTML=_regWorksData.map(function(img,i){
-    return '<div class="works-thumb"><img src="'+img+'"><button type="button" onclick="_delRegWork('+i+')">&times;</button></div>';
+    return '<div class="works-thumb"><img src="'+esc(_safeUrl(img))+'"><button type="button" onclick="_delRegWork('+i+')">&times;</button></div>';
   }).join('');
 }
 function _delRegWork(i){_regWorksData.splice(i,1);_renderRegWorks();}
