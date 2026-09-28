@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>حذف الحساب — مناقصة</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -82,6 +82,7 @@ h1{font-size:22px;font-weight:900;color:var(--red);text-align:center;margin-bott
 var API='https://manaqasati-production.up.railway.app';
 var token=localStorage.getItem('token')||'';
 var user=JSON.parse(localStorage.getItem('user')||'{}');
+function esc(s){var d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 function render(){
   var c=document.getElementById('main-content');
@@ -107,7 +108,7 @@ function render(){
     '<p class="subtitle">هذا الإجراء لا يمكن التراجع عنه. يرجى المراجعة بعناية قبل المتابعة.</p>'+
 
     '<div class="user-info">'+
-      '<div class="user-info-row"><span class="user-info-label">الاسم:</span><span class="user-info-value">'+(user.name||'—')+'</span></div>'+
+      '<div class="user-info-row"><span class="user-info-label">الاسم:</span><span class="user-info-value">'+esc(user.name||'—')+'</span></div>'+
       '<div class="user-info-row"><span class="user-info-label">نوع الحساب:</span><span class="user-info-value">'+(user.role==='provider'?'مزوّد خدمة':'عميل')+'</span></div>'+
     '</div>'+
 
@@ -162,7 +163,7 @@ function loadStats(){
       Object.keys(labels).forEach(function(k){
         if(typeof s[k]!=='undefined'){
           html+='<div style="background:var(--red-l);border:1px solid #fecaca;border-radius:10px;padding:10px;text-align:center">'+
-            '<div style="font-size:18px;font-weight:900;color:var(--red)">'+s[k]+'</div>'+
+            '<div style="font-size:18px;font-weight:900;color:var(--red)">'+(parseInt(s[k])||0)+'</div>'+
             '<div style="font-size:10px;color:#991b1b;margin-top:2px;font-weight:700">'+labels[k]+'</div>'+
           '</div>';
         }
