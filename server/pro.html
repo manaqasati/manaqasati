@@ -259,6 +259,11 @@ body{background:var(--bg)}
 .pp-sticky.on{transform:none}
 .pp-sticky .in{max-width:680px;margin:0 auto;display:flex;gap:8px}
 .pp-sticky .pp-btn{flex:1;padding:12px;font-size:14.5px;border-radius:13px}
+.pp-sticky .pp-req{flex:2}
+.pp-inv{background:var(--white);border:2px solid #1d4ed8;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.pp-inv b{font-family:'Cairo',sans-serif;font-size:16px;font-weight:900;color:var(--text)}
+.pp-inv p{font-size:13px;color:var(--text2);font-weight:700;line-height:1.8;margin:0}
+.pp-inv a{background:#1d4ed8;color:#fff;border-radius:13px;padding:13px;font-weight:900;font-size:14.5px;text-align:center;text-decoration:none;min-height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
 @media(min-width:720px){.pp-gal{grid-auto-rows:150px}.pp-sim{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 </head>
@@ -395,6 +400,8 @@ function render(p,rat){
   var m=last?Math.floor((Date.now()-new Date(last))/60000):99999;
   var act=m<60?'<span style="color:#86efac">● نشط الآن</span>':(m<1440?'<span style="color:#bbf7d0">● نشط اليوم</span>':(m<10080?'<span>● نشط هذا الأسبوع</span>':''));
   hero+='<div class="pp-hmeta"><span>📍 '+esc(city)+'</span>'+act+'</div>';
+  // سرعة الرد (من السيرفر لما تكفي البيانات)
+  if(p.reply_speed)hero+='<div class="pp-hmeta" style="margin-top:6px"><span style="color:#86efac">● '+esc(p.reply_speed)+'</span></div>';
   document.getElementById('pp-hero').innerHTML=hero;
 
   var h='';
@@ -436,6 +443,9 @@ function render(p,rat){
     h+='</div>';
   }
 
+  // ── دعوة المزوّد: المشروع يوصله هو أول ──
+  if(pid)h+='<div class="pp-inv"><b>عندك مشروع يناسب «'+esc(nm)+'»؟</b><p>انشر مشروعك ويوصله هو أول قبل أي أحد. إذا ما قدّم عرض خلال 24 ساعة، يوصل لباقي المزوّدين تلقائياً.</p><a href="/new.html?invite='+pid+'">اطلب عرض سعر منه</a></div>';
+
   // ── عن المزوّد ──
   var facts='';
   if(yrs)facts+='<div class="pp-fact">🧰 <span>'+yrs+' سنة خبرة</span></div>';
@@ -456,7 +466,7 @@ function render(p,rat){
   h+='<div class="pp-card" id="pp-sim-card" style="display:none"></div>';
 
   // ── دعوة للنشر ──
-  h+='<div class="pp-cta"><b>تبي تقارن أكثر من سعر؟</b><p>انشر مشروعك مجاناً وتوصلك عروض من عدة مزوّدين خلال ساعات</p><button onclick="location.href=\'/?ref=pro'+pid+'\'">انشر مشروعك الآن</button></div>';
+  h+='<div class="pp-cta"><b>تبي تقارن أكثر من سعر؟</b><p>انشر مشروعك مجاناً وتوصلك عروض من عدة مزوّدين خلال ساعات</p><button onclick="location.href=\'/new.html?invite='+pid+'\'">انشر مشروعك الآن</button></div>';
 
   // ── رمز الصفحة ──
   var _qrUrl='https://www.manaqasa.com/pro/'+pid;
@@ -468,7 +478,8 @@ function render(p,rat){
   // ── الشريط الثابت ──
   var st=document.getElementById('pp-sticky');
   if(st){
-    st.innerHTML='<div class="in">'+(ph?'<a class="pp-btn pp-wa" href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener noreferrer">'+_IC.wa+'واتساب</a><a class="pp-btn pp-call" href="tel:'+esc(ph)+'">'+_IC.call+'اتصال</a>':'<button class="pp-btn pp-call" onclick="_ppMsg()">'+_IC.msg+'راسله عبر المنصة</button>')+'</div>';
+    // الزر الأساسي: اطلب عرض سعر (دعوة مباشرة)
+    st.innerHTML='<div class="in">'+(ph?'<a class="pp-btn pp-wa" href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener noreferrer">'+_IC.wa+'واتساب</a>':'<button class="pp-btn pp-msg" onclick="_ppMsg()">'+_IC.msg+'راسله</button>')+(pid?'<a class="pp-btn pp-call pp-req" href="/new.html?invite='+pid+'">اطلب عرض سعر</a>':'')+'</div>';
     var onS=function(){st.classList.toggle('on',window.scrollY>320);};
     window.addEventListener('scroll',onS,{passive:true});onS();
   }
