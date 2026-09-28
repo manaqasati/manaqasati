@@ -24,7 +24,7 @@
 </script>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,interactive-widget=resizes-content">
 <title>مناقصة — لوحة العميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -791,7 +791,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
       <div class="card">
         <div class="ch"><h3>تغيير كلمة المرور</h3></div>
-        <div class="fg"><label>كلمة المرور الجديدة</label><input type="password" id="new-pw" placeholder="8 أحرف على الأقل"></div>
+        <div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="old-pw" autocomplete="current-password" placeholder="كلمة المرور الحالية"></div>
+        <div class="fg"><label>كلمة المرور الجديدة</label><input type="password" id="new-pw" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
         <div class="form-btns"><button class="btn-s" onclick="changeClientPw()">تغيير كلمة المرور</button></div>
       </div>
     </div>
@@ -875,7 +876,7 @@ var API='https://manaqasati-production.up.railway.app';
 // المصدر الموحّد للتخصصات (مع احتياطي القائمة الثابتة)
 (function(){ fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
   var sel=document.getElementById('n-cat');
-  if(sel&&d&&Array.isArray(d.categories)&&d.categories.length){ sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+c+'</option>';}).join(''); }
+  if(sel&&d&&Array.isArray(d.categories)&&d.categories.length){ sel.innerHTML='<option value="">اختر التصنيف</option>'+d.categories.map(function(c){return '<option>'+esc(c)+'</option>';}).join(''); }
 }).catch(function(){}); })();
 var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
@@ -917,7 +918,7 @@ if(!token||!user.id){location.href='/auth.html';}
 
 
 // isImg — يقبل URL وbase64
-function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function isImg(s){return !!_safeUrl(s);} // يرفض الروابط اللي فيها علامات تنصيص/مسافات
 function _pubBadge(key){
   if(!key||key==='none')return '';
   var M={verified:{l:'موثّق',c:'#2E90FA',bg:'#EFF8FF'},premium:{l:'مميز',c:'#B8780A',bg:'#FFF7E6'},gold_partner:{l:'شريك ذهبي',c:'#B8780A',bg:'#FFF7E6'},top_rated:{l:'الأعلى تقييماً',c:'#15803d',bg:'#dcfce7'},fast_response:{l:'سريع الاستجابة',c:'#0369a1',bg:'#e0f2fe'},trusted_client:{l:'عميل موثوق',c:'#1e3a8a',bg:'#dbeafe'}};
@@ -931,7 +932,11 @@ function _tierBadge(t){
   return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:'+m.bg+';color:'+m.c+';margin-right:4px;vertical-align:middle"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>'+m.l+'</span>';
 }
 
-function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// روابط آمنة فقط (http/https/مسار داخلي/صورة base64)
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
+// نص آمن داخل onclick
+function _jsa(s){return esc(JSON.stringify(String(s==null?'':s)));}
 function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0';}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
@@ -964,8 +969,8 @@ function showToast(msg,type){
   setTimeout(function(){t.style.opacity='0';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},400);},3000);
 }
 function stTag(s){
-  var m={open:'<span class="tag t-open">● مفتوح</span>',in_progress:'<span class="tag t-prog">⟳ جارٍ</span>',completed:'<span class="tag t-done"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مكتمل</span>',pending_review:'<span class="tag t-rev">⧖ مراجعة</span>',review:'<span class="tag t-rev">⧖ مراجعة</span>'};
-  return m[s]||'<span class="tag t-rev">'+s+'</span>';
+  var m={open:'<span class="tag t-open">● مفتوح</span>',in_progress:'<span class="tag t-prog">⟳ جارٍ</span>',completed:'<span class="tag t-done"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مكتمل</span>',pending_review:'<span class="tag t-rev">⧖ مراجعة</span>',review:'<span class="tag t-rev">⧖ مراجعة</span>',needs_edit:'<span class="tag" style="background:#ffedd5;color:#c2410e;border:1px solid #fed7aa;font-weight:800">✕ مطلوب تعديل</span>',rejected:'<span class="tag" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;font-weight:800">✕ مرفوض</span>'};
+  return m[s]||'<span class="tag t-rev">'+esc(s)+'</span>';
 }
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
 function errH(retryFn){
@@ -986,7 +991,7 @@ function applyAvatar(img){
   if(!isImg(img))return;
   ['userAv','mobAv','profileAv','phAv'].forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
-    el.innerHTML='<img loading="lazy" src="'+img+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+    el.innerHTML='<img loading="lazy" src="'+esc(_safeUrl(img))+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
   });
 }
 
@@ -1430,7 +1435,7 @@ function renderBestOffer(all){
     var reviews=parseInt(best.provider_reviews)||0;
     var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
     var price=best.price?fmtN(best.price):'—';
-    var avHtml=isImg(best.provider_image)?'<img loading="lazy" src="'+best.provider_image+'">':esc(nm.charAt(0));
+    var avHtml=isImg(best.provider_image)?'<img loading="lazy" src="'+esc(_safeUrl(best.provider_image))+'">':esc(nm.charAt(0));
     slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">'
       +'<span class="ph-fb">أفضل عرض على طلبك</span>'
       +'<div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 11px">'+esc(req.title||'')+(req.city?' — '+esc(req.city):'')+'</div>'
@@ -1554,18 +1559,18 @@ function loadBids(id){
         var safeSlug=encodeURIComponent(safeName.replace(/\s+/g,'-'))+'-'+safeProvId;
         var proUrl=safeProvId?'/pro/'+safeSlug+'?id='+safeProvId:'#';
         var verified=(isImg(b.provider_image)&&rating>0&&reviews>0);
-        var avHtml=isImg(b.provider_image)?'<img src="'+b.provider_image+'" loading="lazy">':esc(safeName.charAt(0));
+        var avHtml=isImg(b.provider_image)?'<img src="'+esc(_safeUrl(b.provider_image))+'" loading="lazy">':esc(safeName.charAt(0));
         var vBadge=verified?'<span class="bid-verif" title="موثّق"><svg width="15" height="15" viewBox="-2 -2 28 28" aria-label="موثّق"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
 
         var chips='';
         if(isAcc)chips+='<span class="bid-chip acc"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مقبول</span>';
         else if(isRej)chips+='<span class="bid-chip rej">مرفوض</span>';
         if(isCheap)chips+='<span class="bid-chip cheap"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>أقل سعر</span>';
-        if(safeProvId)chips+='<a href="'+proUrl+'" class="bid-chip prof"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
-        chips+='<button class="_chatbtn bid-chip chat" data-pid="'+safeProvId+'"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
-        if(safeProvId&&!isAcc&&!isRej)chips+='<button class="bid-chip" onclick="_negotiate('+safeProvId+','+id+',\''+String(b.provider_name||'المزوّد').replace(/'/g,"\\'")+'\','+(b.price||0)+','+b.id+')" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تفاوض</button>';
+        if(safeProvId)chips+='<a href="'+esc(proUrl)+'" class="bid-chip prof"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
+        chips+='<button class="_chatbtn bid-chip chat" data-pid="'+esc(safeProvId)+'"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
+        if(safeProvId&&!isAcc&&!isRej)chips+='<button class="bid-chip" onclick="_negotiate('+(parseInt(safeProvId)||0)+','+id+','+_jsa(b.provider_name||'المزوّد')+','+(parseFloat(b.price)||0)+','+b.id+')" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:800"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>تفاوض</button>';
         if(b.is_hidden)chips+='<button class="bid-chip" onclick="_bidRepUndo('+b.id+','+id+')" style="background:#eef3ff;color:#1d4ed8;border:1px solid #c7d7fe">↺ إرجاع العرض</button>';
-        else if(safeProvId)chips+='<button class="bid-chip" onclick="'+(isAcc?'_cliReport('+safeProvId+','+id+')':'_bidRep('+b.id+','+id+')')+'" style="color:var(--red)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>إبلاغ</button>';
+        else if(safeProvId)chips+='<button class="bid-chip" onclick="'+(isAcc?'_cliReport('+(parseInt(safeProvId)||0)+','+id+')':'_bidRep('+b.id+','+id+')')+'" style="color:var(--red)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>إبلاغ</button>';
 
         var note=b.note?'<div class="bid-note fmt-text">'+fmtText(b.note)+'</div>':'<div class="bid-note empty">لم يُضف المزود رسالة مع العرض</div>';
 
@@ -1629,9 +1634,9 @@ function acceptBid(bidId,reqId){
 function rejectBid(bidId,reqId){
   if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
   fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
-    .then(function(r){return r.json();})
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; }); })
     .then(function(){showToast('تم الرفض','success');loadBids(reqId);})
-    .catch(function(){showToast('تعذّر الرفض — تحقّق من اتصالك','error');});
+    .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر الرفض — تحقّق من اتصالك','error');});
 }
 
 // ═══════════════════════════════════
@@ -1719,16 +1724,11 @@ function markNotDone(id){
 }
 function markDone(id){
   if(!confirm('هل تؤكد إتمام هذا الطلب؟'))return;
+  // بدون مسار بديل: إذا رفض الخادم نعرض رسالته وما نقول "تم"
   fetch(API+'/api/requests/'+id+'/complete',Object.assign({method:'PUT'},hdr()))
-    .then(function(r){
-      if(!r.ok){
-        // Fallback: try status update
-        return fetch(API+'/api/requests/'+id,Object.assign({method:'PUT',body:JSON.stringify({status:'completed'})},hdr()));
-      }
-      return r;
-    })
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; }); })
     .then(function(){showToast('تم تحديث حالة الطلب','success');loadBids(id);loadActions(id);loadHome();})
-    .catch(function(){showToast('تعذّر التحديث — تحقّق من اتصالك','error');});
+    .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر التحديث — تحقّق من اتصالك','error');});
 }
 function openRate(reqId){
   var bids=window._currentBids||[];
@@ -1741,7 +1741,7 @@ function openRate(reqId){
     var pname=ab.provider_business_name||ab.provider_name||'المزود';
     var pimg=ab.provider_image;
     var avHtml=isImg(pimg)
-      ?'<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid var(--sky)"><img loading="lazy" src="'+pimg+'" style="width:100%;height:100%;object-fit:cover"></div>'
+      ?'<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:3px solid var(--sky)"><img loading="lazy" src="'+esc(_safeUrl(pimg))+'" style="width:100%;height:100%;object-fit:cover"></div>'
       :'<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;border:3px solid var(--sky)">'+esc(pname.charAt(0))+'</div>';
     pv.innerHTML=avHtml+'<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:var(--text)">'+esc(pname)+'</div><div style="font-size:12px;color:var(--muted)">كيف كانت تجربتك معه؟</div></div>';
   } else if(pv){ pv.innerHTML=''; }
@@ -1778,7 +1778,7 @@ function _catSug(){
   var _stop={'تركيب':1,'وصيانه':1,'صيانه':1,'اعمال':1,'انظمه':1,'عامه':1,'ومقاولات':1,'مقاولات':1,'والسلامه':1,'السلامه':1,'المروريه':1,'ومعالجه':1,'مياه':1,'المياه':1,'المباني':1,'داخلي':1,'وخارجي':1};
   Object.keys(have).forEach(function(c){ _catNorm(c).split(/\s+/).forEach(function(w){ w=w.replace(/^و/,''); if(w.length>=4&&!_stop[w]&&!_stop['و'+w]&&t.indexOf(w.replace(/^ال/,''))>=0)add(c); }); });
   out=out.slice(0,3);
-  box.innerHTML=out.length?'<div style="margin-top:8px;font-size:13px;font-weight:800;color:#1e3a8a">تقصد:</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+out.map(function(c){return '<button type="button" onclick="_catPick(this.getAttribute(\'data-c\'))" data-c="'+c.replace(/"/g,'&quot;')+'" style="border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer">'+c+' ✓</button>';}).join('')+'</div><div style="font-size:11.5px;color:#64748b;margin-top:6px">اختيار تخصص من القائمة يوصّل مشروعك للمزوّدين المختصين مباشرة</div>':'';
+  box.innerHTML=out.length?'<div style="margin-top:8px;font-size:13px;font-weight:800;color:#1e3a8a">تقصد:</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+out.map(function(c){return '<button type="button" onclick="_catPick(this.getAttribute(\'data-c\'))" data-c="'+esc(c)+'" style="border:1.5px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer">'+esc(c)+' ✓</button>';}).join('')+'</div><div style="font-size:11.5px;color:#64748b;margin-top:6px">اختيار تخصص من القائمة يوصّل مشروعك للمزوّدين المختصين مباشرة</div>':'';
 }
 function _catPick(c){
   var sel=document.getElementById('n-cat'); if(!sel)return;
@@ -2124,12 +2124,16 @@ function saveClientProfile(btn){
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function changeClientPw(){
+  var oldEl=document.getElementById('old-pw');
+  var oldPw=oldEl?(oldEl.value||''):'';
   var pw=(document.getElementById('new-pw').value||'').trim();
-  if(pw.length<8){showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل','error');return;}
-  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({password:pw})},hdr()))
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(){showToast('تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';})
-    .catch(function(){showToast('تعذّر التغيير — تحقّق من اتصالك','error');});
+  if(!oldPw){showToast('اكتب كلمة المرور الحالية','error');return;}
+  if(pw.length<6){showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل','error');return;}
+  // المسار الصحيح لتغيير كلمة المرور (يتحقق من الحالية)
+  fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:pw})},hdr()))
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; }); })
+    .then(function(){showToast('تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';if(oldEl)oldEl.value='';})
+    .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر التغيير — تحقّق من اتصالك','error');});
 }
 
 // ═══════════════════════════════════
@@ -2138,17 +2142,13 @@ function changeClientPw(){
 function urlBase64ToUint8Array(b){var p='='.repeat((4-b.length%4)%4),s=(b+p).replace(/-/g,'+').replace(/_/g,'/'),d=window.atob(s),o=new Uint8Array(d.length);for(var i=0;i<d.length;i++)o[i]=d.charCodeAt(i);return o;}
 async function isPushActive(){if(!('serviceWorker' in navigator&&'PushManager' in window))return false;try{var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();return!!sub;}catch(e){return false;}}
 async function updatePushToggleUI(){
-  // طلب إذن الإشعارات تلقائياً (مرة واحدة، بصمت) — الإشعارات مفعّلة افتراضياً
+  // نقرأ حالة الإذن فقط — طلب الإذن يكون من ضغطة المستخدم (togglePush)
   try{
     if(!('serviceWorker' in navigator&&'PushManager' in window))return;
     if(!('Notification' in window))return;
     var active=await isPushActive();
     if(active)return; // مشترك بالفعل
     if(Notification.permission==='granted'){await pushSubscribe();return;}
-    if(Notification.permission==='default'){
-      var p=await Notification.requestPermission();
-      if(p==='granted')await pushSubscribe();
-    }
   }catch(e){}
 }
 async function togglePush(){
@@ -2291,7 +2291,7 @@ function loadChatPage(){
     var h='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
     convs.forEach(function(cv){
       var name=cv.provider_name||'مزود';
-      var avHtml=isImg(cv.provider_image)?'<img loading="lazy" src="'+cv.provider_image+'" style="width:100%;height:100%;object-fit:cover">':name[0];
+      var avHtml=isImg(cv.provider_image)?'<img loading="lazy" src="'+esc(_safeUrl(cv.provider_image))+'" style="width:100%;height:100%;object-fit:cover">':esc(name[0]);
       h+='<div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s'+(cv.unread>0?';background:var(--p-light)':'')+'" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\''+(cv.unread>0?'var(--p-light)':'var(--white)')+'\'" onclick=\'location.href="/chat?req='+cv.request_id+'&with='+cv.provider_id+'"\'>'
         +'<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--sky));color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">'+avHtml+'</div>'
         +'<div style="flex:1;min-width:0">'
@@ -2340,11 +2340,11 @@ function openClientChatSearch(){
         if(!users||!users.length){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">لا توجد نتائج</div>';return;}
         var h='';
         users.forEach(function(u){
-          var av=isImg(u.profile_image)?'<img loading="lazy" src="'+u.profile_image+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(u.name||'م')[0];
+          var av=isImg(u.profile_image)?'<img loading="lazy" src="'+esc(_safeUrl(u.profile_image))+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':esc((u.name||'م')[0]);
           h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">'
             +'<div style="width:38px;height:38px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;overflow:hidden">'+av+'</div>'
             +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800">'+esc(u.business_name||u.name||'مزود')+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.city||'')+'</div></div>'
-            +'<button data-uid="'+u.id+'" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>'
+            +'<button data-uid="'+(parseInt(u.id)||0)+'" style="padding:7px 14px;background:var(--p);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif">محادثة</button>'
             +'</div>';
         });
         res.innerHTML=h;
@@ -2553,7 +2553,7 @@ function openChat(reqId,providerId,providerName,reqTitle){
   el.innerHTML='<div class="chat-head">'
     +'<button onclick="_chatReqId=null;_chatWith=null;loadChatPage()" style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--text);flex-shrink:0"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>رجوع</button>'
     +'<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(name)+'</div>'+(reqTitle?'<div style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(reqTitle)+'</div>':'')+'</div>'
-    +'<button id="chatBlockBtn" onclick="toggleBlockUser('+(providerId||0)+',\''+esc(name).replace(/'/g,"\\'")+'\')" title="حظر هذا المستخدم" style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-family:Tajawal;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--muted);flex-shrink:0">حظر</button>'
+    +'<button id="chatBlockBtn" onclick="toggleBlockUser('+(parseInt(providerId)||0)+','+_jsa(name)+')" title="حظر هذا المستخدم" style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-family:Tajawal;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--muted);flex-shrink:0">حظر</button>'
     +'</div>'
     +'<div class="chat-wrap"><div class="chat-msgs" id="chatMsgs"><div class="loading">جاري التحميل...</div></div>'
     +'<div id="replyBar" style="display:none;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:7px 9px;margin-bottom:6px"></div>'
@@ -2612,9 +2612,9 @@ function renderChatMsgs(){
     // مرفق
     if(m.attachment_url){
       if((m.attachment_type||'').indexOf('image')===0){
-        body+='<img loading="lazy" src="'+esc(m.attachment_url)+'" onclick="window.open(\''+esc(m.attachment_url)+'\',\'_blank\')" style="max-width:100%;border-radius:10px;margin-bottom:'+(m.content?'6px':'0')+';cursor:pointer;display:block">';
+        body+='<img loading="lazy" src="'+esc(_safeUrl(m.attachment_url))+'" onclick="window.open(this.src,\'_blank\')" style="max-width:100%;border-radius:10px;margin-bottom:'+(m.content?'6px':'0')+';cursor:pointer;display:block">';
       } else {
-        body+='<a href="'+esc(m.attachment_url)+'" target="_blank" style="display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.08);border-radius:9px;padding:8px 10px;margin-bottom:'+(m.content?'6px':'0')+';text-decoration:none;color:inherit;font-size:12px"><span style="font-size:17px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف مرفق')+'</span></a>';
+        body+='<a href="'+esc(_safeUrl(m.attachment_url))+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.08);border-radius:9px;padding:8px 10px;margin-bottom:'+(m.content?'6px':'0')+';text-decoration:none;color:inherit;font-size:12px"><span style="font-size:17px">📎</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.attachment_name||'ملف مرفق')+'</span></a>';
       }
     }
     if(m.content)body+=esc(m.content);
