@@ -130,6 +130,21 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
+// حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
+// (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
+const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js']);
+app.use((req, res, next) => {
+  let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
+  p = p.toLowerCase();
+  if (p.startsWith('/api/')) return next();
+  const deny = p.startsWith('/node_modules') || /(^|\/)\./.test(p)
+    || (/\.(js|mjs|cjs|ts|map)$/.test(p) && !_PUBLIC_JS.has(p))
+    || (/\.(json|patch|diff|log|md|sql|lock|env|sh|ya?ml|bak|orig|txt|csv|zip|gz|tar)$/.test(p) && p !== '/manifest.json' && p !== '/robots.txt');
+  if (deny) return res.status(404).send('Not found');
+  next();
+});
+// Railway يمرّر الطلبات عبر بروكسي — بدون هذا كل الزوار لهم نفس الـ IP وحد المحاولات يصير مشترك للجميع
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '45mb' }));
 // صفحات HTML (ومنها الروابط بدون .html مثل /pro/... و/project/...) لا تُخزَّن أبداً —
 // ضروري لتطبيق أندرويد (WebView) اللي يحتفظ بكاش قوي، عشان يوصله التحديث فور الرفع
@@ -319,7 +334,7 @@ setInterval(async () => {
     const mins = Math.max(0, parseInt(await getSetting('review_minutes', '1440')) || 0);
     if (mins <= 0) return; // 0 = تعطيل النشر التلقائي — المراجعة اليدوية إجبارية
     const r = await pool.query(
-      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND created_at <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title, category, city`,
+      `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND COALESCE(submitted_at, created_at) <= NOW() - ($1 || ' minutes')::interval RETURNING id, client_id, title, category, city`,
       [String(mins)]
     );
     for (const row of r.rows) {
@@ -385,14 +400,17 @@ app.get(/^\/project\/(.+)$/, async (req, res) => {
     const p = r.rows[0];
     const fs = require('fs');
     let html = fs.readFileSync(__dirname + '/project.html', 'utf8');
-    const pageUrl = SITE_URL + '/project/' + raw;
-    const pgT = p.title + (p.category ? ' — ' + p.category : '') + (p.city ? ' في ' + p.city : '') + ' | مناقصة';
-    const pgD = p.title + ' في ' + (p.city||'السعودية') + (p.category ? ' — ' + p.category : '') + '. قدّم عرضك على منصة مناقصة.';
+    const pageUrl = seoEsc(SITE_URL + '/project/' + raw);
+    // مشروع غير منشور (تحت المراجعة/مرفوض/يحتاج تعديل) أو محادثة مباشرة: بدون عنوانه وبدون فهرسة
+    const _hidden = ['pending_review','review','needs_edit','rejected'].indexOf(p.status) >= 0 || p.category === 'direct';
+    const pgT = _hidden ? 'مشروع — مناقصة' : seoEsc(p.title + (p.category ? ' — ' + p.category : '') + (p.city ? ' في ' + p.city : '') + ' | مناقصة');
+    const pgD = _hidden ? 'مشروع على منصة مناقصة السعودية' : seoEsc(p.title + ' في ' + (p.city||'السعودية') + (p.category ? ' — ' + p.category : '') + '. قدّم عرضك على منصة مناقصة.');
+    if (_hidden) html = html.replace('</head>', '<meta name="robots" content="noindex,nofollow"></head>');
     const ogImg = SITE_URL + '/og/project/' + id;
     html = html
-      .replace('<title>مشروع — مناقصة</title>', '<title>' + pgT + '</title>')
-      .replace('<meta name="description" content="مشروع على منصة مناقصة السعودية">', '<meta name="description" content="' + pgD + '">')
-      .replace('</head>', '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><meta property="og:image" content="' + ogImg + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:type" content="article"><meta property="og:site_name" content="مناقصة"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + pgT + '"><meta name="twitter:description" content="' + pgD + '"><meta name="twitter:image" content="' + ogImg + '"><link rel="canonical" href="' + pageUrl + '"></head>');
+      .replace('<title>مشروع — مناقصة</title>', () => '<title>' + pgT + '</title>')
+      .replace('<meta name="description" content="مشروع على منصة مناقصة السعودية">', () => '<meta name="description" content="' + pgD + '">')
+      .replace('</head>', () => '<meta property="og:title" content="' + pgT + '"><meta property="og:description" content="' + pgD + '"><meta property="og:url" content="' + pageUrl + '"><meta property="og:image" content="' + ogImg + '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:type" content="article"><meta property="og:site_name" content="مناقصة"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + pgT + '"><meta name="twitter:description" content="' + pgD + '"><meta name="twitter:image" content="' + ogImg + '"><link rel="canonical" href="' + pageUrl + '"></head>');
     res.send(html);
   } catch(e) { console.error('/project SSR:', e.message); res.sendFile(__dirname + '/project.html'); }
 });
@@ -414,6 +432,16 @@ app.get('/api/requests/public/:id', async (req, res) => {
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+    // مشروع غير منشور (تحت المراجعة/مرفوض/يحتاج تعديل) أو محادثة مباشرة: لصاحبه والأدمن فقط
+    try {
+      const _st = (await pool.query('SELECT status, category, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
+      if (['pending_review','review','needs_edit','rejected'].includes(_st.status) || _st.category === 'direct') {
+        let _v = null; const _ah = req.headers.authorization || ''; const _tk = _ah.startsWith('Bearer ') ? _ah.slice(7) : null;
+        if (_tk) { try { _v = jwt.verify(_tk, JWT_SECRET); } catch(e) {} }
+        const _ok = _v && (String(_v.id) === String(row.client_id) || _v.role === 'admin' || (_st.category === 'direct' && String(_v.id) === String(_st.assigned_provider_id)));
+        if (!_ok) return res.status(404).json({ message: 'غير موجود' });
+      }
+    } catch(e) {}
     // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الأدمن، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
     try {
       let viewer = null;
@@ -512,8 +540,9 @@ app.post('/api/requests/:id/client-note/hide', auth, async (req, res) => {
 app.post('/api/requests/:id/extend', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const q = (await pool.query('SELECT client_id, status, assigned_provider_id, created_at, close_at FROM requests WHERE id=$1',[id])).rows[0];
+    const q = (await pool.query('SELECT client_id, status, assigned_provider_id, created_at, close_at, close_auto_kind FROM requests WHERE id=$1',[id])).rows[0];
     if (!q) return res.status(404).json({ message:'غير موجود' });
+    if (q.close_auto_kind === 'unpublished') return res.status(400).json({ message:'المشروع ما انعتمد بعد — استخدم «إعادة النشر» ويرجع للمراجعة' });
     if (String(q.client_id)!==String(req.user.id)) return res.status(403).json({ message:'ليس مشروعك' });
     if (q.assigned_provider_id || ['in_progress','completed'].includes(q.status)) return res.status(400).json({ message:'المشروع تم اختيار مزوّد له' });
     if (!['open','closed_auto','expired'].includes(q.status)) return res.status(400).json({ message:'لا يمكن تمديد هذا المشروع' });
@@ -652,17 +681,21 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
     const keywords = [pName, pCity, ...(p.specialties||[]), ...(p.specialties||[]).map(s => s+' '+pCity), 'مزود خدمة', 'مناقصة'].join(', ');
     const fs = require('fs');
     let html = fs.readFileSync(__dirname + '/pro.html', 'utf8');
+    // JSON-LD آمن: نبنيه ككائن ونمنع كسر وسم <script> بأي نص من المستخدم
+    const _ld = { '@context':'https://schema.org', '@type':'LocalBusiness', name: pName, description: desc, url: pageUrl, telephone: p.phone || '', address: { '@type':'PostalAddress', addressLocality: pCity, addressCountry:'SA' } };
+    if (avg > 0) _ld.aggregateRating = { '@type':'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: String(cnt), bestRating:'5' };
+    const _ldJson = JSON.stringify(_ld).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+    const eT = seoEsc(title), eD = seoEsc(desc), eK = seoEsc(keywords), eU = seoEsc(pageUrl);
     html = html
-      .replace('<title>ملف المزود — مناقصة</title>', `<title>${title}</title>`)
-      .replace('<meta name="description" content="مزود خدمة على منصة مناقصة السعودية">', `<meta name="description" content="${desc}">`)
-      .replace('<script type="application/ld+json" id="ld"></script>', `
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"LocalBusiness","name":"${pName}","description":"${desc.replace(/"/g,'\\"')}","url":"${pageUrl}","telephone":"${p.phone||''}","address":{"@type":"PostalAddress","addressLocality":"${pCity}","addressCountry":"SA"}${avg>0?`,"aggregateRating":{"@type":"AggregateRating","ratingValue":"${avg.toFixed(1)}","reviewCount":"${cnt}","bestRating":"5"}`:''}}</script>
+      .replace('<title>ملف المزود — مناقصة</title>', () => `<title>${eT}</title>`)
+      .replace('<meta name="description" content="مزود خدمة على منصة مناقصة السعودية">', () => `<meta name="description" content="${eD}">`)
+      .replace('<script type="application/ld+json" id="ld"></script>', () => `
+<script type="application/ld+json">${_ldJson}</script>
 <script type="application/ld+json" id="ld"></script>`)
-      .replace('</head>', `
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${desc}">
-  <meta property="og:url" content="${pageUrl}">
+      .replace('</head>', () => `
+  <meta property="og:title" content="${eT}">
+  <meta property="og:description" content="${eD}">
+  <meta property="og:url" content="${eU}">
   <meta property="og:image" content="${SITE_URL}/og/pro/${id}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -670,11 +703,11 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
   <meta property="og:type" content="profile">
   <meta property="og:site_name" content="مناقصة">
   <meta property="og:locale" content="ar_SA">
-  <meta name="keywords" content="${keywords}">
+  <meta name="keywords" content="${eK}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${title}">
-  <meta name="twitter:description" content="${desc}">
-  <link rel="canonical" href="${pageUrl}">
+  <meta name="twitter:title" content="${eT}">
+  <meta name="twitter:description" content="${eD}">
+  <link rel="canonical" href="${eU}">
 </head>`);
     res.send(html);
   } catch(e) { console.error('/pro/:slug SSR:', e.message); res.sendFile(__dirname + '/pro.html'); }
@@ -687,6 +720,8 @@ const SEO_CATS = ['تبريد وتكييف','كهرباء','سباكة','نجا�
 const SEO_CITIES = ['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','بريدة','عنيزة','الرس','حائل','تبوك','أبها','خميس مشيط','نجران','جازان','الطائف','ينبع','الأحساء','القطيف','الجبيل','عرعر','سكاكا','الباحة','القريات','رفحاء','حفر الباطن','الخرج','المجمعة','الزلفي','شقراء','الدوادمي','القويعية','وادي الدواسر','بيشة','محايل عسير','صبيا','أبو عريش','الليث','القنفذة','رابغ','ضباء','الوجه','تيماء','دومة الجندل','طريف'];
 function seoSlug(s){ return encodeURIComponent(String(s).trim().replace(/\s+/g,'-')); }
 function seoUnslug(s){ try{ return decodeURIComponent(String(s)).replace(/-/g,' ').trim(); }catch(e){ return String(s).replace(/-/g,' ').trim(); } }
+// JSON-LD داخل <script>: نمنع أي نص يكسر الوسم (</script>)
+function _ldSafe(o){ return JSON.stringify(o).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026'); }
 function seoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // تنظيف وصف المشروع للنشر العام: يحذف الجوّالات (لاتيني/عربي) والإيميل والروابط وأي تسلسل أرقام طويل
 function seoCleanDesc(txt){
@@ -799,7 +834,7 @@ function renderIntentPage(slug) {
     { '@context':'https://schema.org','@type':'FAQPage', mainEntity:c.faq.map(f=>({'@type':'Question',name:f.q,acceptedAnswer:{'@type':'Answer',text:f.a}})) },
     { '@context':'https://schema.org','@type':'BreadcrumbList', itemListElement:[{'@type':'ListItem',position:1,name:'مناقصة',item:SITE_URL},{'@type':'ListItem',position:2,name:c.kw,item:canonical}] }
   ];
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(c.title)}</title><meta name="description" content="${seoEsc(c.meta)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(c.title)}"><meta property="og:description" content="${seoEsc(c.meta)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><meta property="og:image" content="${SITE_URL}/og-default.png"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85;-webkit-font-smoothing:antialiased}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:30px 24px;margin-bottom:22px}.hero h1{margin:0 0 10px;font-size:25px;line-height:1.35}.hero p{margin:0;opacity:.93;font-size:15px}.cta{display:inline-block;margin-top:18px;background:#fff;color:#1e3a8a;padding:14px 32px;border-radius:12px;font-weight:900;text-decoration:none;font-size:15.5px}.cta2{display:inline-block;margin-top:18px;margin-right:8px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);padding:14px 26px;border-radius:12px;font-weight:800;text-decoration:none;font-size:14.5px}h2{color:#1e3a8a;font-size:19px;margin:28px 0 13px}a{color:#1e40af}.nav{background:#172554;padding:13px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.steps{display:grid;gap:11px}.step{background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:15px 17px}.step b{color:#1e3a8a}.li{background:#fff;border:1px solid #e6eefb;border-radius:10px;padding:11px 15px;margin-bottom:8px;font-size:14.5px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:8px 18px;border-radius:9px;font-size:13px">اطرح مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(c.h1)}</h1><p>${seoEsc(c.heroSub)}</p><a class="cta" href="/post">📝 اطرح مشروعك الآن</a><a class="cta2" href="/dalil">أبحث عن مقاول</a></div><p style="font-size:15.5px">${seoEsc(c.intro)}</p><h2>كيف تعمل منصة مناقصة؟</h2><div class="steps"><div class="step"><b>1. أضف مشروعك</b> — أدخل تفاصيل المشروع والموقع والمواصفات المطلوبة.</div><div class="step"><b>2. استقبل عروض المقاولين</b> — يطّلع المقاولون المهتمون على مشروعك ويقدّمون عروضهم.</div><div class="step"><b>3. قارن العروض</b> — قارن بين الأسعار والخبرة والمدة والتفاصيل المقدّمة.</div><div class="step"><b>4. اختر المقاول المناسب</b> — اختر العرض الأنسب لتنفيذ مشروعك مباشرة.</div></div><h2>ما المشاريع التي يمكن طرحها؟</h2><div class="li">المقاولات العامة والمباني</div><div class="li">البنية التحتية والطرق</div><div class="li">المياه والصرف الصحي</div><div class="li">الأعمال الكهربائية والسباكة</div><div class="li">التشطيبات والديكور</div><div class="li">المشاريع التجارية والصناعية</div><div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:24px;text-align:center;color:#fff;margin:26px 0"><div style="font-size:18px;font-weight:900;margin-bottom:8px">لديك مشروع؟</div><div style="font-size:14px;opacity:.92;margin-bottom:16px">اطرح مشروعك على مناقصة واستقبل عروض المقاولين — قارن واختر الأنسب.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:11px;font-weight:900;text-decoration:none">اطرح مشروعك الآن</a></div><h2>لماذا تطرح مشروعك في مناقصة؟</h2><div class="li">الوصول إلى عدد أكبر من المقاولين</div><div class="li">استقبال عروض متعددة ومقارنة الأسعار</div><div class="li">توفير الوقت والوصول لمقاولين متخصصين</div><div class="li">تسهيل عملية الاختيار باطمئنان</div><h2>أسئلة شائعة</h2>${faqHtml}<h2>خدمات ذات صلة</h2><div>${others}</div><h2>مقاولين حسب المدينة</h2><div>${cityLinks}</div><p class="foot">مناقصة — لديك مشروع؟ اطرحه واستقبل عروض المقاولين · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(c.title)}</title><meta name="description" content="${seoEsc(c.meta)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(c.title)}"><meta property="og:description" content="${seoEsc(c.meta)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><meta property="og:image" content="${SITE_URL}/og-default.png"><script type="application/ld+json">${_ldSafe(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85;-webkit-font-smoothing:antialiased}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:30px 24px;margin-bottom:22px}.hero h1{margin:0 0 10px;font-size:25px;line-height:1.35}.hero p{margin:0;opacity:.93;font-size:15px}.cta{display:inline-block;margin-top:18px;background:#fff;color:#1e3a8a;padding:14px 32px;border-radius:12px;font-weight:900;text-decoration:none;font-size:15.5px}.cta2{display:inline-block;margin-top:18px;margin-right:8px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);padding:14px 26px;border-radius:12px;font-weight:800;text-decoration:none;font-size:14.5px}h2{color:#1e3a8a;font-size:19px;margin:28px 0 13px}a{color:#1e40af}.nav{background:#172554;padding:13px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.steps{display:grid;gap:11px}.step{background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:15px 17px}.step b{color:#1e3a8a}.li{background:#fff;border:1px solid #e6eefb;border-radius:10px;padding:11px 15px;margin-bottom:8px;font-size:14.5px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:8px 18px;border-radius:9px;font-size:13px">اطرح مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(c.h1)}</h1><p>${seoEsc(c.heroSub)}</p><a class="cta" href="/post">📝 اطرح مشروعك الآن</a><a class="cta2" href="/dalil">أبحث عن مقاول</a></div><p style="font-size:15.5px">${seoEsc(c.intro)}</p><h2>كيف تعمل منصة مناقصة؟</h2><div class="steps"><div class="step"><b>1. أضف مشروعك</b> — أدخل تفاصيل المشروع والموقع والمواصفات المطلوبة.</div><div class="step"><b>2. استقبل عروض المقاولين</b> — يطّلع المقاولون المهتمون على مشروعك ويقدّمون عروضهم.</div><div class="step"><b>3. قارن العروض</b> — قارن بين الأسعار والخبرة والمدة والتفاصيل المقدّمة.</div><div class="step"><b>4. اختر المقاول المناسب</b> — اختر العرض الأنسب لتنفيذ مشروعك مباشرة.</div></div><h2>ما المشاريع التي يمكن طرحها؟</h2><div class="li">المقاولات العامة والمباني</div><div class="li">البنية التحتية والطرق</div><div class="li">المياه والصرف الصحي</div><div class="li">الأعمال الكهربائية والسباكة</div><div class="li">التشطيبات والديكور</div><div class="li">المشاريع التجارية والصناعية</div><div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:24px;text-align:center;color:#fff;margin:26px 0"><div style="font-size:18px;font-weight:900;margin-bottom:8px">لديك مشروع؟</div><div style="font-size:14px;opacity:.92;margin-bottom:16px">اطرح مشروعك على مناقصة واستقبل عروض المقاولين — قارن واختر الأنسب.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:11px;font-weight:900;text-decoration:none">اطرح مشروعك الآن</a></div><h2>لماذا تطرح مشروعك في مناقصة؟</h2><div class="li">الوصول إلى عدد أكبر من المقاولين</div><div class="li">استقبال عروض متعددة ومقارنة الأسعار</div><div class="li">توفير الوقت والوصول لمقاولين متخصصين</div><div class="li">تسهيل عملية الاختيار باطمئنان</div><h2>أسئلة شائعة</h2>${faqHtml}<h2>خدمات ذات صلة</h2><div>${others}</div><h2>مقاولين حسب المدينة</h2><div>${cityLinks}</div><p class="foot">مناقصة — لديك مشروع؟ اطرحه واستقبل عروض المقاولين · <a href="/dalil">كل الخدمات والمدن</a></p></div></body></html>`;
 }
 app.get('*', (req, res, next) => {
   // صفحات نية البحث: نفك ترميز المسار العربي ثم نطابق (Express يمرّر المسار مُرمّزاً)
@@ -925,7 +960,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     };
 
     const doneSection = doneProjects.length ? `<h2>مشاريع ${seoEsc(cat)} أُنجزت في ${seoEsc(city)}</h2>`+doneProjects.map(function(p){ return `<div style="background:#fff;border:1px solid #e6eefb;border-right:3px solid #16a34a;border-radius:12px;padding:14px 16px;margin-bottom:10px"><div style="display:inline-flex;align-items:center;gap:5px;background:rgba(22,163,74,.1);color:#16a34a;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;margin-bottom:7px">\u2713 أُنجز بنجاح</div><a href="/mashroo/${seoSlug(p.title)}-${p.id}" style="font-weight:800;font-size:14px;color:#0f2544;line-height:1.5;text-decoration:none;display:block">${seoEsc(p.title)}</a>`+(p.offers?`<div style="font-size:12.5px;color:#64748b;margin-top:5px">استقبل <b style="color:#0f2544">${p.offers}</b> ${p.offers===1?'عرضاً':'عروض'}، واختار صاحب المشروع الأنسب له</div>`:'')+`</div>`; }).join('') : '';
-    const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;color:#1e293b;outline:none;margin-bottom:10px;background:#fff}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>اكتب ما تحتاجه، ويصلك عروض أسعار من مزوّدي ${seoEsc(cat)} في ${seoEsc(city)} — قارن واختر الأنسب.</p><div class="startbox"><div class="sb-t">⚡ ابدأ طلبك في ${seoEsc(cat)} بـ${seoEsc(city)}</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">ابدأ الآن — بخطوات بسيطة وسريعة.</div></div></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر مشروعك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}${doneSection}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div><div class="stickybar"><button onclick="sbFocus()">⚡ ابدأ طلب ${seoEsc(cat)} في ${seoEsc(city)} <span style='font-size:15px'>←</span></button></div><script>function sbFocus(){var t=document.getElementById("sb-title");if(t){t.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(function(){t.focus();},400);}}function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
+    const _pageHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(desc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(desc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="website"><script type="application/ld+json">${_ldSafe(schema)}</script><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.8}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 50px}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:26px 22px;margin-bottom:20px}.hero h1{margin:0 0 8px;font-size:23px}.hero p{margin:0;opacity:.92;font-size:14px}.cta{display:inline-block;margin-top:16px;background:#fff;color:#1e3a8a;padding:13px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.foot{text-align:center;color:#64748b;font-size:12px;padding:20px 0}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;color:#1e293b;outline:none;margin-bottom:10px;background:#fff}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><h1>${seoEsc(cat)} في ${seoEsc(city)}</h1><p>اكتب ما تحتاجه، ويصلك عروض أسعار من مزوّدي ${seoEsc(cat)} في ${seoEsc(city)} — قارن واختر الأنسب.</p><div class="startbox"><div class="sb-t">⚡ ابدأ طلبك في ${seoEsc(cat)} بـ${seoEsc(city)}</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">ابدأ الآن — بخطوات بسيطة وسريعة.</div></div></div><p>هل تبحث عن <strong>${seoEsc(cat)}</strong> موثوق في <strong>${seoEsc(city)}</strong>؟ في مناقصة تنشر مشروعك مرة واحدة، ويصلك عدة عروض تختار منها الأنسب سعراً وجودة — بدل الاتصال على كل مزوّد وحده.</p><h2>مزوّدو ${seoEsc(cat)} في ${seoEsc(city)}</h2>${provCards}${doneSection}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">ما لقيت اللي يناسبك؟</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك وخلّ المزوّدين يتنافسون على تقديم أفضل عرض لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div><h2>عن خدمات ${seoEsc(cat)} في ${seoEsc(city)}</h2><p>${seoEsc(_intro)}</p><h2>نصائح قبل اختيار مزوّد ${seoEsc(cat)}</h2>${_tips}<h2>أسئلة شائعة عن ${seoEsc(cat)} في ${seoEsc(city)}</h2>${_faq.html}<h2>${seoEsc(cat)} في مدن أخرى</h2><div>${otherCities}</div><h2>خدمات أخرى في ${seoEsc(city)}</h2><div>${otherCats}</div><p class="foot">مناقصة — منصة الخدمات السعودية · <a href="/dalil">كل الخدمات والمدن</a></p></div><div class="stickybar"><button onclick="sbFocus()">⚡ ابدأ طلب ${seoEsc(cat)} في ${seoEsc(city)} <span style='font-size:15px'>←</span></button></div><script>function sbFocus(){var t=document.getElementById("sb-title");if(t){t.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(function(){t.focus();},400);}}function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
     _dalilCache.set(_ck, { html: _pageHtml, exp: Date.now() + _DALIL_TTL });
     res.set('Content-Type','text/html; charset=utf-8').send(_pageHtml);
   } catch(e){ console.error('/dalil SSR:', e.message); res.redirect(302,'/dalil'); }
@@ -961,7 +996,7 @@ app.get('/mashroo/:slug', async (req, res) => {
     } catch(e){ similar = []; }
     const simHtml = similar.length ? '<h2>مشاريع مشابهة</h2>'+similar.map(x=>`<a href="/mashroo/${seoSlug(x.title)}-${x.id}" style="display:block;background:#fff;border:1px solid #e6eefb;border-radius:12px;padding:13px 16px;margin-bottom:9px;color:#0f2544;text-decoration:none;font-weight:700;font-size:14px">📄 ${seoEsc(x.title)}</a>`).join('') : '';
     const schema = { "@context":"https://schema.org","@type":"CreativeWork","name":p.title,"about":cat,"locationCreated":city||undefined,"url":canonical };
-    const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(metaDesc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(metaDesc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="article"><script type="application/ld+json">${JSON.stringify(schema)}</script><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:24px 22px;margin-bottom:20px}.hero h1{margin:8px 0;font-size:22px;line-height:1.4}.done{display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px}.meta{font-size:12.5px;opacity:.92;margin-top:6px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.desc{background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px 18px;font-size:14.5px;white-space:pre-wrap}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;margin-bottom:10px}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><span class="done">✓ أُنجز بنجاح</span><h1>${seoEsc(p.title)}</h1><div class="meta">${seoEsc(cat)}${city?(' · '+seoEsc(city)):''}${p.offers?(' · استقبل '+p.offers+' '+(p.offers===1?'عرضاً':'عروض')):''}</div><div class="startbox"><div class="sb-t">⚡ عندك مشروع مشابه؟ ابدأ طلبك</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">ابدأ الآن — بخطوات بسيطة وسريعة.</div></div></div>${cleanDesc?('<h2>عن المشروع</h2><div class="desc">'+seoEsc(cleanDesc)+'</div>'):''}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">هكذا تعمل مناقصة</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك، استقبل عروضاً من مزوّدين، وقارن واختر الأنسب لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div>${simHtml}<p style="margin-top:18px"><a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="font-weight:700">← كل مشاريع ${seoEsc(cat)} في ${seoEsc(city)}</a></p><p class="foot">مناقصة — منصة المشاريع والخدمات السعودية</p></div><div class="stickybar"><button onclick="var t=document.getElementById('sb-title');if(t){t.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){t.focus();},400);}">⚡ ابدأ طلبك واستقبل عروضك <span style="font-size:15px">←</span></button></div><script>function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
+    const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${seoEsc(title)}</title><meta name="description" content="${seoEsc(metaDesc)}"><link rel="canonical" href="${canonical}"><meta property="og:title" content="${seoEsc(title)}"><meta property="og:description" content="${seoEsc(metaDesc)}"><meta property="og:url" content="${canonical}"><meta property="og:type" content="article"><script type="application/ld+json">${_ldSafe(schema)}</script><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;margin:0;line-height:1.85}.wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px}.nav{background:#172554;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#fff;text-decoration:none;font-weight:800}.hero{background:linear-gradient(135deg,#172554,#1e3a8a 55%,#2563eb);color:#fff;border-radius:18px;padding:24px 22px;margin-bottom:20px}.hero h1{margin:8px 0;font-size:22px;line-height:1.4}.done{display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px}.meta{font-size:12.5px;opacity:.92;margin-top:6px}h2{color:#1e3a8a;font-size:18px;margin:26px 0 12px}a{color:#1e40af}.desc{background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px 18px;font-size:14.5px;white-space:pre-wrap}.startbox{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.4)}.sb-t{color:#0f2544;font-weight:800;font-size:15px;margin-bottom:12px}.sb-in{width:100%;padding:12px 13px;border:1.5px solid #e2e8f4;border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px;outline:none;margin-bottom:10px}.sb-in:focus{border-color:#1d4ed8}textarea.sb-in{resize:vertical;min-height:60px}.sb-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:15px;cursor:pointer}.sb-note{text-align:center;font-size:11.5px;color:#64748b;margin-top:9px}.foot{text-align:center;color:#64748b;font-size:12px;padding:22px 0}.stickybar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f4;padding:10px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:50}.stickybar button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:760px;margin:0 auto;background:#1e3a8a;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14.5px;cursor:pointer}@media(min-width:768px){.stickybar{display:none}}</style></head><body><div class="nav"><a href="/">مناقصة</a><a href="/post" style="background:#0ea5e9;padding:7px 16px;border-radius:9px;font-size:13px">انشر مشروعك</a></div><div class="wrap"><div class="hero"><span class="done">✓ أُنجز بنجاح</span><h1>${seoEsc(p.title)}</h1><div class="meta">${seoEsc(cat)}${city?(' · '+seoEsc(city)):''}${p.offers?(' · استقبل '+p.offers+' '+(p.offers===1?'عرضاً':'عروض')):''}</div><div class="startbox"><div class="sb-t">⚡ عندك مشروع مشابه؟ ابدأ طلبك</div><input id="sb-title" class="sb-in" type="text" placeholder="وش تحتاج؟ اكتب باختصار..."><textarea id="sb-desc" class="sb-in" placeholder="تفاصيل إضافية (اختياري)"></textarea><button class="sb-btn" onclick="startDraft()">ابدأ طلبك واستقبل العروض <span style="font-size:16px">←</span></button><div class="sb-note">ابدأ الآن — بخطوات بسيطة وسريعة.</div></div></div>${cleanDesc?('<h2>عن المشروع</h2><div class="desc">'+seoEsc(cleanDesc)+'</div>'):''}<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:16px;padding:22px;text-align:center;color:#fff;margin:24px 0"><div style="font-size:17px;font-weight:800;margin-bottom:8px">هكذا تعمل مناقصة</div><div style="font-size:13px;opacity:.9;margin-bottom:15px">انشر مشروعك، استقبل عروضاً من مزوّدين، وقارن واختر الأنسب لك.</div><a href="/post" style="background:#fff;color:#1e3a8a;padding:12px 28px;border-radius:11px;font-weight:800;text-decoration:none">انشر مشروعك الآن</a></div>${simHtml}<p style="margin-top:18px"><a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="font-weight:700">← كل مشاريع ${seoEsc(cat)} في ${seoEsc(city)}</a></p><p class="foot">مناقصة — منصة المشاريع والخدمات السعودية</p></div><div class="stickybar"><button onclick="var t=document.getElementById('sb-title');if(t){t.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){t.focus();},400);}">⚡ ابدأ طلبك واستقبل عروضك <span style="font-size:15px">←</span></button></div><script>function startDraft(){var t=document.getElementById("sb-title").value.trim();if(!t){document.getElementById("sb-title").focus();return;}var d=document.getElementById("sb-desc").value.trim();try{sessionStorage.setItem("mnq_req_draft",JSON.stringify({title:t,description:d,category:${JSON.stringify(cat)},city:${JSON.stringify(city)}}));}catch(e){}location.href="/auth.html?redirect=postdraft";}</script></body></html>`;
     res.set('Content-Type','text/html; charset=utf-8').send(html);
   } catch(e){ console.error('/mashroo SSR:', e.message); res.redirect(302, '/dalil'); }
 });
@@ -1008,7 +1043,7 @@ app.get('/og/card/:token', async (req, res) => {
     const avg = parseFloat(p.rating)||0;
     const initial = esc((String(p.name||'?').trim()[0])||'م');
     const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#0ea5e9"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.55)" text-anchor="middle">بطاقة رقمية · مناقصة</text><circle cx="600" cy="235" r="72" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" stroke-width="4"/><text x="600" y="235" font-family="Arial" font-size="70" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">${initial}</text><text x="600" y="380" font-family="Arial" font-size="64" font-weight="bold" fill="#fff" text-anchor="middle">${name}</text><text x="600" y="450" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.85)" text-anchor="middle">${specs}</text>${avg>0?`<text x="600" y="520" font-family="Arial" font-size="34" fill="#7dd3fc" text-anchor="middle">★ ${avg.toFixed(1)}</text>`:''}<text x="600" y="585" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.4)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
   }catch(e){ res.status(500).send('error'); }
 });
 
@@ -1979,9 +2014,12 @@ async function runReminders(){
          RETURNING id, client_id, assigned_provider_id, title`, [String(graceDays)]);
       for(const x of done.rows){
         try{ await notify(x.client_id, 'اكتمل مشروعك', `اعتُبر "${eEsc(x.title)}" منتهياً — لا تنسَ تقييم المزوّد`, 'request', x.id); }catch(e){}
-    const _wb = await pool.query("SELECT price, price_unit FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [id]);
-    const _cfee = (_wb.rows.length && (!_wb.rows[0].price_unit || _wb.rows[0].price_unit==='total')) ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
-    await notify(row.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(row.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة التقديري '+_cfee.toLocaleString('en-US')+' ر.س (3%) — يُحسب على مبلغ الاتفاق النهائي، عدّله إن اختلف وسدّده خلال 10 أيام من «محفظة السعي».':' 💰 سعي المنصة 3% من مبلغ الاتفاق النهائي — حدّده وسدّده من «محفظة السعي».'), 'completed', id);
+        try {
+      const _wb = await pool.query("SELECT price, price_unit FROM bids WHERE request_id=$1 AND status='accepted' LIMIT 1", [x.id]);
+      const _cfee = (_wb.rows.length && (!_wb.rows[0].price_unit || _wb.rows[0].price_unit==='total')) ? Math.round((parseFloat(_wb.rows[0].price)||0) * 0.03) : 0;
+      if (x.assigned_provider_id) await notify(x.assigned_provider_id, 'اكتمل المشروع ✅', 'تم تأكيد إتمام «'+eEsc(x.title)+'» — لا تنسَ تقييم العميل.'+(_cfee>0?' 💰 سعي المنصة التقديري '+_cfee.toLocaleString('en-US')+' ر.س (3%) — يُحسب على مبلغ الاتفاق النهائي، عدّله إن اختلف وسدّده خلال 10 أيام من «محفظة السعي».':' 💰 سعي المنصة 3% من مبلغ الاتفاق النهائي — حدّده وسدّده من «محفظة السعي».'), 'completed', x.id);
+          if (x.assigned_provider_id) { try { await recomputeProviderTier(x.assigned_provider_id); } catch(e){} }
+        } catch(e) { console.error('auto-complete provider notify:', e.message); }
       }
       if(done.rows.length) console.log(`[lifecycle] اكتمل ${done.rows.length} مشروع بموافقة ضمنية`);
     }
@@ -2237,33 +2275,39 @@ function generateProjectNumber() {
 // ذاكرة مؤقتة لحالة الحساب (60 ثانية) — يجعل الحظر/الحذف ساري المفعول فوراً تقريباً بلا إثقال القاعدة
 const _userState = new Map();
 setInterval(() => { const now = Date.now(); for (const [k,v] of _userState) { if (now > v.exp) _userState.delete(k); } }, 120000);
-async function isUserUsable(id){
+async function _userStateOf(id){
   const hit = _userState.get(id);
-  if (hit && Date.now() < hit.exp) return hit.ok;
+  if (hit && Date.now() < hit.exp) return hit;
   try {
-    const r = await pool.query('SELECT is_active FROM users WHERE id=$1', [id]);
-    const ok = !!(r.rows.length && r.rows[0].is_active !== false);
-    _userState.set(id, { ok, exp: Date.now() + 60000 });
-    return ok;
-  } catch(e) { return true; } // لا نمنع الخدمة عند عطل قاعدة البيانات
+    const r = await pool.query('SELECT is_active, role FROM users WHERE id=$1', [id]);
+    const st = { ok: !!(r.rows.length && r.rows[0].is_active !== false), role: r.rows.length ? r.rows[0].role : null, exp: Date.now() + 60000 };
+    _userState.set(id, st);
+    return st;
+  } catch(e) { return { ok: true, role: null }; } // لا نمنع الخدمة عند عطل قاعدة البيانات
 }
+async function isUserUsable(id){ return (await _userStateOf(id)).ok; }
 function auth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'غير مصرح' });
   let payload;
   try { payload = jwt.verify(token, JWT_SECRET); }
   catch { return res.status(401).json({ message: 'جلسة منتهية' }); }
+  // رموز الأغراض الخاصة (تفعيل الإيميل، التقارير...) ما تنقبل كجلسة دخول
+  if (!payload || payload.purpose || !payload.id) return res.status(401).json({ message: 'جلسة منتهية' });
   req.user = payload;
-  isUserUsable(payload.id).then(ok => {
-    if (!ok) return res.status(403).json({ message: 'الحساب موقوف أو غير موجود' });
+  _userStateOf(payload.id).then(st => {
+    if (!st.ok) return res.status(403).json({ message: 'الحساب موقوف أو غير موجود' });
+    // الدور من قاعدة البيانات (مو من التوكن): مشرف انشال من الإدارة يفقد صلاحياته فوراً
+    if (st.role) req.user.role = st.role;
     next();
   }).catch(() => next());
 }
 // مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض المشروع
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
-  if (token) { try { req.user = jwt.verify(token, JWT_SECRET); } catch(e) {} }
-  next();
+  if (token) { try { const _p = jwt.verify(token, JWT_SECRET); if (_p && !_p.purpose && _p.id) req.user = _p; } catch(e) {} }
+  if (!req.user) return next();
+  _userStateOf(req.user.id).then(st => { if (!st.ok) req.user = undefined; else if (st.role) req.user.role = st.role; next(); }).catch(() => next());
 }
 function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
 async function clientOnly(req, res, next) {
@@ -2394,6 +2438,7 @@ async function setupDatabase() {
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review BOOLEAN DEFAULT FALSE`);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_at TIMESTAMP`);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_warned_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
     } catch(e) { console.error('bid_reports migrate:', e.message); }
     await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
@@ -2588,18 +2633,19 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
   try {
     const { email, phone, password } = req.body;
     if ((!email && !phone) || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
-    const query = phone ? 'SELECT * FROM users WHERE phone=$1' : 'SELECT * FROM users WHERE email=$1';
-    const result = await pool.query(query, [email || phone]);
+    // الإيميل بدون حساسية للحروف الكبيرة (كيبورد الجوال يكبّر أول حرف)
+    const query = phone ? 'SELECT * FROM users WHERE phone=$1' : 'SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1';
+    const result = await pool.query(query, [String(email || phone).trim()]);
     if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = result.rows[0];
-    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
     const storedHash = user.password || user.password_hash || '';
-    if (!storedHash) return res.status(400).json({ message: 'كلمة المرور غير مضبوطة' });
-    const ok = await bcrypt.compare(password, storedHash);
+    const ok = storedHash ? await bcrypt.compare(password, storedHash) : false;
     if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+    if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
     delete user.password; delete user.password_hash;
+    delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
     res.json({ user, token });
   } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -2641,7 +2687,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
     if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
-    const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+    const existing = await pool.query('SELECT id FROM users WHERE LOWER(email)=LOWER($1)', [email]);
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
     // منع تكرار الجوال (يقارن الصيغة الخام والموحّدة) — يمنع حرمان صاحب الرقم من الدخول واختطاف ربط المستهدفين
     if (phone && String(phone).trim()) {
@@ -2741,8 +2787,8 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${name}!`;
       const welcomeBody = isProvider
-        ? `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
-        : `<p>عزيزي <strong>${name}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
+        ? `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
+        : `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
       const vtok = jwt.sign({ id: user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '7d' });
       const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
       const verifyNote = `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin:14px 0;color:#1e40af"><strong>خطوة أخيرة:</strong> فعّل بريدك لتتمكن من ${isProvider?'تقديم العروض':'نشر مشاريعك'} — اضغط الزر أدناه.</p>`;
@@ -2771,7 +2817,7 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, 
       const u = r.rows[0];
       if (u.email) {
         const title = '🔐 تم تغيير كلمة المرور';
-        const body = `<p>عزيزي <strong>${u.name}</strong>،</p><p>تم تغيير كلمة المرور بنجاح.</p><p>إذا لم تقم بهذا الإجراء، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
+        const body = `<p>عزيزي <strong>${eEsc(u.name)}</strong>،</p><p>تم تغيير كلمة المرور بنجاح.</p><p>إذا لم تقم بهذا الإجراء، تواصل معنا فوراً: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
         sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
       }
     } catch(e) {}
@@ -2789,7 +2835,7 @@ app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) =
     const phoneNorm = raw.replace(/\D/g, '').replace(/^0/, '966');
     // ابحث بالبريد أو بالجوال (بصيغته المُطبّعة)
     const r = await pool.query(
-      "SELECT id, name, email FROM users WHERE email=$1 OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
+      "SELECT id, name, email FROM users WHERE LOWER(email)=LOWER($1) OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
       [raw, phoneNorm]);
     if (!r.rows.length) return res.json(generic);
     const u = r.rows[0];
@@ -2855,6 +2901,7 @@ app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
     if (!userId) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً من الإدارة' });
     const r = await pool.query('SELECT * FROM users WHERE id=$1', [userId]);
     if (!r.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
+    if (r.rows[0].role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور فقط' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
     const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -3057,7 +3104,7 @@ app.get('/api/profile', auth, async (req, res) => {
 
 app.put('/api/profile', auth, async (req, res) => {
   try {
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    if (req.body.profile_image) { const _pi = await uploadToCloud(String(req.body.profile_image), 'manaqasa/profiles'); if (_pi) req.body.profile_image = _pi; else delete req.body.profile_image; }
     const allowed = { name:'name', phone:'phone', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', profile_image:'profile_image', serves_all_cities:'serves_all_cities', service_cities:'service_cities' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
@@ -3092,7 +3139,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
       const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
     }
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    if (req.body.profile_image) { const _pi = await uploadToCloud(String(req.body.profile_image), 'manaqasa/profiles'); if (_pi) req.body.profile_image = _pi; else delete req.body.profile_image; }
     const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', profile_image:'profile_image', business_name:'business_name', experience_years:'experience_years', specialties:'specialties', notify_categories:'notify_categories', portfolio_images:'portfolio_images', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
@@ -3145,10 +3192,10 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
     }
-    if (req.body.profile_image && req.body.profile_image.startsWith('data:')) req.body.profile_image = await uploadToCloud(req.body.profile_image, 'manaqasa/profiles');
+    if (req.body.profile_image) { const _pi = await uploadToCloud(String(req.body.profile_image), 'manaqasa/profiles'); if (_pi) req.body.profile_image = _pi; else delete req.body.profile_image; }
     if (req.body.portfolio_images && Array.isArray(req.body.portfolio_images)) {
       const uploaded = [];
-      for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) uploaded.push(u); } else if (img) uploaded.push(img); }
+      for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) uploaded.push(u); } else if (img && _safeUrl(img)) uploaded.push(_safeUrl(img)); }
       req.body.portfolio_images = uploaded;
     }
     const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
@@ -3264,9 +3311,12 @@ app.post('/api/provider/profile/portfolio', auth, async (req, res) => {
     const cur = await pool.query('SELECT portfolio_images FROM users WHERE id=$1', [req.user.id]);
     const imgs = cur.rows[0]?.portfolio_images || [];
     if (imgs.length >= 6) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
-    imgs.push(image);
-    await pool.query('UPDATE users SET portfolio_images=$1 WHERE id=$2', [imgs, req.user.id]);
-    res.json({ ok: true, count: imgs.length });
+    const _u = await uploadToCloud(String(image), 'manaqasa/portfolio');
+    if (!_u) return res.status(400).json({ message: 'تعذّر رفع الصورة — صورة فقط وأقل من 10MB' });
+    // إضافة ذرّية: رفع عدة صور بنفس الوقت ما يمسح بعضها
+    const _r = await pool.query(`UPDATE users SET portfolio_images = array_append(COALESCE(portfolio_images,'{}'), $1) WHERE id=$2 AND COALESCE(cardinality(portfolio_images),0) < 6 RETURNING cardinality(portfolio_images) AS n`, [_u, req.user.id]);
+    if (!_r.rows.length) return res.status(400).json({ message: 'الحد الأقصى 6 صور' });
+    res.json({ ok: true, count: _r.rows[0].n });
   } catch(e) { console.error('portfolio POST:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3358,6 +3408,12 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!(isOwner || isAssigned || isAdmin)) {
       row.provider_phone = null;
     }
+    // المحادثات المباشرة: الأرقام ما تنكشف من خلالها (كانت تسمح بجمع جوال أي مستخدم)
+    if (row.category === 'direct' && !isAdmin) { row.client_phone = null; row.provider_phone = null; }
+    if (row.category === 'direct' && !(isOwner || isAssigned || isAdmin)) return res.status(404).json({ message: 'غير موجود' });
+    // الموقع الدقيق والعنوان: للمالك والمُرسى عليه والأدمن والمزوّدين المسجلين فقط (نفس سياسة الصفحة العامة)
+    if (!(isOwner || isAssigned || isAdmin || role === 'provider')) { row.geo_lat = null; row.geo_lng = null; row.address = null; }
+    if (!isAdmin) { delete row.agent_phone; }
     // ملاحظات المراجعة الموجّهة للعميل (طلب تعديل): لصاحب المشروع أو الأدمن فقط
     if (!(isOwner || isAdmin)) delete row.review_notes;
     // ملاحظات الأدمن الداخلية: للأدمن فقط — لا تظهر للعميل ولا للمزوّد
@@ -3391,7 +3447,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     const pxImages = [];
     for (const img of (Array.isArray(req.body.images) ? req.body.images.slice(0,5) : [])) {
       if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) pxImages.push(u); }
-      else if (img && img.startsWith('http')) pxImages.push(img);
+      else if (img && _safeUrl(img)) pxImages.push(_safeUrl(img));
     }
     const pxAtts = [];
     for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
@@ -3472,7 +3528,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const uploadedImages = [];
     for (const img of images_arr) {
       if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) uploadedImages.push(u); }
-      else if (img && img.startsWith('http')) uploadedImages.push(img);
+      else if (img && _safeUrl(img)) uploadedImages.push(_safeUrl(img));
     }
     // معالجة المرفقات (PDF/مخططات هندسية) — رفعها لـR2 مثل الصور
     let processedAttachments = null;
@@ -3482,8 +3538,8 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
         if (att && att.data && String(att.data).startsWith('data:')) {
           const url = await uploadToCloud(att.data, 'manaqasa/attachments', att.name);
           if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
-        } else if (att && att.url) {
-          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: att.url });
+        } else if (att && att.url && _safeUrl(att.url)) {
+          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: _safeUrl(att.url) });
         }
       }
       if (!processedAttachments.length) processedAttachments = null;
@@ -3512,7 +3568,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
           if (dp.rows.length) {
             const cName2 = (await pool.query('SELECT name FROM users WHERE id=$1',[req.user.id])).rows[0]?.name||'عميل';
             await notify(dp.rows[0].id, '💬 استفسار مباشر جديد', `${cName2} يريد التواصل معك مباشرة`, 'new_request', newReq.id);
-            if(dp.rows[0].email) sendEmail(dp.rows[0].email,'💬 استفسار مباشر',emailTpl('استفسار مباشر',`<p>يريد <strong>${cName2}</strong> التواصل معك.</p>`,'فتح المحادثة',SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+            if(dp.rows[0].email) sendEmail(dp.rows[0].email,'💬 استفسار مباشر',emailTpl('استفسار مباشر',`<p>يريد <strong>${eEsc(cName2)}</strong> التواصل معك.</p>`,'فتح المحادثة',SITE_URL+'/dashboard-provider.html')).catch(()=>{});
           }
           return res.json(newReq);
         }
@@ -3531,15 +3587,23 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const { title, description, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
-    const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
-    const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)', 'category=$3', 'city=$4', 'address=$5', 'budget_max=$6', 'deadline=$7'];
-    const params = [title||'', description||'', category||null, city||null, address||null, budget_max||null, deadline||null];
-    let i = 8;
+    const _has = k => Object.prototype.hasOwnProperty.call(req.body, k);
+    const _hasCat = _has('category');
+    const _nc = _hasCat ? _normCat(req.body.category, req.body.category_other) : {}; const category = _nc.category;
+    // نحدّث فقط الحقول المرسلة فعلاً — تحديث جزئي (مثل {status}) ما يمسح المدينة والتخصص والميزانية
+    const sets = ['title=COALESCE(NULLIF($1,\'\'),title)', 'description=COALESCE(NULLIF($2,\'\'),description)'];
+    const params = [title||'', description||''];
+    let i = 3;
+    if (_hasCat) { sets.push('category=$'+i); params.push(category||null); i++; }
+    if (_has('city')) { sets.push('city=$'+i); params.push(city||null); i++; }
+    if (_has('address')) { sets.push('address=$'+i); params.push(address||null); i++; }
+    if (_has('budget_max')) { sets.push('budget_max=$'+i); params.push(budget_max||null); i++; }
+    if (_has('deadline')) { sets.push('deadline=$'+i); params.push(deadline||null); i++; }
     const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
-    if (category !== 'أخرى' || _nc.category_other) { sets.push('category_other=$'+i); params.push(category === 'أخرى' ? _nc.category_other : null); i++; }
-    { const _ex = _normExtras(req.body.extra_categories, category); if (_ex) { sets.push('extra_categories=$'+i); params.push(_ex.length ? _ex : null); i++; }
+    if (_hasCat && (category !== 'أخرى' || _nc.category_other)) { sets.push('category_other=$'+i); params.push(category === 'أخرى' ? _nc.category_other : null); i++; }
+    if (_hasCat || _has('extra_categories')) { const _ex = _normExtras(req.body.extra_categories, category); if (_ex) { sets.push('extra_categories=$'+i); params.push(_ex.length ? _ex : null); i++; }
       else if (category) { sets.push('extra_categories=array_remove(extra_categories,$'+i+')'); params.push(category); i++; } }
     if (req.body.close_days !== undefined) {
       const _cd = parseInt(req.body.close_days)||0;
@@ -3547,15 +3611,15 @@ app.put('/api/requests/:id', auth, async (req, res) => {
         sets.push("close_at = created_at + ($"+i+" || ' days')::interval"); params.push(String(_cd)); i++;
         sets.push("close_set_by = '" + (req.user.role === 'admin' ? 'admin' : 'client') + "'");
         // تمديد المدة يعيد فتح مشروع أُغلق تلقائياً (طالما لم يُعتمد مزوّد)
-        const _st = await pool.query("SELECT status, assigned_provider_id FROM requests WHERE id=$1", [id]);
-        if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id) { sets.push("status='open'"); }
+        const _st = await pool.query("SELECT status, assigned_provider_id, close_auto_kind FROM requests WHERE id=$1", [id]);
+        if (_st.rows.length && ['closed_auto','expired'].includes(_st.rows[0].status) && !_st.rows[0].assigned_provider_id && _st.rows[0].close_auto_kind !== 'unpublished') { sets.push("status='open'"); }
       }
       else { sets.push('close_at = NULL'); }
     }
     if (Array.isArray(attachments)) {
       const atts = []; const _attDbg = [];
       for (const a of attachments.slice(0, 3)) {
-        if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,80), url: a.url });
+        if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name||'ملف').slice(0,80), url: _safeUrl(a.url) });
         else if (a && a.data) {
           let u = null;
           try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(e) { _attDbg.push({ name: a.name, error: e.message }); }
@@ -3570,6 +3634,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (own.rows[0].status === 'needs_edit' && req.user.role !== 'admin') {
       sets.push("status='pending_review'");
       sets.push('review_notes=NULL');
+      sets.push('submitted_at=NOW()'); // مهلة المراجعة تبدأ من إعادة الإرسال (مو من تاريخ الإنشاء)
     }
     params.push(id);
     const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
@@ -3606,7 +3671,9 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     const current = own.rows[0].images || [];
     if (current.length >= 10) return res.status(400).json({ message: 'الحد الأقصى 10 صور' });
-    current.push(image);
+    const _img = await uploadToCloud(String(image), 'manaqasa/projects');
+    if (!_img || !/^https?:/.test(_img)) return res.status(400).json({ message: 'تعذّر رفع الصورة' });
+    current.push(_img);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
     _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3622,8 +3689,7 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
     const current = own.rows[0].attachments || [];
     if (current.length >= 3) return res.status(400).json({ message: 'الحد الأقصى 3 ملفات' });
     if (typeof data === 'string' && data.length > 14000000) return res.status(400).json({ message: 'حجم الملف كبير (الحد 10MB)' });
-    let stored = data;
-    if (typeof stored === 'string' && stored.startsWith('data:')) stored = await uploadToCloud(stored, 'manaqasa/attachments');
+    let stored = typeof data === 'string' ? await uploadToCloud(data, 'manaqasa/attachments', name) : null;
     if (!stored) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة فقط)' });
     current.push({ name: String(name||'ملف').slice(0,120), type: type||null, url: stored, uploaded_at: new Date().toISOString() });
     await pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(current), id]);
@@ -3641,7 +3707,7 @@ app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
       const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [r.rows[0].assigned_provider_id]);
       const projTitle = r.rows[0].title;
       await notify(r.rows[0].assigned_provider_id, '🎉 مشروع مكتمل', `العميل أنهى مشروع "${projTitle}".`, 'request', id);
-      if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, 'مشروع مكتمل', emailTpl('مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${projTitle}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+      if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, 'مشروع مكتمل', emailTpl('مشروع مكتمل', `<p>تهانينا! أُنهي المشروع: <strong>${eEsc(projTitle)}</strong></p>`, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3654,6 +3720,12 @@ app.put('/api/requests/:id/done', auth, clientOnly, async (req, res) => { res.re
 app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // مشروع أُغلق قبل ما ينعتمد → يرجع لقائمة المراجعة بدل ما ينشر مباشرة (يمنع تخطّي مراجعة الإدارة)
+    const _pre = (await pool.query('SELECT close_auto_kind, status FROM requests WHERE id=$1 AND client_id=$2', [id, req.user.id])).rows[0];
+    if (_pre && _pre.close_auto_kind === 'unpublished' && ['closed_auto','cancelled','expired'].includes(_pre.status)) {
+      await pool.query(`UPDATE requests SET status='pending_review', submitted_at=NOW(), closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL WHERE id=$1`, [id]);
+      return res.json({ ok:true, pending_review:true, message:'رجع مشروعك للمراجعة — ينشر بعد اعتماد الإدارة' });
+    }
     const r = await pool.query(
       `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
@@ -3905,6 +3977,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
     if (['held','rejected'].indexOf(bid.rows[0].hold_state) >= 0) return res.status(404).json({ message: 'غير موجود' });
     const acceptedBid = bid.rows[0];
     const client = await pool.connect();
+    let _committed = false, _released = false;
     try {
       await client.query('BEGIN');
       // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
@@ -3918,7 +3991,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
                    AND COALESCE(closed_at, close_at, created_at + INTERVAL '30 days') >= NOW() - ($3 || ' days')::interval ) )
          RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id, String(ACCEPT_AFTER_CLOSE_DAYS)]);
       if (!lock.rows.length) {
-        await client.query('ROLLBACK'); client.release();
+        await client.query('ROLLBACK'); client.release(); _released = true;
         const cur = (await pool.query('SELECT status, assigned_provider_id FROM requests WHERE id=$1', [acceptedBid.request_id])).rows[0] || {};
         const msg = cur.assigned_provider_id ? 'تمت ترسية هذا المشروع مسبقاً'
           : (['closed_auto','expired','closed'].includes(cur.status) ? 'انتهت مهلة الاختيار (' + ACCEPT_AFTER_CLOSE_DAYS + ' يوم من إغلاق المشروع) — أعد فتح المشروع أولاً ثم اقبل العرض'
@@ -3928,8 +4001,8 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       if (acceptedBid.status === 'rejected') { /* قبول عرض سبق رفضه مسموح — يرجع مقبول */ }
       await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
       await client.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
-      await client.query('COMMIT');
-      client.release();
+      await client.query('COMMIT'); _committed = true;
+      client.release(); _released = true;
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
@@ -3957,7 +4030,14 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       }
       await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
       res.json({ ok: true });
-    } catch(e) { await pool.query('ROLLBACK'); throw e; }
+    } catch(e) {
+      // التراجع على نفس الاتصال وإرجاعه للمجمّع دائماً (كان يعلّق الاتصال ويقفل المشروع)
+      if (!_committed) { try { await client.query('ROLLBACK'); } catch(_) {} }
+      if (!_released) { try { client.release(); } catch(_) {} }
+      // الترسية تمت فعلاً — خطأ بعدها (إشعار/إيميل) ما يرجّع فشل للعميل
+      if (_committed) { console.error('accept post-commit:', e.message); if (!res.headersSent) return res.json({ ok: true }); return; }
+      throw e;
+    }
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -4036,6 +4116,9 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
     else return res.status(403).json({ message: 'غير مصرح بالمراسلة' });
     // منع مراسلة النفس
     if (clientId === providerId) return res.status(400).json({ message: 'لا يمكنك مراسلة نفسك' });
+    // الطرف الثاني لازم يكون حساب فعّال وما يكون حساب إدارة
+    const _tgt = (await pool.query('SELECT role, is_active FROM users WHERE id=$1', [parseInt(provider_id)])).rows[0];
+    if (!_tgt || _tgt.is_active === false || (_tgt.role === 'admin' && senderRole !== 'admin')) return res.status(404).json({ message: 'الحساب غير موجود' });
     // 1) ابحث عن محادثة قائمة بينهما على أي مشروع (يمنع فقدان الرسائل السابقة)
     let reqRow = await pool.query(
       `SELECT request_id AS id FROM messages
@@ -4054,7 +4137,7 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
       requestId = newReq.rows[0].id;
     }
     const msgText = (message && message.trim()) ? message.trim() : 'السلام عليكم';
-    const receiverId = senderRole === 'client' ? providerId : clientId;
+    const receiverId = senderRole === 'provider' ? clientId : providerId;
     const existing = await pool.query('SELECT id FROM messages WHERE request_id=$1 LIMIT 1', [requestId]);
     if (!existing.rows.length || (message && message.trim())) {
       await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`, [requestId, senderId, receiverId, msgText]);
@@ -4311,9 +4394,10 @@ app.get('/api/provider/chat-bid-context', auth, async (req, res) => {
 app.get('/api/users/search', auth, async (req, res) => {
   try {
     const q = (req.query.q||'').trim();
-    if (!q) return res.json([]);
+    if (!q || q.length < 2) return res.json([]);
     const role = req.user.role === 'client' ? 'provider' : 'client';
-    const r = await pool.query(`SELECT id, name, business_name, phone, city, profile_image, role FROM users WHERE role=$1 AND (name ILIKE $2 OR business_name ILIKE $2 OR phone LIKE $3) LIMIT 10`, [role, '%'+q+'%', '%'+q+'%']);
+    // بدون رقم الجوال وبدون البحث بالرقم — يمنع جمع أرقام العملاء
+    const r = await pool.query(`SELECT id, name, business_name, city, CASE WHEN profile_image LIKE 'http%' THEN profile_image END AS profile_image, role FROM users WHERE role=$1 AND is_active IS NOT FALSE AND (name ILIKE $2 OR business_name ILIKE $2) LIMIT 10`, [role, '%'+q+'%']);
     res.json(r.rows);
   } catch(e) { res.json([]); }
 });
@@ -4498,7 +4582,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
                   COALESCE(rq.title,'محادثة مباشرة') as project_title
            FROM messages m JOIN users u ON m.sender_id=u.id
            LEFT JOIN requests rq ON rq.id=m.request_id
-           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
+           LEFT JOIN messages rm ON rm.id=m.reply_to AND ((rm.sender_id=m.sender_id AND rm.receiver_id=m.receiver_id) OR (rm.sender_id=m.receiver_id AND rm.receiver_id=m.sender_id)) LEFT JOIN users ru ON ru.id=rm.sender_id
            WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1))
            ORDER BY m.created_at ASC`,
           [req.user.id, withUser]);
@@ -4508,7 +4592,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
                   COALESCE(rq.title,'محادثة مباشرة') as project_title
            FROM messages m JOIN users u ON m.sender_id=u.id
            LEFT JOIN requests rq ON rq.id=m.request_id
-           LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id
+           LEFT JOIN messages rm ON rm.id=m.reply_to AND ((rm.sender_id=m.sender_id AND rm.receiver_id=m.receiver_id) OR (rm.sender_id=m.receiver_id AND rm.receiver_id=m.sender_id)) LEFT JOIN users ru ON ru.id=rm.sender_id
            WHERE m.request_id=$1 AND ((m.sender_id=$2 AND (m.receiver_id=$3 OR m.receiver_id IS NULL)) OR (m.sender_id=$3 AND (m.receiver_id=$2 OR m.receiver_id IS NULL)) OR (m.sender_id IS NULL))
            ORDER BY m.created_at ASC`,
           [requestId, req.user.id, withUser]);
@@ -4516,7 +4600,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
       // علّم رسائل هذا الشخص مقروءة
       await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
     } else {
-      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
+      r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to AND ((rm.sender_id=m.sender_id AND rm.receiver_id=m.receiver_id) OR (rm.sender_id=m.receiver_id AND rm.receiver_id=m.sender_id)) LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
       await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
     }
     res.json(r.rows);
@@ -4537,14 +4621,34 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
       [req.user.id, receiver_id]
     );
     if (blk.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال الرسالة (الحساب محظور)' });
+    // لازم المرسل يكون طرف في محادثة تخص هذا المشروع: صاحب المشروع، أو يراسل صاحب المشروع، أو فيه محادثة سابقة بينهم عليه
+    const _rid = parseInt(request_id), _to = parseInt(receiver_id);
+    if (!_rid || !_to || _to === req.user.id) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+    if (req.user.role !== 'admin') {
+      const _rq = (await pool.query('SELECT client_id, assigned_provider_id FROM requests WHERE id=$1', [_rid])).rows[0];
+      if (!_rq) return res.status(404).json({ message: 'المشروع غير موجود' });
+      const _own = String(_rq.client_id) === String(req.user.id) || String(_rq.client_id) === String(_to)
+        || String(_rq.assigned_provider_id) === String(req.user.id) || String(_rq.assigned_provider_id) === String(_to);
+      if (!_own) {
+        const _prev = await pool.query('SELECT 1 FROM messages WHERE request_id=$1 AND ((sender_id=$2 AND receiver_id=$3) OR (sender_id=$3 AND receiver_id=$2)) LIMIT 1', [_rid, req.user.id, _to]);
+        if (!_prev.rows.length) return res.status(403).json({ message: 'لا يمكن إرسال رسالة في هذه المحادثة' });
+      }
+    }
+    // الرد على رسالة: مسموح فقط لرسالة من نفس المحادثة (يمنع قراءة رسائل الآخرين عبر الاقتباس)
+    let _replyTo = null;
+    if (reply_to) {
+      const _rm = await pool.query('SELECT 1 FROM messages WHERE id=$1 AND ((sender_id=$2 AND receiver_id=$3) OR (sender_id=$3 AND receiver_id=$2))', [parseInt(reply_to)||0, req.user.id, _to]);
+      if (_rm.rows.length) _replyTo = parseInt(reply_to);
+    }
     let attUrl = attachment_url || null;
+    if (attUrl && !String(attUrl).startsWith('data:')) { attUrl = _safeUrl(attUrl); if (!attUrl) return res.status(400).json({ message: 'رابط المرفق غير صالح' }); }
     if (attUrl && String(attUrl).startsWith('data:')) {
       try { const up = await uploadToCloud(attUrl, 'manaqasa/chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
     }
     const r = await pool.query(
       `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, waveform, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING *`,
-      [request_id, req.user.id, receiver_id, msgText, attUrl, attachment_type || null, attachment_name || null, reply_to || null, (typeof waveform==='string'?waveform.slice(0,300):null)]
+      [request_id, req.user.id, receiver_id, msgText, attUrl, attachment_type || null, attachment_name || null, _replyTo, (typeof waveform==='string'?waveform.slice(0,300):null)]
     );
     const sender = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const senderName = sender.rows[0].name;
@@ -5738,9 +5842,12 @@ app.post('/api/admin/requests/:id/send-report', requirePermission('requests.edit
 app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const u = (await pool.query('SELECT id, name, phone FROM users WHERE id=$1', [id])).rows[0];
+    const u = (await pool.query('SELECT id, name, phone, role FROM users WHERE id=$1', [id])).rows[0];
     if (!u) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    // رابط الدخول المباشر ممنوع لحسابات الإدارة (يمنع أي مشرف يدخل حساب المالك أو مشرف أعلى)
+    if (u.role === 'admin') return res.status(403).json({ message: 'لا يمكن إنشاء رابط دخول لحساب إدارة' });
     const tok = await getMagicToken(u.id);
+    logAdmin(req, 'magic_link', 'user', u.id, u.name).catch(()=>{});
     const phoneNorm = String(u.phone || '').replace(/\D/g, '').replace(/^0/, '966');
     res.json({ ok: true, magic_link: SITE_URL + '/m/' + tok, phone_norm: phoneNorm, name: u.name });
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5827,7 +5934,7 @@ app.put('/api/admin/users/:id/tier', requirePermission('users.badge'), async (re
     }
     // تثبيت المستوى الحالي فقط دون تغييره
     if (lock_only === true) {
-      const r = await pool.query(`UPDATE users SET tier_locked=TRUE WHERE id=$2 AND role='provider' RETURNING id,name,tier,tier_locked`, [null, uid]);
+      const r = await pool.query(`UPDATE users SET tier_locked=TRUE WHERE id=$1 AND role='provider' RETURNING id,name,tier,tier_locked`, [uid]);
       await logAdmin(req, 'set_tier', 'user', uid, 'تثبيت المستوى الحالي ('+(TIER_LABELS[oldTier]||oldTier)+')');
       return res.json(r.rows[0]);
     }
@@ -6539,7 +6646,9 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     if (['completed','in_progress','assigned'].includes(r.rows[0].status)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
     const _wasOpen = (r.rows[0].status === 'open');
     const _projTitle = r.rows[0].title || 'مشروع';
-    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW() WHERE id=$3", [reason, note||null, id]);
+    // مشروع ما انعتمد بعد (تحت المراجعة/مرفوض/يحتاج تعديل): نعلّمه عشان «إعادة النشر» ترجّعه للمراجعة مو للنشر المباشر
+    const _unpub = ['pending_review','review','needs_edit','rejected'].includes(r.rows[0].status);
+    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW(), close_auto_kind=$4 WHERE id=$3", [reason, note||null, id, _unpub ? 'unpublished' : null]);
     try { await remindClosedContacts(id, _projTitle); } catch(e){}
     // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
     if (_wasOpen) {
@@ -6648,14 +6757,14 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
       for (const im of req.body.images.slice(0, 10)) {
         if (typeof im !== 'string' || !im) continue;
         if (im.startsWith('data:')) { const u = await uploadToCloud(im, 'manaqasa/projects'); if (u && u.startsWith('http')) imgs.push(u); else _dropped++; }
-        else imgs.push(im);
+        else if (_safeUrl(im)) imgs.push(_safeUrl(im)); else _dropped++;
       }
       _xs.push('images=$'+_xi++); _xp.push(imgs);
     }
     if (Array.isArray(req.body.attachments)) {
       const atts = [];
       for (const a of req.body.attachments.slice(0, 3)) {
-        if (a && a.url) atts.push({ name: String(a.name||'ملف').slice(0,120), url: a.url });
+        if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name||'ملف').slice(0,120), url: _safeUrl(a.url) });
         else if (a && a.data && String(a.data).startsWith('data:')) {
           let u = null; try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(_){}
           if (u && String(u).startsWith('http')) atts.push({ name: String(a.name||'ملف').slice(0,120), url: u }); else _dropped++;
@@ -6675,9 +6784,10 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
 app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query('SELECT r.title, r.client_id, u.name AS client_name, u.phone AS client_phone FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
+    const r = await pool.query('SELECT r.title, r.client_id, u.name AS client_name, u.phone AS client_phone, u.role AS client_role FROM requests r JOIN users u ON r.client_id=u.id WHERE r.id=$1', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     const row = r.rows[0];
+    if (row.client_role === 'admin') return res.status(403).json({ message: 'لا يمكن إنشاء رابط دخول لحساب إدارة' });
     const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
     const magicTok = await getMagicToken(row.client_id);
     res.json({ ok: true, magic_link: SITE_URL + '/m/' + magicTok, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
@@ -7504,7 +7614,7 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
         (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)) as revenue`, {});
     const lastMonth = await one(`SELECT
         (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct')-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as requests,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct'))::int as requests,
         (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as bids,
         (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE)) as revenue`, {});
 
@@ -7649,7 +7759,7 @@ app.get('/og/project/:id', async (req, res) => {
     const cat = esc(p.category||'مشروع');
     const city = esc(p.city||'السعودية');
     const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><rect x="410" y="150" width="380" height="56" rx="28" fill="rgba(201,146,10,0.18)" stroke="#C9920A" stroke-width="1.5"/><text x="600" y="188" font-family="Arial" font-size="30" fill="#C9920A" text-anchor="middle">${cat}</text><text x="600" y="315" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l1)}</text>${l2?`<text x="600" y="388" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l2)}</text>`:''}<text x="600" y="478" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.7)" text-anchor="middle">${city}</text><text x="600" y="558" font-family="Arial" font-size="32" font-weight="bold" fill="#7dd3fc" text-anchor="middle">قدّم عرضك الآن</text><text x="600" y="598" font-family="Arial" font-size="20" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
   } catch(e) { res.status(500).end(); }
 });
 
@@ -7658,11 +7768,12 @@ app.get('/og/pro/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query(`SELECT name, business_name, city, specialties, avg_rating, review_count FROM users LEFT JOIN LATERAL (SELECT COALESCE(AVG(rating),0)::float as avg_rating, COUNT(*)::int as review_count FROM reviews WHERE reviewed_id=users.id) rv ON true WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).send('Not found');
-    const p=r.rows[0]; const name=p.business_name||p.name||'مزود'; const city=p.city||'السعودية';
-    const specs=(p.specialties||[]).slice(0,2).join(' · '); const avg=parseFloat(p.avg_rating)||0;
+    const _e = s => String(s==null?'':s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+    const p=r.rows[0]; const name=_e(String(p.business_name||p.name||'مزود').slice(0,60)); const city=_e(p.city||'السعودية');
+    const specs=_e((p.specialties||[]).slice(0,2).join(' · ')); const avg=parseFloat(p.avg_rating)||0;
     const stars='★';
     const svg=`<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text><text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text><text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">${city}</text>${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}<text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
   } catch(e) { res.status(500).send('error'); }
 });
 
@@ -7714,8 +7825,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// رابط آمن: http(s) فقط وبدون علامات تنصيص أو مسافات (يمنع javascript: وكسر خصائص HTML)
+function _safeUrl(u){ u = String(u||'').trim(); return /^https?:\/\/[^\s"'<>`\\]+$/i.test(u) && u.length < 2048 ? u : null; }
 async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
-  if (!base64Data || !base64Data.startsWith('data:')) return base64Data;
+  if (!base64Data) return base64Data;
+  if (typeof base64Data !== 'string') return null;
+  if (!base64Data.startsWith('data:')) return _safeUrl(base64Data);
   // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
   const m = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
   if (!m) return null;
