@@ -3,48 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
 <title>الصفحة غير موجودة — مناقصة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0D1829,#16213E,#1B3A6B);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#fff;position:relative;overflow:hidden}
-.stars{position:absolute;inset:0;opacity:.5;pointer-events:none}
-.wrap{text-align:center;max-width:420px;position:relative;z-index:2}
-.logo{font-size:24px;font-weight:900;margin-bottom:40px;display:flex;align-items:center;justify-content:center;gap:8px}
-.logo-dot{width:10px;height:10px;border-radius:50%;background:#C9920A;box-shadow:0 0 0 5px rgba(201,146,10,.25)}
-.code{font-size:96px;font-weight:900;line-height:1;background:linear-gradient(135deg,#C9920A,#F0A500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
-h1{font-size:22px;font-weight:800;margin-bottom:10px}
-p{font-size:14px;color:rgba(255,255,255,.65);line-height:1.8;margin-bottom:32px}
-.btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#C9920A,#A87000);color:#fff;padding:14px 36px;border-radius:12px;text-decoration:none;font-size:15px;font-weight:800;transition:.2s;box-shadow:0 6px 20px rgba(201,146,10,.3)}
-.btn:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(201,146,10,.4)}
-.btn svg{width:18px;height:18px}
+body{font-family:'Tajawal',sans-serif;background:#eef3fb;color:#14223d;min-height:100vh}
+a{color:#1d4ed8;text-decoration:none}
+.hd{background:#172554;color:#fff;padding:13px 16px;display:flex;align-items:center;gap:10px}
+.hd .logo{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#fff}
+.hd .home{margin-right:auto;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:#c9d8ff}
+.hd .home:hover{color:#fff}
+.wrap{max-width:460px;margin:0 auto;padding:28px 16px 40px;display:flex;flex-direction:column;gap:12px}
+.top{text-align:center;margin-bottom:4px}
+.code{font-family:'Cairo',sans-serif;font-size:64px;font-weight:900;color:#1d4ed8;line-height:1}
+h1{font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;margin-top:6px}
+.sub{font-size:13.5px;color:#5b6b85;font-weight:700;margin-top:6px;line-height:1.8}
+.srch{display:flex;gap:8px}
+.in{flex:1;min-width:0;border:1.5px solid #dbe5f5;border-radius:13px;padding:12px 14px;font-family:inherit;font-size:14px;background:#fff;color:#14223d;outline:none}
+.in:focus{border-color:#1d4ed8}
+.sb{border:0;background:#1d4ed8;color:#fff;border-radius:13px;padding:0 18px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.sb:hover{background:#1e3a8a}
+.lk{background:#fff;border:1px solid #e1e9f6;border-radius:14px;padding:13px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:13.5px;color:#14223d}
+.lk:hover{border-color:#bcd0f2;color:#14223d}
+.lk .i{width:36px;height:36px;border-radius:11px;background:#eef3ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 </style>
 </head>
 <body>
-<svg class="stars" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">
-  <line x1="50" y1="100" x2="160" y2="180" stroke="#fff" stroke-width="1" opacity=".3"/>
-  <line x1="160" y1="180" x2="300" y2="120" stroke="#fff" stroke-width="1" opacity=".3"/>
-  <line x1="300" y1="120" x2="350" y2="260" stroke="#C9920A" stroke-width="1" opacity=".4"/>
-  <line x1="160" y1="180" x2="220" y2="340" stroke="#fff" stroke-width="1" opacity=".3"/>
-  <line x1="80" y1="420" x2="220" y2="340" stroke="#fff" stroke-width="1" opacity=".25"/>
-  <line x1="220" y1="340" x2="340" y2="450" stroke="#fff" stroke-width="1" opacity=".25"/>
-  <circle cx="50" cy="100" r="3" fill="#fff" opacity=".6"/>
-  <circle cx="160" cy="180" r="5" fill="#fff" opacity=".8"/>
-  <circle cx="300" cy="120" r="3.5" fill="#C9920A"/>
-  <circle cx="350" cy="260" r="3" fill="#fff" opacity=".5"/>
-  <circle cx="220" cy="340" r="4.5" fill="#C9920A" opacity=".7"/>
-  <circle cx="80" cy="420" r="3" fill="#fff" opacity=".4"/>
-  <circle cx="340" cy="450" r="3" fill="#fff" opacity=".4"/>
-</svg>
-<div class="wrap">
-  <div class="logo"><span class="logo-dot"></span>مناقصة</div>
-  <div class="code">404</div>
-  <h1>الصفحة غير موجودة</h1>
-  <p>عذراً، الصفحة التي تبحث عنها غير متوفرة أو تم نقلها. تأكد من الرابط أو ارجع للصفحة الرئيسية.</p>
-  <a href="/" class="btn">
-    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    العودة للرئيسية
-  </a>
+<div class="hd">
+  <a href="/" class="logo">مناقصة</a>
+  <a href="/" class="home">الرئيسية <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></a>
 </div>
+<div class="wrap">
+  <div class="top">
+    <div class="code">404</div>
+    <h1>الصفحة اللي تدوّرها مو موجودة</h1>
+    <div class="sub">ممكن الرابط قديم أو المشروع انحذف. جرّب تبحث أو اختر من تحت.</div>
+  </div>
+  <form class="srch" onsubmit="return go404(event)">
+    <input class="in" id="q404" type="search" maxlength="120" placeholder="ابحث عن خدمة أو مشروع…" aria-label="بحث">
+    <button class="sb" type="submit">بحث</button>
+  </form>
+  <a class="lk" href="/new.html"><span class="i">＋</span>انشر مشروعك واستقبل عروض أسعار</a>
+  <a class="lk" id="lk-browse" href="/"><span class="i">📋</span>تصفّح المشاريع المفتوحة</a>
+  <a class="lk" href="/dalil"><span class="i">👷</span>دليل المزوّدين حسب المدينة</a>
+  <a class="lk" id="lk-wa" href="https://wa.me/966594011313" target="_blank" rel="noopener"><span class="i">💬</span>تواصل مع الدعم</a>
+</div>
+<script>
+// البحث: نفس مسار بحث الرئيسية (معالج النشر يستقبل ?q)
+function go404(e){
+  if(e)e.preventDefault();
+  var q=String(document.getElementById('q404').value||'').trim();
+  location.href=q?'/new.html?q='+encodeURIComponent(q.slice(0,120)):'/';
+  return false;
+}
+// المزوّد المسجّل: تصفّح المشاريع من لوحته
+try{
+  var _u=JSON.parse(localStorage.getItem('user')||'{}');
+  if(localStorage.getItem('token')&&_u&&_u.role==='provider') document.getElementById('lk-browse').href='/dashboard-provider.html#browse';
+}catch(e){}
+// رقم الدعم من الإعدادات (الافتراضي احتياط)
+fetch((window.API||'https://manaqasati-production.up.railway.app')+'/api/support-contact').then(function(r){return r.json();}).then(function(d){
+  var n=String(d&&d.whatsapp||'').replace(/[^0-9]/g,''); if(!n)return;
+  if(n.charAt(0)==='0')n='966'+n.slice(1); else if(n.slice(0,3)!=='966')n='966'+n;
+  document.getElementById('lk-wa').href='https://wa.me/'+n;
+}).catch(function(){});
+</script>
 </body>
 </html>
