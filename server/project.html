@@ -17,10 +17,10 @@
 <script type="application/ld+json" id="ld"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="alternate icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
 <style>
 :root{--p:#1e3a8a;--p2:#1e40af;--p3:#172554;--gold:#1d4ed8;--gold-d:#1e40af;--gold-l:#eff4ff;--gold-soft:#bfdbfe;--text:#1e293b;--text2:#374151;--muted:#475569;--hint:#64748b;--border:#e6eefb;--bg:#f0f5ff;--white:#FFFFFF;--green:#16A34A;--green-l:#DCFCE7;--red:#DC2626;--sky:#0ea5e9;--star:#F0A500;--shadow:0 2px 8px rgba(37,99,235,.05);--shadow-md:0 4px 16px rgba(37,99,235,.1);}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -489,13 +489,15 @@ function catSvg(cat,size){
 var _req = null, _bids = [], _rid = null;
 
 // ═══ HELPERS ═══
-function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// يقبل روابط http(s) أو مسار داخلي أو صورة data فقط
+function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 function fmtN(n){return n?Number(n).toLocaleString('en-US'):'0';}
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function ago(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return 'لحظات';if(s<3600)return Math.floor(s/60)+' دقيقة';if(s<86400)return Math.floor(s/3600)+' ساعة';if(s<2592000)return Math.floor(s/86400)+' يوم';return fmtDate(d);}
 function ph966(p){if(!p)return'';var n=String(p).replace(/[^0-9]/g,'');if(n.startsWith('966'))return'+'+n;if(n.startsWith('0'))return'+966'+n.slice(1);return'+966'+n;}
 function mkStars(n){var s='';for(var i=1;i<=5;i++){var f=i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)';s+='<svg width="12" height="12" fill="'+f+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}return s;}
-function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:')));}
+function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:'))&&_safeUrl(s));}
 function getUser(){try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return(t&&u)?u:null;}catch(e){return null;}}
 function effRole(u){ if(!u)return null; var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
 function getToken(){return localStorage.getItem('token')||'';}
@@ -737,7 +739,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   var _maskNote=(!isOwner&&!isMine&&!(price>0));
   if(note&&!b.note_locked)h+='<div class="pj-note" onclick="this.classList.toggle(\'open\')">'+esc(_maskNote?_maskNums(note):note)+'</div>';
   if(b.note_locked)h+='<div class="pj-lock">🔒 التفاصيل والسعر تظهر لصاحب المشروع فقط</div>';
-  if(b.attachment_url)h+='<a href="'+esc(b.attachment_url)+'" target="_blank" rel="noopener" class="pj-att">📎 عرض السعر (ملف مرفق)</a>';
+  if(_safeUrl(b.attachment_url))h+='<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" class="pj-att">📎 عرض السعر (ملف مرفق)</a>';
   h+='<div class="pj-acts">';
   if(isOwner&&_pjCanAccept(reqStatus)&&!isAcc&&!isRej)h+='<button class="pj-b ok" onclick="acceptBid('+b.id+')">قبول العرض</button>';
   if(provPhone&&!isMine){
@@ -845,16 +847,17 @@ function _pjDetailsHtml(req){
   if(Array.isArray(_atts)&&_atts.length){
     _atts.forEach(function(a){
       var url=(a&&(a.url||a.data||a))||'';var nm=(a&&a.name)?a.name:'ملف مرفق';
-      if(!/^https?:/i.test(String(url)))return;
+      if(!/^https?:/i.test(String(url))||!_safeUrl(url))return;
       var ext=String(nm).split('.').pop().toLowerCase();
       var ic=ext==='pdf'?'📄':(['doc','docx'].indexOf(ext)>-1?'📝':(['xls','xlsx'].indexOf(ext)>-1?'📊':'📎'));
       var dl=API+'/api/dl?u='+encodeURIComponent(url)+'&n='+encodeURIComponent(nm);
       h+='<div class="pj-file"><a class="pj-fo" href="'+esc(url)+'" target="_blank" rel="noopener"><span style="font-size:22px">'+ic+'</span><div style="flex:1;min-width:0"><b>'+esc(nm)+'</b><small>'+(ext?esc(ext.toUpperCase())+' · ':'')+'اضغط للعرض</small></div></a><a class="pj-fb" href="'+esc(url)+'" target="_blank" rel="noopener">فتح</a><a class="pj-fb pj-fd" href="'+esc(dl)+'">⬇ تحميل</a></div>';
     });
   }
-  if(req.geo_lat&&req.geo_lng){
-    h+='<div style="border:1px solid #e1e9f6;border-radius:12px;overflow:hidden"><iframe class="loc-map" src="https://maps.google.com/maps?q='+req.geo_lat+','+req.geo_lng+'&z=15&output=embed" style="width:100%;height:180px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="موقع المشروع"></iframe></div>';
-    h+='<a class="pj-b" href="https://www.google.com/maps/search/?api=1&query='+req.geo_lat+','+req.geo_lng+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a>';
+  var _glat=parseFloat(req.geo_lat),_glng=parseFloat(req.geo_lng);
+  if(req.geo_lat&&req.geo_lng&&isFinite(_glat)&&isFinite(_glng)){
+    h+='<div style="border:1px solid #e1e9f6;border-radius:12px;overflow:hidden"><iframe class="loc-map" src="https://maps.google.com/maps?q='+_glat+','+_glng+'&z=15&output=embed" style="width:100%;height:180px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="موقع المشروع"></iframe></div>';
+    h+='<a class="pj-b" href="https://www.google.com/maps/search/?api=1&query='+_glat+','+_glng+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a>';
   } else if(!getUser()){
     h+='<div class="pj-lock">🔒 الموقع الدقيق يظهر للمزوّدين المسجّلين</div>';
   }
@@ -1178,23 +1181,11 @@ async function openChatRoom(){
   var u=getUser();if(!u)return;
   var wrap=document.getElementById('chat-msgs-wrap');
   wrap.innerHTML='<div style="text-align:center;color:#64748b;font-size:12px;padding:20px">جاري التحميل...</div>';
-  // الطرف الآخر = صاحب المشروع (العميل)
+  // الطرف الآخر = صاحب المشروع (العميل) — المحادثة مربوطة بهذا المشروع نفسه، وما نرسل شي تلقائياً
   var ownerId=(_req&&_req.client_id)||(_req&&_req.client&&_req.client.id);
   _chatReceiver=ownerId;
-  try{
-    // direct-message يستخدم provider_id كمعرّف الطرف الآخر
-    var r=await fetch(API+'/api/direct-message',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({provider_id:ownerId})
-    });
-    var d=await r.json();
-    _chatReqId=d.request_id||_rid;
-    loadChatMsgs();
-  }catch(e){
-    _chatReqId=_rid;
-    loadChatMsgs();
-  }
+  _chatReqId=_rid;
+  loadChatMsgs();
 }
 
 async function loadChatMsgs(){
@@ -1221,7 +1212,7 @@ function renderMsgs(wrap){
   wrap.innerHTML=_chatMsgs.map(function(m){
     var isMe=u&&String(m.sender_id)===String(u.id);
     return '<div style="max-width:75%;padding:10px 13px;border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isMe?'#1e3a8a':'#fff')+';color:'+(isMe?'#fff':'#1e293b')+';align-self:'+(isMe?'flex-end':'flex-start')+';font-size:13px;line-height:1.6;border:1px solid #e6eefb">'
-      +(m.attachment_url?((m.attachment_type||'').indexOf('audio')===0?pVpHtml(m.attachment_url,m.waveform,isMe):((m.attachment_type||'').indexOf('image')===0?'<img src="'+esc(m.attachment_url)+'" onclick="openViewer(this.src)" style="max-width:170px;border-radius:8px;display:block;cursor:pointer;margin-bottom:'+(m.content?'6px':'0')+'">':'<a href="'+esc(m.attachment_url)+'" target="_blank" style="color:inherit;text-decoration:underline">📎 مرفق</a>')):'')
+      +(m.attachment_url?((m.attachment_type||'').indexOf('audio')===0?pVpHtml(m.attachment_url,m.waveform,isMe):((m.attachment_type||'').indexOf('image')===0?'<img src="'+esc(_safeUrl(m.attachment_url))+'" onclick="openViewer(this.src)" style="max-width:170px;border-radius:8px;display:block;cursor:pointer;margin-bottom:'+(m.content?'6px':'0')+'">':'<a href="'+esc(_safeUrl(m.attachment_url))+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">📎 مرفق</a>')):'')
       +esc(m.content)
       +'<div style="font-size:10px;opacity:.45;margin-top:3px">'+ago(m.created_at)+'</div>'
       +'</div>';
@@ -1370,13 +1361,13 @@ function _cmConfirm(){
   if(!sel){ alert('اختر سبب الإغلاق'); return; }
   var note=(document.getElementById('cm-note')||{}).value||'';
   var id=getReqId();
-  fetch(API+'/api/requests/'+id+'/close-by-owner',Object.assign({method:'POST',body:JSON.stringify({reason:sel.value,note:note})},hdr())).then(function(r){return r.json();}).then(function(d){
+  fetch(API+'/api/requests/'+id+'/close-by-owner',{method:'POST',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'},body:JSON.stringify({reason:sel.value,note:note})}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });
 }
 function _pjToggleSave(){
-  if(!getUser()){ location.href='/login.html'; return; }
+  if(!getUser()){ goLogin(); return; }
   var btn=document.getElementById('pj-save-btn');
   fetch(API+'/api/saved-requests/'+_rid,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()}})
     .then(function(r){return r.json();})
