@@ -218,7 +218,7 @@ var user={};
 try{ user=JSON.parse(localStorage.getItem('user')||'{}'); }catch(e){}
 if(!token||!user.id){ location.replace('/auth.html'); }
 // الدور الفعلي: يحترم الوضع النشط (activeMode) لأصحاب الحسابين — نفس منطق effRole في باقي الصفحات
-var isProvider=(function(u){ var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return true; if(m==='client'&&(u.role==='client'||u.can_request))return false; return u.role==='provider'; })(user);
+var isProvider=(function(u){ var m=null; try{m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return true; if(m==='client'&&(u.role==='client'||u.can_request))return false; return u.role==='provider'; })(user);
 
 var convs=[], msgs=[], curReq=null, curWith=null, curName='', curProj='';
 var replyCtx=null, pendAttach=null, sending=false, poll=null, blocked=false, _openedReq=0, _msgsSig='';

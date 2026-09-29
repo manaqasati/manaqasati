@@ -11,7 +11,7 @@
     if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة
     // روابط لازم تنعالج بالصفحة (دخول سحري/استعادة كلمة مرور/عرض/بطاقة/إحالة) — لا نحوّل
     if(p.get('magic')||p.get('reset')||p.get('redirect')||p.get('t')||p.get('card')||p.get('ref')) return;
-    var _m=''; try{_m=localStorage.getItem('activeMode')||'';}catch(e){}
+    var _m=''; try{_m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'')||'';}catch(e){}
     var _eff = (u.role==='admin') ? 'admin'
       : ((_m==='provider' && (u.role==='provider' || u.can_provide)) ? 'provider'
       : ((_m==='client' && (u.role==='client' || u.can_request)) ? 'client'
@@ -689,7 +689,7 @@ async function doSubmit(){
           if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
             location.href=_back;
           } else {
-            var _m=''; try{_m=localStorage.getItem('activeMode')||'';}catch(e){}
+            var _m=''; try{_m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'')||'';}catch(e){}
             var _eff=(rl==='admin')?'admin':((_m==='provider'&&(rl==='provider'||(d.user&&d.user.can_provide)))?'provider':((_m==='client'&&(rl==='client'||(d.user&&d.user.can_request)))?'client':rl));
             if(_eff==='admin') location.href='dashboard-admin.html';
             else if(_eff==='provider') location.href='dashboard-provider.html';

@@ -946,12 +946,54 @@ app.get('*', (req, res, next) => {
   res.set('Content-Type','text/html; charset=utf-8').send(html);
 });
 
-app.get('/dalil', (req, res) => {
-  const cards = SEO_CATS.map(cat => {
-    const links = SEO_CITIES.slice(0,8).map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(city)}</a>`).join('');
-    return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:16px;margin-bottom:12px"><h2 style="font-size:16px;color:#1e3a8a;margin:0 0 9px">${seoEsc(cat)}</h2><div>${links}</div></div>`;
+// عدد المزوّدين لكل تخصص (للدليل) — مخزّن 10 دقائق
+let _dalilCounts = { at: 0, map: {} };
+async function _dalilProvCounts(){
+  if (Date.now() - _dalilCounts.at < 600000) return _dalilCounts.map;
+  try {
+    const r = await pool.query(`SELECT s, COUNT(*)::int n FROM (SELECT unnest(COALESCE(specialties,'{}'::text[])) s FROM users
+      WHERE (role='provider' OR COALESCE(can_provide,FALSE)) AND COALESCE(is_active,TRUE)) x GROUP BY s`);
+    const m = {}; r.rows.forEach(x => { m[x.s] = x.n; }); _dalilCounts = { at: Date.now(), map: m };
+  } catch(e) {}
+  return _dalilCounts.map;
+}
+app.get('/dalil', async (req, res) => {
+  const counts = await _dalilProvCounts();
+  const PAL = [['#dbeafe','#1d4ed8'],['#fef3c7','#b45309'],['#e0f2fe','#0369a1'],['#ffedd5','#c2410c'],['#dcfce7','#15803d'],['#ede9fe','#6d28d9'],['#fce7f3','#be185d'],['#f1f5f9','#334155']];
+  const TOP = SEO_CITIES.slice(0, 8);
+  const cards = SEO_CATS.map((cat, i) => {
+    const [bg, fg] = PAL[i % PAL.length];
+    const n = counts[cat] || 0;
+    const links = TOP.map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" data-city="${seoEsc(city)}">${seoEsc(city)}</a>`).join('');
+    return `<section class="dc" data-n="${seoEsc(cat)}"><div class="dh"><span class="di" style="background:${bg};color:${fg}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6a4 4 0 00-5 5l-6 6 3 3 6-6a4 4 0 005-5l-3 3-3-3z"/></svg></span><div><h2>${seoEsc(cat)}</h2><span class="dn">${n ? n + ' مزوّد' : 'انشر مشروعك وتوصلك عروض'}</span></div></div><div class="dl">${links}</div></section>`;
   }).join('');
-  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر مشروعك واستقبل عروضاً من عدة مزوّدين."><link rel="canonical" href="${SITE_URL}/dalil"><style>body{font-family:Tajawal,system-ui,sans-serif;background:#f0f5ff;color:#1e293b;max-width:760px;margin:0 auto;padding:22px 16px;line-height:1.7}a{color:#1e40af}h1{color:#1e3a8a;font-size:24px}</style></head><body><h1>دليل الخدمات في السعودية</h1><p>اختر التخصص والمدينة لتصفّح المزوّدين، أو <a href="/post">انشر مشروعك</a> واستقبل عروضاً من عدة مزوّدين.</p>${cards}<p style="margin-top:20px"><a href="/">← مناقصة — الصفحة الرئيسية</a></p></body></html>`);
+  const cityChips = ['<button class="cf on" data-c="">كل المدن</button>'].concat(TOP.map(c => `<button class="cf" data-c="${seoEsc(c)}">${seoEsc(c)}</button>`)).join('');
+  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل مزوّدي الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر مشروعك واستقبل عروضاً من عدة مزوّدين."><link rel="canonical" href="${SITE_URL}/dalil"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@900&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box}body{margin:0;font-family:Tajawal,system-ui,sans-serif;background:#f4f7fc;color:#14223d;line-height:1.7}a{color:#1d4ed8;text-decoration:none}
+.top{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.95);border-bottom:1px solid #e1e9f6}.top div{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center}.top b{font-family:Cairo,sans-serif;font-size:21px;color:#1e3a8a}.top a.h{margin-right:auto;font-weight:800;font-size:14px}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 40px}h1{font-family:Cairo,sans-serif;font-size:clamp(24px,4vw,34px);margin:0 0 6px;color:#14223d}.sub{margin:0 0 16px;color:#5b6b85;font-weight:700;font-size:15px}
+.q{width:100%;border:1.5px solid #dbe5f5;border-radius:13px;padding:13px 16px;font-family:inherit;font-size:15px;background:#fff;color:#14223d;margin-bottom:12px}
+.cfs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px}.cf{border:1.5px solid #dbe5f5;background:#fff;color:#334766;border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13.5px;font-weight:800;white-space:nowrap;cursor:pointer}.cf.on{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dc{background:#fff;border:1px solid #e1e9f6;border-radius:18px;padding:15px;display:flex;flex-direction:column;gap:11px}.dh{display:flex;gap:11px;align-items:center}.di{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dc h2{margin:0;font-size:16px;font-weight:900}.dn{font-size:12.5px;font-weight:700;color:#5b6b85}
+.dl{display:flex;flex-wrap:wrap;gap:6px}.dl a{background:#eef3fb;color:#1e3a8a;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:800}.dl a:hover{background:#dbeafe}
+.dl a.hl{background:#1d4ed8;color:#fff}.dc.hid{display:none}
+.cta{margin-top:18px;background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border-radius:20px;padding:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}.cta b{font-size:18px;display:block}.cta span{color:#c9d8ff;font-weight:700}.cta a{margin-right:auto;background:#fff;color:#1e3a8a;border-radius:13px;padding:12px 22px;font-weight:800}
+.empty{display:none;text-align:center;color:#5b6b85;font-weight:700;padding:30px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.grid{grid-template-columns:1fr}}</style></head>
+<body><header class="top"><div><b>مناقصة</b><a class="h" href="/">الرئيسية</a></div></header><main>
+<h1>دليل مزوّدي الخدمات</h1><p class="sub">اختر الخدمة ومدينتك، وشوف المزوّدين وتقييماتهم — أو <a href="/new.html">انشر مشروعك</a> وتوصلك العروض.</p>
+<input class="q" id="q" type="search" placeholder="ابحث عن خدمة: سباكة، مكيفات، مظلات…" aria-label="ابحث عن خدمة" autocomplete="off">
+<div class="cfs" id="cfs">${cityChips}</div>
+<div class="grid" id="grid">${cards}</div><div class="empty" id="empty">ما لقينا خدمة بهالاسم — <a href="/new.html">انشر مشروعك</a> وبنوصله للمزوّدين المناسبين.</div>
+<section class="cta"><div><b>ما لقيت اللي تبيه؟</b><span>انشر مشروعك والمزوّدين يجونك بعروضهم.</span></div><a href="/new.html">انشر مشروعك مجاناً</a></section>
+</main>
+<script>(function(){var n=function(t){return String(t||'').replace(/[\\u064B-\\u0652\\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase();};
+var q=document.getElementById('q'),cards=[].slice.call(document.querySelectorAll('.dc')),em=document.getElementById('empty');
+q.addEventListener('input',function(){var v=n(q.value.trim()),k=0;cards.forEach(function(c){var ok=!v||n(c.getAttribute('data-n')).indexOf(v.replace(/^ال/,''))>=0;c.classList.toggle('hid',!ok);if(ok)k++;});em.style.display=k?'none':'block';});
+document.getElementById('cfs').addEventListener('click',function(e){var b=e.target.closest('.cf');if(!b)return;[].forEach.call(document.querySelectorAll('.cf'),function(x){x.classList.toggle('on',x===b);});var c=b.getAttribute('data-c');[].forEach.call(document.querySelectorAll('.dl a'),function(a){a.classList.toggle('hl',!!c&&a.getAttribute('data-city')===c);});});})();</script>
+</body></html>`);
 });
 
 // مولّدات محتوى غني لصفحات SEO — يجعل كل صفحة قيّمة لقوقل حتى بلا مزوّدين
@@ -2348,6 +2390,7 @@ async function runReminders(){
       }
     }
   }catch(e){ console.error('runReminders:', e.message); }
+  try { await nudgeAcceptAsks(); } catch(e){ console.error('nudgeAcceptAsks:', e.message); }
 }
 setInterval(() => _jobLock('reminders', runReminders), 6*60*60*1000); // كل 6 ساعات
 async function runEngagementReminders(){
@@ -2491,6 +2534,10 @@ async function setupDatabase() {
     // «شامل المواد؟» (yes/no — اختياري) · متى شاف صاحب المشروع العرض · آخر «أبي عروض أكثر»
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
+    // طلب اعتماد العرض: المزوّد يطلب من العميل يعتمد عرضه داخل المنصة بعد ما اتفقوا
+    await _mig(`CREATE TABLE IF NOT EXISTS bid_accept_asks (id SERIAL PRIMARY KEY, bid_id INTEGER UNIQUE NOT NULL, request_id INTEGER NOT NULL, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', sends INTEGER NOT NULL DEFAULT 1, last_sent_at TIMESTAMPTZ DEFAULT NOW(), responded_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig('CREATE INDEX IF NOT EXISTS idx_bid_asks_client ON bid_accept_asks(client_id, status)');
+    await _mig('ALTER TABLE bids ADD COLUMN IF NOT EXISTS ask_nudged BOOLEAN DEFAULT FALSE');
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
     for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
@@ -2676,6 +2723,9 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await _mig("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
     try { await _mig("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
+    // آخر حساب استخدمه صاحب الحسابين (عميل/مزوّد) — يرجع له عند أي دخول جديد حتى من جهاز ثاني
+    await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_mode VARCHAR(10)');
+    await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_hint_dismissed BOOLEAN DEFAULT FALSE');
     // توحيد التخصصات الإنجليزية القديمة إلى العربية (مرة واحدة، آمن عبر array_replace)
     try {
       const _specMap = {
@@ -3232,11 +3282,34 @@ app.post('/api/me/enable-provider', auth, async (req, res) => {
     if (!specs.length) return res.status(400).json({ message: 'اختر تخصصاً واحداً على الأقل' });
     if (!city) return res.status(400).json({ message: 'أدخل مدينتك' });
     await pool.query(
-      "UPDATE users SET can_provide=TRUE, specialties=$1, city=COALESCE(NULLIF($2,''),city), bio=COALESCE(NULLIF($3,''),bio), notify_categories=COALESCE(notify_categories,$1) WHERE id=$4",
+      "UPDATE users SET can_provide=TRUE, last_mode='provider', specialties=$1, city=COALESCE(NULLIF($2,''),city), bio=COALESCE(NULLIF($3,''),bio), notify_categories=COALESCE(notify_categories,$1) WHERE id=$4",
       [specs, city, bio, req.user.id]
     );
     res.json({ ok: true, message: 'تم تفعيل تقديم العروض' });
   } catch(e){ console.error('enable-provider:', e.message); res.status(500).json({ message: 'تعذّر التفعيل' }); }
+});
+app.post('/api/me/mode', auth, async (req, res) => {
+  try {
+    const m = req.body && req.body.mode;
+    if (m !== 'client' && m !== 'provider') return res.status(400).json({ message: 'وضع غير صحيح' });
+    await pool.query('UPDATE users SET last_mode=$1 WHERE id=$2 AND last_mode IS DISTINCT FROM $1', [m, req.user.id]);
+    res.json({ ok: true, last_mode: m });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// «أنت مزوّد؟» — عميل تبيّن بياناته إنه مزوّد خدمة (اسم منشأة/نبذة، أو ما نشر مشروع بعد 3 أيام)
+app.get('/api/me/provider-hint', auth, async (req, res) => {
+  try {
+    const u = (await pool.query(`SELECT role, COALESCE(can_provide,FALSE) cp, COALESCE(provider_hint_dismissed,FALSE) d, business_name, bio, created_at,
+      (SELECT COUNT(*)::int FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) AS nreq FROM users WHERE id=$1`, [req.user.id])).rows[0];
+    if (!u || u.role !== 'client' || u.cp || u.d) return res.json({ show: false, dismissed: !!(u && u.d) });
+    const looks = (u.business_name && String(u.business_name).trim()) || (u.bio && String(u.bio).trim().length >= 20);
+    const idle = u.nreq === 0 && u.created_at && (Date.now() - new Date(u.created_at).getTime()) > 3*86400000;
+    res.json({ show: !!(looks || idle) });
+  } catch(e){ res.json({ show: false }); }
+});
+app.post('/api/me/provider-hint/dismiss', auth, async (req, res) => {
+  try { await pool.query('UPDATE users SET provider_hint_dismissed=TRUE WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
+  catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/me/enable-request', auth, async (req, res) => {
   try { await pool.query('UPDATE users SET can_request=TRUE WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
@@ -3394,7 +3467,9 @@ app.get('/api/provider/bids', auth, async (req, res) => {
     const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
-      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+      , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id LEFT JOIN bid_accept_asks ak ON ak.bid_id=b.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    r.rows.forEach(b => { const st = _askState(b); b.ask_can = !!st.can; b.ask_why = st.why || null; b.ask_next_at = st.next_at || null; b.ask_left = Math.max(0, ASK_MAX_SENDS - (b.ask_sends||0)); delete b.real_bid; delete b.askable_req; });
     // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
     try {
       for (const b of r.rows) {
@@ -4165,6 +4240,109 @@ app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ طلب اعتماد العرض داخل المنصة ═══
+// الأساس: المزوّد نفسه يضغط الزر، والزر ما يظهر إلا لعرض حقيقي انفتح فيه التواصل مع العميل
+// (رقم العميل ظهر للمزوّد، أو رسائل بينهم)، والعرض ما زال بانتظار قرار العميل والمشروع ما انعتمد لأحد.
+const ASK_MAX_SENDS = 3, ASK_COOLDOWN_H = 24;
+const _REAL_BID_SQL = `(b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))`;
+const _ASKABLE_REQ_SQL = `(r.assigned_provider_id IS NULL AND (r.status NOT IN ('completed','cancelled','closed_auto','expired','closed','rejected','pending_review','review','needs_edit','in_progress')
+      OR (r.status IN ('closed_auto','expired','closed') AND COALESCE(r.closed_at, r.close_at, r.created_at + INTERVAL '30 days') >= NOW() - INTERVAL '90 days')))`;
+async function _askInfo(bidId){
+  const q = await pool.query(`SELECT b.id, b.request_id, b.provider_id, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit, b.status, r.client_id, r.title,
+      (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req,
+      a.id AS ask_id, a.status AS ask_status, a.sends AS ask_sends, a.last_sent_at AS ask_last_at
+    FROM bids b JOIN requests r ON r.id=b.request_id LEFT JOIN bid_accept_asks a ON a.bid_id=b.id WHERE b.id=$1`, [bidId]);
+  return q.rows[0] || null;
+}
+function _askState(x){
+  // يرجّع: can (يقدر يرسل الحين) + why (السبب لو ما يقدر) + next_at (متى يقدر)
+  if (!x) return { can:false, why:'غير موجود' };
+  if (x.status === 'accepted') return { can:false, why:'accepted' };
+  if (x.status === 'rejected' || !x.real_bid || !x.askable_req) return { can:false, why:'not_eligible' };
+  if (x.ask_status === 'declined' || x.ask_status === 'other') return { can:false, why:x.ask_status };
+  if (x.ask_id && (x.ask_sends||0) >= ASK_MAX_SENDS) return { can:false, why:'max' };
+  if (x.ask_last_at) { const next = new Date(x.ask_last_at).getTime() + ASK_COOLDOWN_H*3600000; if (next > Date.now()) return { can:false, why:'cooldown', next_at: new Date(next).toISOString() }; }
+  return { can:true };
+}
+app.post('/api/bids/:id/ask-accept', rateLimiter(20, 600000), auth, async (req, res) => {
+  try {
+    const x = await _askInfo(parseInt(req.params.id));
+    if (!x || String(x.provider_id) !== String(req.user.id)) return res.status(404).json({ message: 'العرض غير موجود' });
+    const st = _askState(x);
+    if (!st.can) {
+      const msg = st.why === 'accepted' ? 'عرضك معتمد أصلاً'
+        : st.why === 'declined' ? 'العميل رد إنكم ما اتفقتوا بعد — كمّل التواصل معه، ولو اتفقتوا يقدر يعتمد عرضك من لوحته'
+        : st.why === 'other' ? 'العميل اختار مزوّداً آخر لهذا المشروع'
+        : st.why === 'max' ? 'أرسلت الطلب ' + ASK_MAX_SENDS + ' مرات — العميل يقدر يعتمد عرضك من لوحته متى ما حب'
+        : st.why === 'cooldown' ? 'أرسلت الطلب قبل قليل — تقدر تذكّره بعد ' + Math.max(1, Math.ceil((new Date(st.next_at).getTime() - Date.now())/3600000)) + ' ساعة'
+        : 'ما تقدر تطلب الاعتماد على هذا العرض حالياً';
+      return res.status(400).json({ message: msg, why: st.why, next_at: st.next_at || null });
+    }
+    const up = await pool.query(`INSERT INTO bid_accept_asks (bid_id, request_id, provider_id, client_id) VALUES ($1,$2,$3,$4)
+      ON CONFLICT (bid_id) DO UPDATE SET sends=bid_accept_asks.sends+1, last_sent_at=NOW() WHERE bid_accept_asks.status='pending'
+      RETURNING sends, last_sent_at`, [x.id, x.request_id, x.provider_id, x.client_id]);
+    if (!up.rows.length) return res.status(400).json({ message: 'ما تقدر تطلب الاعتماد على هذا العرض حالياً' });
+    const pv = (await pool.query(`SELECT COALESCE(NULLIF(business_name,''), name) AS n FROM users WHERE id=$1`, [x.provider_id])).rows[0] || {};
+    const pName = pv.n || 'المزوّد';
+    const priceTxt = (parseFloat(x.price)||0).toLocaleString('en-US') + ' ر.س' + (x.price_unit && x.price_unit !== 'total' ? ' / ' + (x.price_unit === 'm2' ? 'م²' : 'وحدة') : '');
+    const t = '🤝 ' + pName + ' يطلب اعتماد عرضه';
+    const body = 'على «' + (x.title||'مشروعك') + '» (' + priceTxt + (x.days ? ' · ' + x.days + ' يوم' : '') + '). إذا اتفقتوا اعتمد العرض عشان تقدر تقيّمه وتتابع التنفيذ.';
+    await notify(x.client_id, t, body, 'accept_ask', x.request_id);
+    // رسالة من المزوّد داخل المحادثة (هو اللي ضغط الزر)
+    try {
+      const msgTxt = 'طلبت منك اعتماد عرضي على «' + (x.title||'المشروع') + '» — ' + priceTxt + (x.days ? ' · ' + x.days + ' يوم' : '') + '.\nإذا اتفقنا تقدر تعتمده من لوحتك (الرئيسية أو مشاريعي). شكراً لك.';
+      const m = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [x.request_id, x.provider_id, x.client_id, msgTxt]);
+      wsBroadcast(x.client_id, { type:'new_message', message:{ ...m.rows[0], sender_name:pName }, request_id:x.request_id, sender_id:x.provider_id, sender_name:pName });
+    } catch(e){}
+    try {
+      const cu = (await pool.query('SELECT name, email FROM users WHERE id=$1', [x.client_id])).rows[0];
+      if (cu && cu.email) sendEmail(cu.email, t, emailTpl(t, `<p>مرحباً${cu.name?' '+eEsc(cu.name):''}،</p><p>${eEsc(body)}</p>`, 'اعتماد العرض', SITE_URL + '/dashboard-client.html')).catch(()=>{});
+    } catch(e){}
+    res.json({ ok: true, sends: up.rows[0].sends, left: Math.max(0, ASK_MAX_SENDS - up.rows[0].sends), next_at: new Date(new Date(up.rows[0].last_sent_at).getTime() + ASK_COOLDOWN_H*3600000).toISOString() });
+  } catch(e) { console.error('ask-accept:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// طلبات الاعتماد المعلّقة عند العميل
+app.get('/api/client/accept-asks', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT a.id, a.bid_id, a.request_id, a.last_sent_at, a.sends, r.title, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit,
+        b.provider_id, COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.profile_image AS provider_image,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS provider_rating,
+        (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=u.id) AS provider_reviews
+      FROM bid_accept_asks a JOIN bids b ON b.id=a.bid_id JOIN requests r ON r.id=a.request_id JOIN users u ON u.id=a.provider_id
+      WHERE a.client_id=$1 AND a.status='pending' AND b.status NOT IN ('accepted','rejected') AND ${_ASKABLE_REQ_SQL}
+      ORDER BY a.last_sent_at DESC LIMIT 10`, [req.user.id]);
+    res.json(r.rows.map(x => ({ ...x, provider_image: _safeUrl(x.provider_image) || null })));
+  } catch(e) { console.error('accept-asks:', e.message); res.json([]); }
+});
+// رد العميل: ما اتفقنا بعد / اخترت مزوّد ثاني (الاعتماد نفسه يمر بمسار قبول العرض العادي)
+app.post('/api/accept-asks/:id/respond', auth, async (req, res) => {
+  try {
+    const act = req.body && req.body.action;
+    if (act !== 'declined' && act !== 'other') return res.status(400).json({ message: 'إجراء غير صحيح' });
+    const r = await pool.query(`UPDATE bid_accept_asks SET status=$1, responded_at=NOW() WHERE id=$2 AND client_id=$3 AND status='pending' RETURNING provider_id, request_id`, [act, parseInt(req.params.id), req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const rq = (await pool.query('SELECT title FROM requests WHERE id=$1', [r.rows[0].request_id])).rows[0] || {};
+    if (act === 'declined') await notify(r.rows[0].provider_id, 'رد العميل على طلب الاعتماد', 'العميل يقول ما اتفقتوا بعد على «' + (rq.title||'المشروع') + '». كمّل التواصل معه — ولو اتفقتوا يقدر يعتمد عرضك من لوحته.', 'accept_ask', r.rows[0].request_id);
+    else await notify(r.rows[0].provider_id, 'رست على مزوّد آخر هالمرة', 'العميل اختار مزوّداً آخر لـ«' + (rq.title||'المشروع') + '». المرات الجاية: الرد السريع والعرض الواضح يرفع فرصتك.', 'accept_ask', r.rows[0].request_id);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تنبيه تلقائي للمزوّد (مرة وحدة لكل عرض): عرض حقيقي، العميل شاف العرض أو تبادلوا رسائل، مرّ 3 أيام، بدون قرار وبدون طلب اعتماد
+async function nudgeAcceptAsks(){
+  const r = await pool.query(`SELECT b.id, b.provider_id, r.id AS request_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id
+    WHERE COALESCE(b.ask_nudged,FALSE)=FALSE AND b.status='pending' AND ${_REAL_BID_SQL} AND ${_ASKABLE_REQ_SQL}
+      AND b.created_at < NOW() - INTERVAL '3 days' AND b.created_at > NOW() - INTERVAL '45 days'
+      AND NOT EXISTS (SELECT 1 FROM bid_accept_asks a WHERE a.bid_id=b.id)
+      AND (b.seen_at IS NOT NULL OR (EXISTS (SELECT 1 FROM messages m WHERE m.sender_id=r.client_id AND m.receiver_id=b.provider_id)
+                                  AND EXISTS (SELECT 1 FROM messages m WHERE m.sender_id=b.provider_id AND m.receiver_id=r.client_id)))
+    LIMIT 200`);
+  for (const x of r.rows) {
+    try {
+      await pool.query('UPDATE bids SET ask_nudged=TRUE WHERE id=$1', [x.id]);
+      await notify(x.provider_id, '🤝 اتفقت مع العميل؟', 'لو اتفقت على «' + (x.title||'المشروع') + '»، اطلب منه يعتمد عرضك من «مشاريعي وعروضي» — بعدها يقدر يقيّمك وتطلع النجوم في صفحتك.', 'accept_ask', x.request_id);
+    } catch(e){}
+  }
+}
 app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
   try {
     const bidId = parseInt(req.params.id);
@@ -4226,6 +4404,10 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
         if (rej.email) sendEmail(rej.email, `تحديث عرضك على «${eEsc(acceptedBid.title)}»`, emailTpl('رست على مزوّد آخر هالمرة', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر على «${eEsc(acceptedBid.title)}» — لا بأس، فرص كثيرة قادمة.</p><div style="background:#f0f6ff;border:1px solid #cdddf9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-weight:800;color:#1e40af;margin-bottom:8px">لتزيد فرص قبولك المرّة الجاية:</div><ul style="margin:0;padding-right:18px;color:#334155;line-height:2;font-size:14px"><li>قدّم <strong>سعراً منافساً</strong> يوازن بين القيمة والجودة</li><li>أبرز <strong>خبرتك وأعمالك السابقة</strong> في وصف العرض</li><li><strong>بادر بسرعة</strong> — العروض المبكرة تلفت انتباه العميل</li><li>أضف <strong>تفاصيل واضحة</strong> عن المدة وما يشمله العرض</li></ul></div>`, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
       await addTimeline(acceptedBid.request_id, 'bid_accepted', 'تم قبول عرض المزود');
+      try {
+        await pool.query(`UPDATE bid_accept_asks SET status='accepted', responded_at=NOW() WHERE bid_id=$1`, [bidId]);
+        await pool.query(`UPDATE bid_accept_asks SET status='other', responded_at=NOW() WHERE request_id=$1 AND bid_id<>$2 AND status='pending'`, [acceptedBid.request_id, bidId]);
+      } catch(e){}
       res.json({ ok: true });
     } catch(e) {
       // التراجع على نفس الاتصال وإرجاعه للمجمّع دائماً (كان يعلّق الاتصال ويقفل المشروع)
@@ -5903,6 +6085,18 @@ app.get('/api/admin/users', requirePermission('users.view'), async (req, res) =>
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// الأدمن: تفعيل حساب المزوّد لعميل سجّل بالغلط (يبقى حساب العميل معه، والدخول الجاي يفتح لوحة المزوّد)
+app.post('/api/admin/users/:id/make-provider', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    { const g = await guardUserTarget(req, uid); if (g) return res.status(g.code).json({ message: g.message }); }
+    const r = await pool.query(`UPDATE users SET can_provide=TRUE, last_mode='provider' WHERE id=$1 AND role<>'admin' RETURNING id, name`, [uid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await notify(uid, '🛠️ صار عندك حساب مزوّد', 'فعّلنا لك حساب المزوّد — ادخل وأضف تخصصاتك عشان توصلك المشاريع المناسبة', 'system', null);
+    await logAdmin(req, 'make_provider', 'user', uid, 'تفعيل حساب المزوّد: ' + (r.rows[0].name||''));
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);

@@ -599,7 +599,7 @@ function openUserView(uid){
   var roleTxt = u.role==='provider'?'مزوّد خدمة':(u.role==='client'?'عميل (طالب خدمة)':(u.role==='admin'?'مشرف':u.role));
   var roleColor = u.role==='provider'?'#334155':(u.role==='client'?'#1e3a8a':'#7c3aed');
   var row=function(label,val){ return '<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:12.5px;font-weight:700">'+label+'</span><span style="font-size:13.5px;font-weight:700;text-align:left;word-break:break-word">'+esc(val||'—')+'</span></div>'; };
-  var warn = (u.role==='client'&&hasProvData) ? '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;font-weight:700">⚠️ دوره «عميل» لكن عنده بيانات مزوّد (اسم نشاط/نبذة) — قد يكون سجّل كمزوّد واختار عميل بالخطأ. راجع «إدارة» لتصحيح الدور.</div>' : '';
+  var warn = (u.role==='client'&&!u.can_provide&&hasProvData) ? '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:200px">⚠️ دوره «عميل» لكن عنده بيانات مزوّد (اسم نشاط/نبذة) — غالباً سجّل كمزوّد واختار عميل بالغلط.</span><button onclick="_makeProvider('+u.id+',this)" style="background:#c2410c;color:#fff;border:0;border-radius:9px;padding:8px 14px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer">حوّله لمزوّد</button></div>' : '';
   document.getElementById('um-title').textContent='عرض بيانات المستخدم';
   document.getElementById('um-body').innerHTML=''
     +'<div class="usr-header"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+esc(_safeUrl(u.profile_image))+'">':esc((u.name||'?')[0]))+'</div><div><div style="font-size:16px;font-weight:900">'+esc(u.name)+'</div><div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(u.email)+'</div></div></div>'
@@ -5280,3 +5280,15 @@ function refreshAdminBadges(){
 setInterval(function(){ if(document.visibilityState==='visible') refreshAdminBadges(); },30000);
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') refreshAdminBadges(); });
 setTimeout(refreshAdminBadges, 1500);
+
+// تفعيل حساب المزوّد لعميل سجّل بالغلط — يبقى حساب العميل، ودخوله الجاي يفتح لوحة المزوّد
+function _makeProvider(uid,btn){
+  if(!confirm('تفعيل حساب المزوّد لهذا المستخدم؟ يوصله إشعار، ودخوله الجاي يفتح لوحة المزوّد.'))return;
+  if(btn){btn.disabled=true;btn.textContent='جاري…';}
+  fetch(API+'/api/admin/users/'+uid+'/make-provider',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(x){
+    if(!x.ok){toast((x.d&&x.d.message)||'تعذّر التحويل','error');if(btn){btn.disabled=false;btn.textContent='حوّله لمزوّد';}return;}
+    toast('تم — صار عنده حساب مزوّد','success');
+    var u=(_allUsers||[]).find(function(z){return z.id===uid;}); if(u)u.can_provide=true;
+    try{closeModal('userModal');}catch(e){} try{renderUsers();}catch(e){}
+  }).catch(function(){toast('تعذّر الاتصال','error');if(btn){btn.disabled=false;btn.textContent='حوّله لمزوّد';}});
+}

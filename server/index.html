@@ -14,7 +14,7 @@
     if(ref && ref.indexOf(location.origin)===0 && /(project|pro|chat|dalil|post|auth)/.test(ref)) return;
     var p=new URLSearchParams(location.search); if(p.get('src')||p.get('post')) return;
     // نفس منطق effRole/_dashFor (معرّفة تحت، فما نقدر نستدعيها هنا)
-    var m=null; try{m=localStorage.getItem('activeMode');}catch(e){}
+    var m=null; try{m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'');}catch(e){}
     var r=u.role;
     if(u.role!=='admin'){ if(m==='provider'&&(u.role==='provider'||u.can_provide))r='provider'; else if(m==='client'&&(u.role==='client'||u.can_request))r='client'; }
     var d = r==='provider'?'/dashboard-provider.html':(r==='admin'?'/dashboard-admin.html':'/dashboard-client.html');
@@ -1252,7 +1252,7 @@ function ago(d){
 function getUser(){
   try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return (t&&u)?u:null;}catch(e){return null;}
 }
-function effRole(u){ if(!u)return null; if(u.role==='admin')return 'admin'; var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
+function effRole(u){ if(!u)return null; if(u.role==='admin')return 'admin'; var m=null; try{m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
 function _dashFor(u){ return effRole(u)==='provider'?'/dashboard-provider.html':(effRole(u)==='admin'?'/dashboard-admin.html':'/dashboard-client.html'); }
 // حفظ المشاريع من الرئيسية (للمزوّد المسجّل فقط)
 var _hSaved=null;

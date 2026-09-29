@@ -13,6 +13,11 @@
     if(u.role==='admin'){ document.documentElement.style.visibility='hidden'; location.replace('/dashboard-admin.html'); return; }
   }catch(e){}
   try{ localStorage.setItem('activeMode','client'); }catch(e){}
+  // نحفظ آخر حساب استخدمه صاحب الحسابين في السيرفر — عشان الدخول الجاي (حتى من جهاز ثاني) يرجّعه له
+  try{ var _u=JSON.parse(localStorage.getItem('user')||'{}'); var _t=localStorage.getItem('token');
+    if(_t&&_u&&_u.id&&_u.last_mode!=='client'&&(_u.role!=='client'||_u.last_mode)){
+      fetch('https://manaqasati-production.up.railway.app/api/me/mode',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_t},body:JSON.stringify({mode:'client'})}).then(function(r){ if(r.ok){ _u.last_mode='client'; localStorage.setItem('user',JSON.stringify(_u)); } }).catch(function(){});
+    } }catch(e){}
 })();
 </script>
 
@@ -129,6 +134,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <!-- HOME -->
     <div class="page on" id="page-home">
+      <div id="ph-top" style="display:flex;flex-direction:column;gap:12px"></div>
       <div class="hh-hero">
         <div class="hh-top">
           <div class="ph-av hh-av" id="phAv">ع</div>
@@ -295,51 +301,55 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <!-- PROFILE -->
     <div class="page" id="page-profile">
-      <div style="background:var(--p3);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden">
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p2),var(--sky))"></div>
-        <div style="display:flex;align-items:center;gap:16px">
-          <div class="profile-av" id="profileAv" onclick="document.getElementById('clientAvInput').click()" title="اضغط لتغيير الصورة"></div>
-          <div>
-            <div style="font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#fff" id="profNameDisp">—</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:3px">اضغط على الصورة لتغييرها</div>
-          </div>
+      <div class="pr-hero">
+        <div class="pr-top">
+          <div class="pr-avw"><div class="profile-av" id="profileAv" onclick="document.getElementById('clientAvInput').click()" title="اضغط لتغيير الصورة"></div><button class="pr-cam" onclick="document.getElementById('clientAvInput').click()" aria-label="تغيير الصورة"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button></div>
+          <div style="min-width:0"><div class="pr-name" id="profNameDisp">—</div><div class="pr-sub" id="profSub">عميل</div></div>
         </div>
+        <div class="pr-stats"><div><b id="pr-st-req">—</b><small>مشاريع</small></div><div><b id="pr-st-off">—</b><small>عروض وصلتك</small></div><div><b id="pr-st-done">—</b><small>مكتملة</small></div></div>
       </div>
       <input type="file" id="clientAvInput" accept="image/*" style="display:none" onchange="uploadClientAvatar(this)">
-      <div class="card">
-        <div class="ch"><h3>المعلومات الشخصية</h3></div>
+      <div class="pr-sec">بياناتي</div>
+      <div class="pr-card">
         <div class="form-grid">
-          <div class="fg"><label>الاسم الكامل</label><input type="text" id="prof-name" placeholder="اسمك الكامل"></div>
-          <div class="fg"><label>البريد الإلكتروني</label><input type="email" id="prof-email" placeholder="example@email.com" dir="ltr"></div>
-          <div class="fg"><label>رقم الجوال</label><input type="tel" id="prof-phone" placeholder="05xxxxxxxx" dir="ltr"></div>
-          <div class="fg"><label>المدينة</label><select id="prof-city"></select></div>
+          <div class="fg"><label for="prof-name">الاسم الكامل</label><input type="text" id="prof-name" placeholder="اسمك الكامل"></div>
+          <div class="fg"><label for="prof-email">البريد الإلكتروني</label><input type="email" id="prof-email" placeholder="example@email.com" dir="ltr"></div>
+          <div class="fg"><label for="prof-phone">رقم الجوال</label><input type="tel" id="prof-phone" placeholder="05xxxxxxxx" dir="ltr"></div>
+          <div class="fg"><label for="prof-city">المدينة</label><select id="prof-city"></select></div>
         </div>
-        <div class="form-btns"><button class="btn-p" onclick="saveClientProfile(this)">حفظ التغييرات</button></div>
-        <button onclick="location.href='/'" style="width:100%;margin-top:12px;padding:13px;background:var(--p-l,#eff6ff);color:var(--p,#1d4ed8);border:1px solid #bfdbfe;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>الصفحة الرئيسية</button>
-        <div id="becomeProvBox" style="display:none;margin-top:14px;border:1.5px solid #bfdbfe;border-radius:14px;padding:16px;background:linear-gradient(135deg,#eff6ff,#f8fafc)">
-          <div style="font-weight:900;font-size:15px;color:var(--p,#1d4ed8);margin-bottom:5px">🔧 تقدّم خدمات أيضاً؟</div>
-          <div style="font-size:12.5px;color:#475569;line-height:1.7;margin-bottom:12px">فعّل «تقديم العروض» لتصير مزوّداً كمان — تنشر مشاريعك وتقدّم عروضك من نفس الحساب.</div>
-          <button id="becomeProvBtn" onclick="openBecomeProv()" style="width:100%;padding:12px;background:var(--p,#1d4ed8);color:#fff;border:none;border-radius:11px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;cursor:pointer">فعّل تقديم العروض</button>
-          <a id="gotoProvBtn" href="/dashboard-provider.html" style="display:none;width:100%;padding:12px;background:var(--p,#1d4ed8);color:#fff;border-radius:11px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:14px;text-decoration:none;text-align:center;box-sizing:border-box">اذهب إلى لوحة المزوّد ←</a>
+        <button class="btn-p pr-save" onclick="saveClientProfile(this)">حفظ التغييرات</button>
+      </div>
+      <div class="pr-sec">الحساب</div>
+      <div class="pr-list">
+        <button class="pr-row" onclick="_prTog('pr-pw')"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></span><span class="pr-t">كلمة المرور<small>غيّرها في أي وقت</small></span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></button>
+        <div id="pr-pw" class="pr-fold" style="display:none">
+          <div class="fg"><label for="old-pw">كلمة المرور الحالية</label><input type="password" id="old-pw" autocomplete="current-password" placeholder="كلمة المرور الحالية"></div>
+          <div class="fg"><label for="new-pw">كلمة المرور الجديدة</label><input type="password" id="new-pw" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
+          <button class="btn-s pr-save" onclick="changeClientPw()">تغيير كلمة المرور</button>
         </div>
-        <a id="supportBtn" href="#" onclick="openSupport(event)" style="display:flex;width:100%;margin-top:12px;padding:13px;background:#25D366;color:#fff;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/></svg>تواصل مع خدمة العملاء</a>
-        <button onclick="logout()" style="width:100%;margin-top:12px;padding:13px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
+        <div class="pr-row" role="group"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><span class="pr-t">إشعارات المتصفح<small id="push-sub">توصلك العروض والرسائل فوراً</small></span><button class="pr-tg" id="pushTg" onclick="togglePush()" aria-label="تشغيل أو إيقاف الإشعارات" aria-pressed="false"><i></i></button></div>
+        <div id="push-hint" style="display:none;margin:0 14px 12px;font-size:12px;color:#b45309;line-height:1.7"></div>
+        <a class="pr-row" href="https://play.google.com/store/apps/details?id=com.manaqasa.app" target="_blank" rel="noopener"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></span><span class="pr-t">تطبيق الجوال<small>App Store · Google Play</small></span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
       </div>
-
-      <div class="card">
-        <div class="ch"><h3>تغيير كلمة المرور</h3></div>
-        <div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="old-pw" autocomplete="current-password" placeholder="كلمة المرور الحالية"></div>
-        <div class="fg"><label>كلمة المرور الجديدة</label><input type="password" id="new-pw" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
-        <div class="form-btns"><button class="btn-s" onclick="changeClientPw()">تغيير كلمة المرور</button></div>
+      <div id="becomeProvBox" class="pr-prov" style="display:none">
+        <div style="display:flex;align-items:center;gap:11px"><span class="pr-ic" style="background:#dbeafe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6a4 4 0 00-5 5l-6 6 3 3 6-6a4 4 0 005-5l-3 3-3-3z"/></svg></span><div><b style="font-size:15px;display:block">تقدّم خدمات؟</b><span style="font-size:12.5px;font-weight:700;color:var(--muted,#5b6b85)">حوّل حسابك لمزوّد واستقبل مشاريع بتخصصك — بنفس الحساب</span></div></div>
+        <button id="becomeProvBtn" onclick="openBecomeProv()" class="btn-p pr-save">فعّل حساب المزوّد</button>
+        <a id="gotoProvBtn" href="/dashboard-provider.html" class="btn-p pr-save" style="display:none;text-decoration:none;text-align:center">انتقل لحساب المزوّد</a>
       </div>
+      <div class="pr-sec">المساعدة</div>
+      <div class="pr-list">
+        <a class="pr-row" id="supportBtn" href="#" onclick="openSupport(event)"><span class="pr-ic" style="background:#dcfce7;color:#15803d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h4l2 5-3 2a11 11 0 006 6l2-3 5 2v4a2 2 0 01-2 2A17 17 0 013 5a2 2 0 012-2z"/></svg></span><span class="pr-t">تواصل مع خدمة العملاء<small>واتساب</small></span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+        <a class="pr-row" href="/"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span><span class="pr-t">الصفحة الرئيسية للموقع</span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+        <a class="pr-row" href="/privacy.html"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span><span class="pr-t">الشروط والخصوصية</span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+        <button class="pr-row pr-red" onclick="logout()"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg></span><span class="pr-t">تسجيل الخروج</span></button>
+      </div>
+      <a href="/delete-account.html" class="pr-del">حذف الحساب</a>
     </div>
 
     <!-- NOTIFS -->
     <div class="page" id="page-notifs">
-      <div class="card card-accent">
-        <div class="ch"><h3>الإشعارات</h3><div style="display:flex;gap:10px"><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button><button class="ch-link" onclick="deleteAllNotifs()" style="color:var(--red)">حذف الكل</button></div></div>
-        <div id="notifs-list"></div>
-      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><h2 style="margin:0;font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;color:var(--text)">الإشعارات</h2><span id="nf-unread" style="display:none;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:900"></span><span style="margin-right:auto;display:flex;gap:12px"><button class="ch-link" onclick="markAllRead()">تعليم الكل كمقروء</button><button class="ch-link" onclick="deleteAllNotifs()" style="color:var(--red)">حذف الكل</button></span></div>
+      <div id="notifs-list"></div>
     </div>
 
   </div><!-- /content -->
@@ -674,20 +684,20 @@ function submitBecomeProv(btn){
   btn.disabled=true; btn.textContent='جارٍ التفعيل...';
   jFetch('/api/me/enable-provider',{method:'POST',body:JSON.stringify({specialties:specs,city:city,bio:bio})}).then(function(r){
     btn.disabled=false; btn.textContent='تفعيل الآن';
-    if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=true;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success'); closeBecomeProv(); setTimeout(function(){ location.href='/dashboard-provider.html'; },900); }
+    if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=true;_u.last_mode='provider';localStorage.setItem('user',JSON.stringify(_u));localStorage.setItem('activeMode','provider');}catch(e){} if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success'); closeBecomeProv(); setTimeout(function(){ location.href='/dashboard-provider.html'; },900); }
     else if(typeof showToast==='function')showToast((r&&r.message)||'تعذّر التفعيل','error');
   }).catch(function(){ btn.disabled=false; btn.textContent='تفعيل الآن'; if(typeof showToast==='function')showToast('تعذّر التفعيل','error'); });
 }
 </script>
 <script>
-function _initSwitchDash(){ try{ jFetch('/api/client/profile').then(function(p){ if(p){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=!!p.can_provide;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(p.can_provide){ var b=document.getElementById('switchDash'); if(b)b.style.display='flex'; } try{_roleBanner(p);}catch(e){} } }).catch(function(){}); }catch(e){} }
+function _initSwitchDash(){ try{ jFetch('/api/client/profile').then(function(p){ if(p){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=!!p.can_provide;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(p.can_provide){ var b=document.getElementById('switchDash'); if(b)b.style.display='flex'; } if(!p.can_provide){ jFetch('/api/me/provider-hint').then(function(h){ p._hint=!!(h&&h.show); if(h&&h.dismissed){ try{ localStorage.setItem(_rbKey(),'-1'); }catch(e){} } try{_roleBanner(p);}catch(e){} }).catch(function(){ try{_roleBanner(p);}catch(e){} }); } else { try{_roleBanner(p);}catch(e){} } } }).catch(function(){}); }catch(e){} }
 // ── تنبيه «أنت في لوحة العميل» للمزوّدين ──
 function _rbKey(){ try{ return 'mnq_rb_hide_'+(user.id||''); }catch(e){ return 'mnq_rb_hide'; } }
 function _rbHidden(){ try{ var v=parseInt(localStorage.getItem(_rbKey())||'0'); return v===-1 || v>Date.now(); }catch(e){ return false; } }
-function _rbHide(forever){ try{ localStorage.setItem(_rbKey(), forever?'-1':String(Date.now()+7*86400000)); }catch(e){} var s=document.getElementById('ph-role-slot'); if(s)s.innerHTML=''; }
+function _rbHide(forever){ try{ localStorage.setItem(_rbKey(), forever?'-1':String(Date.now()+7*86400000)); }catch(e){} if(forever){ try{ jFetch('/api/me/provider-hint/dismiss',{method:'POST'}).catch(function(){}); }catch(e){} } var s=document.getElementById('ph-role-slot'); if(s)s.innerHTML=''; }
 function _roleBanner(p){
   var slot=document.getElementById('ph-role-slot'); if(!slot||_rbHidden()) return;
-  var looksProv=!!((p.business_name&&String(p.business_name).trim())||(p.bio&&String(p.bio).trim().length>=20));
+  var looksProv=!!((p.business_name&&String(p.business_name).trim())||(p.bio&&String(p.bio).trim().length>=20)||p._hint);
   var ic='<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.8-3.8a6 6 0 01-7.9 7.9l-6.9 6.9a2.1 2.1 0 01-3-3l6.9-6.9a6 6 0 017.9-7.9z"/></svg>';
   var box='background:#fff7ed;border:1.5px solid #fdba74;border-radius:18px;padding:15px;margin:14px 0 4px;display:flex;flex-direction:column;gap:11px';
   var head='<div style="display:flex;gap:12px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:13px;background:#ffedd5;color:#c2410c;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+ic+'</div><div style="flex:1;min-width:0">';
@@ -713,24 +723,24 @@ function _rbBecome(){
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(_initSwitchDash,600); });
 </script><script>
 /* ═══ دعوة تحميل التطبيق (خفيفة، قابلة للإخفاء) ═══ */
-function dismissAppDl(){ try{ localStorage.setItem('appDlHide', String(Date.now()+14*86400000)); }catch(e){} var c=document.getElementById('appDlCard'); if(c)c.remove(); }
+function dismissAppDl(){ try{ localStorage.setItem('appDlHide','-1'); }catch(e){} var c=document.getElementById('appDlCard'); if(c)c.remove(); }
+// شريط تحميل التطبيق: سطر واحد، في الرئيسية فقط، على الجوال فقط، وما يطلع داخل التطبيق نفسه — ولو انقفل ما يرجع
 function initAppDownload(){
-  try{ var t=localStorage.getItem('appDlHide'); if(t && Date.now()<parseInt(t)) return; }catch(e){}
+  try{ var t=localStorage.getItem('appDlHide'); if(t==='-1'||(t&&Date.now()<parseInt(t))) return; }catch(e){}
+  if(window.ReactNativeWebView||/ManaqasaApp|wv\)/i.test(navigator.userAgent||'')) return;
+  if(window.matchMedia&&window.matchMedia('(min-width: 900px)').matches) return;
   if(document.getElementById('appDlCard')) return;
-  var ph=document.getElementById('page-home'); if(!ph||!ph.parentNode) return;
+  var ph=document.getElementById('page-home'); if(!ph) return;
+  var ios=/iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  var url=ios?'https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611':'https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=ar';
   var card=document.createElement('div'); card.id='appDlCard';
-  card.style.cssText='position:relative;margin:0 0 14px;background:linear-gradient(135deg,#1e3a8a,#1d4ed8);border-radius:16px;padding:16px 18px;box-shadow:0 6px 18px rgba(29,78,216,.25);overflow:hidden';
-  var pill='display:flex;flex:1;align-items:center;justify-content:center;gap:6px;background:#fff;color:#1e3a8a;border-radius:10px;padding:8px 12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap';
-  card.innerHTML='<button onclick="dismissAppDl()" aria-label="إخفاء" style="position:absolute;top:10px;left:12px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">\u2715</button>'
-    +'<div style="display:flex;align-items:center;gap:12px;padding-left:26px">'
-    +'<div style="width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.12)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>'
-    +'<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:14.5px;color:#fff;line-height:1.35">حمّل تطبيق مناقصة وفعّل الإشعارات</div>'
-    +'<div style="font-size:12px;color:rgba(255,255,255,.88);margin-top:3px;line-height:1.4">لتصلك عروض المزوّدين على مشروعك فور وصولها.</div></div>'
-    +'</div>'
-    +'<div style="display:flex;gap:9px;margin-top:13px">'
-    +'<a href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611" target="_blank" rel="noopener" style="'+pill+'"><svg width="16" height="16" viewBox="0 0 24 24" fill="#000"><path d="M16.365 1.43c0 1.14-.42 2.2-1.12 2.98-.77.87-2.03 1.55-3.06 1.47-.13-1.12.42-2.28 1.09-3.01.75-.83 2.05-1.44 3.09-1.44zM20.5 17.02c-.55 1.27-.81 1.84-1.52 2.96-.99 1.57-2.39 3.52-4.12 3.53-1.54.02-1.94-.99-4.03-.98-2.09.01-2.52.99-4.06.98-1.73-.02-3.06-1.78-4.05-3.35C-.02 15.94-.32 10.6 1.44 7.79c1.02-1.64 2.63-2.6 4.15-2.6 1.55 0 2.52 1.01 3.8 1.01 1.24 0 2-.99 3.79-.99 1.36 0 2.8.74 3.83 2.02-3.36 1.84-2.82 6.64.69 7.79z"/></svg>App Store</a>'
-    +'<a href="https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=ar" target="_blank" rel="noopener" style="'+pill+'"><svg width="14" height="14" viewBox="0 0 24 24"><path fill="#00C4FF" d="M3.6 2.4 13.3 12 3.6 21.6c-.35-.2-.6-.58-.6-1.06V3.46c0-.48.25-.86.6-1.06z"/><path fill="#00E676" d="M3.6 2.4c.15-.09.33-.14.53-.14.24 0 .48.07.7.2l11.7 6.68-3.23 3.23L3.6 2.4z"/><path fill="#FFD600" d="M20.53 10.94c.5.29.5 1.83 0 2.12l-3.6 2.06-3.63-3.62 3.63-3.63 3.6 2.07z"/><path fill="#FF3D00" d="M3.6 21.6 13.3 12l3.23 3.23-11.7 6.68c-.22.13-.46.2-.7.2-.2 0-.38-.05-.53-.51z"/></svg>Google Play</a>'
-    +'</div>';
+  card.style.cssText='display:flex;align-items:center;gap:10px;background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:14px;padding:9px 12px;margin:0 0 12px';
+  card.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>'
+    +'<span style="flex:1;font-size:13px;font-weight:800;color:var(--text,#14223d);line-height:1.5">حمّل التطبيق وتوصلك '+(ph.closest&&document.getElementById('page-browse')?'المشاريع':'العروض')+' فوراً</span>'
+    +'<a href="'+url+'" target="_blank" rel="noopener" style="background:#1d4ed8;color:#fff;border-radius:999px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;text-decoration:none;white-space:nowrap">تحميل</a>'
+    +'<button onclick="dismissAppDl()" aria-label="إغلاق" style="border:0;background:none;color:#94a3b8;padding:6px;cursor:pointer;display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+  // قبل الرئيسية (عشان ما ينمسح لما تتحدّث)، ويختفي في باقي الصفحات
+  if(!document.getElementById('appDlCss')){ var st=document.createElement('style'); st.id='appDlCss'; st.textContent='#appDlCard:not(:has(+ #page-home.on)){display:none!important}'; document.head.appendChild(st); }
   ph.parentNode.insertBefore(card, ph);
 }
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(initAppDownload, 1200); });

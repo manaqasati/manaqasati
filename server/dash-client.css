@@ -565,3 +565,40 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .fmt-text .fx-h{font-weight:900;margin:10px 0 4px;opacity:.95}
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
+
+/* ═══ حسابي (تصميم جديد) ═══ */
+.pr-hero{background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border-radius:20px;padding:18px;margin-bottom:16px;display:flex;flex-direction:column;gap:14px}
+.pr-top{display:flex;align-items:center;gap:14px}
+.pr-avw{position:relative;flex-shrink:0}
+.pr-avw .profile-av{width:64px;height:64px;border-radius:64px;border:3px solid rgba(255,255,255,.35);cursor:pointer}
+.pr-cam{position:absolute;bottom:-2px;left:-2px;width:26px;height:26px;border-radius:26px;background:#fff;color:#1e3a8a;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.pr-name{font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-sub{font-size:12.5px;font-weight:700;color:#c9d8ff;margin-top:3px}
+.pr-stats{display:flex;background:rgba(255,255,255,.1);border-radius:14px;padding:10px 4px}
+.pr-stats>div{flex:1;text-align:center}.pr-stats>div+div{border-right:1px solid rgba(255,255,255,.18)}
+.pr-stats b{font-family:'Cairo',sans-serif;font-size:21px;display:block;color:#fff}.pr-stats small{font-size:11.5px;font-weight:700;color:#c9d8ff}
+.pr-sec{font-size:12.5px;font-weight:900;color:var(--muted,#5b6b85);margin:4px 6px 8px}
+.pr-card{background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:18px;padding:16px;margin-bottom:16px}
+.pr-save{width:100%;margin-top:6px;min-height:46px}
+.pr-list{background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:18px;overflow:hidden;margin-bottom:16px}
+.pr-row{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:13px 14px;border:0;border-bottom:1px solid var(--border,#eef2f8);background:none;font-family:'Tajawal',sans-serif;text-align:right;color:var(--text,#14223d);text-decoration:none;cursor:pointer;min-height:58px}
+.pr-list>.pr-row:last-child{border-bottom:0}
+.pr-t{flex:1;font-size:14.5px;font-weight:800;min-width:0}.pr-t small{display:block;font-size:12px;font-weight:700;color:var(--muted,#5b6b85);margin-top:2px}
+.pr-ic{width:36px;height:36px;border-radius:11px;background:var(--bg,#eef3fb);color:#1e3a8a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pr-chev{color:#94a3b8;display:flex}
+.pr-red{color:#b91c1c}.pr-red .pr-ic{background:#fee2e2;color:#b91c1c}
+.pr-fold{padding:4px 14px 14px;border-bottom:1px solid var(--border,#eef2f8)}
+.pr-tg{width:46px;height:28px;border-radius:28px;background:#cbd5e1;border:0;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.pr-tg i{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:22px;background:#fff;transition:right .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.pr-tg.on{background:#1d4ed8}.pr-tg.on i{right:21px}
+.pr-prov{background:var(--card,#fff);border:1.5px solid #bfdbfe;border-radius:18px;padding:15px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px}
+.pr-del{display:block;text-align:center;font-size:12.5px;font-weight:700;color:#94a3b8;margin:4px 0 20px}
+[data-theme="dark"] .pr-ic{color:#bfdbfe}
+
+/* ═══ الكمبيوتر: المحتوى في الوسط بعرض مريح، والقوائم كروت جنب بعض ═══ */
+@media (min-width:1100px){
+  .content{max-width:1120px;width:100%;margin:0 auto;box-sizing:border-box}
+  #all-reqs,#home-reqs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+  #all-reqs>*,#home-reqs>*{margin:0 !important}
+}
+@media (min-width:1500px){ .content{max-width:1200px} }

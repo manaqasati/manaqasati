@@ -499,7 +499,7 @@ function ph966(p){if(!p)return'';var n=String(p).replace(/[^0-9]/g,'');if(n.star
 function mkStars(n){var s='';for(var i=1;i<=5;i++){var f=i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)';s+='<svg width="12" height="12" fill="'+f+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}return s;}
 function isImg(s){return !!(s&&(s.startsWith('http')||s.startsWith('data:'))&&_safeUrl(s));}
 function getUser(){try{var t=localStorage.getItem('token');var u=JSON.parse(localStorage.getItem('user')||'null');return(t&&u)?u:null;}catch(e){return null;}}
-function effRole(u){ if(!u)return null; var m=null; try{m=localStorage.getItem('activeMode');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
+function effRole(u){ if(!u)return null; var m=null; try{m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'');}catch(e){} if(m==='provider'&&(u.role==='provider'||u.can_provide))return 'provider'; if(m==='client'&&(u.role==='client'||u.can_request))return 'client'; return u.role; }
 function getToken(){return localStorage.getItem('token')||'';}
 
 
@@ -1366,9 +1366,9 @@ function openCloseModal(){
   d.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px';
   d.innerHTML='<div style="background:#fff;width:100%;max-width:440px;border-radius:18px;padding:22px;font-family:Tajawal,sans-serif">'
     +'<div style="font-size:17px;font-weight:900;color:#0f2a4f;margin-bottom:4px">إغلاق المشروع</div>'
-    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">قبل الإغلاق، هل اخترت مزوّداً من مناقصة؟</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">قبل الإغلاق: اتفقت مع أحد المزوّدين اللي قدّموا عروض هنا؟</div>'
     +'<div id="cm-step1">'
-      +'<button onclick="_cmChose()" style="width:100%;text-align:right;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#15803d">✅ نعم، اخترت مزوّداً من المنصة</button>'
+      +'<button onclick="_cmChose()" style="width:100%;text-align:right;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#15803d">نعم، اتفقت مع مزوّد من العروض</button>'
       +'<button onclick="_cmReason()" style="width:100%;text-align:right;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;cursor:pointer;font-family:Tajawal;font-weight:800;font-size:14px;color:#334155">لا، لم أعد بحاجة للمشروع</button>'
     +'</div>'
     +'<div id="cm-step2" style="display:none">'
@@ -1386,7 +1386,38 @@ function openCloseModal(){
     +'</div>';
   document.body.appendChild(d);
 }
-function _cmChose(){ document.getElementById('closeModalOv').remove(); alert('ممتاز! لإتمام الاختيار واحتساب الاتفاق، اضغط "قبول العرض" على عرض المزوّد الذي اخترته من قائمة العروض.'); }
+function _cmChose(){
+  var st=document.getElementById('cm-step1'); if(!st)return;
+  _closePickBid(getReqId(), st, getToken(), function(ok,msg){
+    alert(msg); if(ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); location.reload(); }
+  });
+}
+// «اتفقت مع مزوّد من العروض هنا»: يختار المزوّد وينعتمد عرضه مباشرة (بدل ما يغلق المشروع ويضيع الاتفاق)
+function _closePickBid(reqId, stepEl, token, done){
+  var box=stepEl; if(!box)return;
+  box.innerHTML='<div style="font-size:13px;color:#64748b;padding:14px;text-align:center">جاري تحميل العروض…</div>';
+  fetch(API+'/api/requests/'+reqId+'/bids',{headers:{'Authorization':'Bearer '+token},cache:'no-store'}).then(function(r){return r.json();}).then(function(list){
+    list=Array.isArray(list)?list:[];
+    if(!list.length){ box.innerHTML='<div style="font-size:13.5px;color:#475569;line-height:1.8;padding:6px 2px">ما فيه عروض على هذا المشروع للحين.</div>'; return; }
+    var E=function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+    var h='<div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:10px">مين المزوّد اللي اتفقت معه؟</div>';
+    list.forEach(function(b,i){
+      var nm=b.provider_business_name||b.provider_name||'مزوّد';
+      h+='<label style="display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:11px;margin-bottom:7px;cursor:pointer;font-family:Tajawal"><input type="radio" name="cpick" value="'+(parseInt(b.id)||0)+'" data-n="'+E(nm)+'" style="width:17px;height:17px;accent-color:#1d4ed8"'+(i===0?' checked':'')+'><span style="flex:1;font-size:14px;font-weight:800;color:#0f2a4f">'+E(nm)+'</span><span style="font-size:13px;font-weight:800;color:#475569">'+(parseFloat(b.price)||0).toLocaleString('en-US')+' ر.س</span></label>';
+    });
+    h+='<div style="font-size:12.5px;color:#64748b;line-height:1.8;margin:6px 2px 0">نعتمد عرضه ويتحول المشروع لـ«قيد التنفيذ» — وبعد التنفيذ تقدر تقيّمه.</div>'
+      +'<button id="cpick-go" style="width:100%;margin-top:12px;background:#1d4ed8;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">اعتمد العرض</button>';
+    box.innerHTML=h;
+    document.getElementById('cpick-go').onclick=function(){
+      var sel=box.querySelector('input[name=cpick]:checked'); if(!sel)return;
+      var btn=this; btn.disabled=true; btn.textContent='جاري الاعتماد…';
+      fetch(API+'/api/bids/'+sel.value+'/accept',{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}}).then(function(r){return r.json().catch(function(){return {};});}).then(function(d){
+        if(d&&d.ok){ done(true,'تم اعتماد عرض '+sel.getAttribute('data-n')+' ✓'); }
+        else { btn.disabled=false; btn.textContent='اعتمد العرض'; done(false,(d&&d.message)||'تعذّر الاعتماد'); }
+      }).catch(function(){ btn.disabled=false; btn.textContent='اعتمد العرض'; done(false,'تعذّر الاتصال'); });
+    };
+  }).catch(function(){ box.innerHTML='<div style="font-size:13px;color:#b91c1c;padding:10px">تعذّر تحميل العروض</div>'; });
+}
 function _cmReason(){ document.getElementById('cm-step1').style.display='none'; document.getElementById('cm-step2').style.display='block'; }
 function _cmConfirm(){
   var sel=document.querySelector('input[name=cmreason]:checked');

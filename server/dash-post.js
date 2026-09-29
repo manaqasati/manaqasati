@@ -101,6 +101,8 @@ function showToast(msg,type){
 }
 function stTag(s){
   var m={open:'<span class="tag t-open">● مفتوح</span>',in_progress:'<span class="tag t-prog">⟳ جارٍ</span>',completed:'<span class="tag t-done"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg> مكتمل</span>',pending_review:'<span class="tag t-rev">⧖ مراجعة</span>',review:'<span class="tag t-rev">⧖ مراجعة</span>',needs_edit:'<span class="tag" style="background:#ffedd5;color:#c2410e;border:1px solid #fed7aa;font-weight:800">✕ مطلوب تعديل</span>',rejected:'<span class="tag" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;font-weight:800">✕ مرفوض</span>'};
+  var _cl='<span class="tag" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-weight:800">مغلق</span>';
+  m.closed_auto=m.closed_auto||_cl; m.closed=m.closed||_cl; m.expired=m.expired||_cl; m.cancelled=m.cancelled||'<span class="tag" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-weight:800">ملغي</span>'; m.done=m.done||m.completed;
   return m[s]||'<span class="tag t-rev">'+esc(s)+'</span>';
 }
 function emptyH(t,s){return '<div class="empty"><div class="empty-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h4>'+t+'</h4>'+(s?'<p>'+s+'</p>':'')+'</div>';}
@@ -460,6 +462,7 @@ function loadHome(){
     _paintHome(all);
   }).catch(function(){ if(!cached)el&&(el.innerHTML=errH(loadHome)); });
   loadNotifCount();
+  try{_phTopLoad();}catch(e){}
 }
 // عرض بيانات الرئيسية (يُستخدم للكاش والخادم)
 function _paintHome(all){
@@ -1219,8 +1222,10 @@ function loadProfile(){
     var emEl=document.getElementById('prof-email');if(emEl)emEl.value=p.email||'';
     var ctEl=document.getElementById('prof-city');if(ctEl){if(!ctEl.options.length)fillCitySelect(ctEl);ctEl.value=p.city||'';}
     document.getElementById('profNameDisp').textContent=p.name||'—';
+    _prFill(p);
   }).catch(function(){});
   updatePushToggleUI();
+  _prPushState();
 }
 function uploadClientAvatar(input){
   var f=input.files[0];if(!f)return;
@@ -1302,11 +1307,11 @@ async function pushSubscribe(){
     if(!vk){showToast('الإشعارات غير مفعّلة في هذه البيئة','error');return;}
     var sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(vk)});
     await fetch(API+'/api/push/subscribe',Object.assign({method:'POST',body:JSON.stringify({subscription:sub,platform:'web'})},hdr()));
-    showToast('تم تفعيل الإشعارات','success');updatePushToggleUI();
+    showToast('تم تفعيل الإشعارات','success');updatePushToggleUI();try{_prPushState();}catch(e){}
   }catch(e){showToast('تعذر تفعيل الإشعارات','error');}
 }
 async function pushUnsubscribe(){
-  try{var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();if(sub)await sub.unsubscribe();showToast('تم إيقاف الإشعارات','success');updatePushToggleUI();}catch(e){}
+  try{var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();if(sub)await sub.unsubscribe();showToast('تم إيقاف الإشعارات','success');updatePushToggleUI();try{_prPushState();}catch(e){}}catch(e){}
 }
 
 // ═══════════════════════════════════
@@ -1332,24 +1337,6 @@ function notifMeta(type){
     review:{bg:'var(--gold-l)',c:'#F0A500',ic:'<svg width="18" height="18" fill="#F0A500" stroke="none" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>'}
   };
   return m[type]||{bg:'var(--p-light)',c:'var(--p)',ic:bell};
-}
-function loadNotifs(){
-  var el=document.getElementById('notifs-list');if(!el)return;
-  el.innerHTML='<div class="loading">جاري التحميل...</div>';
-  fetch(API+'/api/notifications',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(ns){
-    var notifs=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[];
-    if(!notifs.length){el.innerHTML=emptyH('لا توجد إشعارات بعد','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على طلبك');return;}
-    el.innerHTML=notifs.map(function(n){
-      var mt=notifMeta(n.type);
-      return'<div class="notif-item'+(n.is_read?'':' unread')+'" id="notif-'+n.id+'">'
-        +'<div class="notif-ic" style="background:'+mt.bg+';color:'+mt.c+'" onclick="notifOpen('+n.id+','+(n.ref_id||'null')+')">'+mt.ic+'</div>'
-        +'<div style="flex:1;min-width:0;cursor:pointer" onclick="notifOpen('+n.id+','+(n.ref_id||'null')+')"><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--text)">'+esc(n.title||'')+'</div>'
-        +'<div style="font-size:11.5px;color:var(--muted);line-height:1.6">'+esc(n.body||'')+'</div>'
-        +'<div style="font-size:10px;color:var(--hint);margin-top:3px">'+timeAgo(n.created_at)+'</div></div>'
-        +(n.is_read?'':'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-self:center"><button onclick="event.stopPropagation();notifMarkOne('+n.id+')" title="تعليم كمقروء" style="background:var(--green-l);color:var(--green);border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✓</button><button onclick="event.stopPropagation();notifSnooze('+n.id+')" title="تأجيل" style="background:var(--bg);color:var(--muted);border:1px solid var(--border);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">⏰</button></div>')
-      +'</div>';
-    }).join('');
-  }).catch(function(){if(el)el.innerHTML=errH(loadNotifs);});
 }
 // فتح الإشعار (يعلّمه مقروءاً ويروح للتفاصيل)
 function notifOpen(id,refId){
@@ -1956,4 +1943,153 @@ function gotoMessagesAndOpen(reqId,provId,provName){
   // انتقل لتبويب المحادثات (سيقرأ loadChatPage القيم ويفتح المحادثة)
   var chatNav=document.getElementById('bn-chat')||document.querySelector('[onclick*="\'chat\'"]');
   if(typeof show==='function'){try{location.href='/chat';}catch(e){}}
+}
+
+// ═══ أعلى الرئيسية: طلبات اعتماد العروض + «أنت مزوّد؟» ═══
+var _phAsks=[],_phHint=false;
+function _phTopLoad(){
+  jFetch('/api/client/accept-asks').then(function(d){ _phAsks=Array.isArray(d)?d:[]; _phTopPaint(); }).catch(function(){});
+}
+function _phTopPaint(){
+  var el=document.getElementById('ph-top'); if(!el)return;
+  var ic=function(p,c){return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0">'+p+'</svg>';};
+  var STAR='<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',CLK='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',SH='<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>';
+  var h='';
+  _phAsks.forEach(function(a){
+    var img=a.provider_image?'<img src="'+esc(a.provider_image)+'" alt="" style="width:46px;height:46px;border-radius:46px;object-fit:cover">':'<div style="width:46px;height:46px;border-radius:46px;background:#1e3a8a;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center">'+esc(String(a.provider_name||'؟').charAt(0))+'</div>';
+    var unit=(a.price_unit&&a.price_unit!=='total')?(a.price_unit==='m2'?' / م²':' / وحدة'):'';
+    var rat=parseFloat(a.provider_rating)||0;
+    h+='<div style="background:#fff;border:2px solid #1d4ed8;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px">'
+      +'<div style="display:flex;align-items:center;gap:11px">'+img+'<div><b style="font-size:15px;display:block">'+esc(a.provider_name||'المزوّد')+'</b><span style="font-size:12.5px;font-weight:700;color:#5b6b85">'+(rat?('★ '+rat.toFixed(1)+' · '+(a.provider_reviews||0)+' تقييم'):'مزوّد جديد')+'</span></div></div>'
+      +'<div style="font-size:15px;font-weight:800;line-height:1.8">يطلب منك اعتماد عرضه على «'+esc(a.title||'مشروعك')+'»</div>'
+      +'<div style="display:flex;gap:8px"><div style="flex:1;background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:9px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:#5b6b85">السعر</span><b style="display:block;font-size:17px">'+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س'+unit+'</b></div>'
+      +(a.days?'<div style="flex:1;background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:9px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:#5b6b85">المدة</span><b style="display:block;font-size:17px">'+(parseInt(a.days)||0)+' يوم</b></div>':'')+'</div>'
+      +'<div style="background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;color:#334766;line-height:1.9">اتفقتوا؟ اعتمد العرض عشان:'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px">'+ic(STAR,'#b45309')+'تقدر تقيّمه بعد التنفيذ وتفيد غيرك</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'+ic(CLK,'#1d4ed8')+'تتابع المشروع خطوة خطوة من لوحتك</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'+ic(SH,'#15803d')+'يبقى الاتفاق موثّق عندك بالسعر والمدة</div></div>'
+      +'<button onclick="_askApprove('+(parseInt(a.id)||0)+')" style="border:0;background:#1d4ed8;color:#fff;border-radius:13px;padding:13px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">اعتمد العرض</button>'
+      +'<div style="display:flex;gap:8px"><button onclick="_askRespond('+(parseInt(a.id)||0)+',&quot;declined&quot;)" style="flex:1;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:13px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer">ما اتفقنا بعد</button><button onclick="_askRespond('+(parseInt(a.id)||0)+',&quot;other&quot;)" style="flex:1;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:13px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer">اخترت مزوّد ثاني</button></div>'
+      +'</div>';
+  });
+  if(_phHint){
+    h+='<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px">'
+      +'<div><b style="font-size:15.5px;display:block;margin-bottom:4px">أنت مزوّد خدمة؟</b><span style="font-size:13px;font-weight:700;color:#7c2d12;line-height:1.85">حسابك مسجّل كـ «عميل». لو تبي تستقبل مشاريع وتقدّم عروض، حوّله لمزوّد بدقيقة — بنفس الإيميل وكلمة المرور.</span></div>'
+      +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل حسابي لمزوّد</button>'
+      +'<button onclick="_provHintNo()" style="border:0;background:none;font-family:inherit;font-size:13px;font-weight:800;color:#9a3412;cursor:pointer">لا، أنا أطلب خدمات</button></div>';
+  }
+  el.innerHTML=h; el.style.marginBottom=h?'14px':'0';
+}
+function _askApprove(id){
+  var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;
+  if(!confirm('اعتماد عرض «'+(a.provider_name||'المزوّد')+'» بـ '+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س؟ يتحول المشروع لـ«قيد التنفيذ».'))return;
+  fetch(API+'/api/bids/'+a.bid_id+'/accept',Object.assign({method:'PUT'},hdr())).then(function(r){return r.json().catch(function(){return {};});}).then(function(d){
+    if(d&&d.ok){ showToast('تم اعتماد العرض ✓','success'); _phAsks=_phAsks.filter(function(x){return x.id!==id;}); _phTopPaint(); try{loadHome();}catch(e){} }
+    else showToast((d&&d.message)||'تعذّر الاعتماد','error');
+  }).catch(function(){ showToast('تعذّر الاتصال','error'); });
+}
+function _askRespond(id,act){
+  var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;
+  jFetch('/api/accept-asks/'+id+'/respond',{method:'POST',body:JSON.stringify({action:act})}).then(function(d){
+    _phAsks=_phAsks.filter(function(x){return x.id!==id;}); _phTopPaint();
+    if(act==='other'){ showToast('اختر العرض اللي اتفقت عليه واعتمده','info'); try{openDetail(a.request_id);}catch(e){} }
+    else showToast('تمام، بلّغنا المزوّد','success');
+  }).catch(function(){ showToast('تعذّر الاتصال','error'); });
+}
+function _provHintNo(){ _phHint=false; _phTopPaint(); jFetch('/api/me/provider-hint/dismiss',{method:'POST'}).catch(function(){}); }
+
+// ═══ حسابي: أرقام البطاقة + فتح/إغلاق الأقسام + حالة الإشعارات ═══
+function _prTog(id){ var e=document.getElementById(id); if(e)e.style.display=e.style.display==='none'?'block':'none'; }
+function _prFill(p){
+  try{
+    var sub=document.getElementById('profSub'); if(sub){ var bits=['عميل']; if(p&&p.city)bits.push(p.city); if(p&&p.created_at){ try{ bits.push('معنا من '+new Date(p.created_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{month:'long',year:'numeric'})); }catch(e){} } sub.textContent=bits.join(' · '); }
+    var paint=function(all){ all=Array.isArray(all)?all:[]; var q=function(id,v){var e=document.getElementById(id); if(e)e.textContent=v;};
+      q('pr-st-req',all.length); q('pr-st-off',all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0)); q('pr-st-done',all.filter(function(r){return r.status==='completed'||r.status==='done';}).length); };
+    if(window._allMyReqs&&window._allMyReqs.length) paint(window._allMyReqs); else jFetch('/api/requests/my').then(paint).catch(function(){});
+    var ar=document.querySelector('a.pr-row[href*="play.google.com"]'); if(ar&&/iPhone|iPad|iPod/i.test(navigator.userAgent||'')) ar.href='https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
+  }catch(e){}
+}
+async function _prPushState(){
+  var tg=document.getElementById('pushTg'); if(!tg)return;
+  var on=false; try{ on=await isPushActive(); }catch(e){}
+  tg.classList.toggle('on',!!on); tg.setAttribute('aria-pressed',on?'true':'false');
+  var sub=document.getElementById('push-sub'); if(sub) sub.textContent=on?'مفعّلة على هذا الجهاز':'توصلك العروض والرسائل فوراً';
+  if(!('serviceWorker' in navigator&&'PushManager' in window)){ tg.disabled=true; if(sub)sub.textContent='جهازك ما يدعم إشعارات المتصفح — حمّل التطبيق'; }
+}
+// ═══ الإشعارات (تصميم جديد): فلترة حسب النوع + تجميع حسب اليوم + أيقونة ولون لكل نوع ═══
+var _nfList=[],_nfFilter='all';
+var _NF_I={
+  money:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
+  hand:'<path d="M8 13V5a1.5 1.5 0 013 0v6"/><path d="M11 11V4a1.5 1.5 0 013 0v7"/><path d="M14 11V6a1.5 1.5 0 013 0v8c0 4-3 7-7 7-3 0-5-2-6-4l-2-4a1.5 1.5 0 012.5-1.5L8 14"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4z"/>', doc:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', check:'<path d="M5 12l5 5 9-10"/>',
+  star:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>', q:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .5c0 1.5-2.5 2-2.5 3.5"/><path d="M12 17h.01"/>'
+};
+function _nfKind(t){
+  t=String(t||'');
+  if(t==='accept_ask')return {g:'offers',i:'hand',c:'#b45309',b:'#fef3c7'};
+  if(t==='bid_rejected')return {g:'offers',i:'x',c:'#b91c1c',b:'#fee2e2'};
+  if(t==='bid_accepted'||t==='completed')return {g:t==='completed'?'projects':'offers',i:'check',c:'#15803d',b:'#dcfce7'};
+  if(t==='new_bid'||t==='bid'||t==='negotiate')return {g:'offers',i:'money',c:'#15803d',b:'#dcfce7'};
+  if(t==='message'||t==='admin_message')return {g:'messages',i:'chat',c:'#1d4ed8',b:'#dbeafe'};
+  if(t==='review'||t==='review_reply')return {g:'projects',i:'star',c:'#b45309',b:'#fef3c7'};
+  if(t==='new_question'||t==='question_answered')return {g:'projects',i:'q',c:'#0369a1',b:'#e0f2fe'};
+  if(t==='request'||t==='new_request'||t==='request_published'||t==='request_closed')return {g:'projects',i:'doc',c:'#6d28d9',b:'#ede9fe'};
+  if(t==='reminder'||t==='saai')return {g:'system',i:'clock',c:'#b45309',b:'#fef3c7'};
+  return {g:'system',i:'shield',c:'#475569',b:'#f1f5f9'};
+}
+function _nfDay(d){
+  var dt=new Date(d),now=new Date(); var s=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();};
+  var diff=Math.round((s(now)-s(dt))/86400000);
+  return diff<=0?'اليوم':diff===1?'أمس':diff<7?'هذا الأسبوع':'أقدم';
+}
+function _nfTime(d){
+  try{ var dt=new Date(d), diff=(Date.now()-dt)/1000; if(diff<60)return 'الآن'; if(diff<3600)return 'قبل '+Math.floor(diff/60)+' د'; if(diff<86400&&_nfDay(d)==='اليوم')return 'قبل '+Math.floor(diff/3600)+' س';
+    return dt.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('ar-SA-u-nu-latn-ca-gregory',{hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; }
+}
+function _nfHTML(filters,openFn){
+  var E=function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+  var unread=_nfList.filter(function(n){return !n.is_read;}).length;
+  var h='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">';
+  filters.forEach(function(f){ var on=_nfFilter===f[0]; var cnt=f[0]==='all'?0:_nfList.filter(function(n){return !n.is_read&&_nfKind(n.type).g===f[0];}).length;
+    h+='<button onclick="_nfSet(&quot;'+f[0]+'&quot;)" style="border:1.5px solid '+(on?'#1d4ed8':'var(--border,#dbe5f5)')+';background:'+(on?'#1d4ed8':'var(--card,#fff)')+';color:'+(on?'#fff':'var(--text,#334766)')+';border-radius:999px;padding:7px 14px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;cursor:pointer">'+f[1]+(cnt?' <span style="background:'+(on?'rgba(255,255,255,.25)':'#dbeafe')+';color:'+(on?'#fff':'#1e40af')+';border-radius:999px;padding:0 7px;font-size:11px">'+cnt+'</span>':'')+'</button>'; });
+  h+='</div>';
+  var list=_nfList.filter(function(n){return _nfFilter==='all'||_nfKind(n.type).g===_nfFilter;});
+  if(!list.length) return h+'<div style="text-align:center;padding:40px 16px;color:var(--muted,#5b6b85);font-size:13.5px;font-weight:700;background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:18px">'+(_nfList.length?'ما فيه إشعارات من هذا النوع':'ما فيه إشعارات للحين — نعلمك هنا أول ما يصير شي جديد')+'</div>';
+  var groups=[],cur=null;
+  list.forEach(function(n){ var g=_nfDay(n.created_at); if(!cur||cur.k!==g){cur={k:g,items:[]};groups.push(cur);} cur.items.push(n); });
+  groups.forEach(function(g){
+    h+='<div style="font-size:12.5px;font-weight:900;color:var(--muted,#5b6b85);margin:14px 6px 8px">'+g.k+'</div><div style="background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:18px;overflow:hidden">';
+    g.items.forEach(function(n,i){
+      var k=_nfKind(n.type);
+      h+='<div role="button" tabindex="0" id="nf-'+(parseInt(n.id)||0)+'" onclick="'+openFn+'('+(parseInt(n.id)||0)+')" style="display:flex;align-items:flex-start;gap:12px;padding:13px 14px;cursor:pointer;'+(i?'border-top:1px solid var(--border,#eef2f8);':'')+(n.is_read?'':'background:rgba(29,78,216,.05);')+'">'
+        +'<span style="width:38px;height:38px;border-radius:11px;background:'+k.b+';color:'+k.c+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+_NF_I[k.i]+'</svg></span>'
+        +'<span style="flex:1;min-width:0"><b style="display:block;font-size:14px;font-weight:'+(n.is_read?'700':'900')+';color:var(--text,#14223d);line-height:1.5">'+E(n.title||'')+'</b>'
+        +(n.body?'<span style="display:block;font-size:12.5px;font-weight:600;color:var(--muted,#5b6b85);line-height:1.7;margin-top:2px">'+E(n.body)+'</span>':'')
+        +'<span style="display:block;font-size:11.5px;font-weight:700;color:#94a3b8;margin-top:4px">'+_nfTime(n.created_at)+'</span></span>'
+        +(n.is_read?'':'<span aria-label="غير مقروء" style="width:9px;height:9px;border-radius:9px;background:#1d4ed8;flex-shrink:0;margin-top:6px"></span>')
+        +'</div>';
+    });
+    h+='</div>';
+  });
+  return h;
+}
+
+var _NF_FILTERS_C=[['all','الكل'],['offers','العروض'],['messages','الرسائل'],['projects','مشاريعي']];
+function _nfPaintC(){ var el=document.getElementById('notifs-list'); if(!el)return; el.innerHTML=_nfHTML(_NF_FILTERS_C,'_nfOpenC');
+  var u=_nfList.filter(function(n){return !n.is_read;}).length, b=document.getElementById('nf-unread'); if(b){ b.style.display=u?'inline-block':'none'; b.textContent=u+' جديدة'; } }
+function _nfSet(k){ _nfFilter=k; _nfPaintC(); }
+function loadNotifs(){
+  var el=document.getElementById('notifs-list');if(!el)return;
+  if(!_nfList.length) el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  fetch(API+'/api/notifications',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(ns){
+    _nfList=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[]; _nfPaintC();
+  }).catch(function(){if(el)el.innerHTML=errH(loadNotifs);});
+}
+function _nfOpenC(id){
+  var n=_nfList.find(function(x){return String(x.id)===String(id);}); if(!n)return;
+  if(!n.is_read){ n.is_read=true; fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){}); _nfPaintC(); try{_notifRecount();}catch(e){} try{loadNotifCount();}catch(e){} }
+  var k=_nfKind(n.type).g;
+  if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
+  if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
 }

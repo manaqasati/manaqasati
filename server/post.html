@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <!-- HOME -->
     <div class="page on" id="page-home">
+      <div id="ph-top" style="display:flex;flex-direction:column;gap:12px"></div>
       <div class="ph-band">
         <span class="ph-acc"></span>
         <svg class="ph-net" viewBox="0 0 220 120" preserveAspectRatio="none"><line x1="10" y1="28" x2="90" y2="58" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="180" y2="22" stroke="#bfdbfe" stroke-width="1.2"/><line x1="90" y1="58" x2="140" y2="98" stroke="#fde68a" stroke-width="1.2"/><circle cx="90" cy="58" r="4.5" fill="#93c5fd"/><circle cx="180" cy="22" r="3.5" fill="#bfdbfe"/><circle cx="140" cy="98" r="3.5" fill="#F0A500"/></svg>
@@ -276,44 +277,49 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <!-- PROFILE -->
     <div class="page" id="page-profile">
-      <div style="background:var(--p3);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden">
-        <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p2),var(--sky))"></div>
-        <div style="display:flex;align-items:center;gap:16px">
-          <div class="profile-av" id="profileAv" onclick="document.getElementById('clientAvInput').click()" title="اضغط لتغيير الصورة"></div>
-          <div>
-            <div style="font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#fff" id="profNameDisp">—</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:3px">اضغط على الصورة لتغييرها</div>
-          </div>
+      <div class="pr-hero">
+        <div class="pr-top">
+          <div class="pr-avw"><div class="profile-av" id="profileAv" onclick="document.getElementById('clientAvInput').click()" title="اضغط لتغيير الصورة"></div><button class="pr-cam" onclick="document.getElementById('clientAvInput').click()" aria-label="تغيير الصورة"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button></div>
+          <div style="min-width:0"><div class="pr-name" id="profNameDisp">—</div><div class="pr-sub" id="profSub">عميل</div></div>
         </div>
+        <div class="pr-stats"><div><b id="pr-st-req">—</b><small>مشاريع</small></div><div><b id="pr-st-off">—</b><small>عروض وصلتك</small></div><div><b id="pr-st-done">—</b><small>مكتملة</small></div></div>
       </div>
       <input type="file" id="clientAvInput" accept="image/*" style="display:none" onchange="uploadClientAvatar(this)">
-      <div class="card">
-        <div class="ch"><h3>المعلومات الشخصية</h3></div>
+      <div class="pr-sec">بياناتي</div>
+      <div class="pr-card">
         <div class="form-grid">
-          <div class="fg"><label>الاسم الكامل</label><input type="text" id="prof-name" placeholder="اسمك الكامل"></div>
-          <div class="fg"><label>البريد الإلكتروني</label><input type="email" id="prof-email" placeholder="example@email.com" dir="ltr"></div>
-          <div class="fg"><label>رقم الجوال</label><input type="tel" id="prof-phone" placeholder="05xxxxxxxx" dir="ltr"></div>
-          <div class="fg"><label>المدينة</label><select id="prof-city"></select></div>
+          <div class="fg"><label for="prof-name">الاسم الكامل</label><input type="text" id="prof-name" placeholder="اسمك الكامل"></div>
+          <div class="fg"><label for="prof-email">البريد الإلكتروني</label><input type="email" id="prof-email" placeholder="example@email.com" dir="ltr"></div>
+          <div class="fg"><label for="prof-phone">رقم الجوال</label><input type="tel" id="prof-phone" placeholder="05xxxxxxxx" dir="ltr"></div>
+          <div class="fg"><label for="prof-city">المدينة</label><select id="prof-city"></select></div>
         </div>
-        <div class="form-btns"><button class="btn-p" onclick="saveClientProfile(this)">حفظ التغييرات</button></div>
-        <button onclick="location.href='/'" style="width:100%;margin-top:12px;padding:13px;background:var(--p-l,#eff6ff);color:var(--p,#1d4ed8);border:1px solid #bfdbfe;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>الصفحة الرئيسية</button>
-        <button onclick="logout()" style="width:100%;margin-top:12px;padding:13px;background:var(--red-l);color:var(--red);border:1px solid #fecaca;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>تسجيل الخروج</button>
+        <button class="btn-p pr-save" onclick="saveClientProfile(this)">حفظ التغييرات</button>
       </div>
-
-      <div class="card">
-        <div class="ch"><h3>تغيير كلمة المرور</h3></div>
-        <div class="fg"><label>كلمة المرور الحالية</label><input type="password" id="old-pw" autocomplete="current-password" placeholder="كلمة المرور الحالية"></div>
-        <div class="fg"><label>كلمة المرور الجديدة</label><input type="password" id="new-pw" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
-        <div class="form-btns"><button class="btn-s" onclick="changeClientPw()">تغيير كلمة المرور</button></div>
+      <div class="pr-sec">الحساب</div>
+      <div class="pr-list">
+        <button class="pr-row" onclick="_prTog('pr-pw')"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></span><span class="pr-t">كلمة المرور<small>غيّرها في أي وقت</small></span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></button>
+        <div id="pr-pw" class="pr-fold" style="display:none">
+          <div class="fg"><label for="old-pw">كلمة المرور الحالية</label><input type="password" id="old-pw" autocomplete="current-password" placeholder="كلمة المرور الحالية"></div>
+          <div class="fg"><label for="new-pw">كلمة المرور الجديدة</label><input type="password" id="new-pw" autocomplete="new-password" placeholder="6 أحرف على الأقل"></div>
+          <button class="btn-s pr-save" onclick="changeClientPw()">تغيير كلمة المرور</button>
+        </div>
+        <div class="pr-row" role="group"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><span class="pr-t">إشعارات المتصفح<small id="push-sub">توصلك العروض والرسائل فوراً</small></span><button class="pr-tg" id="pushTg" onclick="togglePush()" aria-label="تشغيل أو إيقاف الإشعارات" aria-pressed="false"><i></i></button></div>
+        <div id="push-hint" style="display:none;margin:0 14px 12px;font-size:12px;color:#b45309;line-height:1.7"></div>
+        <a class="pr-row" href="https://play.google.com/store/apps/details?id=com.manaqasa.app" target="_blank" rel="noopener"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></span><span class="pr-t">تطبيق الجوال<small>App Store · Google Play</small></span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
       </div>
+      <div class="pr-sec">المساعدة</div>
+      <div class="pr-list">
+        <a class="pr-row" href="/"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span><span class="pr-t">الصفحة الرئيسية للموقع</span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+        <a class="pr-row" href="/privacy.html"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span><span class="pr-t">الشروط والخصوصية</span><span class="pr-chev"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+        <button class="pr-row pr-red" onclick="logout()"><span class="pr-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg></span><span class="pr-t">تسجيل الخروج</span></button>
+      </div>
+      <a href="/delete-account.html" class="pr-del">حذف الحساب</a>
     </div>
 
     <!-- NOTIFS -->
     <div class="page" id="page-notifs">
-      <div class="card card-accent">
-        <div class="ch"><h3>الإشعارات</h3><div style="display:flex;gap:10px"><button class="ch-link" onclick="markAllRead()">تحديد الكل كمقروء</button><button class="ch-link" onclick="deleteAllNotifs()" style="color:var(--red)">حذف الكل</button></div></div>
-        <div id="notifs-list"></div>
-      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><h2 style="margin:0;font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;color:var(--text)">الإشعارات</h2><span id="nf-unread" style="display:none;background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:900"></span><span style="margin-right:auto;display:flex;gap:12px"><button class="ch-link" onclick="markAllRead()">تعليم الكل كمقروء</button><button class="ch-link" onclick="deleteAllNotifs()" style="color:var(--red)">حذف الكل</button></span></div>
+      <div id="notifs-list"></div>
     </div>
 
   </div><!-- /content -->
