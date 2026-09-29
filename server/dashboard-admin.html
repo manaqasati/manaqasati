@@ -826,6 +826,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 
     <div class="page" id="page-health">
       <div id="health-body"><div class="loading"><div class="spinner"></div>جاري الفحص...</div></div>
+      <div id="csp-card"></div>
     </div>
 
     <div class="page" id="page-followup">
@@ -5740,7 +5741,33 @@ function _refreshHealth(btn){
     renderHealth(d);
   }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='تعذّر — أعد المحاولة';btn.style.opacity='1';} });
 }
+// بطاقة «حماية المتصفح (CSP)» — وضع المراقبة: تعرض أي مصدر غير متوقع حاولت صفحة تحمّله
+function _loadCsp(){
+  var box=document.getElementById('csp-card'); if(!box)return;
+  fetch(API+'/api/admin/csp-reports',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d){box.innerHTML='';return;}
+    var DN={'script-src-elem':'سكربت','script-src':'سكربت','script-src-attr':'سكربت داخلي','style-src-elem':'تنسيق','style-src':'تنسيق','img-src':'صورة','connect-src':'اتصال','font-src':'خط','frame-src':'إطار','media-src':'صوت/فيديو','worker-src':'عامل خلفي','form-action':'نموذج','frame-ancestors':'تضمين الموقع','base-uri':'رابط أساسي','object-src':'كائن'};
+    var rows=(d.rows||[]).slice(0,30).map(function(r){
+      var ago=Math.max(0,Math.round((Date.now()-new Date(r.last_at))/60000)); var t=ago<1?'الآن':('قبل '+(ago<60?(ago+' د'):(ago<1440?Math.round(ago/60)+' س':Math.round(ago/1440)+' يوم')));
+      return '<tr><td style="padding:7px 6px;font-weight:700">'+esc(DN[r.directive]||r.directive)+'</td><td style="padding:7px 6px;direction:ltr;text-align:left;font-size:11.5px;word-break:break-all">'+esc(r.blocked||'—')+'</td><td style="padding:7px 6px;direction:ltr;text-align:left;font-size:11.5px">'+esc(r.page||'—')+'</td><td style="padding:7px 6px;text-align:center;font-weight:800">'+(parseInt(r.n)||0)+'</td><td style="padding:7px 6px;color:var(--muted);font-size:11.5px;white-space:nowrap">'+t+'</td></tr>';
+    }).join('');
+    var ok=!d.kinds;
+    box.innerHTML='<div class="card" style="margin-bottom:14px;border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+      +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;padding-bottom:12px;border-bottom:1px solid var(--border)">'+_hDot(ok)+'<h3 style="margin:0;font-size:15px;color:var(--text)">حماية المتصفح (CSP)</h3>'
+      +'<span style="margin-inline-start:auto;font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(37,99,235,.1);color:#1d4ed8">'+(d.mode==='off'?'متوقفة':'مراقبة فقط')+'</span></div>'
+      +'<div style="font-size:12.5px;color:var(--muted);line-height:1.8;margin-bottom:10px">المتصفح يبلّغنا إذا صفحة حاولت تحمّل شي من مصدر غير معروف (بدون ما يمنعه). إذا ظهر مصدر تعرفه (أداة تحليل أضفتها مثلاً) نضيفه للقائمة المسموحة. وإذا ظهر مصدر غريب، هذا مؤشر محاولة اختراق.</div>'
+      +(ok?'<div style="color:#16a34a;font-weight:800;font-size:13px">✓ ما فيه أي تنبيه</div>'
+        :'<div style="font-size:12.5px;margin-bottom:8px"><b>'+d.kinds+'</b> نوع · <b>'+d.total+'</b> تنبيه</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--muted);font-size:11.5px;text-align:right"><th style="padding:6px">النوع</th><th style="padding:6px">المصدر</th><th style="padding:6px">الصفحة</th><th style="padding:6px">مرات</th><th style="padding:6px">آخر مرة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+        +'<button onclick="_clearCsp()" style="margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:Tajawal">مسح التنبيهات</button>')
+      +'</div>';
+  }).catch(function(){});
+}
+function _clearCsp(){
+  if(!confirm('مسح كل تنبيهات CSP؟'))return;
+  fetch(API+'/api/admin/csp-reports',Object.assign({method:'DELETE'},hdr())).then(function(){_loadCsp();}).catch(function(){});
+}
 function loadHealth(){
+  _loadCsp();
   var box=document.getElementById('health-body');if(box&&!box.querySelector('.card'))box.innerHTML='<div class="loading"><div class="spinner"></div>جاري الفحص...</div>';
   fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(renderHealth).catch(function(){if(box&&!box.querySelector('.card'))box.innerHTML=emptyState('تعذر الفحص');});
   if(_healthTimer)clearInterval(_healthTimer);
@@ -6401,16 +6428,14 @@ async function removeAdmin(id,name){
 
 // ═══ تحديث الشارات تلقائياً (بلاغات + أسئلة) — كل 25 ثانية وعند العودة للصفحة ═══
 function refreshAdminBadges(){
-  fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(reps){
-    var pending=Array.isArray(reps)?reps.filter(function(r){return r.status==='pending'||!r.status;}).length:0;
-    var b=document.getElementById('reports-badge');if(b){b.textContent=pending;b.style.display=pending?'flex':'none';}
-  }).catch(function(){});
-  fetch(API+'/api/admin/questions',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(qs){
-    var pend=Array.isArray(qs)?qs.filter(function(q){return !(q.answer&&String(q.answer).trim());}).length:0;
-    var b=document.getElementById('questions-badge');if(b){b.textContent=pend;b.style.display=pend?'flex':'none';}
+  fetch(API+'/api/admin/badge-counts',hdr()).then(function(r){return r.ok?r.json():{};}).then(function(c){
+    [['reports','reports-badge'],['questions','questions-badge']].forEach(function(x){
+      if(typeof c[x[0]]!=='number')return;
+      var b=document.getElementById(x[1]);if(b){b.textContent=c[x[0]];b.style.display=c[x[0]]?'flex':'none';}
+    });
   }).catch(function(){});
 }
-setInterval(function(){ if(document.visibilityState==='visible') refreshAdminBadges(); },25000);
+setInterval(function(){ if(document.visibilityState==='visible') refreshAdminBadges(); },30000);
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') refreshAdminBadges(); });
 setTimeout(refreshAdminBadges, 1500);
 </script>
