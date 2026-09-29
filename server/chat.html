@@ -431,7 +431,7 @@ function openChat(reqId,withId,name,proj){
   msgs=[]; document.getElementById('msgs').innerHTML='<div class="load">جاري التحميل...</div>';
   loadMsgs(); checkBlock();
   clearInterval(poll);
-  poll=setInterval(function(){ if(!document.hidden&&curReq)loadMsgs(true); },6000);
+  poll=setInterval(function(){ if(document.hidden||!curReq)return; if(window._wsLive&&(++_pollTick%5))return; loadMsgs(true); },6000);
 }
 function backToList(){
   clearInterval(poll); curReq=null; curWith=null; cancelReply();
@@ -838,6 +838,39 @@ loadList();
       openChat(r,w,nm,pj);
     }
   },180);
+})();
+</script>
+<script>
+/* ═══ اتصال لحظي: الرسائل توصل فوراً بدل الانتظار ═══ */
+var _pollTick=0;
+(function(){
+  var _ws=null,_alive=false,_t=null,_RC=3000,_last=0,_stop=false,_rt=null,_lt=null;
+  function _tok(){ try{ return localStorage.getItem('token')||''; }catch(e){ return ''; } }
+  function _handle(m){
+    var other=m.type==='new_message'?m.sender_id:m.type==='messages_read'?m.reader_id:m.type==='message_deleted'?m.sender_id:m.type==='message_sent'?(m.message&&m.message.receiver_id):null;
+    if(other==null)return;
+    var onChat=document.getElementById('scChat')&&document.getElementById('scChat').classList.contains('on');
+    if(onChat&&curReq&&String(curWith)===String(other)){ clearTimeout(_rt); _rt=setTimeout(function(){ loadMsgs(true); },250); }
+    else if(m.type==='new_message'){
+      var onList=document.getElementById('scList')&&document.getElementById('scList').classList.contains('on');
+      if(onList){ clearTimeout(_lt); _lt=setTimeout(function(){ try{ loadList(); }catch(e){} },300); }
+      else if(typeof toast==='function') toast('💬 رسالة جديدة'+(m.sender_name?' من '+m.sender_name:''));
+    }
+  }
+  function _c(){
+    if(_stop||!_tok()) return;
+    if(_ws&&(_ws.readyState===0||_ws.readyState===1)) return;
+    try{ _ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host); }catch(e){ _r(); return; }
+    _ws.onopen=function(){ _last=Date.now(); try{ _ws.send(JSON.stringify({type:'auth',token:_tok()})); }catch(e){} };
+    _ws.onmessage=function(ev){ _last=Date.now(); var m; try{ m=JSON.parse(ev.data); }catch(e){ return; } if(!m||m.type==='pong')return; if(m.type==='connected'){ _alive=true; window._wsLive=true; _RC=3000; return; } try{ _handle(m); }catch(e){} };
+    _ws.onclose=function(ev){ _alive=false; window._wsLive=false; var c=ev&&ev.code; if(c===4003){ _stop=true; return; } if(c===4008) return; _r(c===4001?60000:0); };
+    _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
+  }
+  function _r(min){ clearTimeout(_t); var d=Math.max(min||0,_RC)+Math.random()*1500; _RC=Math.min(_RC*2,30000); _t=setTimeout(_c,d); }
+  setInterval(function(){ if(!_ws||_ws.readyState!==1)return; if(Date.now()-_last>70000){ try{ _ws.close(); }catch(e){} return; } try{ _ws.send('{"type":"ping"}'); }catch(e){} },25000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'&&!_alive){ _RC=3000; _c(); } });
+  window.addEventListener('online',function(){ if(!_alive){ _RC=3000; _c(); } });
+  setTimeout(_c,600);
 })();
 </script>
 </body>
