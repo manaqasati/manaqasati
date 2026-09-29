@@ -133,7 +133,7 @@ const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' wss: https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
+  "connect-src 'self' wss: https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
   "frame-src 'self' https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
@@ -186,7 +186,7 @@ app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['appli
       const blocked = strip(r['blocked-uri'] || r.blockedURL || '');
       if (!dir || /^(chrome|moz|safari|safari-web|ms-browser)-extension/i.test(blocked)) continue; // إضافات المتصفح: مو من موقعنا
       let page = strip(r['document-uri'] || r.documentURL || ''); try { page = new URL(page).pathname.slice(0, 120); } catch(e) {}
-      const sample = String(r['script-sample'] || r.sample || '').slice(0, 80);
+      const sample = String(r['script-sample'] || r.sample || (r['source-file'] || r.sourceFile ? 'من: ' + strip(r['source-file'] || r.sourceFile) : '')).slice(0, 80);
       const up = await pool.query(`UPDATE csp_reports SET n=n+1, last_at=NOW() WHERE directive=$1 AND blocked=$2 AND page=$3`, [dir, blocked, page]);
       if (!up.rowCount) {
         const c = (await pool.query('SELECT COUNT(*)::int AS n FROM csp_reports')).rows[0].n;
