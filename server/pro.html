@@ -384,7 +384,8 @@ function render(p,rat){
   var sc={"@context":"https://schema.org","@type":"LocalBusiness","name":nm,"description":pgD,"url":url,"address":{"@type":"PostalAddress","addressLocality":city,"addressCountry":"SA"}};
   if(ph)sc.telephone=ph;
   if(avg>0)sc.aggregateRating={"@type":"AggregateRating","ratingValue":avg.toFixed(1),"reviewCount":cnt,"bestRating":"5"};
-  document.getElementById('ld').textContent=JSON.stringify(sc);
+  // السيرفر يعبّي البيانات المنظمة مسبقاً في /pro/ — نعبّيها هنا فقط لو فاضية (بلوك واحد بدل اثنين)
+  var _ldEl=document.getElementById('ld'); if(_ldEl&&!String(_ldEl.textContent||'').trim())_ldEl.textContent=JSON.stringify(sc).replace(/</g,'\\u003c');
 
   // ── الواجهة ──
   var avHtml=_safeUrl(p.profile_image)?'<img src="'+esc(_safeUrl(p.profile_image))+'" alt="'+esc(nm)+'" loading="eager">':esc(nm.charAt(0));
