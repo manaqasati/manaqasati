@@ -2665,6 +2665,12 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_at TIMESTAMP`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_warned_at TIMESTAMP`);
+      // متابعة التحذيرات: هل شافه المزوّد؟ هل عدّل؟ + مراقبة مزوّد معيّن
+      await _mig(`CREATE TABLE IF NOT EXISTS bid_warnings (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, kind VARCHAR(10) DEFAULT 'warn', reason TEXT, admin_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), seen_at TIMESTAMP, ack_at TIMESTAMP, edited_at TIMESTAMP)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_prov ON bid_warnings(provider_id, created_at DESC)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
       // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
@@ -4245,6 +4251,11 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         sendEmail(cem, rt, emailTpl(rt, rb, 'عرض تقرير العروض', link)).catch(()=>{});
       } catch(e) { console.error('auto report email:', e.message); }
     })(); }
+    (async () => { try {
+      if (isUpdate) await pool.query('UPDATE bid_warnings SET edited_at=NOW() WHERE bid_id=$1 AND edited_at IS NULL', [row.id]);
+      else { const w = (await pool.query('SELECT COALESCE(admin_watch,FALSE) AS w, COALESCE(NULLIF(business_name,\'\'),name) AS nm FROM users WHERE id=$1', [req.user.id])).rows[0];
+        if (w && w.w) await _notifyAdmins('👁 عرض جديد من مزوّد تحت المراقبة', `${w.nm||'مزوّد'} قدّم عرض على «${projTitle}»`, 'bidwatch', row.id); }
+    } catch(e){} })();
     res.json(row);
   } catch(e) { console.error('POST /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4275,6 +4286,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
       if (await _provUnderReview(req.user.id)) { await _holdBid(id); if (r.rows[0]) r.rows[0].hold_state = 'held'; }
       else { await pool.query(`UPDATE bids SET hold_state=NULL, hold_reason=NULL WHERE id=$1 AND hold_state='rejected'`, [id]); }
     } catch(he) {}
+    try { await pool.query('UPDATE bid_warnings SET edited_at=NOW(), seen_at=COALESCE(seen_at,NOW()) WHERE bid_id=$1 AND edited_at IS NULL', [id]); } catch(we) {}
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4509,6 +4521,7 @@ app.put('/api/admin/bids/:id/request-edit', requirePermission('bids.delete'), as
     const b = await pool.query('SELECT b.provider_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [bidId]);
     if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await notify(b.rows[0].provider_id, '📝 عرضك يحتاج تعديلاً', `عرضك على "${eEsc(b.rows[0].title)}" يحتاج تعديلاً${reason?': '+eEsc(reason):' — يرجى مراجعته وتحديثه'}. ادخل «عروضي» وعدّله.`, 'bid', null);
+    try { await pool.query('INSERT INTO bid_warnings (bid_id, provider_id, request_id, kind, reason, admin_id) SELECT $1, provider_id, request_id, $2, $3, $4 FROM bids WHERE id=$1', [bidId, 'edit', (reason||'يحتاج تعديلاً — راجع عرضك وحدّثه').slice(0,1000), req.user && req.user.id || null]); } catch(we){}
     await logAdmin(req, 'request_edit_bid', 'bid', bidId, 'طلب تعديل عرض');
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
@@ -4532,6 +4545,7 @@ app.put('/api/admin/bids/:id/warn', requirePermission('bids.delete'), async (req
     let wa_link = null;
     const ph = normPhone(p.phone);
     if (ph) { const wm = `السلام عليكم ${p.name||''}،\n⚠️ تنبيه من منصة مناقصة بخصوص عرضك على «${p.title}»:\n${reason}\n\nيرجى تعديل العرض من «عروضي»:\n${SITE_URL}/dashboard-provider.html`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
+    try { await pool.query('INSERT INTO bid_warnings (bid_id, provider_id, request_id, kind, reason, admin_id) SELECT $1, provider_id, request_id, $2, $3, $4 FROM bids WHERE id=$1', [bidId, 'warn', reason.slice(0,1000), req.user && req.user.id || null]); } catch(we){ console.error('bid_warnings:', we.message); }
     await logAdmin(req, 'warn_bid', 'bid', bidId, 'تحذير المزوّد: '+reason.slice(0,80));
     res.json({ ok: true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
@@ -6067,6 +6081,54 @@ async function backfillBidAttachmentHashes(){
   } catch(e){ console.error('backfillHashes:', e.message); }
   finally { global._bkHashRunning = false; }
 }
+// ═══ تحذيرات الإدارة عند المزوّد: تظهر له كبطاقة، وأول ما تظهر نسجّل «شافه» ═══
+app.get('/api/provider/warnings', auth, async (req, res) => {
+  try {
+    const rows = (await pool.query(`SELECT w.id, w.bid_id, w.kind, w.reason, w.created_at, b.note, b.request_id, q.title AS request_title
+      FROM bid_warnings w JOIN bids b ON b.id=w.bid_id JOIN requests q ON q.id=b.request_id
+      WHERE w.provider_id=$1 AND w.edited_at IS NULL AND w.ack_at IS NULL AND b.status<>'accepted' AND w.created_at > NOW() - INTERVAL '30 days'
+      ORDER BY w.created_at DESC LIMIT 5`, [req.user.id])).rows;
+    if (rows.length && !(req.query.peek)) await pool.query('UPDATE bid_warnings SET seen_at=NOW() WHERE provider_id=$1 AND seen_at IS NULL AND id = ANY($2::int[])', [req.user.id, rows.map(r => r.id)]);
+    res.json(rows.map(r => ({ id: r.id, bid_id: r.bid_id, kind: r.kind, reason: r.reason, created_at: r.created_at, note: String(r.note||'').slice(0, 160), request_id: r.request_id, request_title: r.request_title })));
+  } catch(e) { res.json([]); }
+});
+app.post('/api/provider/warnings/:id/ack', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE bid_warnings SET ack_at=NOW(), seen_at=COALESCE(seen_at,NOW()) WHERE id=$1 AND provider_id=$2 AND ack_at IS NULL', [parseInt(req.params.id), req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ مراقبة مزوّد + ملفه الكامل للأدمن ═══
+app.post('/api/admin/providers/:id/watch', requirePermission('bids.view'), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id); const on = !!(req.body && req.body.on);
+    const r = await pool.query(`UPDATE users SET admin_watch=$1, admin_watch_at=CASE WHEN $1 THEN NOW() ELSE NULL END WHERE id=$2 RETURNING COALESCE(NULLIF(business_name,''),name) AS nm`, [on, pid]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, on ? 'watch_provider' : 'unwatch_provider', 'user', pid, r.rows[0].nm || '');
+    res.json({ ok: true, on });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/providers/:id/bid-profile', requirePermission('bids.view'), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id);
+    const u = (await pool.query(`SELECT id, name, business_name, city, phone, email, created_at, COALESCE(is_active,TRUE) AS is_active, COALESCE(bid_review,FALSE) AS bid_review,
+      COALESCE(admin_watch,FALSE) AS admin_watch, admin_watch_at,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id)::int AS bids_total,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND created_at > NOW() - INTERVAL '30 days')::int AS bids_30d,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted')::int AS accepted,
+      (SELECT COUNT(*) FROM bid_warnings WHERE provider_id=users.id)::int AS warnings,
+      (SELECT COUNT(*) FROM bid_reports WHERE provider_id=users.id)::int AS reports,
+      (SELECT MAX(c) FROM (SELECT COUNT(*)::int c FROM bids WHERE provider_id=users.id AND created_at > NOW() - INTERVAL '14 days' GROUP BY date_trunc('hour', created_at)) z) AS burst
+      FROM users WHERE id=$1`, [pid])).rows[0];
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    const warns = (await pool.query(`SELECT w.id, w.bid_id, w.kind, w.reason, w.created_at, w.seen_at, w.ack_at, w.edited_at, q.title AS request_title
+      FROM bid_warnings w LEFT JOIN requests q ON q.id=w.request_id WHERE w.provider_id=$1 ORDER BY w.created_at DESC LIMIT 30`, [pid])).rows;
+    const bids = (await pool.query(`SELECT b.id, b.request_id, b.note, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit, b.status, b.created_at, q.title AS request_title
+      FROM bids b JOIN requests q ON q.id=b.request_id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 40`, [pid])).rows;
+    let sim = null; try { sim = _bidSimilarity(bids.map(b => b.note || '')); } catch(e){}
+    res.json({ user: u, warnings: warns, bids: bids.slice(0, 10), similarity: sim });
+  } catch(e) { console.error('bid-profile:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
   try {
     backfillBidAttachmentHashes().catch(()=>{});
@@ -6079,6 +6141,8 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note, b.status, b.created_at,
         b.price_visibility, b.price_unit, b.attachment_url, b.attachment_hash, COALESCE(u.is_active,TRUE) AS provider_active,
+        COALESCE(u.admin_watch,FALSE) AS provider_watch,
+        (SELECT json_build_object('id',w.id,'kind',w.kind,'reason',w.reason,'created_at',w.created_at,'seen_at',w.seen_at,'ack_at',w.ack_at,'edited_at',w.edited_at,'n',(SELECT COUNT(*) FROM bid_warnings x WHERE x.bid_id=b.id)) FROM bid_warnings w WHERE w.bid_id=b.id ORDER BY w.created_at DESC LIMIT 1) AS warning,
         u.name as provider_name, u.business_name as provider_business, u.city as provider_city,
         rq.title as request_title, rq.client_id, rq.city as request_city,
         cu.name as client_name

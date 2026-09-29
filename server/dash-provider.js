@@ -69,6 +69,33 @@ function resendVerify(){
   }).catch(function(){ btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
 }
 window.addEventListener('load',function(){try{_pvCheckVerify();}catch(e){}});
+// ===== تحذيرات الإدارة على عروض المزوّد (أول ما تظهر تنحسب «شافه»، والتعديل يخفيها) =====
+var _pvWarns=[];
+function _pvWarnLoad(){
+  _api('/api/provider/warnings').then(function(d){ _pvWarns=Array.isArray(d)?d:[]; _pvWarnRender(); }).catch(function(){});
+}
+function _pvWarnRender(){
+  var b=document.getElementById('pvWarn'); if(!b)return;
+  if(!_pvWarns.length){ b.style.display='none'; b.innerHTML=''; return; }
+  var w=_pvWarns[0], more=_pvWarns.length-1, isEdit=w.kind==='edit';
+  b.innerHTML='<div class="pw-card"><div class="pw-hd"><span class="pw-ic">'+(isEdit?'✏️':'⚠️')+'</span><div style="min-width:0"><b>'+(isEdit?'الإدارة طلبت تعديل عرضك':'تنبيه من الإدارة على عرضك')+'</b><small>على مشروع «'+_esc(w.request_title||'')+'» · '+(function(a){return a==='الآن'?a:'قبل '+a;})(_ago(w.created_at))+'</small></div></div>'
+    +'<div class="pw-msg">'+_esc(w.reason||'')+'</div>'
+    +(w.note?'<div class="pw-cur">عرضك الحالي: «'+_esc(w.note)+(w.note.length>=160?'…':'')+'»</div>':'')
+    +'<div class="pw-acts"><button class="pw-pri" onclick="_pvWarnEdit('+w.bid_id+')">✏️ عدّل العرض الحين</button><button class="pw-sec" onclick="_pvWarnAck('+w.id+')">فهمت</button></div>'
+    +(more>0?'<div class="pw-more">وعندك '+more+' '+(more===1?'تنبيه ثاني':'تنبيهات ثانية')+' — تطلع بعد هذا</div>':'')+'</div>';
+  b.style.display='block';
+}
+async function _pvWarnEdit(bid){
+  try{ if(!(_myBids||[]).some(function(x){return String(x.id)===String(bid);})){ var bs=await _api('/api/provider/bids'); if(Array.isArray(bs))_myBids=bs; } }catch(e){}
+  if((_myBids||[]).some(function(x){return String(x.id)===String(bid);})) _editBidById(bid);
+  else { gotoPage('works'); showToast('افتح العرض من «مشاريعي وعروضي» وعدّله','info'); }
+}
+function _pvWarnAck(id){
+  _pvWarns=_pvWarns.filter(function(x){return x.id!==id;}); _pvWarnRender();
+  _api('/api/provider/warnings/'+id+'/ack',{method:'POST',body:'{}'}).catch(function(){});
+}
+window.addEventListener('load',function(){ setTimeout(function(){ try{ if(localStorage.getItem('token'))_pvWarnLoad(); }catch(e){} },600); });
+
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
 // حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
 window.addEventListener('pageshow',function(){ if(!localStorage.getItem('token'))location.replace('/auth.html'); });
@@ -1118,7 +1145,7 @@ async function _saveBidEdit(id){
     if(!r)throw new Error();
     closeModal();
     if(typeof showToast==='function')showToast('تم تحديث عرضك ✓','success');
-    _cacheSet('home_data',null); loadWorks();
+    _cacheSet('home_data',null); loadWorks(); try{_pvWarnLoad();}catch(e){}
   }catch(e){
     if(typeof showToast==='function')showToast('تعذّر الحفظ — تحقّق من اتصالك','error');
     if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';}
@@ -1143,6 +1170,8 @@ function _renderBids(list){
     var isHeld=b.hold_state==='held',isHRej=b.hold_state==='rejected';
     var stSty=isHeld?' style="background:#fef3c7;color:#92400e"':(isHRej?' style="background:#fef2f2;color:#b91c1c"':'');
     if(isHeld)stLbl='تحت المراجعة';else if(isHRej)stLbl='لم يُعتمد';
+    var _wn=(_pvWarns||[]).some(function(w){return String(w.bid_id)===String(b.id);});
+    if(_wn&&!isAcc){stLbl='⚠️ يحتاج تعديل';stSty=' style="background:#fee2e2;color:#b91c1c"';}
     var h='<div class="wz-item">';
     h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'"'+stSty+'>'+stLbl+'</span></div>';
     if(isHeld)h+='<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">⏳ عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة</div>';

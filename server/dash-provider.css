@@ -571,3 +571,19 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-theme="dark"] .vb-ic{background:rgba(96,165,250,.14);color:#93c5fd}[data-theme="dark"] .vb-ic i{border-color:#111827}
 [data-theme="dark"] .vb-sec{background:transparent;color:#93c5fd;border-color:rgba(147,197,253,.35)}
 [data-theme="dark"] .vb-slim{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d}[data-theme="dark"] .vb-slim u{color:#93c5fd}
+
+/* ===== تنبيه الإدارة على عرض المزوّد ===== */
+#pvWarn{margin:0 0 14px}
+.content:not(:has(#page-home.on)):not(:has(#page-works.on)) #pvWarn{display:none!important}
+.pw-card{background:#fff;border:1.5px solid #fecaca;border-radius:18px;padding:15px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 24px -18px rgba(185,28,28,.5)}
+.pw-hd{display:flex;gap:11px;align-items:center}.pw-hd b{display:block;font-family:'Cairo',sans-serif;font-size:15.5px;font-weight:900;color:#0f2544}.pw-hd small{display:block;font-size:12px;font-weight:700;color:#64748b;margin-top:1px}
+.pw-ic{width:42px;height:42px;border-radius:13px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.pw-msg{background:#fef2f2;border-radius:12px;padding:10px 13px;font-size:13.5px;font-weight:700;color:#7f1d1d;line-height:1.85;white-space:pre-line}
+.pw-cur{font-size:12.5px;font-weight:700;color:#475569;line-height:1.8}
+.pw-acts{display:flex;gap:8px}.pw-acts button{border-radius:12px;padding:11px 14px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;min-height:44px}
+.pw-pri{flex:1.4;border:0;background:#b91c1c;color:#fff}.pw-pri:hover{background:#991b1b}
+.pw-sec{flex:1;background:#fff;color:#1e3a8a;border:1.5px solid #dbe5f5}
+.pw-more{font-size:12px;font-weight:700;color:#94a3b8;text-align:center}
+[data-theme="dark"] .pw-card{background:var(--white,#111827);border-color:rgba(248,113,113,.4)}
+[data-theme="dark"] .pw-hd b{color:#e5e7eb}[data-theme="dark"] .pw-msg{background:rgba(248,113,113,.12);color:#fecaca}[data-theme="dark"] .pw-cur{color:#cbd5e1}
+[data-theme="dark"] .pw-ic{background:rgba(248,113,113,.14)}[data-theme="dark"] .pw-sec{background:transparent;color:#93c5fd;border-color:rgba(147,197,253,.35)}
