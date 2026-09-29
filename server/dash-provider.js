@@ -501,38 +501,14 @@ function _renderHome(data){
 
 var _pnudgeTimer=null;
 function _renderShareCard(profile){
+  // مختصرة: سطر «رفع ترتيبك» فقط — المشاركة والـQR موجودة في الزر الذهبي «صفحتي» وصفحته العامة
   try{
     var slot=document.getElementById('ph-sharecard');if(!slot)return;
-    var uid=(profile&&profile.id)|| (function(){try{return JSON.parse(localStorage.getItem('user')||'{}').id;}catch(e){return 0;}})();
-    if(!uid)return;
-    // استخدم النطاق الفعلي للموقع (يتجنّب مشاكل www وبيئات الاختبار)
-    var url=(location.origin||'https://manaqasa.com')+'/pro/'+uid;
     var lastBump=profile&&profile.last_bumped_at;
     var hoursLeft=lastBump?Math.max(0,24-Math.floor((Date.now()-new Date(lastBump))/3600000)):0;
-    var bumpHtml;
-    if(hoursLeft>0){
-      var pct=Math.round(((24-hoursLeft)/24)*100);
-      bumpHtml='<div style="background:rgba(255,255,255,.1);border-radius:12px;padding:12px 14px">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:12.5px;font-weight:800">رفع ترتيبك في القائمة</span><span style="font-size:11px;opacity:.8">متاح بعد '+hoursLeft+' ساعة</span></div>'
-        +'<div style="height:6px;background:rgba(255,255,255,.2);border-radius:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#fff;border-radius:6px"></div></div></div>';
-    }else{
-      bumpHtml='<button onclick="_doBump()" style="width:100%;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);padding:11px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">⭡ رفع ترتيبك في القائمة — تصدّر أمام العملاء</button>';
-    }
-    slot.innerHTML='<div style="background:linear-gradient(135deg,#2563eb,#172554);border-radius:18px;padding:20px;color:#fff;margin-bottom:16px;box-shadow:0 10px 26px rgba(37,99,235,.25)">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><div style="font-family:Cairo,sans-serif;font-weight:900;font-size:16.5px">روّج لأعمالك</div></div>'
-      +'<div style="font-size:12px;opacity:.88;line-height:1.65;margin-bottom:15px">صفحتك واجهتك الاحترافية — شاركها ليصلك عملاء جدد ويشوفوا أعمالك.</div>'
-      +'<div id="share-stats" style="margin-bottom:13px"></div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:11px">'
-        +'<button onclick="_shareMyPage(\''+url+'\')" style="flex:1;background:#fff;color:#1e3a8a;border:none;padding:12px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13.5px;cursor:pointer">📤 مشاركة صفحتي</button>'
-        +'<button onclick="_showMyQR(\''+url+'\')" style="background:rgba(255,255,255,.16);color:#fff;border:none;padding:12px 15px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">QR</button>'
-        +'<button onclick="location.href=\''+url+'\'" style="background:rgba(255,255,255,.16);color:#fff;border:none;padding:12px 15px;border-radius:12px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">عرض</button>'
-      +'</div>'
-      +bumpHtml
-      +'</div>';
-    _api('/api/me/marketing').then(function(d){
-      var st=document.getElementById('share-stats');if(!st||!d)return;
-      st.innerHTML='<div style="background:rgba(255,255,255,.1);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:10px"><div style="font-size:24px;font-weight:900">'+(d.views||0)+'</div><div style="font-size:12px;opacity:.9;line-height:1.4">زيارة لصفحتك<br><span style="opacity:.7;font-size:10.5px">كل مشاركة تزيدها</span></div></div>';
-    }).catch(function(){});
+    var up='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+    slot.innerHTML='<div class="bump-row'+(hoursLeft>0?' wait':'')+'"><span class="bump-ic">'+up+'</span><div style="flex:1;min-width:0"><b>رفع ترتيبك في القائمة</b><small>'+(hoursLeft>0?'متاح مرة ثانية بعد '+hoursLeft+' ساعة':'تصدّر أمام العملاء — مرة كل 24 ساعة')+'</small></div>'
+      +(hoursLeft>0?'':'<button type="button" onclick="_doBump()">ارفعني</button>')+'</div>';
   }catch(e){}
 }
 function _shareMyPage(url){
@@ -1089,7 +1065,6 @@ async function loadWorks(){
   }
   html+=_bidStandingBanner();
   html+=_askMotivCard();
-  html+='<div class="stat-grid"><div class="sc"><div class="sn" style="color:var(--green)">'+acc+'</div><div class="st">مقبولة</div></div><div class="sc"><div class="sn" style="color:var(--gold)">'+pend+'</div><div class="st">معلقة</div></div><div class="sc"><div class="sn" style="color:#2563EB">'+prog+'</div><div class="st">جارية</div></div><div class="sc"><div class="sn" style="color:var(--p)">'+done+'</div><div class="st">مكتملة</div></div></div>';
   html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
   html+='<div id="wtab-projs-wrap" style="display:none">'+_renderProjs(_myProjs)+'</div>';
@@ -1709,7 +1684,7 @@ function loadSaai(){
       list=items.map(function(x){
         var st=x.status, pill, act='', due='';
         if(st==='approved'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dcfce7;color:#16a34a">مدفوع ومعتمد ✓ · '+fmtN(x.saai_amount)+' ر.س</span>'; }
-        else if(st==='submitted'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار اعتماد الأدمن · '+fmtN(x.saai_amount)+' ر.س</span>'; }
+        else if(st==='submitted'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار اعتماد الإدارة · '+fmtN(x.saai_amount)+' ر.س</span>'; }
         else if(st==='cancelled'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f1f5f9;color:#64748b">ملغي — ما عليك سعي</span>'; }
         else if(st==='deferred'){ var ds=x.defer_state, du=x.defer_until?new Date(x.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'';
           pill=(ds==='confirmed')?'<span class="saai-pl" style="background:#e0e7ff;color:#3730a3">⏸ مؤجّل لين '+du+' · '+fmtN(x.saai_amount)+' ر.س</span>'
@@ -1762,11 +1737,11 @@ function openSaaiSubmit(id, contract, title){
   var fee=Math.round((contract||0)*0.03);
   m.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:400px;width:100%;box-shadow:0 20px 50px -12px rgba(0,0,0,.4)">'
     +'<div style="font-family:Cairo,sans-serif;font-weight:800;font-size:16px;margin-bottom:16px">صرف سعي — '+_esc(title)+'</div>'
-    +'<div style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">المبلغ النهائي المتفق عليه مع العميل (ر.س)</label><input id="saai-amt" type="number" value="'+(contract||0)+'" oninput="_saaiRecalc()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px"><div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.6">المبلغ المكتوب هو سعر عرضك (تقديري). إذا كان الاتفاق النهائي مختلفاً — زيادة أو نقص — عدّله هنا ويُعاد حساب السعي. يطّلع الأدمن على التعديل.</div></div>'
+    +'<div style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">المبلغ النهائي المتفق عليه مع العميل (ر.س)</label><input id="saai-amt" type="number" value="'+(contract||0)+'" oninput="_saaiRecalc()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:14px"><div style="font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.6">المبلغ المكتوب هو سعر عرضك (تقديري). إذا كان الاتفاق النهائي مختلفاً — زيادة أو نقص — عدّله هنا ويُعاد حساب السعي. يطّلع الإدارة على التعديل.</div></div>'
     +'<div style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">السعي المستحق (3%)</label><input id="saai-fee" type="text" value="'+fmtN(fee)+' ر.س" readonly style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;background:#f6f8fc;color:#64748b;font-weight:800;font-family:Tajawal,sans-serif"></div>'
     +'<div style="margin-bottom:15px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px">إثبات التحويل</label><input type="file" id="saai-proof" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="font-size:12px;font-family:Tajawal,sans-serif;width:100%"><div id="saai-proof-lbl" style="display:none;font-size:12px;color:#16a34a;font-weight:700;margin-top:5px"></div></div>'
     +'<div style="display:flex;gap:9px"><button onclick="submitSaai()" style="flex:1;background:#1e3a8a;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer">تأكيد الصرف</button><button onclick="_el(\'saaiModal\').remove()" style="flex:0 0 auto;background:#f1f5f9;color:#475569;border:none;border-radius:11px;padding:13px 18px;font-family:Tajawal,sans-serif;font-weight:700;cursor:pointer">إلغاء</button></div>'
-    +'<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:9px">بعد التأكيد يراجع الأدمن الإيصال ويعتمد الاستلام.</div>'
+    +'<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:9px">بعد التأكيد يراجع الإدارة الإيصال ويعتمد الاستلام.</div>'
     +'</div>';
   m.onclick=function(e){ if(e.target===m) m.remove(); };
 }
@@ -1809,7 +1784,7 @@ function submitSaai(){
   if(amt<=0){ showToast('أدخل مبلغ العقد','error'); return; }
   if(!window._saaiProof){ showToast('ارفع إثبات التحويل','error'); return; }
   _api('/api/provider/saai/'+window._saaiId+'/submit',{method:'POST',body:JSON.stringify({contract_value:amt,proof:window._saaiProof})})
-    .then(function(d){ if(d&&d.ok){ showToast('تم إرسال الصرف — بانتظار اعتماد الأدمن','success'); _el('saaiModal').remove(); loadSaai(); } else showToast((d&&d.message)||'تعذّر الإرسال','error'); })
+    .then(function(d){ if(d&&d.ok){ showToast('تم إرسال الصرف — بانتظار اعتماد الإدارة','success'); _el('saaiModal').remove(); loadSaai(); } else showToast((d&&d.message)||'تعذّر الإرسال','error'); })
     .catch(function(){ showToast('تعذّر الإرسال','error'); });
 }
 async function loadChat(){
@@ -2311,10 +2286,9 @@ function _askMotivCard(){
   var rating=parseFloat(pr.avg_rating||pr.rating||0)||0, rc=parseInt(pr.review_count||0)||0;
   var docs=_myBids.filter(function(b){return b.status==='accepted';}).length;
   var cell=function(v,l){return '<div style="flex:1;background:rgba(255,255,255,.13);border-radius:12px;padding:9px 6px;text-align:center"><b style="font-size:19px;display:block;font-family:Cairo,Tajawal,sans-serif">'+v+'</b><span style="font-size:11.5px;font-weight:700;color:#fed7aa">'+l+'</span></div>';};
-  return '<div style="background:linear-gradient(160deg,#78350f,#b45309);color:#fff;border-radius:18px;padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px">'
-    +'<div style="display:flex;align-items:center;gap:8px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg><b style="font-size:17px">تقييماتك = عملاء أكثر</b></div>'
-    +'<div style="font-size:13.5px;font-weight:700;line-height:1.9;color:#ffedd5">العميل يختار المزوّد اللي عنده تقييمات وأعمال موثّقة. التقييم ما ينفتح إلا لما العميل <b style="color:#fff">يعتمد عرضك داخل مناقصة</b> — اتفقت معه؟ اطلب منه يعتمده من تحت.</div>'
-    +'<div style="display:flex;gap:8px">'+cell(rating?rating.toFixed(1):'—','تقييمك'+(rc?' ('+rc+')':''))+cell(docs,'أعمال موثّقة')+cell(eligible,'تنتظر اعتماد')+'</div></div>';
+  return '<div style="display:flex;align-items:center;gap:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:10px 12px;margin-bottom:14px;font-size:13px;font-weight:700;color:#7c2d12;line-height:1.6">'
+    +'<svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b" stroke="#b45309" stroke-width="1.5" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>'
+    +'<span style="flex:1"><b>'+eligible+(eligible===1?' عرض ينتظر':' عروض تنتظر')+' اعتماد العميل</b> — اعتماده يفتح لك التقييم'+(rating?' · تقييمك '+rating.toFixed(1)+(rc?' ('+rc+')':''):'')+'</span></div>';
 }
 function _askBlock(b){
   if(b.status==='accepted'||b.status==='rejected')return '';

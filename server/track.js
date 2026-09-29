@@ -8,7 +8,7 @@
   /* ── ١) ضع مُعرّفات البكسل هنا (اترك الفارغ كما هو لتعطيل منصّة) ── */
   var CONFIG = {
     metaPixelId:  '',   // مثال: '123456789012345'      (Meta / فيسبوك)
-    tiktokPixelId:'D9809HJC77U79CKESO0G',   // TikTok (افتراضي — يمكن تغييره من لوحة الأدمن)
+    tiktokPixelId:'D9809HJC77U79CKESO0G',   // TikTok (افتراضي — يمكن تغييره من لوحة الإدارة)
     snapPixelId:  '',   // مثال: 'xxxxxxxx-xxxx-xxxx'    (Snapchat)
     googleId:     ''    // مثال: 'G-XXXXXXXXXX'          (Google GA4)
   };
@@ -84,7 +84,7 @@
     loadSnap(CONFIG.snapPixelId);
     loadGoogle(CONFIG.googleId);
   }
-  // يقرأ المُعرّفات من لوحة الأدمن (إن وُجدت) ثم يبدأ — وإلا يستخدم الافتراضي
+  // يقرأ المُعرّفات من لوحة الإدارة (إن وُجدت) ثم يبدأ — وإلا يستخدم الافتراضي
   try {
     fetch(PIXELS_API, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : {}; })

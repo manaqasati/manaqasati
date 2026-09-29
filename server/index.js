@@ -312,7 +312,7 @@ setInterval(() => {
   for (const [k, v] of _rateLimit) { if (now > v.reset) _rateLimit.delete(k); }
 }, 600000);
 
-// نشر المشاريع قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الأدمن)
+// نشر المشاريع قيد المراجعة تلقائياً بعد انتهاء مدة المراجعة (قابلة للتعديل من لوحة الإدارة)
 // خريطة المدن → المناطق (لرصد الانتشار الجغرافي المشبوه)
 const _CITY_REGIONS = {
   'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية','الدلم','الحريق','السليل','مرات','ضرما'],
@@ -535,7 +535,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     `, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    // مشروع غير منشور (تحت المراجعة/مرفوض/يحتاج تعديل) أو محادثة مباشرة: لصاحبه والأدمن فقط
+    // مشروع غير منشور (تحت المراجعة/مرفوض/يحتاج تعديل) أو محادثة مباشرة: لصاحبه والإدارة فقط
     try {
       const _st = (await pool.query('SELECT status, category, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
       if (['pending_review','review','needs_edit','rejected'].includes(_st.status) || _st.category === 'direct') {
@@ -545,7 +545,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
         if (!_ok) return res.status(404).json({ message: 'غير موجود' });
       }
     } catch(e) {}
-    // الدعوة المباشرة: التفاصيل لصاحب المشروع والأدمن فقط، والمزوّد المدعو يعرف إنه مدعو
+    // الدعوة المباشرة: التفاصيل لصاحب المشروع والإدارة فقط، والمزوّد المدعو يعرف إنه مدعو
     try {
       let _v2 = null; const _ah2 = req.headers.authorization || ''; const _tk2 = _ah2.startsWith('Bearer ') ? _ah2.slice(7) : null;
       if (_tk2) { try { _v2 = jwt.verify(_tk2, JWT_SECRET); if (_v2 && _v2.purpose) _v2 = null; } catch(e) {} }
@@ -564,7 +564,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
         delete row.invited_provider_id; delete row.invite_started_at;
       }
     } catch(e) {}
-    // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الأدمن، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
+    // خصوصية الموقع: الإحداثيات الدقيقة تظهر للمالك، المزوّد المعتمد، الإدارة، وأي مزوّد مسجّل (لتقييم الوصول قبل المزايدة) — تبقى محجوبة عن الزائر غير المسجّل
     try {
       let viewer = null;
       const ah = req.headers.authorization || '';
@@ -575,7 +575,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
       if (!ok) { row.geo_lat = null; row.geo_lng = null; }
     } catch(e) { row.geo_lat = null; row.geo_lng = null; }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
-    // فتح جوال العميل: لصاحب المشروع/الأدمن/المُرسى عليه/مزوّد قدّم عرضاً حقيقياً (سعر + وصف≥25 أو ملف)
+    // فتح جوال العميل: لصاحب المشروع/الإدارة/المُرسى عليه/مزوّد قدّم عرضاً حقيقياً (سعر + وصف≥25 أو ملف)
     try {
       let vw=null; const ah3=req.headers.authorization||''; const tk3=ah3.startsWith('Bearer ')?ah3.slice(7):null;
       if(tk3){try{vw=jwt.verify(tk3,JWT_SECRET);}catch(e){}}
@@ -602,7 +602,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
         row.closed_by_client = !!(cw.close_reason && cw.close_reason !== 'admin_closed');
         row.closed_by_admin = cw.close_reason === 'admin_closed';
       }catch(e){} }
-      // ملاحظات الإدارة: ترجع لصاحب المشروع والأدمن فقط — أي أحد ثاني ما تنرسل له أصلاً
+      // ملاحظات الإدارة: ترجع لصاحب المشروع والإدارة فقط — أي أحد ثاني ما تنرسل له أصلاً
       if(isOwner||isAdmin){ try{
         const cn=(await pool.query('SELECT client_note, client_note_at, client_note_seen_at, client_note_done_at, client_note_hidden FROM requests WHERE id=$1',[id])).rows[0]||{};
         if(cn.client_note){
@@ -711,11 +711,11 @@ app.get('/api/bids/public/:id', async (req, res) => {
       const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
       if (tok) { const v = jwt.verify(tok, JWT_SECRET); isLoggedIn = true; viewerId = v.id; viewerRole = v.role; }
     } catch(e) { isLoggedIn = false; }
-    // صاحب المشروع (أو المخصّص له أو الأدمن) يشوف الملف الرسمي دائماً — لأنه يحوي السعر
+    // صاحب المشروع (أو المخصّص له أو الإدارة) يشوف الملف الرسمي دائماً — لأنه يحوي السعر
     let isPrivileged = false;
     try {
       const rq = (await pool.query('SELECT client_id, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
-      // الأسعار تُكشف لصاحب المشروع والأدمن فقط — لا المزوّد الفائز (الفوز لا يبيح رؤية أسعار المنافسين)
+      // الأسعار تُكشف لصاحب المشروع والإدارة فقط — لا المزوّد الفائز (الفوز لا يبيح رؤية أسعار المنافسين)
       isPrivileged = viewerId != null && (String(viewerId) === String(rq.client_id) || viewerRole === 'admin');
     } catch(e) {}
     const r = await pool.query(`
@@ -752,7 +752,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
     const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
     const rows = r.rows.map(x => {
       const { _p, ...rest } = x;
-      // إخفاء نص العرض كاملاً للزائر/المنافس إن كان السعر خاصاً — يمنع تسريب السعر داخل النص (يبقى ظاهراً لصاحب المشروع والأدمن)
+      // إخفاء نص العرض كاملاً للزائر/المنافس إن كان السعر خاصاً — يمنع تسريب السعر داخل النص (يبقى ظاهراً لصاحب المشروع والإدارة)
       const locked = (String(rest.price_visibility) === 'client') && !isPrivileged && !rest.is_mine;
       if (locked) {
         rest.proposal = '🔒 تفاصيل هذا العرض خاصة — تظهر لصاحب المشروع فقط.';
@@ -1262,7 +1262,7 @@ app.post('/api/card/:token', rateLimiter(20, 600000), async (req, res) => {
   }catch(e){ res.status(500).json({ message:'تعذّر الحفظ' }); }
 });
 
-// (أدمن) إنشاء/جلب رابط الكرت لمستهدف
+// (الإدارة) إنشاء/جلب رابط الكرت لمستهدف
 app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const id = parseInt(req.params.id);
@@ -1287,7 +1287,7 @@ app.post('/api/admin/leads/:id/card', requirePermission('outreach.manage'), asyn
 });
 
 // ═══ كراسة المشروع (Brief) — توليد المشروع ═══
-// (أدمن) اقتراح مزودين مطابقين لمشروع من قائمة الاستقطاب
+// (الإدارة) اقتراح مزودين مطابقين لمشروع من قائمة الاستقطاب
 app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manage'), async (req, res) => {
   try{
     const id = parseInt(req.params.id);
@@ -1495,7 +1495,7 @@ async function logAdmin(req, action, targetType, targetId, details) {
   try {
     await pool.query(
       'INSERT INTO admin_logs (admin_id, admin_name, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5,$6)',
-      [req.user?.id||null, req.user?.name||'أدمن', action, targetType||null, targetId||null, details||null]
+      [req.user?.id||null, req.user?.name||'الإدارة', action, targetType||null, targetId||null, details||null]
     );
   } catch(e) { console.error('logAdmin:', e.message); }
 }
@@ -1532,7 +1532,7 @@ async function setSetting(key, value) {
 const OWNER_EMAIL = 'wled-111@hotmail.com';
 const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage'];
 const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
-const ROLE_LABELS = {super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
+const ROLE_LABELS = {super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
 const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20,outreach_specialist:25};
 const ROLE_PERMISSIONS = {
   super_admin: ['*'],
@@ -1784,7 +1784,7 @@ async function storageStatus(){
   try { const r = await pool.query("SELECT value FROM platform_settings WHERE key='r2_bytes'"); const b = r.rows.length?(Number(r.rows[0].value)||0):0; out.r2MB = Math.round(b/MB); out.r2Pct = Math.round(out.r2MB/STORAGE_R2_CAP_MB*1000)/10; } catch(e){}
   return out;
 }
-// إيميل للأدمن مرة يومياً إذا تعدّى التخزين 80٪ (يشتغل ضمن runReminders كل 6 ساعات)
+// إيميل للإدارة مرة يومياً إذا تعدّى التخزين 80٪ (يشتغل ضمن runReminders كل 6 ساعات)
 async function recordStorageSnapshot(st){
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS storage_snapshots (day DATE PRIMARY KEY, db_bytes BIGINT, r2_bytes BIGINT, updated_at TIMESTAMP DEFAULT NOW())`);
@@ -1812,7 +1812,7 @@ async function syncR2Size(force){
     console.log('R2 size synced:', Math.round(total/MB)+'MB', count+' objects');
   } catch(e){ console.error('syncR2Size:', e.message); }
 }
-// حارس المشكلة الأولى: لو انقطع R2 أو بدأت صور تنحفظ داخل القاعدة → تنبيه فوري للأدمن
+// حارس المشكلة الأولى: لو انقطع R2 أو بدأت صور تنحفظ داخل القاعدة → تنبيه فوري للإدارة
 async function _alertAdmins(key, title, text){
   try {
     const last = parseInt(await getSetting(key,'0'))||0;
@@ -2370,8 +2370,8 @@ async function runReminders(){
       }
     }
 
-    /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
-    // ز) ملخّص يومي للأدمن (مرّة كل يوم)
+    /* ═══ المرحلة ٤: ملخّص الإدارة + تنبيهات الشذوذ ═══ */
+    // ز) ملخّص يومي للإدارة (مرّة كل يوم)
     // الملخّص الصباحي (الأشمل) هو الأساسي — هذا القديم يشتغل بس لو الصباحي موقّف (عشان ما يوصلك ملخّصين)
     if((await getSetting('admin_summary_on','1'))!=='0' && (await getSetting('digest_enabled','1'))==='0'){
       const dayKey = String(Math.floor((Date.now()+3*3600000)/86400000));
@@ -2395,7 +2395,7 @@ async function runReminders(){
              <li>عروض مقدّمة: <strong>${n(nb)}</strong></li>
              <li>مشاريع مكتملة: <strong>${n(nComp)}</strong></li>
              <li>مشاريع أُغلقت تلقائياً: <strong>${n(cAuto)}</strong></li>
-           </ul>`, 'فتح لوحة الأدمن', SITE_URL+'/dashboard-admin.html');
+           </ul>`, 'فتح لوحة الإدارة', SITE_URL+'/dashboard-admin.html');
         const admins = await pool.query(`SELECT email FROM users WHERE role='admin' AND email IS NOT NULL`);
         for(const a of admins.rows){ if(a.email) sendEmail(a.email, '📊 ملخّص مناقصة اليومي', html).catch(()=>{}); }
       }
@@ -2794,7 +2794,7 @@ async function setupDatabase() {
     } catch(e){ console.error('spec migration:', e.message); }
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
     try {
-      // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
+      // توافق رجعي: أي أدمن حالي بدون دور => مدير كامل بصلاحيات كاملة
       await _mig(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
       // المالك المحمي — أعلى رتبة لا تُمَس
       await _mig(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
@@ -2802,7 +2802,7 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
     try { await _mig(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
-    // دفتر السعي: يتتبّع عمولة كل مشروع مقبول (تراكم → صرف بإثبات → اعتماد الأدمن)
+    // دفتر السعي: يتتبّع عمولة كل مشروع مقبول (تراكم → صرف بإثبات → اعتماد الإدارة)
     try { await _mig(`CREATE TABLE IF NOT EXISTS saai_ledger (
       id SERIAL PRIMARY KEY,
       request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
@@ -3059,7 +3059,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
 });
 
 // [أُزيلت] /api/direct-admin — كانت باباً خلفياً يسمح بإنشاء/اختطاف حساب أدمن عبر رابط GET
-// بكلمة سر افتراضية مكتوبة في الكود. تُدار حسابات المشرفين الآن من لوحة الأدمن (admins.manage) فقط.
+// بكلمة سر افتراضية مكتوبة في الكود. تُدار حسابات المشرفين الآن من لوحة الإدارة (admins.manage) فقط.
 
 
 app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, res) => {
@@ -3692,12 +3692,12 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     const r = await pool.query(`SELECT r.*, u.name as client_name, u.phone as client_phone, u.profile_image as client_image, p.name as provider_name, p.phone as provider_phone, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.id=$1`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
-    // خصوصية العميل: جواله يظهر لصاحب المشروع، أو المزوّد المُرسى عليه، أو الأدمن، أو مزوّد قدّم عرضاً حقيقياً
+    // خصوصية العميل: جواله يظهر لصاحب المشروع، أو المزوّد المُرسى عليه، أو الإدارة، أو مزوّد قدّم عرضاً حقيقياً
     const uid = req.user && req.user.id, role = req.user && req.user.role;
     const isOwner = uid && uid === row.client_id;
     const isAssigned = uid && row.assigned_provider_id && uid === row.assigned_provider_id;
     const isAdmin = role === 'admin';
-    // المشاريع ما قبل النشر أو المرفوضة لا تُعرض إلا لصاحبها أو الأدمن (حتى بالرابط المباشر)
+    // المشاريع ما قبل النشر أو المرفوضة لا تُعرض إلا لصاحبها أو الإدارة (حتى بالرابط المباشر)
     if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) {
       return res.status(404).json({ message: 'غير موجود' });
     }
@@ -3719,7 +3719,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!(isOwner || isAssigned || isAdmin)) {
       row.provider_phone = null;
     }
-    // معلومات الدعوة المباشرة (لصاحب المشروع والأدمن)
+    // معلومات الدعوة المباشرة (لصاحب المشروع والإدارة)
     if (row.invited_provider_id && (isOwner || isAdmin)) {
       try { const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
         if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
@@ -3729,14 +3729,14 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     // المحادثات المباشرة: الأرقام ما تنكشف من خلالها (كانت تسمح بجمع جوال أي مستخدم)
     if (row.category === 'direct' && !isAdmin) { row.client_phone = null; row.provider_phone = null; }
     if (row.category === 'direct' && !(isOwner || isAssigned || isAdmin)) return res.status(404).json({ message: 'غير موجود' });
-    // الموقع الدقيق والعنوان: للمالك والمُرسى عليه والأدمن والمزوّدين المسجلين فقط (نفس سياسة الصفحة العامة)
+    // الموقع الدقيق والعنوان: للمالك والمُرسى عليه والإدارة والمزوّدين المسجلين فقط (نفس سياسة الصفحة العامة)
     if (!(isOwner || isAssigned || isAdmin || role === 'provider')) { row.geo_lat = null; row.geo_lng = null; row.address = null; }
     if (!isAdmin) { delete row.agent_phone; }
-    // ملاحظات المراجعة الموجّهة للعميل (طلب تعديل): لصاحب المشروع أو الأدمن فقط
+    // ملاحظات المراجعة الموجّهة للعميل (طلب تعديل): لصاحب المشروع أو الإدارة فقط
     if (!(isOwner || isAdmin)) delete row.review_notes;
-    // ملاحظات الأدمن الداخلية: للأدمن فقط — لا تظهر للعميل ولا للمزوّد
+    // ملاحظات الإدارة الداخلية: للإدارة فقط — لا تظهر للعميل ولا للمزوّد
     if (!isAdmin) delete row.admin_notes;
-    // المندوب ونسبته للأدمن فقط — لا يظهران للعميل ولا للمزوّد
+    // المندوب ونسبته للإدارة فقط — لا يظهران للعميل ولا للمزوّد
     if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
     if (isOwner && ['closed_auto','expired','closed'].includes(row.status)) {
       const _base = row.closed_at || row.close_at || (row.created_at ? new Date(new Date(row.created_at).getTime() + 30*86400000) : null);
@@ -3745,7 +3745,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
       row.closed_by_client = !!(row.close_reason && row.close_reason !== 'admin_closed');
       row.closed_by_admin = row.close_reason === 'admin_closed';
     }
-    // ملاحظات الإدارة للعميل: لصاحب المشروع والأدمن فقط
+    // ملاحظات الإدارة للعميل: لصاحب المشروع والإدارة فقط
     if (!(isOwner || isAdmin)) _stripClientNote(row);
     else if (isOwner && row.client_note && !row.client_note_seen_at) { try { await pool.query('UPDATE requests SET client_note_seen_at=NOW() WHERE id=$1', [id]); row.client_note_seen_at = new Date(); } catch(e){} }
     res.json({ ...row, status: normalizeStatus(row.status) });
@@ -3900,7 +3900,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
           }
           return res.json(newReq);
         }
-        // إشعار المزودين انتقل إلى لحظة الاعتماد (لا يُشعرون قبل مراجعة الأدمن)
+        // إشعار المزودين انتقل إلى لحظة الاعتماد (لا يُشعرون قبل مراجعة الإدارة)
       } catch(nerr) { console.error('notify providers:', nerr); }
     }
     await addTimeline(newReq.id, 'published', 'قيد المراجعة');
@@ -4171,14 +4171,14 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       row = ins.rows[0];
     }
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), row.id]); row.materials=_matVal(req.body.materials); } catch(e){} }
-    // مزوّد تحت المراجعة (بلاغات عملاء) → العرض يتعلّق لين يراجعه الأدمن أو تمر المهلة
+    // مزوّد تحت المراجعة (بلاغات عملاء) → العرض يتعلّق لين يراجعه الإدارة أو تمر المهلة
     let _held = false;
     try {
       if (await _provUnderReview(req.user.id)) { await _holdBid(row.id); _held = true; row.hold_state = 'held'; }
       else if (isUpdate) { await pool.query(`UPDATE bids SET hold_state=NULL, hold_reason=NULL WHERE id=$1 AND hold_state='rejected'`, [row.id]); row.hold_state = null; }
     } catch(he) { console.error('bid hold:', he.message); }
     const provInfo = await pool.query('SELECT name, city, service_cities, serves_all_cities FROM users WHERE id=$1', [req.user.id]);
-    // رصد العروض خارج نطاق الخدمة (يُسمح + تنبيه تلقائي + تسجيل للأدمن)
+    // رصد العروض خارج نطاق الخدمة (يُسمح + تنبيه تلقائي + تسجيل للإدارة)
     if (!isUpdate) { try {
       const reqCity = reqRow.rows[0].city;
       const pv = provInfo.rows[0] || {};
@@ -4605,7 +4605,7 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
   } catch(e) { console.error('direct-message:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// الأدمن يراسل عميلاً — رسالة عامة أو مرتبطة بمشروع + إشعار + إيميل (باسم "إدارة مناقصة")
+// الإدارة يراسل عميلاً — رسالة عامة أو مرتبطة بمشروع + إشعار + إيميل (باسم "إدارة مناقصة")
 app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
   try {
     const clientId = parseInt(req.body.client_id);
@@ -4627,7 +4627,7 @@ app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
   } catch(e) { console.error('admin-message-client:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
-// صندوق وارد الأدمن: محادثاته مع العملاء (آخر رسالة + غير المقروء)
+// صندوق وارد الإدارة: محادثاته مع العملاء (آخر رسالة + غير المقروء)
 app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
   try {
     const me = req.user.id;
@@ -4644,7 +4644,7 @@ app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
   } catch(e){ console.error('admin-inbox:', e.message); res.json([]); }
 });
 
-// محادثة الأدمن مع عميل محدّد (كل الرسائل بينهما) + تعليمها مقروءة
+// محادثة الإدارة مع عميل محدّد (كل الرسائل بينهما) + تعليمها مقروءة
 app.get('/api/admin/inbox/:clientId', auth, adminOnly, async (req, res) => {
   try {
     const me = req.user.id, cid = parseInt(req.params.clientId);
@@ -4694,7 +4694,7 @@ app.get('/api/client/quote-context', auth, async (req, res) => {
   } catch(e) { console.error('quote-context:', e.message); res.json({ open: [], cur_open:false, cur_bid:true }); }
 });
 
-// الأدمن: قائمة السعي (المُرسل للاعتماد + الملتزمون) + الاعتماد
+// الإدارة: قائمة السعي (المُرسل للاعتماد + الملتزمون) + الاعتماد
 app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(
@@ -4794,7 +4794,7 @@ app.post('/api/admin/saai/:id/approve', auth, adminOnly, async (req, res) => {
 });
 
 // محفظة السعي للمزوّد: الرصيد المتراكم + تفصيل كل مشروع
-// المزوّد يصرف السعي: يعدّل المبلغ (حر) + يرفع الإثبات + يؤكّد → بانتظار اعتماد الأدمن
+// المزوّد يصرف السعي: يعدّل المبلغ (حر) + يرفع الإثبات + يؤكّد → بانتظار اعتماد الإدارة
 app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
@@ -4823,7 +4823,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
   } catch(e){ console.error('saai-submit:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
-// ═══ تأجيل/إلغاء السعي: المزوّد يبلّغ → العميل يأكد → الأدمن يحسم عند التعارض ═══
+// ═══ تأجيل/إلغاء السعي: المزوّد يبلّغ → العميل يأكد → الإدارة يحسم عند التعارض ═══
 const SAAI_DEFER_MAX_DAYS = 60;
 app.post('/api/provider/saai/:id/defer', auth, async (req, res) => {
   try {
@@ -4910,7 +4910,7 @@ app.post('/api/admin/saai/:id/defer-action', auth, adminOnly, async (req, res) =
     res.json({ ok: true, message: msg });
   } catch(e) { console.error('saai defer-action:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
-// يومياً: انتهاء التأجيل ← يرجع مستحق بمهلة جديدة، وعدم رد العميل 3 أيام ← يطلع للأدمن
+// يومياً: انتهاء التأجيل ← يرجع مستحق بمهلة جديدة، وعدم رد العميل 3 أيام ← يطلع للإدارة
 async function _saaiDeferJob(){
   const back = await pool.query(`UPDATE saai_ledger s SET status='pending', due_from=NOW(), defer_state='resumed' FROM requests r
     WHERE r.id=s.request_id AND s.status='deferred' AND s.defer_state='confirmed' AND s.defer_until < NOW() RETURNING s.provider_id, s.request_id, r.title, COALESCE(s.defer_count,0) AS dc`);
@@ -5531,7 +5531,7 @@ app.delete('/api/push-token', auth, async (req, res) => {
 
 // ═══ PUBLIC ═══
 app.get('/api/cities', (req, res) => { res.json(['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الطائف','أبها','تبوك','حائل','بريدة','الأحساء','خميس مشيط','جازان','نجران','الباحة','عرعر','سكاكا','ينبع','القطيف','الجبيل','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية','الدلم','الحريق','السليل','مرات','ضرما','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور','الخبراء','رابغ','القنفذة','الليث','خليص','الجموم','الكامل','تربة','رنية','أضم','بحرة','المويه','الخرمة','العلا','بدر','مهد الذهب','خيبر','الحناكية','العيص','المهد','الظهران','حفر الباطن','الخفجي','رأس تنورة','بقيق','النعيرية','قرية العليا','صفوى','سيهات','العوامية','بيشة','محايل عسير','النماص','تثليث','سراة عبيدة','رجال ألمع','ظهران الجنوب','تنومة','بلقرن','أحد رفيدة','المجاردة','الحرجة','قيال','ضباء','الوجه','تيماء','حقل','أملج','البدع','بقعاء','الغزالة','الشنان','السليمي','موقق','الشملي','رفحاء','طريف','العويقيلة','صبيا','أبو عريش','صامطة','أحد المسارحة','بيش','فيفاء','ضمد','الدرب','العارضة','الريث','الحرث','شرورة','حبونا','بدر الجنوب','يدمة','ثار','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى','غامد الزناد','دومة الجندل','القريات','طبرجل','صوير']); });
-// ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/أدمن/رئيسية) ═══
+// ═══ مصدر موحّد للتخصصات — كل الصفحات تقرأ منه (تسجيل/نشر/إدارة/رئيسية) ═══
 const CATEGORIES = ['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','نقل عفش','حدادة','ألمنيوم','كلادينج وواجهات','مسابح','كاميرات مراقبة','شبكات وإنترنت','مظلات وسواتر','عزل حراري','مكافحة حشرات','بناء','جبس','كشف تسربات المياه','تنظيف خزانات','دهانات وديكور','تصاميم داخلي وخارجي','تركيب مطابخ','تنسيق حدائق','زجاج ومرايا','بلاط ورخام','تركيب أثاث','أرضيات خشبية وباركيه','تنظيف سجاد وكنب','تركيب وصيانة مصاعد','أبواب وبوابات أوتوماتيكية','ترميم مبانٍ','تنظيف واجهات المباني','حفر آبار ومضخات','أنظمة الحريق والسلامة','تخطيط المواقف والسلامة المرورية','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','إنشاءات معدنية وهناجر','أعمال الطرق والأسفلت','صرف صحي وبيارات','أرضيات إيبوكسي','تحلية ومعالجة مياه','تشطيبات ومقاولات عامة','مكاتب هندسية','أخرى'];
 app.get('/api/support-contact', async (req, res) => {
   try { const num = await getSetting('support_whatsapp', '0594011313'); res.set('Cache-Control','public, max-age=120'); res.json({ whatsapp: String(num||'').trim() }); }
@@ -6021,7 +6021,7 @@ app.get('/api/showcase', async (req, res) => {
   } catch(e){ res.json([]); }
 });
 
-// تثبيت/إلغاء تثبيت مشروع في معرض النجاح (الأدمن)
+// تثبيت/إلغاء تثبيت مشروع في معرض النجاح (الإدارة)
 app.post('/api/admin/requests/:id/featured', auth, adminOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6176,7 +6176,7 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
   } catch(e) { console.error('stats:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// ═══ كل العروض (للأدمن) مع فلترة ═══
+// ═══ كل العروض (للإدارة) مع فلترة ═══
 // تعبئة بصمات مرفقات العروض القديمة من ETag في R2 (مرة، على دفعات)
 async function backfillBidAttachmentHashes(){
   if (!r2Client || global._bkHashRunning) return;
@@ -6217,7 +6217,7 @@ app.post('/api/provider/warnings/:id/ack', auth, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
-// ═══ مراقبة مزوّد + ملفه الكامل للأدمن ═══
+// ═══ مراقبة مزوّد + ملفه الكامل للإدارة ═══
 app.post('/api/admin/providers/:id/watch', requirePermission('bids.view'), async (req, res) => {
   try {
     const pid = parseInt(req.params.id); const on = !!(req.body && req.body.on);
@@ -6274,7 +6274,7 @@ app.get('/api/admin/bids', requirePermission('bids.view'), async (req, res) => {
   } catch(e) { console.error('admin bids:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// ═══ تعديل عرض (أدمن) ═══
+// ═══ تعديل عرض (الإدارة) ═══
 app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6295,7 +6295,7 @@ app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) 
   } catch(e) { console.error('edit bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// ═══ حذف عرض (أدمن) ═══
+// ═══ حذف عرض (الإدارة) ═══
 app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6338,7 +6338,7 @@ app.get('/api/admin/users', requirePermission('users.view'), async (req, res) =>
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// الأدمن: تفعيل حساب المزوّد لعميل سجّل بالغلط (يبقى حساب العميل معه، والدخول الجاي يفتح لوحة المزوّد)
+// الإدارة: تفعيل حساب المزوّد لعميل سجّل بالغلط (يبقى حساب العميل معه، والدخول الجاي يفتح لوحة المزوّد)
 app.post('/api/admin/users/:id/make-provider', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
@@ -6374,7 +6374,7 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// الأدمن: قائمة المناديب مع مشاريعهم (لحساب الإجماليات والدفع)
+// الإدارة: قائمة المناديب مع مشاريعهم (لحساب الإجماليات والدفع)
 app.get('/api/admin/agents', requirePermission('requests.view'), async (req, res) => {
   try {
     const r = await pool.query(`
@@ -6390,7 +6390,7 @@ app.get('/api/admin/agents', requirePermission('requests.view'), async (req, res
   } catch(e) { console.error('admin agents:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// الأدمن: تعليم عمولة مشروع كمدفوعة/غير مدفوعة
+// الإدارة: تعليم عمولة مشروع كمدفوعة/غير مدفوعة
 app.put('/api/admin/requests/:id/agent-paid', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6424,7 +6424,7 @@ app.get('/agent/:token', async (req, res) => {
   } catch(e) { console.error('agent portal:', e.message); res.status(500).send('خطأ'); }
 });
 
-// الأدمن: رابط بوابة المندوب المرتبط بمشروع (لإرساله له)
+// الإدارة: رابط بوابة المندوب المرتبط بمشروع (لإرساله له)
 app.get('/api/admin/requests/:id/agent-link', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6437,7 +6437,7 @@ app.get('/api/admin/requests/:id/agent-link', requirePermission('requests.view')
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// ═══ تقرير العروض (سيرفر) — قالب واحد يستخدمه الأدمن والعميل عبر رابط برمز آمن ═══
+// ═══ تقرير العروض (سيرفر) — قالب واحد يستخدمه الإدارة والعميل عبر رابط برمز آمن ═══
 function _renderOffersReportHTML(proj, bids) {
   const e2 = (x) => String(x==null?'':x).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const unit = (u) => u==='meter'?' / للمتر':u==='unit'?' / للوحدة':'';
@@ -6473,7 +6473,7 @@ app.get('/report/offers/:id', async (req, res) => {
   } catch(e) { console.error('report render:', e.message); res.status(500).send('خطأ'); }
 });
 
-// الأدمن: يحصل على رابط التقرير (لفتحه/طباعته)
+// الإدارة: يحصل على رابط التقرير (لفتحه/طباعته)
 app.get('/api/admin/requests/:id/report-link', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6482,7 +6482,7 @@ app.get('/api/admin/requests/:id/report-link', requirePermission('requests.view'
   } catch(e) { res.status(500).json({ message: 'خطأ' }); }
 });
 
-// الأدمن: إرسال التقرير للعميل (إيميل) + إرجاع الرابط لإرساله واتساب
+// الإدارة: إرسال التقرير للعميل (إيميل) + إرجاع الرابط لإرساله واتساب
 app.post('/api/admin/requests/:id/send-report', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6502,7 +6502,7 @@ app.post('/api/admin/requests/:id/send-report', requirePermission('requests.edit
   } catch(e) { console.error('send-report:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// ═══ #٥ تحكّم الأدمن: رابط دخول لأي مستخدم (يدخل الأدمن كحساب العميل — يُفتح في نافذة متخفية) ═══
+// ═══ #٥ تحكّم الإدارة: رابط دخول لأي مستخدم (يدخل الإدارة كحساب العميل — يُفتح في نافذة متخفية) ═══
 app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -6866,7 +6866,7 @@ app.get('/api/providers/:id/reply-speed', async (req, res) => { res.set('Cache-C
 
 // ═══ بلاغات العملاء على العروض + المراجعة قبل النشر ═══
 // العميل يبلّغ عن عرض → يختفي من قائمته فوراً. بلاغين من عميلين مختلفين خلال 30 يوم = تنبيه للمزوّد.
-// 3 عملاء = عروضه الجديدة «تحت المراجعة» (مخفية عن العملاء) وتنعتمد تلقائياً بعد 7 ساعات لو ما راجعها الأدمن.
+// 3 عملاء = عروضه الجديدة «تحت المراجعة» (مخفية عن العملاء) وتنعتمد تلقائياً بعد 7 ساعات لو ما راجعها الإدارة.
 const BID_HOLD_HOURS = 7;
 const BID_REP_REASONS = { spam: 'عرض عشوائي أو منسوخ', scope: 'خارج التخصص', price: 'سعر غير منطقي', abuse: 'إساءة أو إزعاج' };
 const BID_REJ_REASONS = { generic: 'العرض عام وما يخص المشروع', blank: 'فيه فراغات ما تعبّت مثل «(عدد)»', scope: 'خارج تخصصك' };
@@ -7011,7 +7011,7 @@ app.get('/api/admin/bid-reports/provider/:id', requirePermission('requests.view'
     res.json({ user: u, reports, bids: bids.slice(0, 8), similarity: sim, blanks, reasons: BID_REP_REASONS });
   } catch(e) { console.error('admin bid-report detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
-// إجراءات الأدمن على المزوّد
+// إجراءات الإدارة على المزوّد
 app.post('/api/admin/bid-reports/provider/:id/action', requirePermission('requests.review'), async (req, res) => {
   try {
     const pid = parseInt(req.params.id); const act = String(req.body && req.body.action || '');
@@ -7209,7 +7209,7 @@ app.put('/api/admin/requests/:id/client-note', requirePermission('requests.revie
   } catch(e) { console.error('client-note:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // اقتراح قيمة العقد لإنشاء سعي يدوي: العرض المقبول (لو إجمالي ومنطقي) ← متوسط العروض الإجمالية ← ميزانية العميل
-// شرح واضح لسبب إغلاق المشروع (للأدمن)
+// شرح واضح لسبب إغلاق المشروع (للإدارة)
 const _CLOSE_REASON_AR = { chose_outside:'اتفق مع مزوّد من برا المنصة', price_high:'الأسعار أعلى من ميزانيته', postponed:'أجّل أو ألغى المشروع', no_suitable_offers:'ما لقى عرض مناسب', other:'سبب آخر' };
 function _dTxt(d){ const m={7:'أسبوع (7 أيام)',14:'أسبوعين (14 يوم)',30:'شهر (30 يوم)',60:'شهرين (60 يوم)',90:'3 أشهر (90 يوم)',120:'4 أشهر',180:'6 أشهر'}; return m[d] || (d + (d>=3&&d<=10?' أيام':' يوم')); }
 function _closeInfo(r, defDays){
@@ -7242,11 +7242,11 @@ function _saaiSuggest(rq, bids){
   if (acc) opts.push({ key:'accepted', label:'العرض المقبول', value: accTotal || null, unit: accUnit, raw: accRaw, ok: accOk });
   if (med) opts.push({ key:'median', label:'متوسط العروض الإجمالية', value: Math.round(med), ok: true });
   if (parseFloat(rq.budget_max) > 0) opts.push({ key:'budget', label:'ميزانية العميل', value: Math.round(parseFloat(rq.budget_max)), ok: true });
-  // بالمتر/بالوحدة: ما نعبّي رقم تلقائي — الأدمن يحسبها بالحاسبة (الكمية × السعر)
+  // بالمتر/بالوحدة: ما نعبّي رقم تلقائي — الإدارة يحسبها بالحاسبة (الكمية × السعر)
   const best = accUnit !== 'total' ? null : ((accOk && accTotal) || (med && Math.round(med)) || (parseFloat(rq.budget_max) > 0 ? Math.round(parseFloat(rq.budget_max)) : null));
   return { rate: SAAI_RATE, best, options: opts, unit: accUnit, unit_price: accUnit !== 'total' ? accRaw : null, provider_id: rq.assigned_provider_id, provider_name: acc ? acc.provider_name : null, accepted_bid_id: acc ? acc.id : null };
 }
-// إعادة فتح مشروع مغلق (أو تمديد مشروع مفتوح) لعدد أيام يحدده الأدمن
+// إعادة فتح مشروع مغلق (أو تمديد مشروع مفتوح) لعدد أيام يحدده الإدارة
 app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -7366,7 +7366,7 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     }
     // عند الاعتماد: أشعر المزودين المطابقين (إشعار + إيميل) — الآن فقط، بعد المراجعة
     if (action === 'approve') { try { await notifyMatchingProviders({ id: row.id, title: row.title, category: row.category, city: row.city }); } catch(e){} }
-    // رابط واتساب جاهز للأدمن (رقم العميل + رسالة معبّأة) — لكل المسارات
+    // رابط واتساب جاهز للإدارة (رقم العميل + رسالة معبّأة) — لكل المسارات
     let wa_link = null;
     {
       const ph = normPhone(clientInfo.rows.length ? clientInfo.rows[0].phone : null);
@@ -7616,7 +7616,7 @@ app.get('/api/admin/users/search', requirePermission('users.view'), async (req, 
   } catch(e) { console.error('/admin/users/search:', e); res.json([]); }
 });
 
-// صحة النظام (فحص شامل للأدمن)
+// صحة النظام (فحص شامل للإدارة)
 // فحص عام خفيف للمراقبة الخارجية (UptimeRobot): 200 لو السيرفر والقاعدة شغالين، 503 لو القاعدة ما ترد
 app.get('/api/uptime', async (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -7765,7 +7765,7 @@ app.get('/api/admin/health', requirePermission('settings.manage'), async (req, r
   res.json(out);
 });
 
-// صحة النظام (فحص شامل للأدمن) — نهاية
+// صحة النظام (فحص شامل للإدارة) — نهاية
 app.get('/api/admin/email-status', requirePermission('settings.manage'), async (req, res) => {
   const providersWithEmail=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE AND email IS NOT NULL AND email!=''`);
   const providersTotal=await pool.query(`SELECT COUNT(*)::int as cnt FROM users WHERE role='provider' AND is_active=TRUE`);
@@ -7792,7 +7792,7 @@ app.delete('/api/admin/reviews/:id', requirePermission('reviews.delete'), async 
   try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// عدّادات الشارات في لوحة الأدمن (خفيفة: أرقام فقط بدل تحميل القوائم كاملة كل 25 ثانية)
+// عدّادات الشارات في لوحة الإدارة (خفيفة: أرقام فقط بدل تحميل القوائم كاملة كل 25 ثانية)
 app.get('/api/admin/badge-counts', auth, adminOnly, loadAdmin, async (req, res) => {
   try {
     const out = {};
@@ -7809,7 +7809,7 @@ app.delete('/api/admin/questions/:id', requirePermission('questions.delete'), as
   try { const qid=parseInt(req.params.id); const r=await pool.query('DELETE FROM request_questions WHERE id=$1',[qid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_question','question',qid,'حذف سؤال'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// ═══════════ هوية الأدمن الحالي + إدارة المشرفين ═══════════
+// ═══════════ هوية الإدارة الحالي + إدارة المشرفين ═══════════
 app.get('/api/admin/me', auth, adminOnly, loadAdmin, async (req, res) => {
   res.json({
     id: req.adminUser.id, name: req.adminUser.name, email: req.adminUser.email,
@@ -7827,7 +7827,7 @@ app.get('/api/admin/permissions-catalog', requirePermission('admins.manage'), as
 app.get('/api/admin/admins', requirePermission('admins.manage'), async (req, res) => {
   try {
     const r = await pool.query(`SELECT id, name, email, admin_role, admin_level, permissions, is_active, created_at FROM users WHERE role='admin' ORDER BY admin_level DESC, created_at ASC`);
-    res.json(r.rows.map(function(u){ return Object.assign(u, { is_owner: u.email===OWNER_EMAIL, role_label: ROLE_LABELS[u.admin_role]||u.admin_role||'أدمن', perms: effectivePermissions(Object.assign({role:'admin'},u)) }); }));
+    res.json(r.rows.map(function(u){ return Object.assign(u, { is_owner: u.email===OWNER_EMAIL, role_label: ROLE_LABELS[u.admin_role]||u.admin_role||'الإدارة', perms: effectivePermissions(Object.assign({role:'admin'},u)) }); }));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -7920,13 +7920,13 @@ async function getPixels(){
   catch(e){ return Object.assign({}, PIXEL_DEFAULTS); }
 }
 
-// قراءة إعداد البكسلات (أدمن)
+// قراءة إعداد البكسلات (الإدارة)
 app.get('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
   try { res.json(await getPixels()); }
   catch(e){ res.status(500).json({ message:'حدث خطأ' }); }
 });
 
-// حفظ إعداد البكسلات (أدمن)
+// حفظ إعداد البكسلات (الإدارة)
 app.put('/api/admin/pixels', requirePermission('settings.manage'), async (req, res) => {
   try {
     const b = req.body || {};
@@ -7958,7 +7958,7 @@ app.get('/api/pixels/public', async (req, res) => {
   } catch(e){ res.json({ metaPixelId:'', tiktokPixelId:'', snapPixelId:'', googleId:'' }); }
 });
 
-// إعدادات التذكيرات والبطاقة (أدمن) — قراءة
+// إعدادات التذكيرات والبطاقة (الإدارة) — قراءة
 const REMINDER_DEFAULTS = { offersDays:2, dealDays:5, reviewDays:1, profileDays:1,
   offersOn:true, dealOn:true, reviewOn:true, profileOn:true,
   nudgeDelaySec:20, nudgeSnoozeDays:3 };
@@ -8003,7 +8003,7 @@ async function getReminderCfg(){
 app.get('/api/admin/reminders', requirePermission('settings.manage'), async (req,res)=>{
   try { res.json(await getReminderCfg()); } catch(e){ res.status(500).json({message:'حدث خطأ'}); }
 });
-// بيانات التحويل البنكي (عامة للمزوّدين) — بقيم افتراضية قابلة للتعديل من الأدمن
+// بيانات التحويل البنكي (عامة للمزوّدين) — بقيم افتراضية قابلة للتعديل من الإدارة
 const BANK_DEFAULTS = {
   bank_name: 'مصرف الراجحي',
   account_name: 'عمرو عبدالله العمرو',
@@ -8176,7 +8176,7 @@ app.get('/api/admin/stats-range', requirePermission('analytics.view'), async (re
   } catch(e){ console.error('/stats-range:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
 
-// سلاسل زمنية للأدمن (نمو يومي عبر مدة)
+// سلاسل زمنية للإدارة (نمو يومي عبر مدة)
 app.get('/api/admin/analytics-series', requirePermission('analytics.view'), async (req, res) => {
   try {
     let days = parseInt(req.query.days) || 30;
@@ -8255,7 +8255,7 @@ app.put('/api/admin/settings', requirePermission('settings.manage'), async (req,
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
-// ═══ لوحة الأدمن الرئيسية — كل الأرقام في طلب واحد خفيف ═══
+// ═══ لوحة الإدارة الرئيسية — كل الأرقام في طلب واحد خفيف ═══
 async function _adminOverview(){
     const one = (sql, p) => pool.query(sql, p||[]).then(r => r.rows[0] || {}).catch(e => { console.error('overview:', e.message); return {}; });
     const many = (sql, p) => pool.query(sql, p||[]).then(r => r.rows).catch(e => { console.error('overview:', e.message); return []; });

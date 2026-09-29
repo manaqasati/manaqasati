@@ -722,7 +722,7 @@ function openUserModal(uid){
     +(u.role==='provider'?('<div class="sec-label">المستوى (تلقائي حسب الصفقات — يمكن تجاوزه)</div>'+_tierPicker(u)):'')
     +'<div class="sec-label">المراسلة</div>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+','+_jsa(u.name)+','+_jsa(u.role||'')+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
-    +(((u.role==='client'||u.role==='provider'))?('<div class="sec-label">تحكّم الأدمن</div>'+'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="enterClientAccount('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>دخول كحساب '+(u.role==='provider'?'المزود':'العميل')+'</button>'+((u.role==='client')?('<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="addProjectForClient('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>أضف مشروعاً لهذا العميل</button>'):'')):'')+'<div class="sec-label">إجراءات الحساب</div>'
+    +(((u.role==='client'||u.role==='provider'))?('<div class="sec-label">تحكّم الإدارة</div>'+'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="enterClientAccount('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>دخول كحساب '+(u.role==='provider'?'المزود':'العميل')+'</button>'+((u.role==='client')?('<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="addProjectForClient('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>أضف مشروعاً لهذا العميل</button>'):'')):'')+'<div class="sec-label">إجراءات الحساب</div>'
     +'<div style="display:flex;gap:8px">'
       +'<button class="act-btn '+(u.is_active?'ab-default':'ab-primary')+'" style="flex:1;justify-content:center;padding:11px" onclick="toggleActive('+u.id+')">'+(u.is_active?'حظر المستخدم':'إلغاء الحظر')+'</button>'
       +'<button class="act-btn ab-danger" style="flex:1;justify-content:center;padding:11px" onclick="deleteUser('+u.id+')">حذف نهائي</button>'
@@ -1131,7 +1131,7 @@ function enterClientAccount(uid){
     if(!d||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}
     var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('رابط الدخول لحسابك في منصة مناقصة (بدون كلمة مرور):\n'+d.magic_link);
     _showProxyDone(d.magic_link, wa);
-    toast('افتح الرابط في نافذة متخفّية حتى لا تُخرج نفسك من حساب الأدمن','info');
+    toast('افتح الرابط في نافذة متخفّية حتى لا تُخرج نفسك من حساب الإدارة','info');
   }).catch(function(){toast('تعذّر الاتصال','error');});
 }
 function addProjectForClient(uid){
@@ -2528,7 +2528,7 @@ function loadReports(){
   }).catch(function(){document.getElementById('reports-table').innerHTML=emptyState('تعذر التحميل');});
 }
 
-// ═══ الأسئلة والتوضيحات (الأدمن) ═══
+// ═══ الأسئلة والتوضيحات (الإدارة) ═══
 var _allQ=[],_qFilter='all';
 function _qAnswered(q){return !!(q.answer&&String(q.answer).trim());}
 function loadQuestions(){
@@ -2594,7 +2594,7 @@ loadMe();
 restoreAdminHash();
 window.addEventListener('hashchange',restoreAdminHash);
 
-// ═══ إدارة العروض (الأدمن) ═══
+// ═══ إدارة العروض (الإدارة) ═══
 function fmtN(n){if(n==null||n==='')return'';return Number(n).toLocaleString('en-US');}
 var _allBids=[],_bidStatusFilter='all';
 function loadBids(){
@@ -3192,7 +3192,7 @@ window.addEventListener('online',updateOnline);
 window.addEventListener('offline',updateOnline);
 updateOnline();
 
-// ═══ سجل نشاط الأدمن ═══
+// ═══ سجل نشاط الإدارة ═══
 var _allLogs=[];
 var _logActions={
   delete_user:['حذف مستخدم','b-rej'],change_role:['تغيير دور','b-prog'],
@@ -3221,7 +3221,7 @@ function renderLogs(){
       var d=l.created_at?new Date(l.created_at):null;
       var dateStr=d?d.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory')+' · '+d.toLocaleTimeString('ar-SA-u-nu-latn-ca-gregory',{hour:'2-digit',minute:'2-digit'}):'';
       return '<tr>'+
-        '<td><div class="u-name">'+esc(l.admin_name||'أدمن')+'</div></td>'+
+        '<td><div class="u-name">'+esc(l.admin_name||'الإدارة')+'</div></td>'+
         '<td><span class="badge '+act[1]+'">'+act[0]+'</span></td>'+
         '<td style="font-size:12.5px;color:var(--text2)">'+esc(l.details||'—')+'</td>'+
         '<td style="font-size:12px;color:var(--muted);white-space:nowrap">'+dateStr+'</td>'+
@@ -5165,7 +5165,7 @@ function renderAdminAlerts(c){
         +'<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="adm-an-on" '+(c.adminAnomalyOn!==false?'checked':'')+'> مفعّل</label>'
       +'</div></div>'
     +'<div style="font-size:11px;color:var(--muted);background:var(--p-light);border-radius:10px;padding:10px;margin-top:8px;line-height:1.7">تُرسل التنبيهات لبريد كل مشرف (admin). الملخّص مرّة يومياً، والشذوذ فوري عند تجاوز الحد.</div>'
-    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ تنبيهات الأدمن</button>';
+    +'<button class="btn-p" style="max-width:220px;margin-top:14px" onclick="saveReminders()">حفظ تنبيهات الإدارة</button>';
 }
 function saveReminders(){
   var v=function(id){return document.getElementById(id);};
@@ -5351,7 +5351,7 @@ function globalSearch(q){
       var us=d.users||[],rs=d.requests||[],html='';
       if(us.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--hint);padding:10px 14px 4px">مستخدمون</div>';
-        html+=us.slice(0,6).map(function(u){return '<div onmousedown="gsOpenUser('+_jsa(u.email)+')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'"><div class="u-av" style="width:30px;height:30px;font-size:12px">'+esc((u.name||'?')[0])+'</div><div style="min-width:0"><div style="font-size:13px;font-weight:700">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.email)+' · '+(u.role==='client'?'عميل':u.role==='provider'?'مزود':'أدمن')+'</div></div></div>';}).join('');
+        html+=us.slice(0,6).map(function(u){return '<div onmousedown="gsOpenUser('+_jsa(u.email)+')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'"><div class="u-av" style="width:30px;height:30px;font-size:12px">'+esc((u.name||'?')[0])+'</div><div style="min-width:0"><div style="font-size:13px;font-weight:700">'+esc(u.name)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(u.email)+' · '+(u.role==='client'?'عميل':u.role==='provider'?'مزود':'الإدارة')+'</div></div></div>';}).join('');
       }
       if(rs.length){
         html+='<div style="font-size:11px;font-weight:700;color:var(--hint);padding:10px 14px 4px;border-top:1px solid var(--border)">مشاريع</div>';
@@ -5375,7 +5375,7 @@ function gsOpenReq(id){
   setTimeout(function(){ if(typeof openReqEdit==='function') openReqEdit(id); },400);
 }
 
-// ═══ هوية الأدمن + تقييد الواجهة حسب الصلاحية ═══
+// ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
 var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
@@ -5392,7 +5392,7 @@ function loadMe(){
   return fetch(API+'/api/admin/me',hdr()).then(function(r){return r.json();}).then(function(me){
     _me=me; _myPerms=me.permissions||[];
     gateUI();
-    var RL={super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
+    var RL={super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
     var sub=document.getElementById('adminRole'); if(sub)sub.textContent=me.is_owner?'المالك':(RL[me.admin_role]||'مشرف');
     // لو الصفحة الحالية غير مصرّح بها، ارجع للوحة المعلومات
     var cur=document.querySelector('.page.on'); 
@@ -5416,7 +5416,7 @@ function renderAdmins(){
      var pc=(a.perms&&a.perms.indexOf('*')>=0)?'كل الصلاحيات':((a.perms||[]).length+' صلاحية');
      return '<tr>'+
       '<td><div class="u-cell"><div class="u-av">'+esc((a.name||'?')[0])+'</div><div><div class="u-name">'+esc(a.name)+(a.is_owner?' <span class="badge b-admin">المالك</span>':'')+'</div><div class="u-email">'+esc(a.email)+'</div></div></div></td>'+
-      '<td><span class="badge b-admin">'+esc(a.role_label||'أدمن')+'</span></td>'+
+      '<td><span class="badge b-admin">'+esc(a.role_label||'الإدارة')+'</span></td>'+
       '<td style="font-size:12.5px;color:var(--muted)">'+pc+'</td>'+
       '<td><span class="status '+(a.is_active!==false?'s-on':'s-off')+'">'+(a.is_active!==false?'نشط':'معطّل')+'</span></td>'+
       '<td>'+(a.is_owner?'<span style="font-size:12px;color:var(--hint);font-weight:700">محمي</span>':'<div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="openEditAdmin('+a.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>صلاحيات</button><button class="act-btn ab-danger" onclick="removeAdmin('+a.id+','+_jsa(a.name)+')">إزالة</button></div>')+'</td>'+
@@ -5424,7 +5424,7 @@ function renderAdmins(){
    }).join('')+'</tbody></table>';
 }
 function _roleOptions(sel){
-  var roles=(_permCatalog&&_permCatalog.role_labels)||{super_admin:'أدمن كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
+  var roles=(_permCatalog&&_permCatalog.role_labels)||{super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
   return Object.keys(roles).map(function(k){return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+roles[k]+'</option>';}).join('');
 }
 function _permChecks(selected){

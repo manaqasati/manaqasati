@@ -182,7 +182,7 @@ footer a{color:var(--muted)}
 </main>
 <footer><span>© مناقصة</span><a href="/privacy.html">سياسة الخصوصية</a><a href="/terms.html">الشروط والأحكام</a><a href="/dalil">دليل المزوّدين</a><a href="/b2b.html">للأعمال</a></footer>
 <script>
-// رقم الواتساب من إعدادات الدعم في لوحة الأدمن (نفس باقي الموقع)
+// رقم الواتساب من إعدادات الدعم في لوحة الإدارة (نفس باقي الموقع)
 (function(){ fetch('https://manaqasati-production.up.railway.app/api/support-contact').then(function(r){return r.json();}).then(function(d){
   var n=String(d&&d.whatsapp||'').replace(/[^0-9]/g,''); if(!n)return;
   if(n.charAt(0)==='0')n='966'+n.slice(1); else if(n.slice(0,3)!=='966')n='966'+n;

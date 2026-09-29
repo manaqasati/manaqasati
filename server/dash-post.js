@@ -511,12 +511,7 @@ function renderNudges(all){
   var doneR=all.filter(function(r){return r.status==='completed'||r.status==='done';});
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var reqItems=[];
-  if(totalOffers>0){
-    reqItems.push('<div class="nudge" style="border-right-color:var(--p)" onclick="_markOffersSeen(window._allMyReqs||[]);show(\'requests\',null,\'requests\')">'
-      +'<div class="nudge-ic" style="background:var(--p-light);color:var(--p)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>'
-      +'<div class="nudge-body"><div class="nudge-t">لديك '+totalOffers+' '+(totalOffers===1?'عرض جديد':'عروض جديدة')+'</div><div class="nudge-s">على '+openBid.length+' '+(openBid.length===1?'طلب':'طلبات')+' — راجعها واختر الأنسب</div></div>'
-      +'<div class="nudge-cta">عرض '+chev+'</div></div>');
-  }
+  // (أُزيل سطر «لديك X عروض جديدة» — مكرر مع البطاقة الزرقاء)
   inProg.slice(0,2).forEach(function(r){
     reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="openDetail('+r.id+',event)">'
       +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>'
