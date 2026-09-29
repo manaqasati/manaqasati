@@ -2586,6 +2586,7 @@ async function openChatRoom(reqId,receiverId,receiverName,reqTitle){
   _chatPolling=setInterval(async function(){
     if(!_el('prov-chat-overlay')){clearInterval(_chatPolling);return;}
     if(document.hidden||(typeof _pollPaused!=='undefined'&&_pollPaused))return;
+    if(window._wsLive&&(++_pollTick%5))return; // الاتصال اللحظي شغّال: نكتفي بتحقق كل 30 ثانية
     try{var msgs=await _api('/api/messages/'+reqId+'?with='+receiverId)||[];if(Array.isArray(msgs)&&_pMsgsSig(msgs)!==_pMsgsSig(_chatMsgs)){_chatMsgs=msgs;_renderChatMsgs();}}catch(e){}
   },6000);
 }
@@ -2763,15 +2764,24 @@ document.addEventListener('DOMContentLoaded',function(){
   gotoPage(pg);
 });
 
+var _wsChatT=null,_pollTick=0;
+function _pReloadChat(){
+  if(!_el('prov-chat-overlay')||!_chatReqId)return;
+  _api('/api/messages/'+_chatReqId+'?with='+_chatReceiverId).then(function(msgs){
+    if(Array.isArray(msgs)&&_pMsgsSig(msgs)!==_pMsgsSig(_chatMsgs)){_chatMsgs=msgs;_renderChatMsgs();}
+  }).catch(function(){});
+}
+// هل محادثة هذا الشخص مفتوحة قدام المزوّد؟
+window._chatViewing=function(uid){ return !!(_el('prov-chat-overlay') && !document.hidden && String(_chatReceiverId)===String(uid)); };
+// تحديث لحظي للمحادثة المفتوحة وقائمة المحادثات
 window.addEventListener('ws_message', function(e) {
   try {
-    var msg = e.detail;
-    if (msg.type === 'new_message') {
-      var pg = _el('page-chat');
-      if (pg && !_el('prov-chat-overlay')) { _refreshProvConvList(); }
-      if (_el('prov-chat-overlay') && _chatReqId == msg.request_id && _chatReceiverId == msg.sender_id) {
-        if (!_chatMsgs.find(function(m){ return m.id == msg.message.id; })) { _chatMsgs.push(msg.message); _renderChatMsgs(); }
-      }
+    var m = e.detail || {};
+    var other = m.type==='new_message'?m.sender_id:m.type==='messages_read'?m.reader_id:m.type==='message_deleted'?m.sender_id:m.type==='message_sent'?(m.message&&m.message.receiver_id):null;
+    if (other == null) return;
+    if (_el('prov-chat-overlay') && String(_chatReceiverId) === String(other)) { clearTimeout(_wsChatT); _wsChatT=setTimeout(_pReloadChat,250); }
+    if (m.type === 'new_message') {
+      if (_el('page-chat') && !_el('prov-chat-overlay') && typeof _refreshProvConvList==='function') _refreshProvConvList();
       _loadChatBadge();
     }
   } catch(e) {}
@@ -2949,6 +2959,7 @@ function _provOpenAnswers(){
       if(typeof _loadNotifCount==='function') _loadNotifCount();
       if(typeof _renderProvAnswerNudge==='function') _renderProvAnswerNudge();
     } else if(msg.type==='new_message'){
+      if(typeof window._chatViewing==='function' && window._chatViewing(msg.sender_id)) return;
       if(typeof _loadChatBadge==='function') _loadChatBadge();
       var sn=msg.sender_name?('رسالة من '+msg.sender_name):'رسالة جديدة';
       if(typeof showToast==='function') showToast('💬 '+sn);
@@ -2970,17 +2981,39 @@ function _provOpenAnswers(){
 
   function _wsUrl(){ return (location.protocol==='https:'?'wss://':'ws://')+location.host; }
   function _wsTok(){ try{ return localStorage.getItem('token')||''; }catch(e){ return ''; } }
+  var _last=0,_hb=null,_stop=false;
   function _wsConnect(){
-    if(!_wsTok()) return;
+    if(_stop||!_wsTok()) return;
+    if(_ws && (_ws.readyState===0||_ws.readyState===1)) return;
     try{ _ws=new WebSocket(_wsUrl()); }catch(e){ _wsRetry(); return; }
-    _ws.onopen=function(){ _alive=true; _wsDot('on'); try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
-    _ws.onmessage=function(ev){ try{ _wsHandle(JSON.parse(ev.data)); }catch(e){} };
-    _ws.onclose=function(){ _alive=false; _wsDot('off'); _wsRetry(); };
+    _ws.onopen=function(){ _last=Date.now(); try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
+    _ws.onmessage=function(ev){
+      _last=Date.now();
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(!m||m.type==='pong') return;
+      if(m.type==='connected'){ _alive=true; window._wsLive=true; _RC=3000; _wsDot('on'); return; }
+      try{ _wsHandle(m); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent('ws_message',{detail:m})); }catch(e){}
+    };
+    _ws.onclose=function(ev){
+      _alive=false; window._wsLive=false; _wsDot('off');
+      var c=ev&&ev.code;
+      if(c===4003) { _stop=true; return; }          // حساب موقوف
+      if(c===4008) { return; }                      // اتصالات كثيرة: نرجع لما تنفتح الصفحة
+      _wsRetry(c===4001?60000:0);
+    };
     _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
   }
-  function _wsRetry(){ clearTimeout(_t); _t=setTimeout(_wsConnect,_RC); }
-  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _wsConnect(); });
-  window.addEventListener('online',function(){ if(!_alive) _wsConnect(); });
+  // إعادة اتصال متدرّجة (3ث ← 30ث) مع عشوائية بسيطة عشان ما يرجع الكل بنفس اللحظة بعد النشر
+  function _wsRetry(min){ clearTimeout(_t); var d=Math.max(min||0,_RC)+Math.random()*1500; _RC=Math.min(_RC*2,30000); _t=setTimeout(_wsConnect,d); }
+  // نبض من جهة المتصفح: لو ما وصل شي 70 ثانية نعتبره مقطوع ونعيد
+  _hb=setInterval(function(){
+    if(!_ws||_ws.readyState!==1) return;
+    if(Date.now()-_last>70000){ try{ _ws.close(); }catch(e){} return; }
+    try{ _ws.send('{"type":"ping"}'); }catch(e){}
+  },25000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive){ _RC=3000; _wsConnect(); } });
+  window.addEventListener('online',function(){ if(!_alive){ _RC=3000; _wsConnect(); } });
   setTimeout(_wsConnect, 800);
 })();
 
