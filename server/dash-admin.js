@@ -2621,7 +2621,6 @@ function adminBidEdit(id){
 var WARN_PRESETS=[
   'السعر اللي كتبته (مثل 1 ريال) مو سعر حقيقي — اكتب سعرك الفعلي للمشروع، العميل يبي يقارن أسعار واضحة. تكرارها يعرّض حسابك للإيقاف.',
   'المرفق غير واضح أو لا علاقة له بالمشروع — أعد رفع ملف مناسب أو احذفه.',
-  'لا تكتب رقم جوالك في نص العرض — التواصل يتم عبر المنصة فقط.',
   'لا تكتب السعر داخل نص العرض عند اختيار «السعر خاص».',
   'عرضك مختصر جداً — أضف تفاصيل خبرتك وطريقة التنفيذ والمدة.',
   'العرض خارج نطاق/تخصص المشروع المطلوب.',
@@ -2720,8 +2719,6 @@ function _bidFlags(b){
   if(tc>=2) f.push({k:'copy',t:'نص منسوخ في '+tc+' مشاريع',sev:tc>=3?'high':'med'});
   var ac=(b.attachment_hash&&b.attachment_hash!=='x')?Object.keys(ix.att[b.provider_id+'|'+b.attachment_hash]||{}).length:0;
   if(ac>=2) f.push({k:'attdup',t:'نفس المرفق في '+ac+' مشاريع',sev:ac>=3?'high':'med'});
-  var dn=note.replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[\s\-\.\(\)+_]/g,'');
-  if(/\d{9,}/.test(dn)) f.push({k:'contact',t:'تواصل خارج المنصة',sev:'high'});
   if(note && nn.replace(/\s/g,'').length<40 && !f.some(function(x){return x.k==='tpl';})) f.push({k:'short',t:'نص قصير جداً',sev:'med'});
   if(b.price!=null&&b.price>0&&b.price<50&&(!b.price_unit||b.price_unit==='total')) f.push({k:'fake',t:'سعر وهمي ('+Math.round(b.price)+' ر.س)',sev:'high'});
   else if(b.price!=null&&b.price>0&&b.price<100&&(!b.price_unit||b.price_unit==='total')) f.push({k:'token',t:'سعر رمزي',sev:'med'});
@@ -2809,7 +2806,7 @@ function _bidKpis(){
   });
   var cur=(document.getElementById('bf-flag')||{}).value||'', tm=(document.getElementById('bf-time')||{}).value||'';
   var k=function(key,n,lbl,col){var on=(key==='new'?tm==='seen':(key==='all'?(!cur&&!tm):cur===key));return '<div class="bkpi'+(on?' on':'')+'" onclick="_bidQuick(\''+key+'\')"><b style="color:'+col+'">'+n+'</b><span>'+lbl+'</span></div>';};
-  host.innerHTML=k('all',c.all,'كل العروض','#0f172a')+k('new',c.neu,'🆕 جديد منذ آخر زيارة','#16a34a')+(c.watch?k('watch',c.watch,'👁 مزوّدين تحت المراقبة','#1e3a8a').replace('class="bkpi','class="bkpi bk-blue'):'')+(c.watch?k('watchnew',c.watchnew,'عروض جديدة من المراقَبين','#1e3a8a').replace('class="bkpi','class="bkpi bk-blue'):'')+k('warnopen',c.warnopen,'⚠️ حذّرناهم وما عدّلوا','#b45309').replace('class="bkpi','class="bkpi bk-amber')+k('sus',c.sus,'🚩 مزعجة','#dc2626')+k('tpl',c.tpl,'قالب غير معبّأ','#b91c1c')+k('copy',c.copy,'نص منسوخ','#7c3aed')+k('attdup',c.attdup,'مرفق مكرر','#c2410e')+k('contact',c.contact,'تواصل خارج المنصة','#be123c');
+  host.innerHTML=k('all',c.all,'كل العروض','#0f172a')+k('new',c.neu,'🆕 جديد منذ آخر زيارة','#16a34a')+(c.watch?k('watch',c.watch,'👁 مزوّدين تحت المراقبة','#1e3a8a').replace('class="bkpi','class="bkpi bk-blue'):'')+(c.watch?k('watchnew',c.watchnew,'عروض جديدة من المراقَبين','#1e3a8a').replace('class="bkpi','class="bkpi bk-blue'):'')+k('warnopen',c.warnopen,'⚠️ حذّرناهم وما عدّلوا','#b45309').replace('class="bkpi','class="bkpi bk-amber')+k('sus',c.sus,'🚩 مزعجة','#dc2626')+k('tpl',c.tpl,'قالب غير معبّأ','#b91c1c')+k('copy',c.copy,'نص منسوخ','#7c3aed')+k('attdup',c.attdup,'مرفق مكرر','#c2410e');
 }
 function renderBids(){
   _bidCss();

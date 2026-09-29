@@ -2671,6 +2671,7 @@ async function setupDatabase() {
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
+      await _mig(`DELETE FROM offer_flags WHERE reason='contact_share'`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
       // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
@@ -4211,16 +4212,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
         }
       }
     } catch(sp) { console.error('spread_flag:', sp.message); } }
-    // رصد محاولة التواصل خارج المنصة: رقم جوال/كلمات تواصل في نص العرض (تفادي العمولة)
-    try {
-      if (note && _hasContact(note)) {
-        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='contact_share' AND created_at > NOW() - INTERVAL '24 hours' LIMIT 1", [req.user.id]);
-        if (!dup.rows.length) {
-          await notify(req.user.id, '⚠️ ممنوع مشاركة التواصل في العرض', 'رصدنا رقم تواصل داخل نص عرضك. التواصل يتم عبر المنصة فقط — مشاركة الأرقام لتفادي العمولة مخالفة قد تؤدي لحظر الحساب.', 'bid', requestId);
-          await pool.query("INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,'contact_share',TRUE)", [row.id, req.user.id, requestId, (provInfo.rows[0]&&provInfo.rows[0].city)||null, reqRow.rows[0].city||null]);
-        }
-      }
-    } catch(ce) { console.error('contact_flag:', ce.message); }
+    // (أُلغي رصد رقم الجوال في نص العرض — بيانات المزوّد ظاهرة للعميل أصلاً)
     const clientInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reqRow.rows[0].client_id]);
     const projTitle = reqRow.rows[0].title; const provName = provInfo.rows[0]?.name||'مزود';
     let isFirst = false;
