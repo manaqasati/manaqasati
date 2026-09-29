@@ -1920,7 +1920,7 @@ function renderRequests(){
   filtered=_pgSlice('r',filtered,_rSig);
   var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],executing:['قيد التنفيذ','b-progress'],assigned:['تم الإسناد','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej'],closed:['مغلق','b-rej'],closed_auto:['مغلق','b-rej'],cancelled:['ملغى','b-rej'],expired:['منتهي','b-rej']};
   var eye='<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-  document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th style="text-align:center">العروض</th><th>منشور منذ</th><th>يُغلق بعد</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
+  document.getElementById('requests-table').innerHTML='<table><thead><tr><th>المشروع</th><th>العميل</th><th>الحالة</th><th style="text-align:center">العروض</th><th style="text-align:center" title="زيارات صفحة المشروع (بدون صاحب المشروع والإدارة)">الزيارات</th><th>منشور منذ</th><th>يُغلق بعد</th><th>إجراءات</th></tr></thead><tbody>'+filtered.map(function(r){
     var st=sm[r.status]||[r.status,'b-completed'];
     var _days=_rqAge(r), _bc=parseInt(r.bid_count)||0, _stale=_rqStale(r);
     var _ago=_days==null?'—':(_days<=0?'اليوم':(_days===1?'أمس':(_days===2?'يومين':(_days<=10?_days+' أيام':_days+' يوم'))));var _left=_rqLeft(r);
@@ -1931,6 +1931,7 @@ function renderRequests(){
       +'<td style="font-size:12.5px">'+esc(r.client_name||'—')+'</td>'
       +'<td><span class="badge '+st[1]+'">'+st[0]+'</span>'+(r.close_info?'<div style="font-size:11px;font-weight:800;margin-top:5px;max-width:160px;line-height:1.45;color:'+(r.close_info.by==='client'?'#b45309':(r.close_info.by==='admin'?'#0f766e':'#64748b'))+'">'+esc(r.close_info.short)+'</div>':'')+'</td>'
       +'<td style="text-align:center">'+(_stale?'<span class="rq-stale">0 · '+_days+' أيام</span>':(_bc===0?'<span style="color:var(--muted);font-weight:600">0</span>':'<span style="font-weight:900;color:#059669">'+_bc+'</span>'))+'</td>'
+      +'<td style="text-align:center;white-space:nowrap" title="'+(parseInt(r.views_total)||0)+' زيارة · '+(parseInt(r.views_unique)||0)+' زائر مختلف · '+(parseInt(r.views_prov)||0)+' مزوّد">'+((parseInt(r.views_unique)||0)?'<b style="font-size:14px">'+(parseInt(r.views_unique)||0)+'</b>'+((parseInt(r.views_prov)||0)?'<div style="font-size:11px;font-weight:800;color:#c2410c">'+(parseInt(r.views_prov)||0)+' مزوّد</div>':''):'<span style="color:var(--muted);font-weight:600">0</span>')+'</td>'
       +'<td style="font-size:13px;font-weight:800;'+(_stale?'color:#b91c1c':'')+'">'+_ago+'</td>'
       +'<td style="font-size:12.5px;font-weight:800;color:'+_left[1]+'">'+_left[0]+'</td>'
       +'<td><div class="act-btns"><button class="act-btn ab-default" onclick="_rqOpen('+r.id+')">'+eye+'تفاصيل</button>'

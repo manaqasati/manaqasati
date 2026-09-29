@@ -557,6 +557,8 @@ async function load(){
     // العروض اللي بلّغ عنها صاحب المشروع تنفصل (تظهر فقط لو ضغط «إظهار»)
     _hidBids=_bids.filter(function(b){return !!b.is_hidden;}); _bids=_bids.filter(function(b){return !b.is_hidden;});
     render();
+    // عدّاد الزيارات: مرة وحدة لكل جلسة
+    try{ var _vk='pv_'+_rid; if(!sessionStorage.getItem(_vk)){ sessionStorage.setItem(_vk,'1'); fetch(API+'/api/requests/'+_rid+'/view',{method:'POST',headers:_tk?{'Authorization':'Bearer '+_tk}:{}}).catch(function(){}); } }catch(e){}
   }catch(e){
     document.getElementById('main-content').innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)"><div style="font-size:14px;font-weight:700;color:var(--red)"> تعذر تحميل المشروع</div><div style="margin-top:12px"><button onclick="load()" style="padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal;font-size:13px;font-weight:700;cursor:pointer">إعادة المحاولة</button></div></div>';
   }

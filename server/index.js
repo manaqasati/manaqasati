@@ -2565,6 +2565,11 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS bid_accept_asks (id SERIAL PRIMARY KEY, bid_id INTEGER UNIQUE NOT NULL, request_id INTEGER NOT NULL, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', sends INTEGER NOT NULL DEFAULT 1, last_sent_at TIMESTAMPTZ DEFAULT NOW(), responded_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig('CREATE INDEX IF NOT EXISTS idx_bid_asks_client ON bid_accept_asks(client_id, status)');
     await _mig('ALTER TABLE bids ADD COLUMN IF NOT EXISTS ask_nudged BOOLEAN DEFAULT FALSE');
+    // زيارات صفحة المشروع: الإجمالي + زوّار مختلفين + كم منهم مزوّدين (بدون صاحب المشروع والإدارة والروبوتات)
+    await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_total INTEGER DEFAULT 0');
+    await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_unique INTEGER DEFAULT 0');
+    await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_prov INTEGER DEFAULT 0');
+    await _mig(`CREATE TABLE IF NOT EXISTS project_visits (request_id INTEGER NOT NULL, vkey VARCHAR(40) NOT NULL, is_prov BOOLEAN DEFAULT FALSE, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (request_id, vkey))`);
     await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
@@ -4284,6 +4289,25 @@ app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
     await pool.query('DELETE FROM bids WHERE id=$1', [id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ═══ عدّاد زيارات صفحة المشروع (يُرسل من المتصفح مرة لكل جلسة — الروبوتات ما تشغّل الجافاسكربت) ═══
+app.post('/api/requests/:id/view', rateLimiter(60, 60000), optionalAuth, async (req, res) => {
+  res.json({ ok: true });
+  try {
+    const id = parseInt(req.params.id); if (!id) return;
+    if (/bot|crawl|spider|preview|headless/i.test(String(req.headers['user-agent']||''))) return;
+    const rq = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [id])).rows[0]; if (!rq) return;
+    const u = req.user;
+    if (u && (String(u.id) === String(rq.client_id) || u.role === 'admin')) return;   // صاحب المشروع والإدارة ما ينحسبون
+    let isProv = false;
+    if (u) { const x = (await pool.query(`SELECT (role='provider' OR COALESCE(can_provide,FALSE)) AS p FROM users WHERE id=$1`, [u.id])).rows[0]; isProv = !!(x && x.p); }
+    const vkey = u ? 'u' + u.id : 'a' + crypto.createHash('sha1').update(String(req.ip||'') + '|' + String(req.headers['user-agent']||'')).digest('hex').slice(0, 20);
+    const ins = await pool.query('INSERT INTO project_visits (request_id, vkey, is_prov) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [id, vkey, isProv]);
+    const isNew = ins.rowCount > 0;
+    await pool.query(`UPDATE requests SET views_total=COALESCE(views_total,0)+1, views_unique=COALESCE(views_unique,0)+$2, views_prov=COALESCE(views_prov,0)+$3 WHERE id=$1`,
+      [id, isNew ? 1 : 0, (isNew && isProv) ? 1 : 0]);
+  } catch(e) {}
 });
 
 // ═══ طلب اعتماد العرض داخل المنصة ═══
