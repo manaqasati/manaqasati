@@ -493,7 +493,7 @@ function esc(s){var d=document.createElement('div');d.textContent=String(s||'');
 // يقبل روابط http(s) أو مسار داخلي أو صورة data فقط
 function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(u)&&!/["'<>`\s]/.test(u)?u:'';}
 function fmtN(n){return n?Number(n).toLocaleString('en-US'):'0';}
-function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
+function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function ago(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return 'لحظات';if(s<3600)return Math.floor(s/60)+' دقيقة';if(s<86400)return Math.floor(s/3600)+' ساعة';if(s<2592000)return Math.floor(s/86400)+' يوم';return fmtDate(d);}
 function ph966(p){if(!p)return'';var n=String(p).replace(/[^0-9]/g,'');if(n.startsWith('966'))return'+'+n;if(n.startsWith('0'))return'+966'+n.slice(1);return'+966'+n;}
 function mkStars(n){var s='';for(var i=1;i<=5;i++){var f=i<=Math.round(n)?'#F0A500':'rgba(255,255,255,.2)';s+='<svg width="12" height="12" fill="'+f+'" viewBox="0 0 24 24" style="display:inline-block"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';}return s;}

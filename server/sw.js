@@ -145,6 +145,25 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
+  // ── ملفات اللوحات (dash-*.js/css?v=بصمة): نخزّن النسخة الجديدة ونحذف القديمة من نفس الملف ──
+  if (/\/dash-[a-z]+\.(js|css)\?v=/.test(url)) {
+    e.respondWith(
+      caches.match(e.request).then(function(cached) {
+        if (cached) return cached;
+        return fetch(e.request).then(function(res) {
+          if (res && res.status === 200) {
+            var clone = res.clone(), path = url.split('?')[0];
+            caches.open(CACHE).then(function(c) {
+              c.keys().then(function(ks){ ks.forEach(function(k){ if (k.url.split('?')[0] === path && k.url !== url) c.delete(k); }); });
+              c.put(e.request, clone);
+            });
+          }
+          return res;
+        });
+      })
+    );
+    return;
+  }
   // ── Static assets: cache first, fallback to network ──
   e.respondWith(
     caches.match(e.request).then(function(cached) {

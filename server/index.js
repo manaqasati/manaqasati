@@ -161,7 +161,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js']);
+const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -212,7 +212,7 @@ app.use(function(req, res, next){
       return _sf(p, Object.assign({ cacheControl: false }, o || {}), cb);
     };
     const _snd = res.send.bind(res);
-    res.send = function(body){ if (typeof body === 'string') body = _injectUp(body); return _snd(body); };
+    res.send = function(body){ if (typeof body === 'string') body = _stampAssets(_injectUp(body)); return _snd(body); };
   }
   next();
 });
@@ -221,6 +221,20 @@ const _UP_VER = '1'; // غيّره عند تعديل up.js (الـSW يخزّن 
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
+// ملفات اللوحات المفصولة (dash-*.js/css): نضيف لرابطها بصمة المحتوى تلقائياً (?v=...)
+// → الجوال يخزّنها سنة، وأي تعديل على الملف يغيّر البصمة فيوصل التحديث فوراً بدون ما أحد يغيّر رقم يدوي
+const _assetVerCache = new Map();
+function _assetVer(name){
+  try { const fs = require('fs'); const fp = __dirname + '/' + name; const st = fs.statSync(fp); const c = _assetVerCache.get(name);
+    if (c && c.m === st.mtimeMs && c.z === st.size) return c.v;
+    const v = crypto.createHash('sha1').update(fs.readFileSync(fp)).digest('hex').slice(0, 12);
+    _assetVerCache.set(name, { m: st.mtimeMs, z: st.size, v }); return v;
+  } catch(e) { return String(Date.now()); }
+}
+function _stampAssets(h){
+  if (h.indexOf('/dash-') === -1) return h;
+  return h.replace(/(["'])\/(dash-[a-z]+\.(?:js|css))\1/g, (m, q, f) => q + '/' + f + '?v=' + _assetVer(f) + q);
+}
 const _pageCache = new Map();
 function _readPage(p){
   try { const fs = require('fs'); const st = fs.statSync(p); const c = _pageCache.get(p);
@@ -246,6 +260,9 @@ app.use(express.static('.', {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
     } else if (/\.html$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTML لا يُخزَّن أبداً (تصل التحديثات فوراً)
+    } else if (/(^|[\/\\])dash-[a-z]+\.(js|css)$/i.test(filePath)) {
+      // برابط فيه بصمة (?v=) نخزّنه سنة؛ بدونها يتحقق كل مرة
+      res.setHeader('Cache-Control', (res.req && res.req.query && res.req.query.v) ? 'public, max-age=31536000, immutable' : 'no-cache');
     } else if (/(^|[\/\\])sw\.js$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // عامل الخدمة: يتحدّث دائماً
     }

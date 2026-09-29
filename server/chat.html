@@ -244,7 +244,7 @@ function ago(d){
   if(s<3600)return Math.floor(s/60)+' د';
   if(s<86400)return Math.floor(s/3600)+' س';
   if(s<604800)return Math.floor(s/86400)+' يوم';
-  return new Date(d).toLocaleDateString('ar-SA',{day:'numeric',month:'short'});
+  return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'});
 }
 function dayLabel(d){
   var dt=new Date(d),now=new Date();
@@ -252,7 +252,7 @@ function dayLabel(d){
   var diff=(f(now)-f(dt))/86400000;
   if(diff===0)return'اليوم';
   if(diff===1)return'أمس';
-  return dt.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+  return dt.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'});
 }
 function goBackDash(){
   // ارجع لنقطة الانطلاق (تفاصيل المشروع الذي جئت منه) إن وُجدت

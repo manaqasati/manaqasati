@@ -78,7 +78,7 @@ function _safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|\/(?!\/
 function money(n){return n?Number(n).toLocaleString('en-US')+' ر.س':'';}
 function openV(s){s=_safeUrl(s);if(!s)return;document.getElementById('vimg').src=s;document.getElementById('viewer').classList.add('on');}
 function closeV(){document.getElementById('viewer').classList.remove('on');}
-function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA');}catch(e){return'';}}
+function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory');}catch(e){return'';}}
 function ago(d){if(!d)return'';var m=Math.floor((Date.now()-new Date(d))/60000);if(m<60)return'قبل '+Math.max(m,1)+' دقيقة';var h=Math.floor(m/60);if(h<24)return'قبل '+h+' ساعة';return'قبل '+Math.floor(h/24)+' يوم';}
 function _bid(){
   var tok=null,u=null;
