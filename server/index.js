@@ -774,9 +774,7 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
     html = html
       .replace('<title>ملف المزود — مناقصة</title>', () => `<title>${eT}</title>`)
       .replace('<meta name="description" content="مزود خدمة على منصة مناقصة السعودية">', () => `<meta name="description" content="${eD}">`)
-      .replace('<script type="application/ld+json" id="ld"></script>', () => `
-<script type="application/ld+json">${_ldJson}</script>
-<script type="application/ld+json" id="ld"></script>`)
+      .replace('<script type="application/ld+json" id="ld"></script>', () => `<script type="application/ld+json" id="ld">${_ldJson}</script>`)
       .replace('</head>', () => `
   <meta property="og:title" content="${eT}">
   <meta property="og:description" content="${eD}">
@@ -1764,6 +1762,9 @@ async function dumpDatabaseTo(out){
   const w = async (str) => { if (!out.write(str)) await once(out, 'drain'); };
   const client = await pool.connect();
   const stats = { tables: 0, rows: 0 };
+  // لقطة وحدة متسقة: كل الجداول تُقرأ كأنها بنفس اللحظة (ما يطلع عرض بدون مشروعه مثلاً)
+  let _tx = false;
+  try { await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'); _tx = true; } catch(e) {}
   try {
     const tq = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
     const tables = tq.rows.map(r => r.tablename);
@@ -1787,7 +1788,7 @@ async function dumpDatabaseTo(out){
       await w(`SELECT setval(pg_get_serial_sequence('public."${t}"','id'), COALESCE((SELECT MAX(id) FROM public."${t}"),1), (SELECT MAX(id) FROM public."${t}") IS NOT NULL) WHERE pg_get_serial_sequence('public."${t}"','id') IS NOT NULL;\n`);
     }
     await w(`\nCOMMIT;\n-- END OF BACKUP\n`);
-  } finally { client.release(); }
+  } finally { if (_tx) { try { await client.query('COMMIT'); } catch(e) {} } client.release(); }
   return stats;
 }
 async function runOffsiteBackup(force){
@@ -1963,8 +1964,8 @@ async function pruneOffsiteBackups(){
 }
 async function checkStorageAlert(){
   try { await checkUploadGuards(); } catch(e){}
-  try { await runOffsiteBackup(false); } catch(e){}
-  try { await syncFilesBackup(false); } catch(e){}
+  // النسخ الاحتياطي يشتغل بالخلفية بقفل خاص (ما يأخّر التذكيرات لين يخلص)
+  _jobLock('backup', async () => { try { await runOffsiteBackup(false); } catch(e){} try { await syncFilesBackup(false); } catch(e){} }).catch(()=>{});
   try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
@@ -2994,7 +2995,7 @@ app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) =
     if (realEmail) {
       const link = SITE_URL + '/auth.html?reset=' + token;
       const title = '🔐 إعادة تعيين كلمة المرور';
-      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا مشروع لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
+      const body = `<p>عزيزي <strong>${eEsc(u.name || '')}</strong>،</p><p>وصلنا طلب لإعادة تعيين كلمة المرور لحسابك في مناقصة. اضغط الزر أدناه خلال ساعة واحدة:</p><p style="color:#64748b;font-size:12.5px">إذا لم تطلب ذلك، تجاهل هذه الرسالة — كلمة مرورك تبقى كما هي.</p>`;
       sendEmail(u.email, title, emailTpl(title, body, 'إعادة تعيين كلمة المرور', link)).catch(()=>{});
     }
     return res.json(generic);
@@ -6250,6 +6251,7 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
     const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : _reqCats(row);
     const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities);
+    if (!_bulkClaim('invite', [id, doNotify, doEmail, rows.map(x => x.id)])) return _bulkDup(res);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;
     for (const p of rows) {
@@ -6286,6 +6288,7 @@ app.post('/api/admin/notify-real-bidders', requirePermission('requests.review'),
       WHERE b.status='pending' AND b.price IS NOT NULL AND b.price>0
         AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL)
         AND COALESCE(u.is_active,TRUE)=TRUE`);
+    if (!_bulkClaim('realbidders', [r.rows.map(x => x.provider_id)])) return _bulkDup(res);
     const title = '🎉 صار بإمكانك التواصل مباشرة مع أصحاب مشاريعك';
     const body = 'خبر يهمك: العروض الحقيقية التي قدّمتها أصبحت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع. افتح المشروع أو ادخل «مشاريعي وعروضي» وستجد أزرار التواصل مفتوحة. سرعة تواصلك ترفع فرصك في الفوز.';
     let sent = 0;
@@ -7091,6 +7094,19 @@ app.delete('/api/admin/requests/:id', requirePermission('requests.delete'), asyn
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ الإرسال الجماعي: منع التكرار + إشعارات التطبيق على دفعات ═══
+// نفس الرسالة لنفس الجمهور خلال 10 دقائق تنرفض (ضغطة مزدوجة أو إعادة إرسال بالغلط)
+const _bulkRecent = new Map();
+function _bulkClaim(kind, parts){
+  const k = kind + ':' + crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex');
+  const now = Date.now();
+  for (const [kk, t] of _bulkRecent) if (now - t > 10*60000) _bulkRecent.delete(kk);
+  if (_bulkRecent.has(k)) return null;
+  _bulkRecent.set(k, now);
+  return k;
+}
+const _bulkDup = (res) => res.status(409).json({ message: 'نفس الرسالة انرسلت لنفس الجمهور قبل أقل من 10 دقائق — ما أرسلناها مرة ثانية' });
+async function _inChunks(items, n, fn){ for (let i = 0; i < items.length; i += n) await Promise.all(items.slice(i, i + n).map(x => Promise.resolve().then(() => fn(x)).catch(() => {}))); }
 app.post('/api/admin/notify', requirePermission('broadcast.send'), async (req, res) => {
   try {
     const { user_id, user_ids, role, title, body, type, specialty, channel } = req.body;
@@ -7105,12 +7121,13 @@ app.post('/api/admin/notify', requirePermission('broadcast.send'), async (req, r
       if (specialty&&specialty!=='الكل') { if(!role) q+=` AND role='provider'`; p.push(specialty); q+=` AND ((specialties IS NOT NULL AND $${p.length}::text=ANY(specialties)) OR (notify_categories IS NOT NULL AND $${p.length}::text=ANY(notify_categories)))`; }
       target=(await pool.query(q,p)).rows;
     }
+    const _bk = target.length > 1 ? _bulkClaim('notify', [req.user.id, title, body, ch, target.map(u => u.id)]) : 'single';
+    if (!_bk) return _bulkDup(res);
     const emailHtml = emailTpl(title, `<div style="font-size:14px;line-height:2;color:#374151">${body.replace(/\n/g,'<br>')}</div>`, 'فتح المنصة', SITE_URL);
     let appCount=0, emailCount=0;
-    for (const u of target) {
-      if (ch==='app'||ch==='both') { await notify(u.id, title, body, type||'admin', null); appCount++; }
-      if ((ch==='email'||ch==='both') && u.email) { const ok=await sendEmail(u.email, title, emailHtml); if(ok) emailCount++; }
-    }
+    // إشعارات التطبيق 10 بنفس الوقت، والإيميلات وحدة وحدة (حد مزوّد الإيميل)
+    if (ch==='app'||ch==='both') await _inChunks(target, 10, async u => { await notify(u.id, title, body, type||'admin', null); appCount++; });
+    if (ch==='email'||ch==='both') for (const u of target) { if (u.email) { try { const ok=await sendEmail(u.email, title, emailHtml); if(ok) emailCount++; } catch(e){} } }
     res.json({ ok:true, sent_count:target.length, app_count:appCount, email_count:emailCount, channel:ch });
   } catch(e) { console.error('admin/notify:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -8032,16 +8049,11 @@ app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req
     const { where, params } = buildBroadcastQuery(req.body || {});
     const users = await pool.query(`SELECT id, email, name FROM users WHERE ${where}`, params);
     const ch = channels || { app: true, email: false };
-    let sent = 0;
-    for (const u of users.rows) {
-      try {
-        if (ch.app) await notify(u.id, title, message, 'admin', null);
-        if (ch.email && u.email) {
-          await sendEmail(u.email, title, emailTpl(title, '<p>'+message.replace(/\n/g,'<br>')+'</p>', 'فتح التطبيق', 'https://manaqasa.com'));
-        }
-        sent++;
-      } catch(e) {}
-    }
+    if (!_bulkClaim('broadcast', [req.user.id, title, message, !!ch.app, !!ch.email, users.rows.map(u => u.id)])) return _bulkDup(res);
+    const _html = emailTpl(title, '<p>'+eEsc(message).replace(/\n/g,'<br>')+'</p>', 'فتح التطبيق', 'https://manaqasa.com');
+    if (ch.app) await _inChunks(users.rows, 10, u => notify(u.id, title, message, 'admin', null));
+    if (ch.email) for (const u of users.rows) { if (u.email) { try { await sendEmail(u.email, title, _html); } catch(e) {} } }
+    const sent = users.rows.length;
     await logAdmin(req, 'broadcast', null, null, 'رسالة جماعية: '+(title||'')+' ('+sent+' مستلم)');
     res.json({ ok: true, total: sent });
   } catch(e) { console.error('broadcast:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
