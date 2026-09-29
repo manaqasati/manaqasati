@@ -125,6 +125,24 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn(' VAPID keys not set — push notifications disabled');
 }
 
+// المصادر المسموحة (خطوط جوجل، أدوات التحليل والبكسلات، مكتبات CDN، خرائط جوجل، صور R2/Cloudinary)
+const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob: https:",
+  "connect-src 'self' wss: https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
+  "frame-src 'self' https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "report-uri /api/csp-report"   // report-uri يشتغل في كل المتصفحات (report-to ما يوصل بشكل موثوق)
+].join('; ');
 app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
 // ترويسات أمان أساسية
 app.use((req, res, next) => {
@@ -134,6 +152,11 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self)'); // (self) = مسموح لموقعنا فقط — كان مقفول حتى على صفحاتنا (زر الموقع والتسجيل الصوتي)
   if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // سياسة أمان المحتوى — وضع «مراقبة فقط»: المتصفح ما يمنع شي، بس يبلّغنا لو صفحة حمّلت شي من مصدر غير متوقع
+  // (ما نطبّقها على sw.js: عامل الخلفية يمرّر صور وسكربتات من مواقع كثيرة، وسياسته مستقلة عن الصفحات)
+  if (_CSP_RO && req.method === 'GET' && !req.path.startsWith('/api/') && req.path !== '/sw.js') {
+    res.setHeader('Content-Security-Policy-Report-Only', _CSP_RO);
+  }
   next();
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
@@ -151,6 +174,27 @@ app.use((req, res, next) => {
 });
 // Railway يمرّر الطلبات عبر بروكسي — بدون هذا كل الزوار لهم نفس الـ IP وحد المحاولات يصير مشترك للجميع
 app.set('trust proxy', 1);
+// استقبال تقارير CSP (عامة، صغيرة، محدودة المعدل) — تُجمّع حسب (القاعدة، المصدر، الصفحة) بدون الاستعلامات
+app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['application/csp-report','application/reports+json','application/json'], limit: '16kb' }), async (req, res) => {
+  res.status(204).end();
+  try {
+    let items = Array.isArray(req.body) ? req.body.map(x => x && x.type === 'csp-violation' ? x.body : null) : [req.body && req.body['csp-report']];
+    const strip = (u) => { u = String(u || '').slice(0, 400); if (!/^https?:/i.test(u)) return u.slice(0, 60); try { const x = new URL(u); return x.origin + x.pathname.slice(0, 120); } catch(e) { return u.slice(0, 60); } };
+    for (const r of items.slice(0, 5)) {
+      if (!r || typeof r !== 'object') continue;
+      const dir = String(r['effective-directive'] || r.effectiveDirective || r['violated-directive'] || r.violatedDirective || '').split(' ')[0].slice(0, 40);
+      const blocked = strip(r['blocked-uri'] || r.blockedURL || '');
+      if (!dir || /^(chrome|moz|safari|safari-web|ms-browser)-extension/i.test(blocked)) continue; // إضافات المتصفح: مو من موقعنا
+      let page = strip(r['document-uri'] || r.documentURL || ''); try { page = new URL(page).pathname.slice(0, 120); } catch(e) {}
+      const sample = String(r['script-sample'] || r.sample || '').slice(0, 80);
+      const up = await pool.query(`UPDATE csp_reports SET n=n+1, last_at=NOW() WHERE directive=$1 AND blocked=$2 AND page=$3`, [dir, blocked, page]);
+      if (!up.rowCount) {
+        const c = (await pool.query('SELECT COUNT(*)::int AS n FROM csp_reports')).rows[0].n;
+        if (c < 500) await pool.query(`INSERT INTO csp_reports (directive, blocked, page, sample) VALUES ($1,$2,$3,$4) ON CONFLICT (directive, blocked, page) DO UPDATE SET n=csp_reports.n+1, last_at=NOW()`, [dir, blocked, page, sample]);
+      }
+    }
+  } catch(e) {}
+});
 app.use(express.json({ limit: '45mb' }));
 // صفحات HTML (ومنها الروابط بدون .html مثل /pro/... و/project/...) لا تُخزَّن أبداً —
 // ضروري لتطبيق أندرويد (WebView) اللي يحتفظ بكاش قوي، عشان يوصله التحديث فور الرفع
@@ -2715,8 +2759,12 @@ async function setupDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, created_at)',
       'CREATE INDEX IF NOT EXISTS idx_contact_unlocks_req ON contact_unlocks(request_id)',
       "CREATE INDEX IF NOT EXISTS idx_bids_held ON bids(held_until) WHERE hold_state='held'",
-      'CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email))'
+      'CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email))',
+      'CREATE INDEX IF NOT EXISTS idx_users_created ON users(created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_bids_created ON bids(created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_saai_request ON saai_ledger(request_id)'
     ];
+    await _mig(`CREATE TABLE IF NOT EXISTS csp_reports (id SERIAL PRIMARY KEY, directive TEXT NOT NULL, blocked TEXT NOT NULL DEFAULT '', page TEXT NOT NULL DEFAULT '', sample TEXT, n INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(directive, blocked, page))`);
     for (const q of _idx) { try { await _mig(q); } catch(e) {} }
     console.log('✅ Database setup complete');
   } catch(error) { console.error('Database setup error:', error); }
@@ -4653,13 +4701,14 @@ app.get('/api/blocks', auth, async (req, res) => {
 app.delete('/api/messages/:id', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const m = await pool.query('SELECT sender_id, created_at FROM messages WHERE id=$1', [id]);
+    const m = await pool.query('SELECT sender_id, receiver_id, request_id, created_at FROM messages WHERE id=$1', [id]);
     if (!m.rows.length) return res.status(404).json({ message: 'الرسالة غير موجودة' });
     if (String(m.rows[0].sender_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليست رسالتك' });
     const ageMin = (Date.now() - new Date(m.rows[0].created_at).getTime()) / 60000;
     if (ageMin > 60) return res.status(400).json({ message: 'لا يمكن حذف رسالة مضى عليها أكثر من ساعة' });
     await pool.query("UPDATE messages SET deleted_at=NOW(), content='', attachment_url=NULL WHERE id=$1", [id]);
     res.json({ ok: true });
+    wsBroadcast(m.rows[0].receiver_id, { type:'message_deleted', id, request_id: m.rows[0].request_id, sender_id: req.user.id });
   } catch(e) { console.error('del msg:', e.message); res.status(500).json({ message: 'تعذّر الحذف' }); }
 });
 
@@ -4729,10 +4778,12 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
           [requestId, req.user.id, withUser]);
       }
       // علّم رسائل هذا الشخص مقروءة
-      await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
+      const _rd = await pool.query('UPDATE messages SET is_read=TRUE WHERE receiver_id=$1 AND sender_id=$2 AND is_read=FALSE', [req.user.id, withUser]);
+      if (_rd.rowCount) wsBroadcast(withUser, { type:'messages_read', reader_id: req.user.id, request_id: requestId });
     } else {
       r = await pool.query(`SELECT m.*, u.name as sender_name, u.profile_image as sender_image, rm.content as reply_content, ru.name as reply_sender FROM messages m JOIN users u ON m.sender_id=u.id LEFT JOIN messages rm ON rm.id=m.reply_to AND ((rm.sender_id=m.sender_id AND rm.receiver_id=m.receiver_id) OR (rm.sender_id=m.receiver_id AND rm.receiver_id=m.sender_id)) LEFT JOIN users ru ON ru.id=rm.sender_id WHERE m.request_id=$1 AND (m.sender_id=$2 OR m.receiver_id=$2) ORDER BY m.created_at ASC`, [requestId, req.user.id]);
-      await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE', [requestId, req.user.id]);
+      const _rd = await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE RETURNING sender_id', [requestId, req.user.id]);
+      [...new Set(_rd.rows.map(x => x.sender_id).filter(Boolean))].forEach(sid => wsBroadcast(sid, { type:'messages_read', reader_id: req.user.id, request_id: requestId }));
     }
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5819,7 +5870,14 @@ app.get('/api/admin/duplicates', requirePermission('users.view'), async (req, re
 app.get('/api/admin/users', requirePermission('users.view'), async (req, res) => {
   try {
     const { role } = req.query; const VALID = ['client','provider','admin'];
-    let q = `SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND (category IS DISTINCT FROM 'direct')) as request_count,(SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM bids WHERE provider_id=u.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed') as completed_projects,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as review_count FROM users u`;
+    // الأعداد تُحسب مرة وحدة لكل جدول ثم تُربط (بدل 6 استعلامات فرعية لكل مستخدم)
+    let q = `WITH rq AS (SELECT client_id, COUNT(*) FILTER (WHERE category IS DISTINCT FROM 'direct') AS rc, COUNT(*) FILTER (WHERE status='completed') AS cr FROM requests GROUP BY client_id),
+      ap AS (SELECT assigned_provider_id AS pid, COUNT(*) AS cp FROM requests WHERE assigned_provider_id IS NOT NULL AND status='completed' GROUP BY 1),
+      bc AS (SELECT provider_id, COUNT(*) AS n FROM bids GROUP BY 1),
+      rv AS (SELECT reviewed_id, AVG(rating) AS a, COUNT(*) AS n FROM reviews GROUP BY 1)
+      SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,
+        COALESCE(rq.rc,0) AS request_count, COALESCE(rq.cr,0) AS completed_requests, COALESCE(bc.n,0) AS bid_count, COALESCE(ap.cp,0) AS completed_projects, COALESCE(rv.a,0) AS avg_rating, COALESCE(rv.n,0) AS review_count
+      FROM users u LEFT JOIN rq ON rq.client_id=u.id LEFT JOIN ap ON ap.pid=u.id LEFT JOIN bc ON bc.provider_id=u.id LEFT JOIN rv ON rv.reviewed_id=u.id`;
     const params = [];
     if (role && VALID.includes(role)) { params.push(role); q += ' WHERE u.role=$1'; }
     q += ' ORDER BY u.created_at DESC';
@@ -6120,7 +6178,12 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
 
 app.get('/api/admin/providers', requirePermission('users.view'), async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as bid_count,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE role='provider' ORDER BY avg_rating DESC`);
+    const r = await pool.query(`WITH rv AS (SELECT reviewed_id, AVG(rating) AS a, COUNT(*) AS n FROM reviews GROUP BY 1),
+      bc AS (SELECT provider_id, COUNT(*) AS n FROM bids GROUP BY 1),
+      ap AS (SELECT assigned_provider_id AS pid, COUNT(*) AS cp FROM requests WHERE assigned_provider_id IS NOT NULL AND status='completed' GROUP BY 1)
+      SELECT users.id,name,email,phone,city,specialties,notify_categories,badge,is_active,bio,profile_image,created_at,COALESCE(rv.a,0) as avg_rating,COALESCE(rv.n,0) as review_count,COALESCE(bc.n,0) as bid_count,COALESCE(ap.cp,0) as completed_projects
+      FROM users LEFT JOIN rv ON rv.reviewed_id=users.id LEFT JOIN bc ON bc.provider_id=users.id LEFT JOIN ap ON ap.pid=users.id
+      WHERE role='provider' ORDER BY avg_rating DESC, users.id`);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -6128,7 +6191,14 @@ app.get('/api/admin/providers', requirePermission('users.view'), async (req, res
 app.get('/api/admin/requests', requirePermission('requests.view'), async (req, res) => {
   try {
     const { status } = req.query;
-    let q = `SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count, (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' LIMIT 1) as accepted_price, (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) as min_bid, (SELECT id FROM saai_ledger WHERE request_id=r.id LIMIT 1) as saai_id, u.phone as client_phone FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE (r.category IS DISTINCT FROM 'direct')`;
+    let q = `WITH bs AS (SELECT request_id, COUNT(*) AS n,
+        MIN(price) FILTER (WHERE price>0 AND (price_unit IS NULL OR price_unit='total')) AS mn,
+        (array_agg(price ORDER BY id) FILTER (WHERE status='accepted'))[1] AS acc
+        FROM bids GROUP BY request_id),
+      sl AS (SELECT DISTINCT ON (request_id) request_id, id FROM saai_ledger WHERE request_id IS NOT NULL ORDER BY request_id, id)
+      SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone
+      FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id LEFT JOIN bs ON bs.request_id=r.id LEFT JOIN sl ON sl.request_id=r.id
+      WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
     if (status) { if (status==='pending_review') q+=` AND r.status IN ('pending_review','review')`; else { params.push(status); q+=' AND r.status=$1'; } }
     q += ' ORDER BY r.created_at DESC';
@@ -7104,6 +7174,17 @@ app.post('/api/admin/offsite-backups/run', requirePermission('settings.manage'),
   if (R2_BACKUP_BUCKET && !global._filesSyncRunning) syncFilesBackup(true).catch(()=>{});
   res.json({ ok: true, started: true });
 });
+app.get('/api/admin/csp-reports', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT directive, blocked, page, sample, n, first_at, last_at FROM csp_reports ORDER BY last_at DESC LIMIT 100`);
+    const t = (await pool.query(`SELECT COUNT(*)::int AS kinds, COALESCE(SUM(n),0)::int AS total FROM csp_reports`)).rows[0];
+    res.json({ mode: _CSP_RO ? 'report-only' : 'off', ...t, rows: r.rows });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/admin/csp-reports', requirePermission('settings.manage'), async (req, res) => {
+  try { await pool.query('DELETE FROM csp_reports'); await logAdmin(req, 'csp_clear', 'system', null, 'مسح تقارير CSP'); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
   const out = { db:{}, email:{}, push:{}, server:{}, data:{} };
   // قاعدة البيانات + زمن الاستجابة
@@ -7221,6 +7302,15 @@ app.delete('/api/admin/reviews/:id', requirePermission('reviews.delete'), async 
   try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// عدّادات الشارات في لوحة الأدمن (خفيفة: أرقام فقط بدل تحميل القوائم كاملة كل 25 ثانية)
+app.get('/api/admin/badge-counts', auth, adminOnly, loadAdmin, async (req, res) => {
+  try {
+    const out = {};
+    if (hasPerm(req.adminPerms, 'reports.view')) out.reports = (await pool.query(`SELECT COUNT(*)::int AS n FROM reports WHERE status='pending' OR status IS NULL`)).rows[0].n;
+    if (hasPerm(req.adminPerms, 'questions.view')) out.questions = (await pool.query(`SELECT COUNT(*)::int AS n FROM request_questions WHERE answer IS NULL OR TRIM(answer)=''`)).rows[0].n;
+    res.json(out);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/questions', requirePermission('questions.view'), async (req, res) => {
   try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -7698,21 +7788,26 @@ async function _adminOverview(){
         (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,
         (SELECT COUNT(*) FROM saai_ledger WHERE status='submitted')::int AS saai_submitted,
         (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='submitted')::float AS saai_submitted_sum`),
-      one(`SELECT
-        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=${T})::int AS users_t,
-        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=${T}-1)::int AS users_y,
-        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=${T})::int AS req_t,
-        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=${T}-1)::int AS req_y,
-        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=${T})::int AS bids_t,
-        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=${T}-1)::int AS bids_y,
+      // أمس واليوم: نقرأ من بداية أمس فقط (بالفهرس) بدل مسح الجداول كاملة
+      one(`WITH b AS (SELECT ((${T}-1)::timestamp AT TIME ZONE 'Asia/Riyadh') AS t0)
+        SELECT
+        (SELECT COUNT(*) FILTER (WHERE ${D('created_at')}=${T}) FROM users, b WHERE created_at >= b.t0)::int AS users_t,
+        (SELECT COUNT(*) FILTER (WHERE ${D('created_at')}=${T}-1) FROM users, b WHERE created_at >= b.t0)::int AS users_y,
+        (SELECT COUNT(*) FILTER (WHERE ${D('r.created_at')}=${T}) FROM requests r, b WHERE ${ND} AND r.created_at >= b.t0)::int AS req_t,
+        (SELECT COUNT(*) FILTER (WHERE ${D('r.created_at')}=${T}-1) FROM requests r, b WHERE ${ND} AND r.created_at >= b.t0)::int AS req_y,
+        (SELECT COUNT(*) FILTER (WHERE ${D('created_at')}=${T}) FROM bids, b WHERE created_at >= b.t0)::int AS bids_t,
+        (SELECT COUNT(*) FILTER (WHERE ${D('created_at')}=${T}-1) FROM bids, b WHERE created_at >= b.t0)::int AS bids_y,
         (SELECT COUNT(*) FROM users)::int AS users_all,
         (SELECT COUNT(*) FROM users WHERE role='provider')::int AS providers,
         (SELECT COUNT(*) FROM users WHERE role='client')::int AS clients`),
-      many(`SELECT to_char(d,'YYYY-MM-DD') AS day,
-        (SELECT COUNT(*) FROM users WHERE ${D('created_at')}=d::date)::int AS users,
-        (SELECT COUNT(*) FROM requests r WHERE ${ND} AND ${D('r.created_at')}=d::date)::int AS requests,
-        (SELECT COUNT(*) FROM bids WHERE ${D('created_at')}=d::date)::int AS bids
-        FROM generate_series(${T}-13, ${T}, INTERVAL '1 day') d ORDER BY d`),
+      // آخر 14 يوم: كل جدول يُقرأ مرة وحدة ويُجمّع حسب يوم الرياض (بدل 42 مسح كامل)
+      many(`WITH b AS (SELECT ((${T}-13)::timestamp AT TIME ZONE 'Asia/Riyadh') AS t0),
+          uu AS (SELECT ${D('created_at')} AS d, COUNT(*) AS n FROM users, b WHERE created_at >= b.t0 GROUP BY 1),
+          rr AS (SELECT ${D('r.created_at')} AS d, COUNT(*) AS n FROM requests r, b WHERE ${ND} AND r.created_at >= b.t0 GROUP BY 1),
+          bb AS (SELECT ${D('created_at')} AS d, COUNT(*) AS n FROM bids, b WHERE created_at >= b.t0 GROUP BY 1)
+        SELECT to_char(g.d,'YYYY-MM-DD') AS day, COALESCE(uu.n,0)::int AS users, COALESCE(rr.n,0)::int AS requests, COALESCE(bb.n,0)::int AS bids
+        FROM (SELECT d::date AS d FROM generate_series(${T}-13, ${T}, INTERVAL '1 day') d) g
+        LEFT JOIN uu ON uu.d=g.d LEFT JOIN rr ON rr.d=g.d LEFT JOIN bb ON bb.d=g.d ORDER BY g.d`),
       one(`WITH p AS (SELECT r.id, r.status, r.assigned_provider_id FROM requests r
              WHERE ${ND} AND r.created_at >= NOW() - INTERVAL '30 days'
                AND r.status NOT IN ('pending_review','review','needs_edit','rejected'))
@@ -8068,38 +8163,71 @@ async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
 }
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+// حدّ الرسالة 4KB (الافتراضي 100MB يفتح باب الإغراق) — العميل يرسل فقط auth/ping
+const wss = new WebSocket.Server({ server, maxPayload: 4096 });
 const _wsClients = new Map();
+const _WS_MAX_PER_USER = 8;
 
 function wsBroadcast(userId, data) {
+  if (userId == null) return;
   const conns = _wsClients.get(String(userId));
   if (!conns) return;
   const msg = JSON.stringify(data);
-  conns.forEach(ws => { if (ws.readyState === WebSocket.OPEN) ws.send(msg); });
+  conns.forEach(ws => { if (ws.readyState === WebSocket.OPEN) { try { ws.send(msg); } catch(e) {} } });
+}
+function _wsDrop(ws) {
+  const uid = ws._uid;
+  if (uid && _wsClients.has(uid)) {
+    _wsClients.get(uid).delete(ws);
+    if (_wsClients.get(uid).size === 0) _wsClients.delete(uid);
+  }
+  if (ws._expT) clearTimeout(ws._expT);
 }
 
 wss.on('connection', (ws, req) => {
-  let userId = null;
+  ws._uid = null; ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  // اتصال بدون مصادقة خلال 10 ثواني يُقفل (يمنع حجز اتصالات فاضية)
+  const authT = setTimeout(() => { if (!ws._uid) { try { ws.close(4001, 'auth timeout'); } catch(e) {} } }, 10000);
   ws.on('message', (raw) => {
-    try {
-      const msg = JSON.parse(raw);
-      if (msg.type === 'auth' && msg.token) {
-        const decoded = jwt.verify(msg.token, JWT_SECRET);
-        userId = String(decoded.id);
-        if (!_wsClients.has(userId)) _wsClients.set(userId, new Set());
-        _wsClients.get(userId).add(ws);
-        ws.send(JSON.stringify({ type: 'connected', userId }));
-      }
-    } catch(e) {}
+    let msg; try { msg = JSON.parse(raw); } catch(e) { return; }
+    if (!msg || typeof msg !== 'object') return;
+    ws.isAlive = true;
+    if (msg.type === 'ping') { try { ws.send('{"type":"pong"}'); } catch(e) {} return; }
+    if (msg.type !== 'auth' || ws._uid || ws._authing || typeof msg.token !== 'string') return;
+    let decoded;
+    try { decoded = jwt.verify(msg.token, JWT_SECRET); } catch(e) { try { ws.close(4001, 'bad token'); } catch(_) {} return; }
+    // نفس قواعد auth: رموز الأغراض الخاصة ما تنقبل
+    if (!decoded || decoded.purpose || !decoded.id) { try { ws.close(4001, 'bad token'); } catch(_) {} return; }
+    ws._authing = true;
+    _userStateOf(decoded.id).then(st => {
+      if (!st || !st.ok) { try { ws.close(4003, 'blocked'); } catch(_) {} return; }
+      if (ws.readyState !== WebSocket.OPEN) return;
+      clearTimeout(authT);
+      const uid = String(decoded.id);
+      ws._uid = uid;
+      if (!_wsClients.has(uid)) _wsClients.set(uid, new Set());
+      const set = _wsClients.get(uid);
+      set.add(ws);
+      // حد أعلى للاتصالات لكل مستخدم: نقفل الأقدم
+      while (set.size > _WS_MAX_PER_USER) { const old = set.values().next().value; set.delete(old); try { old.close(4008, 'too many'); } catch(_) {} }
+      // ينقفل مع انتهاء صلاحية الجلسة
+      if (decoded.exp) { const ms = decoded.exp * 1000 - Date.now(); if (ms > 0 && ms < 2147483647) ws._expT = setTimeout(() => { try { ws.close(4001, 'expired'); } catch(_) {} }, ms); }
+      try { ws.send(JSON.stringify({ type: 'connected' })); } catch(_) {}
+    }).catch(() => { try { ws.close(1011); } catch(_) {} }).finally(() => { ws._authing = false; });
   });
-  ws.on('close', () => {
-    if (userId && _wsClients.has(userId)) {
-      _wsClients.get(userId).delete(ws);
-      if (_wsClients.get(userId).size === 0) _wsClients.delete(userId);
-    }
-  });
+  ws.on('close', () => { clearTimeout(authT); _wsDrop(ws); });
   ws.on('error', () => {});
 });
+// نبض كل 30 ثانية: الاتصال الميّت (جوال انقطع نته) ينشال بدل ما يتراكم
+const _wsBeat = setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (ws.isAlive === false) { _wsDrop(ws); try { ws.terminate(); } catch(e) {} return; }
+    ws.isAlive = false;
+    try { ws.ping(); } catch(e) {}
+  });
+}, 30000);
+wss.on('close', () => clearInterval(_wsBeat));
 
 // ═══ START ═══
 // ═══ catch-all 404 ═══
