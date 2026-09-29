@@ -981,7 +981,8 @@ function render(){
     } else coverEl.style.display='none';
   }
   document.title=(req.title||'مشروع')+' | مناقصة';
-  document.getElementById('ld').textContent=JSON.stringify({'@context':'https://schema.org','@type':'JobPosting',title:req.title,description:req.description,datePosted:req.created_at,jobLocation:{addressRegion:req.city,addressCountry:'SA'},baseSalary:{value:req.budget_max,currency:'SAR'}});
+  // وصف المشروع كطلب خدمة (مو «وظيفة» JobPosting — قوقل يعاقب على استخدامها لغير الوظائف)
+  document.getElementById('ld').textContent=JSON.stringify({'@context':'https://schema.org','@type':'WebPage',name:req.title,description:String(req.description||'').slice(0,300),datePublished:req.created_at,about:{'@type':'Service',serviceType:req.category||undefined,areaServed:{'@type':'City',name:req.city||undefined,containedInPlace:{'@type':'Country',name:'SA'}}}}).replace(/</g,'\\u003c');
 
   var h='';
   if(!hasCover||isOwner){
