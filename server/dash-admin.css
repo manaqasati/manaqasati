@@ -515,3 +515,15 @@ mark.ow-blank{background:#fee2e2;color:#b91c1c;border-radius:4px;padding:0 3px;f
 .ow-mi{display:block;width:100%;text-align:right;border:0;background:none;padding:9px 10px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:800;color:var(--text);cursor:pointer}
 .ow-mi:hover{background:var(--bg)}
 @media(max-width:760px){.ow-row{grid-template-columns:1fr 44px 44px;}.ow-row>span:nth-child(4),.ow-row>span:nth-child(5){grid-column:1/-1}.ow-hd>span:nth-child(4),.ow-hd>span:nth-child(5){display:none}}
+
+/* ===== القائمة المدموجة + تبويبات الصفحات ===== */
+.ni-tx{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.ni-tx small{font-size:10.5px;font-weight:600;opacity:.72;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gtabsHost .gtabs{gap:4px;background:var(--card,#fff);border:1px solid var(--border);border-radius:14px;padding:5px;margin:0 0 14px;width:max-content;max-width:100%;overflow-x:auto;box-sizing:border-box}
+.gt{border:0;background:none;padding:9px 16px;border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:800;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;min-height:40px}
+.gt:hover{color:var(--text)}.gt.on{background:#1e3a8a;color:#fff}
+.gt .ni-badge{margin:0;min-width:18px;height:18px;font-size:10px}
+.gt.on .ni-badge{background:#fff;color:#b91c1c}
+#bid-viewtabs{display:none!important}
+[data-theme="dark"] .gt.on{background:#2c4ea3}
+@media(max-width:640px){#gtabsHost .gtabs{width:100%}.gt{padding:8px 12px;font-size:12.5px}}
