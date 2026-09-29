@@ -95,6 +95,8 @@ function _pvWarnAck(id){
   _api('/api/provider/warnings/'+id+'/ack',{method:'POST',body:'{}'}).catch(function(){});
 }
 window.addEventListener('load',function(){ setTimeout(function(){ try{ if(localStorage.getItem('token'))_pvWarnLoad(); }catch(e){} },600); });
+// زر «صفحتي» — يفتح الصفحة العامة للمزوّد في تبويب جديد
+(function(){ try{ var u=JSON.parse(localStorage.getItem('user')||'{}'); if(u&&u.id)document.querySelectorAll('a.my-page-btn').forEach(function(a){a.href='/pro/'+u.id;}); }catch(e){} })();
 
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
 // حارس ضد ذاكرة المتصفح (bfcache): لو رجع للصفحة بعد الخروج بدون توكن، حوّله للدخول
@@ -1495,7 +1497,7 @@ function _pfWallet(){
     var I='<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 010-4h12v4"/><path d="M4 6v12a2 2 0 002 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
     var st,pill,body='';
     if(pend.length){
-      var oldest=pend.reduce(function(m,x){var t=new Date(x.created_at).getTime();return (!m||t<m)?t:m;},0);
+      var oldest=pend.reduce(function(m,x){var t=new Date(x.due_from||x.created_at).getTime();return (!m||t<m)?t:m;},0);
       var left=Math.ceil((oldest+10*86400000-Date.now())/86400000);
       var late=left<0; st=late?'late':'due';
       pill=late?'<span class="pf-wal-pill late">متأخر</span>':'<span class="pf-wal-pill due">مستحق</span>';
@@ -1725,7 +1727,13 @@ function loadSaai(){
         var st=x.status, pill, act='', due='';
         if(st==='approved'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dcfce7;color:#16a34a">مدفوع ومعتمد ✓ · '+fmtN(x.saai_amount)+' ر.س</span>'; }
         else if(st==='submitted'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#dbeafe;color:#1d4ed8">بانتظار اعتماد الأدمن · '+fmtN(x.saai_amount)+' ر.س</span>'; }
-        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">ارفع الإيصال</button>'; due=_saaiDue(x.created_at); }
+        else if(st==='cancelled'){ pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f1f5f9;color:#64748b">ملغي — ما عليك سعي</span>'; }
+        else if(st==='deferred'){ var ds=x.defer_state, du=x.defer_until?new Date(x.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'';
+          pill=(ds==='confirmed')?'<span class="saai-pl" style="background:#e0e7ff;color:#3730a3">⏸ مؤجّل لين '+du+' · '+fmtN(x.saai_amount)+' ر.س</span>'
+            :(ds==='await_admin'?'<span class="saai-pl" style="background:#e0e7ff;color:#3730a3">⏳ التأجيل ينتظر موافقة الإدارة</span>'
+            :'<span class="saai-pl" style="background:#fef9c3;color:#854d0e">⏳ بانتظار تأكيد العميل '+(x.defer_kind==='cancel'?'(إلغاء)':'(تأجيل'+(du?' لين '+du:'')+')')+'</span>');
+          due='<div style="font-size:11px;color:var(--muted);margin-top:4px">التذكيرات متوقفة لين يتضح الوضع</div>'; }
+        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<div class="saai-acts"><button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">ارفع الإيصال</button>'+((x.defer_state==='conflict')?'':'<button class="saai-defer" onclick="_saaiDeferOpen('+x.id+','+_jsa(x.project_title||'مشروع')+')">العميل أجّل أو ألغى؟</button>')+'</div>'; due=_saaiDue(x.due_from||x.created_at)+(x.defer_state==='conflict'?'<div style="font-size:11.5px;color:#b91c1c;font-weight:800;margin-top:4px">العميل ذكر إن '+(x.client_answer==='started'?'التنفيذ بدأ':'الاتفاق قائم')+' — لو فيه لبس تواصل معنا</div>':(x.defer_state==='resumed'?'<div style="font-size:11.5px;color:#3730a3;font-weight:800;margin-top:4px">انتهى التأجيل — المهلة بدأت من جديد</div>':'')); }
         return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:#0f2544">'+_esc(x.project_title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+(x.status==='pending'?((parseFloat(x.contract_value)||0)>0?'سعر عرضك: '+fmtN(x.contract_value)+' ر.س':'سعرك كان بالمتر/الوحدة — أدخل المبلغ الإجمالي'):'مبلغ الاتفاق: '+fmtN(x.contract_value)+' ر.س')+(x.city?' · '+_esc(x.city):'')+'</div><div style="margin-top:5px">'+pill+due+'</div></div>'+act+'</div>';
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
@@ -1778,6 +1786,38 @@ function openSaaiSubmit(id, contract, title){
     +'<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:9px">بعد التأكيد يراجع الأدمن الإيصال ويعتمد الاستلام.</div>'
     +'</div>';
   m.onclick=function(e){ if(e.target===m) m.remove(); };
+}
+// ═══ العميل أجّل البدء أو ألغى الاتفاق ═══
+window._sdK='postpone'; window._sdD=30;
+function _saaiDeferOpen(id,title){
+  window._sdId=id; window._sdK='postpone'; window._sdD=30;
+  var m=_el('saaiModal'); if(!m){ m=document.createElement('div'); m.id='saaiModal'; document.body.appendChild(m); }
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)';
+  m.onclick=function(e){ if(e.target===m) m.remove(); };
+  _saaiDeferRender(title);
+}
+function _saaiDeferRender(title){
+  var m=_el('saaiModal'); if(!m)return; if(title)window._sdT=title;
+  var K=window._sdK, D=window._sdD;
+  var opt=function(k,t,s){var on=K===k;return '<button type="button" class="sd-opt'+(on?' on':'')+'" onclick="window._sdK=\''+k+'\';_saaiDeferRender()"><span class="sd-rd"></span><span><b>'+t+'</b><small>'+s+'</small></span></button>';};
+  var dd=[[14,'أسبوعين'],[30,'شهر'],[45,'شهر ونص'],[60,'شهرين']];
+  m.innerHTML='<div class="sd-box" role="dialog" aria-label="وش صار مع العميل">'
+    +'<div class="sd-t">وش صار مع العميل؟</div><div class="sd-s">'+_esc(window._sdT||'')+'</div>'
+    +opt('postpone','أجّل البدء','الاتفاق قائم بس التنفيذ بيبدأ بعدين')
+    +(K==='postpone'?'<div class="sd-when"><span>متى متوقع تبدأون؟</span><div>'+dd.map(function(d){return '<button type="button" class="sd-ch'+(D===d[0]?' on':'')+'" onclick="window._sdD='+d[0]+';_saaiDeferRender()">'+d[1]+'</button>';}).join('')+'</div></div>':'')
+    +opt('cancel','ألغى الاتفاق','ما راح يتم التنفيذ معي')
+    +'<textarea id="sd-note" maxlength="300" placeholder="ملاحظة (اختياري)"></textarea>'
+    +'<button type="button" id="sd-send" class="sd-send" onclick="_saaiDeferSend()">أرسل — نتأكد من العميل</button>'
+    +'<div class="sd-info">نرسل للعميل سؤال سريع يأكد فيه. لين يرد: <b>التذكيرات توقف</b> والسعي ما ينحسب متأخر.</div>'
+    +'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button></div>';
+}
+function _saaiDeferSend(){
+  var b=_el('sd-send'); if(b){b.disabled=true;b.textContent='جاري الإرسال...';}
+  var body={kind:window._sdK,days:window._sdD,note:((_el('sd-note')||{}).value||'').trim()};
+  _api('/api/provider/saai/'+window._sdId+'/defer',{method:'POST',body:JSON.stringify(body)}).then(function(d){
+    if(d&&d.ok){ showToast('وصلنا — سألنا العميل، والتذكيرات متوقفة لين يرد','success'); var m=_el('saaiModal'); if(m)m.remove(); loadSaai(); }
+    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); if(b){b.disabled=false;b.textContent='أرسل — نتأكد من العميل';} }
+  }).catch(function(){ showToast('تعذّر الاتصال','error'); if(b){b.disabled=false;b.textContent='أرسل — نتأكد من العميل';} });
 }
 function _saaiRecalc(){ var a=parseFloat(_el('saai-amt').value)||0; _el('saai-fee').value=fmtN(Math.round(a*0.03))+' ر.س'; }
 function _onSaaiProof(inp){ var f=inp.files&&inp.files[0]; if(!f)return; var rd=new FileReader(); rd.onload=function(){ window._saaiProof=rd.result; var l=_el('saai-proof-lbl'); if(l){l.textContent='✓ '+f.name;l.style.display='block';} }; rd.readAsDataURL(f); }

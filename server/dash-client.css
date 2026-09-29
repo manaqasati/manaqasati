@@ -631,3 +631,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 [data-theme="dark"] .vb-ic{background:rgba(96,165,250,.14);color:#93c5fd}[data-theme="dark"] .vb-ic i{border-color:#111827}
 [data-theme="dark"] .vb-sec{background:transparent;color:#93c5fd;border-color:rgba(147,197,253,.35)}
 [data-theme="dark"] .vb-slim{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d}[data-theme="dark"] .vb-slim u{color:#93c5fd}
+
+/* ===== سؤال تأجيل السعي ===== */
+#saaiQ{margin:0 0 14px}
+.content:not(:has(#page-home.on)) #saaiQ{display:none!important}
+.sq-card{background:#fff;border:1.5px solid #bfdbfe;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:9px;margin-bottom:10px;box-shadow:0 10px 24px -18px rgba(29,78,216,.5)}
+.sq-hd{display:flex;gap:11px;align-items:center}.sq-hd b{display:block;font-family:'Cairo',sans-serif;font-size:15px;color:#0f2544}.sq-hd small{display:block;font-size:12.5px;color:#64748b;font-weight:700;margin-top:1px}
+.sq-ic{width:42px;height:42px;border-radius:13px;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sq-q{font-size:14px;font-weight:800;color:#0f2544}
+.sq-p,.sq-s{border-radius:12px;padding:12px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;min-height:46px}
+.sq-p{border:0;background:#1d4ed8;color:#fff}.sq-s{border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a}.sq-r{color:#b91c1c;border-color:#fecaca}
+.sq-card button:disabled{opacity:.6}
+[data-theme="dark"] .sq-card{background:#111827;border-color:rgba(96,165,250,.35)}[data-theme="dark"] .sq-hd b,[data-theme="dark"] .sq-q{color:#e5e7eb}[data-theme="dark"] .sq-s{background:transparent;color:#93c5fd;border-color:rgba(147,197,253,.35)}

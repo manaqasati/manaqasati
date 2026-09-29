@@ -189,14 +189,14 @@ function _drToggle(key){
 }
 var _ibClient=null, _ibName='';
 var _SA={items:[],tab:'submitted',sum:{},monthly:[]};
-function _saState(x){ if(x.status==='approved')return 'approved'; if(x.status==='submitted')return 'submitted'; return (x.age_days||0)>10?'overdue':'due'; }
+function _saState(x){ if(x.status==='approved')return 'approved'; if(x.status==='submitted')return 'submitted'; if(x.status==='deferred')return 'deferred'; if(x.status==='cancelled')return 'cancelled'; return (x.age_days||0)>10?'overdue':'due'; }
 function loadSaaiAdmin(){
   var box=document.getElementById('saai-list'); if(!box)return;
   box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
   fetch(API+'/api/admin/saai',hdr()).then(function(r){return r.json();}).then(function(d){
     d=d||{}; _SA.items=d.items||[]; _SA.sum=d.summary||{}; _SA.monthly=d.monthly||[];
     var sm=_SA.sum;
-    var bd=document.getElementById('saai-badge'); if(bd){ if(sm.awaiting_n>0){bd.textContent=sm.awaiting_n;bd.style.display='flex';}else bd.style.display='none'; }
+    var bd=document.getElementById('saai-badge'); var _bn=(sm.awaiting_n||0)+(sm.deferred_attn||0); if(bd){ if(_bn>0){bd.textContent=_bn;bd.style.display='flex';}else bd.style.display='none'; }
     if(!sm.awaiting_n && _SA.tab==='submitted') _SA.tab = sm.overdue_n?'overdue':(sm.due_n?'due':'all');
     var coll=sm.collected_month||0, dueAll=(sm.due||0)+(sm.overdue||0), pct=(coll+dueAll)>0?Math.round(coll/(coll+dueAll)*100):0;
     var comp=sm.c90_total?Math.round(sm.c90_ok/sm.c90_total*100):null;
@@ -212,17 +212,32 @@ function loadSaaiAdmin(){
     _saRender(); _saSide();
   }).catch(function(){ box.innerHTML='<div style="text-align:center;color:var(--red);padding:20px">تعذّر التحميل</div>'; });
 }
+async function _saDefer(id,act){
+  var T={approve_defer:['اعتماد التأجيل','السعي يتوقف لين موعد التأجيل ويوصل المزوّد إشعار.','اعتمد'],resume:['رجّعه مستحق','السعي يرجع مستحق بمهلته الأصلية ويوصل المزوّد إشعار.','رجّعه'],cancel:['إلغاء السعي','ينلغى السعي على هالمشروع نهائياً ويوصل المزوّد إشعار.','ألغِ السعي']}[act];
+  if(!await askConfirm({title:T[0],message:T[1],confirmText:T[2]}))return;
+  fetch(API+'/api/admin/saai/'+id+'/defer-action',Object.assign({method:'POST',body:JSON.stringify({action:act})},hdr())).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');return;} toast((x.d&&x.d.message)||'تم','success'); loadSaaiAdmin(); })
+    .catch(function(){toast('تعذّر الاتصال','error');});
+}
 function _saTab(t){ _SA.tab=t; _saRender(); }
 function _saRender(){
   var box=document.getElementById('saai-list'); if(!box)return;
-  var c={submitted:0,due:0,overdue:0,approved:0}; _SA.items.forEach(function(x){c[_saState(x)]++;});
-  var tabs=[['submitted','بانتظار الاعتماد'],['due','مستحق'],['overdue','متأخر'],['approved','معتمد'],['all','الكل']];
+  var c={submitted:0,due:0,overdue:0,approved:0,deferred:0,cancelled:0}; _SA.items.forEach(function(x){c[_saState(x)]++;});
+  var tabs=[['submitted','بانتظار الاعتماد'],['due','مستحق'],['overdue','متأخر'],['deferred','مؤجّل'],['approved','معتمد'],['cancelled','ملغي'],['all','الكل']];
   var tb=document.getElementById('sa-tabs');
-  if(tb) tb.innerHTML=tabs.map(function(t){return '<button class="ftab'+(_SA.tab===t[0]?' on':'')+'" onclick="_saTab(\''+t[0]+'\')"'+(t[0]==='overdue'&&c.overdue?' style="color:#dc2626"':'')+'>'+t[1]+(t[0]!=='all'?'<span class="fc">'+c[t[0]]+'</span>':'<span class="fc">'+_SA.items.length+'</span>')+'</button>';}).join('');
+  if(tb) tb.innerHTML=tabs.map(function(t){return '<button class="ftab'+(_SA.tab===t[0]?' on':'')+'" onclick="_saTab(\''+t[0]+'\')"'+(t[0]==='overdue'&&c.overdue?' style="color:#dc2626"':(t[0]==='deferred'&&_SA.items.some(function(x){return x.status==='deferred'&&(x.defer_state==='noreply'||x.defer_state==='await_admin');})?' style="color:#b45309"':''))+'>'+t[1]+(t[0]!=='all'?'<span class="fc">'+c[t[0]]+'</span>':'<span class="fc">'+_SA.items.length+'</span>')+'</button>';}).join('');
   var list=_SA.items.filter(function(x){return _SA.tab==='all'||_saState(x)===_SA.tab;});
   if(!list.length){ box.innerHTML='<div style="padding:30px">'+emptyState(_SA.tab==='submitted'?'ما فيه إيصالات تنتظر اعتمادك ✓':'لا يوجد شي هنا')+'</div>'; return; }
   var stPill=function(x){ var st=_saState(x), left=10-(x.age_days||0);
     if(st==='approved')return '<span class="pl" style="background:#e3f5e9;color:#166534">معتمد ✓</span>';
+    if(st==='cancelled')return '<span class="pl" style="background:#f1f5f9;color:#64748b">ملغي'+(x.defer_state==='client_cancel'?' — العميل أكّد':(x.defer_state==='admin_cancel'?' — بقرارك':''))+'</span>';
+    if(st==='deferred'){ var du=x.defer_until?new Date(x.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'';
+      var ds=x.defer_state, lbl=x.defer_kind==='cancel'?'يقول انلغى':'مؤجّل لـ '+du;
+      if(ds==='confirmed')return '<span class="pl" style="background:#e0e7ff;color:#3730a3">⏸ '+lbl+'</span><div style="font-size:11px;color:#15803d;font-weight:800;margin-top:3px">✓ العميل أكّد</div>';
+      if(ds==='await_admin')return '<span class="pl" style="background:#fef3c7;color:#92400e">تأجيل ثاني — ينتظرك</span><div style="font-size:11px;color:#15803d;font-weight:800;margin-top:3px">✓ العميل أكّد</div>';
+      if(ds==='noreply')return '<span class="pl" style="background:#fef2f2;color:#b91c1c">'+lbl+'</span><div style="font-size:11px;color:#b91c1c;font-weight:800;margin-top:3px">العميل ما رد — قرّر</div>';
+      return '<span class="pl" style="background:#fef9c3;color:#854d0e">'+lbl+'</span><div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:3px">ننتظر تأكيد العميل</div>'; }
+    if(x.defer_state==='conflict')return '<span class="pl" style="background:#fef2f2;color:#b91c1c">⚠️ تعارض</span><div style="font-size:11px;color:#b91c1c;font-weight:700;margin-top:3px;max-width:150px">المزوّد قال '+(x.defer_kind==='cancel'?'«انلغى»':'«أجّل»')+' والعميل قال '+(x.client_answer==='started'?'«بدأنا»':'«قائم»')+'</div>';
     if(st==='submitted')return '<span class="pl" style="background:#e6eeff;color:#1d4ed8">بانتظار الاعتماد</span>';
     if(st==='overdue')return '<span class="pl" style="background:#fef2f2;color:#b91c1c">متأخر '+((x.age_days||0)-10)+' يوم</span>';
     return '<span class="pl" style="background:#fef3c7;color:#92400e">'+(left<=0?'آخر يوم':'باقي '+left+(left===1?' يوم':(left===2?' يومين':' أيام')))+'</span>'; };
@@ -233,9 +248,19 @@ function _saRender(){
     var proof=x.proof_url?(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال"></a>':'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener">PDF</a>'):'<span style="color:var(--muted)">—</span>';
     var ph=String(x.provider_phone||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1);
     var _ed=x.status!=='approved'?'<button class="act-btn ab-default" title="فتح المشروع وتعديل قيمة العقد" onclick="_saOpenProj('+x.request_id+',1)">✏️ تعديل</button>':'';
-    var act=x.status==='submitted'?'<div style="display:flex;gap:6px"><button class="act-btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="approveSaai('+x.id+')">اعتماد</button><button class="act-btn ab-default" onclick="_saReject('+x.id+')">رفض</button>'+_ed+'</div>'
+    var da='';
+    var cph=String(x.client_phone||'').replace(/\D/g,''); if(cph.indexOf('05')===0)cph='966'+cph.slice(1);
+    if(x.status==='deferred'||x.defer_state==='conflict'){
+      var da='<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +((x.status==='deferred'&&(x.defer_state==='noreply'||x.defer_state==='await_admin')&&x.defer_kind!=='cancel')?'<button class="act-btn" style="background:#3730a3;color:#fff;border-color:#3730a3" onclick="_saDefer('+x.id+',\'approve_defer\')">اعتمد التأجيل</button>':'')
+        +(x.status==='deferred'?'<button class="act-btn ab-default" onclick="_saDefer('+x.id+',\'resume\')">رجّعه مستحق</button>':'')
+        +((x.status==='deferred'&&x.defer_kind==='cancel')||x.defer_state==='conflict'||x.defer_state==='noreply'?'<button class="act-btn ab-default" style="color:#b91c1c;border-color:#fecaca" onclick="_saDefer('+x.id+',\'cancel\')">ألغِ السعي</button>':'')
+        +(cph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+cph+'">واتساب العميل</a>':'')
+        +(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب المزوّد</a>':'')+'</div>';
+    }
+    var act=da?da:x.status==='submitted'?'<div style="display:flex;gap:6px"><button class="act-btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="approveSaai('+x.id+')">اعتماد</button><button class="act-btn ab-default" onclick="_saReject('+x.id+')">رفض</button>'+_ed+'</div>'
       :(x.status==='pending'?'<div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="_saRemind(['+x.id+'])">تذكير</button>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب</a>':'')+_ed+'</div>':'');
-    return '<tr><td><b>'+esc(x.provider_name||'مزوّد')+'</b><div style="font-size:12px;color:var(--muted)">'+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div></td>'
+    return '<tr><td><b><a class="pro-name" href="/pro/'+(parseInt(x.provider_id)||0)+'" target="_blank" rel="noopener" title="صفحته العامة">'+esc(x.provider_name||'مزوّد')+' ↗</a></b><div style="font-size:12px;color:var(--muted)">'+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div></td>'
       +'<td><button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button><div style="font-size:12px;color:var(--muted)">#'+x.request_id+(x.city?' · '+esc(x.city):'')+'</div></td>'
       +'<td style="'+(diff?'color:var(--muted);text-decoration:line-through':'')+'">'+(offer?fmtNum(offer)+(unit?(x.price_unit==='meter'?'/متر':'/وحدة'):''):'—')+'</td>'
       +'<td>'+agreed+'</td><td><b style="font-size:15px">'+fmtNum(x.saai_amount)+'</b> ر.س</td><td>'+proof+'</td><td>'+stPill(x)+'</td><td>'+act+'</td></tr>'
@@ -508,6 +533,9 @@ function getFilteredUsers(){
     return true;
   });
 }
+// ═══ رابط صفحة المزوّد العامة (تبويب جديد) ═══
+var _PRO_IC='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>';
+function _proLink(pid,small){ if(!pid)return ''; return '<a class="act-btn ab-default pro-lnk" href="/pro/'+(parseInt(pid)||0)+'" target="_blank" rel="noopener"'+(small?' style="padding:6px 10px;font-size:11.5px"':'')+'>'+_PRO_IC+'صفحته <span aria-hidden="true">↗</span></a>'; }
 function renderUsers(){
   syncUserFiltersToHash();
   var filtered=getFilteredUsers();
@@ -531,7 +559,7 @@ function renderUsers(){
       +'<td>'+(function(){var p=_uPct(u); if(p==null)return '<span style="color:var(--muted)">—</span>'; var c=p>=80?'#16a34a':(p>=50?'#f59e0b':'#dc2626'); return '<div class="u-pc"><div class="b"><i style="width:'+p+'%;background:'+c+'"></i></div><span>'+p+'%</span></div>';})()+'</td>'
       +'<td>'+_uSeen(u)+'</td>'
       +'<td><span class="status '+(u.is_active?'s-on':'s-off')+'">'+(u.is_active?'نشط':'محظور')+'</span></td>'
-      +'<td><div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="openUserView('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></div></td>'
+      +'<td><div style="display:flex;gap:6px">'+(u.role==='provider'?_proLink(u.id):'')+'<button class="act-btn ab-default" onclick="openUserView('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('u',_total);
   updateSelBar();
@@ -682,6 +710,7 @@ function openUserModal(uid){
   document.getElementById('um-title').textContent='إدارة المستخدم';
   document.getElementById('um-body').innerHTML=''
     +'<div class="usr-header"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+esc(_safeUrl(u.profile_image))+'">':esc((u.name||'?')[0]))+'</div><div><div style="font-size:16px;font-weight:900">'+esc(u.name)+'</div><div style="font-size:12.5px;color:var(--muted);margin-top:1px">'+esc(u.email)+'</div><div style="font-size:11.5px;color:var(--hint);margin-top:2px">'+esc(u.phone||'لا يوجد رقم')+'</div></div></div>'
+    +(u.role==='provider'?'<a class="act-btn ab-default pro-lnk" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px;box-sizing:border-box" href="/pro/'+u.id+'" target="_blank" rel="noopener">'+_PRO_IC+'صفحته العامة ↗</a>':'')
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="openUserEdit('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل البيانات</button>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="resetUserPassword('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>إعادة تعيين كلمة المرور</button>'
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px;color:#059669;border-color:#a7f3d0" onclick="verifyUserEmail('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>توثيق البريد يدوياً</button>'
@@ -2132,13 +2161,13 @@ function _saEditSave(sid,rid){
 function _noSaai(r){ return (r.status==='in_progress'||r.status==='completed')&&r.assigned_provider_id&&!r.saai_id; }
 function _saSection(r,sa,sg){
   if(sa){
-    var stl={pending:['بانتظار السداد','#fef3c7','#92400e'],submitted:['أرسل إثبات — راجعه','#e6eeff','#1d4ed8'],approved:['مسدّد ✓','#dcfce7','#15803d'],rejected:['مرفوض','#fef2f2','#b91c1c']}[sa.status]||[sa.status,'#f1f5f9','#334766'];
+    var stl={pending:['بانتظار السداد','#fef3c7','#92400e'],submitted:['أرسل إثبات — راجعه','#e6eeff','#1d4ed8'],approved:['مسدّد ✓','#dcfce7','#15803d'],rejected:['مرفوض','#fef2f2','#b91c1c'],deferred:['⏸ مؤجّل'+(sa.defer_until?' لـ '+new Date(sa.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):''),'#e0e7ff','#3730a3'],cancelled:['ملغي','#f1f5f9','#64748b']}[sa.status]||[sa.status,'#f1f5f9','#334766'];
     var act='';
-    if(sa.status!=='approved'){
+    if(sa.status!=='approved'&&sa.status!=='cancelled'){
       act='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="sa-ap-'+sa.id+'" onclick="_saApprove('+sa.id+','+r.id+')" style="flex:1;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">✅ تأكيد استلام السعي</button><button class="btn-g" onclick="_rqClose();_niGo(\'saai\')">صفحة سداد السعي</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">'+(sa.status==='submitted'?'المزوّد أرسل إثبات السداد — راجعه في «سداد السعي» قبل التأكيد.':'اضغط التأكيد لما يوصلك المبلغ (تحويل أو غيره)، حتى لو المزوّد ما رفع إثبات.')+'</div>';
     }
-    var edit=sa.status!=='approved'?('<button type="button" class="btn-g" id="sa-edb-'+sa.id+'" style="margin-top:10px;width:100%" onclick="_saEditShow('+sa.id+')">✏️ تعديل قيمة العقد</button>'
+    var edit=(sa.status!=='approved'&&sa.status!=='cancelled')?('<button type="button" class="btn-g" id="sa-edb-'+sa.id+'" style="margin-top:10px;width:100%" onclick="_saEditShow('+sa.id+')">✏️ تعديل قيمة العقد</button>'
       +'<div id="sa-ed-'+sa.id+'" style="display:none;margin-top:10px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px">'
       +'<label style="font-size:12px;font-weight:800;display:block">قيمة العقد النهائية (ر.س)<input id="sa-e-cv-'+sa.id+'" type="number" inputmode="numeric" min="50" value="'+Math.round(sa.contract_value)+'" oninput="_saEditCalc('+sa.id+')" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;box-sizing:border-box"></label>'
       +'<div style="margin-top:8px;font-size:13px;font-weight:800">السعي (3%): <b id="sa-e-am-'+sa.id+'" style="color:#15803d;font-size:15px">'+fmtNum(Math.round(sa.contract_value*0.03))+' ر.س</b></div>'
@@ -2275,7 +2304,7 @@ function _rqOpen(id){
       +'<div class="rq-ds"><h4>العميل</h4><div style="display:flex;align-items:center;gap:10px"><span class="ad-av">'+esc((r.client_name||'?').charAt(0))+'</span><div style="flex:1;min-width:0"><b>'+esc(r.client_name||'—')+'</b><div style="font-size:12px;color:var(--muted);direction:ltr;text-align:right">'+esc(r.client_phone||'')+(r.client_prev?' · '+r.client_prev+' مشاريع سابقة':'')+'</div></div>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" href="https://wa.me/'+ph+'" target="_blank" rel="noopener">واتساب</a>':'')+'</div></div>'
       +'<div class="rq-ds"><h4>العروض ('+bids.length+')'+(prices.length?'<span style="color:#15803d">الأقل '+fmtNum(mn)+' · المتوسط '+fmtNum(av)+'</span>':'')+'</h4>'
         +(bids.length?bids.map(function(b){ var fl=(b.flags||'').split(',').filter(Boolean); var unit=b.price_unit&&b.price_unit!=='total'?(b.price_unit==='meter'?'/متر':'/وحدة'):'';
-            return '<div class="rq-bid'+(fl.length?' bad':'')+'"><div style="flex:1;min-width:0"><b>'+esc(b.provider_name||'مزوّد')+'</b>'+(b.status==='accepted'?' <span class="pl" style="background:#e3f5e9;color:#166534">مقبول</span>':'')+fl.map(function(x){return ' <span class="pl" style="background:#fef2f2;color:#b91c1c">'+esc(FL[x]||x)+'</span>';}).join('')+'<div style="font-size:11.5px;color:var(--muted)">'+(b.days?b.days+' يوم':'')+(b.rating>0?' · ★'+(Math.round(b.rating*10)/10):'')+' · '+_adAgo(b.created_at)+'</div></div><b style="white-space:nowrap">'+(b.price?fmtNum(b.price)+unit:'—')+'</b></div>'; }).join('')
+            return '<div class="rq-bid'+(fl.length?' bad':'')+'"><div style="flex:1;min-width:0"><b><a class="pro-name" href="/pro/'+(parseInt(b.provider_id)||0)+'" target="_blank" rel="noopener" title="صفحته العامة">'+esc(b.provider_name||'مزوّد')+' ↗</a></b>'+(b.status==='accepted'?' <span class="pl" style="background:#e3f5e9;color:#166534">مقبول</span>':'')+fl.map(function(x){return ' <span class="pl" style="background:#fef2f2;color:#b91c1c">'+esc(FL[x]||x)+'</span>';}).join('')+'<div style="font-size:11.5px;color:var(--muted)">'+(b.days?b.days+' يوم':'')+(b.rating>0?' · ★'+(Math.round(b.rating*10)/10):'')+' · '+_adAgo(b.created_at)+'</div></div><b style="white-space:nowrap">'+(b.price?fmtNum(b.price)+unit:'—')+'</b></div>'; }).join('')
           :'<div style="font-size:13px;color:var(--muted)">ما وصل أي عرض بعد</div>')
       +'</div>'
       +(tl.length?'<div class="rq-ds"><h4>السجل</h4>'+tl.map(function(t){return '<div class="rq-tl"><i></i><div><b>'+esc(t.event||'')+'</b>'+(t.description?' — '+esc(t.description):'')+'<div style="font-size:11.5px;color:var(--muted)">'+new Date(t.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+'</div></div></div>';}).join('')+'</div>':'');
@@ -2884,7 +2913,7 @@ function renderBids(){
         +(b.status==='pending'?'<button class="act-btn ab-default" style="color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" onclick="adminBidReject('+b.id+')">رفض</button>':'')
         +'<button class="act-btn ab-default" onclick="editBid('+b.id+')">تعديل</button>'
         +'<button class="act-btn ab-danger" onclick="delBid('+b.id+')">حذف</button>'
-        +'<button class="act-btn ab-default" style="margin-inline-start:auto" onclick="_bidOfProvider('+b.provider_id+')">كل عروضه</button><button class="act-btn ab-default" onclick="_provDrawer('+b.provider_id+')">👤 ملف المزوّد</button>'
+        +'<button class="act-btn ab-default" style="margin-inline-start:auto" onclick="_bidOfProvider('+b.provider_id+')">كل عروضه</button><button class="act-btn ab-default" onclick="_provDrawer('+b.provider_id+')">👤 ملف المزوّد</button>'+_proLink(b.provider_id)
       +'</div></div>';
   }).join('')+(list.length>300?'<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px">يعرض أول 300 — ضيّق الفلاتر لرؤية الباقي</div>':'')+'</div>';
 }
@@ -2924,7 +2953,7 @@ function _provDrawer(pid){
     var h='<div class="pd-hd"><span class="pd-av">'+esc(nm.trim().charAt(0)||'؟')+'</span><div style="min-width:0"><b style="font-size:18px;display:block">'+esc(nm)+(u.is_active?'':' <span class="bc-pill" style="background:#fee2e2;color:#991b1b">⛔ موقوف</span>')+'</b><span class="bc-sub">'+esc(u.city||'—')+' · مسجّل '+(since<1?'هالشهر':(since===1?'من شهر':(since===2?'من شهرين':'من '+since+' '+(since<=10?'شهور':'شهر'))))+(u.phone?' · <span dir="ltr">'+esc(u.phone)+'</span>':'')+'</span></div><button class="pd-x" aria-label="إغلاق" onclick="_provDrawerClose()">×</button></div>'
       +'<div class="pd-acts"><button class="act-btn ab-default'+(u.admin_watch?' pd-watch-on':'')+'" onclick="_provWatch('+pid+','+(u.admin_watch?0:1)+')">'+(u.admin_watch?'👁 تحت المراقبة ✓':'👁 راقب هذا المزوّد')+'</button>'
         +'<button class="act-btn ab-default" onclick="_provReview('+pid+','+(u.bid_review?0:1)+')">'+(u.bid_review?'▶️ رفع المراجعة عن عروضه':'⏸ عروضه تنتظر موافقتي')+'</button>'
-        +(ph.length>=11?'<a class="act-btn ab-default" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">💬 واتساب</a>':'')
+        +_proLink(pid)+(ph.length>=11?'<a class="act-btn ab-default" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">💬 واتساب</a>':'')
         +'<button class="act-btn ab-danger" onclick="_provToggle('+pid+','+(u.is_active?1:0)+');setTimeout(function(){_provDrawer('+pid+')},900)">'+(u.is_active?'⛔ إيقاف':'✅ تفعيل')+'</button></div>'
       +'<div class="pd-k"><div><b>'+u.bids_30d+'</b><span>عرض آخر 30 يوم</span></div><div><b style="color:#b91c1c">'+sus+'</b><span>مشبوهة'+(mine.length?' ('+susPct+'%)':'')+'</span></div><div><b style="color:#b45309">'+u.warnings+'</b><span>تحذيرات</span></div><div><b style="color:#16a34a">'+u.accepted+'</b><span>مقبول</span></div></div>'
       +(alerts.length?'<div class="pd-alert">'+alerts.join(' · ')+'</div>':'')

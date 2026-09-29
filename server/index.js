@@ -2073,6 +2073,7 @@ async function checkStorageAlert(){
 }
 async function runReminders(){
   try { await checkStorageAlert(); } catch(e){}
+  try { await _saaiDeferJob(); } catch(e){ console.error('saaiDeferJob:', e.message); }
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -2819,6 +2820,9 @@ async function setupDatabase() {
     )`); } catch(e){}
     // تنظيف سجلات سعي فارغة نتجت عن خلل قديم في قبول العرض (بدون مشروع/مزوّد)
     try { await _mig('DELETE FROM saai_ledger WHERE request_id IS NULL OR provider_id IS NULL'); } catch(e){}
+    // تأجيل/إلغاء السعي: المزوّد يبلّغ، العميل يأكد، والمهلة تبدأ من due_from
+    for (const c of ['due_from TIMESTAMP','defer_kind VARCHAR(10)','defer_until TIMESTAMP','defer_state VARCHAR(20)','defer_at TIMESTAMP','defer_note TEXT','client_answer VARCHAR(15)','client_answer_at TIMESTAMP','defer_count INTEGER DEFAULT 0'])
+      try { await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
@@ -4698,11 +4702,12 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
               r.title AS project_title, r.city, b.price AS offer_price, b.price_unit,
               COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.id AS provider_id, u.phone AS provider_phone,
               (SELECT COUNT(*) FROM saai_ledger s2 WHERE s2.provider_id=s.provider_id AND s2.status='approved' AND s2.id<>s.id)::int AS provider_paid_n,
-              GREATEST(0, EXTRACT(EPOCH FROM (NOW() - s.created_at))/86400)::int AS age_days
+              GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(s.due_from,s.created_at)))/86400)::int AS age_days, COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.defer_at, s.defer_note, s.client_answer, s.client_answer_at, s.defer_count, cl.name AS client_name, cl.phone AS client_phone
        FROM saai_ledger s
        JOIN requests r ON r.id=s.request_id
        JOIN users u ON u.id=s.provider_id
        LEFT JOIN bids b ON b.id=s.bid_id
+       LEFT JOIN users cl ON cl.id=r.client_id
        ORDER BY CASE s.status WHEN 'submitted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, s.submitted_at DESC NULLS LAST, s.created_at DESC
        LIMIT 1000`);
     const sum = (await pool.query(
@@ -4710,12 +4715,14 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
               COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')),0)::float AS collected_month,
               COUNT(*) FILTER (WHERE status='submitted')::int AS awaiting_n,
               COALESCE(SUM(saai_amount) FILTER (WHERE status='submitted'),0)::float AS awaiting,
-              COUNT(*) FILTER (WHERE status='pending' AND created_at >= NOW()-INTERVAL '10 days')::int AS due_n,
-              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND created_at >= NOW()-INTERVAL '10 days'),0)::float AS due,
-              COUNT(*) FILTER (WHERE status='pending' AND created_at < NOW()-INTERVAL '10 days')::int AS overdue_n,
-              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND created_at < NOW()-INTERVAL '10 days'),0)::float AS overdue,
-              COALESCE(MAX(EXTRACT(EPOCH FROM (NOW()-created_at))/86400) FILTER (WHERE status='pending'),0)::int AS oldest_days,
-              COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND (status<>'pending' OR created_at < NOW()-INTERVAL '10 days'))::int AS c90_total,
+              COUNT(*) FILTER (WHERE status='pending' AND COALESCE(due_from,created_at) >= NOW()-INTERVAL '10 days')::int AS due_n,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND COALESCE(due_from,created_at) >= NOW()-INTERVAL '10 days'),0)::float AS due,
+              COUNT(*) FILTER (WHERE status='pending' AND COALESCE(due_from,created_at) < NOW()-INTERVAL '10 days')::int AS overdue_n,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='pending' AND COALESCE(due_from,created_at) < NOW()-INTERVAL '10 days'),0)::float AS overdue,
+              COALESCE(MAX(EXTRACT(EPOCH FROM (NOW()-COALESCE(due_from,created_at)))/86400) FILTER (WHERE status='pending'),0)::int AS oldest_days,
+              COUNT(*) FILTER (WHERE status='deferred')::int AS deferred_n,
+              COUNT(*) FILTER (WHERE status='deferred' AND defer_state IN ('noreply','await_admin'))::int AS deferred_attn,
+              COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND (status IN ('submitted','approved') OR (status='pending' AND COALESCE(due_from,created_at) < NOW()-INTERVAL '10 days')))::int AS c90_total,
               COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND status IN ('submitted','approved') AND COALESCE(submitted_at,approved_at) <= created_at + INTERVAL '10 days')::int AS c90_ok
        FROM saai_ledger WHERE request_id IS NOT NULL`)).rows[0] || {};
     const monthly = (await pool.query(
@@ -4742,7 +4749,7 @@ app.post('/api/admin/saai/remind', auth, adminOnly, async (req, res) => {
     const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : null;
     const q = ids && ids.length
       ? await pool.query(`SELECT s.id, s.provider_id, s.request_id, s.saai_amount, r.title, u.email, u.name FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id WHERE s.id = ANY($1) AND s.status='pending'`, [ids])
-      : await pool.query(`SELECT s.id, s.provider_id, s.request_id, s.saai_amount, r.title, u.email, u.name FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id WHERE s.status='pending' AND s.created_at < NOW()-INTERVAL '10 days'`);
+      : await pool.query(`SELECT s.id, s.provider_id, s.request_id, s.saai_amount, r.title, u.email, u.name FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id WHERE s.status='pending' AND COALESCE(s.due_from,s.created_at) < NOW()-INTERVAL '10 days'`);
     let n = 0;
     for (const x of q.rows) {
       const amt = Math.round(Number(x.saai_amount)||0);
@@ -4816,20 +4823,119 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
   } catch(e){ console.error('saai-submit:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
+// ═══ تأجيل/إلغاء السعي: المزوّد يبلّغ → العميل يأكد → الأدمن يحسم عند التعارض ═══
+const SAAI_DEFER_MAX_DAYS = 60;
+app.post('/api/provider/saai/:id/defer', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const kind = req.body && req.body.kind === 'cancel' ? 'cancel' : 'postpone';
+    const x = (await pool.query(`SELECT s.*, r.title, r.client_id, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, c.email AS cemail, c.name AS cname
+      FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id JOIN users c ON c.id=r.client_id WHERE s.id=$1 AND s.provider_id=$2`, [id, req.user.id])).rows[0];
+    if (!x) return res.status(404).json({ message: 'غير موجود' });
+    if (x.status !== 'pending') return res.status(400).json({ message: x.status === 'deferred' ? 'بلّغتنا من قبل — ننتظر تأكيد العميل' : 'ما يمكن الحين' });
+    let days = 0;
+    if (kind === 'postpone') {
+      if ((x.defer_count || 0) >= 2) return res.status(400).json({ message: 'وصلت الحد الأقصى للتأجيل — تواصل مع الإدارة' });
+      days = Math.round(parseFloat(req.body.days) || 0);
+      if (req.body.until) { const t = Date.parse(req.body.until); if (t) days = Math.ceil((t - Date.now()) / 86400000); }
+      if (days < 3 || days > SAAI_DEFER_MAX_DAYS) return res.status(400).json({ message: 'اختر موعد بين 3 أيام وشهرين' });
+    }
+    const note = _cleanTxt(String(req.body.note || ''), 300) || null;
+    await pool.query(`UPDATE saai_ledger SET status='deferred', defer_kind=$1, defer_until=$2, defer_state='asked', defer_at=NOW(), defer_note=$3, client_answer=NULL, client_answer_at=NULL,
+      defer_count=COALESCE(defer_count,0)+$4 WHERE id=$5`, [kind, kind === 'postpone' ? new Date(Date.now() + days * 86400000) : null, note, kind === 'postpone' ? 1 : 0, id]);
+    const t = 'سؤال سريع عن «' + (x.title || 'مشروعك') + '»';
+    const b = kind === 'postpone' ? `${x.pname} ذكر إنكم أجّلتم بدء التنفيذ — أكّد لنا بضغطة من لوحتك.` : `${x.pname} ذكر إن الاتفاق بينكم انلغى — أكّد لنا بضغطة من لوحتك.`;
+    try { await notify(x.client_id, t, b, 'saai_q', x.request_id); } catch(e){}
+    if (x.cemail) sendEmail(x.cemail, t, emailTpl(t, `<p>مرحباً${x.cname ? ' ' + eEsc(x.cname) : ''}،</p><p>${eEsc(b)}</p>`, 'أكّد من لوحتي', SITE_URL + '/dashboard-client.html')).catch(()=>{});
+    res.json({ ok: true, days });
+  } catch(e) { console.error('saai defer:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/client/saai-questions', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT s.id, s.defer_kind, s.defer_until, r.id AS request_id, r.title, COALESCE(NULLIF(u.business_name,''),u.name) AS provider_name
+      FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id
+      WHERE r.client_id=$1 AND s.status='deferred' AND s.defer_state IN ('asked','noreply') ORDER BY s.defer_at DESC LIMIT 5`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.json([]); }
+});
+app.post('/api/client/saai-questions/:id', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const ans = String(req.body && req.body.answer || '');
+    const x = (await pool.query(`SELECT s.*, r.title, r.client_id FROM saai_ledger s JOIN requests r ON r.id=s.request_id WHERE s.id=$1`, [id])).rows[0];
+    if (!x || x.client_id !== req.user.id) return res.status(404).json({ message: 'غير موجود' });
+    if (x.status !== 'deferred' || !['asked','noreply'].includes(x.defer_state)) return res.json({ ok: true, already: true });
+    const valid = x.defer_kind === 'cancel' ? ['cancelled','active'] : ['postponed','started','cancelled'];
+    if (!valid.includes(ans)) return res.status(400).json({ message: 'اختيار غير صحيح' });
+    const T = '«' + (x.title || 'مشروع') + '»';
+    let q, pmsg, admin = null;
+    if (ans === 'postponed') {
+      const st = (x.defer_count || 0) >= 2 ? 'await_admin' : 'confirmed';
+      q = [`UPDATE saai_ledger SET defer_state=$2, client_answer=$3, client_answer_at=NOW() WHERE id=$1`, [id, st, ans]];
+      pmsg = st === 'confirmed' ? `العميل أكّد التأجيل على ${T} — السعي متوقف لين ${new Date(x.defer_until).toLocaleDateString('en-GB')} وبعدها نسألكم «بدأتوا؟».` : `العميل أكّد التأجيل الثاني على ${T} — بانتظار موافقة الإدارة.`;
+      if (st === 'await_admin') admin = ['⏸ تأجيل سعي ثاني ينتظر موافقتك', `${T} — العميل أكّد التأجيل`];
+    } else if (ans === 'cancelled') {
+      q = [`UPDATE saai_ledger SET status='cancelled', defer_state='client_cancel', client_answer=$2, client_answer_at=NOW() WHERE id=$1`, [id, ans]];
+      pmsg = `العميل أكّد إلغاء الاتفاق على ${T} — انلغى السعي عليك.`;
+    } else {
+      q = [`UPDATE saai_ledger SET status='pending', defer_state='conflict', client_answer=$2, client_answer_at=NOW() WHERE id=$1`, [id, ans]];
+      pmsg = `العميل ذكر إن ${ans === 'started' ? 'التنفيذ بدأ' : 'الاتفاق قائم'} على ${T} — السعي رجع مستحق. لو فيه لبس تواصل معنا.`;
+      admin = ['⚠️ تعارض في السعي', `${T} — المزوّد قال ${x.defer_kind === 'cancel' ? '«انلغى»' : '«أجّل»'} والعميل قال ${ans === 'started' ? '«بدأنا»' : '«الاتفاق قائم»'}`];
+    }
+    await pool.query(q[0], q[1]);
+    try { await notify(x.provider_id, '💰 تحديث على سعي المنصة', pmsg, 'saai', x.request_id); } catch(e){}
+    if (admin) { try { await _notifyAdmins(admin[0], admin[1], 'saai', x.request_id); } catch(e){} }
+    res.json({ ok: true });
+  } catch(e) { console.error('saai answer:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/saai/:id/defer-action', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const act = String(req.body && req.body.action || '');
+    const x = (await pool.query(`SELECT s.*, r.title FROM saai_ledger s JOIN requests r ON r.id=s.request_id WHERE s.id=$1`, [id])).rows[0];
+    if (!x) return res.status(404).json({ message: 'غير موجود' });
+    if (x.status === 'approved' || x.status === 'submitted') return res.status(400).json({ message: 'ما يمكن على سعي مسدّد' });
+    const T = '«' + (x.title || 'مشروع') + '»'; let msg, pmsg;
+    if (act === 'resume') {
+      await pool.query(`UPDATE saai_ledger SET status='pending', defer_state='admin_resumed' WHERE id=$1`, [id]);
+      msg = 'رجع السعي مستحق'; pmsg = `السعي على ${T} رجع مستحق بقرار الإدارة.`;
+    } else if (act === 'approve_defer') {
+      if (!x.defer_until) return res.status(400).json({ message: 'ما فيه تاريخ تأجيل' });
+      const until = new Date(x.defer_until) > new Date() ? x.defer_until : new Date(Date.now() + 30 * 86400000);
+      await pool.query(`UPDATE saai_ledger SET status='deferred', defer_kind='postpone', defer_until=$2, defer_state='confirmed' WHERE id=$1`, [id, until]);
+      msg = 'اعتُمد التأجيل'; pmsg = `اعتمدت الإدارة تأجيل السعي على ${T} لين ${new Date(until).toLocaleDateString('en-GB')}.`;
+    } else if (act === 'cancel') {
+      await pool.query(`UPDATE saai_ledger SET status='cancelled', defer_state='admin_cancel' WHERE id=$1`, [id]);
+      msg = 'انلغى السعي'; pmsg = `انلغى السعي على ${T} بقرار الإدارة.`;
+    } else return res.status(400).json({ message: 'إجراء غير معروف' });
+    try { await notify(x.provider_id, '💰 تحديث على سعي المنصة', pmsg, 'saai', x.request_id); } catch(e){}
+    await logAdmin(req, 'saai_' + act, 'request', x.request_id, msg);
+    res.json({ ok: true, message: msg });
+  } catch(e) { console.error('saai defer-action:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// يومياً: انتهاء التأجيل ← يرجع مستحق بمهلة جديدة، وعدم رد العميل 3 أيام ← يطلع للأدمن
+async function _saaiDeferJob(){
+  const back = await pool.query(`UPDATE saai_ledger s SET status='pending', due_from=NOW(), defer_state='resumed' FROM requests r
+    WHERE r.id=s.request_id AND s.status='deferred' AND s.defer_state='confirmed' AND s.defer_until < NOW() RETURNING s.provider_id, s.request_id, r.title, COALESCE(s.defer_count,0) AS dc`);
+  for (const x of back.rows) {
+    try { await notify(x.provider_id, '💰 انتهى تأجيل السعي', `انتهت مدة التأجيل على «${x.title || 'مشروع'}». لو بدأتوا، السعي مستحق خلال 10 أيام${x.dc < 2 ? ' — ولو تأجل مرة ثانية بلّغنا من «محفظة السعي»' : ''}.`, 'saai', x.request_id); } catch(e){}
+  }
+  const nr = await pool.query(`UPDATE saai_ledger SET defer_state='noreply' WHERE status='deferred' AND defer_state='asked' AND defer_at < NOW() - INTERVAL '3 days' RETURNING request_id`);
+  if (nr.rows.length) { try { await _notifyAdmins('⏸ عملاء ما ردوا على تأجيل السعي', nr.rows.length + ' حالة تحتاج قرارك في «السعي ← مؤجّل»', 'saai', null); } catch(e){} }
+}
 app.get('/api/provider/saai', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 });
     const pid = req.user.id;
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.created_at, s.submitted_at, s.approved_at,
+              COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.client_answer, COALESCE(s.defer_count,0) AS defer_count,
               r.title AS project_title, r.category, r.city
        FROM saai_ledger s JOIN requests r ON r.id=s.request_id
        WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [pid]);
     let pending=0, approved=0, contract=0;
     r.rows.forEach(x=>{
+      if (x.status==='cancelled') return;
       contract += parseFloat(x.contract_value)||0;
       if (x.status==='approved') approved += parseFloat(x.saai_amount)||0;
-      else pending += parseFloat(x.saai_amount)||0;
+      else if (x.status==='pending' || x.status==='submitted') pending += parseFloat(x.saai_amount)||0;
     });
     res.json({ items: r.rows, pending_total: Math.round(pending), approved_total: Math.round(approved), contract_total: Math.round(contract) });
   } catch(e){ console.error('provider-saai:', e.message); res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 }); }
@@ -7204,7 +7310,7 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     delete rq.password; 
     let saai = null, saai_suggest = null;
     try {
-      saai = (await pool.query('SELECT id, contract_value, saai_amount, status, created_at, provider_id FROM saai_ledger WHERE request_id=$1 ORDER BY id DESC LIMIT 1', [id])).rows[0] || null;
+      saai = (await pool.query('SELECT id, contract_value, saai_amount, status, created_at, provider_id, defer_kind, defer_until, defer_state, client_answer FROM saai_ledger WHERE request_id=$1 ORDER BY id DESC LIMIT 1', [id])).rows[0] || null;
       if (!saai && rq.assigned_provider_id) saai_suggest = _saaiSuggest(rq, bids);
     } catch(e){}
     let close_time = rq.close_at;

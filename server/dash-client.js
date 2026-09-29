@@ -2671,3 +2671,30 @@ function _nfOpenC(id){
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
 }
+
+// ═══ سؤال التأجيل/الإلغاء من المزوّد (يأكده العميل بضغطة) ═══
+function _sqLoad(){
+  fetch(API+'/api/client/saai-questions',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(list){
+    var box=document.getElementById('saaiQ'); if(!box)return;
+    if(!Array.isArray(list)||!list.length){box.style.display='none';box.innerHTML='';return;}
+    box.innerHTML=list.map(function(q){
+      var du=q.defer_until?new Date(q.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'';
+      var isC=q.defer_kind==='cancel';
+      var btns=isC?[['cancelled','إيه، ألغينا الاتفاق','sq-p'],['active','لا، الاتفاق قائم','sq-s']]
+        :[['postponed','إيه، أجّلنا'+(du?' — نبدأ تقريباً '+du:''),'sq-p'],['started','لا، بدأنا التنفيذ','sq-s'],['cancelled','ألغينا الاتفاق','sq-s sq-r']];
+      return '<div class="sq-card" id="sq-'+q.id+'"><div class="sq-hd"><span class="sq-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><b>سؤال سريع عن «'+esc(q.title||'مشروعك')+'»</b><small>'+esc(q.provider_name||'المزوّد')+' ذكر إن'+(isC?' الاتفاق بينكم انلغى':'كم أجّلتم بدء التنفيذ')+'</small></div></div>'
+        +'<div class="sq-q">هل هذا صحيح؟</div>'
+        +btns.map(function(b){return '<button type="button" class="'+b[2]+'" onclick="_sqAns('+q.id+',\''+b[0]+'\',this)">'+b[1]+'</button>';}).join('')
+        +'</div>';
+    }).join('');
+    box.style.display='block';
+  }).catch(function(){});
+}
+function _sqAns(id,a,btn){
+  var card=document.getElementById('sq-'+id); if(card)card.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+  fetch(API+'/api/client/saai-questions/'+id,Object.assign({method:'POST',body:JSON.stringify({answer:a})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ if(typeof showToast==='function')showToast('شكراً — وصلنا ردك ✓','success'); if(card)card.remove(); var box=document.getElementById('saaiQ'); if(box&&!box.children.length)box.style.display='none'; }
+    else { if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); if(card)card.querySelectorAll('button').forEach(function(b){b.disabled=false;}); }
+  }).catch(function(){ if(card)card.querySelectorAll('button').forEach(function(b){b.disabled=false;}); });
+}
+window.addEventListener('load',function(){setTimeout(function(){try{if(localStorage.getItem('token'))_sqLoad();}catch(e){}},800);});
