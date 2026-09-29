@@ -1360,26 +1360,9 @@ async function loadProfile(){
       :'<div class="pf-pc done">✓ ملفك مكتمل — العملاء يشوفونك بأفضل صورة</div>');
   pg.appendChild(hdr);
 
-  var cardUrl='/pro/'+_me.id;
-  var cardUrlDisplay='manaqasa.com/pro/'+_me.id;
-  var previewCard=document.createElement('div');
-  previewCard.className='pf-pub';
-  previewCard.innerHTML='<div class="pf-pub-top"><div class="pf-pub-ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg></div>'
-    +'<div class="pf-pub-tx"><div class="pf-pub-t">صفحتك العامة</div><div class="pf-pub-u">'+cardUrlDisplay+'</div></div>'
-    +'<div class="pf-pub-v" id="pf-views" style="display:none"><b>0</b><span>زيارة لصفحتك</span></div></div>'
-    +'<div class="pf-pub-btns"><a href="'+cardUrl+'" class="pf-pub-b1">عرض كما يراك العملاء</a>'
-    +'<button class="pf-pub-b2" onclick="_shareMyPage(location.origin+\''+cardUrl+'\')">مشاركة</button>'
-    +'<button id="copy-card-btn" class="pf-pub-b2">نسخ</button></div>';
-  _api('/api/me/marketing').then(function(d){ var v=_el('pf-views'); if(v&&d&&typeof d.views==='number'){ v.querySelector('b').textContent=fmtN(d.views)||'0'; v.style.display=''; } }).catch(function(){});
+  // بطاقة «صفحتك العامة» انشالت — يكفي الزر الذهبي «صفحتي» فوق (العنصر يبقى مخفي كنقطة ربط لترتيب المحفظة)
+  var previewCard=document.createElement('div');previewCard.className='pf-pub';previewCard.style.display='none';
   pg.appendChild(previewCard);
-  // إصلاح 2: event listener مباشرة
-  document.getElementById('copy-card-btn').addEventListener('click',function(){
-    if(navigator.clipboard){
-      navigator.clipboard.writeText(location.origin+cardUrl).then(function(){
-        var cb=document.getElementById('copy-card-btn');if(cb){cb.textContent='تم ✓';setTimeout(function(){cb.textContent='نسخ';},2000);}
-      });
-    }
-  });
 
   var infoCard=document.createElement('div');infoCard.className='card card-accent';
   infoCard.innerHTML='<div class="ch"><div class="ch-l"><h3>معلومات المنشأة</h3></div></div>'
