@@ -235,7 +235,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-h{font-family:'Cairo',sans-serif;font-size:16px;font-weight:900;color:#14223d;display:flex;align-items:center;gap:8px}
 .pj-hs{margin-right:auto;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:800;color:#5b6b85}
 .pj-pill{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
-.pj-ic{width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#1e3a8a,#2554c7);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pj-ic{width:58px;height:58px;border-radius:15px;background:#eef3ff;color:#1e3a8a;border:1px solid #e1e9fb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pj-title{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;line-height:1.4;margin:5px 0 2px;color:#14223d}
 .pj-bs{font-size:12px;font-weight:700;color:#5b6b85;line-height:1.6}
 .pj-steps{display:flex;align-items:flex-start}
@@ -336,6 +336,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-cmp td{padding:10px 4px;border-bottom:1px solid #eef3fb;vertical-align:middle}
 .pj-cmp tr.bst td{background:#eff6ff}
 @media(min-width:640px){.pj-sheet{border-radius:20px;margin-bottom:5vh}.pj-ov{align-items:center}}
+.pj-ic svg{stroke-width:1.9}[data-theme="dark"] .pj-ic{background:rgba(96,165,250,.14);color:#93c5fd;border-color:transparent}
 </style>
 </head>
 <body>
@@ -990,7 +991,7 @@ function render(){
   var h='';
   if(!hasCover||isOwner){
     h+='<div class="pj-card pj-head">';
-    if(!hasCover)h+='<div style="display:flex;gap:12px;align-items:center"><span class="pj-ic">'+catSvg(req.category,28)+'</span><div style="min-width:0;flex:1"><span class="pj-pill" style="background:'+stc[0]+';color:'+stc[1]+'">'+stLine+'</span><h1 class="pj-title">'+esc(req.title||'مشروع')+'</h1><div class="pj-bs">'+catcity+(isOwner?' · #'+req.id:' · نُشر قبل '+ago(req.created_at))+'</div></div></div>';
+    if(!hasCover)h+='<div style="display:flex;gap:12px;align-items:center"><span class="pj-ic">'+catSvg(req.category,26)+'</span><div style="min-width:0;flex:1"><span class="pj-pill" style="background:'+stc[0]+';color:'+stc[1]+'">'+stLine+'</span><h1 class="pj-title">'+esc(req.title||'مشروع')+'</h1><div class="pj-bs">'+catcity+(isOwner?' · #'+req.id:' · نُشر قبل '+ago(req.created_at))+'</div></div></div>';
     if(isOwner)h+=_stepper(req.status);
     h+='</div>';
   }

@@ -49,7 +49,7 @@
 <meta property="og:image" content="https://www.manaqasa.com/og-image.png">
 <meta property="og:url" content="https://www.manaqasa.com">
 <meta name="twitter:image" content="https://www.manaqasa.com/og-image.png">
-<script src="/track.js" defer></script>
+<script src="/track.js?v=2" defer></script>
 <meta name="description" content="منصة مناقصة السعودية — انشر مشروعك مجاناً، تصلك عروض من مزوّدين موثوقين، قارن الأسعار والتقييمات واختر الأنسب.">
 <title>مناقصة — منصة المشاريع والخدمات</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -665,8 +665,13 @@
   .hzp:hover{transform:translateY(-2px);box-shadow:0 14px 30px -16px rgba(37,99,235,.28);border-color:#cddcf5}
   .hzp-img{position:relative;width:84px;height:84px;border-radius:15px;overflow:hidden;flex-shrink:0;background:var(--bg2)}
   .hzp-img img{width:100%;height:100%;object-fit:cover}
-  .hzp-noimg{display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#eaf0fd,#dbe6fb);color:#1d4ed8}
-  .hzp-cat-ic{transform:scale(1.3)}
+  .hzp-noimg{display:flex;align-items:center;justify-content:center;background:#eef3ff;color:#1e3a8a;border:1px solid #e1e9fb}
+  .hzp-cat-ic{display:flex}.hzp-cat-ic svg{stroke-width:1.9}
+  .hzp-st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:8px;vertical-align:middle;white-space:nowrap}
+  .hzp-st::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .hzp-st.hzp-open{background:#e8f7ee;color:#15803d}.hzp-st.hzp-rev{background:#fef3e2;color:#b45309}.hzp-st.hzp-done{background:#f1f5f9;color:#64748b}
+  [data-theme="dark"] .hzp-noimg{background:rgba(96,165,250,.14);color:#93c5fd;border-color:transparent}
+  [data-theme="dark"] .hzp-st.hzp-open{background:rgba(34,197,94,.14);color:#4ade80}[data-theme="dark"] .hzp-st.hzp-rev{background:rgba(245,158,11,.14);color:#fbbf24}[data-theme="dark"] .hzp-st.hzp-done{background:rgba(148,163,184,.14);color:#cbd5e1}
   .hzp-badge{position:absolute;top:5px;right:5px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;color:#fff;backdrop-filter:blur(6px)}
   .hzp-open{background:rgba(22,163,74,.92)}
   .hzp-rev{background:rgba(217,119,6,.92)}
@@ -676,7 +681,7 @@
   .hzp:hover .hzp-title{color:var(--accent)}
   .hzp-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);font-weight:600}
   .hzp-cat{color:var(--accent);font-weight:700;background:#eaf1fe;padding:5px 10px;border-radius:8px;white-space:nowrap;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;font-size:12px}
-  .hzp-catrow{margin-bottom:9px;min-width:0}
+  .hzp-catrow{margin-bottom:9px;min-width:0;display:flex;align-items:center;gap:6px}.hzp-catrow .hzp-cat{min-width:0;flex:0 1 auto}.hzp-st{flex-shrink:0}
   .hzp-meta{gap:6px}
   .hzp-meta span{white-space:nowrap}
   .hzp-meta span+span::before{content:'·';margin-left:6px;opacity:.55}
@@ -853,6 +858,8 @@
  .hzp-title{font-size:14.5px;margin-bottom:6px}
  .hzp-catrow{margin-bottom:6px}
  .hzp-cat{font-size:11px;padding:3px 8px}
+ .hzp-st{font-size:10.5px;padding:3px 7px}
+ .hzp-cat-ic svg{width:26px;height:26px}
  .hzp-price{display:none}
  .hzp-side{gap:8px}
  .hzp-bid{padding:9px 12px;font-size:12px;border-radius:10px}
@@ -914,6 +921,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <a href="#projects">المشاريع</a>
     <a href="#providers">المزودون</a>
     <a href="/b2b.html">للأعمال</a>
+    <a href="/app?src=nav">التطبيق</a>
     <a href="https://wa.me/966594011313" target="_blank" rel="noopener noopener noreferrer">تواصل معنا</a>
   </div>
   <div class="nav-btns">
@@ -1006,6 +1014,49 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <p>أربع خطوات بسيطة تفصلك عن أفضل سعر</p>
   </div>
   <div class="flow"><div class="flow-step"><div class="flow-node"><span class="flow-num">1</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></div><h3>انشر مشروعك</h3><p>اكتب ما تحتاجه — المواصفات والموقع والميزانية.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">2</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><h3>استقبل العروض</h3><p>مزودون في تخصصك يرسلون عروض أسعار خلال ساعات.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">3</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/></svg></div><h3>قارن واختر</h3><p>شاهد العروض جنباً إلى جنب مع التقييمات وسجل الأعمال.</p></div><div class="flow-arrow"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div><div class="flow-step"><div class="flow-node"><span class="flow-num">4</span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3 7-7"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg></div><h3>تعامل مباشرة</h3><p>تواصل مع المزود المختار وأتمّ الاتفاق بحرية.</p></div></div>
+</section>
+
+<!-- APP: تطبيق مناقصة -->
+<section class="appx" aria-label="تطبيق مناقصة">
+<style>
+.appx{padding:10px 20px 50px}
+.appx-in{max-width:1080px;margin:0 auto;border-radius:26px;overflow:hidden;color:#fff;background:radial-gradient(120% 90% at 85% 0%,#2563eb 0%,transparent 60%),linear-gradient(170deg,#0f1b45,#172554 50%,#1e3a8a);display:grid;grid-template-columns:1.15fr .85fr;gap:24px;align-items:center;padding:34px 34px 34px}
+.appx-tag{display:inline-block;background:rgba(255,255,255,.14);color:#dbeafe;border-radius:999px;padding:4px 13px;font-size:12.5px;font-weight:800;margin-bottom:12px}
+.appx h2{font-family:'Cairo',sans-serif;font-size:clamp(24px,3.4vw,34px);line-height:1.45;font-weight:900;margin:0 0 10px;color:#fff}
+.appx h2 em{font-style:normal;color:#7dd3fc}
+.appx p{font-size:15px;font-weight:700;color:#c9d8ff;line-height:1.9;margin:0 0 18px;max-width:480px}
+.appx-st{display:flex;gap:10px;flex-wrap:wrap}
+.appx-st a{display:inline-flex;align-items:center;gap:9px;background:#fff;color:#0f172a;border-radius:13px;padding:9px 18px;min-height:54px;min-width:170px;text-decoration:none;transition:transform .15s}
+.appx-st a:hover{transform:translateY(-2px)}
+.appx-st small{display:block;font-size:10.5px;font-weight:700;color:#475569;line-height:1.2}
+.appx-st b{display:block;font-size:16px;font-weight:900;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.3;white-space:nowrap}
+.appx-more{display:inline-block;margin-top:14px;color:#c9d8ff;font-size:13.5px;font-weight:800;text-decoration:none}
+.appx-more:hover{color:#fff}
+.appx-nt{display:flex;flex-direction:column;gap:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:12px}
+.appx-n{background:rgba(255,255,255,.95);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+.appx-n img{width:28px;height:28px;border-radius:8px;flex-shrink:0}
+.appx-n b{display:block;font-size:13px;color:#0f172a;line-height:1.5}.appx-n span{display:block;font-size:12px;font-weight:700;color:#475569}
+body.os-ios .appx .only-and,body.os-and .appx .only-ios{display:none}
+@media(max-width:760px){.appx{padding:6px 14px 36px}.appx-in{grid-template-columns:1fr;padding:24px 18px;gap:16px}.appx-st a{flex:1;justify-content:center;min-width:0;padding:9px 10px}.appx-st b{font-size:15px}}
+</style>
+<div class="appx-in">
+  <div>
+    <span class="appx-tag">تطبيق مناقصة · مجاني</span>
+    <h2>المشاريع والعروض <em>في جيبك</em> لحظة وصولها</h2>
+    <p>إشعار على جوالك أول ما يوصلك عرض أو مشروع جديد بتخصصك أو رسالة — بدون ما تفتح الموقع.</p>
+    <div class="appx-st">
+      <a class="only-ios" href="/app/go?os=ios&amp;src=home"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg><span><small>حمّله من</small><b>App Store</b></span></a>
+      <a class="only-and" href="/app/go?os=android&amp;src=home"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="#00C4FF" d="M3.6 2.4 13.3 12 3.6 21.6c-.35-.2-.6-.58-.6-1.06V3.46c0-.48.25-.86.6-1.06z"/><path fill="#00E676" d="M16.6 8.7 13.3 12 3.6 2.4l.2-.1 12.8 6.4z"/><path fill="#FF3A44" d="M16.6 15.3 3.8 21.7l-.2-.1 9.7-9.6z"/><path fill="#FFD400" d="m20.3 10.6-3.7-1.9-3.3 3.3 3.3 3.3 3.7-1.9c.5-.3.8-.8.8-1.4s-.3-1.1-.8-1.4z"/></svg><span><small>متوفر على</small><b>Google Play</b></span></a>
+    </div>
+    <a class="appx-more" href="/app?src=home">اعرف أكثر عن التطبيق ←</a>
+  </div>
+  <div class="appx-nt" aria-hidden="true">
+    <div class="appx-n"><img src="/icon-96.png" alt=""><div><b>مشروع جديد يناسبك</b><span>تركيب 4 مكيفات سبليت · الرياض</span></div></div>
+    <div class="appx-n"><img src="/icon-96.png" alt=""><div><b>وصلك عرض جديد</b><span>مؤسسة الإتقان · 3,200 ر.س · 5 أيام</span></div></div>
+    <div class="appx-n"><img src="/icon-96.png" alt=""><div><b>رسالة جديدة</b><span>«ممكن أزورك بكرة العصر أشوف المكان؟»</span></div></div>
+  </div>
+</div>
+<script>(function(){var u=navigator.userAgent||'';if(/iPhone|iPad|iPod/i.test(u))document.body.classList.add('os-ios');else if(/Android/i.test(u))document.body.classList.add('os-and');})();</script>
 </section>
 
 <!-- SHOWCASE: مشاريع أُنجزت -->
@@ -1159,11 +1210,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="app-cta-title">حمّل تطبيق مناقصة</div>
     <div class="app-cta-sub">تابع مشاريعك وعروضك أينما كنت — على آيفون وأندرويد</div>
     <div class="app-badges">
-      <a href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611" target="_blank" rel="noopener noopener noreferrer" class="store-badge" aria-label="حمّله من App Store">
+      <a href="/app/go?os=ios&amp;src=footer" class="store-badge" aria-label="حمّله من App Store">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M17.05 12.04c-.03-2.9 2.37-4.29 2.48-4.36-1.35-1.98-3.46-2.25-4.21-2.28-1.79-.18-3.5 1.05-4.41 1.05-.91 0-2.31-1.03-3.8-1-1.95.03-3.76 1.14-4.76 2.89-2.03 3.52-.52 8.73 1.45 11.59.96 1.4 2.11 2.97 3.61 2.91 1.45-.06 2-.94 3.75-.94 1.74 0 2.24.94 3.77.91 1.56-.03 2.55-1.42 3.5-2.83 1.1-1.62 1.56-3.2 1.58-3.28-.03-.02-3.03-1.17-3.06-4.62zM14.13 3.63c.8-.98 1.34-2.32 1.19-3.63-1.15.05-2.55.77-3.38 1.73-.74.85-1.39 2.23-1.22 3.51 1.29.1 2.6-.65 3.41-1.61z"/></svg>
         <span class="sb-txt"><span class="sb-small">حمّله من</span><span class="sb-big">App Store</span></span>
       </a>
-      <a href="https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=bs" target="_blank" rel="noopener noopener noreferrer" class="store-badge" aria-label="احصل عليه من Google Play">
+      <a href="/app/go?os=android&amp;src=footer" class="store-badge" aria-label="احصل عليه من Google Play">
         <svg width="24" height="24" viewBox="0 0 24 24"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.3v16.8c0 .6.2 1 .5 1.3l.1.1L13 12.6v-.2L3.7 2.2l-.1.1z" fill="#00d0ff"/><path d="M16.4 15.7l-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 2.1-.1-.1z" fill="#ffce00"/><path d="M16.5 15.6L13.3 12.4 3.6 22.1c.4.4 1 .4 1.7.1l11.2-6.6z" fill="#ff3b30"/><path d="M16.5 8.4L5.3 1.8C4.6 1.5 4 1.5 3.6 1.9l9.7 9.7 3.2-3.2z" fill="#00f076"/></svg>
         <span class="sb-txt"><span class="sb-small">احصل عليه من</span><span class="sb-big">Google Play</span></span>
       </a>
@@ -1173,6 +1224,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <p>© 2026 مناقصة – جميع الحقوق محفوظة</p>
   <p style="margin-top: 8px;">
     <a href="about.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">عن المنصة</a>
+    <a href="/app?src=footer" style="color: var(--muted); text-decoration: none; margin: 0 12px;">تطبيق الجوال</a>
     <a href="privacy.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">سياسة الخصوصية</a>
     <a href="terms.html" style="color: var(--muted); text-decoration: none; margin: 0 12px;">شروط الاستخدام</a>
     <a href="https://wa.me/966594011313" target="_blank" rel="noopener noopener noreferrer" style="color: var(--muted); text-decoration: none; margin: 0 12px;">تواصل معنا</a>
@@ -1290,9 +1342,10 @@ function card(p){
   var isCompleted=(p.status==='completed'||p.status==='done');
   var badgeCls=isOpen?'hzp-open':(isRev?'hzp-rev':'hzp-done');
   var badgeTxt=isOpen?'مفتوح':(isRev?'قيد المراجعة':(isCompleted?'مكتمل':'مغلق'));
-  var _overlay=isAwarded?'<span class="hzp-stamp">تمت<br>الترسية</span>':('<span class="hzp-badge '+badgeCls+'">'+badgeTxt+'</span>');
+  var _overlay=isAwarded?'<span class="hzp-stamp">تمت<br>الترسية</span>':'';
+  var _stPill=isAwarded?'':'<span class="hzp-st '+badgeCls+'">'+badgeTxt+'</span>';
   var img=null;var _imgs=[p.thumbnail,p.images&&p.images[0],p.image_url];for(var _ii=0;_ii<_imgs.length;_ii++){if(isImg(_imgs[_ii])){img=_imgs[_ii];break;}}
-  var catIcon=catSvg(p.category,32);
+  var catIcon=catSvg(p.category,30);
   var bidN=parseInt(p.bid_count)||0;
   var projSlug=encodeURIComponent((p.title||'مشروع').replace(/\s+/g,'-').substring(0,40))+'-'+p.id;
   var imgBox=img
@@ -1302,7 +1355,7 @@ function card(p){
     +imgBox
     +'<div class="hzp-body">'
       +'<div class="hzp-title">'+_esc(p.title)+'</div>'
-      +(p.category?'<div class="hzp-catrow"><span class="hzp-cat">'+_esc(p.category)+'</span></div>':'')
+      +((p.category||_stPill)?'<div class="hzp-catrow">'+(p.category?'<span class="hzp-cat">'+_esc(p.category)+'</span>':'')+_stPill+'</div>':'')
       +'<div class="hzp-meta">'
         +(p.city?'<span>'+_esc(p.city)+'</span>':'')
         +'<span>'+_arN(bidN,'b')+'</span>'

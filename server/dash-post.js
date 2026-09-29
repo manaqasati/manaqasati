@@ -2006,7 +2006,6 @@ function _prFill(p){
     var paint=function(all){ all=Array.isArray(all)?all:[]; var q=function(id,v){var e=document.getElementById(id); if(e)e.textContent=v;};
       q('pr-st-req',all.length); q('pr-st-off',all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0)); q('pr-st-done',all.filter(function(r){return r.status==='completed'||r.status==='done';}).length); };
     if(window._allMyReqs&&window._allMyReqs.length) paint(window._allMyReqs); else jFetch('/api/requests/my').then(paint).catch(function(){});
-    var ar=document.querySelector('a.pr-row[href*="play.google.com"]'); if(ar&&/iPhone|iPad|iPod/i.test(navigator.userAgent||'')) ar.href='https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
   }catch(e){}
 }
 async function _prPushState(){

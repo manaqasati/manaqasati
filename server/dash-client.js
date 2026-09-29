@@ -116,14 +116,47 @@ function fmtN(n){return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?
 function fmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'الآن';if(s<3600)return Math.floor(s/60)+' د';if(s<86400)return Math.floor(s/3600)+' س';return Math.floor(s/86400)+' يوم';}
 function hdr(){return{headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'};}
-function _checkVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(user && user.email_verified===false){ b.style.display='flex'; } }catch(e){} }
+function _checkVerify(){ try{ _vbRender(); }catch(e){} }
+// ===== بطاقة تفعيل البريد =====
+var _vbCd=0,_vbTm=null;
+function _vbMail(e){e=String(e||'').toLowerCase();var d=e.split('@')[1]||'';
+  if(/^(hotmail|outlook|live|msn)\./.test(d))return['Outlook','https://outlook.live.com/mail/'];
+  if(/^(gmail|googlemail)\./.test(d))return['Gmail','https://mail.google.com/'];
+  if(/^(icloud|me|mac)\./.test(d))return['iCloud','https://www.icloud.com/mail'];
+  if(/^yahoo\./.test(d))return['Yahoo','https://mail.yahoo.com/'];
+  return null;}
+function _vbEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function _vbRender(){
+  var b=document.getElementById('verify-banner');if(!b)return;var u=(typeof user!=='undefined'?user:null);
+  if(!u||u.email_verified!==false){b.style.display='none';return;}
+  var em=u.email||'',mp=_vbMail(em),hid=false;
+  try{hid=(+sessionStorage.getItem('mnq_vb_hide')||0)>0;}catch(e){}
+  b.className=hid?'vb-min':'';
+  b.innerHTML='<div class="vb-full"><div class="vb-ic"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg><i></i></div>'
+   +'<div class="vb-b"><div class="vb-t">باقي خطوة: فعّل بريدك</div>'
+   +'<div class="vb-s">'+(em?'أرسلنا رابط التفعيل إلى <b>'+_vbEsc(em)+'</b>':'أرسلنا رابط التفعيل إلى بريدك')+'</div>'
+   +'<div class="vb-n">بعد التفعيل، مشاريعك تنشر مباشرة بعد المراجعة</div>'
+   +'<div class="vb-acts">'+(mp?'<a class="vb-btn vb-pri" href="'+mp[1]+'" target="_blank" rel="noopener">افتح '+mp[0]+' <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M7 17L17 7M8 7h9v9"/></svg></a>':'')
+   +'<button class="vb-btn '+(mp?'vb-sec':'vb-pri')+'" id="verify-resend" onclick="resendVerify()">إعادة الإرسال</button>'
+   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div></div>'
+   +'<button class="vb-x" aria-label="إخفاء" onclick="_vbHide()">×</button></div>'
+   +'<div class="vb-slim" onclick="_vbShow()">بريدك ما تفعّل للحين<u>فعّله</u></div>';
+  b.style.display='block';_vbTick();
+}
+function _vbHide(){try{sessionStorage.setItem('mnq_vb_hide','1');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='vb-min';}
+function _vbShow(){try{sessionStorage.removeItem('mnq_vb_hide');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='';show('profile',null,'profile');window.scrollTo({top:0,behavior:'smooth'});}
+function _vbChange(){show('profile',null,'profile');var n=0;(function f(){var i=document.getElementById('prof-email');if(i&&i.offsetParent){i.focus();try{i.select();}catch(e){}i.scrollIntoView({block:'center',behavior:'smooth'});return;}if(++n<40)setTimeout(f,100);})();}
+function _vbTick(){var btn=document.getElementById('verify-resend');if(!btn)return;clearTimeout(_vbTm);var left=Math.ceil((_vbCd-Date.now())/1000);
+  if(left>0){btn.disabled=true;btn.classList.add('ok');btn.textContent=left>55?'أرسلناه ✓':'إعادة الإرسال ('+left+')';_vbTm=setTimeout(_vbTick,1000);}
+  else{btn.disabled=false;btn.classList.remove('ok');btn.textContent='إعادة الإرسال';}}
 function resendVerify(){
-  var btn=document.getElementById('verify-resend');
-  if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
-  fetch(API+'/api/auth/resend-verification',Object.assign({method:'POST',body:JSON.stringify({})},hdr()))
-    .then(function(r){return r.json();})
-    .then(function(d){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(d&&d.ok){ if(typeof showToast==='function')showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} } else { if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); } })
-    .catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
+  var btn=document.getElementById('verify-resend');if(!btn||Date.now()<_vbCd)return;
+  btn.disabled=true;btn.textContent='...جاري الإرسال';
+  fetch(API+'/api/auth/resend-verification',Object.assign({method:'POST',body:JSON.stringify({})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ if(d.already){var u=(typeof user!=='undefined'?user:null);if(u)u.email_verified=true;try{var lu=JSON.parse(localStorage.getItem('user')||'{}');lu.email_verified=true;localStorage.setItem('user',JSON.stringify(lu));}catch(e){}var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';showToast('بريدك مفعّل مسبقاً','success');return;}
+      _vbCd=Date.now()+60000;_vbTick(); }
+    else { btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); }
+  }).catch(function(){ btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
 }
 window.addEventListener('load',function(){try{_checkVerify();}catch(e){}});
 function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
@@ -471,7 +504,7 @@ function riCard(r,actions){
   else if(done){nextTxt='مكتمل — لا تنسَ تقييم المزود';}
 
   var h='<div class="hzp" onclick="openDetail('+r.id+',event)">'
-    +'<div class="hzp-ic '+icCls+'">'+catSvg(r.category,26)+'</div>'
+    +'<div class="hzp-ic '+icCls+'">'+catSvg(r.category,24)+'</div>'
     +'<div class="hzp-body">'
       +'<div class="hzp-title">'+esc(r.title)+'</div>'
       +'<div class="hzp-meta">'
@@ -614,7 +647,7 @@ function _hhCard(r){
   var st=r.status,open=st==='open',prog=st==='in_progress',done=st==='completed'||st==='done',rev=st==='pending_review'||st==='review',nedit=st==='needs_edit',rej=st==='rejected';
   var bc=parseInt(r.bid_count)||0;
   var icCls=prog?'prog':done?'done':(rev||nedit||rej)?'rev':'';
-  var ic=_safeUrl(r.thumbnail)?'<img loading="lazy" src="'+esc(_safeUrl(r.thumbnail))+'" alt="">':catSvg(r.category,26);
+  var ic=_safeUrl(r.thumbnail)?'<img loading="lazy" src="'+esc(_safeUrl(r.thumbnail))+'" alt="">':catSvg(r.category,24);
   var pill=open?'<span class="hh-pill open">يستقبل عروض</span>':prog?'<span class="hh-pill prog">قيد التنفيذ</span>':done?'<span class="hh-pill done">مكتمل</span>':nedit?'<span class="hh-pill red">مطلوب تعديل</span>':rej?'<span class="hh-pill red">مرفوض</span>':'<span class="hh-pill rev">قيد المراجعة</span>';
   var h='<div class="hh-card" onclick="openDetail('+r.id+',event)">'
     +'<div class="hh-row"><div class="hh-ic '+icCls+'">'+ic+'</div>'
@@ -2552,7 +2585,6 @@ function _prFill(p){
     var paint=function(all){ all=Array.isArray(all)?all:[]; var q=function(id,v){var e=document.getElementById(id); if(e)e.textContent=v;};
       q('pr-st-req',all.length); q('pr-st-off',all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0)); q('pr-st-done',all.filter(function(r){return r.status==='completed'||r.status==='done';}).length); };
     if(window._allMyReqs&&window._allMyReqs.length) paint(window._allMyReqs); else jFetch('/api/requests/my').then(paint).catch(function(){});
-    var ar=document.querySelector('a.pr-row[href*="play.google.com"]'); if(ar&&/iPhone|iPad|iPod/i.test(navigator.userAgent||'')) ar.href='https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
   }catch(e){}
 }
 async function _prPushState(){

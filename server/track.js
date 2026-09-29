@@ -98,7 +98,10 @@
     var m = MAP[eventName];
     if (!m) { console.warn('[track] حدث غير معروف:', eventName); return; }
     try { if (window.fbq && CONFIG.metaPixelId)   window.fbq('track', m.meta, params); } catch (e) {}
-    try { if (window.ttq && CONFIG.tiktokPixelId)  window.ttq.track(m.tt, params); } catch (e) {}
+    // تيك توك يطلب content_id لكل حدث (للإعلانات) — نرسل معرّف ثابت حسب نوع الحدث لو ما انرسل
+    try { if (window.ttq && CONFIG.tiktokPixelId) { var tp = {}; for (var k in params) tp[k] = params[k];
+      if (!tp.content_id) { tp.content_id = String(params.request_id || params.id || eventName); tp.content_type = tp.content_type || 'product'; tp.contents = tp.contents || [{ content_id: tp.content_id, content_name: eventName }]; }
+      window.ttq.track(m.tt, tp); } } catch (e) {}
     try { if (window.snaptr && CONFIG.snapPixelId) window.snaptr('track', m.snap, params); } catch (e) {}
     try { if (window.gtag && CONFIG.googleId)      window.gtag('event', m.g, params); } catch (e) {}
   };

@@ -26,14 +26,47 @@ if('serviceWorker' in navigator){
 var _token=localStorage.getItem('token')||'';
 var _me={};
 try{_me=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){_me={};}
-function _pvCheckVerify(){ try{ var b=document.getElementById('verify-banner'); if(!b)return; if(_me&&_me.email_verified===false){ b.style.display='flex'; } }catch(e){} }
+function _pvCheckVerify(){ try{ _vbRender(); }catch(e){} }
+// ===== بطاقة تفعيل البريد =====
+var _vbCd=0,_vbTm=null;
+function _vbMail(e){e=String(e||'').toLowerCase();var d=e.split('@')[1]||'';
+  if(/^(hotmail|outlook|live|msn)\./.test(d))return['Outlook','https://outlook.live.com/mail/'];
+  if(/^(gmail|googlemail)\./.test(d))return['Gmail','https://mail.google.com/'];
+  if(/^(icloud|me|mac)\./.test(d))return['iCloud','https://www.icloud.com/mail'];
+  if(/^yahoo\./.test(d))return['Yahoo','https://mail.yahoo.com/'];
+  return null;}
+function _vbEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function _vbRender(){
+  var b=document.getElementById('verify-banner');if(!b)return;var u=_me;
+  if(!u||u.email_verified!==false){b.style.display='none';return;}
+  var em=u.email||'',mp=_vbMail(em),hid=false;
+  try{hid=(+sessionStorage.getItem('mnq_vb_hide')||0)>0;}catch(e){}
+  b.className=hid?'vb-min':'';
+  b.innerHTML='<div class="vb-full"><div class="vb-ic"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg><i></i></div>'
+   +'<div class="vb-b"><div class="vb-t">باقي خطوة: فعّل بريدك</div>'
+   +'<div class="vb-s">'+(em?'أرسلنا رابط التفعيل إلى <b>'+_vbEsc(em)+'</b>':'أرسلنا رابط التفعيل إلى بريدك')+'</div>'
+   +'<div class="vb-n">بعد التفعيل، تقدر تقدّم عروضك على المشاريع مباشرة</div>'
+   +'<div class="vb-acts">'+(mp?'<a class="vb-btn vb-pri" href="'+mp[1]+'" target="_blank" rel="noopener">افتح '+mp[0]+' <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M7 17L17 7M8 7h9v9"/></svg></a>':'')
+   +'<button class="vb-btn '+(mp?'vb-sec':'vb-pri')+'" id="verify-resend" onclick="resendVerify()">إعادة الإرسال</button>'
+   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div></div>'
+   +'<button class="vb-x" aria-label="إخفاء" onclick="_vbHide()">×</button></div>'
+   +'<div class="vb-slim" onclick="_vbShow()">بريدك ما تفعّل للحين<u>فعّله</u></div>';
+  b.style.display='block';_vbTick();
+}
+function _vbHide(){try{sessionStorage.setItem('mnq_vb_hide','1');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='vb-min';}
+function _vbShow(){try{sessionStorage.removeItem('mnq_vb_hide');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='';gotoPage('profile');window.scrollTo({top:0,behavior:'smooth'});}
+function _vbChange(){gotoPage('profile');var n=0;(function f(){var i=document.getElementById('p-email');if(i&&i.offsetParent){i.focus();try{i.select();}catch(e){}i.scrollIntoView({block:'center',behavior:'smooth'});return;}if(++n<40)setTimeout(f,100);})();}
+function _vbTick(){var btn=document.getElementById('verify-resend');if(!btn)return;clearTimeout(_vbTm);var left=Math.ceil((_vbCd-Date.now())/1000);
+  if(left>0){btn.disabled=true;btn.classList.add('ok');btn.textContent=left>55?'أرسلناه ✓':'إعادة الإرسال ('+left+')';_vbTm=setTimeout(_vbTick,1000);}
+  else{btn.disabled=false;btn.classList.remove('ok');btn.textContent='إعادة الإرسال';}}
 function resendVerify(){
-  var btn=document.getElementById('verify-resend'); if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+  var btn=document.getElementById('verify-resend');if(!btn||Date.now()<_vbCd)return;
+  btn.disabled=true;btn.textContent='...جاري الإرسال';
   _api('/api/auth/resend-verification',{method:'POST',body:JSON.stringify({})}).then(function(d){
-    if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';}
-    if(d&&d.ok){ showToast(d.already?'بريدك مفعّل مسبقاً':'أُرسل رابط التفعيل إلى بريدك ✓','success'); if(d.already){var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';} }
-    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); }
-  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة إرسال رابط التفعيل';} showToast('تعذّر الاتصال','error'); });
+    if(d&&d.ok){ if(d.already){var u=_me;if(u)u.email_verified=true;try{var lu=JSON.parse(localStorage.getItem('user')||'{}');lu.email_verified=true;localStorage.setItem('user',JSON.stringify(lu));}catch(e){}var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';showToast('بريدك مفعّل مسبقاً','success');return;}
+      _vbCd=Date.now()+60000;_vbTick(); }
+    else { btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); }
+  }).catch(function(){ btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
 }
 window.addEventListener('load',function(){try{_pvCheckVerify();}catch(e){}});
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
@@ -396,7 +429,7 @@ function _renderHome(data){
     var fimg=f.thumbnail||f.image_url||(f.images&&f.images[0])||null;
     var fsaved=window._savedIds&&window._savedIds.indexOf(f.id)>=0;
     html+='<div class="hh-op">'
-      +'<div class="hh-row" style="cursor:pointer" onclick="_viewProj('+f.id+')"><div class="hh-ic">'+(_safeUrl(fimg)?'<img loading="lazy" src="'+_esc(_safeUrl(fimg))+'" alt="">':catSvg(f.category,26))+'</div>'
+      +'<div class="hh-row" style="cursor:pointer" onclick="_viewProj('+f.id+')"><div class="hh-ic">'+(_safeUrl(fimg)?'<img loading="lazy" src="'+_esc(_safeUrl(fimg))+'" alt="">':catSvg(f.category,24))+'</div>'
       +'<div class="hh-body"><div class="hh-chips">'+(fbc<=1?'<span class="hh-pill open">قليل المنافسة</span>':'')+(fnew?'<span class="hh-pill prog">جديد</span>':'')+'</div>'
       +'<div class="hh-t">'+_esc(f.title||'')+'</div>'
       +'<div class="hh-note">'+[f.city?_esc(f.city):'',timeAgoP(f.created_at),_arN(fbc,'b')].filter(Boolean).join(' · ')+'</div></div></div>'
@@ -770,7 +803,7 @@ function _renderBrowseList(list){
     img=_safeUrl(img);
     var imgHtml=img
       ?'<div class="hz-img"><img src="'+_esc(img)+'" loading="lazy"></div>'
-      :'<div class="hz-img hz-noimg" style="color:var(--p)">'+catSvg(r.category,30)+'</div>';
+      :'<div class="hz-img hz-noimg">'+catSvg(r.category,28)+'</div>';
     var h='<div class="hz-item" onclick="_viewProj('+r.id+')">';
     h+=imgHtml;
     h+='<div class="hz-body">';
