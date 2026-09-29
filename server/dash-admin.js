@@ -5259,7 +5259,10 @@ function openUserEdit(uid){
   document.getElementById('ue-name').value=u.name||'';
   document.getElementById('ue-email').value=u.email||'';
   document.getElementById('ue-phone').value=u.phone||'';
-  document.getElementById('ue-city').value=u.city||'';
+  _ueCityFill(u.city||'');
+  window._ueSpecs=(u.specialties||[]).slice(); window._ueSvc=(u.service_cities||[]).slice();
+  document.getElementById('ue-all').checked=!!u.serves_all_cities; document.getElementById('ue-exp').value=u.experience_years!=null?u.experience_years:'';
+  _ueSpecsRender(); _ueSvcRender(); _ueAllTog();
   document.getElementById('ue-biz').value=u.business_name||'';
   document.getElementById('ue-bio').value=u.bio||'';
   // نعرض بيانات المزوّد دائماً لو فيها محتوى (يكشف من سجّل كمزوّد لكن دوره عميل) أو لو الدور مزوّد
@@ -5273,10 +5276,33 @@ function openUserEdit(uid){
   closeModal('userModal');
   document.getElementById('uEditModal').classList.add('show');
 }
+var UE_CITIES=['الرياض','الخرج','الدوادمي','المجمعة','القويعية','الزلفي','الدرعية','الدلم','المزاحمية','الحريق','حوطة بني تميم','وادي الدواسر','السليل','الأفلاج','الغاط','ثادق','حريملاء','مرات','ضرما','جدة','مكة المكرمة','الطائف','رابغ','القنفذة','الليث','خليص','تربة','المويه','الخرمة','رنية','المدينة المنورة','ينبع','العلا','الوجه','ضباء','أملج','المهد','بدر','خيبر','بريدة','عنيزة','الرس','البكيرية','الأسياح','رياض الخبراء','عيون الجواء','النبهانية','الشماسية','البدائع','المذنب','الخبراء','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','حفر الباطن','الخفجي','بقيق','النعيرية','رأس تنورة','صفوى','سيهات','العوامية','أبها','خميس مشيط','بيشة','النماص','محايل عسير','أحد رفيدة','سراة عبيدة','ظهران الجنوب','تثليث','بلقرن','رجال ألمع','المجاردة','الحرجة','تبوك','تيماء','قيال','حقل','حائل','بقعاء','الشنان','الغزالة','عرعر','طريف','رفحاء','سكاكا','دومة الجندل','القريات','الباحة','بلجرشي','المندق','العقيق','قلوة','المخواة','غامد الزناد','جازان','صبيا','أبو عريش','صامطة','الدرب','ضمد','أحد المسارحة','العارضة','الريث','الحرث','نجران','شرورة','شقراء','عفيف','ضرماء','رماح','ضرية','عقلة الصقور','الجموم','الكامل','أضم','بحرة','مهد الذهب','الحناكية','العيص','قرية العليا','تنومة','البدع','السليمي','موقق','الشملي','العويقيلة','بيش','فيفاء','حبونا','بدر الجنوب','يدمة','ثار','القرى','طبرجل','صوير'];
+function _ueCityFill(cur){var s=document.getElementById('ue-city');if(!s)return;var list=UE_CITIES.slice();if(cur&&list.indexOf(cur)<0)list.unshift(cur);s.innerHTML='<option value="">—</option>'+list.map(function(c){return '<option'+(c===cur?' selected':'')+'>'+esc(c)+'</option>';}).join('');}
+function _ueSpecsRender(){
+  var box=document.getElementById('ue-specs');if(!box)return;var a=window._ueSpecs||[];
+  var cats=(window._CATS||[]).filter(function(c){return a.indexOf(c)<0;});
+  box.innerHTML=(a.length?a.map(function(c,i){return '<span class="ue-chip on">'+esc(c)+'<button type="button" aria-label="حذف" onclick="_ueSpecDel('+i+')">×</button></span>';}).join(''):'<span class="ue-hint" style="color:#b91c1c">ما عنده تخصص — ما يوصله أي مشروع</span>')
+    +'<select onchange="_ueSpecAdd(this)" style="margin-top:4px;width:100%"><option value="">+ أضف تخصص</option>'+cats.map(function(c){return '<option>'+esc(c)+'</option>';}).join('')+'</select>';
+}
+function _ueSpecAdd(sel){var v=sel.value;if(!v)return;window._ueSpecs=window._ueSpecs||[];if(window._ueSpecs.indexOf(v)<0)window._ueSpecs.push(v);_ueSpecsRender();}
+function _ueSpecDel(i){(window._ueSpecs||[]).splice(i,1);_ueSpecsRender();}
+function _ueSvcRender(){
+  var box=document.getElementById('ue-svc'),sel=document.getElementById('ue-svc-add');if(!box||!sel)return;var a=window._ueSvc||[];
+  box.innerHTML=a.length?a.map(function(c,i){return '<span class="ue-chip on">'+esc(c)+'<button type="button" aria-label="حذف" onclick="_ueSvcDel('+i+')">×</button></span>';}).join(''):'<span class="ue-hint">ما حدد مدن — تُستخدم مدينته فقط</span>';
+  sel.innerHTML='<option value="">+ أضف مدينة</option>'+UE_CITIES.filter(function(c){return a.indexOf(c)<0;}).map(function(c){return '<option>'+esc(c)+'</option>';}).join('');
+}
+function _ueSvcAdd(sel){var v=sel.value;if(!v)return;window._ueSvc=(window._ueSvc||[]);if(window._ueSvc.indexOf(v)<0)window._ueSvc.push(v);_ueSvcRender();}
+function _ueSvcDel(i){(window._ueSvc||[]).splice(i,1);_ueSvcRender();}
+function _ueAllTog(){var w=document.getElementById('ue-svcwrap');if(w)w.style.display=document.getElementById('ue-all').checked?'none':'';}
 function saveUserEdit(){
   if(!_editUserId)return;
   var body={name:document.getElementById('ue-name').value.trim(),email:document.getElementById('ue-email').value.trim(),phone:document.getElementById('ue-phone').value.trim()||null,city:document.getElementById('ue-city').value.trim()||null,business_name:document.getElementById('ue-biz').value.trim()||null,bio:document.getElementById('ue-bio').value.trim()||null};
   var rSel=document.getElementById('ue-role'); if(rSel&&rSel.value) body.role=rSel.value;
+  if(document.getElementById('ue-biz-wrap').style.display!=='none'||body.role==='provider'){
+    body.specialties=(window._ueSpecs||[]).slice(); body.serves_all_cities=document.getElementById('ue-all').checked;
+    body.service_cities=body.serves_all_cities?[]:(window._ueSvc||[]).slice(); body.experience_years=document.getElementById('ue-exp').value;
+    if(body.role==='provider'&&!body.specialties.length){toast('اختر تخصص واحد على الأقل للمزوّد','error');return;}
+  }
   var btn=document.getElementById('ue-save');btn.disabled=true;btn.textContent='جاري الحفظ...';
   fetch(API+'/api/admin/users/'+_editUserId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})

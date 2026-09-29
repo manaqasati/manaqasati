@@ -450,9 +450,15 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="ue-role-warn" style="display:none;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;font-weight:700">⚠️ هذا الحساب دوره «عميل» لكن عنده بيانات مزوّد (اسم نشاط/نبذة). قد يكون سجّل كمزوّد واختار عميل بالخطأ — راجع البيانات وصحّح الدور لو لزم.</div>
       <div class="fld"><label>الاسم</label><input id="ue-name"></div>
       <div class="fld"><label>الإيميل</label><input id="ue-email" type="email"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="fld"><label>الجوال</label><input id="ue-phone"></div><div class="fld"><label>المدينة</label><input id="ue-city"></div></div>
-      <div class="fld"><label>نوع الحساب</label><select id="ue-role"><option value="client">عميل (طالب خدمة)</option><option value="provider">مزوّد خدمة</option></select></div>
-      <div class="fld" id="ue-biz-wrap"><label>اسم النشاط (للمزود)</label><input id="ue-biz"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="fld"><label>الجوال</label><input id="ue-phone"></div><div class="fld"><label>المدينة</label><select id="ue-city"></select></div></div>
+      <div class="fld"><label>نوع الحساب</label><select id="ue-role" onchange="if(this.value==='provider')document.getElementById('ue-biz-wrap').style.display='block'"><option value="client">عميل (طالب خدمة)</option><option value="provider">مزوّد خدمة</option></select></div>
+      <div id="ue-biz-wrap">
+        <div class="fld"><label>اسم النشاط (للمزود)</label><input id="ue-biz"></div>
+        <div class="fld"><label>التخصصات <small class="ue-hint">— تحدد وش المشاريع اللي توصله إشعاراتها</small></label><div id="ue-specs" class="ue-chips"></div></div>
+        <div class="fld"><label>مناطق الخدمة</label><label class="ue-chk"><input type="checkbox" id="ue-all" onchange="_ueAllTog()"> يخدم كل المدن</label>
+          <div id="ue-svcwrap"><div id="ue-svc" class="ue-chips" style="margin-top:8px"></div><select id="ue-svc-add" onchange="_ueSvcAdd(this)" style="margin-top:8px"></select></div></div>
+        <div class="fld"><label>سنوات الخبرة</label><input id="ue-exp" type="number" inputmode="numeric" min="0" max="80" style="max-width:140px"></div>
+      </div>
       <div class="fld" style="margin-bottom:0"><label>نبذة</label><textarea id="ue-bio"></textarea></div>
     </div>
     <div class="modal-foot"><button class="btn-p" id="ue-save" onclick="saveUserEdit()">حفظ التعديلات</button><button class="btn-s" onclick="closeModal('uEditModal')">إلغاء</button></div>

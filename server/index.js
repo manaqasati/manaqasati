@@ -6222,7 +6222,7 @@ app.get('/api/admin/users', requirePermission('users.view'), async (req, res) =>
       ap AS (SELECT assigned_provider_id AS pid, COUNT(*) AS cp FROM requests WHERE assigned_provider_id IS NOT NULL AND status='completed' GROUP BY 1),
       bc AS (SELECT provider_id, COUNT(*) AS n FROM bids GROUP BY 1),
       rv AS (SELECT reviewed_id, AVG(rating) AS a, COUNT(*) AS n FROM reviews GROUP BY 1)
-      SELECT u.id,u.name,u.email,u.phone,u.role,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,
+      SELECT u.id,u.name,u.email,u.phone,u.role,u.service_cities,COALESCE(u.serves_all_cities,FALSE) AS serves_all_cities,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,
         COALESCE(rq.rc,0) AS request_count, COALESCE(rq.cr,0) AS completed_requests, COALESCE(bc.n,0) AS bid_count, COALESCE(ap.cp,0) AS completed_projects, COALESCE(rv.a,0) AS avg_rating, COALESCE(rv.n,0) AS review_count
       FROM users u LEFT JOIN rq ON rq.client_id=u.id LEFT JOIN ap ON ap.pid=u.id LEFT JOIN bc ON bc.provider_id=u.id LEFT JOIN rv ON rv.reviewed_id=u.id`;
     const params = [];
@@ -6254,6 +6254,15 @@ app.put('/api/admin/users/:id', requirePermission('users.edit'), async (req, res
     let roleVal = (role === 'client' || role === 'provider') ? role : null;
     const r = await pool.query(`UPDATE users SET name=COALESCE(NULLIF($1,''),name), email=COALESCE(NULLIF($2,''),email), phone=$3, city=$4, bio=$5, business_name=$6, role=CASE WHEN $7::text IS NOT NULL AND role<>'admin' THEN $7::text ELSE role END WHERE id=$8 RETURNING id, name, email, role`, [name||'', email||'', phone||null, city||null, bio||null, business_name||null, roleVal, uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    // بيانات المزوّد: التخصصات (وتتبعها إشعارات المشاريع) + مناطق الخدمة + الخبرة
+    { const b = req.body || {}; const sets = []; const ps = [];
+      const arr = (v, max) => Array.isArray(v) ? v.map(x => _cleanTxt(String(x||''), 80)).filter(Boolean).slice(0, max) : null;
+      if (Object.prototype.hasOwnProperty.call(b, 'specialties')) { const sp = arr(b.specialties, 20) || []; ps.push(sp); sets.push(`specialties=$${ps.length}`); sets.push(`notify_categories=$${ps.length}`); }
+      if (Object.prototype.hasOwnProperty.call(b, 'serves_all_cities')) { ps.push(!!b.serves_all_cities); sets.push(`serves_all_cities=$${ps.length}`); }
+      if (Object.prototype.hasOwnProperty.call(b, 'service_cities')) { ps.push(b.serves_all_cities ? [] : (arr(b.service_cities, 60) || [])); sets.push(`service_cities=$${ps.length}`); }
+      if (Object.prototype.hasOwnProperty.call(b, 'experience_years')) { let e = parseInt(b.experience_years); if (isNaN(e) || e < 0 || e > 80) e = null; ps.push(e); sets.push(`experience_years=$${ps.length}`); }
+      if (sets.length) { ps.push(uid); await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${ps.length}`, ps); try { _userState.delete(uid); } catch(e){} }
+    }
     await logAdmin(req, 'edit_user', 'user', uid, 'تعديل بيانات: ' + (r.rows[0].name||''));
     res.json(r.rows[0]);
   } catch(e) { console.error('edit user:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
