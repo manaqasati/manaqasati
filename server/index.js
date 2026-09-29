@@ -4755,6 +4755,27 @@ app.post('/api/admin/saai/remind', auth, adminOnly, async (req, res) => {
     res.json({ ok: true, sent: n });
   } catch(e){ console.error('admin-saai-remind:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
+// ═══ تعديل قيمة العقد من الإدارة (السعي ثابت 3%) ═══
+app.post('/api/admin/saai/:id/edit', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const cv = Math.round(parseFloat(req.body.contract_value) || 0);
+    if (cv < 50) return res.status(400).json({ message: 'اكتب قيمة عقد صحيحة (50 ريال أو أكثر)' });
+    const amt = Math.round(cv * SAAI_RATE);   // السعي ثابت 3% — يتغير بس قيمة العقد
+    const cur = (await pool.query('SELECT s.id, s.provider_id, s.request_id, s.contract_value, s.saai_amount, s.status, s.edits_log, r.title FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id WHERE s.id=$1', [id])).rows[0];
+    if (!cur) return res.status(404).json({ message: 'غير موجود' });
+    if (cur.status === 'approved') return res.status(400).json({ message: 'السعي مسدّد ومعتمد — ما يتعدّل' });
+    let log = []; try { log = Array.isArray(cur.edits_log) ? cur.edits_log : JSON.parse(cur.edits_log || '[]'); } catch(e) { log = []; }
+    const note = String(req.body.note || '').trim().slice(0, 200);
+    log.push({ by: 'admin', at: new Date().toISOString(), note: note || 'عدّلته الإدارة', contract_value: cv, saai_amount: amt, prev_contract_value: Number(cur.contract_value), prev_saai_amount: Number(cur.saai_amount) });
+    await pool.query('UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, edits_log=$3::jsonb WHERE id=$4', [cv, amt, JSON.stringify(log.slice(-30)), id]);
+    if (req.body.notify !== false && Number(cur.saai_amount) !== amt) {
+      try { await notify(cur.provider_id, '💰 تم تحديث سعي المنصة', `«${cur.title || 'مشروع'}» — السعي صار ${amt.toLocaleString('en-US')} ر.س (قيمة العقد ${cv.toLocaleString('en-US')} ر.س)${note ? ' · ' + note : ''}`, 'saai', cur.request_id); } catch(e) {}
+    }
+    await logAdmin(req, 'saai_edit', 'request', cur.request_id, `تعديل السعي: ${cur.saai_amount} → ${amt} (عقد ${cv})`);
+    res.json({ ok: true, contract_value: cv, saai_amount: amt });
+  } catch(e) { console.error('admin saai edit:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.post('/api/admin/saai/:id/approve', auth, adminOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

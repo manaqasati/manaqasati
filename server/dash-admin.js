@@ -232,10 +232,11 @@ function _saRender(){
     var agreed=cv?'<b>'+fmtNum(cv)+'</b>'+(diff?'<div style="font-size:11.5px;font-weight:800;color:'+(diff<0?'#b45309':'#15803d')+'">عدّله '+(diff<0?'↓ ':'↑ ')+fmtNum(Math.abs(diff))+'</div>':(x.status==='pending'?'<div style="font-size:11.5px;color:var(--muted)">تقديري من العرض</div>':'<div style="font-size:11.5px;color:var(--muted)">بدون تعديل</div>')):'<span style="color:#b45309;font-weight:800">لم يحدده بعد</span>';
     var proof=x.proof_url?(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال"></a>':'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener">PDF</a>'):'<span style="color:var(--muted)">—</span>';
     var ph=String(x.provider_phone||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1);
-    var act=x.status==='submitted'?'<div style="display:flex;gap:6px"><button class="act-btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="approveSaai('+x.id+')">اعتماد</button><button class="act-btn ab-default" onclick="_saReject('+x.id+')">رفض</button></div>'
-      :(x.status==='pending'?'<div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="_saRemind(['+x.id+'])">تذكير</button>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب</a>':'')+'</div>':'');
+    var _ed=x.status!=='approved'?'<button class="act-btn ab-default" title="فتح المشروع وتعديل قيمة العقد" onclick="_saOpenProj('+x.request_id+',1)">✏️ تعديل</button>':'';
+    var act=x.status==='submitted'?'<div style="display:flex;gap:6px"><button class="act-btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="approveSaai('+x.id+')">اعتماد</button><button class="act-btn ab-default" onclick="_saReject('+x.id+')">رفض</button>'+_ed+'</div>'
+      :(x.status==='pending'?'<div style="display:flex;gap:6px"><button class="act-btn ab-default" onclick="_saRemind(['+x.id+'])">تذكير</button>'+(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب</a>':'')+_ed+'</div>':'');
     return '<tr><td><b>'+esc(x.provider_name||'مزوّد')+'</b><div style="font-size:12px;color:var(--muted)">'+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div></td>'
-      +'<td>'+esc(x.project_title||'مشروع')+'<div style="font-size:12px;color:var(--muted)">#'+x.request_id+(x.city?' · '+esc(x.city):'')+'</div></td>'
+      +'<td><button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button><div style="font-size:12px;color:var(--muted)">#'+x.request_id+(x.city?' · '+esc(x.city):'')+'</div></td>'
       +'<td style="'+(diff?'color:var(--muted);text-decoration:line-through':'')+'">'+(offer?fmtNum(offer)+(unit?(x.price_unit==='meter'?'/متر':'/وحدة'):''):'—')+'</td>'
       +'<td>'+agreed+'</td><td><b style="font-size:15px">'+fmtNum(x.saai_amount)+'</b> ر.س</td><td>'+proof+'</td><td>'+stPill(x)+'</td><td>'+act+'</td></tr>'
       +(diff<0&&x.status==='submitted'?'<tr><td colspan="8" style="background:#fffbeb;color:#92400e;font-size:12.5px;font-weight:700">تنبيه: «'+esc(x.provider_name||'')+'» نزّل مبلغ الاتفاق من '+fmtNum(offer)+' إلى '+fmtNum(cv)+' — تأكد من العميل قبل الاعتماد لو شاك.</td></tr>':'');
@@ -2106,6 +2107,27 @@ async function _roGo(id,closed){
       _rqOpen(id);
     }).catch(function(){toast('تعذّر الاتصال','error'); if(b){b.disabled=false;}});
 }
+function _saOpenProj(rid,edit){
+  _rqOpen(rid);
+  if(!edit)return;
+  var n=0;(function f(){var b=document.querySelector('#rqDrawer [id^="sa-edb-"]');if(b){b.click();b.scrollIntoView({block:'center',behavior:'smooth'});return;}if(++n<40)setTimeout(f,150);})();
+}
+function _saEditShow(sid,hide){var f=document.getElementById('sa-ed-'+sid),b=document.getElementById('sa-edb-'+sid);if(f)f.style.display=hide?'none':'block';if(b)b.style.display=hide?'':'none';if(!hide){var i=document.getElementById('sa-e-cv-'+sid);if(i){i.focus();try{i.select();}catch(e){}}}}
+function _saEditCalc(sid){var cv=document.getElementById('sa-e-cv-'+sid),am=document.getElementById('sa-e-am-'+sid);if(!cv||!am)return;var c=parseFloat(cv.value)||0;am.textContent=c>=50?fmtNum(Math.round(c*0.03))+' ر.س':'—';}
+function _saEditSave(sid,rid){
+  var c=Math.round(parseFloat((document.getElementById('sa-e-cv-'+sid)||{}).value)||0);
+  var nt=((document.getElementById('sa-e-nt-'+sid)||{}).value||'').trim();
+  if(c<50){toast('اكتب قيمة عقد صحيحة','error');return;}
+  var b=document.getElementById('sa-e-sv-'+sid);if(b){b.disabled=true;b.textContent='جاري الحفظ...';}
+  fetch(API+'/api/admin/saai/'+sid+'/edit',Object.assign({method:'POST',body:JSON.stringify({contract_value:c,note:nt})},hdr()))
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+    .then(function(x){
+      if(!x.ok){toast((x.d&&x.d.message)||'تعذّر الحفظ','error');if(b){b.disabled=false;b.textContent='حفظ ويوصل المزوّد إشعار';}return;}
+      toast('تم تعديل السعي: '+fmtNum(x.d.saai_amount)+' ر.س ✓','success');
+      _rqOpen(rid);
+      try{if(document.getElementById('page-saai').classList.contains('on'))loadSaaiAdmin();}catch(e){}
+    }).catch(function(){toast('تعذّر الاتصال','error');if(b){b.disabled=false;b.textContent='حفظ ويوصل المزوّد إشعار';}});
+}
 // ═══ إنشاء سعي يدوي مع اقتراح القيمة ═══
 function _noSaai(r){ return (r.status==='in_progress'||r.status==='completed')&&r.assigned_provider_id&&!r.saai_id; }
 function _saSection(r,sa,sg){
@@ -2116,7 +2138,13 @@ function _saSection(r,sa,sg){
       act='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="sa-ap-'+sa.id+'" onclick="_saApprove('+sa.id+','+r.id+')" style="flex:1;border:0;background:#16a34a;color:#fff;border-radius:11px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">✅ تأكيد استلام السعي</button><button class="btn-g" onclick="_rqClose();_niGo(\'saai\')">صفحة سداد السعي</button></div>'
         +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">'+(sa.status==='submitted'?'المزوّد أرسل إثبات السداد — راجعه في «سداد السعي» قبل التأكيد.':'اضغط التأكيد لما يوصلك المبلغ (تحويل أو غيره)، حتى لو المزوّد ما رفع إثبات.')+'</div>';
     }
-    return '<div class="rq-ds"><h4>💰 سعي المنصة<span class="pl" style="background:'+stl[1]+';color:'+stl[2]+'">'+stl[0]+'</span></h4><div style="display:flex;gap:16px;font-size:13.5px"><div>قيمة العقد <b>'+fmtNum(sa.contract_value)+'</b></div><div>السعي <b style="color:#15803d">'+fmtNum(sa.saai_amount)+' ر.س</b></div></div>'+act+'</div>';
+    var edit=sa.status!=='approved'?('<button type="button" class="btn-g" id="sa-edb-'+sa.id+'" style="margin-top:10px;width:100%" onclick="_saEditShow('+sa.id+')">✏️ تعديل قيمة العقد</button>'
+      +'<div id="sa-ed-'+sa.id+'" style="display:none;margin-top:10px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px">'
+      +'<label style="font-size:12px;font-weight:800;display:block">قيمة العقد النهائية (ر.س)<input id="sa-e-cv-'+sa.id+'" type="number" inputmode="numeric" min="50" value="'+Math.round(sa.contract_value)+'" oninput="_saEditCalc('+sa.id+')" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;box-sizing:border-box"></label>'
+      +'<div style="margin-top:8px;font-size:13px;font-weight:800">السعي (3%): <b id="sa-e-am-'+sa.id+'" style="color:#15803d;font-size:15px">'+fmtNum(Math.round(sa.contract_value*0.03))+' ر.س</b></div>'
+      +'<input id="sa-e-nt-'+sa.id+'" placeholder="سبب التعديل (اختياري — يوصل للمزوّد)" style="width:100%;margin-top:8px;padding:9px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;box-sizing:border-box">'
+      +'<div style="display:flex;gap:8px;margin-top:10px"><button type="button" id="sa-e-sv-'+sa.id+'" onclick="_saEditSave('+sa.id+','+r.id+')" style="flex:1;border:0;background:#1e3a8a;color:#fff;border-radius:10px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">حفظ ويوصل المزوّد إشعار</button><button type="button" class="btn-g" onclick="_saEditShow('+sa.id+',1)">إلغاء</button></div></div>'):'';
+    return '<div class="rq-ds"><h4>💰 سعي المنصة<span class="pl" style="background:'+stl[1]+';color:'+stl[2]+'">'+stl[0]+'</span></h4><div style="display:flex;gap:16px;font-size:13.5px"><div>قيمة العقد <b>'+fmtNum(sa.contract_value)+'</b></div><div>السعي <b style="color:#15803d">'+fmtNum(sa.saai_amount)+' ر.س</b></div></div>'+edit+act+'</div>';
   }
   if(!sg) return '';
   var opts=(sg.options||[]).map(function(o){
