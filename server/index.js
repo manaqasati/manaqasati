@@ -40,7 +40,7 @@ async function uploadToR2(base64Data, folder, filename) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
   try {
-    const matches = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
+    const matches = base64Data.match(/^data:([^;,]*)(?:;[^;,]*)*?;base64,(.+)$/);
     if (!matches) return base64Data;
     const contentType = String(matches[1]).toLowerCase().trim();
     let ext = UPLOAD_TYPES[contentType];
@@ -85,10 +85,16 @@ try {
 // ═══════════════════════════════════════════════════════════════
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/manaqasa',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: parseInt(process.env.PG_POOL_MAX) || 15,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000
 });
+// خطأ في اتصال خامل ما يطيّح السيرفر
+pool.on('error', err => console.error('PG pool error:', err.message));
 
-pool.connect()
+// فحص الاتصال (ونرجّع الاتصال للمجمّع — كان يبقى محجوز للأبد)
+pool.query('SELECT 1')
   .then(() => console.log('✅ Database connected'))
   .catch(err => console.error('Database error:', err));
 
@@ -342,7 +348,7 @@ async function matchingProviders(cats, city, allCities, cities){
         AND ${cityCond}`, params);
   return r.rows;
 }
-setInterval(async () => {
+setInterval(() => _jobLock('autopublish', async () => {
   try {
     const mins = Math.max(0, parseInt(await getSetting('review_minutes', '1440')) || 0);
     if (mins <= 0) return; // 0 = تعطيل النشر التلقائي — المراجعة اليدوية إجبارية
@@ -357,7 +363,7 @@ setInterval(async () => {
     }
     if (r.rows.length) console.log(`[auto-publish] نُشر ${r.rows.length} مشروع تلقائياً`);
   } catch(e) { console.error('auto-publish:', e.message); }
-}, 60000);
+}), 60000);
 
 // منع الكاش على ملفات HTML
 app.use(function(req, res, next){
@@ -1217,6 +1223,20 @@ async function sendEmail(to, subject, html) {
 }
 
 // تهريب HTML لمنع حقن روابط/وسوم في الإيميلات (ناقل تصيّد)
+// تنظيف الأسماء والعناوين: بدون رموز تحكم أو <> وبطول معقول
+function _cleanTxt(v, max){ return String(v==null?'':v).replace(/[\u0000-\u001f\u007f<>`]/g,' ').replace(/\s{2,}/g,' ').trim().slice(0, max||120); }
+// تغيير الإيميل: يحتاج تأكيد من الإيميل الجديد + تنبيه على القديم
+async function _afterEmailChange(uid, oldEm, newEm){
+  try {
+    if (!newEm || String(oldEm||'').toLowerCase() === String(newEm).toLowerCase()) return;
+    await pool.query('UPDATE users SET email_verified=false WHERE id=$1', [uid]);
+    const vtok = jwt.sign({ id: uid, purpose: 'verify_email', em: String(newEm).toLowerCase() }, JWT_SECRET, { expiresIn: '7d' });
+    const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
+    const t = '✅ أكّد بريدك الجديد في مناقصة';
+    sendEmail(newEm, t, emailTpl(t, '<p>تم تغيير البريد في حسابك على منصة مناقصة إلى هذا البريد. اضغط الزر لتأكيده:</p>', 'تأكيد البريد', vlink)).catch(()=>{});
+    if (oldEm && !/@manaqasa\.local$/i.test(oldEm)) { const t2 = 'تنبيه: تغيّر البريد في حسابك'; sendEmail(oldEm, t2, emailTpl(t2, '<p>تم تغيير البريد الإلكتروني لحسابك في منصة مناقصة. إذا ما كنت أنت، تواصل معنا فوراً على <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>.</p>')).catch(()=>{}); }
+  } catch(e) { console.error('email change:', e.message); }
+}
 function eEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function emailTpl(title, body, btnText, btnUrl) {
@@ -1352,6 +1372,26 @@ async function logAdmin(req, action, targetType, targetId, details) {
   } catch(e) { console.error('logAdmin:', e.message); }
 }
 
+// ═══ منع التكرار وقت النشر: Railway يشغّل النسخة القديمة والجديدة مع بعض لثواني ═══
+// قفل على مستوى قاعدة البيانات — لو المهمة شغّالة في نسخة ثانية، هذي تتخطّاها
+async function _jobLock(key, fn){
+  let c; try { c = await pool.connect(); } catch(e) { return; }
+  let got = false;
+  try {
+    got = (await c.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', ['mnq_job_' + key])).rows[0].ok;
+    if (!got) return;
+    await fn();
+  } catch(e) { console.error('job ' + key + ':', e.message); }
+  finally { if (got) { try { await c.query('SELECT pg_advisory_unlock(hashtext($1))', ['mnq_job_' + key]); } catch(e){} } c.release(); }
+}
+// «حجز» يوم بشكل ذرّي — يرجّع true لنسخة وحدة بس
+async function _claimDay(key, day){
+  try {
+    const r = await pool.query(`INSERT INTO platform_settings (key, value, updated_at) VALUES ($1,$2,NOW())
+      ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW() WHERE platform_settings.value IS DISTINCT FROM EXCLUDED.value RETURNING key`, [key, day]);
+    return r.rows.length > 0;
+  } catch(e) { return false; }
+}
 async function getSetting(key, def) {
   try { const r = await pool.query('SELECT value FROM platform_settings WHERE key=$1', [key]); return r.rows.length ? r.rows[0].value : def; }
   catch(e) { return def; }
@@ -1786,7 +1826,7 @@ async function syncFilesBackup(force){
 // ═══ نقل الصور القديمة المحفوظة داخل القاعدة (base64) إلى R2 ═══
 // يكتشف تلقائياً كل عمود فيه صور مضمّنة (TEXT / TEXT[] / JSONB / نص JSON)، يرفع كل صورة، ويستبدلها برابط.
 // آمن: ما يستبدل إلا لو الرفع نجح ورجع رابط http؛ غير كذا يترك القيمة كما هي.
-const _B64_RE = /^data:[a-z0-9.+\/-]+;base64,/i;
+const _B64_RE = /^data:[a-z0-9.+\/-]+(?:;[^;,]*)*;base64,/i; // يشمل الصوت بصيغة ;codecs=opus
 global._inlineMig = global._inlineMig || { running:false };
 async function scanInlineMedia(){
   const cols = await pool.query(`SELECT c.table_name t, c.column_name c, c.data_type dt, c.udt_name u
@@ -2200,10 +2240,10 @@ async function runReminders(){
 
     /* ═══ المرحلة ٤: ملخّص الأدمن + تنبيهات الشذوذ ═══ */
     // ز) ملخّص يومي للأدمن (مرّة كل يوم)
-    if((await getSetting('admin_summary_on','1'))!=='0'){
-      const dayKey = String(Math.floor(Date.now()/86400000));
-      if(await getSetting('admin_summary_lastday','') !== dayKey){
-        await setSetting('admin_summary_lastday', dayKey);
+    // الملخّص الصباحي (الأشمل) هو الأساسي — هذا القديم يشتغل بس لو الصباحي موقّف (عشان ما يوصلك ملخّصين)
+    if((await getSetting('admin_summary_on','1'))!=='0' && (await getSetting('digest_enabled','1'))==='0'){
+      const dayKey = String(Math.floor((Date.now()+3*3600000)/86400000));
+      if(await _claimDay('admin_summary_lastday', dayKey)){
         const q=(s)=>pool.query(s);
         const [np, nc, npr, nb, nComp, cAuto] = await Promise.all([
           q(`SELECT COUNT(*) c FROM requests WHERE created_at > NOW() - INTERVAL '1 day' AND (category IS DISTINCT FROM 'direct')`),
@@ -2247,7 +2287,7 @@ async function runReminders(){
     }
   }catch(e){ console.error('runReminders:', e.message); }
 }
-setInterval(runReminders, 6*60*60*1000); // كل 6 ساعات
+setInterval(() => _jobLock('reminders', runReminders), 6*60*60*1000); // كل 6 ساعات
 async function runEngagementReminders(){
   try {
     const users = await pool.query(`
@@ -2279,8 +2319,8 @@ async function runEngagementReminders(){
     await pool.query(`DELETE FROM engagement_state WHERE user_id NOT IN (SELECT DISTINCT user_id FROM notifications WHERE type IN ('bid','message') AND is_read=false AND created_at > NOW() - INTERVAL '30 days')`);
   } catch(e){ console.error('engagementReminders:', e.message); }
 }
-setInterval(runEngagementReminders, 2*60*60*1000); // كل ساعتين (يفحص المواعيد المتدرّجة)
-setTimeout(runReminders, 60000);          // مرّة بعد دقيقة من الإقلاع
+setInterval(() => _jobLock('engagement', runEngagementReminders), 2*60*60*1000); // كل ساعتين (يفحص المواعيد المتدرّجة)
+setTimeout(() => _jobLock('reminders', runReminders), 60000);          // مرّة بعد دقيقة من الإقلاع
 
 
 function normalizeStatus(s) { return s === 'review' ? 'pending_review' : s; }
@@ -2308,8 +2348,8 @@ async function recomputeProviderTier(providerId){
 }
 
 function generateProjectNumber() {
-  const d = new Date();
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+  const d = new Date(Date.now() + 3*3600000); // تاريخ الرياض
+  const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), dy = String(d.getUTCDate()).padStart(2,'0');
   return `MNQ-${y}${m}${dy}-${Math.floor(Math.random()*9999).toString().padStart(4,'0')}`;
 }
 
@@ -2364,43 +2404,45 @@ async function providerOnly(req, res, next) {
 }
 
 // ═══ DATABASE SETUP ═══
+// كل تعديل على قاعدة البيانات مستقل: لو واحد فشل، الباقي يكمل (كان فشل واحد يوقف كل اللي بعده بما فيها الفهارس)
+function _mig(sql, params){ return pool.query(sql, params).catch(e => { console.error('migrate:', String(e.message).slice(0,160), '|', String(sql).replace(/\s+/g,' ').slice(0,90)); return { rows: [], rowCount: 0 }; }); }
 async function setupDatabase() {
   console.log('🔄 Setting up database...');
   try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255), password_hash VARCHAR(255), phone VARCHAR(20), role VARCHAR(20) NOT NULL CHECK (role IN ('client','provider','admin')), specialties TEXT[], notify_categories TEXT[], bio TEXT, city VARCHAR(100), badge VARCHAR(50) DEFAULT 'none', is_active BOOLEAN DEFAULT TRUE, experience_years INTEGER, portfolio_images TEXT[], profile_image TEXT, report_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS requests (id SERIAL PRIMARY KEY, client_id INTEGER REFERENCES users(id), title VARCHAR(255) NOT NULL, description TEXT NOT NULL, category VARCHAR(100), city VARCHAR(100), address TEXT, budget_max DECIMAL(10,2), deadline DATE, image_url TEXT, images TEXT[], attachments JSONB, main_image_index INTEGER DEFAULT 0, project_number VARCHAR(50), status VARCHAR(20) DEFAULT 'pending_review', assigned_provider_id INTEGER REFERENCES users(id), assigned_at TIMESTAMP, completed_at TIMESTAMP, admin_notes TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS bids (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id), price INTEGER NOT NULL, days INTEGER NOT NULL, note TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255), password_hash VARCHAR(255), phone VARCHAR(20), role VARCHAR(20) NOT NULL CHECK (role IN ('client','provider','admin')), specialties TEXT[], notify_categories TEXT[], bio TEXT, city VARCHAR(100), badge VARCHAR(50) DEFAULT 'none', is_active BOOLEAN DEFAULT TRUE, experience_years INTEGER, portfolio_images TEXT[], profile_image TEXT, report_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS requests (id SERIAL PRIMARY KEY, client_id INTEGER REFERENCES users(id), title VARCHAR(255) NOT NULL, description TEXT NOT NULL, category VARCHAR(100), city VARCHAR(100), address TEXT, budget_max DECIMAL(10,2), deadline DATE, image_url TEXT, images TEXT[], attachments JSONB, main_image_index INTEGER DEFAULT 0, project_number VARCHAR(50), status VARCHAR(20) DEFAULT 'pending_review', assigned_provider_id INTEGER REFERENCES users(id), assigned_at TIMESTAMP, completed_at TIMESTAMP, admin_notes TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS bids (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id), price INTEGER NOT NULL, days INTEGER NOT NULL, note TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id), receiver_id INTEGER REFERENCES users(id), content TEXT NOT NULL, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
     // حظر بين المستخدمين: blocker يحظر blocked فلا تصله رسائله
-    await pool.query(`CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(blocker_id, blocked_id))`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS user_blocks (id SERIAL PRIMARY KEY, blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(blocker_id, blocked_id))`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_user_blocks_pair ON user_blocks(blocker_id, blocked_id)`);
     // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
+    await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
-    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_hash TEXT`); } catch(e){}
+    await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS attachment_hash TEXT`); } catch(e){}
     // أساس التسعير: total=إجمالي · meter=للمتر · unit=للوحدة/القطعة
-    await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
+    await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
     // «شامل المواد؟» (yes/no — اختياري) · متى شاف صاحب المشروع العرض · آخر «أبي عروض أكثر»
-    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
-    try { await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
-    try { await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
+    try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
     for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
-      try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS ' + _c); } catch(e){}
+      try { await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS ' + _c); } catch(e){}
     }
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_name TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_pct NUMERIC`);
     // إشعار العميل تلقائياً بتقرير العروض عند بلوغ حدّ معيّن (يخزّن عدد العروض وقت الإشعار)
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS review_notes TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS offers_report_notified INTEGER DEFAULT 0`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS review_notes TEXT`);
     // ═══ سجل المناديب الخفيف (بلا حساب) — مندوب واحد ← عدة مشاريع، يتابع عبر رابط سحري ═══
-    await pool.query(`CREATE TABLE IF NOT EXISTS agents (
+    await _mig(`CREATE TABLE IF NOT EXISTS agents (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       phone TEXT,
@@ -2408,115 +2450,116 @@ async function setupDatabase() {
       default_pct NUMERIC DEFAULT 1,
       created_at TIMESTAMP DEFAULT NOW()
     )`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_id INTEGER`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_id INTEGER`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_phone TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS agent_paid_at TIMESTAMP`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_requests_agent ON requests(agent_id)`);
     // المزوّد: خدمة كل المدن + وقت آخر إيميل مطابقة (للإيميل المُجمّع)
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS serves_all_cities BOOLEAN DEFAULT FALSE`);
     // «أخرى»: النص اللي كتبه العميل ينحفظ منفصل — التصنيف يبقى من قائمتنا
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS category_other TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS category_other TEXT`);
     // تخصصات إضافية (حتى 2) — توسّع وصول المشروع للمزوّدين؛ الرئيسي يبقى category
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
-    try { await pool.query(`UPDATE requests SET category_other=LEFT(category,120), category='أخرى' WHERE category IS NOT NULL AND category<>'' AND category<>'direct' AND category<>'صيانة مصاعد' AND category<>'أبواب' AND category<>'جبس وطباشير' AND NOT (category = ANY($1::text[]))`, [CATEGORIES]); } catch(_e){ console.error('cat_other migrate:', _e.message); }
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
+    // تحويل التخصصات القديمة لـ«أخرى» مرة وحدة بس (كان يتكرر كل تشغيل — تغيير اسم تخصص كان يضيّع مشاريعه)
+    if ((await getSetting('mig_cat_other_done','')) !== '1') try { await _mig(`UPDATE requests SET category_other=LEFT(category,120), category='أخرى' WHERE category IS NOT NULL AND category<>'' AND category<>'direct' AND category<>'صيانة مصاعد' AND category<>'أبواب' AND category<>'جبس وطباشير' AND NOT (category = ANY($1::text[]))`, [CATEGORIES]); await setSetting('mig_cat_other_done','1'); } catch(_e){ console.error('cat_other migrate:', _e.message); }
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
     // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
     try {
-      await pool.query("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(specialties)");
-      await pool.query("UPDATE users SET specialties=array_replace(specialties,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(specialties)");
-      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(notify_categories)");
-      await pool.query("UPDATE users SET notify_categories=array_replace(notify_categories,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(notify_categories)");
-      await pool.query("UPDATE requests SET category='أبواب وبوابات أوتوماتيكية' WHERE category='أبواب'");
+      await _mig("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(specialties)");
+      await _mig("UPDATE users SET specialties=array_replace(specialties,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(specialties)");
+      await _mig("UPDATE users SET notify_categories=array_replace(notify_categories,'أبواب','أبواب وبوابات أوتوماتيكية') WHERE 'أبواب'=ANY(notify_categories)");
+      await _mig("UPDATE users SET notify_categories=array_replace(notify_categories,'جبس وطباشير','جبس') WHERE 'جبس وطباشير'=ANY(notify_categories)");
+      await _mig("UPDATE requests SET category='أبواب وبوابات أوتوماتيكية' WHERE category='أبواب'");
       // «صيانة مصاعد» صار «تركيب وصيانة مصاعد»
       for (const col of ['specialties','notify_categories','categories']) {
-        try { await pool.query(`UPDATE users SET ${col}=array_replace(${col},'صيانة مصاعد','تركيب وصيانة مصاعد') WHERE 'صيانة مصاعد'=ANY(${col})`); } catch(_e){}
+        try { await _mig(`UPDATE users SET ${col}=array_replace(${col},'صيانة مصاعد','تركيب وصيانة مصاعد') WHERE 'صيانة مصاعد'=ANY(${col})`); } catch(_e){}
       }
-      await pool.query("UPDATE requests SET category='تركيب وصيانة مصاعد' WHERE category='صيانة مصاعد'");
-      await pool.query("UPDATE requests SET category='جبس' WHERE category='جبس وطباشير'");
+      await _mig("UPDATE requests SET category='تركيب وصيانة مصاعد' WHERE category='صيانة مصاعد'");
+      await _mig("UPDATE requests SET category='جبس' WHERE category='جبس وطباشير'");
     } catch(e) { console.error('category migration:', e.message); }
     // إعادة تعيين كلمة المرور: رمز مؤقّت + تاريخ انتهائه
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP`);
     // رابط الدخول السحري القصير: رمز مخزّن + انتهاؤه (للعميل المنشور بالوكالة وغيره)
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_at TIMESTAMP`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_at TIMESTAMP`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_at TIMESTAMP`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_stage VARCHAR(20)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_stage VARCHAR(20)`);
     // متابعة العملاء: عدد التذكيرات + تأجيل + سجل كل تذكير ونتيجته
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_count INTEGER DEFAULT 0`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_note TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_snooze_until TIMESTAMP`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS followup_log (id SERIAL PRIMARY KEY, request_id INTEGER, stage VARCHAR(20), admin_id INTEGER, outcome VARCHAR(30), created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_followup_log_req ON followup_log(request_id, created_at)`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason VARCHAR(60)`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason_note TEXT`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
-    await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS waveform TEXT`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
-    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_req ON messages(request_id, created_at)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS reminder_count INTEGER DEFAULT 0`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_note TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS followup_snooze_until TIMESTAMP`);
+    await _mig(`CREATE TABLE IF NOT EXISTS followup_log (id SERIAL PRIMARY KEY, request_id INTEGER, stage VARCHAR(20), admin_id INTEGER, outcome VARCHAR(30), created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_followup_log_req ON followup_log(request_id, created_at)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason VARCHAR(60)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_reason_note TEXT`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lng DOUBLE PRECISION`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS waveform TEXT`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER`);
+    await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_messages_req ON messages(request_id, created_at)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id), reviewer_id INTEGER REFERENCES users(id), reviewed_id INTEGER REFERENCES users(id), rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT, type VARCHAR(30), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, reviewer_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255), body TEXT, type VARCHAR(50), ref_id INTEGER, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, admin_id INTEGER, admin_name VARCHAR(120), action VARCHAR(60), target_type VARCHAR(40), target_id INTEGER, details TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS offer_flags (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, provider_city TEXT, request_city TEXT, reason TEXT DEFAULT 'out_of_scope', auto_notified BOOLEAN DEFAULT FALSE, resolved BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_offer_flags_prov ON offer_flags(provider_id)`);
     // بلاغات العملاء على العروض + المراجعة قبل النشر
     try {
-      await pool.query(`CREATE TABLE IF NOT EXISTS bid_reports (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, client_id INTEGER, request_id INTEGER, reason VARCHAR(20) NOT NULL, status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(bid_id, client_id))`);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
-      await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
-      await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS held_until TIMESTAMP`);
-      await pool.query(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_reason TEXT`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review BOOLEAN DEFAULT FALSE`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_warned_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
+      await _mig(`CREATE TABLE IF NOT EXISTS bid_reports (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, client_id INTEGER, request_id INTEGER, reason VARCHAR(20) NOT NULL, status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(bid_id, client_id))`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS held_until TIMESTAMP`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_reason TEXT`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_at TIMESTAMP`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_warned_at TIMESTAMP`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
       // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
-      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
-      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
-      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_started_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_reminded BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_started_at TIMESTAMP`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_reminded BOOLEAN DEFAULT FALSE`);
     } catch(e) { console.error('bid_reports migrate:', e.message); }
-    await pool.query(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
-    try { await pool.query('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); } catch(e){}
-    await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
-    await pool.query(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS saved_requests (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, request_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
+    try { await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); } catch(e){}
+    await _mig(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
+    await _mig(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
+    await _mig(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, reporter_id INTEGER REFERENCES users(id), reported_id INTEGER REFERENCES users(id), request_id INTEGER REFERENCES requests(id), type VARCHAR(50) NOT NULL, reason VARCHAR(255) NOT NULL, details TEXT, status VARCHAR(20) DEFAULT 'pending', admin_note TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, provider_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS saved_requests (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, request_id))`);
     // ترقية الجدول القديم (فبراير): كان يستخدم provider_id بدل user_id — CREATE IF NOT EXISTS ما يعدّله، فنضيف العمود وننقل البيانات
-    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS user_id INTEGER'); } catch(e){ console.error('saved_requests user_id:', e.message); }
-    try { await pool.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='saved_requests' AND column_name='provider_id') THEN UPDATE saved_requests SET user_id=provider_id WHERE user_id IS NULL; ALTER TABLE saved_requests ALTER COLUMN provider_id DROP NOT NULL; END IF; END $$`); } catch(e){ console.error('saved_requests migrate:', e.message); }
-    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()'); } catch(e){}
-    try { await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_saved_requests_user ON saved_requests(user_id, request_id)'); } catch(e){ console.error('saved_requests idx:', e.message); }
-    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_saved BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
-    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
-    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS confirm_requested_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE requests ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
+    try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS user_id INTEGER'); } catch(e){ console.error('saved_requests user_id:', e.message); }
+    try { await _mig(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='saved_requests' AND column_name='provider_id') THEN UPDATE saved_requests SET user_id=provider_id WHERE user_id IS NULL; ALTER TABLE saved_requests ALTER COLUMN provider_id DROP NOT NULL; END IF; END $$`); } catch(e){ console.error('saved_requests migrate:', e.message); }
+    try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()'); } catch(e){}
+    try { await _mig('CREATE UNIQUE INDEX IF NOT EXISTS uq_saved_requests_user ON saved_requests(user_id, request_id)'); } catch(e){ console.error('saved_requests idx:', e.message); }
+    try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_saved BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
+    await _mig(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
+    try { await _mig('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
+    try { await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS confirm_requested_at TIMESTAMP'); } catch(e){}
+    try { await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS auto_completed BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(40)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0'); } catch(e){}
 
     // ═══ محرّك الاستقطاب: جدول المستهدفين ═══
     try {
-      await pool.query(`CREATE TABLE IF NOT EXISTS leads (
+      await _mig(`CREATE TABLE IF NOT EXISTS leads (
         id SERIAL PRIMARY KEY,
         lead_type VARCHAR(20) NOT NULL DEFAULT 'provider',
         name VARCHAR(200) NOT NULL,
@@ -2543,34 +2586,34 @@ async function setupDatabase() {
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )`);
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_edit_key VARCHAR(40)"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_logo TEXT"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
-      try { await pool.query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS brief_views INTEGER DEFAULT 0"); } catch(e){}
-      try { await pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_updated_at TIMESTAMP"); } catch(e){}
-      try { await pool.query("CREATE INDEX IF NOT EXISTS idx_leads_card_token ON leads(card_token)"); } catch(e){}
+      await _mig('CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)');
+      await _mig('CREATE INDEX IF NOT EXISTS idx_leads_phone_norm ON leads(phone_norm)');
+      await _mig('CREATE INDEX IF NOT EXISTS idx_leads_type_city ON leads(lead_type, city)');
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tag VARCHAR(20)"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_user_id INTEGER"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS maybe_at TIMESTAMP"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_token VARCHAR(24) UNIQUE"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_edit_key VARCHAR(40)"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_bio TEXT"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_logo TEXT"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_links JSONB"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_published BOOLEAN DEFAULT true"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_views INTEGER DEFAULT 0"); } catch(e){}
+      try { await _mig("ALTER TABLE requests ADD COLUMN IF NOT EXISTS brief_views INTEGER DEFAULT 0"); } catch(e){}
+      try { await _mig("ALTER TABLE leads ADD COLUMN IF NOT EXISTS card_updated_at TIMESTAMP"); } catch(e){}
+      try { await _mig("CREATE INDEX IF NOT EXISTS idx_leads_card_token ON leads(card_token)"); } catch(e){}
     } catch(e){ console.error('leads table:', e.message); }
-    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
-    try { await pool.query('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level INTEGER DEFAULT 0'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_role VARCHAR(40)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_provide BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
-    try { await pool.query("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
-    try { await pool.query("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
+    try { await _mig('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig('ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id INTEGER'); } catch(e){}
+    try { await _mig('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS provider_reply TEXT'); } catch(e){}
+    try { await _mig('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reply_at TIMESTAMP'); } catch(e){}
+    try { await _mig('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_level INTEGER DEFAULT 0'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_role VARCHAR(40)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_provide BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
+    try { await _mig("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
+    try { await _mig("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
     // توحيد التخصصات الإنجليزية القديمة إلى العربية (مرة واحدة، آمن عبر array_replace)
     try {
       const _specMap = {
@@ -2593,21 +2636,21 @@ async function setupDatabase() {
         'Waterproofing':'عوازل مائية','Heavy equipment':'معدات ثقيلة','General maintenance':'صيانة عامة'
       };
       for (const en of Object.keys(_specMap)) {
-        await pool.query("UPDATE users SET specialties = array_replace(specialties, $1, $2) WHERE $1 = ANY(specialties)", [en, _specMap[en]]);
+        await _mig("UPDATE users SET specialties = array_replace(specialties, $1, $2) WHERE $1 = ANY(specialties)", [en, _specMap[en]]);
       }
     } catch(e){ console.error('spec migration:', e.message); }
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB'); } catch(e){}
     try {
       // توافق رجعي: أي أدمن حالي بدون دور => أدمن كامل بصلاحيات كاملة
-      await pool.query(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
+      await _mig(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
       // المالك المحمي — أعلى رتبة لا تُمَس
-      await pool.query(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
+      await _mig(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
     } catch(e){ console.error('seed owner:', e.message); }
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
-    try { await pool.query(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
+    try { await _mig(`CREATE TABLE IF NOT EXISTS request_timeline (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, event VARCHAR(100) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`); } catch(e){}
     // دفتر السعي: يتتبّع عمولة كل مشروع مقبول (تراكم → صرف بإثبات → اعتماد الأدمن)
-    try { await pool.query(`CREATE TABLE IF NOT EXISTS saai_ledger (
+    try { await _mig(`CREATE TABLE IF NOT EXISTS saai_ledger (
       id SERIAL PRIMARY KEY,
       request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE,
       provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -2623,32 +2666,32 @@ async function setupDatabase() {
       UNIQUE(request_id, provider_id)
     )`); } catch(e){}
     // تنظيف سجلات سعي فارغة نتجت عن خلل قديم في قبول العرض (بدون مشروع/مزوّد)
-    try { await pool.query('DELETE FROM saai_ledger WHERE request_id IS NULL OR provider_id IS NULL'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS tiktok VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
-    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'new'"); } catch(e){}
-    try { await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_locked BOOLEAN DEFAULT FALSE"); } catch(e){}
+    try { await _mig('DELETE FROM saai_ledger WHERE request_id IS NULL OR provider_id IS NULL'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(255)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS location_url VARCHAR(500)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS snapchat VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS tiktok VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube VARCHAR(255)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS business_name VARCHAR(255)'); } catch(e){}
+    try { await _mig("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'new'"); } catch(e){}
+    try { await _mig("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_locked BOOLEAN DEFAULT FALSE"); } catch(e){}
     // حشو/تحديث مستوى كل المزودين تلقائياً من عدد الصفقات المكتملة (مرة عند الإقلاع)
-    try { await pool.query(`UPDATE users SET tier = CASE
+    try { await _mig(`UPDATE users SET tier = CASE
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 25 THEN 'expert'
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 10 THEN 'distinguished'
         WHEN (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') >= 3 THEN 'active'
         ELSE 'new' END
       WHERE role='provider' AND COALESCE(tier_locked,FALSE)=FALSE`); } catch(e){ console.error('tier backfill:', e.message); }
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
-    try { await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE'); } catch(e){}
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
-    try { await pool.query(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_whatsapp VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_snap VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE'); } catch(e){}
+    try { await _mig(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
+    try { await _mig(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
     // ═══ فهارس الأداء — تمنع مسح الجداول كاملة مع نمو البيانات ═══
     const _idx = [
       'CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id)',
@@ -2668,9 +2711,13 @@ async function setupDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_users_city ON users(city)',
       'CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)',
       'CREATE INDEX IF NOT EXISTS idx_questions_request ON request_questions(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id)'
+      'CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_contact_unlocks_req ON contact_unlocks(request_id)',
+      "CREATE INDEX IF NOT EXISTS idx_bids_held ON bids(held_until) WHERE hold_state='held'",
+      'CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email))'
     ];
-    for (const q of _idx) { try { await pool.query(q); } catch(e) {} }
+    for (const q of _idx) { try { await _mig(q); } catch(e) {} }
     console.log('✅ Database setup complete');
   } catch(error) { console.error('Database setup error:', error); }
 }
@@ -2704,7 +2751,8 @@ app.get('/api/auth/verify-email', async (req, res) => {
   try {
     const p = jwt.verify(token, JWT_SECRET);
     if (p && p.purpose === 'verify_email' && p.id) {
-      const cur = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [p.id]);
+      const cur = await pool.query('SELECT COALESCE(email_verified,true) AS ev, LOWER(email) AS em FROM users WHERE id=$1', [p.id]);
+      if (cur.rows.length && p.em && cur.rows[0].em !== p.em) { cur.rows.length = 0; } // رابط لإيميل قديم تغيّر بعده
       if (cur.rows.length) {
         if (cur.rows[0].ev) already=true;
         else { try { await pool.query('UPDATE users SET email_verified=true WHERE id=$1', [p.id]); } catch(e){} }
@@ -2731,6 +2779,9 @@ app.post('/api/auth/resend-verification', auth, async (req, res) => {
 });
 app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
   try {
+    if (req.body.name != null) req.body.name = _cleanTxt(req.body.name, 80);
+    if (req.body.email != null) req.body.email = String(req.body.email).trim().toLowerCase(); // الإيميل يتخزّن بحروف صغيرة
+    if (req.body.business_name) req.body.business_name = _cleanTxt(req.body.business_name, 100);
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
@@ -2981,7 +3032,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     const userId = req.user.id; const role = req.user.role; const { confirmation } = req.body;
     if (confirmation !== 'حذف' && confirmation !== 'DELETE') return res.status(400).json({ message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد', code: 'CONFIRMATION_REQUIRED' });
     if (role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
-    if (role === 'provider') {
+    { // أي حساب (حتى لو دوره الحالي عميل) عنده مشروع قيد التنفيذ كمزوّد ما ينحذف
       const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]);
       if (active.rows[0].c > 0) return res.status(400).json({ message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أولاً.`, code: 'ACTIVE_PROJECTS' });
     }
@@ -2992,19 +3043,17 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      if (role === 'provider') await client.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
-      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]);
+      // الحذف حسب العلاقة مو حسب الدور — الحساب اللي عنده دورين (عميل ومزوّد) كان يفشل حذفه
+      const _own = `(SELECT id FROM requests WHERE client_id=$1)`;
+      await client.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
+      await client.query(`DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1 OR request_id IN ${_own}`, [userId]);
+      await client.query(`DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1 OR request_id IN ${_own}`, [userId]);
       await client.query('DELETE FROM notifications WHERE user_id=$1', [userId]);
       await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
-      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [userId]);
       await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]);
       await client.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]);
-      if (role === 'client') {
-        const projs = await client.query('SELECT id FROM requests WHERE client_id=$1', [userId]);
-        for (const p of projs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [p.id]);
-        await client.query('DELETE FROM requests WHERE client_id=$1', [userId]);
-      }
-      if (role === 'provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
+      await client.query('DELETE FROM requests WHERE client_id=$1', [userId]); // العروض والرسائل والأسئلة تنحذف معها تلقائياً
+      await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
       const del = await client.query('DELETE FROM users WHERE id=$1', [userId]);
       if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
       await client.query('COMMIT');
@@ -3050,7 +3099,7 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
     // نتائج التذكير: مين تحرّك (اختار مزوّد خلال 3 أيام من آخر تذكير)
     const moved = await run('moved', base + ` WHERE r.reminder_at IS NOT NULL AND r.reminder_at > NOW() - INTERVAL '14 days' AND r.assigned_at IS NOT NULL AND r.assigned_at >= r.reminder_at ORDER BY r.assigned_at DESC LIMIT 50`);
     const kq = async (sql) => { try { return (await pool.query(sql)).rows[0] || {}; } catch(e){ console.error('[followups kpi]', e.message); return {}; } };
-    const k1 = await kq(`SELECT COUNT(*)::int AS n FROM followup_log WHERE created_at::date = (NOW() AT TIME ZONE 'Asia/Riyadh')::date`);
+    const k1 = await kq(`SELECT COUNT(*)::int AS n FROM followup_log WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date`);
     const k2 = await kq(`SELECT COUNT(DISTINCT l.request_id)::int AS reminded,
         COUNT(DISTINCT l.request_id) FILTER (WHERE r.assigned_at IS NOT NULL AND r.assigned_at >= l.created_at AND r.assigned_at <= l.created_at + INTERVAL '3 days')::int AS moved
       FROM followup_log l JOIN requests r ON r.id=l.request_id WHERE l.created_at > NOW() - INTERVAL '30 days'`);
@@ -3159,7 +3208,8 @@ app.put('/api/profile', auth, async (req, res) => {
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
+        if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
+        if (key==='business_name' && val) val=_cleanTxt(val,100);
         if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
         if (val==='') val=null;
         sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
@@ -3194,7 +3244,8 @@ app.put('/api/client/profile', auth, async (req, res) => {
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
+        if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
+        if (key==='business_name' && val) val=_cleanTxt(val,100);
         if (key==='email') val=String(val||'').trim().toLowerCase();
         if (val==='') val=null;
         sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
@@ -3202,7 +3253,9 @@ app.put('/api/client/profile', auth, async (req, res) => {
     }
     if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,profile_image FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
     params.push(req.user.id);
+    const _oldEm = (await pool.query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0]?.email;
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,profile_image`, params);
+    if (r.rows[0]) _afterEmailChange(req.user.id, _oldEm, r.rows[0].email);
     res.json(r.rows[0]);
   } catch(e) { console.error('client/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3252,7 +3305,8 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         let val = req.body[key];
-        if (key==='name') { if (val&&String(val).trim()) { sets.push(`${allowed[key]}=$${idx}`); params.push(String(val).trim()); idx++; } continue; }
+        if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
+        if (key==='business_name' && val) val=_cleanTxt(val,100);
         if (key==='email') val=String(val||'').trim().toLowerCase();
         if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
         if (val==='') val=null;
@@ -3261,7 +3315,9 @@ app.put('/api/provider/profile', auth, async (req, res) => {
     }
     if (!sets.length) { const cur=await pool.query(`SELECT id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,instagram,twitter,snapchat,tiktok,youtube FROM users WHERE id=$1`,[req.user.id]); return res.json(cur.rows[0]||{}); }
     params.push(req.user.id);
+    const _oldEm = (await pool.query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0]?.email;
     const r=await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,phone,city,bio,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,website,location_url,instagram,twitter,snapchat,tiktok,youtube`, params);
+    if (r.rows[0]) _afterEmailChange(req.user.id, _oldEm, r.rows[0].email);
     res.json(r.rows[0]);
   } catch(e) { console.error('provider/profile PUT:', e); if(e.code==='23505') return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' }); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3573,6 +3629,8 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
+    if (req.body.title != null) req.body.title = _cleanTxt(req.body.title, 150);
+    if (req.body.description != null) req.body.description = String(req.body.description).slice(0, 5000);
     // الإيميل غير المفعّل ما يمنع النشر (كل مشروع يمر على المراجعة أصلاً) — بس ما ينشر تلقائياً لين يتفعّل أو تعتمده الإدارة
     const { title, description, city, address, budget_max, deadline, attachments } = req.body;
     const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
@@ -3649,6 +3707,8 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
 
 app.put('/api/requests/:id', auth, async (req, res) => {
   try {
+    if (req.body.title != null) req.body.title = _cleanTxt(req.body.title, 150);
+    if (req.body.description != null) req.body.description = String(req.body.description).slice(0, 5000);
     const id = parseInt(req.params.id);
     const own = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -4323,7 +4383,7 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
        LIMIT 1000`);
     const sum = (await pool.query(
       `SELECT COALESCE(SUM(saai_amount) FILTER (WHERE status='approved'),0)::float AS collected,
-              COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= date_trunc('month', timezone('Asia/Riyadh', now()))),0)::float AS collected_month,
+              COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')),0)::float AS collected_month,
               COUNT(*) FILTER (WHERE status='submitted')::int AS awaiting_n,
               COALESCE(SUM(saai_amount) FILTER (WHERE status='submitted'),0)::float AS awaiting,
               COUNT(*) FILTER (WHERE status='pending' AND created_at >= NOW()-INTERVAL '10 days')::int AS due_n,
@@ -4336,8 +4396,8 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
        FROM saai_ledger WHERE request_id IS NOT NULL`)).rows[0] || {};
     const monthly = (await pool.query(
       `SELECT to_char(m,'YYYY-MM') AS month,
-              COALESCE((SELECT SUM(saai_amount) FROM saai_ledger WHERE status='approved' AND date_trunc('month', approved_at)=m),0)::float AS collected
-       FROM generate_series(date_trunc('month', NOW()) - INTERVAL '5 months', date_trunc('month', NOW()), INTERVAL '1 month') m ORDER BY m`)).rows;
+              COALESCE((SELECT SUM(saai_amount) FROM saai_ledger WHERE status='approved' AND date_trunc('month', approved_at::timestamptz AT TIME ZONE 'Asia/Riyadh')=m),0)::float AS collected
+       FROM generate_series(date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') - INTERVAL '5 months', date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh'), INTERVAL '1 month') m ORDER BY m`)).rows;
     sum.due_total = (sum.due||0) + (sum.overdue||0);
     res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly });
   } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {}, monthly: [] }); }
@@ -5312,7 +5372,7 @@ app.post('/api/admin/leads/manual', requirePermission('outreach.manage'), async 
 // عدّاد الرسائل المُرسلة اليوم (حماية من الحظر)
 app.get('/api/admin/leads/sent-today', requirePermission('outreach.manage'), async (req, res) => {
   try{
-    var r = await pool.query(`SELECT COUNT(*)::int n FROM leads WHERE contacted_at >= CURRENT_DATE`);
+    var r = await pool.query(`SELECT COUNT(*)::int n FROM leads WHERE contacted_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')`);
     res.json({ count: r.rows[0].n, limit: 50 });
   }catch(e){ res.json({ count:0, limit:50 }); }
 });
@@ -5384,7 +5444,7 @@ app.get('/api/admin/leads/stats', requirePermission('outreach.manage'), async (r
     let dem = { req_today:0, req_week:0, req_month:0, req_open:0 };
     try{
       const rq = await pool.query(`SELECT
-        COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)::int req_today,
+        COUNT(*) FILTER (WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int req_today,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int req_week,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int req_month,
         COUNT(*) FILTER (WHERE status NOT IN ('completed','cancelled','rejected'))::int req_open
@@ -5539,10 +5599,10 @@ app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (r
   try {
     const q = (sql) => pool.query(sql).then(r => parseInt((r.rows[0]&&(r.rows[0].count||r.rows[0].c))||0)).catch(()=>0);
     const [projToday, bidsToday, provToday, cliToday, pendReview, openProj, inProg, fuFew, fuDelayed, fuReview] = await Promise.all([
-      q("SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE AND (category IS DISTINCT FROM 'direct')"),
-      q("SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE"),
-      q("SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE"),
-      q("SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE"),
+      q("SELECT COUNT(*) FROM requests WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date AND (category IS DISTINCT FROM 'direct')"),
+      q("SELECT COUNT(*) FROM bids WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date"),
+      q("SELECT COUNT(*) FROM users WHERE role='provider' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date"),
+      q("SELECT COUNT(*) FROM users WHERE role='client' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date"),
       q("SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')"),
       q("SELECT COUNT(*) FROM requests WHERE status='open'"),
       q("SELECT COUNT(*) FROM requests WHERE status='in_progress' AND (category IS DISTINCT FROM 'direct')"),
@@ -5553,17 +5613,17 @@ app.get('/api/admin/daily-report', requirePermission('dashboard.view'), async (r
     // قوائم التفاصيل (مين/وش بالضبط) — تظهر عند النقر
     const rows = (sql) => pool.query(sql).then(r => r.rows).catch(()=>[]);
     const [projList, provList, cliList, bidList, chatList] = await Promise.all([
-      rows("SELECT r.id, r.title, COALESCE(u.name,'عميل') AS owner, r.created_at FROM requests r JOIN users u ON u.id=r.client_id WHERE r.created_at::date=CURRENT_DATE AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC LIMIT 20"),
-      rows("SELECT id, name, phone, created_at FROM users WHERE role='provider' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
-      rows("SELECT id, name, phone, created_at FROM users WHERE role='client' AND created_at::date=CURRENT_DATE ORDER BY created_at DESC LIMIT 20"),
-      rows("SELECT b.id, COALESCE(u.name,'مزود') AS provider, r.title AS project, b.created_at FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id WHERE b.created_at::date=CURRENT_DATE ORDER BY b.created_at DESC LIMIT 20"),
+      rows("SELECT r.id, r.title, COALESCE(u.name,'عميل') AS owner, r.created_at FROM requests r JOIN users u ON u.id=r.client_id WHERE ((r.created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC LIMIT 20"),
+      rows("SELECT id, name, phone, created_at FROM users WHERE role='provider' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY created_at DESC LIMIT 20"),
+      rows("SELECT id, name, phone, created_at FROM users WHERE role='client' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY created_at DESC LIMIT 20"),
+      rows("SELECT b.id, COALESCE(u.name,'مزود') AS provider, r.title AS project, b.created_at FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id WHERE ((b.created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY b.created_at DESC LIMIT 20"),
       // محادثات اليوم: مين راسل مين + المشروع — بدون محتوى الرسالة (احترام الخصوصية)
       rows(`SELECT MIN(m.id) AS id, COALESCE(s.name,'—') AS sender, COALESCE(rc.name,'—') AS receiver, COALESCE(r.title,'—') AS project, MAX(m.created_at) AS created_at, COUNT(*)::int AS msgs
             FROM messages m
             LEFT JOIN users s ON s.id=m.sender_id
             LEFT JOIN users rc ON rc.id=m.receiver_id
             LEFT JOIN requests r ON r.id=m.request_id
-            WHERE m.created_at::date=CURRENT_DATE
+            WHERE ((m.created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date
             GROUP BY LEAST(m.sender_id,m.receiver_id), GREATEST(m.sender_id,m.receiver_id), m.request_id, s.name, rc.name, r.title
             ORDER BY MAX(m.created_at) DESC LIMIT 20`)
     ]);
@@ -5591,25 +5651,25 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
       q(`SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review')`),
       q(`SELECT COUNT(*) FROM requests WHERE status='in_progress' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM requests WHERE status='completed'`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE role='client' AND created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at::date = CURRENT_DATE AND (category IS DISTINCT FROM 'direct')`),
-      q(`SELECT COUNT(*) FROM bids WHERE created_at::date = CURRENT_DATE`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' AND (category IS DISTINCT FROM 'direct')`),
-      q(`SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND (category IS DISTINCT FROM 'direct')`),
+      q(`SELECT COUNT(*) FROM users WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date`),
+      q(`SELECT COUNT(*) FROM users WHERE role='provider' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date`),
+      q(`SELECT COUNT(*) FROM users WHERE role='client' AND ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date`),
+      q(`SELECT COUNT(*) FROM requests WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date AND (category IS DISTINCT FROM 'direct')`),
+      q(`SELECT COUNT(*) FROM bids WHERE ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date = (now() AT TIME ZONE 'Asia/Riyadh')::date`),
+      q(`SELECT COUNT(*) FROM users WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '7 days' AND (category IS DISTINCT FROM 'direct')`),
+      q(`SELECT COUNT(*) FROM users WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '30 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '30 days' AND (category IS DISTINCT FROM 'direct')`),
       q(`SELECT COUNT(*) FROM users WHERE badge='verified'`),
       q(`SELECT COUNT(DISTINCT provider_id) FROM bids`),
-      q(`SELECT COUNT(*) FROM bids WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`),
-      q(`SELECT COUNT(*) FROM requests WHERE status='completed' AND COALESCE(completed_at, created_at) >= CURRENT_DATE - INTERVAL '7 days'`)
+      q(`SELECT COUNT(*) FROM bids WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '7 days'`),
+      q(`SELECT COUNT(*) FROM requests WHERE status='completed' AND COALESCE(completed_at, created_at) >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '7 days'`)
     ]);
     // آخر 7 أيام (تسجيلات يومية)
     const daily = await pool.query(`
-      SELECT created_at::date as day, COUNT(*)::int as n
-      FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY created_at::date ORDER BY day`);
+      SELECT ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date as day, COUNT(*)::int as n
+      FROM users WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '6 days'
+      GROUP BY 1 ORDER BY day`);
     // ═══ سلاسل زمنية: شهري (12 شهر) + سنوي (5 سنوات) ═══
     let monthly={rows:[]}, yearly={rows:[]}, dailyReq={rows:[]};
     try {
@@ -5617,21 +5677,21 @@ app.get('/api/admin/stats', requirePermission('dashboard.view'), async (req, res
         SELECT to_char(date_trunc('month', created_at),'YYYY-MM') as period,
                COUNT(*)::int as users,
                COUNT(*) FILTER (WHERE role='provider')::int as providers
-        FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
+        FROM users WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '11 months'
         GROUP BY period ORDER BY period`);
     } catch(e){ console.error('monthly:', e.message); }
     try {
       yearly = await pool.query(`
         SELECT to_char(date_trunc('year', created_at),'YYYY') as period,
                COUNT(*)::int as users
-        FROM users WHERE created_at >= date_trunc('year', CURRENT_DATE) - INTERVAL '4 years'
+        FROM users WHERE created_at >= (date_trunc('year', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '4 years'
         GROUP BY period ORDER BY period`);
     } catch(e){ console.error('yearly:', e.message); }
     try {
       dailyReq = await pool.query(`
-        SELECT created_at::date as day, COUNT(*)::int as n
-        FROM requests WHERE created_at >= CURRENT_DATE - INTERVAL '6 days'
-        GROUP BY created_at::date ORDER BY day`);
+        SELECT ((created_at)::timestamptz AT TIME ZONE 'Asia/Riyadh')::date as day, COUNT(*)::int as n
+        FROM requests WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - INTERVAL '6 days'
+        GROUP BY 1 ORDER BY day`);
     } catch(e){ console.error('dailyReq:', e.message); }
     // أكثر التخصصات (محمي — لو فشل لا يكسر باقي الإحصائيات)
     let topSpecs={rows:[]}, topCities={rows:[]};
@@ -6038,16 +6098,16 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
     try {
       await client.query('BEGIN');
       await client.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
-      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [uid]);
+      await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1 OR request_id IN (SELECT id FROM requests WHERE client_id=$1)', [uid]);
       await client.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
       await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [uid]);
-      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1', [uid]);
+      await client.query('DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1 OR request_id IN (SELECT id FROM requests WHERE client_id=$1)', [uid]);
       await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [uid]);
       await client.query('DELETE FROM push_tokens WHERE user_id=$1', [uid]);
       const urs = await client.query('SELECT id FROM requests WHERE client_id=$1', [uid]);
       for (const r of urs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
       await client.query('DELETE FROM requests WHERE client_id=$1', [uid]);
-      if (chk.rows[0].role==='provider') await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
+      await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
       const del = await client.query('DELETE FROM users WHERE id=$1', [uid]);
       if (del.rowCount===0) throw new Error('فشل الحذف');
       await client.query('COMMIT');
@@ -6194,7 +6254,7 @@ async function _openInvite(id, why){
   if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
   return true;
 }
-setInterval(async () => {
+setInterval(() => _jobLock('invite', async () => {
   try {
     // تذكير المزوّد بعد 5 ساعات لو ما قدّم
     const rem = await pool.query(`SELECT r.id, r.title, r.invited_provider_id FROM requests r WHERE r.invite_state='exclusive' AND COALESCE(r.invite_reminded,FALSE)=FALSE AND r.status='open'
@@ -6208,7 +6268,7 @@ setInterval(async () => {
       AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_OPEN_HOURS)]);
     for (const x of due.rows) await _openInvite(x.id, 'timeout');
   } catch(e) { console.error('invite timer:', e.message); }
-}, 10*60*1000);
+}), 10*60*1000);
 // العميل يفتح مشروعه الموجّه لباقي المزوّدين الآن
 app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
   try {
@@ -6483,7 +6543,7 @@ app.post('/api/admin/held-bids/:id/reject', requirePermission('requests.review')
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // الاعتماد التلقائي بعد انتهاء المهلة + رفع المراجعة تلقائياً بعد 30 يوم بلا بلاغات
-setInterval(async () => {
+setInterval(() => _jobLock('heldbids', async () => {
   try {
     const due = await pool.query(`SELECT id FROM bids WHERE hold_state='held' AND held_until <= NOW() LIMIT 100`);
     let n = 0; for (const b of due.rows) { if (await _releaseBid(b.id, 'auto')) n++; }
@@ -6491,7 +6551,7 @@ setInterval(async () => {
     await pool.query(`UPDATE users u SET bid_review=FALSE WHERE COALESCE(u.bid_review,FALSE)=TRUE AND u.bid_review_at < NOW() - INTERVAL '30 days'
       AND NOT EXISTS (SELECT 1 FROM bid_reports x WHERE x.provider_id=u.id AND x.status<>'dismissed' AND x.created_at > NOW() - INTERVAL '30 days')`);
   } catch(e) { console.error('held auto-release:', e.message); }
-}, 10*60*1000);
+}), 10*60*1000);
 
 app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req, res) => {
   try {
@@ -7205,9 +7265,11 @@ app.post('/api/admin/admins', requirePermission('admins.manage'), async (req, re
     if (mode === 'promote') {
       let uid = parseInt(user_id) || 0;
       if (!uid && email) { const f = await pool.query('SELECT id FROM users WHERE email=$1', [email]); if (f.rows.length) uid = f.rows[0].id; }
-      const ex = await pool.query('SELECT id, email, role FROM users WHERE id=$1', [uid]);
+      const ex = await pool.query('SELECT id, email, role, admin_level FROM users WHERE id=$1', [uid]);
       if (!ex.rows.length) return res.status(404).json({ message: 'المستخدم غير موجود (تأكد من الإيميل)' });
       if (ex.rows[0].email === OWNER_EMAIL) return res.status(403).json({ message: 'هذا المالك بالفعل' });
+      // مشرف موجود: ما تقدر تغيّر رتبته إلا لو رتبتك أعلى منه (كانت «الترقية» تسمح بتنزيل مشرف أعلى)
+      if (ex.rows[0].role === 'admin' && !canActOn(req.adminUser, ex.rows[0].admin_level || 0)) return res.status(403).json({ message: 'ما تقدر تعدّل مشرف رتبته مثل رتبتك أو أعلى' });
       await pool.query(`UPDATE users SET role='admin', admin_role=$1, admin_level=$2, permissions=$3::jsonb WHERE id=$4`, [role, lvl, JSON.stringify(perms), uid]);
       await logAdmin(req, 'add_admin', 'user', uid, 'ترقية مستخدم إلى ' + (ROLE_LABELS[role]||role));
       return res.json({ ok: true, id: uid });
@@ -7543,11 +7605,11 @@ app.get('/api/admin/analytics-series', requirePermission('analytics.view'), asyn
       const r = await pool.query(
         `SELECT to_char(d::date,'YYYY-MM-DD') AS day,
                 COALESCE(cnt,0)::int AS c
-         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
+         FROM generate_series((now() AT TIME ZONE 'Asia/Riyadh')::date - ($1::int - 1), (now() AT TIME ZONE 'Asia/Riyadh')::date, '1 day') d
          LEFT JOIN (
-           SELECT created_at::date AS cd, COUNT(*) cnt FROM ${table}
-           WHERE created_at > NOW()::date - $1::int ${where||''}
-           GROUP BY created_at::date
+           SELECT (created_at::timestamptz AT TIME ZONE 'Asia/Riyadh')::date AS cd, COUNT(*) cnt FROM ${table}
+           WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - ($1::int * INTERVAL '1 day') ${where||''}
+           GROUP BY 1
          ) t ON t.cd = d::date
          ORDER BY d`, [days]);
       return r.rows;
@@ -7559,8 +7621,8 @@ app.get('/api/admin/analytics-series', requirePermission('analytics.view'), asyn
       series('bids', ''),
       pool.query(
         `SELECT to_char(d::date,'YYYY-MM-DD') AS day, COALESCE(cnt,0)::int AS c
-         FROM generate_series(NOW()::date - ($1::int - 1), NOW()::date, '1 day') d
-         LEFT JOIN (SELECT completed_at::date cd, COUNT(*) cnt FROM requests WHERE completed_at > NOW()::date - $1::int GROUP BY completed_at::date) t ON t.cd=d::date
+         FROM generate_series((now() AT TIME ZONE 'Asia/Riyadh')::date - ($1::int - 1), (now() AT TIME ZONE 'Asia/Riyadh')::date, '1 day') d
+         LEFT JOIN (SELECT (completed_at::timestamptz AT TIME ZONE 'Asia/Riyadh')::date cd, COUNT(*) cnt FROM requests WHERE completed_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') - ($1::int * INTERVAL '1 day') GROUP BY 1) t ON t.cd=d::date
          ORDER BY d`, [days]).then(r=>r.rows)
     ]);
     res.json({ days, labels: projects.map(x=>x.day),
@@ -7617,8 +7679,8 @@ app.put('/api/admin/settings', requirePermission('settings.manage'), async (req,
 async function _adminOverview(){
     const one = (sql, p) => pool.query(sql, p||[]).then(r => r.rows[0] || {}).catch(e => { console.error('overview:', e.message); return {}; });
     const many = (sql, p) => pool.query(sql, p||[]).then(r => r.rows).catch(e => { console.error('overview:', e.message); return []; });
-    const D = (c) => `(timezone('Asia/Riyadh', timezone('UTC', ${c})))::date`;
-    const T = `(timezone('Asia/Riyadh', now()))::date`;
+    const D = (c) => `((${c})::timestamptz AT TIME ZONE 'Asia/Riyadh')::date`; // يحسب يوم الرياض صح مهما كانت منطقة قاعدة البيانات
+    const T = `(now() AT TIME ZONE 'Asia/Riyadh')::date`;
     const ND = `(r.category IS DISTINCT FROM 'direct')`;
     const [needs, kpi, series, funnel, saai, feed, recent, cover] = await Promise.all([
       one(`SELECT
@@ -7661,7 +7723,7 @@ async function _adminOverview(){
           COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM saai_ledger s WHERE s.request_id=p.id AND s.status IN ('submitted','approved')))::int AS saai_paid
         FROM p`),
       one(`SELECT
-        COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= date_trunc('month', timezone('Asia/Riyadh', now()))),0)::float AS collected_month,
+        COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')),0)::float AS collected_month,
         COALESCE(SUM(saai_amount) FILTER (WHERE status='pending'),0)::float AS due,
         COUNT(*) FILTER (WHERE status='pending')::int AS due_n
         FROM saai_ledger WHERE request_id IS NOT NULL`),
@@ -7700,8 +7762,7 @@ async function sendMorningDigest(force){
     const day = nowR.toISOString().slice(0,10);
     if (!force) {
       if (nowR.getUTCHours() < 8) return { skipped: 'early' };
-      if ((await getSetting('digest_sent_day','')) === day) return { skipped: 'sent' };
-      await setSetting('digest_sent_day', day);
+      if (!(await _claimDay('digest_sent_day', day))) return { skipped: 'sent' };
     }
     const o = await _adminOverview();
     const n = o.needs||{}, k = o.kpi||{}, f = o.funnel||{}, sa = o.saai||{};
@@ -7731,7 +7792,7 @@ async function sendMorningDigest(force){
     return { ok: true, sent: to.length };
   } catch(e){ console.error('morningDigest:', e.message); return { ok: false }; }
 }
-setInterval(() => { sendMorningDigest(false); }, 15*60*1000);
+setInterval(() => _jobLock('digest', () => sendMorningDigest(false)), 15*60*1000);
 app.post('/api/admin/digest/test', requirePermission('settings.manage'), async (req, res) => {
   res.json(await sendMorningDigest(true));
 });
@@ -7755,15 +7816,15 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
 
     const rev = await one(`SELECT COALESCE(SUM(price),0)::float as total, COALESCE(AVG(price),0)::float as avg, COUNT(*)::int as deals FROM bids WHERE status='accepted'`, { total: 0, avg: 0, deals: 0 });
     const thisMonth = await one(`SELECT
-        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct'))::int as requests,
-        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE))::int as bids,
-        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)) as revenue`, {});
+        (SELECT COUNT(*) FROM users WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int as users,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') AND (category IS DISTINCT FROM 'direct'))::int as requests,
+        (SELECT COUNT(*) FROM bids WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int as bids,
+        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')) as revenue`, {});
     const lastMonth = await one(`SELECT
-        (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as users,
-        (SELECT COUNT(*) FROM requests WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE) AND (category IS DISTINCT FROM 'direct'))::int as requests,
-        (SELECT COUNT(*) FROM bids WHERE created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE))::int as bids,
-        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '1 month' AND created_at < date_trunc('month',CURRENT_DATE)) as revenue`, {});
+        (SELECT COUNT(*) FROM users WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')-INTERVAL '1 month' AND created_at < (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int as users,
+        (SELECT COUNT(*) FROM requests WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')-INTERVAL '1 month' AND created_at < (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') AND (category IS DISTINCT FROM 'direct'))::int as requests,
+        (SELECT COUNT(*) FROM bids WHERE created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')-INTERVAL '1 month' AND created_at < (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'))::int as bids,
+        (SELECT COALESCE(SUM(price),0)::float FROM bids WHERE status='accepted' AND created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')-INTERVAL '1 month' AND created_at < (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')) as revenue`, {});
 
     const topEarners = await many(`SELECT u.id, u.name, COALESCE(SUM(b.price),0)::float as earnings, COUNT(b.id)::int as deals
       FROM users u JOIN bids b ON b.provider_id=u.id AND b.status='accepted'
@@ -7774,7 +7835,7 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
     const byCity = await many(`SELECT COALESCE(NULLIF(city,''),'غير محدد') as city, COUNT(*)::int as n FROM requests WHERE (category IS DISTINCT FROM 'direct') GROUP BY city ORDER BY n DESC LIMIT 8`);
     const byCat = await many(`SELECT COALESCE(NULLIF(category,''),'غير محدد') as category, COUNT(*)::int as n FROM requests WHERE (category IS DISTINCT FROM 'direct') GROUP BY category ORDER BY n DESC LIMIT 8`);
     const revMonthly = await many(`SELECT to_char(date_trunc('month',created_at),'YYYY-MM') as period, COALESCE(SUM(price),0)::float as revenue, COUNT(*)::int as deals
-      FROM bids WHERE status='accepted' AND created_at >= date_trunc('month',CURRENT_DATE)-INTERVAL '5 months'
+      FROM bids WHERE status='accepted' AND created_at >= (date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')-INTERVAL '5 months'
       GROUP BY period ORDER BY period`);
     const tierRows = await many(`SELECT COALESCE(NULLIF(tier,''),'new') as tier, COUNT(*)::int as n FROM users WHERE role='provider' GROUP BY tier`);
     const tierMap = { new:0, active:0, distinguished:0, expert:0 };
@@ -7979,7 +8040,7 @@ async function uploadToCloud(base64Data, folder='manaqasa', filename='') {
   if (typeof base64Data !== 'string') return null;
   if (!base64Data.startsWith('data:')) return _safeUrl(base64Data);
   // تحقّق مركزي من النوع والحجم قبل أي رفع (يمنع الالتفاف عبر المسار البديل)
-  const m = base64Data.match(/^data:([^;,]*);base64,(.+)$/);
+  const m = base64Data.match(/^data:([^;,]*)(?:;[^;,]*)*?;base64,(.+)$/);
   if (!m) return null;
   const ctype = String(m[1]).toLowerCase().trim();
   // مسموح: صورة/PDF عبر MIME، أو ملف فني/مكتبي عبر امتداد الاسم (تحميل فقط)
