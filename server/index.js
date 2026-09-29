@@ -161,7 +161,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js']);
+const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -450,7 +450,29 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
 app.get('/m/:token',               (req, res) => res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token)));
-app.get('/app.html',               (req, res) => res.sendFile(__dirname + '/app.html'));
+// ═══ صفحة تحميل التطبيق: manaqasa.com/app (رابط مختصر للرسائل والإيميلات) ═══
+const APP_STORE_URL = 'https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.manaqasa.app';
+function _appOs(req){ const u = String(req.headers['user-agent']||''); return /iPhone|iPad|iPod/i.test(u) ? 'ios' : (/Android/i.test(u) ? 'android' : 'desktop'); }
+function _appSrc(v){ return String(v||'direct').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,30) || 'direct'; }
+function _appHit(kind, src, os){
+  pool.query(`INSERT INTO app_page_hits (day, kind, src, os, n) VALUES ((now() AT TIME ZONE 'Asia/Riyadh')::date, $1, $2, $3, 1)
+    ON CONFLICT (day, kind, src, os) DO UPDATE SET n = app_page_hits.n + 1`, [kind, src, os]).catch(()=>{});
+}
+app.get(['/app', '/app.html', '/download', '/app/p'], (req, res) => {
+  // /app/p = رابط المزوّدين المختصر (رسائل الاستقطاب والمشاريع) — الصفحة تقدّم قسم المزوّدين
+  const src = req.path === '/app/p' ? _appSrc(req.query.src || 'outreach') : _appSrc(req.query.src);
+  if (!/bot|crawl|spider|preview|facebookexternalhit|whatsapp|telegram/i.test(String(req.headers['user-agent']||''))) _appHit('view', src, _appOs(req));
+  res.sendFile(__dirname + '/app.html');
+});
+// زر المتجر: نسجّل الضغطة ثم نحوّل للمتجر المناسب (Google Play يستقبل مصدر الزيارة)
+app.get('/app/go', (req, res) => {
+  const src = _appSrc(req.query.src);
+  let os = String(req.query.os||''); if (os !== 'ios' && os !== 'android') os = _appOs(req);
+  _appHit('click', src, os === 'desktop' ? 'desktop' : os);
+  if (os === 'ios') return res.redirect(302, APP_STORE_URL);
+  res.redirect(302, PLAY_STORE_URL + '&hl=ar&referrer=' + encodeURIComponent('utm_source=' + src + '&utm_medium=app_page'));
+});
 app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/project.html'));
 app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat.html'));
 app.get('/chat.html',              (req, res) => res.sendFile(__dirname + '/chat.html'));
@@ -1375,6 +1397,11 @@ function emailTpl(title, body, btnText, btnUrl) {
           <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
             <a href="https://manaqasa.com" style="color:#1d4ed8;text-decoration:none;font-weight:700">manaqasa.com</a>
           </div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px auto 0"><tr><td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 16px;text-align:center">
+            <div style="font-size:12.5px;font-weight:800;color:#1e3a8a;margin-bottom:8px">📱 لا تفوّت شي — حمّل تطبيق مناقصة وتوصلك الإشعارات على جوالك</div>
+            <a href="${SITE_URL}/app/go?os=ios&amp;src=email" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:8px 14px;border-radius:9px;margin:2px">App Store</a>
+            <a href="${SITE_URL}/app/go?os=android&amp;src=email" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:8px 14px;border-radius:9px;margin:2px">Google Play</a>
+          </td></tr></table>
           <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
         </td></tr>
       </table>
@@ -2538,6 +2565,7 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS bid_accept_asks (id SERIAL PRIMARY KEY, bid_id INTEGER UNIQUE NOT NULL, request_id INTEGER NOT NULL, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', sends INTEGER NOT NULL DEFAULT 1, last_sent_at TIMESTAMPTZ DEFAULT NOW(), responded_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig('CREATE INDEX IF NOT EXISTS idx_bid_asks_client ON bid_accept_asks(client_id, status)');
     await _mig('ALTER TABLE bids ADD COLUMN IF NOT EXISTS ask_nudged BOOLEAN DEFAULT FALSE');
+    await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
     for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
@@ -3287,6 +3315,24 @@ app.post('/api/me/enable-provider', auth, async (req, res) => {
     );
     res.json({ ok: true, message: 'تم تفعيل تقديم العروض' });
   } catch(e){ console.error('enable-provider:', e.message); res.status(500).json({ message: 'تعذّر التفعيل' }); }
+});
+// هل المستخدم سجّل دخول في التطبيق؟ (عنده رمز إشعارات من التطبيق)
+app.get('/api/me/app-status', auth, async (req, res) => {
+  try { const r = await pool.query(`SELECT 1 FROM push_tokens WHERE user_id=$1 AND platform IN ('ios','android','expo') LIMIT 1`, [req.user.id]); res.json({ has_app: r.rows.length > 0 }); }
+  catch(e){ res.json({ has_app: false }); }
+});
+app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const own = (await pool.query(`SELECT
+        COUNT(*) FILTER (WHERE u.role='client')::int AS clients,
+        COUNT(*) FILTER (WHERE u.role='client' AND EXISTS (SELECT 1 FROM push_tokens t WHERE t.user_id=u.id AND t.platform IN ('ios','android','expo')))::int AS clients_app,
+        COUNT(*) FILTER (WHERE u.role='provider' OR COALESCE(u.can_provide,FALSE))::int AS providers,
+        COUNT(*) FILTER (WHERE (u.role='provider' OR COALESCE(u.can_provide,FALSE)) AND EXISTS (SELECT 1 FROM push_tokens t WHERE t.user_id=u.id AND t.platform IN ('ios','android','expo')))::int AS providers_app
+      FROM users u WHERE u.role<>'admin' AND COALESCE(u.is_active,TRUE)`)).rows[0];
+    const hits = (await pool.query(`SELECT kind, src, SUM(n)::int AS n FROM app_page_hits WHERE day >= (now() AT TIME ZONE 'Asia/Riyadh')::date - 29 GROUP BY kind, src ORDER BY n DESC`)).rows;
+    const byOs = (await pool.query(`SELECT os, SUM(n) FILTER (WHERE kind='view')::int AS views, SUM(n) FILTER (WHERE kind='click')::int AS clicks FROM app_page_hits WHERE day >= (now() AT TIME ZONE 'Asia/Riyadh')::date - 29 GROUP BY os`)).rows;
+    res.json({ own, hits, byOs });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/me/mode', auth, async (req, res) => {
   try {
@@ -8309,6 +8355,7 @@ app.get('/sitemap.xml', async (req, res) => {
     const now=new Date().toISOString().split('T')[0];
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
     xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+    xml+=`\n  <url><loc>${SITE_URL}/app</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`;
     Object.keys(INTENT_PAGES).forEach(sl=>{ xml+=`\n  <url><loc>${SITE_URL}/${encodeURIComponent(sl)}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`; });
     SEO_CATS.forEach(cat=>SEO_CITIES.forEach(city=>{ xml+=`\n  <url><loc>${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`; }));
     // صفحات المشاريع المنجزة

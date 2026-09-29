@@ -1606,6 +1606,7 @@ function acceptAgree(){
         ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
         showToast('تم نشر المشروع','success');
+        try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('posted'); },900); }catch(e){}
         if(window.track)track('Lead');
         _clearReqDraft();
         loadHome();loadReqs();show('requests',null,'requests');

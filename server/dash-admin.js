@@ -318,7 +318,7 @@ function loadDashboard(){
   }
   fetch(API+'/api/admin/overview',hdr()).then(function(r){return r.json();}).then(function(o){
     if(!o||!o.kpi){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); return; }
-    window._overview=o; _renderDash(o);
+    window._overview=o; _renderDash(o); try{_loadAppStats();}catch(e){}
   }).catch(function(){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); });
   fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.json();}).then(function(reps){
     var pending=Array.isArray(reps)?reps.filter(function(r){return r.status==='pending'||!r.status;}).length:0;
@@ -3986,7 +3986,13 @@ function _oRenderCard(){
     +'</div>'
     +'<div style="text-align:center;margin-top:10px;font-size:11.5px;color:var(--muted)">'+(_OQi+1)+' من '+_OQ.length+'</div></div>';
 }
+// رسالة الاستقطاب + رابط صفحة التطبيق المختصر (للمزوّدين): يوصلهم كل مشروع جديد لحظة نشره
 function _oMsg(l){
+  var m=_oMsgBase(l);
+  if(l&&l.lead_type!=='client') m+='\n\n📱 حمّل تطبيق مناقصة ويوصلك كل مشروع جديد بتخصصك لحظة نشره:\nmanaqasa.com/app/p';
+  return m;
+}
+function _oMsgBase(l){
   var nm=l.name||'';
   if(l.lead_type==='client'){
     return 'السلام عليكم '+nm+' 👋\n\nتحتاجون خدمات صيانة أو تنفيذ بشكل متكرّر؟\nفي منصة مناقصة تنشرون طلبكم مجاناً، وتوصلكم عروض أسعار من عدة مزودين معتمدين خلال ساعات — تقارنون وتختارون الأنسب.\n\nشوفوا كيف تخدمكم المنصة 👇\nhttps://www.manaqasa.com/b2b';
@@ -5291,4 +5297,22 @@ function _makeProvider(uid,btn){
     var u=(_allUsers||[]).find(function(z){return z.id===uid;}); if(u)u.can_provide=true;
     try{closeModal('userModal');}catch(e){} try{renderUsers();}catch(e){}
   }).catch(function(){toast('تعذّر الاتصال','error');if(btn){btn.disabled=false;btn.textContent='حوّله لمزوّد';}});
+}
+
+// ═══ بطاقة «التطبيق»: كم عندهم التطبيق + زيارات صفحة التحميل وضغطات المتاجر (30 يوم) ═══
+var _APP_SRC={direct:'مباشر/رابط مختصر',email:'الإيميلات',banner:'شريط اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب'};
+function _loadAppStats(){
+  var box=document.getElementById('dash-app'); if(!box)return;
+  fetch(API+'/api/admin/app-stats',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d||!d.own){box.style.display='none';return;}
+    var o=d.own, pc=function(a,b){return b?Math.round(a/b*100):0;};
+    var bar=function(lbl,a,b,c){var p=pc(a,b);return '<div style="flex:1;min-width:200px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:6px"><span>'+lbl+'</span><span style="color:'+c+'">'+p+'% <small style="color:var(--muted);font-weight:700">('+a+' من '+b+')</small></span></div><div style="height:9px;border-radius:9px;background:var(--bg)"><div style="height:100%;width:'+p+'%;border-radius:9px;background:'+c+'"></div></div></div>';};
+    var views=0,clicks=0,rows={};
+    (d.hits||[]).forEach(function(h){ if(h.kind==='view')views+=h.n; else clicks+=h.n; var k=h.src; rows[k]=rows[k]||{v:0,c:0}; rows[k][h.kind==='view'?'v':'c']+=h.n; });
+    var list=Object.keys(rows).sort(function(a,b){return (rows[b].c+rows[b].v)-(rows[a].c+rows[a].v);}).slice(0,6).map(function(k){return '<tr><td style="padding:6px 4px;font-weight:700">'+esc(_APP_SRC[k]||k)+'</td><td style="padding:6px 4px;text-align:center">'+rows[k].v+'</td><td style="padding:6px 4px;text-align:center;font-weight:800;color:#15803d">'+rows[k].c+'</td></tr>';}).join('');
+    box.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap"><h3 style="margin:0;font-size:16px">التطبيق</h3><span style="font-size:12px;color:var(--muted);font-weight:700">مين عنده التطبيق + صفحة التحميل (آخر 30 يوم)</span><a href="/app" target="_blank" rel="noopener" style="margin-right:auto;font-size:12.5px;font-weight:800">manaqasa.com/app ↗</a></div>'
+      +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px">'+bar('العملاء',o.clients_app,o.clients,'#1d4ed8')+bar('المزوّدين',o.providers_app,o.providers,'#c2410c')+'</div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:10px"><div style="flex:1;background:var(--bg);border-radius:12px;padding:10px;text-align:center"><b style="font-size:20px;display:block">'+views+'</b><small style="color:var(--muted);font-weight:700">زيارة لصفحة التطبيق</small></div><div style="flex:1;background:var(--bg);border-radius:12px;padding:10px;text-align:center"><b style="font-size:20px;display:block;color:#15803d">'+clicks+'</b><small style="color:var(--muted);font-weight:700">ضغطة على المتجر</small></div></div>'
+      +(list?'<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--muted);font-size:11.5px"><th style="text-align:right;padding:4px">المصدر</th><th style="padding:4px">زيارات</th><th style="padding:4px">ضغطات المتجر</th></tr></thead><tbody>'+list+'</tbody></table>':'<div style="font-size:12.5px;color:var(--muted)">ما فيه زيارات للحين — أرسل الرابط manaqasa.com/app للمزوّدين.</div>');
+  }).catch(function(){ box.style.display='none'; });
 }

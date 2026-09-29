@@ -35,7 +35,7 @@ if(!token||!user.id){location.href='/auth.html';}
       .then(function(res){
         if(res.ok && res.d && res.d.id){
           if(window.track) track('StartPost');
-          showToast('تم نشر طلبك بنجاح! 🎉','success');
+          showToast('تم نشر طلبك بنجاح! 🎉','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('posted'); },900); }catch(e){}
           // نظّف الرابط
           try{ history.replaceState(null,'','/dashboard-client.html'); }catch(e){}
           setTimeout(function(){ if(typeof loadHome==='function') loadHome(); },400);
@@ -1144,7 +1144,7 @@ function acceptAgree(){
         _reqFiles=[];renderFileList();
         ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
-        showToast('تم نشر الطلب','success');
+        showToast('تم نشر الطلب','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('posted'); },900); }catch(e){}
         if(window.track)track('Lead');
         _clearReqDraft();
         loadHome();loadReqs();show('requests',null,'requests');

@@ -31,6 +31,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,interactive-widget=resizes-content">
+<meta name="apple-itunes-app" content="app-id=6764307611">
 <title>مناقصة — لوحة العميل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -721,30 +722,7 @@ function _rbBecome(){
   try{ var p=window._rbProfile||{}; var b=document.getElementById('bpBio'); if(b&&!b.value&&p.bio)b.value=p.bio; var c=document.getElementById('bpCity'); if(c&&p.city){ setTimeout(function(){ for(var i=0;i<c.options.length;i++){ if(c.options[i].value===p.city){c.value=p.city;break;} } },300); } }catch(e){}
 }
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(_initSwitchDash,600); });
-</script><script>
-/* ═══ دعوة تحميل التطبيق (خفيفة، قابلة للإخفاء) ═══ */
-function dismissAppDl(){ try{ localStorage.setItem('appDlHide','-1'); }catch(e){} var c=document.getElementById('appDlCard'); if(c)c.remove(); }
-// شريط تحميل التطبيق: سطر واحد، في الرئيسية فقط، على الجوال فقط، وما يطلع داخل التطبيق نفسه — ولو انقفل ما يرجع
-function initAppDownload(){
-  try{ var t=localStorage.getItem('appDlHide'); if(t==='-1'||(t&&Date.now()<parseInt(t))) return; }catch(e){}
-  if(window.ReactNativeWebView||/ManaqasaApp|wv\)/i.test(navigator.userAgent||'')) return;
-  if(window.matchMedia&&window.matchMedia('(min-width: 900px)').matches) return;
-  if(document.getElementById('appDlCard')) return;
-  var ph=document.getElementById('page-home'); if(!ph) return;
-  var ios=/iPhone|iPad|iPod/i.test(navigator.userAgent||'');
-  var url=ios?'https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611':'https://play.google.com/store/apps/details?id=com.manaqasa.app&hl=ar';
-  var card=document.createElement('div'); card.id='appDlCard';
-  card.style.cssText='display:flex;align-items:center;gap:10px;background:var(--card,#fff);border:1px solid var(--border,#e1e9f6);border-radius:14px;padding:9px 12px;margin:0 0 12px';
-  card.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>'
-    +'<span style="flex:1;font-size:13px;font-weight:800;color:var(--text,#14223d);line-height:1.5">حمّل التطبيق وتوصلك '+(ph.closest&&document.getElementById('page-browse')?'المشاريع':'العروض')+' فوراً</span>'
-    +'<a href="'+url+'" target="_blank" rel="noopener" style="background:#1d4ed8;color:#fff;border-radius:999px;padding:7px 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;text-decoration:none;white-space:nowrap">تحميل</a>'
-    +'<button onclick="dismissAppDl()" aria-label="إغلاق" style="border:0;background:none;color:#94a3b8;padding:6px;cursor:pointer;display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
-  // قبل الرئيسية (عشان ما ينمسح لما تتحدّث)، ويختفي في باقي الصفحات
-  if(!document.getElementById('appDlCss')){ var st=document.createElement('style'); st.id='appDlCss'; st.textContent='#appDlCard:not(:has(+ #page-home.on)){display:none!important}'; document.head.appendChild(st); }
-  ph.parentNode.insertBefore(card, ph);
-}
-document.addEventListener('DOMContentLoaded',function(){ setTimeout(initAppDownload, 1200); });
-</script>
-<script src="/catpick.js?v=1" defer></script>
+</script><script src="/catpick.js?v=1" defer></script>
+<script src="/dash-app.js" defer></script>
 </body>
 </html>

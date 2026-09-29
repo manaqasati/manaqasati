@@ -927,7 +927,7 @@ async function _reallySubmitBid(){
   var btn=document.getElementById('bidConfirmBtn');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
     var r=await _api('/api/requests/'+d.projId+'/bids',{method:'POST',body:JSON.stringify({price:d.price,days:d.days,note:d.note,price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),attachment:(window._bidAttach||null)})});
-    if(r&&(r.id||r.request_id)){window._bidAttach=null;window._pendingBid=null;_closeBidConfirm();closeModal();showToast('تم إرسال عرضك بنجاح','success');loadBrowse();}
+    if(r&&(r.id||r.request_id)){window._bidAttach=null;window._pendingBid=null;_closeBidConfirm();closeModal();showToast('تم إرسال عرضك بنجاح','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('bid'); },900); }catch(e){}loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
   }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
 }
