@@ -698,6 +698,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
             <label>المدينة <span style="color:var(--red)">*</span></label>
             <select id="n-city" onchange="this.style.borderColor=this.value?'var(--green)':''"></select>
             <div id="city-err" style="display:none;color:var(--red);font-size:11px;font-weight:700;margin-top:4px"> المدينة إلزامية</div>
+            <label style="margin-top:12px;display:block">الحي <small style="color:var(--muted);font-weight:500">(اختياري)</small></label>
+            <input type="text" id="n-district" placeholder="مثال: حي النرجس" maxlength="80" autocomplete="off">
             <label style="margin-top:14px;display:block">الموقع على الخريطة (اختياري)</label>
             <div style="display:flex;gap:8px;align-items:stretch">
               <input type="text" id="n-maploc" placeholder="ألصق رابط خرائط جوجل أو الإحداثيات" oninput="_parseMapLoc()" style="flex:1">
@@ -2008,7 +2010,7 @@ function acceptAgree(){
       if(r&&r.id){
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
-        ['n-cat','n-title','n-desc','n-budget','n-deadline'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
+        ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
         showToast('تم نشر الطلب','success');
         if(window.track)track('Lead');
