@@ -2565,16 +2565,31 @@ function openChat(reqId,providerId,providerName,reqTitle){
   loadChatMsgs();
   _checkBlockState(providerId);
   if(_chatPoll)clearInterval(_chatPoll);
-  _chatPoll=setInterval(function(){if(_chatReqId){if(!_pollPaused)loadChatMsgs();}else clearInterval(_chatPoll);},6000);
+  _chatPoll=setInterval(function(){if(_chatReqId){if(_pollPaused)return;if(window._wsLive&&(++_pollTick%5))return;loadChatMsgs();}else clearInterval(_chatPoll);},6000);
 }
 function loadChatMsgs(){
   if(!_chatReqId)return;
   var url='/api/messages/'+_chatReqId+(_chatWith?'?with='+_chatWith:'');
   jFetch(url).then(function(msgs){
     if(!Array.isArray(msgs))return;
+    // لا نعيد الرسم إلا لو فيه تغيير فعلي (جديد/مقروء/محذوف)
+    var sig=msgs.map(function(m){return m.id+':'+(m.is_read?1:0)+':'+(m.deleted_at?1:0);}).join(',')+'@'+_chatReqId+'-'+_chatWith;
+    if(sig===_chatSig && document.querySelector('#chatMsgs .msg-bubble'))return;
+    _chatSig=sig;
     _chatMsgs=msgs;renderChatMsgs();
   }).catch(function(){});
 }
+var _chatSig='',_wsChatT=null,_pollTick=0;
+// هل محادثة هذا الشخص مفتوحة قدام المستخدم؟ (عشان ما نطلع تنبيه لرسالة يشوفها أصلاً)
+window._chatViewing=function(uid){ return !!(_chatReqId && !document.hidden && document.getElementById('chatMsgs') && (_chatWith?String(_chatWith)===String(uid):false)); };
+// تحديث لحظي: رسالة جديدة / قراءة / حذف من الطرف الثاني → نحمّل فوراً
+window.addEventListener('ws_message',function(e){
+  var m=e.detail||{}; if(!_chatReqId||!document.getElementById('chatMsgs'))return;
+  var other=m.type==='new_message'?m.sender_id:m.type==='messages_read'?m.reader_id:m.type==='message_deleted'?m.sender_id:m.type==='message_sent'?(m.message&&m.message.receiver_id):null;
+  if(other==null)return;
+  var hit=_chatWith?String(other)===String(_chatWith):String(m.request_id)===String(_chatReqId);
+  if(hit){ clearTimeout(_wsChatT); _wsChatT=setTimeout(loadChatMsgs,250); }
+});
 // فاصل التاريخ (اليوم / أمس / التاريخ)
 function _dayLabel(d){
   var dt=new Date(d), now=new Date();
@@ -2588,6 +2603,9 @@ function renderChatMsgs(){
   var el=document.getElementById('chatMsgs');if(!el)return;
   if(!_chatMsgs.length){el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12.5px;padding:30px 20px;line-height:1.9;margin:auto"><div style="font-size:28px;margin-bottom:8px">💬</div><div style="font-weight:700;color:var(--text);margin-bottom:4px">ابدأ المحادثة</div><div>اسأل عن التفاصيل، الأسعار، أو موعد التنفيذ</div></div>';return;}
   var lastDay='';
+  // ننزل لتحت بس لو كان المستخدم قريب من الأسفل، أو آخر رسالة منه
+  var _lm=_chatMsgs[_chatMsgs.length-1]||{};
+  var _stick=!el.querySelector('.msg-bubble')||(el.scrollHeight-el.scrollTop-el.clientHeight)<120||String(_lm.sender_id)===String((typeof user!=='undefined'&&user&&user.id)||'');
   el.innerHTML=_chatMsgs.map(function(m){
     var out='';
     // فاصل التاريخ
@@ -2628,7 +2646,7 @@ function renderChatMsgs(){
     +'</div>';
     return out;
   }).join('');
-  el.scrollTop=el.scrollHeight;
+  if(_stick)el.scrollTop=el.scrollHeight;
   _bindLongPress();
 }
 // ── الضغط المطوّل على الرسالة يفتح قائمة إجراءات (بدل أزرار مكشوفة) ──
@@ -2908,6 +2926,7 @@ function gotoMessagesAndOpen(reqId,provId,provName){
       if(typeof loadNotifCount==='function') loadNotifCount();
       if(typeof renderQuestionNudgeRefresh==='function') renderQuestionNudgeRefresh();
     } else if(msg.type==='new_message'){
+      if(typeof window._chatViewing==='function' && window._chatViewing(msg.sender_id)) return;
       if(typeof loadNotifCount==='function') loadNotifCount();
       var sn=msg.sender_name?('رسالة من '+msg.sender_name):'رسالة جديدة';
       if(typeof showToast==='function') showToast('💬 '+sn);
@@ -2929,17 +2948,39 @@ function gotoMessagesAndOpen(reqId,provId,provName){
 
   function _wsUrl(){ return (location.protocol==='https:'?'wss://':'ws://')+location.host; }
   function _wsTok(){ try{ return localStorage.getItem('token')||''; }catch(e){ return ''; } }
+  var _last=0,_hb=null,_stop=false;
   function _wsConnect(){
-    if(!_wsTok()) return;
+    if(_stop||!_wsTok()) return;
+    if(_ws && (_ws.readyState===0||_ws.readyState===1)) return;
     try{ _ws=new WebSocket(_wsUrl()); }catch(e){ _wsRetry(); return; }
-    _ws.onopen=function(){ _alive=true; _wsDot('on'); try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
-    _ws.onmessage=function(ev){ try{ _wsHandle(JSON.parse(ev.data)); }catch(e){} };
-    _ws.onclose=function(){ _alive=false; _wsDot('off'); _wsRetry(); };
+    _ws.onopen=function(){ _last=Date.now(); try{ _ws.send(JSON.stringify({type:'auth',token:_wsTok()})); }catch(e){} };
+    _ws.onmessage=function(ev){
+      _last=Date.now();
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(!m||m.type==='pong') return;
+      if(m.type==='connected'){ _alive=true; window._wsLive=true; _RC=3000; _wsDot('on'); return; }
+      try{ _wsHandle(m); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent('ws_message',{detail:m})); }catch(e){}
+    };
+    _ws.onclose=function(ev){
+      _alive=false; window._wsLive=false; _wsDot('off');
+      var c=ev&&ev.code;
+      if(c===4003) { _stop=true; return; }          // حساب موقوف
+      if(c===4008) { return; }                      // اتصالات كثيرة: نرجع لما تنفتح الصفحة
+      _wsRetry(c===4001?60000:0);
+    };
     _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
   }
-  function _wsRetry(){ clearTimeout(_t); _t=setTimeout(_wsConnect,_RC); }
-  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _wsConnect(); });
-  window.addEventListener('online',function(){ if(!_alive) _wsConnect(); });
+  // إعادة اتصال متدرّجة (3ث ← 30ث) مع عشوائية بسيطة عشان ما يرجع الكل بنفس اللحظة بعد النشر
+  function _wsRetry(min){ clearTimeout(_t); var d=Math.max(min||0,_RC)+Math.random()*1500; _RC=Math.min(_RC*2,30000); _t=setTimeout(_wsConnect,d); }
+  // نبض من جهة المتصفح: لو ما وصل شي 70 ثانية نعتبره مقطوع ونعيد
+  _hb=setInterval(function(){
+    if(!_ws||_ws.readyState!==1) return;
+    if(Date.now()-_last>70000){ try{ _ws.close(); }catch(e){} return; }
+    try{ _ws.send('{"type":"ping"}'); }catch(e){}
+  },25000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive){ _RC=3000; _wsConnect(); } });
+  window.addEventListener('online',function(){ if(!_alive){ _RC=3000; _wsConnect(); } });
   setTimeout(_wsConnect, 800);
 })();
 
