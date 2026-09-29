@@ -1545,11 +1545,11 @@ load();
     if(!_pdTok()) return;
     try{ _ws=new WebSocket(_u()); }catch(e){ _r(); return; }
     _ws.onopen=function(){ _alive=true; try{ _ws.send(JSON.stringify({type:'auth',token:_pdTok()})); }catch(e){} };
-    _ws.onmessage=function(ev){ try{ _pdHandle(JSON.parse(ev.data)); }catch(e){} };
-    _ws.onclose=function(){ _alive=false; _r(); };
+    _ws.onmessage=function(ev){ try{ var m=JSON.parse(ev.data); if(m&&m.type==='connected'){ _RC=4000; return; } _pdHandle(m); }catch(e){} };
+    _ws.onclose=function(ev){ _alive=false; var c=ev&&ev.code; if(c===4003||c===4008)return; _r(c===4001?60000:0); };
     _ws.onerror=function(){ try{ _ws.close(); }catch(e){} };
   }
-  function _r(){ clearTimeout(_t); _t=setTimeout(_c,_RC); }
+  function _r(min){ clearTimeout(_t); var d=Math.max(min||0,_RC)+Math.random()*1500; _RC=Math.min(_RC*2,30000); _t=setTimeout(_c,d); }
   document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && !_alive) _c(); });
   setTimeout(_c, 1000);
 })();
