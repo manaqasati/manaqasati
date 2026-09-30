@@ -933,7 +933,7 @@ function loadBids(id){
 
       // الأفضل = أعلى تقييم ثم الأقل سعراً، والأرخص = أقل سعر
       var sorted=bids.slice().sort(function(a,b){var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;if(rb!==ra)return rb-ra;return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);});
-      var bestId=(sorted.filter(function(x){return !x.low_rank;})[0]||{}).id;
+      var _bc=sorted.filter(function(x){return !x.low_rank&&x.status!=='rejected';}), _mp=Math.min.apply(null,_bc.map(function(x){return x.prox==null?3:x.prox;}).concat([3])); var bestId=(_bc.filter(function(x){return (x.prox==null?3:x.prox)===_mp;})[0]||{}).id;
       var minPrice=Math.min.apply(null,bids.map(function(b){return parseFloat(b.price)||Infinity;}));
       var cheapId=null;bids.forEach(function(b){if(cheapId===null&&(parseFloat(b.price)||Infinity)===minPrice)cheapId=b.id;});
 
@@ -980,7 +980,7 @@ function loadBids(id){
             +'<div class="bid-id">'
               +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+_onlineDot(b.provider_last_seen)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
-              +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
+              +(b.provider_city?'<div class="bid-city"'+(b.prox===0?' style="color:#15803d;font-weight:800"':(b.prox===1?' style="color:#0f766e;font-weight:800"':''))+'><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+(b.prox===0?'من مدينتك · ':(b.prox===1?'من منطقتك · ':''))+esc(b.provider_city)+(b.prox===2&&b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':'')+'</div>':'')
             +'</div>'
             +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س'+(_unitLabel(b.price_unit)?' '+_unitLabel(b.price_unit):'')+'</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
           +'</div>'
