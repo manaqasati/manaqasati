@@ -1140,10 +1140,12 @@ function _bidStandingBanner(){
 }
 function _renderBids(list){
   if(!list.length)return _empty('لا يوجد عروض','ابدأ بتصفح المشاريع');
+  list=list.slice().sort(function(a,b){return (b.chance_open?1:0)-(a.chance_open?1:0);});
   return list.map(function(b){
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
     var stCls=isAcc?'wst-acc':isRej?'wst-rej':'wst-pend';
-    var stLbl=isAcc?'مقبول':isRej?'مرفوض':'قيد المراجعة';
+    var stLbl=isAcc?'مقبول':isRej?(b.chance_open?'فرصة ثانية':'غير مختار'):(b.improved_at?'✨ عرض محسّن':'قيد المراجعة');
+    if(isRej&&b.chance_open)stCls='wst-acc';
     var isHeld=b.hold_state==='held',isHRej=b.hold_state==='rejected';
     var stSty=isHeld?' style="background:#fef3c7;color:#92400e"':(isHRej?' style="background:#fef2f2;color:#b91c1c"':'');
     if(isHeld)stLbl='تحت المراجعة';else if(isHRej)stLbl='لم يُعتمد';
@@ -1151,6 +1153,7 @@ function _renderBids(list){
     if(_wn&&!isAcc){stLbl='⚠️ يحتاج تعديل';stSty=' style="background:#fee2e2;color:#b91c1c"';}
     var h='<div class="wz-item">';
     h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'"'+stSty+'>'+stLbl+'</span></div>';
+    if(typeof _rjProvHtml==='function')h+=_rjProvHtml(b);
     if(isHeld)h+='<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">⏳ عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة</div>';
     if(isHRej)h+='<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+_esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع ويرجع للمراجعة.</div>';
     h+='<div class="wz-summary">';

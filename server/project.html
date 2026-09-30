@@ -715,7 +715,8 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   var h='<div class="'+cls+'">';
   var tags='';
   if(isAcc)tags+='<span class="pj-pill" style="background:#16a34a;color:#fff">✓ العرض المقبول</span>';
-  if(isRej)tags+='<span class="pj-pill" style="background:#fef2f2;color:#b91c1c">مرفوض</span>';
+  if(isRej)tags+='<span class="pj-pill" style="background:#fef2f2;color:#b91c1c">'+(isMine?'ما انختار':'ما اخترته')+'</span>';
+  if(b.improved_at&&!isRej&&!isAcc&&(isOwner||isMine))tags='<span class="pj-pill" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #fcd34d">✨ عرض محسّن</span>'+tags;
   if(isMine)tags+='<span class="pj-pill" style="background:#1e3a8a;color:#fff">عرضك</span>';
   if(showBest)tags+='<span class="pj-pill" style="background:#1d4ed8;color:#fff">⭐ الأنسب لك</span>';
   if(isMine&&b.hold_state==='held')tags+='<span class="pj-pill" style="background:#fef3c7;color:#92400e">⏳ تحت المراجعة</span>';
@@ -733,6 +734,8 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   h+='<div style="text-align:left;flex-shrink:0">'+(showPrice?'<div class="pj-pr'+(isCheap&&isOwner?' g':'')+'">'+fmtN(price)+(unit!=='total'?' <small>'+_unitLabel(unit)+'</small>':'')+'</div><div class="pj-pu">ر.س'+(unit==='total'?' إجمالي':'')+'</div>':'<span class="pj-pill" style="background:#f1f5f9;color:#64748b">🔒 السعر خاص</span>')+'</div>';
   if(canRep)h+='<button class="pj-dots" onclick="_repOpen('+b.id+')" aria-label="بلاغ أو إخفاء العرض" title="بلاغ أو إخفاء">⋯</button>';
   h+='</div>';
+  if(isOwner&&b.improved_at&&!isRej&&typeof _rjImpHtml==='function')h+=_rjImpHtml(b);
+  if(isMine&&typeof _rjProvHtml==='function'&&(isRej||b.improved_at))h+=_rjProvHtml(b).replace('_rjImproveOpen(','_pjImprove(');
   if(isMine&&b.hold_state==='held')h+='<div class="pj-info">عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة (خلال ساعات)</div>';
   if(isMine&&b.hold_state==='rejected')h+='<div class="pj-warn">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع وأرسله من جديد.</div>';
   var mt=_pjMatTxt(b.materials);
@@ -1470,13 +1473,11 @@ async function acceptBid(bidId){
   }catch(e){alert('تعذر الاتصال');}
 }
 async function rejectBid(bidId){
-  if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
-  try{
-    var r=await fetch(API+'/api/bids/'+bidId+'/reject',{method:'PUT',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}});
-    if(r.ok){alert('تم الرفض');load();}
-    else{var d=await r.json();alert(d.message||'تعذر الرفض');}
-  }catch(e){alert('تعذر الاتصال');}
+  var b=(_bids||[]).filter(function(x){return String(x.id)===String(bidId);})[0]||{};
+  if(typeof _rjOpen!=='function'){ if(!confirm('هل تؤكد رفض هذا العرض؟'))return; try{var r=await fetch(API+'/api/bids/'+bidId+'/reject',{method:'PUT',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}}); if(r.ok)load();}catch(e){} return; }
+  _rjOpen({bidId:bidId,name:b.provider_business_name||b.provider_name,price:b.price,unit:b.price_unit||'total',improved:!!b.improved_at,onDone:function(){load();}});
 }
+function _pjImprove(bidId){ var t=(_req&&_req.title)||''; _rjImproveOpen(bidId,(_bids||[]).map(function(x){var y=Object.assign({},x);y.request_title=t;y.note=y.note||y.proposal;return y;}),function(){load();}); }
 
 // ═══ تبديل تبويبات العروض / الأسئلة ═══
 function projTab(which){
@@ -1647,5 +1648,6 @@ function fmtIns(id,kind){
   try{el.dispatchEvent(new Event('input'));}catch(e){}
 }
 </script>
+<script src="/dash-rj.js" defer></script>
 </body>
 </html>

@@ -161,7 +161,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js']);
+const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -729,6 +729,14 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.seen_at ELSE NULL END as seen_at,
         CASE WHEN b.provider_id = $4::int OR $5::boolean THEN b.hold_state ELSE NULL END as hold_state,
         CASE WHEN b.provider_id = $4::int THEN b.hold_reason ELSE NULL END as hold_reason,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.improved_at ELSE NULL END as improved_at,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.improved_from_price ELSE NULL END as improved_from_price,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.improved_from_days ELSE NULL END as improved_from_days,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.improve_note ELSE NULL END as improve_note,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.reject_reason ELSE NULL END as reject_reason,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL) ELSE NULL END as chance_open,
+        CASE WHEN b.provider_id = $4::int THEN b.chance_until ELSE NULL END as chance_until,
+        CASE WHEN b.provider_id = $4::int THEN b.reject_budget ELSE NULL END as reject_budget,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
@@ -2673,6 +2681,10 @@ async function setupDatabase() {
       // متابعة التحذيرات: هل شافه المزوّد؟ هل عدّل؟ + مراقبة مزوّد معيّن
       await _mig(`CREATE TABLE IF NOT EXISTS bid_warnings (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, request_id INTEGER, kind VARCHAR(10) DEFAULT 'warn', reason TEXT, admin_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), seen_at TIMESTAMP, ack_at TIMESTAMP, edited_at TIMESTAMP)`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_prov ON bid_warnings(provider_id, created_at DESC)`);
+      // سبب عدم الاختيار + فرصة ثانية (سعر أفضل مرة وحدة)
+      for (const c of ['reject_reason VARCHAR(20)','reject_budget VARCHAR(30)','rejected_at TIMESTAMP','chance_until TIMESTAMP','improved_at TIMESTAMP','improved_from_price INTEGER','improved_from_days INTEGER','improve_note TEXT'])
+        await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS ${c}`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_bids_rejected_at ON bids(rejected_at) WHERE rejected_at IS NOT NULL`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -3648,7 +3660,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
@@ -4231,11 +4243,12 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
              THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
-        b.hold_state,
+        b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
+        (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL) AS chance_open,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$3::int) as is_hidden
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1 AND ($2::boolean OR COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
-      ORDER BY (b.status='accepted') DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
+      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
     `, [id, req.user.role === 'admin', req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -4575,7 +4588,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       }
       if (acceptedBid.status === 'rejected') { /* قبول عرض سبق رفضه مسموح — يرجع مقبول */ }
       await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
-      await client.query(`UPDATE bids SET status='rejected' WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
+      await client.query(`UPDATE bids SET status='rejected', chance_until=NULL WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
       await client.query('COMMIT'); _committed = true;
       client.release(); _released = true;
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
@@ -4668,18 +4681,114 @@ app.put('/api/admin/bids/:id/warn', requirePermission('bids.delete'), async (req
     res.json({ ok: true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+const CLI_REJ_REASONS = { price:'السعر أعلى من ميزانيته', duration:'مدة التنفيذ طويلة', unclear:'العرض ناقص أو غير واضح', specialty:'العرض ما يناسب تخصص المشروع', postponed:'أجّل المشروع', other:'سبب آخر' };
+const BID_CHANCE_REASONS = ['price','duration','unclear','other'];
+const BID_CHANCE_HOURS = 48;
+function _budgetTxt(b){ const m=/^(\d{1,9})-(\d{1,9})$/.exec(String(b||'')); if(!m) return ''; const f=n=>{n=+n; return n>=1000?(Math.round(n/100)/10).toLocaleString('en-US')+' ألف':n.toLocaleString('en-US');}; return +m[1]>0 ? f(m[1])+' – '+f(m[2])+' ر.س' : 'أقل من '+f(m[2])+' ر.س'; }
 app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
   try {
     const bidId = parseInt(req.params.id);
-    const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
+    const bid = await pool.query(`SELECT b.*, r.client_id, r.title, r.status AS req_status, r.assigned_provider_id FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
     if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
-    await pool.query(`UPDATE bids SET status='rejected' WHERE id=$1`, [bidId]);
-    const provInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [bid.rows[0].provider_id]);
-    await notify(bid.rows[0].provider_id, 'تم رفض عرضك', `تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, 'bid_rejected', bid.rows[0].request_id);
-    if (provInfo.rows.length && provInfo.rows[0].email) sendEmail(provInfo.rows[0].email, `📋 تم رفض عرضك على "${eEsc(bid.rows[0].title)}"`, emailTpl('تم رفض العرض', `<p>عزيزي <strong>${eEsc(provInfo.rows[0].name)}</strong>،</p><p>تم رفض عرضك على "${eEsc(bid.rows[0].title)}".</p>`, 'تصفح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+    const B = bid.rows[0];
+    if (B.client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
+    if (B.status === 'accepted') return res.status(400).json({ message: 'هذا العرض مقبول — ما يمكن رفضه' });
+    if (B.status === 'rejected') return res.json({ ok: true, already: true });
+    const reason = CLI_REJ_REASONS[req.body && req.body.reason] ? req.body.reason : null;
+    const budget = /^\d{1,9}-\d{1,9}$/.test(String((req.body && req.body.budget) || '')) ? String(req.body.budget) : null;
+    const wasImproved = !!B.improved_at;   // العرض المحسّن إذا انرفض = نهائي
+    const chance = !wasImproved && req.body && req.body.allow !== false && reason && BID_CHANCE_REASONS.includes(reason)
+      && B.req_status === 'open' && !B.assigned_provider_id;
+    await pool.query(`UPDATE bids SET status='rejected', reject_reason=$2, reject_budget=$3, rejected_at=NOW(), chance_until=CASE WHEN $4::boolean THEN NOW() + ($5 || ' hours')::interval ELSE NULL END WHERE id=$1`,
+      [bidId, reason, reason === 'price' ? budget : null, chance, String(BID_CHANCE_HOURS)]);
+    const prov = (await pool.query('SELECT name, business_name, email FROM users WHERE id=$1', [B.provider_id])).rows[0] || {};
+    const pName = prov.business_name || prov.name || '';
+    const T = eEsc(B.title);
+    const rTxt = reason ? CLI_REJ_REASONS[reason] : '';
+    const bTxt = (reason === 'price' && budget) ? _budgetTxt(budget) : '';
+    let nTitle, nBody;
+    if (chance) {
+      nTitle = 'عرضك ما ناسب العميل — وعندك فرصة ثانية';
+      nBody = `صاحب مشروع «${T}» ما اختار عرضك${rTxt ? ' — السبب: ' + rTxt : ''}${bTxt ? ' (ميزانيته تقريباً ' + bTxt + ')' : ''}. سمح لك تقدّم عرضاً أفضل مرة وحدة خلال ${BID_CHANCE_HOURS} ساعة من «عروضي».`;
+    } else {
+      nTitle = 'صاحب المشروع ما اختار عرضك';
+      nBody = `صاحب مشروع «${T}» ما اختار عرضك${rTxt && reason !== 'other' ? ' — السبب: ' + rTxt : ''}. فرص جديدة تنتظرك في «تصفّح المشاريع».`;
+    }
+    await notify(B.provider_id, nTitle, nBody, 'bid_rejected', B.request_id);
+    if (prov.email) {
+      let body = `<p>عزيزي <strong>${eEsc(pName)}</strong>،</p><p>عرضك على «${T}» ما ناسب صاحب المشروع.</p>`;
+      if (rTxt && reason !== 'other') body += `<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:11px 13px;color:#7f1d1d;margin:12px 0">السبب: <strong>${eEsc(rTxt)}</strong>${bTxt ? '<br>ميزانيته تقريباً: <strong>' + eEsc(bTxt) + '</strong> · عرضك: ' + Number(B.price || 0).toLocaleString('en-US') + ' ر.س' : ''}</p>`;
+      if (chance) body += `<p style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:11px 13px;color:#14532d;margin:12px 0">🎯 <strong>صاحب المشروع سمح لك تقدّم عرضاً أفضل</strong> — مرة وحدة، خلال ${BID_CHANCE_HOURS} ساعة.</p><p style="color:#64748b;font-size:13px">نصيحة: وضّح وش يشمل السعر (المواد، العمالة، الضمان) — العروض الواضحة تنقبل أكثر.</p>`;
+      else body += `<p style="color:#64748b;font-size:13px">لا بأس — فرص كثيرة قادمة. قدّم على المشاريع اللي في تخصصك مع سعر واضح وتفاصيل تخص المشروع.</p>`;
+      const subj = chance ? `فرصة ثانية على «${T}»` : `تحديث عرضك على «${T}»`;
+      sendEmail(prov.email, subj, emailTpl(chance ? 'صاحب المشروع ما اختار عرضك — بس الفرصة ما راحت' : 'صاحب المشروع ما اختار عرضك', body, chance ? 'قدّم سعراً أفضل' : 'تصفح المشاريع', SITE_URL + '/dashboard-provider.html#works')).catch(()=>{});
+    }
+    res.json({ ok: true, chance: !!chance });
+  } catch(e) { console.error('bid reject:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// ═══ الإدارة: ليش ما انختارت العروض؟ ═══
+app.get('/api/admin/bid-reasons', requirePermission('bids.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to];
+    const IN = `(b.rejected_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const tot = (await pool.query(`SELECT COUNT(*)::int AS rejected,
+        COUNT(*) FILTER (WHERE reject_reason IS NOT NULL)::int AS with_reason,
+        COUNT(*) FILTER (WHERE chance_until IS NOT NULL OR improved_at IS NOT NULL)::int AS chances,
+        COUNT(*) FILTER (WHERE improved_at IS NOT NULL)::int AS improved,
+        COUNT(*) FILTER (WHERE improved_at IS NOT NULL AND status='accepted')::int AS won,
+        COUNT(*) FILTER (WHERE reject_reason='postponed')::int AS postponed
+      FROM bids b WHERE ${IN}`, P)).rows[0];
+    const by = (await pool.query(`SELECT reject_reason AS k, COUNT(*)::int AS n FROM bids b WHERE ${IN} AND reject_reason IS NOT NULL GROUP BY 1 ORDER BY 2 DESC`, P)).rows;
+    const prov = (await pool.query(`WITH x AS (SELECT b.provider_id, b.reject_reason, b.improved_at, b.status FROM bids b WHERE ${IN})
+      SELECT u.id, u.email, COALESCE(NULLIF(u.business_name,''), u.name) AS name, COUNT(*)::int AS n,
+        (SELECT reject_reason FROM x x2 WHERE x2.provider_id=u.id AND reject_reason IS NOT NULL GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1) AS top,
+        (SELECT COUNT(*) FROM x x2 WHERE x2.provider_id=u.id AND reject_reason IS NOT NULL GROUP BY reject_reason ORDER BY COUNT(*) DESC LIMIT 1)::int AS top_n,
+        COUNT(*) FILTER (WHERE x.reject_reason='specialty')::int AS specialty,
+        COUNT(*) FILTER (WHERE x.improved_at IS NOT NULL)::int AS improved,
+        COUNT(*) FILTER (WHERE x.improved_at IS NOT NULL AND x.status='accepted')::int AS won
+      FROM x JOIN users u ON u.id=x.provider_id GROUP BY u.id ORDER BY n DESC, specialty DESC LIMIT 20`, P)).rows;
+    const post = (await pool.query(`SELECT DISTINCT ON (r.id) r.id, r.title, r.status, r.city, b.rejected_at, c.name AS client_name, c.phone AS client_phone
+      FROM bids b JOIN requests r ON r.id=b.request_id JOIN users c ON c.id=r.client_id
+      WHERE ${IN} AND b.reject_reason='postponed' ORDER BY r.id, b.rejected_at DESC LIMIT 30`, P)).rows;
+    res.json({ range: R, totals: tot, reasons: by, providers: prov, postponed: post, labels: CLI_REJ_REASONS });
+  } catch(e) { console.error('bid-reasons:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ المزوّد يقدّم عرضاً محسّناً بعد عدم الاختيار (فرصة وحدة) ═══
+app.post('/api/bids/:id/improve', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query(`SELECT b.*, r.client_id, r.title, r.status AS req_status, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1`, [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (q.provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
+    if (q.improved_at) return res.status(400).json({ message: 'استخدمت فرصتك على هذا المشروع' });
+    if (q.status !== 'rejected' || !q.chance_until || new Date(q.chance_until) < new Date()) return res.status(400).json({ message: 'انتهت مهلة الفرصة الثانية' });
+    if (q.req_status !== 'open' || q.assigned_provider_id) return res.status(400).json({ message: 'المشروع ما عاد يستقبل عروض' });
+    const price = parseInt(req.body && req.body.price), days = parseInt(req.body && req.body.days) || q.days;
+    const note = String((req.body && req.body.note) || '').trim().slice(0, 1500);
+    if (!(price > 0)) return res.status(400).json({ message: 'اكتب السعر الجديد' });
+    if ((q.price_unit || 'total') === 'total' && price < BID_MIN_TOTAL) return res.status(400).json({ code: 'price_too_low', message: _bidMinMsg() });
+    if (price > q.price) return res.status(400).json({ message: 'السعر الجديد لازم ما يزيد عن عرضك السابق' });
+    if (note.replace(/\s+/g, '').length < 10) return res.status(400).json({ message: 'اكتب للعميل وش تغيّر في عرضك (١٠ أحرف على الأقل)' });
+    if (q.reject_reason === 'price' && !(price < q.price)) return res.status(400).json({ message: 'العميل ما اختار عرضك بسبب السعر — لازم يكون السعر الجديد أقل من ' + Number(q.price).toLocaleString('en-US') });
+    if (q.reject_reason === 'duration' && !(days < q.days) && !(price < q.price)) return res.status(400).json({ message: 'العميل ما اختار عرضك بسبب المدة — قلّل مدة التنفيذ أو السعر' });
+    if (!(price < q.price) && !(days < q.days) && note.replace(/\s+/g, '').length < 25) return res.status(400).json({ message: 'وضّح التحسين في عرضك بتفاصيل أكثر (المواد، الضمان، طريقة التنفيذ)' });
+    const r = await pool.query(`UPDATE bids SET improved_from_price=price, improved_from_days=days, price=$2, days=$3, improve_note=$4, improved_at=NOW(), status='pending', chance_until=NULL, seen_at=NULL
+      WHERE id=$1 AND improved_at IS NULL AND status='rejected' RETURNING *`, [id, price, days, note]);
+    if (!r.rows.length) return res.status(400).json({ message: 'استخدمت فرصتك على هذا المشروع' });
+    let held = false;
+    try { if (await _provUnderReview(req.user.id)) { await _holdBid(id); held = true; } } catch(he) {}
+    if (!held) {
+      const me = (await pool.query('SELECT name, business_name FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+      const nm = me.business_name || me.name || 'المزوّد';
+      const cut = q.price > price ? Math.round((q.price - price) / q.price * 100) : 0;
+      await notify(q.client_id, '✨ عرض محسّن على مشروعك', `${eEsc(nm)} عدّل عرضه على «${eEsc(q.title)}» بعد ملاحظتك: ${Number(price).toLocaleString('en-US')} ر.س${cut ? ' (أقل ' + cut + '%)' : ''}.`, 'bid', q.request_id);
+      try {
+        const cl = (await pool.query('SELECT name, email FROM users WHERE id=$1', [q.client_id])).rows[0];
+        if (cl && cl.email) sendEmail(cl.email, `✨ ${nm} عدّل عرضه على «${q.title}»`, emailTpl('عرض محسّن بناءً على ملاحظتك', `<p>مرحباً <strong>${eEsc(cl.name || '')}</strong>،</p><p><strong>${eEsc(nm)}</strong> عدّل عرضه على «${eEsc(q.title)}»:</p><p style="font-size:18px"><s style="color:#94a3b8">${Number(q.price).toLocaleString('en-US')}</s> ← <strong style="color:#15803d">${Number(price).toLocaleString('en-US')} ر.س</strong></p><p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 13px">${eEsc(note)}</p>`, 'شوف العرض', SITE_URL + '/project/' + q.request_id)).catch(()=>{});
+      } catch(me) {}
+    }
+    res.json({ ok: true, held, bid: r.rows[0] });
+  } catch(e) { console.error('bid improve:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // ═══ DIRECT MESSAGE ═══

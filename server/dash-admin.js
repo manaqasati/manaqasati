@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov']},saaig:{l:'السعي',t:['saai','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -116,7 +116,7 @@ function showPage(pg,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -131,6 +131,7 @@ function showPage(pg,el){
   if(pg==='health')loadHealth();
   if(pg==='followup')loadFollowups();
   if(pg==='closereasons')loadCloseReasons();
+  if(pg==='bidreasons')loadBidReasons();
   if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
@@ -3760,6 +3761,45 @@ function _fuMove(id, stage){
 }
 var CR_LABELS={chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
 var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
+// ═══ ليش ما انختارت العروض؟ (سبب العميل + الفرصة الثانية) ═══
+var _BR_COL={price:'#dc2626',unclear:'#f59e0b',duration:'#0891b2',specialty:'#7c3aed',postponed:'#64748b',other:'#94a3b8'};
+var _BR_ICO={price:'💰',unclear:'📄',duration:'⏱',specialty:'🔧',postponed:'📅',other:'•'};
+var _brDays=30;
+function loadBidReasons(days){
+  if(typeof days==='number'&&days>0)_brDays=days; else if(!_brDays)_brDays=30;
+  var b=document.getElementById('bidreasons-body'); if(!b)return;
+  if(!b.querySelector('.br-wrap'))b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  var to=new Date(Date.now()+3*3600000), fr=new Date(to.getTime()-((_brDays||30)-1)*86400000), f=function(d){return d.toISOString().slice(0,10);};
+  fetch(API+'/api/admin/bid-reasons?from='+f(fr)+'&to='+f(to),hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d){b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>';return;}
+    var t=d.totals||{}, L=d.labels||{}, rs=d.reasons||[], rsT=rs.reduce(function(a,x){return a+x.n;},0)||1;
+    var seg='<div class="br-seg">'+[[7,'7 أيام'],[30,'30 يوم'],[90,'3 شهور'],[365,'سنة']].map(function(x){return '<button type="button" class="'+(x[0]===_brDays?'on':'')+'" onclick="loadBidReasons('+x[0]+')">'+x[1]+'</button>';}).join('')+'</div>';
+    var k=function(l,n,sub,cls){return '<div class="br-k'+(cls?' '+cls:'')+'"><span class="l">'+l+'</span><b>'+fmtNum(n||0)+'</b><span class="s">'+sub+'</span></div>';};
+    var h='<div class="br-wrap"><div class="br-top">'+seg+'</div><div class="br-ks">'
+      +k('عروض ما انختارت',t.rejected,fmtNum(t.with_reason||0)+' منها ذكروا السبب')
+      +k('أخذوا فرصة ثانية',t.chances,fmtNum(t.improved||0)+' قدّموا عرض محسّن')
+      +k('انقبلت بعد التحسين',t.won,(t.won?'صفقات ما كانت بتصير':'—'),'g')
+      +k('عملاء أجّلوا',t.postponed,(t.postponed?'تحت — تواصل معهم':'—'),'a')+'</div>';
+    if(!t.rejected){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه عروض انرفضت من العملاء في هالفترة.<div style="font-size:12.5px;margin-top:6px">الأسباب تبدأ تتجمع من الحين — كل ما رفض عميل عرض يختار السبب.</div></div></div>';b.innerHTML=h;return;}
+    h+='<div class="br-2"><div class="ad-card br-c"><h3>ليش ما انختارت العروض؟</h3>'
+      +(rs.length?rs.map(function(x){var pc=Math.round(x.n/rsT*100);return '<div class="br-r"><div class="t"><span>'+(_BR_ICO[x.k]||'')+' '+esc(L[x.k]||x.k)+'</span><b>'+x.n+' <small>'+pc+'%</small></b></div><div class="bar"><i style="width:'+Math.max(3,pc)+'%;background:'+(_BR_COL[x.k]||'#94a3b8')+'"></i></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">العملاء ما ذكروا أسباب بعد</div>')
+      +'</div><div class="ad-card br-c" style="padding:0"><h3 style="padding:16px 18px 6px">حسب المزوّد</h3><div class="tbl-wrap"><table class="br-t"><thead><tr><th>المزوّد</th><th>ما انختار</th><th>أكثر سبب</th><th>حسّن وانقبل</th><th></th></tr></thead><tbody>'
+      +(d.providers||[]).map(function(p){
+        var warn=p.specialty>=3;
+        var pill=p.top?'<span class="br-p" style="background:'+(_BR_COL[p.top]||'#94a3b8')+'1a;color:'+(_BR_COL[p.top]||'#475569')+'">'+esc(L[p.top]||p.top)+(p.top_n>1?' · '+p.top_n:'')+'</span>':'<span style="color:var(--muted);font-size:12px">—</span>';
+        return '<tr'+(warn?' class="warn"':'')+'><td><button type="button" class="br-nm" onclick="gsOpenUser('+_jsa(p.email||'')+')">'+esc(p.name||'—')+'</button>'+(warn?'<div class="br-w">⚠️ يقدّم خارج تخصصه ('+p.specialty+' مرات)</div>':'')+'</td><td>'+p.n+'</td><td>'+pill+'</td><td>'+(p.improved?p.won+' من '+p.improved:'—')+'</td><td>'+_proLink(p.id,1)+'</td></tr>';
+      }).join('')+'</tbody></table></div></div></div>';
+    var po=d.postponed||[];
+    if(po.length){
+      h+='<div class="ad-card br-c"><h3>عملاء أجّلوا مشاريعهم <small>تواصل معهم بعد فترة — ممكن يرجعون</small></h3>'
+        +po.map(function(p){var ph=String(p.client_phone||'').replace(/[^0-9]/g,'');if(ph.indexOf('0')===0)ph='966'+ph.slice(1);else if(ph&&ph.indexOf('966')!==0)ph='966'+ph;
+          var wt='السلام عليكم '+(p.client_name||'')+'،\nمعك منصة مناقصة بخصوص مشروعك «'+(p.title||'')+'». هل صار وقت مناسب تبدأ؟ نقدر نساعدك تلقى أفضل عرض.';
+          return '<div class="br-po"><div style="min-width:0;flex:1"><button type="button" class="br-nm" onclick="gsOpenReq('+(parseInt(p.id)||0)+')">'+esc(p.title||'مشروع')+'</button><div class="sm">'+esc(p.client_name||'')+(p.city?' · '+esc(p.city):'')+' · أجّل '+_adAgo(p.rejected_at)+'</div></div>'+(ph?'<a class="act-btn ab-default" href="https://wa.me/'+ph+'?text='+encodeURIComponent(wt)+'" target="_blank" rel="noopener">واتساب</a>':'')+'</div>';}).join('')+'</div>';
+    }
+    h+='<div class="br-note">العميل يختار السبب لما يضغط «ما يناسبني». إذا السبب السعر أو المدة أو العرض ناقص، يقدر يعطي المزوّد فرصة وحدة يقدّم عرض أفضل خلال 48 ساعة. «يقدّم خارج تخصصه» يطلع إذا تكرر 3 مرات أو أكثر.</div></div>';
+    b.innerHTML=h;
+  }).catch(function(){b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>';});
+}
 function loadCloseReasons(){
   var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })
@@ -5368,7 +5408,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){

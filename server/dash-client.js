@@ -953,7 +953,8 @@ function loadBids(id){
 
         var chips='';
         if(isAcc)chips+='<span class="bid-chip acc"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مقبول</span>';
-        else if(isRej)chips+='<span class="bid-chip rej">مرفوض</span>';
+        else if(isRej)chips+='<span class="bid-chip rej">ما اخترته</span>'+(b.chance_open?'<span class="bid-chip" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0">⏳ ممكن يرسل عرض أفضل</span>':'');
+        if(b.improved_at&&!isRej&&!isAcc)chips='<span class="bid-chip" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #fcd34d;font-weight:900">✨ عرض محسّن</span>'+chips;
         if(isCheap)chips+='<span class="bid-chip cheap"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>أقل سعر</span>';
         if(safeProvId)chips+='<a href="'+esc(proUrl)+'" class="bid-chip prof"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
         chips+='<button class="_chatbtn bid-chip chat" data-pid="'+esc(safeProvId)+'"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
@@ -971,7 +972,7 @@ function loadBids(id){
             +'</div>';
         }
 
-        return '<div'+(b.is_hidden?' style="opacity:.6;border-style:dashed"':'')+' class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+(isBest?' best':'')+'">'
+        return '<div'+(b.is_hidden?' style="opacity:.6;border-style:dashed"':(b.improved_at&&!isRej&&!isAcc?' style="border:2px solid #fcd34d;box-shadow:0 8px 24px -14px rgba(217,119,6,.45)"':''))+' class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+(isBest?' best':'')+'">'
           +(isBest?'<span class="bid-best">الأفضل لك</span>':'')
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
@@ -983,6 +984,7 @@ function loadBids(id){
             +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س'+(_unitLabel(b.price_unit)?' '+_unitLabel(b.price_unit):'')+'</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
           +'</div>'
           +'<div class="bid-chips">'+chips+'</div>'
+          +(typeof _rjImpHtml==='function'?_rjImpHtml(b):'')
           +'<div class="bid-note-h">رسالة المزود</div>'+note+(_safeUrl(b.attachment_url)?'<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;font-weight:800;color:var(--p,#1e40af);background:var(--p-light,#eff6ff);padding:8px 13px;border-radius:9px;text-decoration:none">📎 عرض السعر (ملف مرفق)</a>':'')
           +acts
         +'</div>';
@@ -1045,11 +1047,9 @@ function acceptBid(bidId,reqId){
     .finally(function(){window._acceptingBid=false;});
 }
 function rejectBid(bidId,reqId){
-  if(!confirm('هل تؤكد رفض هذا العرض؟'))return;
-  fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr()))
-    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; }); })
-    .then(function(){showToast('تم الرفض','success');loadBids(reqId);})
-    .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر الرفض — تحقّق من اتصالك','error');});
+  var b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};
+  if(typeof _rjOpen!=='function'){ if(!confirm('هل تؤكد رفض هذا العرض؟'))return; fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);}); return; }
+  _rjOpen({bidId:bidId,name:b.provider_business_name||b.provider_name,price:b.price,unit:b.price_unit||'total',improved:!!b.improved_at,onDone:function(){loadBids(reqId);}});
 }
 
 // ═══════════════════════════════════
