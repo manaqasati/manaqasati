@@ -347,7 +347,7 @@ function _ppBindImgs(){
 function _ppRevHtml(rv){
   var ra=_safeUrl(rv.reviewer_image)?'<img src="'+esc(_safeUrl(rv.reviewer_image))+'" alt="">':esc((rv.reviewer_name||'ع').charAt(0));
   var h='<div class="pp-rv"><div class="top"><span class="rav">'+ra+'</span><div style="min-width:0"><b style="font-size:14px;color:var(--text)">'+esc(rv.reviewer_name||'عميل')+'</b><div>'+mkStars(rv.rating,'#F0A500','13px')+'</div></div><span style="margin-right:auto;font-size:11.5px;color:var(--muted);font-weight:700">'+ago2(rv.created_at)+'</span></div>';
-  if(rv.request_title)h+='<div class="vf">✓ مشروع منفّذ عبر مناقصة · '+esc(rv.request_title)+'</div>';
+  if(rv.request_title)h+='<div class="vf">✓ مشروع موثّق عبر مناقصة · '+esc(rv.request_title)+'</div>';
   if(rv.comment)h+='<p>'+esc(rv.comment)+'</p>';
   if(rv.images&&rv.images.length){h+='<div class="ims">';rv.images.forEach(function(im){h+='<span data-s="'+esc(_safeUrl(im))+'"><img src="'+esc(_safeUrl(im))+'" loading="lazy" alt=""></span>';});h+='</div>';}
   if(rv.provider_reply)h+='<div class="rp"><b>رد المزوّد:</b> '+esc(rv.provider_reply)+'</div>';

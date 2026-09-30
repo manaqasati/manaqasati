@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -116,7 +116,7 @@ function showPage(pg,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -132,6 +132,7 @@ function showPage(pg,el){
   if(pg==='followup')loadFollowups();
   if(pg==='closereasons')loadCloseReasons();
   if(pg==='bidreasons')loadBidReasons();
+  if(pg==='claims')loadClaims();
   if(pg==='admins')loadAdmins();
   if(pg==='bids')loadBids();
   if(pg==='logs')loadLogs();
@@ -422,6 +423,7 @@ function _renderDash(o){
   if(n.saai_submitted) q.push({c:'blu',t:'سداد ينتظر الاعتماد',s:fmtNum(n.saai_submitted_sum)+' ر.س',n:n.saai_submitted,pg:'saai',ic:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'});
   if(n.inbox_unread) q.push({c:'blu',t:'رسائل عملاء بدون رد',s:'ردود العملاء على رسائلك',n:n.inbox_unread,pg:'inbox',ic:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>',go:'ردّ'});
   if(n.review_providers) q.push({c:'blu',t:'مزوّدين تحت المراجعة',s:'عروضهم تنتظر قرارك',n:n.review_providers,pg:'offerwatch',ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',tab:'held'});
+  if(n.claims_denied) q.push({c:'red',t:'عميل نفى تعامله مع مزوّد',s:'مزوّد طلب توثيق مشروع والعميل قال «ما تعاملت معه»',n:n.claims_denied,pg:'claims',ic:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',go:'راجع'});
   if(n.flags) q.push({c:'org',t:'عروض مرصودة',s:(n.flag_providers||0)+' مزوّد',n:n.flags,pg:'offerwatch',ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',tab:'auto'});
   var na=document.getElementById('needs-action');
   // سطر الترحيب: كم شي ينتظرك
@@ -3761,6 +3763,43 @@ function _fuMove(id, stage){
 }
 var CR_LABELS={chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
 var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
+// ═══ المشاريع الموثّقة: المزوّد طلب التأكيد والعميل أكّد ═══
+var _clDays=30;
+var _CL_ST={pending:['⏳ بانتظار العميل','#e0e7ff','#3730a3'],confirmed:['✓ أكّد العميل','#dcfce7','#15803d'],not_done:['لسا ما خلص','#f1f5f9','#475569'],denied:['✗ العميل: ما تعاملت معه','#fee2e2','#b91c1c'],expired:['ما رد العميل','#f1f5f9','#64748b']};
+function loadClaims(days){
+  if(typeof days==='number'&&days>0)_clDays=days; else if(!_clDays)_clDays=30;
+  var b=document.getElementById('claims-body'); if(!b)return;
+  if(!b.querySelector('.br-wrap'))b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  var to=new Date(Date.now()+3*3600000), fr=new Date(to.getTime()-(_clDays-1)*86400000), f=function(d){return d.toISOString().slice(0,10);};
+  fetch(API+'/api/admin/claims?from='+f(fr)+'&to='+f(to),hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d){b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>';return;}
+    var t=d.totals||{}, L=d.list||[];
+    var seg='<div class="br-seg">'+[[7,'7 أيام'],[30,'30 يوم'],[90,'3 شهور'],[365,'سنة']].map(function(x){return '<button type="button" class="'+(x[0]===_clDays?'on':'')+'" onclick="loadClaims('+x[0]+')">'+x[1]+'</button>';}).join('')+'</div>';
+    var k=function(l,n,sub,cls){return '<div class="br-k'+(cls?' '+cls:'')+'"><span class="l">'+l+'</span><b>'+n+'</b><span class="s">'+sub+'</span></div>';};
+    var h='<div class="br-wrap"><div class="br-top">'+seg+'</div><div class="br-ks">'
+      +k('طلبات توثيق',fmtNum(t.total||0),fmtNum(t.pending||0)+' بانتظار العميل')
+      +k('أكّدها العملاء',fmtNum(t.confirmed||0),(t.outside?'منها '+fmtNum(t.outside)+' كانت برا المنصة':'—'),'g')
+      +k('سعي جديد من التوثيق',fmtNum(t.new_saai||0)+' <small style="font-size:14px">ر.س</small>',(t.new_saai?'كان بيضيع':'—'),'a')
+      +k('العميل قال «ما تعاملت معه»',fmtNum(t.denied||0),(t.denied?'راجعها تحت':'—'),t.denied?'r':'')+'</div>';
+    if(!L.length){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه طلبات توثيق في هالفترة.<div style="font-size:12.5px;margin-top:6px">المزوّد يطلبها من «عروضي» لما يخلّص المشروع، أو إذا تعامل مع العميل برا المنصة.</div></div></div>';b.innerHTML=h;return;}
+    h+='<div class="ad-card" style="padding:0"><div class="tbl-wrap" style="overflow-x:auto"><table class="br-t"><thead><tr><th>المشروع</th><th>المزوّد</th><th>العميل</th><th>القيمة</th><th>السعي 3%</th><th>الحالة</th><th></th></tr></thead><tbody>'
+      +L.map(function(c){
+        var st=_CL_ST[c.status]||[c.status,'#f1f5f9','#475569'];
+        var val=c.client_value||c.value||0, diff=c.client_value&&c.value&&+c.client_value!==+c.value;
+        var ph=String(c.client_phone||'').replace(/[^0-9]/g,'');if(ph.indexOf('0')===0)ph='966'+ph.slice(1);else if(ph&&ph.indexOf('966')!==0)ph='966'+ph;
+        var act='';
+        if(c.status==='denied'&&!c.admin_done)act=(ph?'<a class="act-btn ab-default" href="https://wa.me/'+ph+'" target="_blank" rel="noopener">واتساب العميل</a> ':'')+'<button class="act-btn ab-default" onclick="_clDone('+(parseInt(c.id)||0)+')">تمت المراجعة</button>';
+        return '<tr'+(c.status==='denied'&&!c.admin_done?' class="warn"':'')+'><td><button type="button" class="br-nm" onclick="gsOpenReq('+(parseInt(c.request_id)||0)+')">'+esc(c.title||'مشروع')+'</button>'+(c.kind==='outside'?' <span class="br-p" style="background:#fef3c7;color:#92400e">كان برا المنصة</span>':'')+'</td>'
+          +'<td><button type="button" class="br-nm" onclick="gsOpenUser('+_jsa(c.provider_email||'')+')">'+esc(c.provider_name||'—')+'</button></td><td>'+esc(c.client_name||'—')+'</td>'
+          +'<td>'+(val?fmtNum(val):'—')+(diff?' <span style="font-size:11.5px;color:#b45309">(المزوّد: '+fmtNum(c.value)+')</span>':'')+'</td>'
+          +'<td>'+(c.status==='confirmed'&&val?fmtNum(Math.round(val*0.03)):'—')+'</td>'
+          +'<td><span class="br-p" style="background:'+st[1]+';color:'+st[2]+'">'+st[0]+(c.status==='pending'&&c.reminded_at?' · ذكّرناه':'')+'</span></td><td style="white-space:nowrap">'+act+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>';
+    h+='<div class="br-note">المشاريع المؤكّدة تدخل «السداد» تلقائياً بالقيمة اللي أكّدها العميل. «ما تعاملت معه» يطلع لك في «تحتاج إجراء»، وإذا تكرر مرتين عند نفس المزوّد خلال 3 شهور يوقف عنده التوثيق تلقائياً.</div></div>';
+    b.innerHTML=h;
+  }).catch(function(){b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>';});
+}
+function _clDone(id){ fetch(API+'/api/admin/claims/'+id+'/done',Object.assign({method:'PUT'},hdr())).then(function(){toast('تم','success');loadClaims();if(window.loadDashboard&&document.getElementById('page-dashboard').classList.contains('on'))loadDashboard();}); }
 // ═══ ليش ما انختارت العروض؟ (سبب العميل + الفرصة الثانية) ═══
 var _BR_COL={price:'#dc2626',unclear:'#f59e0b',duration:'#0891b2',specialty:'#7c3aed',postponed:'#64748b',other:'#94a3b8'};
 var _BR_ICO={price:'💰',unclear:'📄',duration:'⏱',specialty:'🔧',postponed:'📅',other:'•'};
@@ -5408,7 +5447,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){

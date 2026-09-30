@@ -1064,6 +1064,11 @@ async function loadWorks(){
     +'</div>';
   }
   html+=_bidStandingBanner();
+  if(typeof _clmTierHtml==='function'){
+    try{ var _dn=_myProjs.filter(function(p){return p.status==='completed';}).length; if(_myBids.length||_myProjs.length)html+=_clmTierHtml(_dn);
+      _myProjs.filter(function(p){return p.status==='in_progress'&&!p.claim_status;}).slice(0,2).forEach(function(p){ html+='<div style="background:var(--white,#fff);border:1px solid #fde68a;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-size:14px;font-weight:900">'+_esc(p.title||'')+'</div><div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:2px">قيد التنفيذ'+(p.client_name?' · '+_esc(p.client_name):'')+'</div>'+_clmProjHtml(p)+'</div>'; });
+    }catch(e){}
+  }
   html+=_askMotivCard();
   html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
   html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
@@ -1154,6 +1159,7 @@ function _renderBids(list){
     var h='<div class="wz-item">';
     h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'"'+stSty+'>'+stLbl+'</span></div>';
     if(typeof _rjProvHtml==='function')h+=_rjProvHtml(b);
+    if(typeof _clmBidHtml==='function')h+=_clmBidHtml(b);
     if(isHeld)h+='<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">⏳ عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة</div>';
     if(isHRej)h+='<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+_esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع ويرجع للمراجعة.</div>';
     h+='<div class="wz-summary">';
@@ -1209,6 +1215,7 @@ function _renderProjs(list){
     h+='<div class="wz-sub">'+(r.project_number||'#'+r.id)+(r.city?' · '+_esc(r.city):'')+'</div>';
     h+='</div><span class="wz-status '+stCls+'">'+stLbl+'</span></div>';
     if(r.price)h+='<div class="wz-summary"><div class="wz-cell"><div class="wz-lbl">قيمة المشروع</div><div class="wz-val gold">'+fmtN(r.price)+' <span class="wz-u">ر.س</span></div></div></div>';
+    if(typeof _clmProjHtml==='function')h+=_clmProjHtml(r);
     h+='<div class="card-actions"><button onclick="_viewProj('+r.id+')" class="ca-btn ca-view">عرض التفاصيل</button>';
     if(r.client_id)h+='<button class="_pchat ca-btn ca-chat" data-rid="'+r.id+'" data-cid="'+r.client_id+'">محادثة</button>';
     h+='</div></div>';

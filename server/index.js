@@ -2082,6 +2082,7 @@ async function checkStorageAlert(){
 async function runReminders(){
   try { await checkStorageAlert(); } catch(e){}
   try { await _saaiDeferJob(); } catch(e){ console.error('saaiDeferJob:', e.message); }
+  try { await _claimsJob(); } catch(e){ console.error('claimsJob:', e.message); }
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -2685,6 +2686,10 @@ async function setupDatabase() {
       for (const c of ['reject_reason VARCHAR(20)','reject_budget VARCHAR(30)','rejected_at TIMESTAMP','chance_until TIMESTAMP','improved_at TIMESTAMP','improved_from_price INTEGER','improved_from_days INTEGER','improve_note TEXT'])
         await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS ${c}`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bids_rejected_at ON bids(rejected_at) WHERE rejected_at IS NOT NULL`);
+      // المزوّد يطلب التقييم / يوثّق مشروعاً تمّ (داخل أو خارج المنصة) — العميل يأكّد
+      await _mig(`CREATE TABLE IF NOT EXISTS completion_claims (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, bid_id INTEGER, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, kind VARCHAR(10) NOT NULL, value INTEGER, done_when VARCHAR(10), status VARCHAR(12) NOT NULL DEFAULT 'pending', client_value INTEGER, reminded_at TIMESTAMP, responded_at TIMESTAMP, admin_done BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_cclaims_client ON completion_claims(client_id, status)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -3660,11 +3665,11 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
-      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id LEFT JOIN bid_accept_asks ak ON ak.bid_id=b.id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+      FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id LEFT JOIN bid_accept_asks ak ON ak.bid_id=b.id LEFT JOIN completion_claims cc ON cc.request_id=b.request_id AND cc.provider_id=b.provider_id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     r.rows.forEach(b => { const st = _askState(b); b.ask_can = !!st.can; b.ask_why = st.why || null; b.ask_next_at = st.next_at || null; b.ask_left = Math.max(0, ASK_MAX_SENDS - (b.ask_sends||0)); delete b.real_bid; delete b.askable_req; });
     // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
     try {
@@ -3681,7 +3686,7 @@ app.get('/api/provider/bids', auth, async (req, res) => {
 
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days, (SELECT status FROM completion_claims cc WHERE cc.request_id=r.id AND cc.provider_id=$1) AS claim_status, EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewed_id=$1) AS has_review FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/projects:', e); res.json([]); }
 });
@@ -4726,6 +4731,155 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     res.json({ ok: true, chance: !!chance });
   } catch(e) { console.error('bid reject:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// ═══ المزوّد يطلب التقييم ويوثّق المشروع — العميل يأكّد بضغطة ═══
+const CLAIM_OUTSIDE_STATUSES = ['open','closed_auto','closed','expired'];
+async function _claimEligibility(providerId, requestId){
+  const r = (await pool.query(`SELECT r.id, r.title, r.status, r.client_id, r.assigned_provider_id, r.category,
+      b.id AS bid_id, b.status AS bid_status, b.price, COALESCE(b.price_unit,'total') AS price_unit, b.created_at AS bid_at,
+      cc.id AS claim_id, cc.status AS claim_status, cc.created_at AS claim_at
+    FROM requests r JOIN bids b ON b.request_id=r.id AND b.provider_id=$1
+    LEFT JOIN completion_claims cc ON cc.request_id=r.id AND cc.provider_id=$1
+    WHERE r.id=$2`, [providerId, requestId])).rows[0];
+  if (!r) return { ok:false, msg:'ما عندك عرض على هذا المشروع' };
+  if (r.claim_status === 'pending') return { ok:false, msg:'أرسلت الطلب — بانتظار تأكيد العميل', r };
+  if (['confirmed','denied','expired'].includes(r.claim_status)) return { ok:false, msg:'سبق وأرسلت طلب على هذا المشروع', r };
+  if (r.claim_status === 'not_done' && new Date(r.claim_at) > new Date(Date.now() - 5*86400000)) return { ok:false, msg:'العميل قال إن المشروع لسا ما خلص — تقدر تطلب مرة ثانية بعد أيام', r };
+  if (String(r.assigned_provider_id) === String(providerId)) {
+    if (r.status === 'completed') return { ok:false, msg:'المشروع مكتمل — العميل يقدر يقيّمك من لوحته', r };
+    if (r.status !== 'in_progress') return { ok:false, msg:'المشروع مو قيد التنفيذ', r };
+    return { ok:true, kind:'awarded', r };
+  }
+  if (r.assigned_provider_id) return { ok:false, msg:'المشروع رسى على مزوّد آخر', r };
+  if (!CLAIM_OUTSIDE_STATUSES.includes(r.status) || r.category === 'direct') return { ok:false, msg:'ما يمكن توثيق هذا المشروع', r };
+  const den = (await pool.query(`SELECT COUNT(*)::int AS n FROM completion_claims WHERE provider_id=$1 AND status='denied' AND created_at > NOW() - INTERVAL '90 days'`, [providerId])).rows[0].n;
+  if (den >= 2) return { ok:false, msg:'التوثيق موقوف مؤقتاً على حسابك — تواصل مع الإدارة', r };
+  return { ok:true, kind:'outside', r };
+}
+app.post('/api/provider/claims', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
+  try {
+    const requestId = parseInt(req.body && req.body.request_id);
+    const el = await _claimEligibility(req.user.id, requestId);
+    if (!el.ok) return res.status(400).json({ message: el.msg });
+    const r = el.r;
+    let value = parseInt(req.body && req.body.value) || 0;
+    if (el.kind === 'awarded' && !value) value = r.price_unit === 'total' ? (parseInt(r.price) || 0) : 0;
+    if (el.kind === 'outside' && value < BID_MIN_TOTAL) return res.status(400).json({ message: 'اكتب قيمة الاتفاق النهائية' });
+    if (value > 50000000) return res.status(400).json({ message: 'القيمة غير منطقية' });
+    const when = ['week','month','older'].includes(req.body && req.body.done_when) ? req.body.done_when : null;
+    await pool.query(`INSERT INTO completion_claims (request_id, bid_id, provider_id, client_id, kind, value, done_when, status, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',NOW())
+      ON CONFLICT (request_id, provider_id) DO UPDATE SET kind=EXCLUDED.kind, value=EXCLUDED.value, done_when=EXCLUDED.done_when, status='pending', client_value=NULL, reminded_at=NULL, responded_at=NULL, created_at=NOW()`,
+      [requestId, r.bid_id, req.user.id, r.client_id, el.kind, value || null, when]);
+    const me = (await pool.query('SELECT name, business_name FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    const nm = me.business_name || me.name || 'المزوّد';
+    const vTxt = value ? ' بقيمة ' + Number(value).toLocaleString('en-US') + ' ر.س' : '';
+    await notifyWithEmail(r.client_id, '⭐ ' + nm + ' يطلب تأكيدك', `${eEsc(nm)} يقول إنه خلّص مشروعك «${eEsc(r.title)}»${vTxt} — أكّد بضغطة وقيّمه.`, 'claim', requestId,
+      `${nm} يطلب تأكيدك على «${r.title}»`, `<p><strong>${eEsc(nm)}</strong> يقول إنه نفّذ مشروعك «<strong>${eEsc(r.title)}</strong>»${eEsc(vTxt)}.</p><p>صحيح؟ أكّد بضغطة وحدة وقيّم تجربتك — تقييمك يساعد غيرك يختار صح.</p>`,
+      'أكّد وقيّم', SITE_URL + '/dashboard-client.html');
+    res.json({ ok: true, kind: el.kind });
+  } catch(e) { console.error('claim create:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/client/claims', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT cc.id, cc.request_id, cc.kind, cc.value, cc.provider_id, cc.created_at, r.title,
+        COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name,
+        CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0 THEN u.profile_image ELSE NULL END AS provider_image,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0)::float AS provider_rating,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed')::int AS provider_done
+      FROM completion_claims cc JOIN requests r ON r.id=cc.request_id JOIN users u ON u.id=cc.provider_id
+      WHERE cc.client_id=$1 AND cc.status='pending' ORDER BY cc.created_at DESC LIMIT 5`, [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.json([]); }
+});
+app.post('/api/client/claims/:id/answer', auth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const ans = String((req.body && req.body.answer) || '');
+  if (!['done','not_done','denied'].includes(ans)) return res.status(400).json({ message: 'اختر إجابة' });
+  const c = (await pool.query(`SELECT cc.*, r.title, r.status AS req_status, r.assigned_provider_id FROM completion_claims cc JOIN requests r ON r.id=cc.request_id WHERE cc.id=$1`, [id])).rows[0];
+  if (!c || c.client_id !== req.user.id) return res.status(404).json({ message: 'غير موجود' });
+  if (c.status !== 'pending') return res.status(400).json({ message: 'سبق وجاوبت على هذا الطلب' });
+  const T = eEsc(c.title);
+  try {
+    if (ans === 'not_done') {
+      await pool.query(`UPDATE completion_claims SET status='not_done', responded_at=NOW() WHERE id=$1`, [id]);
+      await notify(c.provider_id, 'العميل يقول: لسا ما خلص', `صاحب مشروع «${T}» يقول إن المشروع لسا ما خلص. كمّل الشغل واطلب التقييم بعدين.`, 'claim', c.request_id);
+      return res.json({ ok: true });
+    }
+    if (ans === 'denied') {
+      await pool.query(`UPDATE completion_claims SET status='denied', responded_at=NOW() WHERE id=$1`, [id]);
+      try { await _notifyAdmins('⚠️ عميل نفى تعامله مع مزوّد', `مزوّد طلب توثيق «${c.title}» والعميل قال «ما تعاملت معه»`, 'claim', c.request_id); } catch(e){}
+      return res.json({ ok: true });
+    }
+    // done
+    let val = parseInt(req.body && req.body.value) || 0;
+    if (!val) val = parseInt(c.value) || 0;
+    if (c.kind === 'outside' && val < BID_MIN_TOTAL) return res.status(400).json({ message: 'اكتب قيمة المشروع' });
+    if (val > 50000000) return res.status(400).json({ message: 'القيمة غير منطقية' });
+    const fee = Math.round(val * 0.03);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (c.kind === 'awarded') {
+        const u = await client.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND assigned_provider_id=$2 AND status NOT IN ('completed','cancelled') RETURNING id`, [c.request_id, c.provider_id]);
+        if (!u.rows.length && c.req_status !== 'completed') throw Object.assign(new Error('state'), { http: 'المشروع تغيّرت حالته — حدّث الصفحة' });
+        if (val && val !== parseInt(c.value)) await client.query(`UPDATE saai_ledger SET contract_value=$3, saai_amount=$4 WHERE request_id=$1 AND provider_id=$2 AND status='pending'`, [c.request_id, c.provider_id, val, fee]);
+        await client.query(`UPDATE saai_ledger SET status='pending', defer_state='resumed', due_from=COALESCE(due_from, NOW()) WHERE request_id=$1 AND provider_id=$2 AND status='deferred'`, [c.request_id, c.provider_id]);
+      } else {
+        const lk = await client.query(`UPDATE requests SET status='completed', assigned_provider_id=$2, assigned_at=COALESCE(assigned_at, NOW()), completed_at=NOW(),
+            close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
+          WHERE id=$1 AND assigned_provider_id IS NULL AND status = ANY($3::text[]) RETURNING id`, [c.request_id, c.provider_id, CLAIM_OUTSIDE_STATUSES]);
+        if (!lk.rows.length) throw Object.assign(new Error('state'), { http: 'المشروع تغيّرت حالته — حدّث الصفحة' });
+        await client.query(`UPDATE bids SET status='accepted', chance_until=NULL WHERE id=$1`, [c.bid_id]);
+        await client.query(`UPDATE bids SET status='rejected', chance_until=NULL WHERE request_id=$1 AND id<>$2`, [c.request_id, c.bid_id]);
+        await client.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, due_from)
+          VALUES ($1,$2,$3,$4,$5,'pending',NOW()) ON CONFLICT (request_id, provider_id) DO UPDATE SET contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount
+          WHERE saai_ledger.status IN ('pending','cancelled')`, [c.request_id, c.provider_id, c.bid_id, val, fee]);
+      }
+      await client.query(`UPDATE completion_claims SET status='confirmed', client_value=$2, responded_at=NOW() WHERE id=$1`, [id, val || null]);
+      await client.query('COMMIT');
+    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} client.release(); if (e.http) return res.status(400).json({ message: e.http }); throw e; }
+    client.release();
+    try { await addTimeline(c.request_id, 'completed', c.kind === 'outside' ? 'وثّق المزوّد المشروع وأكّده العميل' : 'أكّد العميل إتمام المشروع'); } catch(e){}
+    try { await recomputeProviderTier(c.provider_id); } catch(e){}
+    await notify(c.provider_id, '🎉 انضاف مشروع موثّق لسجلك', `صاحب مشروع «${T}» أكّد إتمامه — وصار يقدر يقيّمك. كل تقييم يرفعك في المنصة.`, 'claim', c.request_id);
+    res.json({ ok: true, review: { request_id: c.request_id, reviewed_id: c.provider_id } });
+  } catch(e) { console.error('claim answer:', e.message); if (!res.headersSent) res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.get('/api/admin/claims', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to];
+    const IN = `(cc.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const t = (await pool.query(`SELECT COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status='confirmed')::int AS confirmed,
+        COUNT(*) FILTER (WHERE status='confirmed' AND kind='outside')::int AS outside,
+        COUNT(*) FILTER (WHERE status='denied')::int AS denied,
+        COUNT(*) FILTER (WHERE status='pending')::int AS pending,
+        COALESCE(SUM(ROUND(client_value*0.03)) FILTER (WHERE status='confirmed' AND kind='outside'),0)::int AS new_saai
+      FROM completion_claims cc WHERE ${IN}`, P)).rows[0];
+    const list = (await pool.query(`SELECT cc.id, cc.request_id, cc.kind, cc.value, cc.client_value, cc.status, cc.created_at, cc.responded_at, cc.reminded_at, cc.admin_done,
+        r.title, COALESCE(NULLIF(p.business_name,''), p.name) AS provider_name, p.email AS provider_email, p.id AS provider_id, c.name AS client_name, c.phone AS client_phone, p.phone AS provider_phone
+      FROM completion_claims cc JOIN requests r ON r.id=cc.request_id JOIN users p ON p.id=cc.provider_id JOIN users c ON c.id=cc.client_id
+      WHERE ${IN} OR (cc.status='denied' AND NOT cc.admin_done) ORDER BY (cc.status='denied' AND NOT cc.admin_done) DESC, cc.created_at DESC LIMIT 100`, P)).rows;
+    res.json({ range: R, totals: t, list });
+  } catch(e) { console.error('admin claims:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/admin/claims/:id/done', requirePermission('requests.view'), async (req, res) => {
+  try { await pool.query('UPDATE completion_claims SET admin_done=TRUE WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'claim_done', 'claim', parseInt(req.params.id), 'مراجعة نفي عميل'); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _claimsJob(){
+  // تذكير العميل مرة وحدة بعد 3 أيام، وتنتهي بعد 10 أيام
+  const rem = await pool.query(`UPDATE completion_claims cc SET reminded_at=NOW() FROM requests r WHERE r.id=cc.request_id AND cc.status='pending' AND cc.reminded_at IS NULL AND cc.created_at <= NOW() - INTERVAL '3 days' RETURNING cc.client_id, cc.request_id, r.title`);
+  for (const x of rem.rows) { try { await notify(x.client_id, '⭐ تذكير: أكّد إتمام مشروعك', `المزوّد ينتظر تأكيدك على «${eEsc(x.title)}» — ضغطة وحدة من لوحتك.`, 'claim', x.request_id); } catch(e){} }
+  await pool.query(`UPDATE completion_claims SET status='expired' WHERE status='pending' AND created_at <= NOW() - INTERVAL '10 days'`);
+  // تذكير المزوّد بعد مدة التنفيذ اللي كتبها في عرضه: «خلّصت؟ اطلب تقييمك»
+  const nd = await pool.query(`UPDATE requests r SET claim_nudged_at=NOW() FROM bids b
+      WHERE b.request_id=r.id AND b.status='accepted' AND b.provider_id=r.assigned_provider_id AND r.status='in_progress' AND r.claim_nudged_at IS NULL
+        AND r.assigned_at IS NOT NULL AND r.assigned_at + (GREATEST(COALESCE(b.days,14),3) || ' days')::interval <= NOW()
+        AND NOT EXISTS (SELECT 1 FROM completion_claims cc WHERE cc.request_id=r.id AND cc.provider_id=r.assigned_provider_id)
+      RETURNING r.id, r.title, r.assigned_provider_id`);
+  for (const x of nd.rows) { try { await notify(x.assigned_provider_id, '⭐ خلّصت المشروع؟ اطلب تقييمك', `مدة التنفيذ على «${eEsc(x.title)}» خلصت — اطلب من العميل يأكّد ويقيّمك. كل تقييم يرفع ترتيبك.`, 'claim', x.id); } catch(e){} }
+}
 // ═══ الإدارة: ليش ما انختارت العروض؟ ═══
 app.get('/api/admin/bid-reasons', requirePermission('bids.view'), async (req, res) => {
   try {
@@ -8504,6 +8658,7 @@ async function _adminOverview(){
         (SELECT COUNT(*) FROM bids WHERE hold_state='held')::int AS held_bids,
         (SELECT GREATEST(0, EXTRACT(EPOCH FROM (MIN(held_until) - NOW())))::int FROM bids WHERE hold_state='held') AS held_next_sec,
         (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS bid_report_providers,
+        (SELECT COUNT(*) FROM completion_claims WHERE status='denied' AND admin_done IS NOT TRUE)::int AS claims_denied,
         (SELECT COUNT(*) FROM messages m WHERE m.is_read=FALSE AND m.receiver_id IN (SELECT id FROM users WHERE role='admin'))::int AS inbox_unread,
         (SELECT COUNT(*) FROM users WHERE COALESCE(bid_review,FALSE)=TRUE)::int AS review_providers,
         (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,

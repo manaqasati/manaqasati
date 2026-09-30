@@ -138,4 +138,137 @@ window._rjImproveOpen=function(id,list,onDone){
       .catch(function(e){ btn.disabled=false; btn.textContent='أرسل العرض المحسّن'; fail(e.message||'تعذّر الإرسال'); });
   };
 };
+
+// ═══════════ المزوّد يطلب التقييم / يوثّق المشروع — العميل يأكّد ═══════════
+var CCSS='.cl-gold{border:0;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:900;font-size:14.5px;min-height:46px;width:100%;cursor:pointer;box-shadow:0 6px 16px -8px rgba(217,119,6,.7)}'
++'.cl-ben{display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:800;line-height:1.6}.cl-ben i{width:30px;height:30px;border-radius:9px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-style:normal;flex-shrink:0}'
++'.cl-out{background:var(--bg,#f8fafd);border:1px dashed #cbd5e1;border-radius:12px;padding:10px 12px;margin-top:10px;display:flex;flex-direction:column;gap:8px}'
++'.cl-out b{font-size:13px;color:var(--text2,#334766)}.cl-out button{border:1.5px solid #fcd34d;background:#fffbeb;color:#b45309;border-radius:11px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer;min-height:42px}'
++'.cl-st{margin-top:10px;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:800;line-height:1.7}'
++'.cl-tier{background:linear-gradient(135deg,#fffbeb,var(--white,#fff));border:1px solid #fde68a;border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:7px}'
++'.cl-tier .h{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:900;color:var(--text,#14223d)}.cl-tier .h span{font-size:12px;color:#b45309}'
++'.cl-bar{height:9px;border-radius:9px;background:#eef2f8;overflow:hidden}.cl-bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#f59e0b,#d97706)}'
++'.cl-tier .s{font-size:12.5px;font-weight:700;color:#92400e;line-height:1.7}'
++'.cl-when{display:flex;gap:6px;flex-wrap:wrap}'
++'.cl-card{background:var(--white,#fff);border:2px solid #f59e0b;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px;margin-bottom:12px;box-shadow:0 10px 26px -18px rgba(217,119,6,.6);font-family:Tajawal,sans-serif}'
++'.cl-card .q{font-size:15px;font-weight:800;line-height:1.8;color:var(--text,#14223d)}'
++'.cl-av{width:46px;height:46px;border-radius:46px;background:#1e3a8a;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}.cl-av img{width:100%;height:100%;object-fit:cover}'
++'.cl-ok{border:0;background:#15803d;color:#fff;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:14.5px;min-height:48px;cursor:pointer}'
++'.cl-b{border:1.5px solid var(--border,#dbe5f5);background:var(--white,#fff);color:var(--text,#1e3a8a);border-radius:13px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;min-height:44px;cursor:pointer;flex:1}'
++'.cl-stars{display:flex;justify-content:center;gap:6px;direction:ltr}.cl-stars button{border:0;background:none;font-size:34px;line-height:1;cursor:pointer;color:#cbd5e1;padding:2px;min-width:44px;min-height:44px}.cl-stars button.on{color:#f59e0b}';
+function _ccss(){ _css(); if(document.getElementById('cl-css'))return; var s=document.createElement('style'); s.id='cl-css'; s.textContent=CCSS; document.head.appendChild(s); }
+var TIERS=[[3,'نشط'],[10,'مميّز'],[25,'خبير معتمد']];
+window._clmTierHtml=function(done){
+  _ccss(); done=parseInt(done)||0; var nx=null,prev=0; for(var i=0;i<TIERS.length;i++){ if(done<TIERS[i][0]){nx=TIERS[i];break;} prev=TIERS[i][0]; }
+  if(!nx)return '';
+  var left=nx[0]-done, pc=Math.round((done-prev)/(nx[0]-prev)*100);
+  return '<div class="cl-tier"><div class="h">🏅 طريقك لمستوى «'+nx[1]+'»<span>'+done+' من '+nx[0]+'</span></div><div class="cl-bar"><i style="width:'+Math.max(4,pc)+'%"></i></div>'
+    +'<div class="s">باقي لك <b>'+(left===1?'مشروع موثّق واحد':(left===2?'مشروعين موثّقين':left+' مشاريع موثّقة'))+'</b> وتصير «'+nx[1]+'» — عروضك تطلع أعلى عند العملاء</div></div>';
+};
+// مشروع رسى عليه (قيد التنفيذ / مكتمل)
+window._clmProjHtml=function(p){
+  _ccss(); if(!p)return '';
+  if(p.claim_status==='pending')return '<div class="cl-st" style="background:#eef2ff;color:#3730a3">⏳ أرسلت طلب التقييم — بانتظار تأكيد العميل</div>';
+  if(p.status==='completed')return p.has_review?'':'<div class="cl-st" style="background:#fffbeb;color:#92400e">⭐ المشروع مكتمل — العميل يقدر يقيّمك من لوحته</div>';
+  if(p.status!=='in_progress')return '';
+  var h=p.claim_status==='not_done'?'<div class="cl-st" style="background:#f1f5f9;color:#475569">العميل قال إن المشروع لسا ما خلص</div>':'';
+  return h+'<button type="button" class="cl-gold" style="margin-top:10px" onclick="_clmProvOpen('+(parseInt(p.id)||0)+',\'awarded\')">⭐ خلّصت المشروع؟ اطلب تقييمك</button>';
+};
+// عرض ما انقبل في المنصة — يمكن اتفقوا برا
+var OUT=['open','closed_auto','closed','expired'];
+window._clmBidHtml=function(b){
+  _ccss(); if(!b||b.status==='accepted'||!b.unassigned||OUT.indexOf(b.req_status)<0||b.hold_state==='held')return '';
+  if(b.claim_status==='pending')return '<div class="cl-st" style="background:#eef2ff;color:#3730a3">⏳ طلبت توثيق المشروع — بانتظار تأكيد العميل</div>';
+  if(b.claim_status==='denied')return '<div class="cl-st" style="background:#fef2f2;color:#b91c1c">العميل قال إنه ما تعامل معك على هذا المشروع</div>';
+  if(b.claim_status==='confirmed'||b.claim_status==='expired')return '';
+  if(b.req_status==='open')return '';   // المشروع مفتوح: «اطلب اعتماد عرضك» الموجود يغطيه
+  return '<div class="cl-out"><b>تعاملت مع هذا العميل؟ لا تضيّع تقييمك</b><button type="button" onclick="_clmProvOpen('+(parseInt(b.request_id)||0)+',\'outside\')">✓ وثّق المشروع واطلب التقييم</button></div>';
+};
+window._clmProvOpen=function(rid,kind){
+  _ccss(); _close();
+  var src=kind==='awarded'?(window._myProjs||[]):(window._myBids||[]), it=null;
+  for(var i=0;i<src.length;i++){ var x=src[i]; if(String(kind==='awarded'?x.id:x.request_id)===String(rid)){it=x;break;} }
+  if(!it){_msg('حدّث الصفحة وحاول مرة ثانية');return;}
+  var title=it.title||it.request_title||'', cname=it.client_name||'', val=parseInt(it.price)||'', when='week';
+  var ov=document.createElement('div'); ov.id='rj-ov'; ov.className='rj-ov'; ov.onclick=function(e){ if(e.target===ov)_close(); };
+  var h='<div class="rj-sh" role="dialog" aria-modal="true" aria-label="اطلب تقييمك"><div class="rj-grab"></div>'
+    +'<div class="rj-h" style="text-align:center">كل تقييم يرفعك في المنصة ⭐</div>'
+    +'<div class="cl-ben"><i>📈</i><span>عروضك تطلع أعلى عند أصحاب المشاريع</span></div>'
+    +'<div class="cl-ben"><i>🏅</i><span>تقرّبك من مستوى «مميّز» و«خبير»</span></div>'
+    +'<div class="cl-ben"><i>🤝</i><span>العملاء يثقون بمن عنده تقييمات — عروضه تنقبل أكثر</span></div>'
+    +'<div class="cl-ben"><i>✓</i><span>يطلع جنب تقييمك «مشروع موثّق عبر مناقصة»</span></div>'
+    +'<div class="rj-q"><b>'+E(title)+'</b>'+(cname?' · العميل: '+E(cname):'')+'</div>';
+  if(kind==='outside'){
+    h+='<div><span class="rj-lb">قيمة الاتفاق النهائية (ر.س)</span><input class="rj-in" id="cl-v" type="number" inputmode="numeric" min="1" value="'+E(val)+'" style="font-size:19px;font-weight:900"></div>'
+      +'<div><span class="rj-lb">متى خلّصت؟</span><div class="cl-when">'+[['week','هالأسبوع'],['month','هالشهر'],['older','قبل كذا']].map(function(w){return '<button type="button" class="rj-chip'+(w[0]===when?' on':'')+'" data-w="'+w[0]+'">'+w[1]+'</button>';}).join('')+'</div></div>';
+  }
+  h+='<div class="rj-err" id="cl-e"></div><button type="button" class="cl-gold" id="cl-s">أرسل طلب التقييم للعميل</button><div class="rj-s" style="text-align:center;margin:0">يوصل العميل سؤال بضغطة وحدة يأكّد فيه</div><button type="button" class="rj-no" data-x="1">إلغاء</button></div>';
+  ov.innerHTML=h; document.body.appendChild(ov);
+  ov.querySelector('[data-x]').onclick=_close;
+  ov.querySelectorAll('[data-w]').forEach(function(bt){bt.onclick=function(){when=bt.getAttribute('data-w');ov.querySelectorAll('[data-w]').forEach(function(z){z.classList.toggle('on',z===bt);});};});
+  ov.querySelector('#cl-s').onclick=function(){
+    var btn=this, er=ov.querySelector('#cl-e'), vi=ov.querySelector('#cl-v'), v=vi?parseInt(vi.value)||0:0;
+    if(kind==='outside'&&!(v>0)){er.textContent='اكتب قيمة الاتفاق';er.style.display='block';return;}
+    btn.disabled=true; btn.textContent='جاري الإرسال…';
+    fetch(API_+'/api/provider/claims',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_tok()},body:JSON.stringify({request_id:rid,value:v||undefined,done_when:kind==='outside'?when:undefined})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(x){ if(!r.ok)throw new Error(x.message||'تعذّر الإرسال'); return x; });})
+      .then(function(){ _close(); _msg('تم — وصل العميل طلب التأكيد والتقييم',true); if(typeof loadWorks==='function')loadWorks(); })
+      .catch(function(e){ btn.disabled=false; btn.textContent='أرسل طلب التقييم للعميل'; er.textContent=e.message||'تعذّر الإرسال'; er.style.display='block'; });
+  };
+};
+// ── العميل: بطاقات التأكيد في الرئيسية ──
+var _cl=[];
+window._clmClientLoad=function(){
+  var el=document.getElementById('ph-claims'); if(!el||!_tok())return;
+  fetch(API_+'/api/client/claims',{headers:{'Authorization':'Bearer '+_tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():[];}).then(function(d){ _cl=Array.isArray(d)?d:[]; _clPaint(); }).catch(function(){});
+};
+function _clPaint(){
+  var el=document.getElementById('ph-claims'); if(!el)return; _ccss();
+  el.innerHTML=_cl.map(function(c){
+    var nm=c.provider_name||'المزوّد', av=c.provider_image?'<img src="'+E(c.provider_image)+'" alt="">':E(nm.charAt(0));
+    var sub=[]; if(+c.provider_rating)sub.push('★ '+(+c.provider_rating).toFixed(1)); if(+c.provider_done)sub.push(c.provider_done+' مشروع منجز');
+    return '<div class="cl-card" data-cl="'+c.id+'"><div style="display:flex;gap:11px;align-items:center"><div class="cl-av">'+av+'</div><div><b style="font-size:15px">'+E(nm)+'</b>'+(sub.length?'<div class="rj-s" style="margin:2px 0 0">'+sub.join(' · ')+'</div>':'')+'</div></div>'
+      +'<div class="q">'+(c.kind==='outside'?'يقول إنه نفّذ مشروعك':'يقول إنه خلّص مشروعك')+'<br>«'+E(c.title)+'»'+(c.value?' بقيمة <b style="color:#1e3a8a">'+N(c.value)+' ر.س</b>':'')+' — صحيح؟</div>'
+      +'<button type="button" class="cl-ok" data-a="done">إيه، خلّص — وأبي أقيّمه</button>'
+      +(c.value?'<button type="button" class="cl-b" data-a="value">صحيح، بس القيمة مختلفة</button>':'')
+      +'<div style="display:flex;gap:8px"><button type="button" class="cl-b" data-a="not_done">لسا ما خلص</button><button type="button" class="cl-b" data-a="denied" style="color:#b91c1c;border-color:#fecaca">ما تعاملت معه</button></div></div>';
+  }).join('');
+  el.querySelectorAll('[data-cl]').forEach(function(card){
+    var id=card.getAttribute('data-cl'), c=_cl.filter(function(x){return String(x.id)===String(id);})[0];
+    card.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ var a=b.getAttribute('data-a');
+      if(a==='value'){ var v=prompt('اكتب القيمة الصحيحة للمشروع (ر.س)', c.value||''); if(v===null)return; v=parseInt(String(v).replace(/[^0-9]/g,'')); if(!(v>0)){_msg('اكتب رقم صحيح');return;} _clAnswer(c,'done',v,card); }
+      else if(a==='denied'){ if(!confirm('متأكد إنك ما تعاملت مع '+(c.provider_name||'هذا المزوّد')+' على هذا المشروع؟'))return; _clAnswer(c,'denied',null,card); }
+      else _clAnswer(c,a,null,card);
+    };});
+  });
+}
+function _clAnswer(c,a,v,card){
+  card.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+  fetch(API_+'/api/client/claims/'+c.id+'/answer',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_tok()},body:JSON.stringify({answer:a,value:v||undefined})})
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(x){ if(!r.ok)throw new Error(x.message||'تعذّر'); return x; });})
+    .then(function(x){
+      if(a==='done'&&x.review){ _clRate(c,x.review,card); if(typeof loadHome==='function')setTimeout(function(){try{window._homeSig=null;}catch(e){}},0); return; }
+      _cl=_cl.filter(function(z){return z.id!==c.id;}); _clPaint(); _msg(a==='denied'?'شكراً — بلّغنا الإدارة':'تم — بلّغنا المزوّد',true);
+    })
+    .catch(function(e){ card.querySelectorAll('button').forEach(function(b){b.disabled=false;}); _msg(e.message||'تعذّر — تحقّق من اتصالك'); });
+}
+function _clRate(c,rv,card){
+  var sel=0;
+  card.innerHTML='<div style="text-align:center;display:flex;flex-direction:column;gap:10px"><b style="font-size:15.5px">كيف كانت تجربتك مع '+E(c.provider_name||'المزوّد')+'؟</b>'
+    +'<div class="cl-stars">'+[1,2,3,4,5].map(function(n){return '<button type="button" data-s="'+n+'" aria-label="'+n+' نجوم">★</button>';}).join('')+'</div>'
+    +'<textarea class="rj-in" id="cl-cm-'+c.id+'" rows="2" maxlength="600" placeholder="اكتب كلمتين عن الشغل (اختياري)" style="font-size:14px"></textarea>'
+    +'<button type="button" class="cl-ok" data-go="1" style="background:#1d4ed8">أرسل التقييم</button></div>';
+  var st=card.querySelectorAll('[data-s]');
+  st.forEach(function(b){ b.onclick=function(){ sel=+b.getAttribute('data-s'); st.forEach(function(z){z.classList.toggle('on',+z.getAttribute('data-s')<=sel);}); }; });
+  card.querySelector('[data-go]').onclick=function(){
+    if(!sel){_msg('اختر عدد النجوم');return;} var btn=this; btn.disabled=true;
+    fetch(API_+'/api/reviews',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_tok()},body:JSON.stringify({request_id:rv.request_id,reviewed_id:rv.reviewed_id,rating:sel,comment:(document.getElementById('cl-cm-'+c.id)||{}).value||''})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(x){ if(!r.ok)throw new Error(x.message||'تعذّر'); return x; });})
+      .then(function(){ card.innerHTML='<div style="text-align:center;display:flex;flex-direction:column;gap:8px"><div style="font-size:30px">🎉</div><b style="font-size:15px">شكراً على تقييمك</b><div class="rj-s" style="margin:0">عندك مشروع ثاني؟ انشره واستقبل عروض من مزوّدين موثّقين</div><button type="button" class="cl-b" style="flex:none" onclick="if(typeof show===\'function\')show(\'new\',null,\'new\');else location.href=\'/dashboard-client.html\'">+ مشروع جديد</button></div>';
+        _cl=_cl.filter(function(z){return z.id!==c.id;}); })
+      .catch(function(e){ btn.disabled=false; _msg(e.message||'تعذّر إرسال التقييم'); });
+  };
+}
+function _clAuto(){ if(document.getElementById('ph-claims'))window._clmClientLoad(); }
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_clAuto); else _clAuto();
 })();

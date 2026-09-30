@@ -694,6 +694,7 @@ function loadHome(){
   }).catch(function(){ if(!cached)el&&(el.innerHTML=errH(loadHome)); });
   loadNotifCount();
   try{_phTopLoad();}catch(e){}
+  try{if(typeof _clmClientLoad==='function')_clmClientLoad();}catch(e){}
 }
 // عرض بيانات الرئيسية (يُستخدم للكاش والخادم)
 function _paintHome(all){
