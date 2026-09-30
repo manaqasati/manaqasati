@@ -121,7 +121,7 @@ function showPage(pg,el){
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
-  if(pg==='dashboard'){loadDashboard();loadDailyReport();}
+  if(pg==='dashboard'){loadDashboard();}
   if(pg==='analytics')loadAnalytics();
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
@@ -394,6 +394,14 @@ function loadDashboard(){
   }).catch(function(){});
 }
 function _digestTest(b){ b.disabled=true; fetch(API+'/api/admin/digest/test',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?'أُرسل الملخص لإيميلك ✓':'تعذّر الإرسال', d&&d.ok?'success':'error'); }).catch(function(){toast('تعذّر الإرسال','error');}).finally(function(){b.disabled=false;}); }
+function _adFunnel(f,lbl){
+  var fnl=document.getElementById('dash-funnel'); if(!fnl||!f)return;
+  var P=f.published||0, steps=[['نُشر',P,'#1e3a8a',null],['جاه عرض',f.got_bid||0,'#1d4ed8',P],['تمت الترسية',f.awarded||0,'#0891b2',f.got_bid||0],['اكتمل',f.completed||0,'#16a34a',f.awarded||0],['سدّد السعي',f.saai_paid||0,'#f59e0b',f.awarded||0]];
+  var worst=null; for(var i=1;i<4;i++){ var a=steps[i-1][1], b=steps[i][1]; if(a>0){ var r=b/a; if(!worst||r<worst.r)worst={r:r,from:steps[i-1][0],to:steps[i][0]}; } }
+  fnl.innerHTML='<div class="ad-ch"><h3>مسار المشاريع</h3><span class="ad-fp">'+esc(lbl)+'</span></div>'+(P?'<div class="ad-fn">'
+    +steps.map(function(x){ var w=Math.max(8,Math.round(x[1]/P*100)); var cp=(x[3]!=null&&x[3]>0)?Math.round(x[1]/x[3]*100)+'%':''; return '<div class="ad-fr"><div class="ad-fb" style="width:'+w+'%;background:'+x[2]+'">'+x[0]+' '+x[1]+'</div>'+(cp?'<span class="ad-fp">'+cp+'</span>':'')+'</div>'; }).join('')
+    +'</div>'+(worst&&P>=3?'<div class="ad-note">أكبر تسرّب: من «'+worst.from+'» إلى «'+worst.to+'» — '+Math.round(worst.r*100)+'% بس يكملون.</div>':''):'<div style="color:var(--muted);font-size:13px;padding:18px 0">ما نُشر مشاريع في هالفترة.</div>');
+}
 function _renderDash(o){
   var n=o.needs||{}, k=o.kpi||{}, f=o.funnel||{}, sa=o.saai||{}, cv=o.cover||{};
   // شارات القائمة
@@ -427,28 +435,11 @@ function _renderDash(o){
     +'<div class="ad-kc"><div class="ad-kl">مستخدمون جدد اليوم</div><div class="ad-kn">'+(k.users_t||0)+'</div>'+_adTrend(k.users_t||0,k.users_y||0)+_adSpark(ser.map(function(x){return x.users;}),'#1d4ed8')+'</div>'
     +'<div class="ad-kc"><div class="ad-kl">مشاريع اليوم</div><div class="ad-kn">'+(k.req_t||0)+'</div>'+_adTrend(k.req_t||0,k.req_y||0)+_adSpark(ser.map(function(x){return x.requests;}),'#d97706')+'</div>'
     +'<div class="ad-kc"><div class="ad-kl">عروض اليوم</div><div class="ad-kn">'+(k.bids_t||0)+'</div>'+_adTrend(k.bids_t||0,k.bids_y||0)+_adSpark(ser.map(function(x){return x.bids;}),'#16a34a')+'</div>'
-    +'<div class="ad-kc"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
+    +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'requests\')"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
     +'<div class="ad-kc"><div class="ad-kl">سعي محصّل هذا الشهر</div><div class="ad-kn">'+fmtNum(coll)+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(due)+' ر.س مستحق'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div><div class="ad-kbar"><i style="width:'+collPct+'%;background:#f59e0b"></i></div></div>'
     +'</div>';
-  // الرسم
-  var ch=document.getElementById('dash-chart');
-  if(ch){
-    var W=600,H=200, mx=1; ser.forEach(function(x){mx=Math.max(mx,x.users,x.requests,x.bids);});
-    var line=function(key,color){ return '<polyline points="'+ser.map(function(x,i){return Math.round(i*(W/Math.max(1,ser.length-1)))+','+Math.round(H-8-(x[key]/mx)*(H-24));}).join(' ')+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'; };
-    var grid=''; for(var g=1;g<=3;g++){var yy=Math.round(H-8-(g/3)*(H-24)); grid+='<line x1="0" y1="'+yy+'" x2="'+W+'" y2="'+yy+'" stroke="currentColor" stroke-opacity=".08"/><text x="2" y="'+(yy-5)+'" font-size="11" fill="currentColor" fill-opacity=".45" text-anchor="start" direction="ltr">'+Math.round(mx*g/3)+'</text>';}
-    var lbl=ser.map(function(x,i){ if(i%2&&i!==ser.length-1)return ''; var dd=x.day.split('-'); return '<text x="'+Math.round(i*(W/Math.max(1,ser.length-1)))+'" y="'+(H+14)+'" font-size="11" fill="currentColor" fill-opacity=".5" text-anchor="middle">'+(+dd[2])+'/'+(+dd[1])+'</text>'; }).join('');
-    ch.innerHTML='<div class="ad-ch"><h3>آخر 14 يوم</h3><div class="ad-lg"><span><i class="ad-dot" style="background:#1d4ed8"></i>تسجيلات</span><span><i class="ad-dot" style="background:#d97706"></i>مشاريع</span><span><i class="ad-dot" style="background:#16a34a"></i>عروض</span></div></div>'
-      +'<svg viewBox="-18 0 '+(W+36)+' '+(H+20)+'" style="width:100%;height:230px;color:var(--text)" direction="ltr">'+grid+'<line x1="0" y1="'+(H-8)+'" x2="'+W+'" y2="'+(H-8)+'" stroke="currentColor" stroke-opacity=".15"/>'+line('users','#1d4ed8')+line('requests','#d97706')+line('bids','#16a34a')+lbl+'</svg>';
-  }
   // مسار المشاريع
-  var fnl=document.getElementById('dash-funnel');
-  if(fnl){
-    var P=f.published||0, steps=[['نُشر',P,'#1e3a8a',null],['جاه عرض',f.got_bid||0,'#1d4ed8',P],['تمت الترسية',f.awarded||0,'#0891b2',f.got_bid||0],['اكتمل',f.completed||0,'#16a34a',f.awarded||0],['سدّد السعي',f.saai_paid||0,'#f59e0b',f.awarded||0]];
-    var worst=null; for(var i=1;i<4;i++){ var a=steps[i-1][1], b=steps[i][1]; if(a>0){ var r=b/a; if(!worst||r<worst.r)worst={r:r,from:steps[i-1][0],to:steps[i][0]}; } }
-    fnl.innerHTML='<div class="ad-ch"><h3>مسار المشاريع</h3><span class="ad-fp">آخر 30 يوم</span></div><div class="ad-fn">'
-      +steps.map(function(x){ var w=P?Math.max(8,Math.round(x[1]/P*100)):8; var cp=(x[3]!=null&&x[3]>0)?Math.round(x[1]/x[3]*100)+'%':''; return '<div class="ad-fr"><div class="ad-fb" style="width:'+w+'%;background:'+x[2]+'">'+x[0]+' '+x[1]+'</div>'+(cp?'<span class="ad-fp">'+cp+'</span>':'')+'</div>'; }).join('')
-      +'</div>'+(worst&&P>=3?'<div class="ad-note">أكبر تسرّب: من «'+worst.from+'» إلى «'+worst.to+'» — '+Math.round(worst.r*100)+'% بس يكملون.</div>':'');
-  }
+  _adFunnel(f,'آخر 30 يوم');
   // يحدث الآن
   var fd=document.getElementById('dash-feed');
   if(fd){
@@ -5663,15 +5654,16 @@ function _loadVisits(){
 function _vsKpis(d){
   var kp=document.getElementById('dash-kpis'); if(!kp)return; var c=d.cur,p=d.prev,o=window._overview||{},cv=o.cover||{},sa=o.saai||{},R=_perRange();
   var sp=d.spark||[], pc=cv.n?Math.round(cv.with_bids/cv.n*100):0, cmp=R.cmp;
-  var T=function(l,n,dl,spk){return '<div class="ad-kc"><div class="ad-kl">'+l+'</div><div class="ad-kn">'+n+'</div>'+dl+spk+'</div>';};
+  var T=function(l,n,dl,spk,pg){return '<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\''+pg+'\')"><div class="ad-kl">'+l+'</div><div class="ad-kn">'+n+'</div>'+dl+spk+'</div>';};
   var tr=function(a,b){ if(!a&&!b)return '<div class="ad-kt">ما فيه نشاط</div>'; if(!b)return '<div class="ad-kt up">▲ ما كان فيه شي '+esc(cmp.replace('عن ',''))+'</div>'; var dd=Math.round((a-b)/b*100); return '<div class="ad-kt '+(dd>=0?'up':'dn')+'">'+(dd>=0?'▲ ':'▼ ')+Math.abs(dd)+'% '+esc(cmp)+'</div>'; };
   kp.innerHTML='<div class="ad-k">'
-    +T('مشاريع جديدة — '+esc(R.lbl),fmtNum(c.requests),tr(c.requests,p.requests),_adSpark(sp.map(function(x){return x.r;}),'#d97706'))
-    +T('عروض — '+esc(R.lbl),fmtNum(c.bids),tr(c.bids,p.bids),_adSpark(sp.map(function(x){return x.b;}),'#16a34a'))
-    +T('صفقات (قبول عرض)',fmtNum(c.deals),tr(c.deals,p.deals),_adSpark(sp.map(function(x){return x.dl;}),'#1d4ed8'))
-    +'<div class="ad-kc"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
-    +'<div class="ad-kc"><div class="ad-kl">سعي محصّل — '+esc(R.lbl)+'</div><div class="ad-kn">'+fmtNum(Math.round(c.collected||0))+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(sa.due||0)+' ر.س مستحق'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div></div>'
+    +T('مشاريع جديدة — '+esc(R.lbl),fmtNum(c.requests),tr(c.requests,p.requests),_adSpark(sp.map(function(x){return x.r;}),'#d97706'),'requests')
+    +T('عروض — '+esc(R.lbl),fmtNum(c.bids),tr(c.bids,p.bids),_adSpark(sp.map(function(x){return x.b;}),'#16a34a'),'bids')
+    +T('صفقات (قبول عرض)',fmtNum(c.deals),tr(c.deals,p.deals),_adSpark(sp.map(function(x){return x.dl;}),'#1d4ed8'),'saai')
+    +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'requests\')"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
+    +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'saai\')"><div class="ad-kl">سعي محصّل — '+esc(R.lbl)+'</div><div class="ad-kn">'+fmtNum(Math.round(c.collected||0))+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(sa.due||0)+' ر.س مستحق'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div></div>'
     +'</div>';
+  if(d.pfunnel) _adFunnel(d.pfunnel,R.lbl);
 }
 // ═══ بطاقة «التطبيق»: كم عندهم التطبيق + ضغطات «حمّل من المتجر» حسب المكان ═══
 var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};

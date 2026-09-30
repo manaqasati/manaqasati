@@ -3410,6 +3410,15 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
         (SELECT COUNT(*) FROM saai_ledger WHERE ${RD('created_at')})::int AS deals,
         (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD('approved_at')})::float AS collected`, [f, t]))[0];
     const cur = await summaryFor(R.from, R.to), prev = await summaryFor(R.pfrom, R.pto);
+    const pfunnel = (await q(`WITH p AS (SELECT r.id, r.status, r.assigned_provider_id FROM requests r
+         WHERE (r.category IS DISTINCT FROM 'direct') AND ${RD('r.created_at')}
+           AND r.status NOT IN ('pending_review','review','needs_edit','rejected'))
+      SELECT COUNT(*)::int AS published,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=p.id))::int AS got_bid,
+        COUNT(*) FILTER (WHERE p.assigned_provider_id IS NOT NULL OR p.status IN ('in_progress','completed'))::int AS awarded,
+        COUNT(*) FILTER (WHERE p.status='completed')::int AS completed,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM saai_ledger s WHERE s.request_id=p.id AND s.status IN ('submitted','approved')))::int AS saai_paid
+      FROM p`))[0];
     const dayRow = (d) => `(SELECT COUNT(*) FROM site_visits v WHERE v.day=${d})::int AS n,
         (SELECT COUNT(DISTINCT uid) FROM site_visits v WHERE v.day=${d} AND uid IS NOT NULL)::int AS l,
         (SELECT COUNT(*) FROM users WHERE role<>'admin' AND (created_at + INTERVAL '3 hours')::date=${d})::int AS s,
@@ -3443,7 +3452,7 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
     const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++;
     res.json({ range: R, live, cur, prev, series, monthly, spark, sources, devices, pages,
       visitors: cur.visitors, logged: { provider: cur.logged_p, client: cur.logged_c },
-      funnel: { visitors: cur.visitors, signups: cur.tracked_signups, acted }, summary: cur });
+      funnel: { visitors: cur.visitors, signups: cur.tracked_signups, acted }, pfunnel, summary: cur });
   } catch(e) { console.error('admin visits:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/visits/live', requirePermission('analytics.view'), (req, res) => {
