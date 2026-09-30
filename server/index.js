@@ -217,7 +217,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '1'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '2'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -2571,6 +2571,10 @@ async function setupDatabase() {
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_unique INTEGER DEFAULT 0');
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_prov INTEGER DEFAULT 0');
     await _mig(`CREATE TABLE IF NOT EXISTS project_visits (request_id INTEGER NOT NULL, vkey VARCHAR(40) NOT NULL, is_prov BOOLEAN DEFAULT FALSE, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (request_id, vkey))`);
+    // إحصائيات الزيارات: صف لكل زائر باليوم (معرّف مؤقت يتغيّر يومياً — بدون IP) + عداد الصفحات
+    await _mig(`CREATE TABLE IF NOT EXISTS site_visits (day DATE NOT NULL, vkey VARCHAR(16) NOT NULL, src VARCHAR(16) NOT NULL DEFAULT 'direct', dev VARCHAR(8) NOT NULL DEFAULT 'mobile', page VARCHAR(24), uid INTEGER, role VARCHAR(10), hits INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (day, vkey))`);
+    await _mig(`CREATE INDEX IF NOT EXISTS site_visits_uid ON site_visits(uid, day) WHERE uid IS NOT NULL`);
+    await _mig(`CREATE TABLE IF NOT EXISTS site_pages (day DATE NOT NULL, page VARCHAR(24) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page))`);
     await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
@@ -3337,6 +3341,96 @@ app.get('/api/me/app-status', auth, async (req, res) => {
   try { const r = await pool.query(`SELECT 1 FROM push_tokens WHERE user_id=$1 AND platform IN ('ios','android','expo') LIMIT 1`, [req.user.id]); res.json({ has_app: r.rows.length > 0 }); }
   catch(e){ res.json({ has_app: false }); }
 });
+// ═══ عدّاد الزيارات (يُرسل من up.js في كل صفحة) — بدون تخزين IP، والمعرّف يتغيّر كل يوم ═══
+const _liveNow = new Map();
+const _BOT_RE = /bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|whatsapp\/|telegrambot|curl|wget|python|axios|node-fetch/i;
+function _hitSrc(ref, s, m){
+  s = String(s||'').toLowerCase(); m = String(m||'').toLowerCase();
+  if (m === 'email' || s === 'email') return 'email';
+  const map = [[/google/, 'google'], [/bing/, 'bing'], [/whats|wa\.me/, 'whatsapp'], [/snap/, 'snap'], [/tiktok/, 'tiktok'], [/insta/, 'instagram'], [/facebook|fb\b|fb\./, 'facebook'], [/twitter|t\.co|x\.com/, 'x'], [/linkedin/, 'linkedin'], [/youtube|youtu\.be/, 'youtube']];
+  if (s) { for (const [re, k] of map) if (re.test(s)) return k; return 'campaign'; }
+  let h = ''; try { h = new URL(ref).hostname.toLowerCase(); } catch(e) {}
+  if (!h || /manaqasa|railway\.app|localhost/.test(h)) return 'direct';
+  for (const [re, k] of map) if (re.test(h)) return k;
+  return 'other';
+}
+function _hitPage(p){
+  p = String(p||'/').split('?')[0];
+  if (p === '/' || p === '/index.html') return 'home';
+  const m = [[/^\/project/, 'project'], [/^\/pro(\/|\.html|$)/, 'pro'], [/^\/dashboard-client/, 'dash_client'], [/^\/dashboard-provider/, 'dash_provider'], [/^\/auth/, 'auth'], [/^\/(new|post)/, 'post'], [/^\/app/, 'app'], [/^\/b2b/, 'b2b'], [/^\/(about|privacy|terms)/, 'info'], [/^\/chat/, 'chat'], [/^\/(dalil|guide)/, 'guide']];
+  for (const [re, k] of m) if (re.test(p)) return k;
+  return 'other';
+}
+app.post('/api/hit', rateLimiter(120, 60000), express.json({ limit: '2kb' }), optionalAuth, async (req, res) => {
+  res.status(204).end();
+  try {
+    const ua = String(req.headers['user-agent'] || '');
+    if (!ua || _BOT_RE.test(ua)) return;
+    if (req.user && req.user.role === 'admin') return;
+    const b = req.body || {};
+    const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+    const vkey = crypto.createHash('sha256').update(JWT_SECRET + '|' + day + '|' + (req.ip || '') + '|' + ua).digest('hex').slice(0, 16);
+    _liveNow.set(vkey, Date.now());
+    if (_liveNow.size > 5000) { const lim = Date.now() - 300000; for (const [k, t] of _liveNow) if (t < lim) _liveNow.delete(k); }
+    const dev = b.app ? 'app' : (/Mobi|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop');
+    const page = _hitPage(b.p);
+    const uid = req.user ? req.user.id : null, role = req.user ? String(req.user.role || '').slice(0, 10) : null;
+    await pool.query(`INSERT INTO site_visits (day, vkey, src, dev, page, uid, role) VALUES ($1,$2,$3,$4,$5,$6,$7)
+      ON CONFLICT (day, vkey) DO UPDATE SET hits=site_visits.hits+1, uid=COALESCE(site_visits.uid, EXCLUDED.uid), role=COALESCE(site_visits.role, EXCLUDED.role)`,
+      [day, vkey, _hitSrc(b.r, b.s, b.m), dev, page, uid, role]);
+    await pool.query(`INSERT INTO site_pages (day, page, n) VALUES ($1,$2,1) ON CONFLICT (day, page) DO UPDATE SET n=site_pages.n+1`, [day, page]);
+  } catch(e) {}
+});
+function _rangeFromQuery(q){
+  const today = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+  const ok = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')) ? String(d) : null;
+  let from = ok(q.from) || today, to = ok(q.to) || today;
+  if (from > to) [from, to] = [to, from];
+  if (to > today) to = today;
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+  if (days > 800) from = new Date(Date.parse(to) - 799 * 86400000).toISOString().slice(0, 10);
+  const n = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+  const pto = new Date(Date.parse(from) - 86400000).toISOString().slice(0, 10), pfrom = new Date(Date.parse(from) - n * 86400000).toISOString().slice(0, 10);
+  return { from, to, days: n, pfrom, pto, today };
+}
+app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to];
+    const RD = `(x + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;  // تاريخ الرياض لأعمدة TIMESTAMP (UTC)
+    const q = async (sql, p) => (await pool.query(sql, p || P)).rows;
+    const tot = (await q(`SELECT COUNT(*)::int n, COUNT(DISTINCT uid) FILTER (WHERE role='provider')::int prov, COUNT(DISTINCT uid) FILTER (WHERE role='client')::int cli FROM site_visits WHERE day BETWEEN $1 AND $2`))[0];
+    const prev = (await q(`SELECT COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2`, [R.pfrom, R.pto]))[0].n;
+    const monthly = R.days > 62;
+    const series = await q(monthly ? `SELECT to_char(date_trunc('month', day),'YYYY-MM') k, COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2 GROUP BY 1 ORDER BY 1`
+      : `SELECT to_char(d,'YYYY-MM-DD') k, COALESCE((SELECT COUNT(*) FROM site_visits v WHERE v.day=d),0)::int n FROM generate_series($1::date, $2::date, INTERVAL '1 day') d ORDER BY 1`);
+    const sources = await q(`SELECT v.src, COUNT(*)::int n,
+        (SELECT COUNT(DISTINCT u.id) FROM users u JOIN site_visits w ON w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date AND w.src=v.src
+          WHERE u.role<>'admin' AND (u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS signups
+      FROM site_visits v WHERE v.day BETWEEN $1 AND $2 GROUP BY v.src ORDER BY n DESC`);
+    const devices = await q(`SELECT dev, COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2 GROUP BY dev ORDER BY n DESC`);
+    const pages = await q(`SELECT page, SUM(n)::int n FROM site_pages WHERE day BETWEEN $1 AND $2 GROUP BY page ORDER BY n DESC LIMIT 8`);
+    // المسار: نحسب المسجّلين اللي جوا من زيارة متتبَّعة (عشان النسبة تكون منطقية)، والملخص تحت يعرض كل التسجيلات
+    const nu = await q(`SELECT u.id, u.role FROM users u WHERE u.role<>'admin' AND ${RD.replace(/x/g, 'u.created_at')}
+      AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)`);
+    const ids = nu.map(x => x.id);
+    let acted = 0;
+    if (ids.length) acted = (await q(`SELECT COUNT(DISTINCT id)::int n FROM (SELECT client_id AS id FROM requests WHERE client_id = ANY($3) AND ${RD.replace(/x/g, 'created_at')} AND (category IS DISTINCT FROM 'direct')
+        UNION SELECT provider_id FROM bids WHERE provider_id = ANY($3) AND ${RD.replace(/x/g, 'created_at')}) z`, [R.from, R.to, ids]))[0].n;
+    const sum = (await q(`SELECT
+        (SELECT COUNT(*) FROM users WHERE role='client' AND ${RD.replace(/x/g, 'created_at')})::int AS new_clients,
+        (SELECT COUNT(*) FROM users WHERE role='provider' AND ${RD.replace(/x/g, 'created_at')})::int AS new_providers,
+        (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND ${RD.replace(/x/g, 'created_at')})::int AS requests,
+        (SELECT COUNT(*) FROM bids WHERE ${RD.replace(/x/g, 'created_at')})::int AS bids,
+        (SELECT COUNT(*) FROM saai_ledger WHERE ${RD.replace(/x/g, 'created_at')})::int AS deals,
+        (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD.replace(/x/g, 'approved_at')})::float AS collected`))[0];
+    const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++;
+    res.json({ range: R, visitors: tot.n, prev, logged: { provider: tot.prov, client: tot.cli }, live, series, monthly, sources, devices, pages,
+      funnel: { visitors: tot.n, signups: nu.length, acted }, summary: sum });
+  } catch(e) { console.error('admin visits:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/visits/live', requirePermission('analytics.view'), (req, res) => {
+  const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++; res.json({ live });
+});
 app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req, res) => {
   try {
     const own = (await pool.query(`SELECT
@@ -3345,9 +3439,10 @@ app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req,
         COUNT(*) FILTER (WHERE u.role='provider' OR COALESCE(u.can_provide,FALSE))::int AS providers,
         COUNT(*) FILTER (WHERE (u.role='provider' OR COALESCE(u.can_provide,FALSE)) AND EXISTS (SELECT 1 FROM push_tokens t WHERE t.user_id=u.id AND t.platform IN ('ios','android','expo')))::int AS providers_app
       FROM users u WHERE u.role<>'admin' AND COALESCE(u.is_active,TRUE)`)).rows[0];
-    const hits = (await pool.query(`SELECT kind, src, SUM(n)::int AS n FROM app_page_hits WHERE day >= (now() AT TIME ZONE 'Asia/Riyadh')::date - 29 GROUP BY kind, src ORDER BY n DESC`)).rows;
-    const byOs = (await pool.query(`SELECT os, SUM(n) FILTER (WHERE kind='view')::int AS views, SUM(n) FILTER (WHERE kind='click')::int AS clicks FROM app_page_hits WHERE day >= (now() AT TIME ZONE 'Asia/Riyadh')::date - 29 GROUP BY os`)).rows;
-    res.json({ own, hits, byOs });
+    const R = (req.query.from || req.query.to) ? _rangeFromQuery(req.query) : _rangeFromQuery({ from: new Date(Date.now() + 3*3600000 - 29*86400000).toISOString().slice(0,10) });
+    const hits = (await pool.query(`SELECT kind, src, SUM(n)::int AS n FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY kind, src ORDER BY n DESC`, [R.from, R.to])).rows;
+    const byOs = (await pool.query(`SELECT os, SUM(n) FILTER (WHERE kind='view')::int AS views, SUM(n) FILTER (WHERE kind='click')::int AS clicks FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY os`, [R.from, R.to])).rows;
+    res.json({ own, hits, byOs, range: R });
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/me/mode', auth, async (req, res) => {

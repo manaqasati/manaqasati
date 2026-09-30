@@ -386,7 +386,7 @@ function loadDashboard(){
   }
   fetch(API+'/api/admin/overview',hdr()).then(function(r){return r.json();}).then(function(o){
     if(!o||!o.kpi){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); return; }
-    window._overview=o; _renderDash(o); try{_loadAppStats();}catch(e){}
+    window._overview=o; _renderDash(o); try{_perRender();_loadVisits();_loadAppStats();}catch(e){}
   }).catch(function(){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); });
   fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.json();}).then(function(reps){
     var pending=Array.isArray(reps)?reps.filter(function(r){return r.status==='pending'||!r.status;}).length:0;
@@ -5545,20 +5545,93 @@ function _makeProvider(uid,btn){
   }).catch(function(){toast('تعذّر الاتصال','error');if(btn){btn.disabled=false;btn.textContent='حوّله لمزوّد';}});
 }
 
-// ═══ بطاقة «التطبيق»: كم عندهم التطبيق + زيارات صفحة التحميل وضغطات المتاجر (30 يوم) ═══
-var _APP_SRC={direct:'مباشر/رابط مختصر',email:'الإيميلات',banner:'شريط اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب'};
+// ═══ الفترة الزمنية للإحصائيات (اليوم / أمس / 7 أيام / 30 يوم / الشهر / السنة / مخصص) ═══
+var _PER=(function(){try{return JSON.parse(localStorage.getItem('adm_period')||'null')||{k:'today'};}catch(e){return {k:'today'};}})();
+function _ymd(d){return new Date(d.getTime()+3*3600000).toISOString().slice(0,10);}
+function _perRange(){
+  var now=new Date(), t=_ymd(now), d=function(n){return _ymd(new Date(now.getTime()-n*86400000));};
+  var k=_PER.k;
+  if(k==='yesterday')return {from:d(1),to:d(1),lbl:'أمس',cmp:'عن اليوم اللي قبله'};
+  if(k==='7d')return {from:d(6),to:t,lbl:'آخر 7 أيام',cmp:'عن الأسبوع اللي قبله'};
+  if(k==='30d')return {from:d(29),to:t,lbl:'آخر 30 يوم',cmp:'عن الـ30 يوم اللي قبلها'};
+  if(k==='month')return {from:t.slice(0,8)+'01',to:t,lbl:'هالشهر',cmp:'عن نفس المدة قبلها'};
+  if(k==='year')return {from:t.slice(0,5)+'01-01',to:t,lbl:'هالسنة',cmp:'عن نفس المدة قبلها'};
+  if(k==='custom'&&_PER.from&&_PER.to)return {from:_PER.from,to:_PER.to,lbl:_PER.from+' ← '+_PER.to,cmp:'عن نفس المدة قبلها'};
+  return {from:t,to:t,lbl:'اليوم',cmp:'عن أمس'};
+}
+function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _loadVisits(); _loadAppStats(); }
+function _perRender(showCustom){
+  var box=document.getElementById('dash-period'); if(!box)return; var R=_perRange();
+  var ks=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['30d','30 يوم'],['month','هالشهر'],['year','هالسنة']];
+  var cust=showCustom||_PER.k==='custom';
+  box.innerHTML='<div class="per-bar"><span class="per-t">📅 الفترة:</span>'+ks.map(function(x){return '<button type="button" class="per-ch'+(_PER.k===x[0]?' on':'')+'" onclick="_perSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')
+    +'<button type="button" class="per-ch'+(cust?' on':'')+'" onclick="_perRender(true)">مخصص</button>'
+    +(cust?'<span class="per-cust"><input type="date" id="per-from" value="'+(_PER.from||R.from)+'" max="'+_ymd(new Date())+'"><span>←</span><input type="date" id="per-to" value="'+(_PER.to||R.to)+'" max="'+_ymd(new Date())+'"><button type="button" class="per-go" onclick="_perSet(\'custom\')">عرض</button></span>':'')
+    +'<span class="per-l">'+esc(R.lbl)+'</span></div>';
+}
+var _VS_SRC={google:['جوجل','#2563eb'],whatsapp:['واتساب','#16a34a'],snap:['سناب شات','#eab308'],tiktok:['تيك توك','#0f172a'],instagram:['انستقرام','#db2777'],facebook:['فيسبوك','#1d4ed8'],x:['إكس (تويتر)','#334155'],bing:['بينق','#0891b2'],linkedin:['لينكدإن','#0369a1'],youtube:['يوتيوب','#dc2626'],email:['الإيميلات','#7c3aed'],campaign:['حملات (رابط مُعلَّم)','#c2410c'],other:['مواقع ثانية','#64748b'],direct:['دخلوا مباشرة','#94a3b8']};
+var _VS_PG={home:'الرئيسية',project:'صفحات المشاريع',pro:'صفحات المزوّدين',dash_client:'لوحة العميل',dash_provider:'لوحة المزوّد',auth:'التسجيل والدخول',post:'نشر مشروع',app:'صفحة التطبيق',b2b:'للأعمال',info:'من نحن والشروط',chat:'المحادثات',guide:'دليل المزوّدين',other:'صفحات ثانية'};
+var _VS_DEV={mobile:'📱 جوال',desktop:'💻 كمبيوتر',app:'📲 التطبيق'};
+var _vsLiveT=null;
+function _spark(vals,w,h,c){ if(!vals.length)return ''; var mx=Math.max.apply(null,vals)||1, n=vals.length; if(n===1)vals=[vals[0],vals[0]],n=2;
+  var pts=vals.map(function(v,i){return Math.round(i*w/(n-1))+','+Math.round(h-4-(v/mx)*(h-10));}).join(' ');
+  return '<svg width="100%" height="'+h+'" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+c+'" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>'; }
+function _loadVisits(){
+  var box=document.getElementById('dash-visits'); if(!box)return; var R=_perRange();
+  if(!box.innerHTML)box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  fetch(API+'/api/admin/visits?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d){box.style.display='none';return;} box.style.display='';
+    var one=d.range.days===1, diff=d.prev?Math.round((d.visitors-d.prev)/d.prev*100):null;
+    var cmp=diff==null?'<span class="vs-s">'+(d.prev===0&&d.visitors?'ما فيه بيانات للفترة اللي قبلها':'')+'</span>':'<span class="'+(diff>=0?'vs-up':'vs-dn')+'">'+(diff>=0?'▲ ':'▼ ')+Math.abs(diff)+'% '+esc(R.cmp)+' ('+fmtNum(d.prev)+')</span>';
+    var tot=d.visitors||0, srcMax=Math.max.apply(null,(d.sources||[]).map(function(x){return x.n;}).concat([1]));
+    var src=(d.sources||[]).slice(0,7).map(function(x){var m=_VS_SRC[x.src]||[x.src,'#94a3b8'];return '<div class="vs-br"><span class="nm">'+m[0]+'</span><span class="bar"><i style="width:'+Math.round(x.n/srcMax*100)+'%;background:'+m[1]+'"></i></span><span class="v">'+fmtNum(x.n)+' زائر'+(x.signups?' · <b>سجّل '+x.signups+'</b>':'')+'</span></div>';}).join('');
+    var best=(d.sources||[]).filter(function(x){return x.n>=10;}).map(function(x){return {k:x.src,r:x.signups/x.n};}).sort(function(a,b){return b.r-a.r;})[0];
+    var f=d.funnel||{}, p1=f.visitors?Math.round(f.signups/f.visitors*100):0, p2=f.signups?Math.round(f.acted/f.signups*100):0;
+    var devT=(d.devices||[]).reduce(function(a,x){return a+x.n;},0)||1;
+    var dev=(d.devices||[]).map(function(x){return (_VS_DEV[x.dev]||x.dev)+' '+Math.round(x.n/devT*100)+'%';}).join(' · ');
+    var pg=(d.pages||[]).map(function(x){return (_VS_PG[x.page]||x.page)+' <b>'+fmtNum(x.n)+'</b>';}).join(' · ');
+    var sm=d.summary||{};
+    var S=function(v,l,c){return '<div class="vs-sm"><b style="color:'+(c||'var(--text)')+'">'+v+'</b><span>'+l+'</span></div>';};
+    var seriesLbl=d.monthly?'حسب الشهر':'حسب اليوم';
+    box.innerHTML='<div class="vs-h"><h3>👥 الزيارات</h3><span class="vs-live" id="vs-live"><i></i><b>'+d.live+'</b> متواجد الحين</span></div>'
+      +(tot===0&&d.range.from>= '2026-09-30'?'<div class="vs-note">العدّاد بدأ للتو — الأرقام تتجمع من الحين.</div>':'')
+      +'<div class="vs-k">'
+        +'<div class="vs-b"><span class="t">'+(one?'زوار '+esc(R.lbl):'الزوار — '+esc(R.lbl))+'</span><span class="big">'+fmtNum(tot)+'</span>'+cmp+'</div>'
+        +'<div class="vs-b"><span class="t">المسجّلين اللي دخلوا</span><span class="big">'+fmtNum((d.logged.provider||0)+(d.logged.client||0))+'</span><span class="vs-s">'+fmtNum(d.logged.provider||0)+' مزوّد · '+fmtNum(d.logged.client||0)+' عميل</span></div>'
+        +(one?'':'<div class="vs-b wide"><span class="t">'+seriesLbl+'</span>'+_spark((d.series||[]).map(function(x){return x.n;}),300,48,'#2563eb')+'<span class="vs-s">'+(d.series&&d.series.length?esc(d.series[0].k)+' ← '+esc(d.series[d.series.length-1].k):'')+'</span></div>')
+      +'</div>'
+      +'<div class="vs-sms">'+S(fmtNum(sm.new_clients||0),'عميل جديد','#1d4ed8')+S(fmtNum(sm.new_providers||0),'مزوّد جديد','#c2410c')+S(fmtNum(sm.requests||0),'مشروع جديد')+S(fmtNum(sm.bids||0),'عرض')+S(fmtNum(sm.deals||0),'صفقة (قبول عرض)','#15803d')+S(fmtNum(Math.round(sm.collected||0))+' <small>ر.س</small>','سعي محصّل','#15803d')+'</div>'
+      +'<div class="vs-2">'
+        +'<div><div class="vs-st">من وين جوا؟</div>'+(src||'<div class="vs-s">ما فيه زيارات في هالفترة</div>')
+          +(best&&tot?'<div class="vs-note">💡 أعلى مصدر يجيب ناس يسجلون: <b>'+(_VS_SRC[best.k]||[best.k])[0]+'</b> ('+Math.round(best.r*100)+'% من زواره سجّلوا).</div>':'')+'</div>'
+        +'<div><div class="vs-st">وش يسوون؟</div><div class="vs-fn"><div><b>'+fmtNum(f.visitors||0)+'</b><span>زار</span></div><i>'+p1+'%<br>←</i><div><b>'+fmtNum(f.signups||0)+'</b><span>سجّل</span></div><i>'+p2+'%<br>←</i><div><b>'+fmtNum(f.acted||0)+'</b><span>نشر مشروع أو قدّم عرض</span></div></div>'
+          +'<div class="vs-note">من كل 100 زائر يسجّل '+p1+'. ولو نزل الرقم فجأة، يعني فيه مشكلة في التسجيل أو إعلان يجيب ناس ما تناسب.</div>'
+          +(dev?'<div class="vs-st" style="margin-top:12px">الجهاز</div><div class="vs-s" style="font-size:13px">'+dev+'</div>':'')
+          +(pg?'<div class="vs-st" style="margin-top:12px">أكثر الصفحات فتحاً</div><div class="vs-s" style="font-size:12.5px;line-height:2">'+pg+'</div>':'')+'</div>'
+      +'</div>'
+      +'<div class="vs-foot">كل زائر ينحسب مرة وحدة باليوم · ما نخزّن IP · نستبعد محركات البحث والإدارة</div>';
+    clearInterval(_vsLiveT); _vsLiveT=setInterval(function(){ var pg=document.getElementById('page-dashboard'); if(!pg||!pg.classList.contains('on'))return; fetch(API+'/api/admin/visits/live',hdr()).then(function(r){return r.json();}).then(function(x){var e=document.querySelector('#vs-live b');if(e&&x)e.textContent=x.live;}).catch(function(){}); },30000);
+  }).catch(function(){ box.style.display='none'; });
+}
+// ═══ بطاقة «التطبيق»: كم عندهم التطبيق + ضغطات «حمّل من المتجر» حسب المكان ═══
+var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};
+function _nClk(n){return n===1?'ضغطة وحدة':(n===2?'ضغطتين':(n>=3&&n<=10?fmtNum(n)+' ضغطات':fmtNum(n)+' ضغطة'));}
 function _loadAppStats(){
-  var box=document.getElementById('dash-app'); if(!box)return;
-  fetch(API+'/api/admin/app-stats',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+  var box=document.getElementById('dash-app'); if(!box)return; var R=_perRange();
+  fetch(API+'/api/admin/app-stats?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d||!d.own){box.style.display='none';return;}
     var o=d.own, pc=function(a,b){return b?Math.round(a/b*100):0;};
-    var bar=function(lbl,a,b,c){var p=pc(a,b);return '<div style="flex:1;min-width:200px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-bottom:6px"><span>'+lbl+'</span><span style="color:'+c+'">'+p+'% <small style="color:var(--muted);font-weight:700">('+a+' من '+b+')</small></span></div><div style="height:9px;border-radius:9px;background:var(--bg)"><div style="height:100%;width:'+p+'%;border-radius:9px;background:'+c+'"></div></div></div>';};
-    var views=0,clicks=0,rows={};
-    (d.hits||[]).forEach(function(h){ if(h.kind==='view')views+=h.n; else clicks+=h.n; var k=h.src; rows[k]=rows[k]||{v:0,c:0}; rows[k][h.kind==='view'?'v':'c']+=h.n; });
-    var list=Object.keys(rows).sort(function(a,b){return (rows[b].c+rows[b].v)-(rows[a].c+rows[a].v);}).slice(0,6).map(function(k){return '<tr><td style="padding:6px 4px;font-weight:700">'+esc(_APP_SRC[k]||k)+'</td><td style="padding:6px 4px;text-align:center">'+rows[k].v+'</td><td style="padding:6px 4px;text-align:center;font-weight:800;color:#15803d">'+rows[k].c+'</td></tr>';}).join('');
-    box.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap"><h3 style="margin:0;font-size:16px">التطبيق</h3><span style="font-size:12px;color:var(--muted);font-weight:700">مين عنده التطبيق + صفحة التحميل (آخر 30 يوم)</span><a href="/app" target="_blank" rel="noopener" style="margin-right:auto;font-size:12.5px;font-weight:800">manaqasa.com/app ↗</a></div>'
-      +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px">'+bar('العملاء',o.clients_app,o.clients,'#1d4ed8')+bar('المزوّدين',o.providers_app,o.providers,'#c2410c')+'</div>'
-      +'<div style="display:flex;gap:10px;margin-bottom:10px"><div style="flex:1;background:var(--bg);border-radius:12px;padding:10px;text-align:center"><b style="font-size:20px;display:block">'+views+'</b><small style="color:var(--muted);font-weight:700">زيارة لصفحة التطبيق</small></div><div style="flex:1;background:var(--bg);border-radius:12px;padding:10px;text-align:center"><b style="font-size:20px;display:block;color:#15803d">'+clicks+'</b><small style="color:var(--muted);font-weight:700">ضغطة على المتجر</small></div></div>'
-      +(list?'<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--muted);font-size:11.5px"><th style="text-align:right;padding:4px">المصدر</th><th style="padding:4px">زيارات</th><th style="padding:4px">ضغطات المتجر</th></tr></thead><tbody>'+list+'</tbody></table>':'<div style="font-size:12.5px;color:var(--muted)">ما فيه زيارات للحين — أرسل الرابط manaqasa.com/app للمزوّدين.</div>');
+    var kb=function(lbl,a,b,c){var p=pc(a,b);return '<div class="vs-b"><span class="t">'+lbl+'</span><span class="big" style="color:'+c+'">'+p+'%</span><div class="ap-bar"><i style="width:'+p+'%;background:'+c+'"></i></div><span class="vs-s">'+fmtNum(a)+' من '+fmtNum(b)+' نزّلوه</span></div>';};
+    var views=0,clicks=0,cl={},vw={};
+    (d.hits||[]).forEach(function(h){ if(h.kind==='view'){views+=h.n;vw[h.src]=(vw[h.src]||0)+h.n;} else {clicks+=h.n;cl[h.src]=(cl[h.src]||0)+h.n;} });
+    var ks=Object.keys(cl).sort(function(a,b){return cl[b]-cl[a];}), mx=ks.length?cl[ks[0]]:1;
+    var topView=Object.keys(vw).sort(function(a,b){return vw[b]-vw[a];})[0];
+    var rows=ks.slice(0,7).map(function(k){return '<div class="vs-br"><span class="nm">'+esc(_APP_SRC[k]||k)+'</span><span class="bar"><i style="width:'+Math.round(cl[k]/mx*100)+'%;background:#16a34a"></i></span><span class="v">'+_nClk(cl[k])+'</span></div>';}).join('');
+    box.innerHTML='<div class="vs-h"><h3>📱 التطبيق</h3><a href="/app" target="_blank" rel="noopener" style="margin-inline-start:auto;font-size:12.5px;font-weight:800">manaqasa.com/app ↗</a></div>'
+      +'<div class="vs-s" style="font-size:13.5px;color:var(--text2);margin-bottom:10px">كم واحد من مستخدمينك عنده التطبيق؟ (مهم لأن الإشعارات توصل عليه لحظياً)</div>'
+      +'<div class="vs-k">'+kb('المزوّدين',o.providers_app,o.providers,'#c2410c')+kb('العملاء',o.clients_app,o.clients,'#1d4ed8')+'</div>'
+      +'<div class="vs-st" style="margin-top:6px">'+esc(R.lbl)+': '+_nClk(clicks)+' على «حمّل من المتجر»</div>'
+      +(rows?'<div class="vs-s" style="margin-bottom:4px">من وين ضغطوا:</div>'+rows:'<div class="vs-s">ما فيه ضغطات في هالفترة</div>')
+      +'<div class="vs-note">صفحة manaqasa.com/app انفتحت '+fmtNum(views)+' مرة'+(topView&&views?' — أغلبها من «'+esc(_APP_SRC[topView]||topView)+'» ('+vw[topView]+')':'')+'. وكثير يضغطون زر المتجر مباشرة من غير ما يفتحون الصفحة، عشان كذا الضغطات ممكن تكون أكثر من الزيارات.</div>';
   }).catch(function(){ box.style.display='none'; });
 }

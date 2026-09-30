@@ -540,3 +540,29 @@ mark.ow-blank{background:#fee2e2;color:#b91c1c;border-radius:4px;padding:0 3px;f
 
 .pro-lnk{color:#1d4ed8!important;border-color:#bfdbfe!important;text-decoration:none;display:inline-flex;align-items:center;gap:5px}.pro-lnk:hover{background:#eff6ff!important}
 .pro-name{color:inherit;text-decoration:none;border-bottom:1px dashed rgba(29,78,216,.35)}.pro-name:hover{color:#1d4ed8}
+
+/* ===== الفترة + الزيارات + التطبيق ===== */
+.per-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--border);border-radius:14px;padding:8px 10px;margin:0 0 14px}
+.per-t{font-size:13px;font-weight:900;margin-inline-end:4px}
+.per-ch{border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:999px;padding:7px 13px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;min-height:34px}
+.per-ch.on{background:#1e3a8a;border-color:#1e3a8a;color:#fff}
+.per-cust{display:inline-flex;align-items:center;gap:6px}.per-cust input{border:1px solid var(--border);border-radius:9px;padding:6px 8px;font-family:inherit;font-size:12.5px;background:var(--card,#fff);color:var(--text)}
+.per-go{border:0;background:#16a34a;color:#fff;border-radius:9px;padding:7px 12px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+.per-l{margin-inline-start:auto;font-size:12.5px;font-weight:800;color:var(--muted)}
+#dash-visits,#dash-app{display:flex;flex-direction:column;gap:12px}
+.vs-h{display:flex;align-items:center;gap:10px}.vs-h h3{margin:0;font-size:17px}
+.vs-live{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#15803d}.vs-live i{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2);animation:vsP 2s infinite}
+@keyframes vsP{50%{box-shadow:0 0 0 7px rgba(34,197,94,.08)}}
+.vs-k{display:flex;gap:12px;flex-wrap:wrap}.vs-b{flex:1;min-width:170px;border:1px solid var(--border);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:5px}.vs-b.wide{flex:1.5;min-width:240px}
+.vs-b .t{font-size:12.5px;font-weight:800;color:var(--muted)}.vs-b .big{font-size:30px;font-weight:900;line-height:1.05}
+.vs-up{color:#15803d;font-size:12.5px;font-weight:800}.vs-dn{color:#b91c1c;font-size:12.5px;font-weight:800}.vs-s{font-size:12px;color:var(--muted);font-weight:700}
+.vs-sms{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.vs-sm{background:var(--bg);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.vs-sm b{font-size:19px;font-weight:900}.vs-sm span{font-size:11.5px;font-weight:700;color:var(--muted)}
+.vs-2{display:grid;grid-template-columns:1.15fr 1fr;gap:18px}.vs-st{font-size:14px;font-weight:900;margin-bottom:6px}
+.vs-br{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;padding:5px 0}.vs-br .nm{width:170px;flex-shrink:0}.vs-br .bar{flex:1;height:10px;background:var(--bg,#eef2f7);border-radius:6px;overflow:hidden}.vs-br .bar i{display:block;height:100%;border-radius:6px}.vs-br .v{min-width:120px;text-align:left;font-size:12px;color:var(--text2)}.vs-br .v b{color:#15803d}
+.vs-fn{display:flex;align-items:stretch}.vs-fn div{flex:1;text-align:center;padding:12px 6px;background:#eef3ff;border-radius:12px}.vs-fn div b{display:block;font-size:24px;font-weight:900;color:#1e3a8a}.vs-fn div span{font-size:11.5px;font-weight:800;color:var(--muted)}
+.vs-fn i{font-style:normal;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 6px;font-size:12px;font-weight:900;color:#b45309;line-height:1.3}
+.vs-note{font-size:12px;color:var(--muted);font-weight:700;background:var(--bg);border-radius:10px;padding:8px 11px;line-height:1.75;margin-top:8px}
+.vs-foot{font-size:11px;color:var(--muted);font-weight:600;text-align:center}
+.ap-bar{height:8px;background:var(--bg,#eef2f7);border-radius:6px;overflow:hidden}.ap-bar i{display:block;height:100%}
+[data-theme="dark"] .vs-fn div{background:rgba(96,165,250,.12)}[data-theme="dark"] .vs-fn div b{color:#93c5fd}
+@media(max-width:900px){.vs-2{grid-template-columns:1fr}.vs-sms{grid-template-columns:repeat(3,1fr)}.vs-br .nm{width:120px}.vs-br .v{min-width:90px}}
