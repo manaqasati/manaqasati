@@ -204,15 +204,9 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </div>
 
     <div class="page" id="page-contactlog">
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-head"><h3>📇 سجل فتح التواصل</h3>
-          <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center">
-            <span id="cl-count" style="font-size:12.5px;font-weight:700;color:var(--muted)"></span>
-            <button class="act-btn ab-default" style="padding:6px 12px;font-size:12px;color:#1d4ed8;border-color:#bfdbfe" onclick="openNotifyBidders()">📣 تنبيه أصحاب العروض بالتواصل</button>
-          </div>
-        </div>
-        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">سجل كل مرة انفتح فيها رقم العميل لمزوّد (بعد تقديم عرض حقيقي). مرجع لحماية عمولتك ومتابعة التواصل خارج المنصة.</div>
-      </div>
+      <div class="cu-hd"><div><h2>فتح أرقام العملاء</h2><p>مين أخذ رقم مين — وهل انتهى الشغل داخل المنصة؟</p></div>
+        <div id="cu-seg" style="margin-inline-start:auto"></div>
+        <button class="act-btn ab-default" style="padding:8px 12px;font-size:12.5px;color:#1d4ed8;border-color:#bfdbfe" onclick="openNotifyBidders()">📣 تنبيه أصحاب العروض</button></div>
       <div id="contactlog-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 

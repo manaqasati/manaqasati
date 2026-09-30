@@ -7163,19 +7163,56 @@ app.post('/api/admin/notify-real-bidders', requirePermission('requests.review'),
 });
 app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async (req, res) => {
   try {
-    const r = await pool.query(`
-      SELECT cu.id, cu.request_id, cu.created_at,
-             p.id AS provider_id, p.name AS provider_name, p.phone AS provider_phone,
-             c.id AS client_id, c.name AS client_name, c.phone AS client_phone,
-             rq.title AS project_title, rq.status AS project_status
-      FROM contact_unlocks cu
-      LEFT JOIN users p ON p.id=cu.provider_id
-      LEFT JOIN users c ON c.id=cu.client_id
-      LEFT JOIN requests rq ON rq.id=cu.request_id
-      ORDER BY cu.created_at DESC LIMIT 300`);
-    res.json(r.rows);
+    const q = Object.assign({}, req.query); if (q.all === '1') q.from = '2020-01-01';
+    const R = _rangeFromQuery(q), P = [R.from, R.to];
+    const IN = `(cu.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    // مآل كل رقم انفتح: رسى على نفس المزوّد / على غيره / انقفل بدون ترسية (خطر تسريب) / لسا مفتوح
+    const OUT = `CASE WHEN rq.assigned_provider_id = cu.provider_id THEN 'won' WHEN rq.assigned_provider_id IS NOT NULL THEN 'other'
+      WHEN rq.status IN ('closed_auto','closed','expired','cancelled','archived_auto') THEN 'risk' ELSE 'open' END`;
+    const t = (await pool.query(`SELECT COUNT(*)::int AS opens, COUNT(DISTINCT cu.client_id)::int AS clients, COUNT(DISTINCT cu.provider_id)::int AS providers,
+        COUNT(*) FILTER (WHERE ${OUT}='won')::int AS won, COUNT(*) FILTER (WHERE ${OUT}='other')::int AS other,
+        COUNT(*) FILTER (WHERE ${OUT}='risk')::int AS risk, COUNT(*) FILTER (WHERE ${OUT}='open')::int AS open,
+        COUNT(DISTINCT cu.request_id) FILTER (WHERE ${OUT}='risk')::int AS risk_projects
+      FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE ${IN}`, P)).rows[0];
+    t.saai_protected = (await pool.query(`SELECT COALESCE(SUM(s.saai_amount),0)::int AS v FROM saai_ledger s WHERE EXISTS (SELECT 1 FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE cu.request_id=s.request_id AND cu.provider_id=s.provider_id AND rq.assigned_provider_id=cu.provider_id AND ${IN})`, P)).rows[0].v;
+    const rows = (await pool.query(`SELECT cu.request_id, cu.created_at, cu.commission_reminded, cu.provider_id, ${OUT} AS outcome,
+        COALESCE(NULLIF(p.business_name,''), p.name) AS provider_name, p.phone AS provider_phone,
+        rq.title, rq.status, rq.city, rq.assigned_provider_id, c.id AS client_id, c.name AS client_name, c.phone AS client_phone
+      FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id LEFT JOIN users p ON p.id=cu.provider_id LEFT JOIN users c ON c.id=cu.client_id
+      WHERE cu.request_id IN (SELECT cu2.request_id FROM contact_unlocks cu2 WHERE (cu2.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2 GROUP BY 1 ORDER BY MAX(cu2.created_at) DESC LIMIT 400)
+      ORDER BY cu.created_at DESC`, P)).rows;
+    const map = new Map();
+    for (const x of rows) {
+      let g = map.get(x.request_id);
+      if (!g) { g = { request_id: x.request_id, title: x.title, status: x.status, city: x.city, client_id: x.client_id, client_name: x.client_name, client_phone: x.client_phone, last_at: x.created_at, reminded_at: null, provs: [] }; map.set(x.request_id, g); }
+      g.provs.push({ id: x.provider_id, name: x.provider_name, phone: x.provider_phone, at: x.created_at, won: x.outcome === 'won' });
+      if (x.commission_reminded && (!g.reminded_at || x.commission_reminded > g.reminded_at)) g.reminded_at = x.commission_reminded;
+      g.outcome = x.assigned_provider_id ? (g.provs.some(v => v.won) || x.outcome === 'won' ? 'won' : 'other') : x.outcome;
+    }
+    const projects = [...map.values()].map(g => { if (g.provs.some(v => v.won)) g.outcome = 'won'; return g; });
+    const providers = (await pool.query(`SELECT cu.provider_id AS id, COALESCE(NULLIF(p.business_name,''), p.name) AS name, p.phone, p.email,
+        COUNT(*)::int AS opens, COUNT(*) FILTER (WHERE ${OUT}='won')::int AS won, COUNT(*) FILTER (WHERE ${OUT}='risk')::int AS risk
+      FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id JOIN users p ON p.id=cu.provider_id WHERE ${IN}
+      GROUP BY 1,2,3,4 HAVING COUNT(*) >= 3 ORDER BY (COUNT(*) - 3*COUNT(*) FILTER (WHERE ${OUT}='won')) DESC, COUNT(*) DESC LIMIT 8`, P)).rows;
+    res.json({ range: R, totals: t, projects, providers });
+  } catch(e) { console.error('contact-unlocks:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تذكير المزوّدين اللي فتحوا رقم العميل: «تعاملت معه؟ وثّق المشروع واحصل على تقييم»
+app.post('/api/admin/contact-unlocks/:rid/remind', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const rid = parseInt(req.params.rid);
+    const rq = (await pool.query('SELECT title, assigned_provider_id FROM requests WHERE id=$1', [rid])).rows[0];
+    if (!rq) return res.status(404).json({ message: 'غير موجود' });
+    const r = await pool.query(`UPDATE contact_unlocks SET commission_reminded=NOW() WHERE request_id=$1 AND (commission_reminded IS NULL OR commission_reminded < NOW() - INTERVAL '24 hours') RETURNING provider_id`, [rid]);
+    if (!r.rows.length) return res.status(400).json({ message: 'ذكّرتهم خلال آخر 24 ساعة' });
+    for (const x of r.rows) {
+      try { await notify(x.provider_id, '⭐ تعاملت مع صاحب مشروع «' + eEsc(rq.title || '') + '»؟', 'إذا اتفقت معه ونفّذت المشروع، وثّقه من «عروضي» واحصل على تقييمه — كل تقييم يرفع ترتيبك في المنصة.', 'claim', rid); } catch(e){}
+    }
+    await logAdmin(req, 'remind_unlockers', 'request', rid, 'تذكير من فتحوا رقم العميل (' + r.rows.length + ')');
+    res.json({ ok: true, sent: r.rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+
 // ═══ دعوة مزوّد مباشرة ═══
 const INVITE_REMIND_HOURS = 5, INVITE_OPEN_HOURS = 24;
 async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (invite_started_at + ($2 || ' hours')::interval - NOW())))::int AS s FROM requests WHERE id=$1`, [id, String(INVITE_OPEN_HOURS)])).rows[0].s; } catch(e) { return null; } }
