@@ -423,6 +423,7 @@ function _renderDash(o){
   if(n.saai_submitted) q.push({c:'blu',t:'سداد ينتظر الاعتماد',s:fmtNum(n.saai_submitted_sum)+' ر.س',n:n.saai_submitted,pg:'saai',ic:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'});
   if(n.inbox_unread) q.push({c:'blu',t:'رسائل عملاء بدون رد',s:'ردود العملاء على رسائلك',n:n.inbox_unread,pg:'inbox',ic:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>',go:'ردّ'});
   if(n.review_providers) q.push({c:'blu',t:'مزوّدين تحت المراجعة',s:'عروضهم تنتظر قرارك',n:n.review_providers,pg:'offerwatch',ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>',tab:'held'});
+  if(n.ask_penalized) q.push({c:'org',t:'مزوّدين كثّروا طلبات الاعتماد',s:'3 «ما اتفقنا» خلال شهر — عروضهم نازلة 10 أيام',n:n.ask_penalized,pg:'bidreasons',ic:'<path d="M12 5v14M5 12l7 7 7-7"/>',go:'راجع'});
   if(n.claims_denied) q.push({c:'red',t:'عميل نفى تعامله مع مزوّد',s:'مزوّد طلب توثيق مشروع والعميل قال «ما تعاملت معه»',n:n.claims_denied,pg:'claims',ic:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',go:'راجع'});
   if(n.flags) q.push({c:'org',t:'عروض مرصودة',s:(n.flag_providers||0)+' مزوّد',n:n.flags,pg:'offerwatch',ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',tab:'auto'});
   var na=document.getElementById('needs-action');
@@ -3839,7 +3840,7 @@ function loadBidReasons(days){
       +k('أخذوا فرصة ثانية',t.chances,fmtNum(t.improved||0)+' قدّموا عرض محسّن')
       +k('انقبلت بعد التحسين',t.won,(t.won?'صفقات ما كانت بتصير':'—'),'g')
       +k('عملاء أجّلوا',t.postponed,(t.postponed?'تحت — تواصل معهم':'—'),'a')+'</div>';
-    if(!t.rejected){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه عروض انرفضت من العملاء في هالفترة.<div style="font-size:12.5px;margin-top:6px">الأسباب تبدأ تتجمع من الحين — كل ما رفض عميل عرض يختار السبب.</div></div></div>';b.innerHTML=h;return;}
+    if(!t.rejected&&!(d.ask_penalized||[]).length){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه عروض انرفضت من العملاء في هالفترة.<div style="font-size:12.5px;margin-top:6px">الأسباب تبدأ تتجمع من الحين — كل ما رفض عميل عرض يختار السبب.</div></div></div>';b.innerHTML=h;return;}
     h+='<div class="br-2"><div class="ad-card br-c"><h3>ليش ما انختارت العروض؟</h3>'
       +(rs.length?rs.map(function(x){var pc=Math.round(x.n/rsT*100);return '<div class="br-r"><div class="t"><span>'+(_BR_ICO[x.k]||'')+' '+esc(L[x.k]||x.k)+'</span><b>'+x.n+' <small>'+pc+'%</small></b></div><div class="bar"><i style="width:'+Math.max(3,pc)+'%;background:'+(_BR_COL[x.k]||'#94a3b8')+'"></i></div></div>';}).join(''):'<div style="color:var(--muted);font-size:13px">العملاء ما ذكروا أسباب بعد</div>')
       +'</div><div class="ad-card br-c" style="padding:0"><h3 style="padding:16px 18px 6px">حسب المزوّد</h3><div class="tbl-wrap"><table class="br-t"><thead><tr><th>المزوّد</th><th>ما انختار</th><th>أكثر سبب</th><th>حسّن وانقبل</th><th></th></tr></thead><tbody>'
@@ -3848,6 +3849,12 @@ function loadBidReasons(days){
         var pill=p.top?'<span class="br-p" style="background:'+(_BR_COL[p.top]||'#94a3b8')+'1a;color:'+(_BR_COL[p.top]||'#475569')+'">'+esc(L[p.top]||p.top)+(p.top_n>1?' · '+p.top_n:'')+'</span>':'<span style="color:var(--muted);font-size:12px">—</span>';
         return '<tr'+(warn?' class="warn"':'')+'><td><button type="button" class="br-nm" onclick="gsOpenUser('+_jsa(p.email||'')+')">'+esc(p.name||'—')+'</button>'+(warn?'<div class="br-w">⚠️ يقدّم خارج تخصصه ('+p.specialty+' مرات)</div>':'')+'</td><td>'+p.n+'</td><td>'+pill+'</td><td>'+(p.improved?p.won+' من '+p.improved:'—')+'</td><td>'+_proLink(p.id,1)+'</td></tr>';
       }).join('')+'</tbody></table></div></div></div>';
+    var ap=d.ask_penalized||[];
+    if(ap.length){
+      h+='<div class="ad-card br-c" style="border-color:#fed7aa"><h3>مزوّدين كثّروا طلبات الاعتماد <small>3 عملاء أو أكثر ردّوا «ما اتفقنا» خلال شهر — عروضهم نازلة لآخر القائمة</small></h3>'
+        +ap.map(function(p){var ph=_waNorm(p.phone);return '<div class="br-po"><div style="min-width:0;flex:1"><button type="button" class="br-nm" onclick="gsOpenUser('+_jsa(p.email||'')+')">'+esc(p.name||'—')+'</button><div class="sm">'+p.declines+' «ما اتفقنا» · ترجع طبيعية '+new Date(p.ask_penalty_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'})+'</div></div>'
+          +(ph?'<a class="act-btn ab-default" href="https://wa.me/'+ph+'" target="_blank" rel="noopener">واتساب</a>':'')+'<button class="act-btn ab-default" onclick="_brClearPen('+(parseInt(p.id)||0)+')">رجّع ترتيبه</button></div>';}).join('')+'</div>';
+    }
     var po=d.postponed||[];
     if(po.length){
       h+='<div class="ad-card br-c"><h3>عملاء أجّلوا مشاريعهم <small>تواصل معهم بعد فترة — ممكن يرجعون</small></h3>'
@@ -3859,6 +3866,7 @@ function loadBidReasons(days){
     b.innerHTML=h;
   }).catch(function(){b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>';});
 }
+function _brClearPen(id){ if(!confirm('ترجع عروض هذا المزوّد لترتيبها الطبيعي الحين؟'))return; fetch(API+'/api/admin/users/'+id+'/ask-penalty/clear',Object.assign({method:'PUT'},hdr())).then(function(r){toast(r.ok?'تم':'تعذّر',r.ok?'success':'error');loadBidReasons();}); }
 function loadCloseReasons(){
   var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })

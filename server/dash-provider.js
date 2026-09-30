@@ -2318,17 +2318,24 @@ function _askBlock(b){
     +btn(false,'اطلب من العميل اعتماد عرضك')
     +'<div style="font-size:11.5px;font-weight:700;color:#92400e;text-align:center;margin-top:7px;opacity:.85">بعد الاعتماد يُحسب سعي المنصة 3% من قيمة الاتفاق</div></div>';
 }
-async function _askAccept(id,btn){
+function _askAccept(id,btn){
+  var b=_myBids.find(function(x){return String(x.id)===String(id);});
+  if(typeof _askConfirmOpen==='function'&&b){ _askConfirmOpen(b,function(pl,done){ _askAcceptSend(id,btn,pl,done); }); return; }
+  _askAcceptSend(id,btn,{confirm:true});
+}
+async function _askAcceptSend(id,btn,payload,done){
   if(btn){btn.disabled=true;btn.textContent='جاري الإرسال…';}
   try{
-    var r=await fetch(API+'/api/bids/'+id+'/ask-accept',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')}});
+    var r=await fetch(API+'/api/bids/'+id+'/ask-accept',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify(payload||{confirm:true})});
     var d=await r.json().catch(function(){return {};});
-    if(!r.ok){ if(typeof showToast==='function')showToast(d.message||'تعذّر الإرسال','error'); if(btn){btn.disabled=false;btn.textContent='اطلب من العميل اعتماد عرضك';} return; }
+    if(!r.ok){ if(typeof showToast==='function')showToast(d.message||'تعذّر الإرسال','error'); if(btn){btn.disabled=false;btn.textContent='اطلب من العميل اعتماد عرضك';} if(done)done(false,d.message); return; }
+    if(done)done(true);
     if(typeof showToast==='function')showToast('أرسلنا طلبك للعميل ✓','success');
     var b=_myBids.find(function(x){return String(x.id)===String(id);});
+    if(b&&payload){ if(payload.price)b.price=payload.price; if(payload.days)b.days=payload.days; }
     if(b){ b.ask_status='pending'; b.ask_can=false; b.ask_why='cooldown'; b.ask_next_at=d.next_at; b.ask_left=d.left; b.ask_last_at=new Date().toISOString(); b.ask_sends=d.sends; }
     var w=_el('wtab-bids-wrap'); if(w){ w.innerHTML=_renderBids(_myBids); w.querySelectorAll('._bchat').forEach(function(bt){ bt.addEventListener('click',function(){ openChatRoom(parseInt(bt.getAttribute('data-rid')),parseInt(bt.getAttribute('data-cid')),'',''); }); }); }
-  }catch(e){ if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='اطلب من العميل اعتماد عرضك';} }
+  }catch(e){ if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='اطلب من العميل اعتماد عرضك';} if(done)done(false); }
 }
 // ═══ الإشعارات (تصميم جديد): فلترة حسب النوع + تجميع حسب اليوم + أيقونة ولون لكل نوع ═══
 var _nfList=[],_nfFilter='all';

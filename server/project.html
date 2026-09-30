@@ -653,7 +653,7 @@ function _bidScore(b){
   return s;
 }
 function _bestBid(){
-  var c=_bids.filter(function(b){return b.status!=='rejected';});
+  var c=_bids.filter(function(b){return b.status!=='rejected'&&!b.low_rank;});
   if(c.length<2)return null;
   return c.slice().sort(function(a,b){return _bidScore(b)-_bidScore(a);})[0];
 }
@@ -674,7 +674,7 @@ function _sortedBids(mode){
   if(mode==='cheap'){arr.sort(function(a,b){return pv(a)-pv(b);});}
   else if(mode==='rating'){arr.sort(function(a,b){var d=_bidRating(b)-_bidRating(a);if(d)return d;return (parseInt(b.review_count)||0)-(parseInt(a.review_count)||0);});}
   else{arr.sort(function(a,b){return _bidScore(b)-_bidScore(a);});}
-  arr.sort(function(a,b){return (b.status==='accepted')-(a.status==='accepted');});
+  arr.sort(function(a,b){return (b.status==='accepted')-(a.status==='accepted')||(a.low_rank?1:0)-(b.low_rank?1:0);});
   return arr;
 }
 function _stTxt(s){return s==='open'?'مفتوح للعروض':(s==='in_progress'?'قيد التنفيذ':(['closed_auto','closed','expired','cancelled'].indexOf(s)>=0?'أُغلق':(s==='completed'||s==='done'?'مكتمل':'قيد المراجعة')));}

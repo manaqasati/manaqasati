@@ -933,7 +933,7 @@ function loadBids(id){
 
       // الأفضل = أعلى تقييم ثم الأقل سعراً، والأرخص = أقل سعر
       var sorted=bids.slice().sort(function(a,b){var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;if(rb!==ra)return rb-ra;return (parseFloat(a.price)||0)-(parseFloat(b.price)||0);});
-      var bestId=sorted[0]&&sorted[0].id;
+      var bestId=(sorted.filter(function(x){return !x.low_rank;})[0]||{}).id;
       var minPrice=Math.min.apply(null,bids.map(function(b){return parseFloat(b.price)||Infinity;}));
       var cheapId=null;bids.forEach(function(b){if(cheapId===null&&(parseFloat(b.price)||Infinity)===minPrice)cheapId=b.id;});
 
@@ -2503,22 +2503,24 @@ function _phTopPaint(){
   var ic=function(p,c){return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0">'+p+'</svg>';};
   var STAR='<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',CLK='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',SH='<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>';
   var h='';
-  _phAsks.forEach(function(a){
-    var img=a.provider_image?'<img src="'+esc(a.provider_image)+'" alt="" style="width:46px;height:46px;border-radius:46px;object-fit:cover">':'<div style="width:46px;height:46px;border-radius:46px;background:#1e3a8a;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center">'+esc(String(a.provider_name||'؟').charAt(0))+'</div>';
-    var unit=(a.price_unit&&a.price_unit!=='total')?(a.price_unit==='m2'?' / م²':' / وحدة'):'';
-    var rat=parseFloat(a.provider_rating)||0;
-    h+='<div style="background:#fff;border:2px solid #1d4ed8;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px">'
-      +'<div style="display:flex;align-items:center;gap:11px">'+img+'<div><b style="font-size:15px;display:block">'+esc(a.provider_name||'المزوّد')+'</b><span style="font-size:12.5px;font-weight:700;color:#5b6b85">'+(rat?('★ '+rat.toFixed(1)+' · '+(a.provider_reviews||0)+' تقييم'):'مزوّد جديد')+'</span></div></div>'
-      +'<div style="font-size:15px;font-weight:800;line-height:1.8">يطلب منك اعتماد عرضه على «'+esc(a.title||'مشروعك')+'»</div>'
-      +'<div style="display:flex;gap:8px"><div style="flex:1;background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:9px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:#5b6b85">السعر</span><b style="display:block;font-size:17px">'+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س'+unit+'</b></div>'
-      +(a.days?'<div style="flex:1;background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:9px;text-align:center"><span style="font-size:11.5px;font-weight:700;color:#5b6b85">المدة</span><b style="display:block;font-size:17px">'+(parseInt(a.days)||0)+' يوم</b></div>':'')+'</div>'
-      +'<div style="background:#f8fafd;border:1px solid #e1e9f6;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;color:#334766;line-height:1.9">اتفقتوا؟ اعتمد العرض عشان:'
-      +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px">'+ic(STAR,'#b45309')+'تقدر تقيّمه بعد التنفيذ وتفيد غيرك</div>'
-      +'<div style="display:flex;align-items:center;gap:6px">'+ic(CLK,'#1d4ed8')+'تتابع المشروع خطوة خطوة من لوحتك</div>'
-      +'<div style="display:flex;align-items:center;gap:6px">'+ic(SH,'#15803d')+'يبقى الاتفاق موثّق عندك بالسعر والمدة</div></div>'
-      +'<button onclick="_askApprove('+(parseInt(a.id)||0)+')" style="border:0;background:#1d4ed8;color:#fff;border-radius:13px;padding:13px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">اعتمد العرض</button>'
-      +'<div style="display:flex;gap:8px"><button onclick="_askRespond('+(parseInt(a.id)||0)+',&quot;declined&quot;)" style="flex:1;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:13px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer">ما اتفقنا بعد</button><button onclick="_askRespond('+(parseInt(a.id)||0)+',&quot;other&quot;)" style="flex:1;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:13px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer">اخترت مزوّد ثاني</button></div>'
-      +'</div>';
+  // طلبات الاعتماد مجمّعة لكل مشروع: سطر لكل مزوّد + زر اعتمد
+  var grp={},ord=[];
+  _phAsks.forEach(function(a){ var k=a.request_id; if(!grp[k]){grp[k]=[];ord.push(k);} grp[k].push(a); });
+  ord.forEach(function(k){
+    var L=grp[k], t=L[0].title||'مشروعك', many=L.length>1, open=window._phOpenGrp&&window._phOpenGrp[k];
+    var show=open?L:L.slice(0,3);
+    h+='<div class="ak-g"><div class="ak-gh"><b>'+(many?(L.length===2?'مزوّدين':L.length+' مزوّدين')+' يقولون إنكم اتفقتوا على «'+esc(t)+'»':esc(L[0].provider_name||'المزوّد')+' يقول إنكم اتفقتوا على «'+esc(t)+'»')+'</b>'
+      +'<span>اعتمد اللي اتفقت معه — يصير المشروع «قيد التنفيذ» وتقدر تقيّمه بعد التنفيذ</span></div>';
+    show.forEach(function(a){
+      var nm=a.provider_name||'المزوّد', img=a.provider_image?'<img src="'+esc(a.provider_image)+'" alt="">':esc(nm.charAt(0));
+      var unit=(a.price_unit&&a.price_unit!=='total')?(a.price_unit==='meter'?' / متر':' / وحدة'):'';
+      var rat=parseFloat(a.provider_rating)||0;
+      var chg=(a.prev_price&&+a.prev_price!==+a.price)?'<div class="ak-chg">عدّل سعره بعد الاتفاق: <s>'+fmtN(a.prev_price)+'</s> ← '+fmtN(a.price)+'</div>':((a.prev_days&&+a.prev_days!==+a.days)?'<div class="ak-chg">عدّل المدة بعد الاتفاق: <s>'+a.prev_days+'</s> ← '+a.days+' يوم</div>':'');
+      h+='<div class="ak-r"><span class="ak-av">'+img+'</span><div class="ak-n"><b>'+esc(nm)+'</b><span>'+fmtN(a.price)+' ر.س'+unit+(a.days?' · '+a.days+' يوم':'')+(rat?' · ★ '+rat.toFixed(1):'')+'</span>'+chg+'</div>'
+        +'<button type="button" class="ak-ok" onclick="_askApprove('+(parseInt(a.id)||0)+')">اعتمد</button></div>';
+    });
+    if(L.length>3&&!open)h+='<button type="button" class="ak-more" onclick="window._phOpenGrp=window._phOpenGrp||{};window._phOpenGrp['+(parseInt(k)||0)+']=1;_phTopPaint()">+'+(L.length-3)+' مزوّد</button>';
+    h+='<div class="ak-f"><button type="button" onclick="_askRespondAll('+(parseInt(k)||0)+',&quot;declined&quot;)">ما اتفقت مع أحد بعد</button><button type="button" onclick="_askRespondAll('+(parseInt(k)||0)+',&quot;other&quot;)">اتفقت مع مزوّد ثاني</button></div></div>';
   });
   if(_phHint){
     h+='<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px">'
@@ -2526,8 +2528,16 @@ function _phTopPaint(){
       +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل حسابي لمزوّد</button>'
       +'<button onclick="_provHintNo()" style="border:0;background:none;font-family:inherit;font-size:13px;font-weight:800;color:#9a3412;cursor:pointer">لا، أنا أطلب خدمات</button></div>';
   }
-  el.innerHTML=h; el.style.marginBottom=h?'14px':'0';
+  el.innerHTML=h; el.style.marginBottom=h?'12px':'0';
+  try{_phDecideHead();}catch(e){}
 }
+function _phDecideHead(){
+  var n=(_phAsks||[]).reduce(function(a,x,i,arr){return a+(arr.findIndex(function(y){return y.request_id===x.request_id;})===i?1:0);},0)+(document.querySelectorAll('#ph-claims .cl-card').length||0);
+  var hd=document.getElementById('ph-dh'),w=document.getElementById('ph-decide'); if(!hd||!w)return;
+  hd.innerHTML='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج إجراء منك'+(n?' <i class="ak-cnt">'+n+'</i>':'');
+  hd.style.display=n?'':'none'; w.classList.toggle('has',!!n);
+}
+window._phDecideHead=_phDecideHead;
 function _askApprove(id){
   var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;
   if(!confirm('اعتماد عرض «'+(a.provider_name||'المزوّد')+'» بـ '+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س؟ يتحول المشروع لـ«قيد التنفيذ».'))return;
@@ -2535,6 +2545,14 @@ function _askApprove(id){
     if(d&&d.ok){ showToast('تم اعتماد العرض ✓','success'); _phAsks=_phAsks.filter(function(x){return x.id!==id;}); _phTopPaint(); try{loadHome();}catch(e){} }
     else showToast((d&&d.message)||'تعذّر الاعتماد','error');
   }).catch(function(){ showToast('تعذّر الاتصال','error'); });
+}
+function _askRespondAll(rid,act){
+  var L=_phAsks.filter(function(x){return String(x.request_id)===String(rid);}); if(!L.length)return;
+  if(act==='declined'&&!confirm(L.length>1?'ما اتفقت مع أي واحد منهم على هذا المشروع؟':'ما اتفقت معه على هذا المشروع؟'))return;
+  Promise.all(L.map(function(a){return jFetch('/api/accept-asks/'+a.id+'/respond',{method:'POST',body:JSON.stringify({action:act})}).catch(function(){});})).then(function(){
+    _phAsks=_phAsks.filter(function(x){return String(x.request_id)!==String(rid);}); _phTopPaint();
+    if(act==='other'){ showToast('اختر العرض اللي اتفقت عليه واعتمده','info'); try{openDetail(rid);}catch(e){} } else showToast('تمام، بلّغنا المزوّدين','success');
+  });
 }
 function _askRespond(id,act){
   var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;

@@ -737,6 +737,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN b.provider_id = $4::int OR $3::boolean THEN (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL) ELSE NULL END as chance_open,
         CASE WHEN b.provider_id = $4::int THEN b.chance_until ELSE NULL END as chance_until,
         CASE WHEN b.provider_id = $4::int THEN b.reject_budget ELSE NULL END as reject_budget,
+        CASE WHEN $3::boolean THEN (u.ask_penalty_until > NOW()) IS TRUE ELSE FALSE END as low_rank,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.price as _p,
@@ -2690,6 +2691,10 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS completion_claims (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, bid_id INTEGER, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, kind VARCHAR(10) NOT NULL, value INTEGER, done_when VARCHAR(10), status VARCHAR(12) NOT NULL DEFAULT 'pending', client_value INTEGER, reminded_at TIMESTAMP, responded_at TIMESTAMP, admin_done BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_cclaims_client ON completion_claims(client_id, status)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
+      // طلب الاعتماد: تأكيد المزوّد + تعديل السعر/المدة قبل الإرسال + نزول ترتيب من يكثر «ما اتفقنا»
+      await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_price INTEGER`);
+      await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_days INTEGER`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ask_penalty_until TIMESTAMP`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -4248,12 +4253,12 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
              THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
-        b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
+        (u.ask_penalty_until > NOW()) IS TRUE AS low_rank, b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
         (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL) AS chance_open,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$3::int) as is_hidden
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1 AND ($2::boolean OR COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
-      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
+      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, (u.ask_penalty_until > NOW()) IS TRUE ASC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
     `, [id, req.user.role === 'admin', req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -4487,6 +4492,7 @@ app.post('/api/bids/:id/ask-accept', rateLimiter(20, 600000), auth, async (req, 
     const x = await _askInfo(parseInt(req.params.id));
     if (!x || String(x.provider_id) !== String(req.user.id)) return res.status(404).json({ message: 'العرض غير موجود' });
     const st = _askState(x);
+    if (st.can && !(req.body && req.body.confirm === true)) return res.status(400).json({ message: 'أكّد إنك اتفقت مع العميل قبل الإرسال', code: 'confirm_required' });
     if (!st.can) {
       const msg = st.why === 'accepted' ? 'عرضك معتمد أصلاً'
         : st.why === 'declined' ? 'العميل رد إنكم ما اتفقتوا بعد — كمّل التواصل معه، ولو اتفقتوا يقدر يعتمد عرضك من لوحته'
@@ -4496,10 +4502,25 @@ app.post('/api/bids/:id/ask-accept', rateLimiter(20, 600000), auth, async (req, 
         : 'ما تقدر تطلب الاعتماد على هذا العرض حالياً';
       return res.status(400).json({ message: msg, why: st.why, next_at: st.next_at || null });
     }
+    // تعديل السعر/المدة قبل الإرسال (يعدّل العرض نفسه — العميل بيعتمد الرقم المتفق عليه)
+    let prevP = null, prevD = null;
+    { const np = req.body.price != null && req.body.price !== '' ? parseInt(req.body.price) : null, nd = req.body.days != null && req.body.days !== '' ? parseInt(req.body.days) : null;
+      const chP = np != null && np !== parseInt(x.price), chD = nd != null && nd !== parseInt(x.days);
+      if (chP || chD) {
+        if (chP && !(np > 0)) return res.status(400).json({ message: 'اكتب السعر المتفق عليه' });
+        if (chP && x.price_unit === 'total' && np < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
+        if (chD && !(nd > 0 && nd <= 3650)) return res.status(400).json({ message: 'اكتب مدة صحيحة بالأيام' });
+        if (await _provUnderReview(x.provider_id)) return res.status(400).json({ message: 'عدّل عرضك من «تعديل العرض» أول — عروضك تحت مراجعة الإدارة' });
+        await pool.query('UPDATE bids SET price=COALESCE($2,price), days=COALESCE($3,days) WHERE id=$1', [x.id, chP ? np : null, chD ? nd : null]);
+        if (chP) { prevP = parseInt(x.price); x.price = np; }
+        if (chD) { prevD = parseInt(x.days); x.days = nd; }
+      }
+    }
     const up = await pool.query(`INSERT INTO bid_accept_asks (bid_id, request_id, provider_id, client_id) VALUES ($1,$2,$3,$4)
       ON CONFLICT (bid_id) DO UPDATE SET sends=bid_accept_asks.sends+1, last_sent_at=NOW() WHERE bid_accept_asks.status='pending'
       RETURNING sends, last_sent_at`, [x.id, x.request_id, x.provider_id, x.client_id]);
     if (!up.rows.length) return res.status(400).json({ message: 'ما تقدر تطلب الاعتماد على هذا العرض حالياً' });
+    if (prevP != null || prevD != null) await pool.query('UPDATE bid_accept_asks SET prev_price=COALESCE($2,prev_price), prev_days=COALESCE($3,prev_days) WHERE bid_id=$1', [x.id, prevP, prevD]);
     const pv = (await pool.query(`SELECT COALESCE(NULLIF(business_name,''), name) AS n FROM users WHERE id=$1`, [x.provider_id])).rows[0] || {};
     const pName = pv.n || 'المزوّد';
     const priceTxt = (parseFloat(x.price)||0).toLocaleString('en-US') + ' ر.س' + (x.price_unit && x.price_unit !== 'total' ? ' / ' + (x.price_unit === 'm2' ? 'م²' : 'وحدة') : '');
@@ -4522,7 +4543,7 @@ app.post('/api/bids/:id/ask-accept', rateLimiter(20, 600000), auth, async (req, 
 // طلبات الاعتماد المعلّقة عند العميل
 app.get('/api/client/accept-asks', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT a.id, a.bid_id, a.request_id, a.last_sent_at, a.sends, r.title, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit,
+    const r = await pool.query(`SELECT a.id, a.bid_id, a.request_id, a.last_sent_at, a.sends, a.prev_price, a.prev_days, r.title, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit,
         b.provider_id, COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.profile_image AS provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS provider_rating,
         (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=u.id) AS provider_reviews
@@ -4540,6 +4561,17 @@ app.post('/api/accept-asks/:id/respond', auth, async (req, res) => {
     const r = await pool.query(`UPDATE bid_accept_asks SET status=$1, responded_at=NOW() WHERE id=$2 AND client_id=$3 AND status='pending' RETURNING provider_id, request_id`, [act, parseInt(req.params.id), req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const rq = (await pool.query('SELECT title FROM requests WHERE id=$1', [r.rows[0].request_id])).rows[0] || {};
+    if (act === 'declined') {
+      try {
+        const pid = r.rows[0].provider_id;
+        const n = (await pool.query(`SELECT COUNT(*)::int AS n FROM bid_accept_asks WHERE provider_id=$1 AND status='declined' AND responded_at > NOW() - INTERVAL '30 days'`, [pid])).rows[0].n;
+        if (n >= 3) {
+          const was = (await pool.query(`SELECT ask_penalty_until > NOW() AS on FROM users WHERE id=$1`, [pid])).rows[0] || {};
+          await pool.query(`UPDATE users SET ask_penalty_until = NOW() + INTERVAL '10 days' WHERE id=$1`, [pid]);
+          if (!was.on) { try { await _notifyAdmins('⚠️ مزوّد كثّر طلبات الاعتماد', `${n} عملاء ردّوا «ما اتفقنا» خلال شهر — عروضه نزلت لآخر القائمة 10 أيام`, 'askpenalty', pid); } catch(e){} }
+        }
+      } catch(e) { console.error('ask penalty:', e.message); }
+    }
     if (act === 'declined') await notify(r.rows[0].provider_id, 'رد العميل على طلب الاعتماد', 'العميل يقول ما اتفقتوا بعد على «' + (rq.title||'المشروع') + '». كمّل التواصل معه — ولو اتفقتوا يقدر يعتمد عرضك من لوحته.', 'accept_ask', r.rows[0].request_id);
     else await notify(r.rows[0].provider_id, 'رست على مزوّد آخر هالمرة', 'العميل اختار مزوّداً آخر لـ«' + (rq.title||'المشروع') + '». المرات الجاية: الرد السريع والعرض الواضح يرفع فرصتك.', 'accept_ask', r.rows[0].request_id);
     res.json({ ok: true });
@@ -4731,6 +4763,10 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     res.json({ ok: true, chance: !!chance });
   } catch(e) { console.error('bid reject:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+app.put('/api/admin/users/:id/ask-penalty/clear', requirePermission('bids.view'), async (req, res) => {
+  try { await pool.query('UPDATE users SET ask_penalty_until=NULL WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'clear_ask_penalty', 'user', parseInt(req.params.id), 'إرجاع ترتيب عروض المزوّد'); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // ═══ المزوّد يطلب التقييم ويوثّق المشروع — العميل يأكّد بضغطة ═══
 const CLAIM_OUTSIDE_STATUSES = ['open','closed_auto','closed','expired'];
 async function _claimEligibility(providerId, requestId){
@@ -4904,7 +4940,10 @@ app.get('/api/admin/bid-reasons', requirePermission('bids.view'), async (req, re
     const post = (await pool.query(`SELECT DISTINCT ON (r.id) r.id, r.title, r.status, r.city, b.rejected_at, c.name AS client_name, c.phone AS client_phone
       FROM bids b JOIN requests r ON r.id=b.request_id JOIN users c ON c.id=r.client_id
       WHERE ${IN} AND b.reject_reason='postponed' ORDER BY r.id, b.rejected_at DESC LIMIT 30`, P)).rows;
-    res.json({ range: R, totals: tot, reasons: by, providers: prov, postponed: post, labels: CLI_REJ_REASONS });
+    const askp = (await pool.query(`SELECT u.id, u.email, u.phone, COALESCE(NULLIF(u.business_name,''), u.name) AS name, u.ask_penalty_until,
+        (SELECT COUNT(*) FROM bid_accept_asks a WHERE a.provider_id=u.id AND a.status='declined' AND a.responded_at > NOW() - INTERVAL '30 days')::int AS declines
+      FROM users u WHERE u.ask_penalty_until > NOW() ORDER BY u.ask_penalty_until DESC LIMIT 20`)).rows;
+    res.json({ range: R, totals: tot, reasons: by, providers: prov, postponed: post, labels: CLI_REJ_REASONS, ask_penalized: askp });
   } catch(e) { console.error('bid-reasons:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // ═══ المزوّد يقدّم عرضاً محسّناً بعد عدم الاختيار (فرصة وحدة) ═══
@@ -8696,6 +8735,7 @@ async function _adminOverview(){
         (SELECT GREATEST(0, EXTRACT(EPOCH FROM (MIN(held_until) - NOW())))::int FROM bids WHERE hold_state='held') AS held_next_sec,
         (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS bid_report_providers,
         (SELECT COUNT(*) FROM completion_claims WHERE status='denied' AND admin_done IS NOT TRUE)::int AS claims_denied,
+        (SELECT COUNT(*) FROM users WHERE ask_penalty_until > NOW())::int AS ask_penalized,
         (SELECT COUNT(*) FROM messages m WHERE m.is_read=FALSE AND m.receiver_id IN (SELECT id FROM users WHERE role='admin'))::int AS inbox_unread,
         (SELECT COUNT(*) FROM users WHERE COALESCE(bid_review,FALSE)=TRUE)::int AS review_providers,
         (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,

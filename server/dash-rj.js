@@ -151,6 +151,7 @@ var CCSS='.cl-gold{border:0;background:linear-gradient(135deg,#f59e0b,#d97706);c
 +'.cl-tier .s{font-size:12.5px;font-weight:700;color:#92400e;line-height:1.7}'
 +'.cl-when{display:flex;gap:6px;flex-wrap:wrap}'
 +'.cl-card{background:var(--white,#fff);border:2px solid #f59e0b;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px;margin-bottom:12px;box-shadow:0 10px 26px -18px rgba(217,119,6,.6);font-family:Tajawal,sans-serif}'
++'.cl-card.cl-mini{flex-direction:row;align-items:center;gap:10px;padding:12px 14px}'
 +'.cl-card .q{font-size:15px;font-weight:800;line-height:1.8;color:var(--text,#14223d)}'
 +'.cl-av{width:46px;height:46px;border-radius:46px;background:#1e3a8a;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}.cl-av img{width:100%;height:100%;object-fit:cover}'
 +'.cl-ok{border:0;background:#15803d;color:#fff;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:14.5px;min-height:48px;cursor:pointer}'
@@ -225,22 +226,27 @@ window._clmClientLoad=function(){
 function _clPaint(){
   var el=document.getElementById('ph-claims'); if(!el)return; _ccss();
   el.innerHTML=_cl.map(function(c){
-    var nm=c.provider_name||'المزوّد', av=c.provider_image?'<img src="'+E(c.provider_image)+'" alt="">':E(nm.charAt(0));
-    var sub=[]; if(+c.provider_rating)sub.push('★ '+(+c.provider_rating).toFixed(1)); if(+c.provider_done)sub.push(c.provider_done+' مشروع منجز');
-    return '<div class="cl-card" data-cl="'+c.id+'"><div style="display:flex;gap:11px;align-items:center"><div class="cl-av">'+av+'</div><div><b style="font-size:15px">'+E(nm)+'</b>'+(sub.length?'<div class="rj-s" style="margin:2px 0 0">'+sub.join(' · ')+'</div>':'')+'</div></div>'
-      +'<div class="q">'+(c.kind==='outside'?'يقول إنه نفّذ مشروعك':'يقول إنه خلّص مشروعك')+'<br>«'+E(c.title)+'»'+(c.value?' بقيمة <b style="color:#1e3a8a">'+N(c.value)+' ر.س</b>':'')+' — صحيح؟</div>'
-      +'<button type="button" class="cl-ok" data-a="done">إيه، خلّص — وأبي أقيّمه</button>'
-      +(c.value?'<button type="button" class="cl-b" data-a="value">صحيح، بس القيمة مختلفة</button>':'')
-      +'<div style="display:flex;gap:8px"><button type="button" class="cl-b" data-a="not_done">لسا ما خلص</button><button type="button" class="cl-b" data-a="denied" style="color:#b91c1c;border-color:#fecaca">ما تعاملت معه</button></div></div>';
+    var nm=c.provider_name||'المزوّد';
+    return '<div class="cl-card cl-mini" data-cl="'+c.id+'"><span style="font-size:22px">⭐</span><div style="flex:1;min-width:0"><b style="font-size:13.5px;line-height:1.7;display:block">'+E(nm)+' '+(c.kind==='outside'?'يقول إنه نفّذ':'يقول إنه خلّص')+' «'+E(c.title)+'»'+(c.value?' بقيمة '+N(c.value)+' ر.س':'')+'</b><span class="rj-s" style="margin:0">أكّد بضغطة وقيّمه</span></div><button type="button" class="cl-ok" data-open="1" style="padding:9px 14px;min-height:40px;font-size:13px">أكّد</button></div>';
   }).join('');
-  el.querySelectorAll('[data-cl]').forEach(function(card){
-    var id=card.getAttribute('data-cl'), c=_cl.filter(function(x){return String(x.id)===String(id);})[0];
-    card.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ var a=b.getAttribute('data-a');
-      if(a==='value'){ var v=prompt('اكتب القيمة الصحيحة للمشروع (ر.س)', c.value||''); if(v===null)return; v=parseInt(String(v).replace(/[^0-9]/g,'')); if(!(v>0)){_msg('اكتب رقم صحيح');return;} _clAnswer(c,'done',v,card); }
-      else if(a==='denied'){ if(!confirm('متأكد إنك ما تعاملت مع '+(c.provider_name||'هذا المزوّد')+' على هذا المشروع؟'))return; _clAnswer(c,'denied',null,card); }
-      else _clAnswer(c,a,null,card);
-    };});
-  });
+  el.querySelectorAll('[data-open]').forEach(function(b){ b.onclick=function(){ var card=b.closest('[data-cl]'); _clFull(card); }; });
+  try{ if(window._phDecideHead)window._phDecideHead(); }catch(e){}
+}
+function _clFull(card){
+  var id=card.getAttribute('data-cl'), c=_cl.filter(function(x){return String(x.id)===String(id);})[0]; if(!c)return;
+  var nm=c.provider_name||'المزوّد', av=c.provider_image?'<img src="'+E(c.provider_image)+'" alt="">':E(nm.charAt(0));
+  var sub=[]; if(+c.provider_rating)sub.push('★ '+(+c.provider_rating).toFixed(1)); if(+c.provider_done)sub.push(c.provider_done+' مشروع منجز');
+  card.classList.remove('cl-mini');
+  card.innerHTML='<div style="display:flex;gap:11px;align-items:center"><div class="cl-av">'+av+'</div><div><b style="font-size:15px">'+E(nm)+'</b>'+(sub.length?'<div class="rj-s" style="margin:2px 0 0">'+sub.join(' · ')+'</div>':'')+'</div></div>'
+    +'<div class="q">'+(c.kind==='outside'?'يقول إنه نفّذ مشروعك':'يقول إنه خلّص مشروعك')+'<br>«'+E(c.title)+'»'+(c.value?' بقيمة <b style="color:#1e3a8a">'+N(c.value)+' ر.س</b>':'')+' — صحيح؟</div>'
+    +'<button type="button" class="cl-ok" data-a="done">إيه، خلّص — وأبي أقيّمه</button>'
+    +(c.value?'<button type="button" class="cl-b" data-a="value">صحيح، بس القيمة مختلفة</button>':'')
+    +'<div style="display:flex;gap:8px"><button type="button" class="cl-b" data-a="not_done">لسا ما خلص</button><button type="button" class="cl-b" data-a="denied" style="color:#b91c1c;border-color:#fecaca">ما تعاملت معه</button></div>';
+  card.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ var a=b.getAttribute('data-a');
+    if(a==='value'){ var v=prompt('اكتب القيمة الصحيحة للمشروع (ر.س)', c.value||''); if(v===null)return; v=parseInt(String(v).replace(/[^0-9]/g,'')); if(!(v>0)){_msg('اكتب رقم صحيح');return;} _clAnswer(c,'done',v,card); }
+    else if(a==='denied'){ if(!confirm('متأكد إنك ما تعاملت مع '+(c.provider_name||'هذا المزوّد')+' على هذا المشروع؟'))return; _clAnswer(c,'denied',null,card); }
+    else _clAnswer(c,a,null,card);
+  };});
 }
 function _clAnswer(c,a,v,card){
   card.querySelectorAll('button').forEach(function(b){b.disabled=true;});
@@ -271,4 +277,36 @@ function _clRate(c,rv,card){
 }
 function _clAuto(){ if(document.getElementById('ph-claims'))window._clmClientLoad(); }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_clAuto); else _clAuto();
+
+// ═══ المزوّد: تأكيد «اتفقت مع العميل» + تعديل السعر/المدة قبل طلب الاعتماد ═══
+window._askConfirmOpen=function(b,send){
+  _ccss(); _close();
+  var unit=(b.price_unit&&b.price_unit!=='total')?(b.price_unit==='meter'?' / متر':' / وحدة'):'';
+  var st={edit:false,ok:false};
+  var ov=document.createElement('div'); ov.id='rj-ov'; ov.className='rj-ov'; ov.onclick=function(e){ if(e.target===ov)_close(); };
+  ov.innerHTML='<div class="rj-sh" role="dialog" aria-modal="true" aria-label="تأكيد الاتفاق"><div class="rj-grab"></div>'
+    +'<div class="rj-h">متأكد إنكم اتفقتوا على السعر والمدة؟</div>'
+    +'<div class="rj-s">'+E(b.request_title||'')+(b.client_name?' · العميل: '+E(b.client_name):'')+'</div>'
+    +'<div class="rj-q" style="display:flex;flex-direction:column;gap:8px"><span>العميل بيوصله طلب يعتمد عرضك بـ:</span>'
+    +'<div id="ak-view" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><b style="font-size:16px;color:var(--text,#14223d)">'+N(b.price)+' ر.س'+unit+(b.days?' · '+b.days+' يوم':'')+'</b><button type="button" id="ak-ed" style="border:1.5px solid #dbe5f5;background:var(--white,#fff);color:#1d4ed8;border-radius:10px;padding:7px 12px;font-family:inherit;font-weight:900;font-size:13px;cursor:pointer;min-height:36px">✎ عدّل</button></div>'
+    +'<div id="ak-edit" style="display:none;gap:8px"><div style="flex:1"><span class="rj-lb">السعر (ر.س'+unit+')</span><input class="rj-in" id="ak-p" type="number" inputmode="numeric" min="1" value="'+(parseInt(b.price)||'')+'"></div><div style="flex:1"><span class="rj-lb">المدة (يوم)</span><input class="rj-in" id="ak-d" type="number" inputmode="numeric" min="1" value="'+(parseInt(b.days)||'')+'"></div></div></div>'
+    +'<div class="rj-s" style="margin:0;color:#b45309">إذا ردّ العميل «ما اتفقنا»، ما تقدر ترسل له مرة ثانية على هذا المشروع، وتكرارها يأثر على ظهور عروضك.</div>'
+    +'<button type="button" class="rj-opt off" id="ak-cb"><span class="rj-cb">✓</span><span><b>أأكد إني اتفقت مع العميل</b></span></button>'
+    +'<div class="rj-err" id="ak-e"></div>'
+    +'<button type="button" class="rj-go g" id="ak-s" disabled>أرسل الطلب</button><button type="button" class="rj-no" data-x="1">إلغاء</button></div>';
+  document.body.appendChild(ov);
+  var go=ov.querySelector('#ak-s'), cb=ov.querySelector('#ak-cb'), er=ov.querySelector('#ak-e');
+  ov.querySelector('[data-x]').onclick=_close;
+  ov.querySelector('#ak-ed').onclick=function(){ st.edit=true; ov.querySelector('#ak-view').style.display='none'; ov.querySelector('#ak-edit').style.display='flex'; try{ov.querySelector('#ak-p').focus();}catch(e){} };
+  cb.onclick=function(){ st.ok=!st.ok; cb.classList.toggle('off',!st.ok); go.disabled=!st.ok; };
+  go.onclick=function(){
+    var pl={confirm:true};
+    if(st.edit){ var p=parseInt(ov.querySelector('#ak-p').value), d=parseInt(ov.querySelector('#ak-d').value);
+      if(!(p>0)){er.textContent='اكتب السعر المتفق عليه';er.style.display='block';return;}
+      if(!(d>0)){er.textContent='اكتب المدة بالأيام';er.style.display='block';return;}
+      pl.price=p; pl.days=d; }
+    go.disabled=true; go.textContent='جاري الإرسال…'; er.style.display='none';
+    send(pl,function(ok,msg){ if(ok){_close();return;} go.disabled=false; go.textContent='أرسل الطلب'; er.textContent=msg||'تعذّر الإرسال'; er.style.display='block'; });
+  };
+};
 })();
