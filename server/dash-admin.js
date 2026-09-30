@@ -5561,13 +5561,14 @@ function _perRange(){
 }
 function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _loadVisits(); _loadAppStats(); }
 function _perRender(showCustom){
-  var box=document.getElementById('dash-period'); if(!box)return; var R=_perRange();
+  var old=document.getElementById('dash-period'); if(old)old.innerHTML='';
+  var box=document.getElementById('vs-seg'); if(!box)return; var R=_perRange();
   var ks=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['30d','30 يوم'],['month','هالشهر'],['year','هالسنة']];
   var cust=showCustom||_PER.k==='custom';
-  box.innerHTML='<div class="per-bar"><span class="per-t">📅 الفترة:</span>'+ks.map(function(x){return '<button type="button" class="per-ch'+(_PER.k===x[0]?' on':'')+'" onclick="_perSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')
-    +'<button type="button" class="per-ch'+(cust?' on':'')+'" onclick="_perRender(true)">مخصص</button>'
-    +(cust?'<span class="per-cust"><input type="date" id="per-from" value="'+(_PER.from||R.from)+'" max="'+_ymd(new Date())+'"><span>←</span><input type="date" id="per-to" value="'+(_PER.to||R.to)+'" max="'+_ymd(new Date())+'"><button type="button" class="per-go" onclick="_perSet(\'custom\')">عرض</button></span>':'')
-    +'<span class="per-l">'+esc(R.lbl)+'</span></div>';
+  box.innerHTML='<div class="vs-seg" role="tablist" aria-label="الفترة">'+ks.map(function(x){return '<button type="button" role="tab" aria-selected="'+(_PER.k===x[0])+'" class="'+(_PER.k===x[0]?'on':'')+'" onclick="_perSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')
+    +'<button type="button" class="'+(cust?'on':'')+'" onclick="_perRender(true)">📅 مخصص</button></div>';
+  var cb=document.getElementById('vs-cust');
+  if(cb) cb.innerHTML=cust?'<div class="vs-custrow"><span>من</span><input type="date" id="per-from" value="'+(_PER.from||R.from)+'" max="'+_ymd(new Date())+'"><span>إلى</span><input type="date" id="per-to" value="'+(_PER.to||R.to)+'" max="'+_ymd(new Date())+'"><button type="button" onclick="_perSet(\'custom\')">عرض</button>'+(_PER.k==='custom'?'<span class="vs-s" style="margin-inline-start:auto">'+esc(R.lbl)+'</span>':'')+'</div>':'';
 }
 var _VS_SRC={google:['جوجل','#2563eb'],whatsapp:['واتساب','#16a34a'],snap:['سناب شات','#eab308'],tiktok:['تيك توك','#0f172a'],instagram:['انستقرام','#db2777'],facebook:['فيسبوك','#1d4ed8'],x:['إكس (تويتر)','#334155'],bing:['بينق','#0891b2'],linkedin:['لينكدإن','#0369a1'],youtube:['يوتيوب','#dc2626'],email:['الإيميلات','#7c3aed'],campaign:['حملات (رابط مُعلَّم)','#c2410c'],other:['مواقع ثانية','#64748b'],direct:['دخلوا مباشرة','#94a3b8']};
 var _VS_PG={home:'الرئيسية',project:'صفحات المشاريع',pro:'صفحات المزوّدين',dash_client:'لوحة العميل',dash_provider:'لوحة المزوّد',auth:'التسجيل والدخول',post:'نشر مشروع',app:'صفحة التطبيق',b2b:'للأعمال',info:'من نحن والشروط',chat:'المحادثات',guide:'دليل المزوّدين',other:'صفحات ثانية'};
@@ -5576,42 +5577,101 @@ var _vsLiveT=null;
 function _spark(vals,w,h,c){ if(!vals.length)return ''; var mx=Math.max.apply(null,vals)||1, n=vals.length; if(n===1)vals=[vals[0],vals[0]],n=2;
   var pts=vals.map(function(v,i){return Math.round(i*w/(n-1))+','+Math.round(h-4-(v/mx)*(h-10));}).join(' ');
   return '<svg width="100%" height="'+h+'" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+c+'" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>'; }
+var _VS_ICO={google:['G','#4285f4'],whatsapp:['W','#25d366'],snap:['S','#facc15'],tiktok:['T','#111827'],instagram:['I','#db2777'],facebook:['f','#1877f2'],x:['X','#0f172a'],bing:['b','#0891b2'],linkedin:['in','#0a66c2'],youtube:['▶','#dc2626'],email:['@','#7c3aed'],campaign:['#','#c2410c'],other:['↗','#64748b'],direct:['→','#94a3b8']};
+function _vsDelta(c,p,pct){ if(!p&&!c)return ''; if(!p)return '<span class="vs-dl up">جديد</span>'; var d=pct?(c-p):Math.round((c-p)/p*100); if(d===0)return '<span class="vs-dl eq">=</span>'; return '<span class="vs-dl '+(d>0?'up':'dn')+'">'+(d>0?'▲ ':'▼ ')+Math.abs(d)+(pct?'':'%')+'</span>'; }
+function _vsSpark(vals,c){ if(!vals||vals.length<2)return ''; var w=120,h=30,mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals),rg=(mx-mn)||1;
+  var pts=vals.map(function(v,i){return Math.round(w-i*w/(vals.length-1))+','+Math.round(h-3-((v-mn)/rg)*(h-6));}).join(' ');
+  return '<svg class="vs-spk" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>'; }
+var _vsSer=[], _vsMonthly=false;
+function _vsChart(ser,monthly,selKey){
+  _vsSer=ser; _vsMonthly=monthly; if(!ser.length)return '';
+  var W=1000,H=210,T=12,B=28,n=ser.length, mx=Math.max.apply(null,ser.map(function(x){return x.n;}).concat([4]));
+  var step=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,5000].find(function(s){return mx/s<=4;})||Math.ceil(mx/4); var top=Math.ceil(mx/step)*step;
+  var X=function(i){return n===1?W/2:Math.round(W-12-i*(W-40)/(n-1));}, Y=function(v){return Math.round(T+(H-T-B)*(1-v/top));};
+  var grid='',yl='',g; for(g=0;g<=top;g+=step){grid+='<line x1="0" x2="'+W+'" y1="'+Y(g)+'" y2="'+Y(g)+'" stroke="currentColor" stroke-opacity=".08" vector-effect="non-scaling-stroke"/>';yl+='<span class="vs-yl" style="top:'+(Y(g)/H*100).toFixed(2)+'%">'+fmtNum(g)+'</span>';}
+  var pts=ser.map(function(x,i){return X(i)+','+Y(x.n);}).join(' ');
+  var area='M'+X(0)+','+(H-B)+' L'+ser.map(function(x,i){return X(i)+','+Y(x.n);}).join(' L')+' L'+X(n-1)+','+(H-B)+' Z';
+  var ev=Math.max(1,Math.ceil(n/8)), xl='';
+  ser.forEach(function(x,i){ if(i%ev&&i!==n-1)return; if(i===n-1&&i%ev&&i%ev<ev/2)return; var p=x.k.split('-'); xl+='<span class="vs-xl" style="left:'+(X(i)/(W+34)*100).toFixed(2)+'%">'+(monthly?(+p[1])+'/'+p[0].slice(2):(+p[2])+'/'+(+p[1]))+'</span>'; });
+  var sel=ser.findIndex(function(x){return x.k===selKey;});
+  var dot=sel>=0?'<i class="vs-cd" style="display:block;left:'+(X(sel)/(W+34)*100).toFixed(2)+'%;top:'+(Y(ser[sel].n)/H*100).toFixed(2)+'%"></i>':'';
+  return '<div class="vs-chart" id="vs-chart" onmousemove="_vsHover(event)" onmouseleave="_vsHover(null)"><svg viewBox="0 0 '+(W+34)+' '+H+'" preserveAspectRatio="none" role="img" aria-label="رسم الزوار"><defs><linearGradient id="vsG" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".26"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>'+grid+'<path d="'+area+'" fill="url(#vsG)"/><polyline points="'+pts+'" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><line id="vs-cx" x1="0" x2="0" y1="'+T+'" y2="'+(H-B)+'" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3 3" style="display:none" vector-effect="non-scaling-stroke"/></svg>'+yl+xl+dot+'<i class="vs-cd" id="vs-cd"></i><div class="vs-tip" id="vs-tip"></div></div>';
+}
+function _vsHover(e){
+  var tip=document.getElementById('vs-tip'), cx=document.getElementById('vs-cx'), cd=document.getElementById('vs-cd'), box=document.getElementById('vs-chart');
+  if(!tip||!box)return; if(!e||!_vsSer.length){tip.style.display='none';if(cx)cx.style.display='none';if(cd)cd.style.display='none';return;}
+  var r=box.getBoundingClientRect(), W=1000, n=_vsSer.length, fx=(e.clientX-r.left)/r.width*(W+34);
+  var i=n===1?0:Math.round((W-12-fx)*(n-1)/(W-40)); i=Math.max(0,Math.min(n-1,i)); var x=_vsSer[i];
+  var px=n===1?W/2:W-12-i*(W-40)/(n-1), mx=Math.max.apply(null,_vsSer.map(function(z){return z.n;}).concat([4]));
+  var step=[1,2,5,10,20,25,50,100,200,250,500,1000,2000,5000].find(function(s){return mx/s<=4;})||Math.ceil(mx/4), top=Math.ceil(mx/step)*step, py=12+(210-12-28)*(1-x.n/top);
+  if(cx){cx.setAttribute('x1',px);cx.setAttribute('x2',px);cx.style.display='';} if(cd){cd.style.left=(px/(W+34)*100)+'%';cd.style.top=(py/210*100)+'%';cd.style.display='block';}
+  var p=x.k.split('-'), dt=_vsMonthly?new Date(+p[0],+p[1]-1,1).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{month:'long',year:'numeric'}):new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
+  tip.innerHTML='<b>'+dt+'</b><br>'+fmtNum(x.n)+' زائر'+(x.s?' · سجّل '+x.s:'')+(x.r?' · '+x.r+' مشروع':'')+(x.b?' · '+x.b+' عرض':'');
+  tip.style.display='block'; var tl=(px/(W+34))*r.width; tip.style.left=Math.min(r.width-tip.offsetWidth-4,Math.max(4,tl+12))+'px'; tip.style.top=Math.max(0,(py/210)*r.height-20)+'px';
+}
 function _loadVisits(){
   var box=document.getElementById('dash-visits'); if(!box)return; var R=_perRange();
-  if(!box.innerHTML)box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  if(!document.getElementById('vs-body')) box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
   fetch(API+'/api/admin/visits?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(!d){box.style.display='none';return;} box.style.display='';
-    var one=d.range.days===1, diff=d.prev?Math.round((d.visitors-d.prev)/d.prev*100):null;
-    var cmp=diff==null?'<span class="vs-s">'+(d.prev===0&&d.visitors?'ما فيه بيانات للفترة اللي قبلها':'')+'</span>':'<span class="'+(diff>=0?'vs-up':'vs-dn')+'">'+(diff>=0?'▲ ':'▼ ')+Math.abs(diff)+'% '+esc(R.cmp)+' ('+fmtNum(d.prev)+')</span>';
-    var tot=d.visitors||0, srcMax=Math.max.apply(null,(d.sources||[]).map(function(x){return x.n;}).concat([1]));
-    var src=(d.sources||[]).slice(0,7).map(function(x){var m=_VS_SRC[x.src]||[x.src,'#94a3b8'];return '<div class="vs-br"><span class="nm">'+m[0]+'</span><span class="bar"><i style="width:'+Math.round(x.n/srcMax*100)+'%;background:'+m[1]+'"></i></span><span class="v">'+fmtNum(x.n)+' زائر'+(x.signups?' · <b>سجّل '+x.signups+'</b>':'')+'</span></div>';}).join('');
-    var best=(d.sources||[]).filter(function(x){return x.n>=10;}).map(function(x){return {k:x.src,r:x.signups/x.n};}).sort(function(a,b){return b.r-a.r;})[0];
-    var f=d.funnel||{}, p1=f.visitors?Math.round(f.signups/f.visitors*100):0, p2=f.signups?Math.round(f.acted/f.signups*100):0;
-    var devT=(d.devices||[]).reduce(function(a,x){return a+x.n;},0)||1;
-    var dev=(d.devices||[]).map(function(x){return (_VS_DEV[x.dev]||x.dev)+' '+Math.round(x.n/devT*100)+'%';}).join(' · ');
-    var pg=(d.pages||[]).map(function(x){return (_VS_PG[x.page]||x.page)+' <b>'+fmtNum(x.n)+'</b>';}).join(' · ');
-    var sm=d.summary||{};
-    var S=function(v,l,c){return '<div class="vs-sm"><b style="color:'+(c||'var(--text)')+'">'+v+'</b><span>'+l+'</span></div>';};
-    var seriesLbl=d.monthly?'حسب الشهر':'حسب اليوم';
-    box.innerHTML='<div class="vs-h"><h3>👥 الزيارات</h3><span class="vs-live" id="vs-live"><i></i><b>'+d.live+'</b> متواجد الحين</span></div>'
-      +(tot===0&&d.range.from>= '2026-09-30'?'<div class="vs-note">العدّاد بدأ للتو — الأرقام تتجمع من الحين.</div>':'')
-      +'<div class="vs-k">'
-        +'<div class="vs-b"><span class="t">'+(one?'زوار '+esc(R.lbl):'الزوار — '+esc(R.lbl))+'</span><span class="big">'+fmtNum(tot)+'</span>'+cmp+'</div>'
-        +'<div class="vs-b"><span class="t">المسجّلين اللي دخلوا</span><span class="big">'+fmtNum((d.logged.provider||0)+(d.logged.client||0))+'</span><span class="vs-s">'+fmtNum(d.logged.provider||0)+' مزوّد · '+fmtNum(d.logged.client||0)+' عميل</span></div>'
-        +(one?'':'<div class="vs-b wide"><span class="t">'+seriesLbl+'</span>'+_spark((d.series||[]).map(function(x){return x.n;}),300,48,'#2563eb')+'<span class="vs-s">'+(d.series&&d.series.length?esc(d.series[0].k)+' ← '+esc(d.series[d.series.length-1].k):'')+'</span></div>')
+    if(!d||!d.cur){box.style.display='none';return;} box.style.display='';
+    var c=d.cur, p=d.prev, one=d.range.days===1, sp=d.spark||[];
+    var conv=c.visitors?Math.round(c.tracked_signups/c.visitors*1000)/10:0, pconv=p.visitors?Math.round(p.tracked_signups/p.visitors*1000)/10:0;
+    var signups=(c.new_clients||0)+(c.new_providers||0), psign=(p.new_clients||0)+(p.new_providers||0);
+    var logged=(c.logged_p||0)+(c.logged_c||0), plog=(p.logged_p||0)+(p.logged_c||0);
+    var prevLbl=R.cmp.replace('عن ','');
+    var tile=function(on,l,n,dl,spk,sub){return '<div class="vs-kt'+(on?' on':'')+'"><span class="l">'+l+'</span><span class="n">'+n+' '+dl+'</span>'+spk+'<span class="s">'+sub+'</span></div>';};
+    var srcT=(d.sources||[]).reduce(function(a,x){return a+x.n;},0)||1;
+    var src=(d.sources||[]).slice(0,6).map(function(x){var m=_VS_SRC[x.src]||[x.src],ic=_VS_ICO[x.src]||['•','#94a3b8'],pc=Math.round(x.n/srcT*100);
+      return '<div class="vs-sr"><span class="ico" style="background:'+ic[1]+(x.src==='snap'?';color:#111':'')+'">'+ic[0]+'</span><div class="nm"><span>'+m[0]+(x.signups?'<span class="chip">سجّل '+x.signups+'</span>':'')+'</span><span class="bar"><i style="width:'+Math.max(2,pc)+'%"></i></span></div><span class="v">'+fmtNum(x.n)+'</span><span class="p">'+pc+'%</span></div>';}).join('');
+    var f=d.funnel, fp=function(a){return f.visitors?Math.round(a/f.visitors*1000)/10:0;};
+    var drop=function(a,b){return a?Math.round((a-b)/a*100):0;};
+    var devT=(d.devices||[]).reduce(function(a,x){return a+x.n;},0)||1, DC={mobile:'#2563eb',desktop:'#93c5fd',app:'#1e3a8a'}, DN={mobile:'جوال',desktop:'كمبيوتر',app:'التطبيق'};
+    var stk=(d.devices||[]).map(function(x){return '<i style="width:'+(x.n/devT*100)+'%;background:'+(DC[x.dev]||'#94a3b8')+'" title="'+(DN[x.dev]||x.dev)+'"></i>';}).join('');
+    var lg=(d.devices||[]).map(function(x){return '<span><b style="background:'+(DC[x.dev]||'#94a3b8')+'"></b>'+(DN[x.dev]||x.dev)+' '+Math.round(x.n/devT*100)+'%</span>';}).join('');
+    var pg=(d.pages||[]).map(function(x,i,a){return '<div class="vs-pg"'+(i===a.length-1?' style="border:0"':'')+'><span>'+(_VS_PG[x.page]||x.page)+'</span><b>'+fmtNum(x.n)+'</b></div>';}).join('');
+    var best=(d.sources||[]).filter(function(x){return x.n>=10&&x.signups>0;}).map(function(x){return {k:x.src,r:x.signups/x.n,n:x.n};}).sort(function(a,b){return b.r-a.r;});
+    var big=(d.sources||[])[0], ins='';
+    if(best.length&&big&&best[0].k!==big.src){ ins='💡 '+(_VS_SRC[best[0].k]||[best[0].k])[0]+' يجيب زوار أقل من '+(_VS_SRC[big.src]||[big.src])[0]+'، بس اللي يسجلون منه أكثر ('+Math.round(best[0].r*100)+'% مقابل '+Math.round(big.signups/big.n*100)+'%).'; }
+    else if(best.length){ ins='💡 أفضل مصدر يجيب ناس يسجلون: '+(_VS_SRC[best[0].k]||[best[0].k])[0]+' ('+Math.round(best[0].r*100)+'% من زواره سجّلوا).'; }
+    else if(c.visitors&&c.visitors<30){ ins='💡 الأرقام لسا قليلة — بعد كم يوم بتبان لك الصورة أوضح (أي مصدر يجيب ناس يسجلون).'; }
+    var chartSer=(one||d.series.length<2)?sp:d.series;
+    box.innerHTML='<div class="vs-hd"><h3>الزيارات</h3><span class="vs-livep" id="vs-live"><i></i><b>'+d.live+'</b> متواجد الحين</span><div id="vs-seg" style="margin-inline-start:auto"></div></div><div id="vs-cust"></div>'
+      +'<div id="vs-body"><div class="vs-k4">'
+        +tile(true,'الزوار',fmtNum(c.visitors),_vsDelta(c.visitors,p.visitors),_vsSpark(sp.map(function(x){return x.n;}),'#2563eb'),(p.visitors?prevLbl+' '+fmtNum(p.visitors):'كل زائر مرة وحدة باليوم'))
+        +tile(false,'دخلوا حساباتهم',fmtNum(logged),_vsDelta(logged,plog),_vsSpark(sp.map(function(x){return x.l;}),'#64748b'),fmtNum(c.logged_p||0)+' مزوّد · '+fmtNum(c.logged_c||0)+' عميل')
+        +tile(false,'تسجيلات جديدة',fmtNum(signups),_vsDelta(signups,psign),_vsSpark(sp.map(function(x){return x.s;}),'#64748b'),fmtNum(c.new_clients||0)+' عميل · '+fmtNum(c.new_providers||0)+' مزوّد')
+        +tile(false,'نسبة التسجيل',conv+'%',(c.visitors&&p.visitors?_vsDelta(conv,pconv,true):''),_vsSpark(sp.map(function(x){return x.n?x.ts/x.n*100:0;}),'#64748b'),'من كل 100 زائر')
       +'</div>'
-      +'<div class="vs-sms">'+S(fmtNum(sm.new_clients||0),'عميل جديد','#1d4ed8')+S(fmtNum(sm.new_providers||0),'مزوّد جديد','#c2410c')+S(fmtNum(sm.requests||0),'مشروع جديد')+S(fmtNum(sm.bids||0),'عرض')+S(fmtNum(sm.deals||0),'صفقة (قبول عرض)','#15803d')+S(fmtNum(Math.round(sm.collected||0))+' <small>ر.س</small>','سعي محصّل','#15803d')+'</div>'
-      +'<div class="vs-2">'
-        +'<div><div class="vs-st">من وين جوا؟</div>'+(src||'<div class="vs-s">ما فيه زيارات في هالفترة</div>')
-          +(best&&tot?'<div class="vs-note">💡 أعلى مصدر يجيب ناس يسجلون: <b>'+(_VS_SRC[best.k]||[best.k])[0]+'</b> ('+Math.round(best.r*100)+'% من زواره سجّلوا).</div>':'')+'</div>'
-        +'<div><div class="vs-st">وش يسوون؟</div><div class="vs-fn"><div><b>'+fmtNum(f.visitors||0)+'</b><span>زار</span></div><i>'+p1+'%<br>←</i><div><b>'+fmtNum(f.signups||0)+'</b><span>سجّل</span></div><i>'+p2+'%<br>←</i><div><b>'+fmtNum(f.acted||0)+'</b><span>نشر مشروع أو قدّم عرض</span></div></div>'
-          +'<div class="vs-note">من كل 100 زائر يسجّل '+p1+'. ولو نزل الرقم فجأة، يعني فيه مشكلة في التسجيل أو إعلان يجيب ناس ما تناسب.</div>'
-          +(dev?'<div class="vs-st" style="margin-top:12px">الجهاز</div><div class="vs-s" style="font-size:13px">'+dev+'</div>':'')
-          +(pg?'<div class="vs-st" style="margin-top:12px">أكثر الصفحات فتحاً</div><div class="vs-s" style="font-size:12.5px;line-height:2">'+pg+'</div>':'')+'</div>'
+      +(chartSer.length>1?'<div class="vs-chwrap"><div class="vs-cht">'+(one?'آخر 14 يوم':(d.monthly?'حسب الشهر':'حسب اليوم'))+'<span>مرّر على الرسم لتفاصيل كل '+(d.monthly?'شهر':'يوم')+'</span></div>'+_vsChart(chartSer,d.monthly&&!one,one?R.to:null)+'</div>':'')
+      +'<div class="vs-3">'
+        +'<div><div class="vs-st">من وين جوا؟<small>زوار · النسبة</small></div>'+(src||'<div class="vs-s">ما فيه زيارات في هالفترة</div>')+'</div>'
+        +'<div><div class="vs-st">مسار الزائر</div>'
+          +'<div class="vs-fr"><div class="t"><span>زار الموقع</span><b>'+fmtNum(f.visitors)+'</b></div><div class="b"><i style="width:100%"></i></div></div>'
+          +'<span class="vs-drop">↓ '+drop(f.visitors,f.signups)+'% ما سجّلوا</span>'
+          +'<div class="vs-fr"><div class="t"><span>سجّل حساب</span><b>'+fmtNum(f.signups)+' <small>'+fp(f.signups)+'%</small></b></div><div class="b"><i style="width:'+fp(f.signups)+'%"></i></div></div>'
+          +'<span class="vs-drop">↓ '+drop(f.signups,f.acted)+'% ما كمّلوا</span>'
+          +'<div class="vs-fr"><div class="t"><span>نشر مشروع أو قدّم عرض</span><b>'+fmtNum(f.acted)+' <small>'+fp(f.acted)+'%</small></b></div><div class="b"><i style="width:'+fp(f.acted)+'%"></i></div></div></div>'
+        +'<div>'+(stk?'<div class="vs-st">الأجهزة</div><div class="vs-stk">'+stk+'</div><div class="vs-lg">'+lg+'</div>':'')+(pg?'<div class="vs-st" style="margin-top:18px">أكثر الصفحات</div>'+pg:'')+'</div>'
       +'</div>'
-      +'<div class="vs-foot">كل زائر ينحسب مرة وحدة باليوم · ما نخزّن IP · نستبعد محركات البحث والإدارة</div>';
-    clearInterval(_vsLiveT); _vsLiveT=setInterval(function(){ var pg=document.getElementById('page-dashboard'); if(!pg||!pg.classList.contains('on'))return; fetch(API+'/api/admin/visits/live',hdr()).then(function(r){return r.json();}).then(function(x){var e=document.querySelector('#vs-live b');if(e&&x)e.textContent=x.live;}).catch(function(){}); },30000);
+      +(ins?'<div class="vs-ins">'+ins+'</div>':'')
+      +'<div class="vs-foot">كل زائر ينحسب مرة وحدة باليوم · ما نخزّن IP · نستبعد محركات البحث والإدارة</div></div>';
+    _perRender(); _vsKpis(d);
+    clearInterval(_vsLiveT); _vsLiveT=setInterval(function(){ var pgx=document.getElementById('page-dashboard'); if(!pgx||!pgx.classList.contains('on'))return; fetch(API+'/api/admin/visits/live',hdr()).then(function(r){return r.json();}).then(function(x){var e=document.querySelector('#vs-live b');if(e&&x)e.textContent=x.live;}).catch(function(){}); },30000);
   }).catch(function(){ box.style.display='none'; });
+}
+// صف المؤشرات تحت: يتبع الفترة المختارة
+function _vsKpis(d){
+  var kp=document.getElementById('dash-kpis'); if(!kp)return; var c=d.cur,p=d.prev,o=window._overview||{},cv=o.cover||{},sa=o.saai||{},R=_perRange();
+  var sp=d.spark||[], pc=cv.n?Math.round(cv.with_bids/cv.n*100):0, cmp=R.cmp;
+  var T=function(l,n,dl,spk){return '<div class="ad-kc"><div class="ad-kl">'+l+'</div><div class="ad-kn">'+n+'</div>'+dl+spk+'</div>';};
+  var tr=function(a,b){ if(!a&&!b)return '<div class="ad-kt">ما فيه نشاط</div>'; if(!b)return '<div class="ad-kt up">▲ ما كان فيه شي '+esc(cmp.replace('عن ',''))+'</div>'; var dd=Math.round((a-b)/b*100); return '<div class="ad-kt '+(dd>=0?'up':'dn')+'">'+(dd>=0?'▲ ':'▼ ')+Math.abs(dd)+'% '+esc(cmp)+'</div>'; };
+  kp.innerHTML='<div class="ad-k">'
+    +T('مشاريع جديدة — '+esc(R.lbl),fmtNum(c.requests),tr(c.requests,p.requests),_adSpark(sp.map(function(x){return x.r;}),'#d97706'))
+    +T('عروض — '+esc(R.lbl),fmtNum(c.bids),tr(c.bids,p.bids),_adSpark(sp.map(function(x){return x.b;}),'#16a34a'))
+    +T('صفقات (قبول عرض)',fmtNum(c.deals),tr(c.deals,p.deals),_adSpark(sp.map(function(x){return x.dl;}),'#1d4ed8'))
+    +'<div class="ad-kc"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
+    +'<div class="ad-kc"><div class="ad-kl">سعي محصّل — '+esc(R.lbl)+'</div><div class="ad-kn">'+fmtNum(Math.round(c.collected||0))+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(sa.due||0)+' ر.س مستحق'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div></div>'
+    +'</div>';
 }
 // ═══ بطاقة «التطبيق»: كم عندهم التطبيق + ضغطات «حمّل من المتجر» حسب المكان ═══
 var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};

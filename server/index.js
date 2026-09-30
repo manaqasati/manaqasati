@@ -3396,36 +3396,54 @@ function _rangeFromQuery(q){
 app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, res) => {
   try {
     const R = _rangeFromQuery(req.query), P = [R.from, R.to];
-    const RD = `(x + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;  // تاريخ الرياض لأعمدة TIMESTAMP (UTC)
+    const RD = (col) => `(${col} + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;  // تاريخ الرياض لأعمدة TIMESTAMP (UTC)
     const q = async (sql, p) => (await pool.query(sql, p || P)).rows;
-    const tot = (await q(`SELECT COUNT(*)::int n, COUNT(DISTINCT uid) FILTER (WHERE role='provider')::int prov, COUNT(DISTINCT uid) FILTER (WHERE role='client')::int cli FROM site_visits WHERE day BETWEEN $1 AND $2`))[0];
-    const prev = (await q(`SELECT COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2`, [R.pfrom, R.pto]))[0].n;
+    const summaryFor = async (f, t) => (await q(`SELECT
+        (SELECT COUNT(*) FROM site_visits WHERE day BETWEEN $1 AND $2)::int AS visitors,
+        (SELECT COUNT(DISTINCT uid) FROM site_visits WHERE day BETWEEN $1 AND $2 AND role='provider')::int AS logged_p,
+        (SELECT COUNT(DISTINCT uid) FROM site_visits WHERE day BETWEEN $1 AND $2 AND role='client')::int AS logged_c,
+        (SELECT COUNT(*) FROM users WHERE role='client' AND ${RD('created_at')})::int AS new_clients,
+        (SELECT COUNT(*) FROM users WHERE role='provider' AND ${RD('created_at')})::int AS new_providers,
+        (SELECT COUNT(*) FROM users u WHERE u.role<>'admin' AND ${RD('u.created_at')} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date))::int AS tracked_signups,
+        (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND ${RD('created_at')})::int AS requests,
+        (SELECT COUNT(*) FROM bids WHERE ${RD('created_at')})::int AS bids,
+        (SELECT COUNT(*) FROM saai_ledger WHERE ${RD('created_at')})::int AS deals,
+        (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD('approved_at')})::float AS collected`, [f, t]))[0];
+    const cur = await summaryFor(R.from, R.to), prev = await summaryFor(R.pfrom, R.pto);
+    const dayRow = (d) => `(SELECT COUNT(*) FROM site_visits v WHERE v.day=${d})::int AS n,
+        (SELECT COUNT(DISTINCT uid) FROM site_visits v WHERE v.day=${d} AND uid IS NOT NULL)::int AS l,
+        (SELECT COUNT(*) FROM users WHERE role<>'admin' AND (created_at + INTERVAL '3 hours')::date=${d})::int AS s,
+        (SELECT COUNT(*) FROM users u WHERE u.role<>'admin' AND (u.created_at + INTERVAL '3 hours')::date=${d} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=${d}))::int AS ts,
+        (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND (created_at + INTERVAL '3 hours')::date=${d})::int AS r,
+        (SELECT COUNT(*) FROM bids WHERE (created_at + INTERVAL '3 hours')::date=${d})::int AS b,
+        (SELECT COUNT(*) FROM saai_ledger WHERE (created_at + INTERVAL '3 hours')::date=${d})::int AS dl`;
+    const daily = (f, t) => q(`SELECT to_char(d,'YYYY-MM-DD') k, ${dayRow('d::date')} FROM generate_series($1::date, $2::date, INTERVAL '1 day') d ORDER BY 1`, [f, t]);
     const monthly = R.days > 62;
-    const series = await q(monthly ? `SELECT to_char(date_trunc('month', day),'YYYY-MM') k, COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2 GROUP BY 1 ORDER BY 1`
-      : `SELECT to_char(d,'YYYY-MM-DD') k, COALESCE((SELECT COUNT(*) FROM site_visits v WHERE v.day=d),0)::int n FROM generate_series($1::date, $2::date, INTERVAL '1 day') d ORDER BY 1`);
+    const series = monthly ? await q(`SELECT to_char(m,'YYYY-MM') k,
+        (SELECT COUNT(*) FROM site_visits v WHERE v.day BETWEEN GREATEST(m::date,$1::date) AND LEAST((m + INTERVAL '1 month - 1 day')::date,$2::date))::int AS n,
+        (SELECT COUNT(DISTINCT uid) FROM site_visits v WHERE uid IS NOT NULL AND v.day BETWEEN GREATEST(m::date,$1::date) AND LEAST((m + INTERVAL '1 month - 1 day')::date,$2::date))::int AS l,
+        (SELECT COUNT(*) FROM users WHERE role<>'admin' AND date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS s,
+        0 AS ts,
+        (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS r,
+        (SELECT COUNT(*) FROM bids WHERE date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS b,
+        (SELECT COUNT(*) FROM saai_ledger WHERE date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS dl
+      FROM generate_series(date_trunc('month',$1::date), date_trunc('month',$2::date), INTERVAL '1 month') m ORDER BY 1`) : await daily(R.from, R.to);
+    // خط صغير للبطاقات: آخر 14 يوم لين نهاية الفترة (يفيد حتى لو الفترة يوم واحد)
+    const sfrom = new Date(Date.parse(R.to) - 13 * 86400000).toISOString().slice(0, 10);
+    const spark = R.days >= 7 && !monthly ? series : await daily(sfrom, R.to);
     const sources = await q(`SELECT v.src, COUNT(*)::int n,
         (SELECT COUNT(DISTINCT u.id) FROM users u JOIN site_visits w ON w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date AND w.src=v.src
           WHERE u.role<>'admin' AND (u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS signups
       FROM site_visits v WHERE v.day BETWEEN $1 AND $2 GROUP BY v.src ORDER BY n DESC`);
     const devices = await q(`SELECT dev, COUNT(*)::int n FROM site_visits WHERE day BETWEEN $1 AND $2 GROUP BY dev ORDER BY n DESC`);
-    const pages = await q(`SELECT page, SUM(n)::int n FROM site_pages WHERE day BETWEEN $1 AND $2 GROUP BY page ORDER BY n DESC LIMIT 8`);
-    // المسار: نحسب المسجّلين اللي جوا من زيارة متتبَّعة (عشان النسبة تكون منطقية)، والملخص تحت يعرض كل التسجيلات
-    const nu = await q(`SELECT u.id, u.role FROM users u WHERE u.role<>'admin' AND ${RD.replace(/x/g, 'u.created_at')}
-      AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)`);
-    const ids = nu.map(x => x.id);
-    let acted = 0;
-    if (ids.length) acted = (await q(`SELECT COUNT(DISTINCT id)::int n FROM (SELECT client_id AS id FROM requests WHERE client_id = ANY($3) AND ${RD.replace(/x/g, 'created_at')} AND (category IS DISTINCT FROM 'direct')
-        UNION SELECT provider_id FROM bids WHERE provider_id = ANY($3) AND ${RD.replace(/x/g, 'created_at')}) z`, [R.from, R.to, ids]))[0].n;
-    const sum = (await q(`SELECT
-        (SELECT COUNT(*) FROM users WHERE role='client' AND ${RD.replace(/x/g, 'created_at')})::int AS new_clients,
-        (SELECT COUNT(*) FROM users WHERE role='provider' AND ${RD.replace(/x/g, 'created_at')})::int AS new_providers,
-        (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND ${RD.replace(/x/g, 'created_at')})::int AS requests,
-        (SELECT COUNT(*) FROM bids WHERE ${RD.replace(/x/g, 'created_at')})::int AS bids,
-        (SELECT COUNT(*) FROM saai_ledger WHERE ${RD.replace(/x/g, 'created_at')})::int AS deals,
-        (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD.replace(/x/g, 'approved_at')})::float AS collected`))[0];
+    const pages = await q(`SELECT page, SUM(n)::int n FROM site_pages WHERE day BETWEEN $1 AND $2 GROUP BY page ORDER BY n DESC LIMIT 6`);
+    const acted = (await q(`SELECT COUNT(DISTINCT id)::int n FROM (
+        SELECT r.client_id AS id FROM requests r JOIN users u ON u.id=r.client_id WHERE ${RD('r.created_at')} AND ${RD('u.created_at')} AND (r.category IS DISTINCT FROM 'direct') AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)
+        UNION SELECT b.provider_id FROM bids b JOIN users u ON u.id=b.provider_id WHERE ${RD('b.created_at')} AND ${RD('u.created_at')} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)) z`))[0].n;
     const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++;
-    res.json({ range: R, visitors: tot.n, prev, logged: { provider: tot.prov, client: tot.cli }, live, series, monthly, sources, devices, pages,
-      funnel: { visitors: tot.n, signups: nu.length, acted }, summary: sum });
+    res.json({ range: R, live, cur, prev, series, monthly, spark, sources, devices, pages,
+      visitors: cur.visitors, logged: { provider: cur.logged_p, client: cur.logged_c },
+      funnel: { visitors: cur.visitors, signups: cur.tracked_signups, acted }, summary: cur });
   } catch(e) { console.error('admin visits:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/visits/live', requirePermission('analytics.view'), (req, res) => {
