@@ -3971,6 +3971,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     const pxAtts = [];
     for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
       if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
+      else if (att && att.url && _safeUrl(att.url)) pxAtts.push({ name: String(att.name||'ملف').slice(0,80), url: _safeUrl(att.url) });
     }
     const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const _pxCd = parseInt(req.body.close_days)||0;
@@ -4208,6 +4209,39 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
     _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ── رفع مرفق مباشرة (ملف خام، بدون base64) — للمخططات الكبيرة حتى 30MB ──
+// الواجهة ترفع كل ملف لحظة اختياره وتحفظ {name,url}، والمسارات تقبل url أصلاً
+app.post('/api/upload/attachment', auth, rateLimiter(40, 600000), (req, res, next) => express.raw({ type: () => true, limit: '31mb' })(req, res, err => err ? res.status(err.status === 413 || err.type === 'entity.too.large' ? 413 : 400).json({ message: err.type === 'entity.too.large' ? 'حجم الملف أكبر من 30MB' : 'تعذّر قراءة الملف' }) : next()), async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ message: 'الملف فارغ' });
+    if (buf.length > UPLOAD_MAX_BYTES) return res.status(413).json({ message: 'حجم الملف أكبر من 30MB' });
+    let name = ''; try { name = decodeURIComponent(String(req.get('x-file-name')||'')); } catch(_) { name = ''; }
+    name = name.replace(/[\u0000-\u001f<>"`\\/]/g, '').trim().slice(0, 120) || 'ملف';
+    const fe = (name.toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1] || '';
+    const IMG = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', gif:'image/gif', heic:'image/heic' };
+    let ext = null, ctype = null, dl = false;
+    if (fe === 'pdf') {
+      if (buf.slice(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ message: 'ملف PDF غير صالح' });
+      ext = 'pdf'; ctype = 'application/pdf';
+    } else if (IMG[fe]) { ext = fe === 'jpeg' ? 'jpg' : fe; ctype = IMG[fe]; }
+    else if (UPLOAD_EXT_TYPES[fe]) { ext = fe; ctype = 'application/octet-stream'; dl = true; }
+    if (!ext) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة أو مخطط)' });
+    // بيئة بلا R2 (تطوير): الواجهة ترجع للطريقة القديمة تلقائياً
+    if (!r2Client) return res.status(503).json({ message: 'التخزين غير متاح' });
+    const key = 'manaqasa/attachments/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET, Key: key, Body: buf, ContentType: ctype,
+      ContentDisposition: dl ? 'attachment' : (ext === 'pdf' ? 'inline' : undefined)
+    }));
+    res.json({ ok: true, name, url: R2_PUBLIC_URL + '/' + key, size: buf.length });
+  } catch (e) {
+    if (e && (e.type === 'entity.too.large' || e.status === 413)) return res.status(413).json({ message: 'حجم الملف أكبر من 30MB' });
+    console.error('upload/attachment:', e.message);
+    res.status(500).json({ message: 'تعذّر رفع الملف، حاول مرة أخرى' });
+  }
 });
 
 app.post('/api/requests/:id/attachments', auth, async (req, res) => {

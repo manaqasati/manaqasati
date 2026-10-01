@@ -990,20 +990,30 @@ function useMyLocation(){
     showToast('تم تحديد موقعك ✓','success');
   }, function(){ showToast('تعذّر تحديد الموقع — تأكد من إذن الموقع','error'); }, {enableHighAccuracy:true,timeout:10000});
 }
+// رفع مرفق مباشرة لحظة اختياره (حتى 30MB) — يحفظ {name,url}؛ لو تعذّر وكان ≤10MB يرجع للطريقة القديمة
+function _mqUpAtt(f,slot,done){
+  var tk=(typeof token!=='undefined'&&token)||localStorage.getItem('token')||'';
+  function fb(msg){ if(f.size<=10*1024*1024){var r=new FileReader();r.onload=function(e){slot.data=e.target.result;slot.up=false;done(true);};r.onerror=function(){done(false,msg);};r.readAsDataURL(f);} else done(false,msg); }
+  fetch(API+'/api/upload/attachment',{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f})
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(d){
+      if(r.ok&&d.url){slot.url=d.url;slot.up=false;done(true);}
+      else if(r.status===400||r.status===413)done(false,d.message);
+      else fb(d.message);
+    });}).catch(function(){fb('');});
+}
 function previewFiles(input){
   var files=[].slice.call(input.files).slice(0,3-_reqFiles.length);
   files.forEach(function(f){
     if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP)','error');return;}
     if(f.size>30*1024*1024){showToast('الحجم الأقصى 30MB','error');return;}
-    var r=new FileReader();
-    r.onload=function(e){_reqFiles.push({name:f.name,data:e.target.result});renderFileList();};
-    r.readAsDataURL(f);
+    var slot={name:f.name,up:true}; _reqFiles.push(slot); renderFileList();
+    _mqUpAtt(f,slot,function(ok,msg){ if(!ok){var i=_reqFiles.indexOf(slot);if(i>-1)_reqFiles.splice(i,1);showToast(msg||('تعذّر رفع «'+f.name+'»'),'error');} renderFileList(); });
   });
   input.value='';
 }
 function renderFileList(){
   var g=document.getElementById('file-list');if(!g)return;
-  g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(f.name)+'</span><button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
+  g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(f.up?'⏳ جاري الرفع… ':'')+esc(f.name)+'</span><button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
 }
 function removeReqFile(i){_reqFiles.splice(i,1);renderFileList();}
 function _reqDraftGet(){try{return JSON.parse(localStorage.getItem('nreq_draft')||'null');}catch(e){return null;}}
@@ -1113,6 +1123,7 @@ function closeAgree(){
 
 function acceptAgree(){
   closeAgree();
+  if(_reqFiles.some(function(f){return f.up;})){showToast('انتظر حتى يكتمل رفع الملفات','error');return;}
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
@@ -1130,7 +1141,7 @@ function acceptAgree(){
   if(budget)body.budget_max=Number(budget);
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
-  if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return {name:f.name,data:f.data};});
+  if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url}:{name:f.name,data:f.data};});
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(r){
