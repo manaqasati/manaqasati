@@ -3471,6 +3471,9 @@ function _fuInfo(p){
   else if(p.stage==='executing'){ var ex=_fuD(p.assigned_at)||0; why.push('<b>'+ex+' يوم في التنفيذ</b>'); why.push('ما حدّث الحالة'); if(ex>=21)hot=true; }
   else if(p.stage==='review'){ var cd=_fuD(p.completed_at||p.created_at)||0; why.push('<b>اكتمل '+(cd===0?'اليوم':'قبل '+cd+' يوم')+'</b>'); why.push('ما قيّم المزوّد'); }
   if(um>0){ why.push('<span style="color:#b91c1c">'+_fuN(um,'رسالة','رسالتين','رسائل')+' من مزوّدين ما قرأها</span>'); hot=true; }
+  var ul=p.unlocks||0;
+  if(ul>0&&(p.stage==='offers'||p.stage==='delayed'||p.stage==='few')){ why.unshift('<span style="color:#0f766e">📞 '+(ul===1?'مزوّد أخذ رقمه':(ul===2?'مزوّدين أخذوا رقمه':ul+' مزوّدين أخذوا رقمه'))+' — يتواصلون معه</span>'); hot=false; need=false; }
+  else if((p.silent_stage||0)>=1&&(p.stage==='offers'||p.stage==='delayed'||p.stage==='few')) why.push('<span style="color:#be123c">'+((p.silent_stage||0)>=3?'⏳ وصلته الرسالة الأخيرة — بينقفل تلقائياً':'🤖 وصله تذكير تلقائي بالأرقام')+'</span>');
   var level;
   if(snoozed||!need) level='later';
   else if(since===null) level=(hot||age>=2)?'now':'today';
@@ -3570,6 +3573,7 @@ function _fuList(){
     if(_fuFilter==='nomove')return !!p.reminder_at;
     if(_fuFilter==='unseen')return (p.unseen_bids||0)>0;
     if(_fuFilter==='unread')return (p.unread_msgs||0)>0;
+    if(_fuFilter==='phone')return (p.unlocks||0)>0;
     return true;
   }).sort(function(a,b){
     if(_fuSort==='old')return new Date(a.created_at)-new Date(b.created_at);
@@ -3614,7 +3618,7 @@ function renderFollowups(){
   });
   h+='</div>';
   // الفلاتر
-  var chips=[['due','يحتاج تذكير الآن',due.length],['never','ما ذُكّر أبداً',c(function(p){return !p.reminder_at;})],['nomove','ذُكّر وما تحرّك',c(function(p){return !!p.reminder_at;})],['unseen','ما فتح العروض',c(function(p){return (p.unseen_bids||0)>0;})],['unread','رسائل ما قرأها',c(function(p){return (p.unread_msgs||0)>0;})],['moved','تحرّك ✓',((_fuData.moved)||[]).length],['all','الكل',all.length]];
+  var chips=[['due','يحتاج تذكير الآن',due.length],['never','ما ذُكّر أبداً',c(function(p){return !p.reminder_at;})],['nomove','ذُكّر وما تحرّك',c(function(p){return !!p.reminder_at;})],['unseen','ما فتح العروض',c(function(p){return (p.unseen_bids||0)>0;})],['unread','رسائل ما قرأها',c(function(p){return (p.unread_msgs||0)>0;})],['phone','📞 أخذوا رقمه',c(function(p){return (p.unlocks||0)>0;})],['moved','تحرّك ✓',((_fuData.moved)||[]).length],['all','الكل',all.length]];
   var cities={}; all.forEach(function(p){ if(p.city)cities[p.city]=1; });
   h+='<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'+chips.map(function(x){ var on=_fuFilter===x[0]; return '<button onclick="_fuFilter=\''+x[0]+'\';renderFollowups()" style="border:1.5px solid '+(on?'#1d4ed8':'var(--border)')+';background:'+(on?'#1d4ed8':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;display:inline-flex;gap:6px;align-items:center">'+x[1]+' <span style="font-size:11px;background:'+(on?'rgba(255,255,255,.22)':'rgba(15,23,42,.07)')+';border-radius:999px;padding:0 7px">'+x[2]+'</span></button>'; }).join('')
     +'<span style="margin-right:auto;display:flex;gap:7px">'
@@ -3783,8 +3787,8 @@ function _fuMove(id, stage){
     else toast((d&&d.message)||'تعذّر النقل','error');
   }).catch(function(){ toast('تعذّر النقل','error'); });
 }
-var CR_LABELS={chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
-var CR_COLORS={chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
+var CR_LABELS={auto_silent:'تلقائي: العميل ما تفاعل (أسبوعين)',chose_outside:'العميل: اتفق مع مزوّد من برا المنصة',price_high:'العميل: الأسعار أعلى من ميزانيته',postponed:'العميل: أجّل أو ألغى المشروع',no_suitable_offers:'العميل: ما لقى عرض مناسب',other:'العميل: سبب آخر',admin_closed:'أغلقته الإدارة',auto_client:'تلقائي: انتهت مدة اختارها العميل',auto_default:'تلقائي: انتهت مدة المنصة الافتراضية',auto_admin:'تلقائي: انتهت مدة حددتها الإدارة',auto_client_extend:'تلقائي: انتهت بعد تمديد العميل',auto_expired:'تلقائي: انتهت المدة',completed:'تمت الترسية بنجاح ✓'};
+var CR_COLORS={auto_silent:'#be123c',chose_outside:'#dc2626',price_high:'#d97706',postponed:'#64748b',no_suitable_offers:'#7c3aed',other:'#0891b2',admin_closed:'#0f766e',auto_client:'#475569',auto_default:'#94a3b8',auto_admin:'#0f766e',auto_client_extend:'#64748b',auto_expired:'#94a3b8',completed:'#16a34a'};
 // ═══ المشاريع الموثّقة: المزوّد طلب التأكيد والعميل أكّد ═══
 var _clDays=30;
 var _CL_ST={pending:['⏳ بانتظار العميل','#e0e7ff','#3730a3'],confirmed:['✓ أكّد العميل','#dcfce7','#15803d'],not_done:['لسا ما خلص','#f1f5f9','#475569'],denied:['✗ العميل: ما تعاملت معه','#fee2e2','#b91c1c'],expired:['ما رد العميل','#f1f5f9','#64748b']};

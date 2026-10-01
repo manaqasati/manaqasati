@@ -193,11 +193,10 @@ window._clmProvOpen=function(rid,kind){
   var title=it.title||it.request_title||'', cname=it.client_name||'', val=parseInt(it.price)||'', when='week';
   var ov=document.createElement('div'); ov.id='rj-ov'; ov.className='rj-ov'; ov.onclick=function(e){ if(e.target===ov)_close(); };
   var h='<div class="rj-sh" role="dialog" aria-modal="true" aria-label="اطلب تقييمك"><div class="rj-grab"></div>'
-    +'<div class="rj-h" style="text-align:center">كل تقييم يرفعك في المنصة ⭐</div>'
-    +'<div class="cl-ben"><i>📈</i><span>عروضك تطلع أعلى عند أصحاب المشاريع</span></div>'
-    +'<div class="cl-ben"><i>🏅</i><span>تقرّبك من مستوى «مميّز» و«خبير»</span></div>'
-    +'<div class="cl-ben"><i>🤝</i><span>العملاء يثقون بمن عنده تقييمات — عروضه تنقبل أكثر</span></div>'
-    +'<div class="cl-ben"><i>✓</i><span>يطلع جنب تقييمك «مشروع موثّق عبر مناقصة»</span></div>'
+    +'<div class="rj-h" style="text-align:center">شغلك على «'+E(title)+'» يستاهل يبان ⭐</div>'
+    +'<div class="rj-s" style="text-align:center;margin:-4px 0 2px">العميل اللي رضى عن شغلك هو أقوى دعاية لك. تقييمه يطلع في صفحتك مع شارة «مشروع موثّق ✓»، ويشوفه كل عميل جاي.</div>'
+    +'<div class="cl-ben"><i>📈</i><span>عروضك تطلع فوق المنافسين عند أصحاب المشاريع</span></div>'
+    +'<div class="cl-ben"><i>🏅</i><span>يقرّبك من مستوى «مميّز» و«خبير»</span></div>'
     +'<div class="rj-q"><b>'+E(title)+'</b>'+(cname?' · العميل: '+E(cname):'')+'</div>';
   if(kind==='outside'){
     h+='<div><span class="rj-lb">قيمة الاتفاق النهائية (ر.س)</span><input class="rj-in" id="cl-v" type="number" inputmode="numeric" min="1" value="'+E(val)+'" style="font-size:19px;font-weight:900"></div>'

@@ -1032,6 +1032,7 @@ function render(){
       h+='<div class="pj-duo"><div class="pj-mini" style="background:#ecfdf5;border-color:#bbf7d0"><span style="color:#15803d">الوقت المتبقي</span><b>'+(dl===null?'مفتوح':(dl<=0?'آخر يوم':dl+' '+_dWord(dl)))+'</b><small>'+(req.last_bid_at?'آخر عرض قبل '+ago(req.last_bid_at):'ما أحد قدّم للحين')+'</small></div>';
       h+='<div class="pj-mini"><span>المنافسة</span><b>'+n+' '+(n>=3&&n<=10?'عروض':'عرض')+' <em style="color:'+lvl[1]+'">· '+lvl[0]+'</em></b><small>'+(n===0?'كن أول واحد يقدّم':'قدّم عرض واضح وتميّز')+'</small></div></div>';
     }
+    if(req.status==='open'&&req.client_silent_days)h+='<div class="pj-card" style="background:#fff7ed;border:1.5px solid #fdba74;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">⚠️</span><div style="font-size:13px;font-weight:800;color:#9a3412;line-height:1.8">صاحب المشروع ما اطّلع على العروض من '+req.client_silent_days+' '+(req.client_silent_days>=3&&req.client_silent_days<=10?'أيام':'يوم')+' — ممكن يتأخر رده.</div></div>';
     h+=_pjMyBidHtml(req);
     h+=_pjDetailsHtml(req);
     h+=_pjClientHtml(req);

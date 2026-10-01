@@ -669,6 +669,8 @@ app.get('/api/requests/public/:id', async (req, res) => {
       row.close_time = row.close_at || new Date(new Date(row.created_at).getTime()+closeDays*86400000);
       const bz=(await pool.query('SELECT boosted_at FROM requests WHERE id=$1',[id])).rows[0]||{};
       row.boosted_at=bz.boosted_at||null;
+      // صاحب المشروع ما اطّلع على العروض (ولا أحد أخذ رقمه) من كم يوم؟ — ننبّه المزوّد قبل ما يقدّم
+      try { const sl=(await pool.query(`SELECT FLOOR(EXTRACT(EPOCH FROM (NOW() - (SELECT MIN(created_at) FROM bids b WHERE b.request_id=r.id)))/86400)::int AS d FROM requests r WHERE r.id=$1 AND ${SILENT_SQL}`, [id])).rows[0]; row.client_silent_days = sl && sl.d >= 5 ? sl.d : null; } catch(e){}
     } catch(e){ console.error('public stats:', e.message); }
     res.json(row);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -1518,14 +1520,16 @@ async function sendPush(userId, title, body, url, refType, refId) {
 
 async function remindClosedContacts(requestId, title){
   try {
-    const r = await pool.query('SELECT cu.provider_id, u.email, u.name FROM contact_unlocks cu JOIN users u ON u.id=cu.provider_id WHERE cu.request_id=$1', [requestId]);
+    const r = await pool.query(`SELECT cu.provider_id, u.email, u.name, c.name AS client_name FROM contact_unlocks cu JOIN users u ON u.id=cu.provider_id
+      JOIN requests rq ON rq.id=cu.request_id LEFT JOIN users c ON c.id=rq.client_id WHERE cu.request_id=$1 AND rq.assigned_provider_id IS NULL`, [requestId]);
     if (!r.rows.length) return;
-    const t = '💰 تذكير: عمولة المنصة عند إتمام الاتفاق';
-    const b = 'أُغلق مشروع'+(title?(' «'+title+'»'):'')+' الذي تواصلت بشأنه. إن كنت قد أتممت الاتفاق مع صاحبه، فلا تنسَ سداد رسوم المنصة (٣٪ من قيمة العقد) من صفحة الدفع — سواء تم الاتفاق داخل المنصة أو خارجها، حفاظاً على حقوق الجميع.';
     for (const x of r.rows) {
+      const cn = (x.client_name || 'صاحب المشروع').split(' ')[0];
+      const t = '⭐ تعاملت مع «' + cn + '»؟ لا يضيع تقييمك';
+      const b = 'انقفل مشروع' + (title ? (' «' + title + '»') : '') + '. إذا اتفقت مع صاحبه ونفّذت الشغل، وثّق المشروع من «مشاريعي وعروضي» — تقييمه يطلع في صفحتك ويجيب لك عملاء جدد.';
       try {
-        await notify(x.provider_id, t, b, 'saai', requestId);
-        if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'صفحة الدفع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        await notify(x.provider_id, t, b, 'claim', requestId);
+        if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'وثّق المشروع', SITE_URL+'/dashboard-provider.html#works')).catch(()=>{});
       } catch(e){}
     }
   } catch(e){ console.error('remindClosedContacts:', e.message); }
@@ -2125,6 +2129,8 @@ async function runReminders(){
   try { await checkStorageAlert(); } catch(e){}
   try { await _saaiDeferJob(); } catch(e){ console.error('saaiDeferJob:', e.message); }
   try { await _claimsJob(); } catch(e){ console.error('claimsJob:', e.message); }
+  try { await _unlockReviewNudge(); } catch(e){ console.error('unlockReviewNudge:', e.message); }
+  try { await _silentClientJob(); } catch(e){ console.error('silentClientJob:', e.message); }
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -2740,6 +2746,10 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_missing VARCHAR(10)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_help BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_help_done BOOLEAN DEFAULT FALSE`);
+      // التقييم يحرّك العميل: تذكير ثاني لمن فتح الرقم + تسلسل العميل الصامت
+      await _mig(`ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS review_nudged_at TIMESTAMP`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_stage SMALLINT DEFAULT 0`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_at TIMESTAMP`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -3308,7 +3318,8 @@ app.get('/api/admin/followups', requirePermission('requests.edit'), async (req, 
         (SELECT COUNT(*) FROM messages m WHERE m.receiver_id=r.client_id AND m.sender_id<>r.client_id AND COALESCE(m.is_read,false)=false AND m.deleted_at IS NULL)::int AS unread_msgs,
         (SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0 AND (price_unit IS NULL OR price_unit='total')) AS min_price,
         (SELECT MIN(created_at) FROM bids WHERE request_id=r.id) AS first_bid_at,
-        (SELECT MAX(seen_at) FROM bids WHERE request_id=r.id) AS last_seen_bids_at
+        (SELECT MAX(seen_at) FROM bids WHERE request_id=r.id) AS last_seen_bids_at,
+        (SELECT COUNT(*) FROM contact_unlocks cu WHERE cu.request_id=r.id)::int AS unlocks, COALESCE(r.silent_stage,0)::int AS silent_stage
       FROM requests r JOIN users u ON u.id=r.client_id`;
     const run = async (label, sql) => { try { return (await pool.query(sql)).rows; } catch(e){ console.error('[followups '+label+']', e.message); return []; } };
     // كل بطاقة تظهر في مرحلتها اليدوية إن وُجدت، وإلا في المرحلة المحسوبة تلقائياً
@@ -3861,7 +3872,8 @@ app.get('/api/requests', async (req, res) => {
     }
     if (category) { params.push(category); query += ` AND (r.category=$${params.length} OR $${params.length}=ANY(COALESCE(r.extra_categories,'{}')))`; }
     if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
-    query += ' ORDER BY r.created_at DESC LIMIT 100';
+    // مشاريع صاحبها ما اطّلع على العروض (التسلسل الصامت بدأ) تنزل تحت
+    query += ' ORDER BY (COALESCE(r.silent_stage,0) BETWEEN 1 AND 3 AND NOT EXISTS (SELECT 1 FROM bids sb WHERE sb.request_id=r.id AND sb.seen_at IS NOT NULL)) ASC, r.created_at DESC LIMIT 100';
     const result = await pool.query(query, params);
     res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests:', e); res.json([]); }
@@ -4246,7 +4258,7 @@ app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
       return res.json({ ok:true, pending_review:true, message:'رجع مشروعك للمراجعة — ينشر بعد اعتماد الإدارة' });
     }
     const r = await pool.query(
-      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
+      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, silent_stage=0, silent_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
        RETURNING id, title, category, city, client_id`, [id, req.user.id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
@@ -4629,13 +4641,13 @@ async function nudgeAcceptAsks(){
     WHERE COALESCE(b.ask_nudged,FALSE)=FALSE AND b.status='pending' AND ${_REAL_BID_SQL} AND ${_ASKABLE_REQ_SQL}
       AND b.created_at < NOW() - INTERVAL '3 days' AND b.created_at > NOW() - INTERVAL '45 days'
       AND NOT EXISTS (SELECT 1 FROM bid_accept_asks a WHERE a.bid_id=b.id)
-      AND (b.seen_at IS NOT NULL OR (EXISTS (SELECT 1 FROM messages m WHERE m.sender_id=r.client_id AND m.receiver_id=b.provider_id)
+      AND (b.seen_at IS NOT NULL OR EXISTS (SELECT 1 FROM contact_unlocks cu WHERE cu.request_id=r.id AND cu.provider_id=b.provider_id) OR (EXISTS (SELECT 1 FROM messages m WHERE m.sender_id=r.client_id AND m.receiver_id=b.provider_id)
                                   AND EXISTS (SELECT 1 FROM messages m WHERE m.sender_id=b.provider_id AND m.receiver_id=r.client_id)))
     LIMIT 200`);
   for (const x of r.rows) {
     try {
       await pool.query('UPDATE bids SET ask_nudged=TRUE WHERE id=$1', [x.id]);
-      await notify(x.provider_id, '🤝 اتفقت مع العميل؟', 'لو اتفقت على «' + (x.title||'المشروع') + '»، اطلب منه يعتمد عرضك من «مشاريعي وعروضي» — بعدها يقدر يقيّمك وتطلع النجوم في صفحتك.', 'accept_ask', x.request_id);
+      await notify(x.provider_id, '⭐ تقييمك = عملاؤك الجايين', 'العملاء يختارون المزوّد اللي عنده تقييمات أول. اتفقت على «' + (x.title||'المشروع') + '»؟ اطلب من العميل يعتمد عرضك من «مشاريعي وعروضي» — وبعد التنفيذ يقيّمك، وعرضك الجاي يطلع فوق المنافسين.', 'accept_ask', x.request_id);
     } catch(e){}
   }
 }
@@ -4949,6 +4961,63 @@ app.put('/api/admin/claims/:id/done', requirePermission('requests.view'), async 
   try { await pool.query('UPDATE completion_claims SET admin_done=TRUE WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'claim_done', 'claim', parseInt(req.params.id), 'مراجعة نفي عميل'); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// تذكير ثاني بعد 10 أيام لمن فتح رقم العميل وما وثّق/طلب الاعتماد — بأرقام حقيقية (منافسه في نفس التخصص والمدينة)
+async function _unlockReviewNudge(){
+  const r = await pool.query(`UPDATE contact_unlocks cu SET review_nudged_at=NOW() FROM requests rq
+    WHERE rq.id=cu.request_id AND cu.review_nudged_at IS NULL AND cu.created_at <= NOW() - INTERVAL '10 days' AND cu.created_at > NOW() - INTERVAL '60 days'
+      AND (rq.assigned_provider_id IS NULL OR rq.assigned_provider_id=cu.provider_id) AND rq.status NOT IN ('cancelled')
+      AND NOT EXISTS (SELECT 1 FROM completion_claims cc WHERE cc.request_id=cu.request_id AND cc.provider_id=cu.provider_id)
+      AND NOT EXISTS (SELECT 1 FROM bid_accept_asks a WHERE a.request_id=cu.request_id AND a.provider_id=cu.provider_id)
+      AND NOT EXISTS (SELECT 1 FROM reviews rv WHERE rv.request_id=cu.request_id AND rv.reviewed_id=cu.provider_id)
+    RETURNING cu.provider_id, cu.request_id, rq.title, rq.category, rq.city, rq.client_id`);
+  for (const x of r.rows) {
+    try {
+      const mine = (await pool.query('SELECT COUNT(*)::int AS n FROM reviews WHERE reviewed_id=$1', [x.provider_id])).rows[0].n;
+      const top = (await pool.query(`SELECT COALESCE(MAX(c),0)::int AS n FROM (SELECT u.id, (SELECT COUNT(*) FROM reviews rv WHERE rv.reviewed_id=u.id) AS c FROM users u
+        WHERE u.role='provider' AND u.id<>$1 AND u.city=$2 AND $3 = ANY(COALESCE(u.specialties,ARRAY[]::text[]))) z`, [x.provider_id, x.city || '', x.category || ''])).rows[0].n;
+      const cn = ((await pool.query('SELECT name FROM users WHERE id=$1', [x.client_id])).rows[0] || {}).name || 'العميل';
+      const first = String(cn).split(' ')[0];
+      let t, b;
+      if (top > mine) { t = `⭐ منافسك عنده ${top} تقييم، وأنت ${mine}`; b = `كل تقييم موثّق يقرّبك من «مزوّد مميّز» ويطلّع عروضك أول عند العملاء. خلّصت مع «${first}» على «${x.title}»؟ اطلب منه يقيّم شغلك من «مشاريعي وعروضي».`; }
+      else { t = '⭐ تقييمك = عملاؤك الجايين'; b = `العملاء يختارون المزوّد اللي عنده تقييمات أول. خلّصت مع «${first}» على «${x.title}»؟ اطلب منه يقيّمك، وعرضك الجاي يطلع فوق المنافسين.`; }
+      await notify(x.provider_id, t, b, 'claim', x.request_id);
+    } catch(e){}
+  }
+}
+// العميل الصامت فعلاً: جاته عروض، ما فتحها، وما أحد من المزوّدين أخذ رقمه
+//   اليوم 2: إشعار + إيميل بالأرقام · اليوم 10: «بينقفل بعد 4 أيام» · اليوم 14: إقفال تلقائي (العميل ما تفاعل)
+// أي فتح للعروض أو فتح رقمه من مزوّد يوقف التسلسل تلقائياً
+const SILENT_SQL = `r.status='open' AND r.assigned_provider_id IS NULL AND (r.category IS DISTINCT FROM 'direct')
+  AND EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
+  AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.seen_at IS NOT NULL)
+  AND NOT EXISTS (SELECT 1 FROM contact_unlocks cu WHERE cu.request_id=r.id)`;
+async function _silentClientJob(){
+  const FB = `(SELECT MIN(created_at) FROM bids b WHERE b.request_id=r.id AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))`;
+  const info = async (id) => (await pool.query(`SELECT COUNT(*)::int AS n, MIN(price) FILTER (WHERE price>0 AND COALESCE(price_unit,'total')='total') AS minp FROM bids WHERE request_id=$1 AND COALESCE(hold_state,'') NOT IN ('held','rejected')`, [id])).rows[0];
+  // 1) اليوم 2
+  const s1 = await pool.query(`UPDATE requests r SET silent_stage=1, silent_at=NOW() WHERE ${SILENT_SQL} AND COALESCE(r.silent_stage,0)=0 AND ${FB} <= NOW() - INTERVAL '2 days' RETURNING r.id, r.title, r.client_id`);
+  for (const x of s1.rows) { try {
+    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/m/' + tok;
+    const pr = k.minp ? Number(k.minp).toLocaleString('en-US') + ' ر.س' : '';
+    const line = k.n === 1 ? `وصلك عرض على «${x.title}»${pr ? ' بسعر ' + pr : ''}.` : `وصلك ${k.n === 2 ? 'عرضين' : k.n + ' عروض'} على «${x.title}»${pr ? '، أقلها ' + pr : ''}.`;
+    await notifyWithEmail(x.client_id, '📬 ' + line, line + ' شوفها وقارن بينها بضغطة.', 'request', x.id, '📬 ' + line,
+      `<p>${eEsc(line)}</p><p>العروض مرتبة لك من الأقرب لمدينتك، وتقدر تقارن الأسعار والمدد وتقييمات المزوّدين بضغطة.</p>`, 'شوف العروض', link);
+  } catch(e){} }
+  // 2) اليوم 10: رسالة أخيرة
+  const s3 = await pool.query(`UPDATE requests r SET silent_stage=3, silent_at=NOW() WHERE ${SILENT_SQL} AND COALESCE(r.silent_stage,0) IN (1,2) AND r.silent_at <= NOW() - INTERVAL '3 days' AND ${FB} <= NOW() - INTERVAL '10 days' RETURNING r.id, r.title, r.client_id`);
+  for (const x of s3.rows) { try {
+    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/m/' + tok;
+    await notifyWithEmail(x.client_id, '⏳ مشروعك بينقفل بعد 4 أيام', `«${x.title}» عليه ${k.n === 1 ? 'عرض ما شفته' : (k.n === 2 ? 'عرضين ما شفتها' : k.n + ' عروض ما شفتها')}. إذا ما تحتاجه بنقفله بعد 4 أيام — وإذا تبيه يبقى، افتح العروض وبس.`, 'request', x.id,
+      `⏳ «${x.title}» بينقفل بعد 4 أيام`, `<p>مشروعك «<strong>${eEsc(x.title)}</strong>» عليه ${k.n === 1 ? 'عرض ما اطّلعت عليه' : (k.n === 2 ? 'عرضين ما اطّلعت عليها' : k.n + ' عروض ما اطّلعت عليها')}.</p><p>إذا ما عاد تحتاجه، بنقفله تلقائياً بعد 4 أيام عشان ما ينتظر المزوّدين. وإذا تبيه يبقى مفتوح: افتح العروض وبس.</p>`, 'افتح العروض', link);
+  } catch(e){} }
+  // 3) اليوم 14: إقفال تلقائي
+  const s4 = await pool.query(`UPDATE requests r SET silent_stage=4, status='closed_auto', closed_at=NOW(), close_auto_kind='silent' WHERE ${SILENT_SQL} AND COALESCE(r.silent_stage,0)=3 AND r.silent_at <= NOW() - INTERVAL '4 days' AND ${FB} <= NOW() - INTERVAL '14 days' RETURNING r.id, r.title`);
+  for (const x of s4.rows) { try {
+    const bidders = await pool.query(`SELECT DISTINCT b.provider_id FROM bids b WHERE b.request_id=$1`, [x.id]);
+    for (const bp of bidders.rows) await notify(bp.provider_id, 'انقفل مشروع ما تفاعل صاحبه', `انقفل «${eEsc(x.title)}» لأن صاحبه ما اطّلع على العروض خلال أسبوعين. نشكر لك عرضك — فيه مشاريع جديدة تنتظرك.`, 'request_closed', x.id);
+  } catch(e){} }
+  if (s4.rows.length) console.log('[silent] انقفل ' + s4.rows.length + ' مشروع لعدم تفاعل العميل');
+}
 async function _claimsJob(){
   // تذكير العميل مرة وحدة بعد 3 أيام، وتنتهي بعد 10 أيام
   const rem = await pool.query(`UPDATE completion_claims cc SET reminded_at=NOW() FROM requests r WHERE r.id=cc.request_id AND cc.status='pending' AND cc.reminded_at IS NULL AND cc.created_at <= NOW() - INTERVAL '3 days' RETURNING cc.client_id, cc.request_id, r.title`);
@@ -4960,7 +5029,7 @@ async function _claimsJob(){
         AND r.assigned_at IS NOT NULL AND r.assigned_at + (GREATEST(COALESCE(b.days,14),3) || ' days')::interval <= NOW()
         AND NOT EXISTS (SELECT 1 FROM completion_claims cc WHERE cc.request_id=r.id AND cc.provider_id=r.assigned_provider_id)
       RETURNING r.id, r.title, r.assigned_provider_id`);
-  for (const x of nd.rows) { try { await notify(x.assigned_provider_id, '⭐ خلّصت المشروع؟ اطلب تقييمك', `مدة التنفيذ على «${eEsc(x.title)}» خلصت — اطلب من العميل يأكّد ويقيّمك. كل تقييم يرفع ترتيبك.`, 'claim', x.id); } catch(e){} }
+  for (const x of nd.rows) { try { await notify(x.assigned_provider_id, '⭐ تقييمك = عملاؤك الجايين', `مدة التنفيذ على «${eEsc(x.title)}» خلصت. العملاء يختارون المزوّد اللي عنده تقييمات أول — اطلب من العميل يأكّد ويقيّمك، وعرضك الجاي يطلع فوق المنافسين.`, 'claim', x.id); } catch(e){} }
 }
 // ═══ الإدارة: ليش ما انختارت العروض؟ ═══
 app.get('/api/admin/bid-reasons', requirePermission('bids.view'), async (req, res) => {
@@ -7727,6 +7796,7 @@ function _closeInfo(r, defDays){
   const durDays = r.close_at && r.created_at ? Math.max(1, Math.round((new Date(r.close_at) - new Date(r.created_at)) / 86400000)) : null;
   const kind = r.close_auto_kind || (r.close_at ? (r.close_set_by || 'client') : 'default');
   const d = r.close_auto_days || durDays;
+  if (kind === 'silent') return { by:'auto', short:'العميل ما تفاعل', text:'وصلته عروض وما فتحها ولا أحد أخذ رقمه — انقفل تلقائياً بعد أسبوعين وتذكيرين', open_days: openDays };
   if (kind === 'default') return { by:'auto', short:'انتهت مدة المنصة الافتراضية', text:'العميل ما اختار مدة خاصة، فانطبقت مدة المنصة الافتراضية' + (r.close_auto_days ? ' (' + _dTxt(r.close_auto_days) + ' وقت الإغلاق)' : '') + ' وانتهت بدون ما يختار عرض', open_days: openDays };
   if (kind === 'admin') return { by:'auto', short:'انتهت مدة حددتها الإدارة', text:'انتهت المدة اللي حددتها الإدارة' + (d ? ' — ' + _dTxt(d) + ' من تاريخ النشر' : '') + ' بدون ما يختار عرض', open_days: openDays };
   if (kind === 'client_extend') return { by:'auto', short:'انتهت بعد تمديد العميل', text:'العميل مدّد المدة بنفسه وانتهت' + (d ? ' — إجمالي ' + _dTxt(d) + ' من تاريخ النشر' : '') + ' بدون ما يختار عرض', open_days: openDays };
@@ -7772,7 +7842,7 @@ app.post('/api/admin/requests/:id/reopen', requirePermission('requests.edit'), a
       if (cur && new Date(cur) > base) base = new Date(cur);
     }
     const until = new Date(base.getTime() + days * 86400000);
-    await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL, close_set_by='admin', close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [until, id]);
+    await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL, close_set_by='admin', close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL, silent_stage=0, silent_at=NULL WHERE id=$2`, [until, id]);
     try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn','closed_offers','closed_offers_2d')`, [id]); } catch(e){}
     if (!wasOpen && req.body.notify_client) { try { await notify(q.client_id, '🔓 أعدنا فتح مشروعك', `«${q.title}» مفتوح للعروض من جديد لمدة ${days} يوم`, 'request', id); } catch(e){} }
     let sent = 0;
