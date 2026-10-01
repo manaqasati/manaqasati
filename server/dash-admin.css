@@ -663,3 +663,11 @@ a.cu-pv:hover{border-color:#86efac}
 @media(max-width:1000px){.cu-2{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.cu-pj{flex-direction:column}.cu-acts{flex-direction:row;width:100%}.cu-acts .act-btn{flex:1}}
 .cu-2>*,.cu-pj>div{min-width:0}.cu-m,.cu-pv,.cu-t{overflow-wrap:anywhere}.cu-pv{max-width:100%}
+/* «ما لقى عرض مناسب» */
+.nso-2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;margin-bottom:18px}
+.nso-c{display:flex;flex-direction:column;gap:10px}.nso-c h3{margin:0;font-size:15px;font-weight:900;display:flex;align-items:center;gap:8px}
+.nso-row{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:9px}.nso-row.hl{border-color:#93c5fd;background:#f8fbff}
+.nso-c .nso-row{margin-bottom:0}
+.nso-acts{display:flex;flex-direction:column;gap:6px;flex-shrink:0}.nso-acts .act-btn{justify-content:center;white-space:nowrap;padding:7px 11px;font-size:12px}
+@media(max-width:1000px){.nso-2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.nso-row{flex-direction:column}.nso-acts{flex-direction:row;flex-wrap:wrap;width:100%}}

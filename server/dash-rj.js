@@ -17,7 +17,7 @@ var CSS='.rj-ov{position:fixed;inset:0;overflow:hidden;z-index:600;background:rg
 +'.rj-opt{display:flex;gap:10px;align-items:flex-start;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:12px;cursor:pointer;text-align:right;font-family:inherit;width:100%}'
 +'.rj-opt.off{background:var(--bg,#f8fafc);border-color:var(--border,#e2e8f0)}'
 +'.rj-cb{width:20px;height:20px;border-radius:6px;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:13px;font-weight:900}'
-+'.rj-opt.off .rj-cb{background:#fff;border:2px solid #cbd5e1;color:transparent}'
++'.rj-opt.off .rj-cb{background:#fff!important;border:2px solid #cbd5e1;color:transparent}'
 +'.rj-opt b{font-size:14px;color:#14532d;display:block}.rj-opt.off b{color:var(--text,#334766)}.rj-opt small{font-size:12px;color:#166534;font-weight:700;line-height:1.7}.rj-opt.off small{color:var(--muted,#64748b)}'
 +'.rj-go{border:0;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:15px;min-height:48px;cursor:pointer;color:#fff;background:#b91c1c}.rj-go.g{background:#15803d}.rj-go:disabled{opacity:.6}'
 +'.rj-no{border:1.5px solid var(--border,#dbe5f5);background:none;color:var(--text,#1e3a8a);border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14px;min-height:46px;cursor:pointer}'
@@ -308,5 +308,22 @@ window._askConfirmOpen=function(b,send){
     go.disabled=true; go.textContent='جاري الإرسال…'; er.style.display='none';
     send(pl,function(ok,msg){ if(ok){_close();return;} go.disabled=false; go.textContent='أرسل الطلب'; er.textContent=msg||'تعذّر الإرسال'; er.style.display='block'; });
   };
+};
+
+// ═══ إغلاق المشروع: «ما لقيت عرض مناسب» → وش الناقص + أبي مساعدة ═══
+var _nso={missing:null,help:false};
+window._nsoGet=function(){ return {missing:_nso.missing, help:!!_nso.help}; };
+window._nsoMount=function(radioName){
+  _ccss(); _nso={missing:null,help:false};
+  var inp=document.querySelector('input[name="'+radioName+'"][value="no_suitable_offers"]'); if(!inp)return;
+  var lbl=inp.closest('label')||inp.parentNode, box=document.createElement('div');
+  box.id='nso-box'; box.style.cssText='display:none;margin:-2px 0 9px;padding:2px 4px 0';
+  var M=[['price','💰 الأسعار أعلى من ميزانيتي'],['far','📍 ما فيه مزوّد قريب مني'],['few','🔢 العروض قليلة'],['weak','📄 العروض ضعيفة / ما فهموا المشروع']];
+  box.innerHTML='<span class="rj-lb" style="margin-top:4px">وش كان ناقص؟ <span>(اختياري)</span></span><div class="rj-chips">'+M.map(function(m){return '<button type="button" class="rj-chip" data-m="'+m[0]+'" style="font-size:12.5px;padding:8px 11px">'+m[1]+'</button>';}).join('')+'</div>'
+    +'<button type="button" class="rj-opt off" data-h="1" style="margin-top:9px;background:#eff6ff;border-color:#93c5fd"><span class="rj-cb" style="background:#1d4ed8">✓</span><span><b style="color:#1e3a8a">أبي مساعدة فريق مناقصة</b><small style="color:#1e40af">نتواصل معك ونرشّح لك مزوّدين مناسبين — بدون أي رسوم عليك</small></span></button>';
+  lbl.parentNode.insertBefore(box, lbl.nextSibling);
+  box.querySelectorAll('[data-m]').forEach(function(b){ b.onclick=function(){ var k=b.getAttribute('data-m'); _nso.missing=(_nso.missing===k?null:k); box.querySelectorAll('[data-m]').forEach(function(z){z.classList.toggle('on',z.getAttribute('data-m')===_nso.missing);}); }; });
+  var hb=box.querySelector('[data-h]'); hb.onclick=function(){ _nso.help=!_nso.help; hb.classList.toggle('off',!_nso.help); };
+  document.querySelectorAll('input[name="'+radioName+'"]').forEach(function(r){ r.addEventListener('change',function(){ box.style.display=inp.checked?'block':'none'; }); });
 };
 })();

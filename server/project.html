@@ -1396,6 +1396,7 @@ function openCloseModal(){
     +'<style>.cm-r{display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:7px;font-size:13.5px;font-weight:600;color:#334155;cursor:pointer}.cm-r input{width:17px;height:17px;accent-color:#dc2626}</style>'
     +'</div>';
   document.body.appendChild(d);
+  try{ if(window._nsoMount)_nsoMount('cmreason'); }catch(e){}
 }
 function _cmChose(){
   var st=document.getElementById('cm-step1'); if(!st)return;
@@ -1435,7 +1436,7 @@ function _cmConfirm(){
   if(!sel){ alert('اختر سبب الإغلاق'); return; }
   var note=(document.getElementById('cm-note')||{}).value||'';
   var id=getReqId();
-  fetch(API+'/api/requests/'+id+'/close-by-owner',{method:'POST',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'},body:JSON.stringify({reason:sel.value,note:note})}).then(function(r){return r.json();}).then(function(d){
+  fetch(API+'/api/requests/'+id+'/close-by-owner',{method:'POST',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(Object.assign({reason:sel.value,note:note},(sel.value==='no_suitable_offers'&&window._nsoGet)?_nsoGet():{}))}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });

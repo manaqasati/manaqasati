@@ -2736,6 +2736,10 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_price INTEGER`);
       await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_days INTEGER`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ask_penalty_until TIMESTAMP`);
+      // «ما لقى عرض مناسب»: وش الناقص + طلب مساعدة الإدارة
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_missing VARCHAR(10)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_help BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS close_help_done BOOLEAN DEFAULT FALSE`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -7902,7 +7906,10 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const _projTitle = r.rows[0].title || 'مشروع';
     // مشروع ما انعتمد بعد (تحت المراجعة/مرفوض/يحتاج تعديل): نعلّمه عشان «إعادة النشر» ترجّعه للمراجعة مو للنشر المباشر
     const _unpub = ['pending_review','review','needs_edit','rejected'].includes(r.rows[0].status);
-    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW(), close_auto_kind=$4 WHERE id=$3", [reason, note||null, id, _unpub ? 'unpublished' : null]);
+    const _miss = reason === 'no_suitable_offers' && ['price','far','few','weak'].includes(req.body.missing) ? req.body.missing : null;
+    const _help = reason === 'no_suitable_offers' && req.body.help === true;
+    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW(), close_auto_kind=$4, close_missing=$5, close_help=$6, close_help_done=FALSE WHERE id=$3", [reason, note||null, id, _unpub ? 'unpublished' : null, _miss, _help]);
+    if (_help) { try { await _notifyAdmins('🙋 عميل يبي مساعدة يلقى مزوّد', `«${_projTitle}» — ما لقى عرض مناسب${_miss ? ' (' + ({price:'الأسعار عالية',far:'ما فيه مزوّد قريب',few:'العروض قليلة',weak:'العروض ضعيفة'})[_miss] + ')' : ''}. تواصل معه من «أسباب الإغلاق».`, 'close_help', id); } catch(e){} }
     try { await remindClosedContacts(id, _projTitle); } catch(e){}
     // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
     if (_wasOpen) {
@@ -7917,6 +7924,10 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     res.json({ ok: true });
   } catch(e){ console.error('close-by-owner:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
 });
+app.put('/api/admin/requests/:id/help-done', requirePermission('requests.view'), async (req, res) => {
+  try { await pool.query('UPDATE requests SET close_help_done=TRUE WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'close_help_done', 'request', parseInt(req.params.id), 'تواصلت مع عميل طلب مساعدة'); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
   try {
     // مفتاح السبب: الإغلاقات التلقائية تنقسم حسب مين حدد المدة (العميل / المنصة / الإدارة)
@@ -7929,13 +7940,21 @@ app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (r
     const agg = await pool.query(`SELECT ${KEY} AS close_reason, COUNT(*)::int AS c FROM requests r WHERE ${WHERE} GROUP BY 1 ORDER BY c DESC`);
     const list = await pool.query(`SELECT r.id, r.title, r.status, r.created_at, r.close_at, r.close_set_by, r.close_auto_kind, r.close_auto_days, r.close_reason AS raw_reason,
         ${KEY} AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, r.closed_at AS closed_at_raw, COALESCE(u.name,'عميل') AS client_name,
-        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category
       FROM requests r JOIN users u ON u.id=r.client_id WHERE ${WHERE} ORDER BY COALESCE(r.closed_at, r.completed_at, r.close_at, r.created_at) DESC NULLS LAST LIMIT 300`);
     const rows = list.rows.map(x => {
       const info = x.status === 'completed' ? { by:'done', short:'تمت الترسية', text:'اختار مزوّد وتمت الترسية' } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
-      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info };
+      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status };
     });
-    res.json({ summary: agg.rows, list: rows });
+    // وين ينقصنا مزوّدين؟ مشاريع ضاعت آخر 30 يوم (ما لقى عرض مناسب، أو انقفلت بعرض واحد أو أقل) حسب التخصص والمدينة
+    const lost = (await pool.query(`SELECT r.category, r.city, COUNT(*)::int AS lost,
+        (SELECT COUNT(*)::int FROM users u WHERE u.role='provider' AND u.is_active=true AND (u.city=r.city OR r.city = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))
+          AND r.category = ANY(COALESCE(u.specialties,ARRAY[]::text[])) AND u.last_seen_at > NOW() - INTERVAL '30 days') AS active
+      FROM requests r WHERE r.category IS NOT NULL AND r.category <> 'direct' AND r.city IS NOT NULL AND r.assigned_provider_id IS NULL
+        AND r.status IN ('closed_auto','expired','closed','cancelled') AND COALESCE(r.closed_at, r.close_at, r.created_at) > NOW() - INTERVAL '30 days'
+        AND (r.close_reason='no_suitable_offers' OR (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id) <= 1)
+      GROUP BY 1,2 ORDER BY 3 DESC, 4 ASC LIMIT 12`)).rows;
+    res.json({ summary: agg.rows, list: rows, gaps: lost });
   } catch(e){ console.error('close-reasons:', e.message); res.status(500).json({ message: 'تعذّر الجلب' }); }
 });
 app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), async (req, res) => {
@@ -8778,6 +8797,7 @@ async function _adminOverview(){
         (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS bid_report_providers,
         (SELECT COUNT(*) FROM completion_claims WHERE status='denied' AND admin_done IS NOT TRUE)::int AS claims_denied,
         (SELECT COUNT(*) FROM users WHERE ask_penalty_until > NOW())::int AS ask_penalized,
+        (SELECT COUNT(*) FROM requests WHERE close_help IS TRUE AND close_help_done IS NOT TRUE)::int AS close_help,
         (SELECT COUNT(*) FROM messages m WHERE m.is_read=FALSE AND m.receiver_id IN (SELECT id FROM users WHERE role='admin'))::int AS inbox_unread,
         (SELECT COUNT(*) FROM users WHERE COALESCE(bid_review,FALSE)=TRUE)::int AS review_providers,
         (SELECT COUNT(*) FROM users WHERE role='provider' AND (badge IS NULL OR badge NOT IN ('verified','موثق')))::int AS verify,
