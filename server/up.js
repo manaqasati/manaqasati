@@ -94,3 +94,178 @@
     if (document.readyState === 'complete') setTimeout(go, 300); else window.addEventListener('load', function(){ setTimeout(go, 300); });
   }catch(e){}
 })();
+
+/* مناقصة — عارض الملفات داخل التطبيق
+   داخل التطبيق (WebView) فتح رابط PDF/صورة يستبدل الصفحة كلها وما فيه زر رجوع → المستخدم يعلق.
+   هنا نلتقط أي فتح لملف ونعرضه في نافذة فوق الصفحة مع زر «رجوع» واضح (وزر الرجوع في أندرويد يقفلها). */
+(function(){
+  if (window.__mqViewer) return; window.__mqViewer = true;
+  var W = window, D = document, ua = navigator.userAgent || '';
+  var app = !!W.ReactNativeWebView || /ManaqasaApp|Expo|; wv\)/i.test(ua);
+  var standalone = false; try { standalone = W.navigator.standalone === true || (W.matchMedia && W.matchMedia('(display-mode: standalone)').matches); } catch(e){}
+  if (!app && !standalone && !/[?&]mqviewer=1/.test(location.search)) return;
+
+  var IMG = /^(jpe?g|png|webp|gif|heic)$/i, OTHER = /^(dwg|dxf|xlsx?|docx?|zip|csv|rvt|pptx?)$/i;
+  function kind(u){
+    if (!u) return null; u = String(u);
+    if (/^data:application\/pdf/i.test(u)) return 'pdf';
+    if (/^data:image\//i.test(u)) return 'img';
+    if (!/^(https?:)?\/\//i.test(u) && u.charAt(0) !== '/') return null;
+    var a; try { a = new URL(u, location.href); } catch(e){ return null; }
+    if (a.pathname.indexOf('/api/') === 0) return null;
+    var ext = ((a.pathname.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '').toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (IMG.test(ext)) return 'img';
+    if (OTHER.test(ext)) return 'other';
+    return null;
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function nameOf(u, txt){
+    txt = String(txt || '').replace(/\s+/g, ' ').trim();
+    if (txt && txt.length <= 80 && !/^https?:/i.test(txt)) return txt.replace(/^[📄📎📝📊🖼️\s]+/u, '') || txt;
+    if (/^data:/i.test(u)) return 'ملف';
+    try { return decodeURIComponent(new URL(u, location.href).pathname.split('/').pop()) || 'ملف'; } catch(e){ return 'ملف'; }
+  }
+
+  var box, body, ttl, zoom = 1, isOpen = false, pushed = false, curPdf = null, token = 0;
+  function ui(){
+    if (box) return;
+    var st = D.createElement('style');
+    st.textContent = '#mq-fv{position:fixed;inset:0;z-index:2147483600;background:#0b1220;display:none;flex-direction:column;direction:rtl;font-family:Tajawal,system-ui,sans-serif}'
+      + '#mq-fv.on{display:flex}'
+      + '#mq-fv .mqv-h{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:#0f1d3d;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.3)}'
+      + '#mq-fv .mqv-bk{display:flex;align-items:center;gap:6px;background:#fff;color:#0f1d3d;border:0;border-radius:12px;padding:9px 14px;font:800 14px Tajawal,system-ui,sans-serif;cursor:pointer;flex-shrink:0}'
+      + '#mq-fv .mqv-t{flex:1;min-width:0;unicode-bidi:plaintext;text-align:right;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}'
+      + '#mq-fv .mqv-z{width:38px;height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font:800 19px system-ui;cursor:pointer;flex-shrink:0}'
+      + '#mq-fv .mqv-b{flex:1;overflow:auto;direction:ltr;-webkit-overflow-scrolling:touch;padding:12px 10px calc(16px + env(safe-area-inset-bottom,0px));touch-action:pan-x pan-y pinch-zoom}'
+      + '#mq-fv .mqv-pg{display:block;margin:0 auto 10px;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.4);max-width:none}'
+      + '#mq-fv .mqv-msg{color:#cbd5e1;text-align:center;padding:40px 18px;font-size:14.5px;line-height:1.9}'
+      + '#mq-fv .mqv-msg b{display:block;color:#fff;font-size:16px;margin-bottom:6px}'
+      + '#mq-fv .mqv-cp{margin-top:14px;background:#2563eb;color:#fff;border:0;border-radius:12px;padding:11px 18px;font:800 14px Tajawal,system-ui,sans-serif;cursor:pointer}';
+    D.head.appendChild(st);
+    box = D.createElement('div'); box.id = 'mq-fv'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    box.innerHTML = '<div class="mqv-h"><button type="button" class="mqv-bk" data-a="close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>رجوع</button><div class="mqv-t"></div>'
+      + '<button type="button" class="mqv-z" data-a="out" aria-label="تصغير">−</button><button type="button" class="mqv-z" data-a="in" aria-label="تكبير">+</button></div><div class="mqv-b"></div>';
+    D.body.appendChild(box);
+    body = box.querySelector('.mqv-b'); ttl = box.querySelector('.mqv-t');
+    box.addEventListener('click', function(e){
+      var b = e.target.closest('[data-a]'); if (!b) return;
+      var a = b.getAttribute('data-a');
+      if (a === 'close') close();
+      else if (a === 'in') setZoom(Math.min(3, zoom + 0.5));
+      else if (a === 'out') setZoom(Math.max(1, zoom - 0.5));
+      else if (a === 'copy') { var u = b.getAttribute('data-u'); try { navigator.clipboard.writeText(u).then(function(){ b.textContent = '✓ تم نسخ الرابط'; }, function(){ prompt('انسخ الرابط:', u); }); } catch(_){ prompt('انسخ الرابط:', u); } }
+    });
+  }
+  function setZoom(z){
+    zoom = z;
+    [].forEach.call(body.querySelectorAll('.mqv-pg'), function(el){ el.style.width = (zoom * 100) + '%'; });
+    var cy = body.scrollTop / Math.max(1, body.scrollHeight); body.scrollLeft = (body.scrollWidth - body.clientWidth) / 2; if (cy) body.scrollTop = cy * body.scrollHeight;
+    box.querySelectorAll('.mqv-z')[0].disabled = zoom <= 1;
+  }
+  function msg(title, text, u){
+    body.innerHTML = '<div class="mqv-msg"><b>' + esc(title) + '</b>' + esc(text || '')
+      + (u && !/^data:/i.test(u) ? '<br><button type="button" class="mqv-cp" data-a="copy" data-u="' + esc(u) + '">نسخ رابط الملف</button>' : '') + '</div>';
+  }
+  function open(u, txt){
+    var k = kind(u); if (!k) return false;
+    ui(); token++; var my = token;
+    zoom = 1; ttl.textContent = nameOf(u, txt);
+    box.classList.add('on'); isOpen = true;
+    D.documentElement.style.overflow = 'hidden';
+    if (!pushed) { try { history.pushState({ mqfv: 1 }, ''); pushed = true; } catch(e){} }
+    box.querySelectorAll('.mqv-z').forEach(function(z){ z.style.display = k === 'other' ? 'none' : ''; });
+    if (k === 'img') {
+      body.innerHTML = '<img class="mqv-pg" alt="">'; body.querySelector('img').src = u; setZoom(1);
+    } else if (k === 'other') {
+      msg('هذا النوع من الملفات ما ينفتح داخل التطبيق', 'افتحه من الكمبيوتر، أو انسخ الرابط والصقه في المتصفح.', u);
+    } else {
+      msg('جاري فتح الملف…', '');
+      loadPdf(u, my);
+    }
+    return true;
+  }
+  function close(){
+    if (!isOpen) return;
+    if (pushed) { pushed = false; try { history.back(); return; } catch(e){} }
+    hide();
+  }
+  function hide(){
+    isOpen = false; token++;
+    if (curPdf) { try { curPdf.destroy(); } catch(e){} curPdf = null; }
+    if (box) { box.classList.remove('on'); body.innerHTML = ''; }
+    D.documentElement.style.overflow = '';
+  }
+  W.addEventListener('popstate', function(){ if (isOpen) { pushed = false; hide(); } });
+
+  // pdf.js — نحمّله مرة وحدة عند أول ملف
+  var pdfP = null;
+  function pdfLib(){
+    if (pdfP) return pdfP;
+    var V = '3.11.174';
+    pdfP = new Promise(function(res, rej){
+      var s = D.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/' + V + '/pdf.min.js';
+      s.onload = function(){
+        var L = W.pdfjsLib; if (!L) return rej(new Error('pdfjs'));
+        // العامل (worker) نحمّله كـblob عشان يتوافق مع سياسة الأمان
+        fetch('https://cdn.jsdelivr.net/npm/pdfjs-dist@' + V + '/build/pdf.worker.min.js').then(function(r){ return r.text(); }).then(function(t){
+          L.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([t], { type: 'text/javascript' })); res(L);
+        }).catch(function(){ res(L); });
+      };
+      s.onerror = function(){ pdfP = null; rej(new Error('pdfjs')); };
+      D.head.appendChild(s);
+    });
+    return pdfP;
+  }
+  function src(u){
+    if (/^data:/i.test(u)) { var b = atob(u.split(',')[1] || ''), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return { data: a }; }
+    var abs = new URL(u, location.href);
+    if (abs.origin === location.origin) return { url: abs.href };
+    return { url: '/api/file-view?u=' + encodeURIComponent(abs.href) };
+  }
+  function loadPdf(u, my){
+    pdfLib().then(function(L){
+      if (my !== token) return;
+      var task = L.getDocument(Object.assign(src(u), { isEvalSupported: false }));
+      task.onProgress = function(p){ if (my !== token || !p.total) return; var m = body.querySelector('.mqv-msg b'); if (m) m.textContent = 'جاري فتح الملف… ' + Math.round(p.loaded / p.total * 100) + '%'; };
+      return task.promise.then(function(pdf){
+        if (my !== token) { pdf.destroy(); return; }
+        curPdf = pdf; body.innerHTML = '';
+        var w = Math.max(320, body.clientWidth - 20), dpr = Math.min(2, W.devicePixelRatio || 1);
+        var n = 0;
+        (function next(){
+          if (my !== token || ++n > pdf.numPages) return;
+          pdf.getPage(n).then(function(pg){
+            if (my !== token) return;
+            var v0 = pg.getViewport({ scale: 1 }), sc = (w / v0.width) * dpr * 1.25; // دقة أعلى شوي عشان التكبير
+            var vp = pg.getViewport({ scale: Math.min(sc, 1800 / v0.width) });
+            var c = D.createElement('canvas'); c.className = 'mqv-pg'; c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+            c.style.width = (zoom * 100) + '%'; c.style.height = 'auto';
+            body.appendChild(c);
+            pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(next, next);
+          }, next);
+        })();
+        setZoom(zoom);
+      });
+    }).catch(function(){
+      if (my !== token) return;
+      msg('تعذّر عرض الملف', 'تأكد من الاتصال وحاول مرة ثانية.', u);
+    });
+  }
+
+  // التقاط الروابط
+  D.addEventListener('click', function(e){
+    if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey) return;
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    var u = a.getAttribute('href');
+    if (!kind(u)) return;
+    if (open(a.href && !/^data:/i.test(u) ? a.href : u, a.textContent)) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  // التقاط window.open (صور المحادثة وغيرها)
+  var _wo = W.open;
+  W.open = function(u){
+    try { if (u && kind(u) && open(String(u))) return null; } catch(e){}
+    return _wo.apply(W, arguments);
+  };
+  W.mqOpenFile = open;
+})();

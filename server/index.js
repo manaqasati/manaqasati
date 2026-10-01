@@ -217,7 +217,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '2'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '3'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -4241,6 +4241,32 @@ app.post('/api/upload/attachment', auth, rateLimiter(40, 600000), (req, res, nex
     if (e && (e.type === 'entity.too.large' || e.status === 413)) return res.status(413).json({ message: 'حجم الملف أكبر من 30MB' });
     console.error('upload/attachment:', e.message);
     res.status(500).json({ message: 'تعذّر رفع الملف، حاول مرة أخرى' });
+  }
+});
+
+// ── عرض ملف R2 من نفس الموقع (للعارض داخل التطبيق — يتفادى قيود CORS) ──
+// يقبل فقط روابط تخزيننا تحت manaqasa/ — الملفات أصلاً روابط عامة
+app.get('/api/file-view', rateLimiter(60, 60000), async (req, res) => {
+  try {
+    const u = String(req.query.u || '');
+    const base = R2_PUBLIC_URL.replace(/\/+$/, '') + '/';
+    if (!r2Client || !R2_PUBLIC_URL || u.indexOf(base) !== 0) return res.status(400).json({ message: 'رابط غير مدعوم' });
+    const key = decodeURIComponent(u.slice(base.length).split(/[?#]/)[0]);
+    if (!/^manaqasa\/[a-zA-Z0-9/_-]+\.[a-z0-9]{2,5}$/.test(key) || key.indexOf('..') !== -1) return res.status(400).json({ message: 'رابط غير مدعوم' });
+    const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    const ext = key.split('.').pop();
+    const ct = ext === 'pdf' ? 'application/pdf' : (/^(jpe?g|png|webp|gif|heic)$/.test(ext) ? ('image/' + (ext === 'jpg' ? 'jpeg' : ext)) : 'application/octet-stream');
+    res.setHeader('Content-Type', ct);
+    if (g.ContentLength) res.setHeader('Content-Length', g.ContentLength);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+    g.Body.on('error', () => { try { res.destroy(); } catch(_){} });
+    g.Body.pipe(res);
+  } catch (e) {
+    if (e && (e.name === 'NoSuchKey' || (e.$metadata && e.$metadata.httpStatusCode === 404))) return res.status(404).json({ message: 'الملف غير موجود' });
+    console.error('file-view:', e.message);
+    if (!res.headersSent) res.status(500).json({ message: 'تعذّر فتح الملف' });
   }
 });
 
