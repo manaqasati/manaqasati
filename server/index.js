@@ -404,17 +404,21 @@ function _cityNorm(c){ c = String(c || '').trim().replace(/\s+/g, ' '); return _
 function _cityLL(c){ c = _cityNorm(c); if (_CITY_LL[c]) return _CITY_LL[c]; const rg = _CITY2REGION[c]; return rg && _CITY_LL[_RG_CAP[rg]] || null; }
 function _km(a, b){ const R = 6371, r = x => x * Math.PI / 180, dLa = r(b[0]-a[0]), dLo = r(b[1]-a[1]); const h = Math.sin(dLa/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLo/2)**2; return Math.round(2 * R * Math.asin(Math.sqrt(h))); }
 // prox: 0 نفس المدينة · 1 نفس المنطقة · 2 منطقة ثانية · null مدينة غير معروفة
-function _proximity(reqCity, provCity){
+function _proximity(reqCity, provCity, serviceCities, servesAll){
   const a = _cityNorm(reqCity), b = _cityNorm(provCity);
-  if (!a || !b) return { prox: null, prox_km: null };
-  if (a === b) return { prox: 0, prox_km: 0 };
+  const lists = Array.isArray(serviceCities) && a && serviceCities.some(c => _cityNorm(c) === a);
+  if (!a) return { prox: null, prox_km: null, serves: null };
+  if (b && a === b) return { prox: 0, prox_km: 0, serves: null };
+  // المزوّد كاتب مدينة المشروع ضمن المدن اللي يخدمها → بعد أهل المدينة مباشرة
+  if (lists) return { prox: 1, prox_km: null, serves: 'city' };
+  if (!b) return { prox: null, prox_km: null, serves: servesAll ? 'all' : null };
   const la = _cityLL(a), lb = _cityLL(b), km = (la && lb) ? _km(la, lb) : null;
   const ra = _CITY2REGION[a], rb = _CITY2REGION[b];
-  if (ra && ra === rb) return { prox: 1, prox_km: km };
-  return { prox: (ra && rb) || km != null ? 2 : null, prox_km: km };
+  if (ra && ra === rb) return { prox: 1, prox_km: km, serves: null };
+  return { prox: (ra && rb) || km != null ? 2 : null, prox_km: km, serves: servesAll ? 'all' : null };
 }
 function _sortByProximity(rows, reqCity, cityKey){
-  rows.forEach((x, i) => { Object.assign(x, _proximity(reqCity, x[cityKey || 'provider_city'])); x._i = i; });
+  rows.forEach((x, i) => { Object.assign(x, _proximity(reqCity, x[cityKey || 'provider_city'], x._sc, x._sa)); delete x._sc; delete x._sa; x._i = i; });
   const P = x => x.prox == null ? 3 : x.prox;
   rows.sort((a, b) => ((b.status === 'accepted') - (a.status === 'accepted'))
     || ((b.improved_at && b.status === 'pending' ? 1 : 0) - (a.improved_at && a.status === 'pending' ? 1 : 0))
@@ -779,7 +783,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         b.note as proposal,
         u.id as provider_id,
         u.name as provider_name,
-        u.city as provider_city,
+        u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa,
         u.business_name as provider_business_name,
         CASE WHEN u.profile_image IS NOT NULL AND length(u.profile_image) > 0
           THEN u.profile_image ELSE NULL END as provider_image,
@@ -809,7 +813,8 @@ app.get('/api/bids/public/:id', async (req, res) => {
     });
     // سرعة رد المزوّد (من الكاش غالباً)
     try { for (const x of rows) { const sp = await _replySpeed(x.provider_id); if (sp) x.reply_speed = sp.label; } } catch(e){}
-    try { const rc = (await pool.query('SELECT city FROM requests WHERE id=$1', [id])).rows[0]; for (const x of rows) Object.assign(x, _proximity(rc && rc.city, x.provider_city)); } catch(e){}
+    try { const rc = (await pool.query('SELECT city FROM requests WHERE id=$1', [id])).rows[0]; for (const x of rows) Object.assign(x, _proximity(rc && rc.city, x.provider_city, x._sc, x._sa)); } catch(e){}
+    for (const x of rows) { delete x._sc; delete x._sa; }
     res.json({ bids: rows, range });
   } catch(e) { res.status(500).json([]); }
 });
@@ -4281,7 +4286,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
-        u.city as provider_city, u.badge as provider_badge, u.tier as provider_tier,
+        u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
         u.business_name as provider_business_name,
         u.specialties as provider_specialties,
         u.bio as provider_bio,
