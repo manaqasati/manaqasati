@@ -443,7 +443,7 @@ function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
   document.getElementById('reset-pg').style.display='flex';
 })();
 
-// ═══ الدخول السحري: ?magic=TOKEN — يدخل العميل مباشرة ويحوّله للوحته (بدون كلمة مرور) ═══
+// ═══ الدخول السحري: ?magic=TOKEN — يدخل صاحب الحساب مباشرة ويحوّله للوحته (بدون كلمة مرور) ═══
 (function(){
   var mt=new URLSearchParams(location.search).get('magic');
   if(!mt)return;
@@ -455,7 +455,10 @@ function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
         localStorage.setItem('token',d.token);
         localStorage.setItem('user',JSON.stringify(d.user));
         try{_notifyMobileApp(d.token,d.user);}catch(e){}
-        location.replace('dashboard-client.html');
+        // يفتح لوحة صاحب الحساب حسب نوعه (المزوّد → لوحة المزوّد)
+        var _rl=(d.user&&d.user.role)||'client';
+        try{localStorage.setItem('activeMode',_rl==='provider'?'provider':'client');}catch(e){}
+        location.replace(_rl==='provider'?'dashboard-provider.html':'dashboard-client.html');
       } else {
         document.documentElement.style.visibility='';
         alert((d&&d.message)||'الرابط منتهي أو غير صالح');
