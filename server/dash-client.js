@@ -199,7 +199,9 @@ function _cmcConfirm(){
   if(!sel){ showToast('اختر سبب الإغلاق','error'); return; }
   var note=(document.getElementById('cmc-note')||{}).value||'';
   fetch(API+'/api/requests/'+window._closeReqId+'/close-by-owner',Object.assign({method:'POST',body:JSON.stringify(Object.assign({reason:sel.value,note:note},(sel.value==='no_suitable_offers'&&window._nsoGet)?_nsoGet():{}))},hdr())).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.ok){ var ov=document.getElementById('closeModalOvC'); if(ov)ov.remove(); showToast('تم إغلاق المشروع','success'); var _cid=window._closeReqId; loadReqs(); loadHome(); if(curRequestId&&String(curRequestId)===String(_cid)){ openDetail(_cid); } }
+    if(d&&d.ok){ var ov=document.getElementById('closeModalOvC'); if(ov)ov.remove(); var _cid=window._closeReqId; loadReqs(); loadHome(); if(curRequestId&&String(curRequestId)===String(_cid)){ openDetail(_cid); }
+      if(window._pcSheet&&(d.offers||d.postponed)) _pcSheet(d,_cid,function(){ openDetail(_cid); },function(){ repostReq(_cid); });
+      else showToast('تم إغلاق المشروع','success'); }
     else showToast((d&&d.message)||'تعذّر الإغلاق','error');
   }).catch(function(){ showToast('تعذّر الإغلاق','error'); });
 }
@@ -987,7 +989,7 @@ function loadBids(id){
           +'</div>'
           +'<div class="bid-chips">'+chips+'</div>'
           +(typeof _rjImpHtml==='function'?_rjImpHtml(b):'')
-          +'<div class="bid-note-h">رسالة المزود</div>'+note+(_safeUrl(b.attachment_url)?'<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;font-weight:800;color:var(--p,#1e40af);background:var(--p-light,#eff6ff);padding:8px 13px;border-radius:9px;text-decoration:none">📎 عرض السعر (ملف مرفق)</a>':'')
+          +'<div class="bid-note-h">رسالة المزود</div>'+note+(_safeUrl(b.attachment_url)?'<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;font-weight:800;color:var(--p,#1e40af);background:var(--p-light,#eff6ff);padding:8px 13px;border-radius:9px;text-decoration:none">📄 عرض السعر</a>':'')+(window._bxShow?_bxShow(b):'')
           +acts
         +'</div>';
       }).join('');

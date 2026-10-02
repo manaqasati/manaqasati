@@ -397,10 +397,12 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
     </div>
     <div class="bm-body">
       <div id="bid-al" style="display:none;padding:10px;border-radius:9px;font-size:12px;font-weight:700;margin-bottom:12px"></div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:11px;padding:9px 11px;margin-bottom:12px;font-size:12.5px;font-weight:800;color:#15803d;text-align:center">📞 بعد عرضك يظهر لك رقم العميل وتكلّمه واتساب مباشرة</div>
       <div class="bm-fg"><label>سعر العرض (ر.س) *</label><input type="number" id="bid-price" placeholder="مثال: 2500" min="1"></div>
       <div class="bm-fg"><label>مدة التنفيذ (أيام) *</label><input type="number" id="bid-days" placeholder="مثال: 7" min="1"></div><div class="bm-fg"><label>نوع السعر</label><select id="bid-unit" style="width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px"><option value="total">إجمالي للمشروع</option><option value="meter">للمتر</option><option value="unit">للوحدة/القطعة</option></select></div><div class="bm-fg"><label>شامل المواد؟ <span style="font-weight:600;color:#64748b">(اختياري — يساعد العميل يقارن)</span></label><select id="bid-mat" style="width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px"><option value="">— اختر —</option><option value="yes">نعم، السعر شامل المواد</option><option value="no">لا، السعر للشغل فقط (بدون مواد)</option></select></div>
       <div class="bm-fg" style="margin-bottom:0"><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div onclick="_toggleBidTip()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;color:#1e40af"><span>💡 كيف تكتب عرضاً يفوز؟ (مثال)</span><span id="bid-tip-ar" style="font-size:11px">▾</span></div><div id="bid-tip-body" style="display:none;margin-top:9px;font-size:11.5px;color:#334155;line-height:1.9"><div style="font-weight:800;margin-bottom:5px;color:#1e293b">عرضك القوي يذكر باختصار:</div>خبرتك · كيف ستنفّذ العمل والمواد · مدة البدء · الضمان بعد التنفيذ.<div style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;margin-top:9px;line-height:2;color:#475569">«لدي خبرة … سنوات في هذا المجال. سأنفّذ المشروع بـ… باستخدام مواد …، مع الالتزام بالمقاسات المطلوبة. أبدأ خلال … أيام، وأقدّم ضماناً لمدة … .»</div><button type="button" onclick="_useBidTemplate()" style="margin-top:10px;background:#1e40af;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ استخدام هذا القالب</button></div></div></div><div class="bm-fg"><div style="background:#fef2f2;border:1.5px solid #fecaca;border-right:4px solid #dc2626;border-radius:11px;padding:11px 13px"><div style="font-size:12.5px;font-weight:900;color:#b91c1c;margin-bottom:4px">⚠️ عرض احترافي فقط</div><div style="font-size:11.5px;color:#7f1d1d;line-height:1.8">قدّم عرضاً يوضّح خبرتك وطريقة تنفيذك ليساعد العميل على الاختيار. <b>العروض العشوائية أو الفارغة تُرفض تلقائياً، وقد يُحظر الحساب عند تكرارها.</b></div></div></div><div class="bm-fg"><label>رسالتك للعميل *</label><textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع..." style="min-height:80px;resize:vertical"></textarea></div>
-      <div class="bm-fg"><label>📎 أرفق عرض السعر (صورة أو PDF — اختياري)</label><input type="file" id="bid-file" accept="image/*,application/pdf" onchange="_onBidFileP(this)" style="font-size:12px;width:100%"><div id="bid-file-name" style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:6px;display:none"></div></div>
+      <div class="bm-fg"><label>📄 عرض السعر لهذا المشروع (صورة أو PDF — اختياري)</label><input type="file" id="bid-file" accept="image/*,application/pdf" onchange="_onBidFileP(this)" style="font-size:12px;width:100%"><div id="bid-file-name" style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:6px;display:none"></div></div>
+      <div class="bm-fg" id="bx-box" style="margin-top:-6px"></div>
       <div class="bm-fg"><div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:13px"><div style="font-size:12.5px;font-weight:900;color:#9a3412;margin-bottom:6px">💰 اتفاقية رسوم المنصة — 3%</div><div style="font-size:11.5px;color:#7c2d12;line-height:1.85">أتعهد بسداد <b>3% من قيمة الاتفاق</b> إذا استفدت من هذه الفرصة وترتب عليها اتفاق أو تنفيذ — سواء داخل المنصة أو خارجها — خلال <b>10 أيام</b>.</div><button type="button" onclick="_showFeeAgreement()" style="margin-top:9px;background:none;border:none;color:#9a3412;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;padding:0">📜 اقرأ الاتفاقية كاملة</button><label style="display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:10px 11px;background:#fff;border:1.5px solid #fed7aa;border-radius:10px;cursor:pointer"><input type="checkbox" id="feeAgree" style="margin-top:2px;width:17px;height:17px;flex-shrink:0;accent-color:#d97706"><span style="font-size:12px;font-weight:800;color:#7c2d12;line-height:1.6">أقرّ بأنني اطّلعت على اتفاقية رسوم المنصة وأتعهد بالالتزام بها</span></label></div></div><div class="bm-fg"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 13px"><div style="font-size:12.5px;font-weight:800;margin-bottom:9px">🔒 من يشوف سعرك؟</div><label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;cursor:pointer;margin-bottom:7px"><input type="radio" name="bidVis" value="client" checked style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">صاحب المشروع فقط</div><div style="font-size:11px;color:#64748b;margin-top:1px">منافسوك لا يرون سعرك — يُنصح به</div></div></label><label style="display:flex;align-items:flex-start;gap:9px;padding:9px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer"><input type="radio" name="bidVis" value="public" style="margin-top:3px"><div><div style="font-size:13px;font-weight:800">الجميع</div><div style="font-size:11px;color:#64748b;margin-top:1px">يظهر للزوّار — قد يجذب انتباهاً أكثر</div></div></label></div></div><button class="bm-submit" onclick="submitBid(this)">إرسال العرض</button>
     </div>
   </div>
@@ -750,7 +752,8 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   var _maskNote=(!isOwner&&!isMine&&!(price>0));
   if(note&&!b.note_locked)h+='<div class="pj-note" onclick="this.classList.toggle(\'open\')">'+esc(_maskNote?_maskNums(note):note)+'</div>';
   if(b.note_locked)h+='<div class="pj-lock">🔒 التفاصيل والسعر تظهر لصاحب المشروع فقط</div>';
-  if(_safeUrl(b.attachment_url))h+='<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" class="pj-att">📎 عرض السعر (ملف مرفق)</a>';
+  if(_safeUrl(b.attachment_url))h+='<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" class="pj-att">📄 عرض السعر</a>';
+  if(window._bxShow)h+=_bxShow(b);
   h+='<div class="pj-acts">';
   if(isOwner&&_pjCanAccept(reqStatus)&&!isAcc&&!isRej)h+='<button class="pj-b ok" onclick="acceptBid('+b.id+')">قبول العرض</button>';
   if(provPhone&&!isMine){
@@ -1113,6 +1116,7 @@ function openBid(){
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
   if(_req&&_req.invite_locked){_pjToast('هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة',1);return;}
   document.getElementById('bidOverlay').classList.add('on');
+  try{ if(window._bxMount)_bxMount(); }catch(e){}
   document.body.style.overflow='hidden';
 }
 function closeBid(){document.getElementById('bidOverlay').classList.remove('on');document.body.style.overflow='';}
@@ -1181,7 +1185,7 @@ async function _reallySubmitBidP(){
     var r=await fetch(API+'/api/requests/'+_rid+'/bids',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null)})
+      body:JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null)},(window._bxGet?_bxGet():{})))
     });
     var dd={};try{dd=await r.json();}catch(_j){dd={};}
     if(r.ok){
@@ -1438,7 +1442,9 @@ function _cmConfirm(){
   var note=(document.getElementById('cm-note')||{}).value||'';
   var id=getReqId();
   fetch(API+'/api/requests/'+id+'/close-by-owner',{method:'POST',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(Object.assign({reason:sel.value,note:note},(sel.value==='no_suitable_offers'&&window._nsoGet)?_nsoGet():{}))}).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove(); alert('تم إغلاق المشروع'); location.reload(); }
+    if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove();
+      if(window._pcSheet&&(d.offers||d.postponed)) _pcSheet(d,id,function(){ location.href='/dashboard-client.html#detail/'+id; },function(){ location.href='/dashboard-client.html#detail/'+id; },function(){ location.reload(); });
+      else { alert('تم إغلاق المشروع'); location.reload(); } }
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });
 }

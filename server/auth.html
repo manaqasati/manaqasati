@@ -458,7 +458,9 @@ function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
         // يفتح لوحة صاحب الحساب حسب نوعه (المزوّد → لوحة المزوّد)
         var _rl=(d.user&&d.user.role)||'client';
         try{localStorage.setItem('activeMode',_rl==='provider'?'provider':'client');}catch(e){}
-        location.replace(_rl==='provider'?'dashboard-provider.html':'dashboard-client.html');
+        var _nx=new URLSearchParams(location.search).get('next')||'';
+        var _ok=_rl==='provider'?/^\/dashboard-provider\.html(#[a-z]+(\/\d+)?)?$/:/^\/dashboard-client\.html(#[a-z]+(\/\d+)?)?$/;
+        location.replace(_ok.test(_nx)?_nx:(_rl==='provider'?'dashboard-provider.html':'dashboard-client.html'));
       } else {
         document.documentElement.style.visibility='';
         alert((d&&d.message)||'الرابط منتهي أو غير صالح');

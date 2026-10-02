@@ -488,7 +488,11 @@ app.get('/dashboard-client.html',  (req, res) => res.sendFile(__dirname + '/dash
 app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dashboard-provider.html'));
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
-app.get('/m/:token',               (req, res) => res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token)));
+// ?n= وجهة بعد الدخول (صفحات اللوحات فقط)
+function _magicNext(n){ n = String(n||''); return /^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) ? n : ''; }
+app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token) + (n ? '&next=' + encodeURIComponent(n) : '')); });
+// رابط دخول مباشر لصفحة محددة (للتذكيرات)
+async function _magicUrl(uid, next){ try { const t = await getMagicToken(uid); const n = _magicNext(next); return SITE_URL + '/m/' + t + (n ? '?n=' + encodeURIComponent(n) : ''); } catch(e){ return SITE_URL + (next||''); } }
 // ═══ صفحة تحميل التطبيق: manaqasa.com/app (رابط مختصر للرسائل والإيميلات) ═══
 const APP_STORE_URL = 'https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.manaqasa.app';
@@ -781,6 +785,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN $3::boolean THEN (u.ask_penalty_until > NOW()) IS TRUE ELSE FALSE END as low_rank,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
+        b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -1768,7 +1773,7 @@ async function _notifyClosedWithOffers(x, fallbackText){
       const b = `«${x.title}» انتهت مدة استقبال العروض، بس العروض اللي وصلتك باقية وتقدر تقبل منها خلال ${ACCEPT_AFTER_CLOSE_DAYS} يوم`;
       const ok = await _remindOnce(x.client_id, 'closed_offers', x.id, t, b, t,
         `<p>انتهت مدة استقبال العروض لمشروعك «<strong>${eEsc(x.title)}</strong>».</p><p>وصلك <strong>${_nOffers(n)}</strong> من مزوّدين — تقدر تراجعها وتختار الأنسب لك خلال <strong>${ACCEPT_AFTER_CLOSE_DAYS} يوم</strong>، أو تعيد فتح المشروع لعروض جديدة.</p>`,
-        'شاهد العروض واختر', SITE_URL + '/dashboard-client.html#detail/' + x.id);
+        'شاهد العروض واختر', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id));
       if (ok) return;
     }
     await notify(x.client_id, 'أُغلق مشروعك', fallbackText, 'request', x.id);
@@ -2251,9 +2256,40 @@ async function runReminders(){
           const b = `«${x.title}» — عندك ${_nOffers(x.n)} ما اخترت منها. تقدر تقبل الأنسب لك الحين`;
           await _remindOnce(x.client_id, 'closed_offers_2d', x.id, t, b, t,
             `<p>مشروعك «<strong>${eEsc(x.title)}</strong>» مغلق لاستقبال عروض جديدة، بس عندك <strong>${_nOffers(x.n)}</strong> من مزوّدين ما اخترت منها للحين.</p><p>راجعها واقبل اللي يناسبك — أو أعد فتح المشروع لعروض جديدة.</p>`,
-            'اختر من العروض', SITE_URL + '/dashboard-client.html#detail/' + x.id);
+            'اختر من العروض', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id));
         }
       } catch(e){ console.error('closed follow-up:', e.message); }
+      // د) تذكير ثالث بعد 7 أيام من الإغلاق التلقائي: المزوّدين بانتظار ردك
+      try {
+        const f7 = await pool.query(`SELECT r.id, r.client_id, r.title,
+            (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id AND COALESCE(b.status,'pending')<>'rejected' AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))::int AS n
+          FROM requests r
+          WHERE r.status='closed_auto' AND r.close_reason IS NULL AND r.assigned_provider_id IS NULL
+            AND r.closed_at IS NOT NULL AND r.closed_at <= NOW() - INTERVAL '7 days' AND r.closed_at > NOW() - INTERVAL '20 days'`);
+        for (const x of f7.rows) {
+          if (!x.n) continue;
+          const t = '⏰ عندك ' + _nOffers(x.n) + ' بانتظارك';
+          const b = x.n === 1 ? `«${x.title}» انتهت مدته، بس المزوّد بانتظار تقبل عرضه` : `«${x.title}» انتهت مدته، بس المزوّدين بانتظار تقبل أحد عروضهم`;
+          await _remindOnce(x.client_id, 'closed_offers_7d', x.id, t, b, t,
+            `<p>مشروعك «<strong>${eEsc(x.title)}</strong>» انتهت مدة استقبال العروض، بس <strong>${_nOffers(x.n)}</strong> من مزوّدين بانتظار ردك.</p><p>تقدر تختار منها خلال ${ACCEPT_AFTER_CLOSE_DAYS} يوم من الإغلاق — أو تعيد فتح المشروع.</p>`,
+            'شوف العروض', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id));
+        }
+      } catch(e){ console.error('closed 7d:', e.message); }
+      // هـ) المشروع المؤجّل: في الموعد اللي اختاره العميل ← «جاهز؟»
+      try {
+        const rv = await pool.query(`UPDATE requests r SET revisit_sent=TRUE
+          WHERE r.revisit_at IS NOT NULL AND r.revisit_at <= NOW() AND COALESCE(r.revisit_sent,FALSE)=FALSE
+            AND r.assigned_provider_id IS NULL AND r.status IN ('closed_auto','expired','closed')
+          RETURNING r.id, r.client_id, r.title,
+            (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id AND COALESCE(b.status,'pending')<>'rejected' AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))::int AS n`);
+        for (const x of rv.rows) {
+          const t = `جاهز لمشروع «${x.title}»؟`;
+          const b = x.n === 1 ? 'عندك عرض بانتظار ردك — اختره أو أعد فتح المشروع' : (x.n ? `عندك ${_nOffers(x.n)} من مزوّدين بانتظار ردك — اختر منها أو أعد فتح المشروع` : 'تقدر تعيد فتح المشروع وتستقبل عروض جديدة');
+          await notifyWithEmail(x.client_id, t, b, 'reminder', x.id, t,
+            `<p>${x.n ? `مشروعك «<strong>${eEsc(x.title)}</strong>» عنده <strong>${_nOffers(x.n)}</strong> بانتظارك.` : `مشروعك «<strong>${eEsc(x.title)}</strong>» جاهز تعيد فتحه.`}</p><p>إذا جهزت: اختر من العروض أو أعد فتح المشروع لعروض جديدة.</p>`,
+            x.n ? 'اختر من العروض' : 'أعد فتح المشروع', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id));
+        }
+      } catch(e){ console.error('revisit job:', e.message); }
     }
 
     // ب) مشروع اختير مزوّده ولم يُتمّ: مشروع تأكيد (موافقة ضمنية)
@@ -2618,6 +2654,10 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_unit TEXT DEFAULT 'total'`);
     // «شامل المواد؟» (yes/no — اختياري) · متى شاف صاحب المشروع العرض · آخر «أبي عروض أكثر»
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS materials TEXT`); } catch(e){}
+    // بروفايل الشركة (يرفعه المزوّد مرة وحدة) + اختيار إرفاقه وصور الأعمال مع كل عرض
+    try { await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_url TEXT`); await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_name TEXT`); } catch(e){}
+    try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_at TIMESTAMP`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_sent BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_unknown BOOLEAN DEFAULT FALSE`); } catch(e){}
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS show_profile BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_images TEXT[]`); } catch(e){}
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
     // طلب اعتماد العرض: المزوّد يطلب من العميل يعتمد عرضه داخل المنصة بعد ما اتفقوا
     await _mig(`CREATE TABLE IF NOT EXISTS bid_accept_asks (id SERIAL PRIMARY KEY, bid_id INTEGER UNIQUE NOT NULL, request_id INTEGER NOT NULL, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', sends INTEGER NOT NULL DEFAULT 1, last_sent_at TIMESTAMPTZ DEFAULT NOW(), responded_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -3663,7 +3703,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,company_profile_url,company_profile_name,email,phone,city,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3701,7 +3741,8 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       for (const img of req.body.portfolio_images) { if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/portfolio'); if (u) uploaded.push(u); } else if (img && _safeUrl(img)) uploaded.push(_safeUrl(img)); }
       req.body.portfolio_images = uploaded;
     }
-    const allowed = { name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    if (Object.prototype.hasOwnProperty.call(req.body, 'company_profile_url')) { const _cu = req.body.company_profile_url ? _safeUrl(req.body.company_profile_url) : null; if (req.body.company_profile_url && !_cu) delete req.body.company_profile_url; else { req.body.company_profile_url = _cu; req.body.company_profile_name = _cu ? _cleanTxt(String(req.body.company_profile_name||'بروفايل الشركة'),120) : null; } }
+    const allowed = { company_profile_url:'company_profile_url', company_profile_name:'company_profile_name', name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -3726,7 +3767,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.show_profile, b.work_images, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
@@ -4318,7 +4359,7 @@ app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
       return res.json({ ok:true, pending_review:true, message:'رجع مشروعك للمراجعة — ينشر بعد اعتماد الإدارة' });
     }
     const r = await pool.query(
-      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, silent_stage=0, silent_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
+      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, silent_stage=0, silent_at=NULL, revisit_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
        RETURNING id, title, category, city, client_id`, [id, req.user.id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
@@ -4360,6 +4401,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
+             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
@@ -4389,6 +4431,24 @@ const _CN_COLS=['client_note','client_note_at','client_note_seen_at','client_not
 function _stripClientNote(row){ if(row){ for(const k of _CN_COLS) delete row[k]; } return row; }
 function _matVal(v){ if(v==='yes'||v===true||v==='1') return 'yes'; if(v==='no'||v===false||v==='0') return 'no'; return null; }
 function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
+// إضافات العرض: إرفاق بروفايل الشركة + صور من مشاريع سابقة (روابط من ملفه أو صور جديدة)
+async function _bidExtras(bidId, providerId, body){
+  try {
+    if (body.show_profile !== undefined) {
+      const has = (await pool.query('SELECT company_profile_url FROM users WHERE id=$1', [providerId])).rows[0];
+      await pool.query('UPDATE bids SET show_profile=$1 WHERE id=$2', [!!body.show_profile && !!(has && has.company_profile_url), bidId]);
+    }
+    if (Array.isArray(body.work_images)) {
+      const out = [];
+      for (const im of body.work_images.slice(0, 6)) {
+        if (typeof im !== 'string') continue;
+        if (im.startsWith('data:image/')) { const u = await uploadToCloud(im, 'manaqasa/portfolio'); if (u && /^https?:/.test(u)) out.push(u); }
+        else if (_safeUrl(im)) out.push(_safeUrl(im));
+      }
+      await pool.query('UPDATE bids SET work_images=$1 WHERE id=$2', [out.length ? out : null, bidId]);
+    }
+  } catch(e) { console.error('bid-extras:', e.message); }
+}
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
@@ -4434,6 +4494,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       row = ins.rows[0];
     }
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), row.id]); row.materials=_matVal(req.body.materials); } catch(e){} }
+    await _bidExtras(row.id, req.user.id, req.body);
     // مزوّد تحت المراجعة (بلاغات عملاء) → العرض يتعلّق لين يراجعه الإدارة أو تمر المهلة
     let _held = false;
     try {
@@ -4541,6 +4602,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
       'UPDATE bids SET price=COALESCE($1,price), days=COALESCE($2,days), note=$3, price_visibility=$4, attachment_url=COALESCE($5,attachment_url), attachment_hash=CASE WHEN $5::text IS NOT NULL THEN $7 ELSE attachment_hash END WHERE id=$6 RETURNING *',
       [price||null, days||null, note||null, priceVis, attUrl||null, id, attHash]);
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), id]); if(r.rows[0]) r.rows[0].materials=_matVal(req.body.materials); } catch(e){} }
+    if (r.rows[0]) await _bidExtras(id, req.user.id, req.body);
     try {
       if (await _provUnderReview(req.user.id)) { await _holdBid(id); if (r.rows[0]) r.rows[0].hold_state = 'held'; }
       else { await pool.query(`UPDATE bids SET hold_state=NULL, hold_reason=NULL WHERE id=$1 AND hold_state='rejected'`, [id]); }
@@ -5413,7 +5475,8 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
     let log = row.edits_log || [];
     if (Number(row.contract_value) !== newVal) {
       log = Array.isArray(log) ? log : [];
-      log.push({ from: Number(row.contract_value), to: newVal, at: new Date().toISOString() });
+      const _rsn = String(req.body.reason||'').slice(0,40);
+      log.push({ from: Number(row.contract_value), to: newVal, at: new Date().toISOString(), by: 'provider', reason: _rsn || null });
     }
     await pool.query(
       `UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, proof_url=$3, status='submitted', submitted_at=NOW(), edits_log=$4::jsonb WHERE id=$5`,
@@ -7864,6 +7927,7 @@ function _closeInfo(r, defDays){
 }
 // مهلة اختيار عرض بعد إغلاق المشروع (أيام)
 const ACCEPT_AFTER_CLOSE_DAYS = 90;
+const _POSTPONE_RX = /(بانتظار|انتظار|ننتظر|أنتظر|انتظر|لاحق|بعدين|أجّل|اجّل|أأجل|تأجيل|تاجيل|مؤجل|مأجل|مو جاهز|ما جهز|ماجهز|مب جاهز|وقت ثاني|وقت آخر|الشهر الجاي|السنة الجاية|بعد رمضان|بعد العيد)/;
 const SAAI_RATE = 0.03;
 function _saaiSuggest(rq, bids){
   const acc = bids.find(b => b.status === 'accepted');
@@ -8024,10 +8088,13 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
 app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const reason = String(req.body.reason||'').slice(0,60);
+    let reason = String(req.body.reason||'').slice(0,60);
     const note = String(req.body.note||'').slice(0,500);
     const REASONS = ['chose_outside','price_high','postponed','no_suitable_offers','other'];
     if (!REASONS.includes(reason)) return res.status(400).json({ message: 'سبب غير صحيح' });
+    // «سبب آخر» وكلامه تأجيل (بانتظار/لاحقاً/بعدين…) ← ينحسب تأجيل
+    if (reason === 'other' && _POSTPONE_RX.test(note)) reason = 'postponed';
+    const _postponed = reason === 'postponed';
     const r = await pool.query('SELECT client_id, status, title FROM requests WHERE id=$1', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (r.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليست لك صلاحية' });
@@ -8046,13 +8113,30 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
       try {
         const bidders = await pool.query(`SELECT DISTINCT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1`, [id]);
         for (const bp of bidders.rows) {
+          if (_postponed) {
+            await notify(bp.provider_id, '⏸ العميل أجّل المشروع', `العميل أجّل مشروع «${eEsc(_projTitle)}» — وعرضك باقي عنده ويقدر يختاره لما يجهز.`, 'request', id);
+            if (bp.email) sendEmail(bp.email, `العميل أجّل مشروع «${eEsc(_projTitle)}»`, emailTpl('العميل أجّل المشروع', `<p>عزيزي <strong>${eEsc(bp.name||'')}</strong>،</p><p>العميل أجّل مشروع «${eEsc(_projTitle)}» مؤقتاً. <strong>عرضك باقي عنده</strong> ويقدر يختاره لما يجهز — ونبلغك أول ما يتحرك.</p>`, 'شوف عروضي', SITE_URL + '/dashboard-provider.html#works')).catch(()=>{});
+            continue;
+          }
           await notify(bp.provider_id, 'أُغلق المشروع', `أُغلق مشروع «${eEsc(_projTitle)}» ولم يعد يستقبل عروضاً. نشكر لك وقتك وعرضك.`, 'request_closed', id);
           if (bp.email) sendEmail(bp.email, `أُغلق مشروع «${eEsc(_projTitle)}»`, emailTpl('أُغلق المشروع', `<p>عزيزي <strong>${eEsc(bp.name||'')}</strong>،</p><p>أُغلق مشروع «${eEsc(_projTitle)}» ولم يعد يستقبل عروضاً. نشكر لك وقتك وعرضك — وتجد مشاريع جديدة بانتظارك.</p>`, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
         }
       } catch(e){ console.error('close-notify:', e.message); }
     }
-    res.json({ ok: true });
+    let _offers = 0; try { _offers = (await pool.query("SELECT COUNT(*)::int AS n FROM bids WHERE request_id=$1 AND COALESCE(status,'pending')<>'rejected' AND COALESCE(hold_state,'') NOT IN ('held','rejected')", [id])).rows[0].n; } catch(e){}
+    res.json({ ok: true, postponed: _postponed, offers: _offers, keep_days: ACCEPT_AFTER_CLOSE_DAYS });
   } catch(e){ console.error('close-by-owner:', e.message); res.status(500).json({ message: 'تعذّر الإغلاق' }); }
+});
+// العميل يحدد متى يرجع لمشروعه المؤجّل ← نذكّره في الموعد (مرة وحدة)
+app.post('/api/requests/:id/revisit', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    let days = parseInt(req.body.days); if (![14,30,60].includes(days)) days = 30;
+    const r = await pool.query(`UPDATE requests SET revisit_at=NOW() + ($1 || ' days')::interval, revisit_sent=FALSE, revisit_unknown=$4
+      WHERE id=$2 AND client_id=$3 AND assigned_provider_id IS NULL AND status IN ('closed_auto','expired','closed') RETURNING revisit_at`, [String(days), id, req.user.id, !!req.body.unknown]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ ok: true, revisit_at: r.rows[0].revisit_at });
+  } catch(e){ console.error('revisit:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/admin/requests/:id/help-done', requirePermission('requests.view'), async (req, res) => {
   try { await pool.query('UPDATE requests SET close_help_done=TRUE WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'close_help_done', 'request', parseInt(req.params.id), 'تواصلت مع عميل طلب مساعدة'); res.json({ ok: true }); }

@@ -326,3 +326,104 @@ window._nsoMount=function(radioName){
   document.querySelectorAll('input[name="'+radioName+'"]').forEach(function(r){ r.addEventListener('change',function(){ box.style.display=inp.checked?'block':'none'; }); });
 };
 })();
+
+/* ═══ إضافات العرض: بروفايل الشركة + صور من مشاريع سابقة (لوحة المزوّد + صفحة المشروع) ═══ */
+(function(){
+  var W=window;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function safe(u){u=String(u||'');return /^https?:\/\/[^\s"'<>`\\]+$/i.test(u)?u:'';}
+  function api(){ return (typeof W.API==='string'&&W.API)||''; }
+  function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
+  W._bxSt={prof:null,on:true,won:true,imgs:[]};
+  if(!document.getElementById('bx-css')){var st=document.createElement('style');st.id='bx-css';st.textContent=
+    '.bx-o{display:flex;align-items:center;gap:10px;border:1.5px solid #e1e9f6;background:#fff;border-radius:12px;padding:10px 12px;margin-top:9px;cursor:pointer;text-align:right}'
+    +'.bx-o b{display:block;font-size:13px;color:#0f2544}.bx-o small{display:block;font-size:11.5px;color:#64748b;font-weight:700;margin-top:2px;line-height:1.6}'
+    +'.bx-tg{width:42px;height:24px;border-radius:24px;background:#cbd5e1;position:relative;flex-shrink:0;margin-right:auto;transition:background .15s}.bx-tg i{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:18px;background:#fff;transition:right .15s}'
+    +'.bx-o.on .bx-tg{background:#1d4ed8}.bx-o.on .bx-tg i{right:21px}'
+    +'.bx-th{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.bx-th span{position:relative;width:54px;height:54px;border-radius:9px;overflow:hidden;background:#eef3fb}.bx-th img{width:100%;height:100%;object-fit:cover}'
+    +'.bx-th span button{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(15,23,42,.7);color:#fff;font-size:11px;line-height:18px;padding:0;cursor:pointer}'
+    +'.bx-add{width:54px;height:54px;border-radius:9px;border:1.5px dashed #93c5fd;background:#f8fbff;color:#1d4ed8;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit}'
+    +'[data-theme="dark"] .bx-o{background:#111827;border-color:rgba(148,163,184,.25)}[data-theme="dark"] .bx-o b{color:#e5e7eb}';
+    document.head.appendChild(st);}
+  function render(){
+    var box=document.getElementById('bx-box'); if(!box)return; var S=W._bxSt, p=S.prof||{};
+    var cp=safe(p.company_profile_url), h='';
+    if(cp) h+='<div class="bx-o'+(S.on?' on':'')+'" role="switch" aria-checked="'+(S.on?'true':'false')+'" onclick="_bxSt.on=!_bxSt.on;_bxRender()"><span>📁</span><div><b>أرفق بروفايل الشركة</b><small>«'+esc(p.company_profile_name||'بروفايل الشركة')+'» — من ملفك</small></div><span class="bx-tg"><i></i></span></div>';
+    else h+='<a class="bx-o" href="/dashboard-provider.html#profile" style="text-decoration:none"><span>📁</span><div><b>بروفايل الشركة</b><small>ارفعه مرة وحدة في ملفك ويطلع مع كل عروضك</small></div><span style="margin-right:auto;font-size:12px;font-weight:800;color:#1d4ed8">ارفعه</span></a>';
+    h+='<div class="bx-o'+(S.won?' on':'')+'" style="flex-wrap:wrap;cursor:default"><span>🖼️</span><div style="cursor:pointer" onclick="_bxSt.won=!_bxSt.won;_bxRender()"><b>صور من مشاريع سابقة</b><small>'+(S.imgs.length?S.imgs.length+' صور تطلع مع العرض':'أضف صور من أعمالك تطلع مع العرض')+'</small></div><span class="bx-tg" style="cursor:pointer" onclick="_bxSt.won=!_bxSt.won;_bxRender()"><i></i></span>';
+    if(S.won){ h+='<div class="bx-th" style="width:100%">'+S.imgs.map(function(u,i){return '<span><img src="'+esc(u)+'" alt=""><button type="button" aria-label="إزالة" onclick="_bxSt.imgs.splice('+i+',1);_bxRender()">×</button></span>';}).join('')
+      +(S.imgs.length<6?'<button type="button" class="bx-add" onclick="document.getElementById(\'bx-inp\').click()">+ إضافة</button>':'')+'</div>'; }
+    h+='</div><input type="file" id="bx-inp" accept="image/*" multiple style="display:none" onchange="_bxAdd(this)">';
+    box.innerHTML=h;
+  }
+  W._bxRender=render;
+  // يركّب الخانات داخل #bx-box. bid (اختياري) = عرض قائم للتعديل
+  W._bxMount=function(bid){
+    var S=W._bxSt; S.imgs=[]; S.on=true; S.won=true;
+    var go=function(p){ S.prof=p||{};
+      if(bid){ S.on=!!bid.show_profile||(bid.show_profile==null); S.imgs=Array.isArray(bid.work_images)?bid.work_images.filter(safe).slice(0,6):[]; S.won=S.imgs.length>0; }
+      else { S.imgs=(Array.isArray(S.prof.portfolio_images)?S.prof.portfolio_images:[]).filter(safe).slice(0,6); S.won=S.imgs.length>0; }
+      render(); };
+    if(W._bxProfC) return go(W._bxProfC);
+    fetch(api()+'/api/provider/profile',{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():{};}).then(function(p){W._bxProfC=p;go(p);}).catch(function(){go({});});
+  };
+  W._bxAdd=function(inp){
+    var fs=[].slice.call(inp.files||[]); inp.value='';
+    fs.forEach(function(f){ if(W._bxSt.imgs.length>=6||!/^image\//.test(f.type))return;
+      var r=new FileReader(); r.onload=function(e){ var im=new Image(); im.onload=function(){ var m=1280,w=im.width,h=im.height; if(w>m||h>m){ if(w>h){h=Math.round(h*m/w);w=m;}else{w=Math.round(w*m/h);h=m;} }
+        var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(im,0,0,w,h);
+        if(W._bxSt.imgs.length<6){ W._bxSt.imgs.push(c.toDataURL('image/jpeg',.82)); W._bxSt.won=true; render(); } }; im.src=e.target.result; }; r.readAsDataURL(f); });
+  };
+  // عرض الإضافات للعميل: بروفايل الشركة + صور من مشاريع سابقة
+  W._bxShow=function(b){
+    var h='', cp=safe(b&&b.company_profile_url), im=(b&&Array.isArray(b.work_images)?b.work_images:[]).filter(safe).slice(0,6);
+    if(cp) h+='<a href="'+esc(cp)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;margin-left:6px;font-size:12px;font-weight:800;color:#334766;background:#f1f5f9;padding:8px 13px;border-radius:9px;text-decoration:none">📁 بروفايل الشركة</a>';
+    if(im.length) h+='<div style="margin-top:9px"><div style="font-size:11.5px;font-weight:800;color:#64748b;margin-bottom:6px">🖼️ من مشاريع سابقة</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +im.map(function(u){return '<img loading="lazy" src="'+esc(u)+'" alt="من أعمال المزوّد" onclick="window.open(this.src,\'_blank\')" style="width:60px;height:60px;object-fit:cover;border-radius:9px;cursor:pointer;border:1px solid #e1e9f6">';}).join('')+'</div></div>';
+    return h;
+  };
+  W._bxGet=function(){ var S=W._bxSt; if(!document.getElementById('bx-box')||!S.prof)return {}; return { show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] }; };
+})();
+
+/* ═══ بعد إغلاق العميل لمشروعه: «عروضك باقية» + متى ترجع له (للمؤجّل) ═══ */
+(function(){
+  var W=window;
+  function api(){ return (typeof W.API==='string'&&W.API)||''; }
+  function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
+  function nOff(n){ return n===1?'عرضك باقي':'عروضك الـ'+n+' باقية'; }
+  // d = رد الخادم {offers, postponed, keep_days}، onView/onReopen اختيارية، onDone تُستدعى عند الإغلاق
+  W._pcSheet=function(d,id,onView,onReopen,onDone){
+    d=d||{}; var n=parseInt(d.offers)||0, kd=parseInt(d.keep_days)||90;
+    if(!n&&!d.postponed){ if(onDone)onDone(); return; }
+    var ov=document.createElement('div'); ov.id='pcSheet';
+    ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center';
+    var chips=[[14,'بعد أسبوعين'],[30,'بعد شهر'],[60,'بعد شهرين'],[0,'ما أدري']];
+    ov.innerHTML='<div role="dialog" aria-label="تم إغلاق المشروع" style="background:#fff;width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;font-family:Tajawal,sans-serif;direction:rtl;box-sizing:border-box">'
+      +'<div style="width:42px;height:5px;border-radius:5px;background:#dbe3ef;margin:0 auto"></div>'
+      +'<b style="font-family:Cairo,sans-serif;font-size:17px;color:#0f2544">تم إغلاق المشروع</b>'
+      +(n?'<div style="background:#ecfdf5;border:1.5px solid #a7f3d0;border-radius:14px;padding:13px;font-size:13.5px;font-weight:800;color:#065f46;line-height:1.8">'+nOff(n)+' عندك '+kd+' يوم. تقدر تختار منها أو تعيد فتح المشروع متى ما جهزت.</div>'
+         :'<div style="background:#f8fafd;border:1px solid #e1e9f6;border-radius:14px;padding:13px;font-size:13.5px;font-weight:800;color:#334766;line-height:1.8">تقدر تعيد فتح المشروع متى ما جهزت.</div>')
+      +(d.postponed?'<div><div style="font-size:12.5px;font-weight:800;color:#334766;margin-bottom:7px">متى تتوقع ترجع له؟</div><div id="pc-ch" style="display:flex;gap:7px;flex-wrap:wrap">'
+        +chips.map(function(c){return '<button type="button" data-d="'+c[0]+'" style="border:1.5px solid #dbe5f5;background:#fff;border-radius:999px;padding:8px 13px;font-family:inherit;font-size:12.5px;font-weight:800;color:#334766;cursor:pointer">'+c[1]+'</button>';}).join('')
+        +'</div><div id="pc-ok" style="font-size:12px;color:#64748b;font-weight:700;margin-top:6px">نذكّرك في الموعد — بدون إزعاج.</div></div>':'')
+      +'<div style="display:flex;gap:9px">'
+        +(n&&onView?'<button type="button" id="pc-view" style="flex:1;border:0;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">شوف العروض</button>':'')
+        +(onReopen?'<button type="button" id="pc-re" style="flex:1;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:12px;padding:12px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">أعد فتح المشروع</button>':'')
+      +'</div><button type="button" id="pc-x" style="border:0;background:none;color:#64748b;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;padding:4px">تم</button></div>';
+    document.body.appendChild(ov);
+    var close=function(){ ov.remove(); if(onDone)onDone(); };
+    ov.addEventListener('click',function(e){ if(e.target===ov)close(); });
+    var x=ov.querySelector('#pc-x'); if(x)x.onclick=close;
+    var v=ov.querySelector('#pc-view'); if(v)v.onclick=function(){ ov.remove(); onView(); };
+    var r=ov.querySelector('#pc-re'); if(r)r.onclick=function(){ ov.remove(); onReopen(); };
+    var ch=ov.querySelector('#pc-ch');
+    if(ch) ch.addEventListener('click',function(e){
+      var b=e.target.closest('button[data-d]'); if(!b)return; var dd=parseInt(b.getAttribute('data-d'));
+      [].forEach.call(ch.children,function(c){c.style.borderColor='#dbe5f5';c.style.background='#fff';c.style.color='#334766';});
+      b.style.borderColor='#1d4ed8'; b.style.background='#eff6ff'; b.style.color='#1d4ed8';
+      fetch(api()+'/api/requests/'+id+'/revisit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:JSON.stringify(dd?{days:dd}:{days:30,unknown:true})})
+        .then(function(res){ var ok=ov.querySelector('#pc-ok'); if(ok){ ok.style.color=res.ok?'#15803d':'#dc2626'; ok.textContent=res.ok?(dd?'✓ بنذكّرك '+b.textContent:'✓ بنسألك بعد شهر'):'تعذّر الحفظ'; } })
+        .catch(function(){});
+    });
+  };
+})();
