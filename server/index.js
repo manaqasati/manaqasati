@@ -242,6 +242,29 @@ function _readPage(p){
     const h = fs.readFileSync(p, 'utf8'); _pageCache.set(p, { m: st.mtimeMs, h }); return h;
   } catch(e) { return null; }
 }
+// مكتبة عقود المقاولات: /contracts (الصفحة) و /contracts/dl/<slug>.<pdf|docx> (تحميل باسم عربي)
+let _ctIdx = null;
+function _ctIndex(){
+  if (_ctIdx) return _ctIdx;
+  try { _ctIdx = JSON.parse(require('fs').readFileSync(__dirname + '/contracts/index.json', 'utf8')); } catch(e) { _ctIdx = []; }
+  return _ctIdx;
+}
+app.get(['/contracts', '/contracts/'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(__dirname + '/contracts.html');
+});
+app.get('/contracts/dl/:f', (req, res) => {
+  const m = /^([a-z0-9-]{2,40})\.(pdf|docx)$/.exec(String(req.params.f || ''));
+  const c = m && _ctIndex().find(x => x.slug === m[1]);
+  if (!c) return res.status(404).send('Not found');
+  const fp = __dirname + '/contracts/' + c.slug + '.' + m[2];
+  if (!require('fs').existsSync(fp)) return res.status(404).send('Not found');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const nm = c.title + ' - مناقصة.' + m[2];
+  res.setHeader('Content-Type', m[2] === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  res.setHeader('Content-Disposition', "attachment; filename=\"manaqasa-" + c.slug + '.' + m[2] + "\"; filename*=UTF-8''" + encodeURIComponent(nm).replace(/['()*!]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase()));
+  res.sendFile(fp);
+});
 // الصفحات الثابتة (.html و /) تمر من هنا قبل express.static عشان يوصلها الحقن
 app.use(function(req, res, next){
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -9576,7 +9599,7 @@ app.get('/sitemap.xml', async (req, res) => {
   try {
     const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE ORDER BY created_at DESC`);
     const now=new Date().toISOString().split('T')[0];
-    let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
+    let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n  <url><loc>${SITE_URL}/contracts</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
     xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
     xml+=`\n  <url><loc>${SITE_URL}/app</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`;
     Object.keys(INTENT_PAGES).forEach(sl=>{ xml+=`\n  <url><loc>${SITE_URL}/${encodeURIComponent(sl)}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`; });
