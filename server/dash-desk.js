@@ -19,7 +19,7 @@
   var SUB={home:function(){ return isProv?'فرص جديدة تناسب تخصصك ومدينتك':'تابع مشاريعك والعروض اللي وصلتك'; },browse:'المشاريع المفتوحة — الأقرب لك أول',works:'عروضك ومشاريعك وحالة كل واحد',saai:'سعي المنصة 3% من مبلغ الاتفاق',profile:'ملفك وصفحتك العامة وإعداداتك',notifs:'كل التنبيهات',reviews:'تقييمات عملائك',requests:'كل مشاريعك وعروضها',chat:'محادثاتك مع '+(isProv?'العملاء':'المزوّدين')};
   function subLine(){
     var t=D.getElementById('pageTitle'); if(!t)return;
-    var pg=(location.hash||'#home').slice(1).split('/')[0]||'home', s=SUB[pg]; if(typeof s==='function')s=s();
+    var on=D.querySelector('.page.on'), pg=on&&on.id?on.id.replace(/^page-/,''):((location.hash||'#home').slice(1).split('/')[0]||'home'), s=SUB[pg]; if(typeof s==='function')s=s();
     var el=D.getElementById('dkSub');
     if(!el){ el=D.createElement('div'); el.id='dkSub'; el.className='dk-sub'; var w=D.createElement('div'); t.parentNode.insertBefore(w,t); w.appendChild(t); w.appendChild(el); }
     el.textContent=s||''; el.style.display=s?'':'none';
@@ -72,6 +72,7 @@
     homeGrid();
   }
   W.addEventListener('hashchange',function(){ if(wide())subLine(); });
+  (function(){ var t=D.getElementById('pageTitle'); if(t&&W.MutationObserver)new MutationObserver(function(){ if(wide())subLine(); }).observe(t,{childList:true,characterData:true,subtree:true}); D.querySelectorAll('.page').forEach(function(p){ if(W.MutationObserver)new MutationObserver(function(){ if(wide()&&p.classList.contains('on'))subLine(); }).observe(p,{attributes:true,attributeFilter:['class']}); }); })();
   W.addEventListener('resize',function(){ clearTimeout(W._dkR); W._dkR=setTimeout(function(){ if(wide()){ sideExtras(); subLine(); } homeGrid(); },200); });
   if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',boot); else boot();
 })();
