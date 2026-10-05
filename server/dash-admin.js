@@ -622,6 +622,7 @@ function toggleSelectAll(on){getFilteredUsers().forEach(function(u){if(on)_selUs
 function clearUserSel(){_selUsers={};renderUsers();}
 function updateSelBar(){var n=Object.keys(_selUsers).length;var bar=document.getElementById('sel-bar');var el=document.getElementById('sel-n');if(el)el.textContent=n;if(bar)bar.style.display=n?'flex':'none';}
 var MSG_TEMPLATES=[
+  {name:'لمن حمّل عقد',subject:'مشروعك جاهز؟ خذ عروض أسعار مجاناً',body:'مرحباً،\nشكراً لتحميلك عقد المقاولات من مناقصة. إذا مشروعك جاهز، انشره الحين واستقبل عروض أسعار من مقاولين ومزوّدين في مدينتك — مجاناً وبدون التزام.\nانشر مشروعك: manaqasa.com'},
   {name:'ترحيب',subject:'أهلاً بك في مناقصة',body:'مرحباً،\nيسعدنا انضمامك إلى منصة مناقصة. إذا احتجت أي مساعدة في استخدام المنصة، فريقنا جاهز لخدمتك.\nبالتوفيق!'},
   {name:'تذكير',subject:'تذكير من مناقصة',body:'مرحباً،\nنذكّرك بمتابعة حسابك على منصة مناقصة — قد تكون هناك فرص أو طلبات جديدة بانتظارك.\nنتمنى لك التوفيق.'},
   {name:'عرض/تحديث',subject:'جديد على منصة مناقصة',body:'مرحباً،\nلدينا تحديث قد يهمّك على منصة مناقصة. ادخل حسابك للاطلاع على التفاصيل.\nشكراً لكونك جزءاً من مناقصة.'},
@@ -640,6 +641,7 @@ function applyMsgTemplate(i){
   if(subj)subj.value=t.subject; if(msg)msg.value=t.body;
 }
 function broadcastSelected(){
+  window._ctFrom=0;
   var n=Object.keys(_selUsers).length;if(!n){toast('لم تحدّد أي مستخدم','error');return;}
   document.getElementById('sm-count').textContent=n;
   document.getElementById('sm-subject').value='';document.getElementById('sm-message').value='';document.getElementById('sm-channel').value='app';
@@ -656,7 +658,7 @@ function sendSelectedMsg(){
   var btn=document.getElementById('sm-send');btn.disabled=true;btn.textContent='جاري الإرسال...';
   fetch(API+'/api/admin/notify',Object.assign({method:'POST',body:JSON.stringify({user_ids:ids,title:title,body:body,channel:channel})},hdr()))
     .then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||'');});return r.json();})
-    .then(function(d){toast('تم الإرسال إلى '+(d.sent_count!=null?d.sent_count:ids.length)+' مستخدم','success');closeModal('selMsgModal');clearUserSel();})
+    .then(function(d){toast('تم الإرسال إلى '+(d.sent_count!=null?d.sent_count:ids.length)+' مستخدم','success');closeModal('selMsgModal');if(window._ctFrom){window._ctFrom=0;_selUsers={};_ctAll(false);}else clearUserSel();})
     .catch(function(e){toast(e.message||'تعذر الإرسال','error');})
     .finally(function(){btn.disabled=false;btn.textContent='إرسال الرسالة';});
 }
@@ -5884,7 +5886,7 @@ function _loadCtStats(){
     var rows=d.top.map(function(x){return '<div class="vs-br"><span class="nm" style="width:230px">'+esc(nm(x.slug))+'</span><span class="bar"><i style="width:'+Math.round(x.n/mx*100)+'%;background:#1d4ed8"></i></span><span class="v">'+fmtNum(x.n)+'</span></div>';}).join('');
     var ph=function(p){p=String(p||'').replace(/\D/g,''); if(p.indexOf('05')===0)p='966'+p.slice(1); return p;};
     var list=d.users.slice(0,60).map(function(u){var p=ph(u.phone);
-      return '<tr><td><a href="#" onclick="event.preventDefault();openUserView('+u.id+')" style="font-weight:800">'+esc(u.name||'—')+'</a><div class="vs-s">'+(u.role==='provider'?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</div></td>'
+      return '<tr><td style="width:34px"><input type="checkbox" class="ct-ck" data-id="'+u.id+'" onchange="_ctSelUpd()" style="width:17px;height:17px"></td><td><a href="#" onclick="event.preventDefault();openUserView('+u.id+')" style="font-weight:800">'+esc(u.name||'—')+'</a><div class="vs-s">'+(u.role==='provider'?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</div></td>'
         +'<td style="font-size:12.5px">'+u.slugs.map(function(s){return esc(nm(s).replace(/^عقد /,''));}).join('، ')+'</td>'
         +'<td style="white-space:nowrap;font-size:12.5px">'+esc(String(u.last_at||'').slice(0,10))+'</td>'
         +'<td>'+(p?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+p+'">واتساب</a>':'')+'</td></tr>';}).join('');
@@ -5893,8 +5895,8 @@ function _loadCtStats(){
       +'<div class="vs-k"><div class="vs-b"><span class="t">'+esc(R.lbl)+': تحميلات</span><span class="big">'+fmtNum(t.n)+'</span><span class="vs-s">الإجمالي من البداية '+fmtNum(d.all.n)+'</span></div>'
       +'<div class="vs-b"><span class="t">أشخاص حمّلوا</span><span class="big" style="color:#1d4ed8">'+fmtNum(t.users)+'</span><span class="vs-s">'+fmtNum(t.clients)+' عميل · '+fmtNum(t.providers)+' مزوّد</span></div></div>'
       +(rows?'<div class="vs-st" style="margin-top:12px">أكثر العقود تحميلاً</div>'+rows:'<div class="vs-s" style="margin-top:10px">ما فيه تحميلات في هالفترة</div>')
-      +(list?'<div style="display:flex;align-items:center;margin-top:14px"><div class="vs-st" style="margin:0">اللي حمّلوا ('+fmtNum(d.users.length)+')</div><button class="act-btn ab-default" style="margin-inline-start:auto" onclick="_ctCsv()">⬇ تصدير Excel</button></div>'
-        +'<div style="overflow-x:auto;margin-top:6px"><table class="ct-t"><thead><tr><th>الاسم</th><th>العقود</th><th>آخر تحميل</th><th></th></tr></thead><tbody>'+list+'</tbody></table></div>'
+      +(list?'<div style="display:flex;align-items:center;margin-top:14px"><div class="vs-st" style="margin:0">اللي حمّلوا ('+fmtNum(d.users.length)+')</div><button class="act-btn ab-primary" id="ct-send" style="margin-inline-start:auto" onclick="_ctMsg()">📣 أرسل رسالة للكل ('+fmtNum(d.users.length)+')</button><button class="act-btn ab-default" style="margin-inline-start:8px" onclick="_ctCsv()">⬇ تصدير Excel</button></div>'
+        +'<div style="overflow-x:auto;margin-top:6px"><table class="ct-t"><thead><tr><th><input type="checkbox" id="ct-all" title="تحديد الكل" onchange="_ctAll(this.checked)" style="width:17px;height:17px"></th><th>الاسم</th><th>العقود</th><th>آخر تحميل</th><th></th></tr></thead><tbody>'+list+'</tbody></table></div>'
         +(d.users.length>60?'<div class="vs-s" style="margin-top:6px">يظهر أول 60 — صدّر Excel للقائمة كاملة</div>':''):'');
   }).catch(function(){ box.style.display='none'; });
 }
@@ -5904,4 +5906,22 @@ function _ctCsv(){
   var L=[['الاسم','الجوال','الإيميل','النوع','المدينة','عدد التحميلات','العقود','آخر تحميل'].map(q).join(',')];
   d.users.forEach(function(u){ L.push([u.name,u.phone,u.email,u.role==='provider'?'مزوّد':'عميل',u.city,u.n,u.slugs.map(nm).join(' | '),String(u.last_at||'').slice(0,16).replace('T',' ')].map(q).join(',')); });
   var b=new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='contracts-downloads-'+d.range.from+'_'+d.range.to+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+}
+
+// رسالة تسويقية (إشعار التطبيق و/أو إيميل بقالب مناقصة) لمن حمّل العقود — يستخدم نافذة «رسالة للمحدّدين»
+var _ctSel={};
+function _ctAll(on){ _ctSel={}; if(on&&_CT.users)_CT.users.forEach(function(u){_ctSel[u.id]=1;}); [].forEach.call(document.querySelectorAll('.ct-ck'),function(c){c.checked=!!on;}); _ctSelUpd(true); }
+function _ctSelUpd(skip){
+  if(!skip){ [].forEach.call(document.querySelectorAll('.ct-ck'),function(c){ var id=c.getAttribute('data-id'); if(c.checked)_ctSel[id]=1; else delete _ctSel[id]; }); }
+  var n=Object.keys(_ctSel).length, b=document.getElementById('ct-send'); if(!b)return;
+  b.textContent=n?('📣 أرسل رسالة للمحدّدين ('+fmtNum(n)+')'):('📣 أرسل رسالة للكل ('+fmtNum((_CT.users||[]).length)+')');
+}
+function _ctMsg(){
+  var ids=Object.keys(_ctSel); if(!ids.length&&_CT.users)ids=_CT.users.map(function(u){return String(u.id);});
+  if(!ids.length){toast('ما فيه أحد حمّل في هالفترة','error');return;}
+  window._ctFrom=1; _selUsers={}; ids.forEach(function(id){_selUsers[id]=true;});
+  document.getElementById('sm-count').textContent=ids.length;
+  fillMsgTemplates(); applyMsgTemplate(0);
+  document.getElementById('sm-channel').value='both';
+  document.getElementById('selMsgModal').classList.add('show');
 }
