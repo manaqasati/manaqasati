@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مكتبة عقود المقاولات — 36 نموذج عقد جاهز للتحميل مجاناً | مناقصة</title>
-<meta name="description" content="حمّل نماذج عقود المقاولات مجاناً: عقد هيكل إنشائي، تسليم مفتاح، ترميم، كهرباء، سباكة، لياسة، تكييف، ألمنيوم، عزل وغيرها — PDF وWord جاهزة للتعبئة.">
+<title>مكتبة عقود المقاولات — 36 نموذج عقد مقاولات مجاناً | مناقصة</title>
+<meta name="description" content="حمّل نماذج عقود المقاولات مجاناً من تطبيق مناقصة: عقد هيكل إنشائي، تسليم مفتاح، ترميم، كهرباء، سباكة، لياسة، تكييف، ألمنيوم، عزل وغيرها — PDF جاهزة للتعبئة.">
 <link rel="canonical" href="https://manaqasa.com/contracts">
 <meta property="og:title" content="مكتبة عقود المقاولات — مناقصة">
-<meta property="og:description" content="36 نموذج عقد مقاولات جاهز للتحميل مجاناً بصيغة PDF وWord.">
+<meta property="og:description" content="36 نموذج عقد مقاولات جاهز للتحميل مجاناً من تطبيق مناقصة.">
 <meta property="og:image" content="https://manaqasa.com/og-image.png">
 <link rel="icon" href="/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet">
@@ -72,13 +72,14 @@ a{color:inherit;text-decoration:none}
 .ok input{width:20px;height:20px;margin-top:3px;accent-color:var(--a);flex-shrink:0}
 .md .go{width:100%;border:0;border-radius:12px;padding:13px;font:900 15px Tajawal,sans-serif;background:var(--a);color:#fff;cursor:pointer}
 .md .go:disabled{background:#cbd5e1;cursor:not-allowed}
+.st{display:flex;gap:8px;margin:12px 0}.st a{flex:1;text-align:center;background:#0b1f4d;color:#fff;border-radius:12px;padding:11px;font-weight:900;font-size:14px}
 .md .x{float:left;border:0;background:#eef3fb;width:34px;height:34px;border-radius:10px;font-size:18px;cursor:pointer;color:#334766}
 </style>
 </head>
 <body>
 <div class="top"><a class="logo" href="/"><span class="dot"></span>مناقصة</a><a class="post" href="/post.html">اعرض مشروعك</a></div>
 <section class="hero"><div class="in">
-<span class="tag">مجاناً · PDF و Word</span>
+<span class="tag">مجاناً · من تطبيق مناقصة</span>
 <h1>مكتبة عقود المقاولات</h1>
 <p>36 نموذج عقد جاهز للتعبئة — كل عقد فيه الوثيقة الأساسية وملحق الشروط الخاصة وملحق المواصفات الفنية.</p>
 </div></section>
@@ -94,6 +95,7 @@ a{color:inherit;text-decoration:none}
 </main>
 <div class="foot"><a href="/">الرئيسية</a><a href="/about.html">عن المنصة</a><a href="/terms.html">الشروط والأحكام</a></div>
 
+<div class="ov" id="ov2"><div class="md" role="dialog" aria-modal="true"><button class="x" onclick="closeM()" aria-label="إغلاق">×</button><div id="ov2b"></div></div></div>
 <div class="ov" id="ov"><div class="md" role="dialog" aria-modal="true">
 <button class="x" onclick="closeM()" aria-label="إغلاق">×</button>
 <h3>تنبيه مهم قبل الاستخدام</h3><div class="t" id="mt"></div>
@@ -117,23 +119,45 @@ function chips(){document.getElementById('chips').innerHTML=CATS.map(function(c)
 function setCat(c){cur=c;chips();render();}
 function render(){var q=norm(document.getElementById('q').value.trim());
  var L=C.filter(function(x){return (cur==='all'||x.cat===cur)&&(!q||norm(x.title+' '+x.desc).indexOf(q)>-1);});
- document.getElementById('grid').innerHTML=L.map(function(x){return '<div class="card" id="c-'+x.slug+'"><div class="h"><div class="ic">'+IC+'</div><div><b>'+esc(x.title)+'</b><small>'+esc(x.desc)+'</small></div></div><div class="meta"><span>'+x.pages+' صفحة</span><span class="g">مجاني</span></div><div class="dl"><button class="pdf" onclick="ask(\''+x.slug+'\',\'pdf\')">'+DL+' PDF</button><button class="doc" onclick="ask(\''+x.slug+'\',\'docx\')">'+DL+' Word</button></div></div>';}).join('');
+ document.getElementById('grid').innerHTML=L.map(function(x){return '<div class="card" id="c-'+x.slug+'"><div class="h"><div class="ic">'+IC+'</div><div><b>'+esc(x.title)+'</b><small>'+esc(x.desc)+'</small></div></div><div class="meta"><span>'+x.pages+' صفحة</span><span class="g">مجاني</span></div><div class="dl"><button class="pdf" onclick="ask(\''+x.slug+'\')">'+DL+' تحميل العقد PDF</button></div></div>';}).join('');
  document.getElementById('empty').style.display=L.length?'none':'block';}
-function ask(slug,ext){var x=C.filter(function(c){return c.slug===slug;})[0];if(!x)return;pend={slug:slug,ext:ext};
- document.getElementById('mt').textContent=x.title+' — '+(ext==='pdf'?'PDF':'Word');
+var INAPP=!!window.ReactNativeWebView||/ManaqasaApp|; wv\)/i.test(navigator.userAgent||'');
+function tok(){try{return localStorage.getItem('token')||'';}catch(e){return '';}}
+function pane(h){document.getElementById('ov2b').innerHTML=h;document.getElementById('ov2').classList.add('on');}
+var IOS=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+function appPane(x){pane('<h3>التحميل من تطبيق مناقصة</h3><div class="t">'+esc(x.title)+'</div><p>عقود المقاولات تتحمّل مجاناً من <b>تطبيق مناقصة</b> للمسجّلين في المنصة. حمّل التطبيق، وسجّل دخولك، وافتح «عقود المقاولات» من القائمة.</p><div class="st"><a href="/app/go?os=ios&src=contracts">App Store</a><a href="/app/go?os=android&src=contracts">Google Play</a></div><p style="font-size:12.5px;color:#64748b">عندك التطبيق؟ افتحه وادخل على «عقود المقاولات».</p>');}
+function loginPane(x){pane('<h3>سجّل دخولك أول</h3><div class="t">'+esc(x.title)+'</div><p>تحميل العقود مجاني لكل المسجّلين في مناقصة. سجّل دخولك أو أنشئ حساب في أقل من دقيقة.</p><button class="go" onclick="goLogin(\''+x.slug+'\')">تسجيل الدخول / حساب جديد</button>');}
+function goLogin(slug){try{localStorage.setItem('_after_login','/contracts?c='+slug);}catch(e){}location.href='/auth.html';}
+function ask(slug){var x=C.filter(function(c){return c.slug===slug;})[0];if(!x)return;
+ if(!INAPP)return appPane(x);
+ if(!tok())return loginPane(x);
+ pend={slug:slug,title:x.title};
+ document.getElementById('mt').textContent=x.title+' — PDF';
  var a=document.getElementById('agree');var ok=false;try{ok=localStorage.getItem('mnq_ct_ok')==='1';}catch(e){}
- a.checked=ok;document.getElementById('go').disabled=!ok;document.getElementById('ov').classList.add('on');}
-function closeM(){document.getElementById('ov').classList.remove('on');}
+ a.checked=ok;var g=document.getElementById('go');g.disabled=!ok;g.textContent='تحميل العقد';document.getElementById('ov').classList.add('on');}
+function closeM(){document.getElementById('ov').classList.remove('on');document.getElementById('ov2').classList.remove('on');}
 document.getElementById('agree').onchange=function(){document.getElementById('go').disabled=!this.checked;};
-document.getElementById('go').onclick=function(){if(!pend||!document.getElementById('agree').checked)return;
+document.getElementById('go').onclick=function(){if(!pend||!document.getElementById('agree').checked)return;var g=this,p=pend;
  try{localStorage.setItem('mnq_ct_ok','1');}catch(e){}
- try{if(window.track)track('ViewContent',{content_name:pend.slug});}catch(e){}
- location.href='/contracts/dl/'+pend.slug+'.'+pend.ext;closeM();};
+ g.disabled=true;g.textContent='جاري التجهيز…';
+ fetch('/api/contracts/'+p.slug+'/link',{method:'POST',headers:{'Authorization':'Bearer '+tok(),'X-Mnq-App':'1'}}).then(function(r){return r.json().then(function(d){return {s:r.status,d:d};});}).then(function(r){
+  g.disabled=false;g.textContent='تحميل العقد';
+  var x=C.filter(function(c){return c.slug===p.slug;})[0];
+  if(r.s===401){closeM();return loginPane(x);}
+  if(r.d&&r.d.app_only){closeM();return appPane(x);}
+  if(!r.d||!r.d.url){alert((r.d&&r.d.message)||'تعذّر التحميل، حاول مرة ثانية');return;}
+  closeM();try{if(window.track)track('ViewContent',{content_name:p.slug});}catch(e){}
+  var opts={save:r.d.url,fileName:r.d.title+' - مناقصة',share:{title:r.d.title,text:'📄 '+r.d.title+' — نموذج عقد مجاني جاهز للتعبئة. حمّله من تطبيق مناقصة:',url:'https://manaqasa.com/contracts?c='+p.slug+'&s=1'}};
+  if(window.mqOpenFile&&window.mqOpenFile(r.d.url,r.d.title,opts))return;
+  location.href=r.d.url;
+ }).catch(function(){g.disabled=false;g.textContent='تحميل العقد';alert('تأكد من الاتصال وحاول مرة ثانية');});};
+document.getElementById('ov2').onclick=function(e){if(e.target===this)closeM();};
 document.getElementById('ov').onclick=function(e){if(e.target===this)closeM();};
 document.getElementById('q').oninput=render;
 chips();render();
-(function(){var m=location.search.match(/[?&]c=([\w-]+)/);if(!m)return;var el=document.getElementById('c-'+m[1]);if(el){el.classList.add('hl');setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'center'});},200);}})();
+(function(){var m=location.search.match(/[?&]c=([\w-]+)/);if(!m)return;var el=document.getElementById('c-'+m[1]);if(el){el.classList.add('hl');setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'center'});},200);}if(/[?&]s=1/.test(location.search)&&!INAPP){var x=C.filter(function(c){return c.slug===m[1];})[0];if(x)setTimeout(function(){appPane(x);},700);}})();
 </script>
+<script src="/up.js?v=4" defer></script>
 <script src="/track.js" defer></script>
 </body>
 </html>

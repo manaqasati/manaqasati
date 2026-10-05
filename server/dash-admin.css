@@ -671,3 +671,4 @@ a.cu-pv:hover{border-color:#86efac}
 .nso-acts{display:flex;flex-direction:column;gap:6px;flex-shrink:0}.nso-acts .act-btn{justify-content:center;white-space:nowrap;padding:7px 11px;font-size:12px}
 @media(max-width:1000px){.nso-2{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.nso-row{flex-direction:column}.nso-acts{flex-direction:row;flex-wrap:wrap;width:100%}}
+.ct-t th,.ct-t td{padding:9px 10px}.ct-t td{vertical-align:top}

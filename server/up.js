@@ -141,10 +141,12 @@
       + '#mq-fv .mqv-pg{display:block;margin:0 auto 10px;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.4);max-width:none}'
       + '#mq-fv .mqv-msg{color:#cbd5e1;text-align:center;padding:40px 18px;font-size:14.5px;line-height:1.9}'
       + '#mq-fv .mqv-msg b{display:block;color:#fff;font-size:16px;margin-bottom:6px}'
+      + '#mq-fv .mqv-ac{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:11px;padding:8px 11px;font:800 13px Tajawal,system-ui,sans-serif;cursor:pointer;flex-shrink:0}#mq-fv .mqv-ac[hidden]{display:none}'
       + '#mq-fv .mqv-cp{margin-top:14px;background:#2563eb;color:#fff;border:0;border-radius:12px;padding:11px 18px;font:800 14px Tajawal,system-ui,sans-serif;cursor:pointer}';
     D.head.appendChild(st);
     box = D.createElement('div'); box.id = 'mq-fv'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
     box.innerHTML = '<div class="mqv-h"><button type="button" class="mqv-bk" data-a="close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>رجوع</button><div class="mqv-t"></div>'
+      + '<button type="button" class="mqv-ac" data-a="save" hidden>حفظ</button><button type="button" class="mqv-ac" data-a="share" hidden>مشاركة</button>'
       + '<button type="button" class="mqv-z" data-a="out" aria-label="تصغير">−</button><button type="button" class="mqv-z" data-a="in" aria-label="تكبير">+</button></div><div class="mqv-b"></div>';
     D.body.appendChild(box);
     body = box.querySelector('.mqv-b'); ttl = box.querySelector('.mqv-t');
@@ -152,6 +154,8 @@
       var b = e.target.closest('[data-a]'); if (!b) return;
       var a = b.getAttribute('data-a');
       if (a === 'close') close();
+      else if (a === 'save') doSave(b);
+      else if (a === 'share') doShare(b);
       else if (a === 'in') setZoom(Math.min(3, zoom + 0.5));
       else if (a === 'out') setZoom(Math.max(1, zoom - 0.5));
       else if (a === 'copy') { var u = b.getAttribute('data-u'); try { navigator.clipboard.writeText(u).then(function(){ b.textContent = '✓ تم نسخ الرابط'; }, function(){ prompt('انسخ الرابط:', u); }); } catch(_){ prompt('انسخ الرابط:', u); } }
@@ -167,9 +171,38 @@
     body.innerHTML = '<div class="mqv-msg"><b>' + esc(title) + '</b>' + esc(text || '')
       + (u && !/^data:/i.test(u) ? '<br><button type="button" class="mqv-cp" data-a="copy" data-u="' + esc(u) + '">نسخ رابط الملف</button>' : '') + '</div>';
   }
-  function open(u, txt){
+  var curOpts = null, curUrl = '';
+  function flash(b, t){ var o = b.textContent; b.textContent = t; setTimeout(function(){ b.textContent = o; }, 2200); }
+  // حفظ: أندرويد ينزّله التطبيق مباشرة؛ آيفون عبر نافذة المشاركة («حفظ في الملفات»)
+  function doSave(b){
+    var o = curOpts || {}, su = o.save; if (!su) return;
+    var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in D);
+    if (ios && navigator.share && W.File) {
+      b.disabled = true;
+      fetch(su).then(function(r){ return r.blob(); }).then(function(bl){
+        var f = new File([bl], (o.fileName || 'manaqasa') + '.pdf', { type: 'application/pdf' });
+        b.disabled = false;
+        if (navigator.canShare && !navigator.canShare({ files: [f] })) { location.href = su + (su.indexOf('?') > -1 ? '&' : '?') + 'dl=1'; return; }
+        return navigator.share({ files: [f], title: o.fileName || '' }).catch(function(){});
+      }).catch(function(){ b.disabled = false; flash(b, 'تعذّر الحفظ'); });
+      return;
+    }
+    location.href = su + (su.indexOf('?') > -1 ? '&' : '?') + 'dl=1';
+  }
+  // مشاركة: نرسل رابط الصفحة (مو الملف) عشان اللي يوصله يحمّله من التطبيق
+  function doShare(b){
+    var s = (curOpts || {}).share; if (!s) return;
+    var txt = s.text + '\n' + s.url;
+    if (navigator.share) { navigator.share({ title: s.title || '', text: s.text, url: s.url }).catch(function(){}); return; }
+    try { navigator.clipboard.writeText(txt).then(function(){ flash(b, '✓ نسخت الرابط'); }, function(){ prompt('انسخ الرابط وأرسله:', txt); }); }
+    catch(e){ prompt('انسخ الرابط وأرسله:', txt); }
+  }
+  function open(u, txt, opts){
     var k = kind(u); if (!k) return false;
     ui(); token++; var my = token;
+    curOpts = opts || null; curUrl = u;
+    box.querySelector('[data-a="save"]').hidden = !(curOpts && curOpts.save);
+    box.querySelector('[data-a="share"]').hidden = !(curOpts && curOpts.share);
     zoom = 1; ttl.textContent = nameOf(u, txt);
     box.classList.add('on'); isOpen = true;
     D.documentElement.style.overflow = 'hidden';

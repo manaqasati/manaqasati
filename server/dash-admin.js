@@ -388,7 +388,7 @@ function loadDashboard(){
   }
   fetch(API+'/api/admin/overview',hdr()).then(function(r){return r.json();}).then(function(o){
     if(!o||!o.kpi){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); return; }
-    window._overview=o; _renderDash(o); try{_perRender();_loadVisits();_loadAppStats();}catch(e){}
+    window._overview=o; _renderDash(o); try{_perRender();_loadVisits();_loadAppStats();_loadCtStats();}catch(e){}
   }).catch(function(){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); });
   fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.json();}).then(function(reps){
     var pending=Array.isArray(reps)?reps.filter(function(r){return r.status==='pending'||!r.status;}).length:0;
@@ -5735,7 +5735,7 @@ function _perRange(){
   if(k==='custom'&&_PER.from&&_PER.to)return {from:_PER.from,to:_PER.to,lbl:_PER.from+' ← '+_PER.to,cmp:'عن نفس المدة قبلها'};
   return {from:t,to:t,lbl:'اليوم',cmp:'عن أمس'};
 }
-function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _loadVisits(); _loadAppStats(); }
+function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _loadVisits(); _loadAppStats(); _loadCtStats(); }
 function _perRender(showCustom){
   var old=document.getElementById('dash-period'); if(old)old.innerHTML='';
   var box=document.getElementById('vs-seg'); if(!box)return; var R=_perRange();
@@ -5871,4 +5871,37 @@ function _loadAppStats(){
       +(rows?'<div class="vs-s" style="margin-bottom:4px">من وين ضغطوا:</div>'+rows:'<div class="vs-s">ما فيه ضغطات في هالفترة</div>')
       +'<div class="vs-note">صفحة manaqasa.com/app انفتحت '+fmtNum(views)+' مرة'+(topView&&views?' — أغلبها من «'+esc(_APP_SRC[topView]||topView)+'» ('+vw[topView]+')':'')+'. وكثير يضغطون زر المتجر مباشرة من غير ما يفتحون الصفحة، عشان كذا الضغطات ممكن تكون أكثر من الزيارات.</div>';
   }).catch(function(){ box.style.display='none'; });
+}
+
+// ═══ بطاقة «عقود المقاولات»: مين حمّل وأي عقد — للتسويق ═══
+var _CT={};
+function _loadCtStats(){
+  var box=document.getElementById('dash-contracts'); if(!box)return; var R=_perRange();
+  fetch(API+'/api/admin/contract-stats?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d||!d.tot){box.style.display='none';return;} box.style.display=''; _CT=d;
+    var t=d.tot, nm=function(s){return (d.names&&d.names[s])||s;};
+    var mx=d.top.length?d.top[0].n:1;
+    var rows=d.top.map(function(x){return '<div class="vs-br"><span class="nm" style="width:230px">'+esc(nm(x.slug))+'</span><span class="bar"><i style="width:'+Math.round(x.n/mx*100)+'%;background:#1d4ed8"></i></span><span class="v">'+fmtNum(x.n)+'</span></div>';}).join('');
+    var ph=function(p){p=String(p||'').replace(/\D/g,''); if(p.indexOf('05')===0)p='966'+p.slice(1); return p;};
+    var list=d.users.slice(0,60).map(function(u){var p=ph(u.phone);
+      return '<tr><td><a href="#" onclick="event.preventDefault();openUserView('+u.id+')" style="font-weight:800">'+esc(u.name||'—')+'</a><div class="vs-s">'+(u.role==='provider'?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</div></td>'
+        +'<td style="font-size:12.5px">'+u.slugs.map(function(s){return esc(nm(s).replace(/^عقد /,''));}).join('، ')+'</td>'
+        +'<td style="white-space:nowrap;font-size:12.5px">'+esc(String(u.last_at||'').slice(0,10))+'</td>'
+        +'<td>'+(p?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+p+'">واتساب</a>':'')+'</td></tr>';}).join('');
+    box.innerHTML='<div class="vs-h"><h3>📄 عقود المقاولات</h3><a href="/contracts" target="_blank" rel="noopener" style="margin-inline-start:auto;font-size:12.5px;font-weight:800">manaqasa.com/contracts ↗</a></div>'
+      +'<div class="vs-s" style="font-size:13.5px;color:var(--text2);margin:4px 0 10px">مين حمّل العقود من التطبيق — عملاء مهتمين بمشروع قريب، استهدفهم بالتسويق</div>'
+      +'<div class="vs-k"><div class="vs-b"><span class="t">'+esc(R.lbl)+': تحميلات</span><span class="big">'+fmtNum(t.n)+'</span><span class="vs-s">الإجمالي من البداية '+fmtNum(d.all.n)+'</span></div>'
+      +'<div class="vs-b"><span class="t">أشخاص حمّلوا</span><span class="big" style="color:#1d4ed8">'+fmtNum(t.users)+'</span><span class="vs-s">'+fmtNum(t.clients)+' عميل · '+fmtNum(t.providers)+' مزوّد</span></div></div>'
+      +(rows?'<div class="vs-st" style="margin-top:12px">أكثر العقود تحميلاً</div>'+rows:'<div class="vs-s" style="margin-top:10px">ما فيه تحميلات في هالفترة</div>')
+      +(list?'<div style="display:flex;align-items:center;margin-top:14px"><div class="vs-st" style="margin:0">اللي حمّلوا ('+fmtNum(d.users.length)+')</div><button class="act-btn ab-default" style="margin-inline-start:auto" onclick="_ctCsv()">⬇ تصدير Excel</button></div>'
+        +'<div style="overflow-x:auto;margin-top:6px"><table class="ct-t"><thead><tr><th>الاسم</th><th>العقود</th><th>آخر تحميل</th><th></th></tr></thead><tbody>'+list+'</tbody></table></div>'
+        +(d.users.length>60?'<div class="vs-s" style="margin-top:6px">يظهر أول 60 — صدّر Excel للقائمة كاملة</div>':''):'');
+  }).catch(function(){ box.style.display='none'; });
+}
+function _ctCsv(){
+  var d=_CT; if(!d||!d.users)return; var nm=function(s){return (d.names&&d.names[s])||s;};
+  var q=function(v){v=String(v==null?'':v); if(/^[=+\-@]/.test(v))v="'"+v; return '"'+v.replace(/"/g,'""')+'"';};
+  var L=[['الاسم','الجوال','الإيميل','النوع','المدينة','عدد التحميلات','العقود','آخر تحميل'].map(q).join(',')];
+  d.users.forEach(function(u){ L.push([u.name,u.phone,u.email,u.role==='provider'?'مزوّد':'عميل',u.city,u.n,u.slugs.map(nm).join(' | '),String(u.last_at||'').slice(0,16).replace('T',' ')].map(q).join(',')); });
+  var b=new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='contracts-downloads-'+d.range.from+'_'+d.range.to+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
 }

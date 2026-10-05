@@ -167,6 +167,7 @@ app.use((req, res, next) => {
   p = p.toLowerCase();
   if (p.startsWith('/api/')) return next();
   const deny = p.startsWith('/node_modules') || /(^|\/)\./.test(p)
+    || /^\/contracts\/[^/]+\.(pdf|docx|json)$/.test(p) || /^\/[a-z0-9-]+\.docx$/.test(p)
     || (/\.(js|mjs|cjs|ts|map)$/.test(p) && !_PUBLIC_JS.has(p))
     || (/\.(json|patch|diff|log|md|sql|lock|env|sh|ya?ml|bak|orig|txt|csv|zip|gz|tar)$/.test(p) && p !== '/manifest.json' && p !== '/robots.txt');
   if (deny) return res.status(404).send('Not found');
@@ -217,7 +218,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '3'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '4'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -246,23 +247,44 @@ function _readPage(p){
 let _ctIdx = null;
 function _ctIndex(){
   if (_ctIdx) return _ctIdx;
-  try { _ctIdx = JSON.parse(require('fs').readFileSync(__dirname + '/contracts/index.json', 'utf8')); } catch(e) { _ctIdx = []; }
+  const fs = require('fs');
+  for (const f of ['/contracts/index.json', '/index.json']) {
+    try { const j = JSON.parse(fs.readFileSync(__dirname + f, 'utf8')); if (Array.isArray(j) && j.length) { _ctIdx = j; return _ctIdx; } } catch(e) {}
+  }
+  _ctIdx = [];
   return _ctIdx;
 }
 app.get(['/contracts', '/contracts/'], (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(__dirname + '/contracts.html');
 });
+// التحميل: للمسجّلين فقط ومن داخل التطبيق — نصدر رابط موقّع صالح 15 دقيقة
+function _ctSig(slug, exp, uid){ return crypto.createHmac('sha256', JWT_SECRET).update('ct|' + slug + '|' + exp + '|' + uid).digest('base64url').slice(0, 22); }
+function _ctInApp(req){ return req.get('x-mnq-app') === '1' || /ManaqasaApp|; wv\)/i.test(req.get('user-agent') || ''); }
+app.post('/api/contracts/:slug/link', rateLimiter(30, 60000), auth, async (req, res) => {
+  const c = _ctIndex().find(x => x.slug === String(req.params.slug || ''));
+  if (!c) return res.status(404).json({ message: 'العقد غير موجود' });
+  if (!_ctInApp(req)) return res.status(403).json({ app_only: true, message: 'تحميل العقود متاح من تطبيق مناقصة فقط' });
+  const exp = Math.floor(Date.now() / 1000) + 900, uid = req.user.id;
+  try { await pool.query('INSERT INTO contract_downloads (user_id, slug) VALUES ($1,$2)', [uid, c.slug]); } catch(e) {}
+  res.json({ url: '/contracts/dl/' + c.slug + '.pdf?u=' + uid + '&e=' + exp + '&s=' + _ctSig(c.slug, exp, uid), title: c.title });
+});
 app.get('/contracts/dl/:f', (req, res) => {
-  const m = /^([a-z0-9-]{2,40})\.(pdf|docx)$/.exec(String(req.params.f || ''));
+  const m = /^([a-z0-9-]{2,40})\.pdf$/.exec(String(req.params.f || ''));
   const c = m && _ctIndex().find(x => x.slug === m[1]);
   if (!c) return res.status(404).send('Not found');
-  const fp = __dirname + '/contracts/' + c.slug + '.' + m[2];
-  if (!require('fs').existsSync(fp)) return res.status(404).send('Not found');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  const nm = c.title + ' - مناقصة.' + m[2];
-  res.setHeader('Content-Type', m[2] === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  res.setHeader('Content-Disposition', "attachment; filename=\"manaqasa-" + c.slug + '.' + m[2] + "\"; filename*=UTF-8''" + encodeURIComponent(nm).replace(/['()*!]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase()));
+  const uid = parseInt(req.query.u, 10), exp = parseInt(req.query.e, 10), sig = String(req.query.s || '');
+  const good = uid > 0 && exp > Date.now() / 1000 && sig.length === 22
+    && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(_ctSig(c.slug, exp, uid)));
+  if (!good) return res.redirect(302, '/contracts?c=' + c.slug);
+  const fs = require('fs'), nm0 = c.slug + '.pdf';
+  const fp = [__dirname + '/contracts/' + nm0, __dirname + '/' + nm0].find(p => fs.existsSync(p));
+  if (!fp) return res.status(404).send('Not found');
+  const nm = c.title + ' - مناقصة.pdf';
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', (req.query.dl === '1' ? 'attachment' : 'inline') + "; filename=\"manaqasa-" + nm0 + "\"; filename*=UTF-8''" + encodeURIComponent(nm).replace(/['()*!]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase()));
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Robots-Tag', 'noindex');
   res.sendFile(fp);
 });
 // الصفحات الثابتة (.html و /) تمر من هنا قبل express.static عشان يوصلها الحقن
@@ -3032,6 +3054,7 @@ async function setupDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_bids_created ON bids(created_at DESC)',
       'CREATE INDEX IF NOT EXISTS idx_saai_request ON saai_ledger(request_id)'
     ];
+    await _mig(`CREATE TABLE IF NOT EXISTS contract_downloads (id SERIAL PRIMARY KEY, user_id INTEGER, slug VARCHAR(60), created_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS csp_reports (id SERIAL PRIMARY KEY, directive TEXT NOT NULL, blocked TEXT NOT NULL DEFAULT '', page TEXT NOT NULL DEFAULT '', sample TEXT, n INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(directive, blocked, page))`);
     for (const q of _idx) { try { await _mig(q); } catch(e) {} }
     console.log('✅ Database setup complete');
@@ -3644,6 +3667,25 @@ app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req,
     const byOs = (await pool.query(`SELECT os, SUM(n) FILTER (WHERE kind='view')::int AS views, SUM(n) FILTER (WHERE kind='click')::int AS clicks FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY os`, [R.from, R.to])).rows;
     res.json({ own, hits, byOs, range: R });
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// إحصائية تحميل عقود المقاولات (للتسويق): مين حمّل وأي عقد
+app.get('/api/admin/contract-stats', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const R = (req.query.from || req.query.to) ? _rangeFromQuery(req.query) : _rangeFromQuery({ from: new Date(Date.now() + 3*3600000 - 29*86400000).toISOString().slice(0,10) });
+    const W = `(d.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const tot = (await pool.query(`SELECT COUNT(*)::int AS n, COUNT(DISTINCT user_id)::int AS users,
+        COUNT(DISTINCT d.user_id) FILTER (WHERE u.role='provider')::int AS providers,
+        COUNT(DISTINCT d.user_id) FILTER (WHERE u.role<>'provider')::int AS clients
+      FROM contract_downloads d LEFT JOIN users u ON u.id=d.user_id WHERE ${W}`, [R.from, R.to])).rows[0];
+    const all = (await pool.query(`SELECT COUNT(*)::int AS n, COUNT(DISTINCT user_id)::int AS users FROM contract_downloads`)).rows[0];
+    const top = (await pool.query(`SELECT slug, COUNT(*)::int AS n FROM contract_downloads d WHERE ${W} GROUP BY slug ORDER BY n DESC LIMIT 10`, [R.from, R.to])).rows;
+    const users = (await pool.query(`SELECT u.id, u.name, u.phone, u.email, u.role, u.city, COUNT(*)::int AS n,
+        ARRAY_AGG(DISTINCT d.slug) AS slugs, MAX(d.created_at) AS last_at
+      FROM contract_downloads d JOIN users u ON u.id=d.user_id WHERE ${W}
+      GROUP BY u.id ORDER BY MAX(d.created_at) DESC LIMIT 500`, [R.from, R.to])).rows;
+    const names = {}; _ctIndex().forEach(c => { names[c.slug] = c.title; });
+    res.json({ range: R, tot, all, top, users, names });
+  } catch(e){ console.error('contract-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/me/mode', auth, async (req, res) => {
   try {
