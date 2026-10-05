@@ -1410,13 +1410,21 @@ async function _afterEmailChange(uid, oldEm, newEm){
   try {
     if (!newEm || String(oldEm||'').toLowerCase() === String(newEm).toLowerCase()) return;
     await pool.query('UPDATE users SET email_verified=false WHERE id=$1', [uid]);
-    const vtok = jwt.sign({ id: uid, purpose: 'verify_email', em: String(newEm).toLowerCase() }, JWT_SECRET, { expiresIn: '7d' });
+    const vtok = jwt.sign({ id: uid, purpose: 'verify_email', em: String(newEm).toLowerCase() }, JWT_SECRET, { expiresIn: '30d' });
     const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
     const t = '✅ أكّد بريدك الجديد في مناقصة';
-    sendEmail(newEm, t, emailTpl(t, '<p>تم تغيير البريد في حسابك على منصة مناقصة إلى هذا البريد. اضغط الزر لتأكيده:</p>', 'تأكيد البريد', vlink)).catch(()=>{});
+    const _cd = await _verifyCode(uid);
+    sendEmail(newEm, t, emailTpl(t, '<p>تم تغيير البريد في حسابك على منصة مناقصة إلى هذا البريد. اضغط الزر لتأكيده:</p>' + _codeBox(_cd), 'تأكيد البريد', vlink)).catch(()=>{});
     if (oldEm && !/@manaqasa\.local$/i.test(oldEm)) { const t2 = 'تنبيه: تغيّر البريد في حسابك'; sendEmail(oldEm, t2, emailTpl(t2, '<p>تم تغيير البريد الإلكتروني لحسابك في منصة مناقصة. إذا ما كنت أنت، تواصل معنا فوراً على <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>.</p>')).catch(()=>{}); }
   } catch(e) { console.error('email change:', e.message); }
 }
+// رمز تحقق من 6 أرقام يصلح 24 ساعة — ينرسل مع رابط التفعيل (لو الرابط ما اشتغل يكتبه في المنصة)
+async function _verifyCode(uid){
+  const code = String(crypto.randomInt(100000, 1000000));
+  try { await pool.query("UPDATE users SET verify_code=$1, verify_code_exp=NOW()+INTERVAL '24 hours', verify_code_tries=0 WHERE id=$2", [code, uid]); } catch(e){ return ''; }
+  return code;
+}
+function _codeBox(code){ return code ? `<p style="text-align:center;margin:18px 0 6px;color:#475569">أو اكتب هذا الرمز في المنصة:</p><p style="text-align:center;font-size:30px;font-weight:900;letter-spacing:8px;color:#1e3a8a;margin:0 0 6px;direction:ltr">${code}</p><p style="text-align:center;font-size:12px;color:#94a3b8;margin:0">الرمز صالح 24 ساعة</p>` : ''; }
 function eEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function emailTpl(title, body, btnText, btnUrl) {
@@ -2940,7 +2948,11 @@ async function setupDatabase() {
       UNIQUE(request_id, provider_id)
     )`); } catch(e){}
     // تنظيف سجلات سعي فارغة نتجت عن خلل قديم في قبول العرض (بدون مشروع/مزوّد)
-    try { await _mig('DELETE FROM saai_ledger WHERE request_id IS NULL OR provider_id IS NULL'); } catch(e){}
+    // سداد ذاتي: المزوّد يسدد بنفسه (اتفق برا أو العميل ما قبل داخل المنصة) — مشروع من عروضه أو مشروع خارج القائمة
+    try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS source VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_title TEXT'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_reason TEXT'); } catch(e){}
+    try { await _mig("DELETE FROM saai_ledger WHERE provider_id IS NULL OR (request_id IS NULL AND self_title IS NULL)"); } catch(e){}
+    // التحقق برمز من 6 أرقام (بديل الرابط لو ما اشتغل عند بعض تطبيقات البريد)
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code VARCHAR(6)'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_exp TIMESTAMP'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code_tries INTEGER DEFAULT 0'); } catch(e){}
     // تأجيل/إلغاء السعي: المزوّد يبلّغ، العميل يأكد، والمهلة تبدأ من due_from
     for (const c of ['due_from TIMESTAMP','defer_kind VARCHAR(10)','defer_until TIMESTAMP','defer_state VARCHAR(20)','defer_at TIMESTAMP','defer_note TEXT','client_answer VARCHAR(15)','client_answer_at TIMESTAMP','defer_count INTEGER DEFAULT 0'])
       try { await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){}
@@ -3040,11 +3052,29 @@ app.get('/api/auth/verify-email', async (req, res) => {
         ok=true;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.warn('verify-email fail:', e.name || e.message); }
+  if (!ok) console.warn('verify-email: invalid link');
   const title = ok ? (already?'بريدك مفعّل مسبقاً ✓':'تم تفعيل بريدك بنجاح ✓') : 'رابط غير صالح أو منتهٍ';
   const color = ok ? '#16a34a' : '#dc2626';
-  const msg = ok ? 'يمكنك الآن استخدام كل مزايا المنصة.' : 'انتهت صلاحية الرابط أو أنه غير صحيح. سجّل الدخول واطلب إعادة الإرسال.';
-  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل البريد</title><style>body{font-family:system-ui,Tahoma,sans-serif;background:#eef2f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}.c{background:#fff;border-radius:18px;padding:36px 28px;max-width:420px;text-align:center;box-shadow:0 12px 40px rgba(15,23,42,.1)}.i{font-size:52px;margin-bottom:10px}h1{font-size:20px;color:${color};margin:0 0 10px}p{color:#475569;font-size:14px;line-height:1.8;margin:0 0 22px}a{display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-weight:800;font-size:14px}</style></head><body><div class="c"><div class="i">${ok?'✅':'⚠️'}</div><h1>${title}</h1><p>${msg}</p><a href="${SITE_URL}/">الذهاب إلى المنصة</a></div></body></html>`);
+  const msg = ok ? 'ارجع لحسابك وكمّل — تقدر الحين تقدّم عروض وتنشر مشاريع.' : 'انتهت صلاحية الرابط أو أنه غير صحيح. ادخل حسابك واضغط «إعادة الإرسال»، أو اكتب الرمز اللي وصلك في الإيميل.';
+  res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل البريد</title><style>body{font-family:system-ui,Tahoma,sans-serif;background:#eef2f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}.c{background:#fff;border-radius:18px;padding:36px 28px;max-width:420px;text-align:center;box-shadow:0 12px 40px rgba(15,23,42,.1)}.i{font-size:52px;margin-bottom:10px}h1{font-size:20px;color:${color};margin:0 0 10px}p{color:#475569;font-size:14px;line-height:1.8;margin:0 0 22px}a{display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-weight:800;font-size:14px}</style></head><body><div class="c"><div class="i">${ok?'✅':'⚠️'}</div><h1>${title}</h1><p>${msg}</p><a href="${SITE_URL}/auth.html">ارجع لحسابك</a></div></body></html>`);
+});
+app.get('/api/auth/verify-status', auth, async (req, res) => {
+  try { const u = (await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id])).rows[0] || {}; res.json({ verified: !!u.ev, email: u.email || null }); }
+  catch(e) { res.json({ verified: true }); }
+});
+app.post('/api/auth/verify-code', auth, rateLimiter(12, 600000), async (req, res) => {
+  try {
+    const code = String(req.body.code || '').replace(/\D/g, '').slice(0, 6);
+    const u = (await pool.query('SELECT COALESCE(email_verified,true) AS ev, verify_code, verify_code_exp, COALESCE(verify_code_tries,0) AS tries FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    if (u.ev) return res.json({ ok: true, already: true });
+    if (!u.verify_code || !u.verify_code_exp || new Date(u.verify_code_exp) < new Date()) return res.status(400).json({ message: 'الرمز انتهى — اضغط «إعادة الإرسال» يوصلك رمز جديد' });
+    if (u.tries >= 6) return res.status(429).json({ message: 'محاولات كثيرة — اضغط «إعادة الإرسال» يوصلك رمز جديد' });
+    if (code.length !== 6 || code !== u.verify_code) { await pool.query('UPDATE users SET verify_code_tries=COALESCE(verify_code_tries,0)+1 WHERE id=$1', [req.user.id]); return res.status(400).json({ message: 'الرمز غير صحيح' }); }
+    await pool.query('UPDATE users SET email_verified=true, verify_code=NULL, verify_code_exp=NULL WHERE id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/auth/resend-verification', auth, async (req, res) => {
   try {
@@ -3052,9 +3082,10 @@ app.post('/api/auth/resend-verification', auth, async (req, res) => {
     if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (u.rows[0].ev) return res.json({ ok: true, already: true });
     if (!u.rows[0].email) return res.status(400).json({ message: 'لا يوجد بريد مسجّل' });
-    const vtok = jwt.sign({ id: req.user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '7d' });
+    const vtok = jwt.sign({ id: req.user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '30d' });
     const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
-    sendEmail(u.rows[0].email, '✅ فعّل بريدك في مناقصة', emailTpl('✅ فعّل بريدك في مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>', 'تفعيل البريد', vlink)).catch(()=>{});
+    const _cd = await _verifyCode(req.user.id);
+    sendEmail(u.rows[0].email, '✅ فعّل بريدك في مناقصة', emailTpl('✅ فعّل بريدك في مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>' + _codeBox(_cd), 'تفعيل البريد', vlink)).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -3169,11 +3200,12 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const welcomeBody = isProvider
         ? `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>تصفح المشاريع المتاحة</li><li>تقديم عروضك للعملاء</li><li>التواصل المباشر مع العملاء</li></ul><p>أكمل ملفك للحصول على شارة موثّق.</p><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`
         : `<p>عزيزي <strong>${eEsc(name)}</strong>،</p><p>أهلاً وسهلاً بك في منصة <strong>مناقصة</strong>.</p><ul style="line-height:2.2;color:#374151"><li>نشر مشاريعك</li><li>استقبال عروض من المزودين</li><li>التواصل المباشر مع المزودين</li></ul><p>تواصل: <a href="mailto:cs@manaqasa.com" style="color:#C9920A">cs@manaqasa.com</a></p>`;
-      const vtok = jwt.sign({ id: user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '7d' });
+      const vtok = jwt.sign({ id: user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '30d' });
       const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
       const verifyNote = `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin:14px 0;color:#1e40af"><strong>خطوة أخيرة:</strong> فعّل بريدك لتتمكن من ${isProvider?'تقديم العروض':'نشر مشاريعك'} — اضغط الزر أدناه.</p>`;
       await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! فعّل بريدك من الرسالة المرسلة إلى إيميلك.`, 'welcome', null);
-      if (email) sendEmail(email, '✅ فعّل بريدك في مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote, 'تفعيل البريد', vlink)).catch(()=>{});
+      const _cd = email ? await _verifyCode(user.id) : '';
+      if (email) sendEmail(email, '✅ فعّل بريدك في مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote + _codeBox(_cd), 'تفعيل البريد', vlink)).catch(()=>{});
     } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5360,14 +5392,14 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.edits_log, s.created_at, s.submitted_at, s.approved_at,
-              r.title AS project_title, r.city, b.price AS offer_price, b.price_unit,
+              COALESCE(r.title, s.self_title) AS project_title, r.city, b.price AS offer_price, b.price_unit, s.source, s.self_title, s.self_reason, r.assigned_provider_id AS req_assigned, r.status AS req_status,
               COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.id AS provider_id, u.phone AS provider_phone,
               (SELECT COUNT(*) FROM saai_ledger s2 WHERE s2.provider_id=s.provider_id AND s2.status='approved' AND s2.id<>s.id)::int AS provider_paid_n,
               GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(s.due_from,s.created_at)))/86400)::int AS age_days, COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.defer_at, s.defer_note, s.client_answer, s.client_answer_at, s.defer_count, cl.name AS client_name, cl.phone AS client_phone
        FROM saai_ledger s
-       JOIN requests r ON r.id=s.request_id
+       LEFT JOIN requests r ON r.id=s.request_id
        JOIN users u ON u.id=s.provider_id
-       LEFT JOIN bids b ON b.id=s.bid_id
+       LEFT JOIN bids b ON b.id=COALESCE(s.bid_id,(SELECT id FROM bids WHERE request_id=s.request_id AND provider_id=s.provider_id LIMIT 1))
        LEFT JOIN users cl ON cl.id=r.client_id
        ORDER BY CASE s.status WHEN 'submitted' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, s.submitted_at DESC NULLS LAST, s.created_at DESC
        LIMIT 1000`);
@@ -5385,7 +5417,7 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
               COUNT(*) FILTER (WHERE status='deferred' AND defer_state IN ('noreply','await_admin'))::int AS deferred_attn,
               COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND (status IN ('submitted','approved') OR (status='pending' AND COALESCE(due_from,created_at) < NOW()-INTERVAL '10 days')))::int AS c90_total,
               COUNT(*) FILTER (WHERE created_at >= NOW()-INTERVAL '90 days' AND status IN ('submitted','approved') AND COALESCE(submitted_at,approved_at) <= created_at + INTERVAL '10 days')::int AS c90_ok
-       FROM saai_ledger WHERE request_id IS NOT NULL`)).rows[0] || {};
+       FROM saai_ledger WHERE request_id IS NOT NULL OR self_title IS NOT NULL`)).rows[0] || {};
     const monthly = (await pool.query(
       `SELECT to_char(m,'YYYY-MM') AS month,
               COALESCE((SELECT SUM(saai_amount) FROM saai_ledger WHERE status='approved' AND date_trunc('month', approved_at::timestamptz AT TIME ZONE 'Asia/Riyadh')=m),0)::float AS collected
@@ -5449,6 +5481,18 @@ app.post('/api/admin/saai/:id/approve', auth, adminOnly, async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query("UPDATE saai_ledger SET status='approved', approved_at=NOW() WHERE id=$1 RETURNING provider_id, request_id, saai_amount", [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    // سداد ذاتي على مشروع ما انرسى داخل المنصة ← نعتبرها ترسية لهالمزوّد (يدخل في سجله ويقدر يطلب تقييم)
+    if (req.body && req.body.mark_deal && r.rows[0].request_id) {
+      try {
+        const up = await pool.query(`UPDATE requests SET assigned_provider_id=$1, assigned_at=COALESCE(assigned_at,NOW()), status=CASE WHEN status IN ('completed') THEN status ELSE 'in_progress' END,
+            close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, revisit_at=NULL WHERE id=$2 AND assigned_provider_id IS NULL RETURNING id`, [r.rows[0].provider_id, r.rows[0].request_id]);
+        if (up.rows.length) {
+          await pool.query("UPDATE bids SET status='accepted' WHERE request_id=$1 AND provider_id=$2", [r.rows[0].request_id, r.rows[0].provider_id]);
+          recomputeProviderTier(r.rows[0].provider_id);
+          logAdmin(req, 'saai_mark_deal', 'request', r.rows[0].request_id, 'سداد ذاتي ← ترسية').catch(()=>{});
+        }
+      } catch(e){ console.error('mark-deal:', e.message); }
+    }
     try { await notify(r.rows[0].provider_id, 'تم اعتماد سدادك ✅', 'اعتمدت الإدارة سداد سعي المنصة ('+Math.round(r.rows[0].saai_amount).toLocaleString('en-US')+' ر.س). شكراً لالتزامك.', 'saai_approved', r.rows[0].request_id); } catch(e){}
     res.json({ ok: true });
   } catch(e){ console.error('admin-saai-approve:', e.message); res.status(500).json({ message: 'تعذّر الاعتماد' }); }
@@ -5582,6 +5626,62 @@ async function _saaiDeferJob(){
   const nr = await pool.query(`UPDATE saai_ledger SET defer_state='noreply' WHERE status='deferred' AND defer_state='asked' AND defer_at < NOW() - INTERVAL '3 days' RETURNING request_id`);
   if (nr.rows.length) { try { await _notifyAdmins('⏸ عملاء ما ردوا على تأجيل السعي', nr.rows.length + ' حالة تحتاج قرارك في «السعي ← مؤجّل»', 'saai', null); } catch(e){} }
 }
+// ═══ السداد الذاتي ═══
+// مشاريع قدّم عليها المزوّد (حتى المقفلة) — يختار منها المشروع اللي اتفق عليه
+app.get('/api/provider/saai/projects', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.json([]);
+    const r = await pool.query(`SELECT r.id, r.title, r.city, r.status, b.price, COALESCE(b.price_unit,'total') AS price_unit, b.created_at AS bid_at,
+        COALESCE(r.closed_at, r.close_at) AS closed_at, (r.assigned_provider_id IS NOT NULL AND r.assigned_provider_id<>$1) AS taken,
+        s.id AS saai_id, s.status AS saai_status
+      FROM bids b JOIN requests r ON r.id=b.request_id
+      LEFT JOIN saai_ledger s ON s.request_id=r.id AND s.provider_id=$1
+      WHERE b.provider_id=$1 AND b.created_at > NOW() - INTERVAL '180 days'
+      ORDER BY (s.status IN ('pending','deferred')) DESC NULLS LAST, b.created_at DESC LIMIT 40`, [req.user.id]);
+    res.json(r.rows.filter(x => !x.taken && x.saai_status !== 'approved' && x.saai_status !== 'submitted'));
+  } catch(e){ console.error('saai-projects:', e.message); res.json([]); }
+});
+app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    const val = Math.round(Math.max(0, parseFloat(req.body.contract_value) || 0));
+    if (val < 50) return res.status(400).json({ message: 'أدخل المبلغ اللي اتفقتوا عليه' });
+    const proof = String(req.body.proof || '');
+    if (!proof.startsWith('data:') && !_safeUrl(proof)) return res.status(400).json({ message: 'ارفع إيصال التحويل' });
+    const rid = parseInt(req.body.request_id) || null;
+    const title = _cleanTxt(req.body.title || '', 120);
+    if (!rid && title.length < 3) return res.status(400).json({ message: 'اختر المشروع أو اكتب اسمه' });
+    let bidId = null;
+    if (rid) {
+      const b = (await pool.query('SELECT b.id, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.request_id=$1 AND b.provider_id=$2', [rid, req.user.id])).rows[0];
+      if (!b) return res.status(400).json({ message: 'ما لقينا عرضك على هالمشروع' });
+      if (b.assigned_provider_id && String(b.assigned_provider_id) !== String(req.user.id)) return res.status(400).json({ message: 'هالمشروع انرسى على مزوّد ثاني' });
+      bidId = b.id;
+    }
+    const proofUrl = proof.startsWith('data:') ? await uploadToR2(proof, 'manaqasa/saai-proofs', 'saai-self-' + req.user.id + '-' + Date.now()) : _safeUrl(proof);
+    if (!proofUrl) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
+    const fee = Math.round(val * 0.03);
+    const note = _cleanTxt(req.body.note || '', 200) || null;
+    let id;
+    if (rid) {
+      const ex = (await pool.query('SELECT id, status, contract_value, edits_log FROM saai_ledger WHERE request_id=$1 AND provider_id=$2', [rid, req.user.id])).rows[0];
+      if (ex && ex.status === 'approved') return res.status(400).json({ message: 'سعي هالمشروع معتمد مسبقاً' });
+      if (ex) {
+        let log = Array.isArray(ex.edits_log) ? ex.edits_log : []; if (Number(ex.contract_value) !== val) log.push({ from: Number(ex.contract_value), to: val, at: new Date().toISOString(), by: 'provider', reason: 'سداد ذاتي' });
+        await pool.query(`UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, proof_url=$3, status='submitted', submitted_at=NOW(), edits_log=$4::jsonb, self_reason=COALESCE($5,self_reason) WHERE id=$6`, [val, fee, proofUrl, JSON.stringify(log.slice(-30)), note, ex.id]);
+        id = ex.id;
+      } else {
+        id = (await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, proof_url, submitted_at, source, self_reason, edits_log)
+          VALUES ($1,$2,$3,$4,$5,'submitted',$6,NOW(),'self',$7,'[]'::jsonb) RETURNING id`, [rid, req.user.id, bidId, val, fee, proofUrl, note])).rows[0].id;
+      }
+    } else {
+      id = (await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, contract_value, saai_amount, status, proof_url, submitted_at, source, self_title, self_reason, edits_log)
+        VALUES (NULL,$1,$2,$3,'submitted',$4,NOW(),'self',$5,$6,'[]'::jsonb) RETURNING id`, [req.user.id, val, fee, proofUrl, title, note])).rows[0].id;
+    }
+    _notifyAdmins('💰 سداد سعي ذاتي', `مزوّد سدّد ${fee.toLocaleString('en-US')} ر.س على «${rid ? 'مشروع #' + rid : title}» — راجع الإيصال`).catch(()=>{});
+    res.json({ ok: true, id });
+  } catch(e){ console.error('saai-self:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
 app.get('/api/provider/saai', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 });
@@ -5589,8 +5689,8 @@ app.get('/api/provider/saai', auth, async (req, res) => {
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.created_at, s.submitted_at, s.approved_at,
               COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.client_answer, COALESCE(s.defer_count,0) AS defer_count,
-              r.title AS project_title, r.category, r.city
-       FROM saai_ledger s JOIN requests r ON r.id=s.request_id
+              COALESCE(r.title, s.self_title) AS project_title, r.category, r.city, s.source
+       FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id
        WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [pid]);
     let pending=0, approved=0, contract=0;
     r.rows.forEach(x=>{
@@ -8154,12 +8254,33 @@ app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (r
     const agg = await pool.query(`SELECT ${KEY} AS close_reason, COUNT(*)::int AS c FROM requests r WHERE ${WHERE} GROUP BY 1 ORDER BY c DESC`);
     const list = await pool.query(`SELECT r.id, r.title, r.status, r.created_at, r.close_at, r.close_set_by, r.close_auto_kind, r.close_auto_days, r.close_reason AS raw_reason,
         ${KEY} AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, r.closed_at AS closed_at_raw, COALESCE(u.name,'عميل') AS client_name,
-        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category,
+        r.revisit_at, (SELECT string_agg(kind, ',') FROM reminders_log rl WHERE rl.ref_id=r.id AND rl.user_id=r.client_id AND rl.kind IN ('closed_offers','closed_offers_2d','closed_offers_7d')) AS reminded,
+        (SELECT json_build_object('name', COALESCE(NULLIF(pu.business_name,''),pu.name), 'status', s.status, 'amount', s.contract_value) FROM saai_ledger s JOIN users pu ON pu.id=s.provider_id
+           WHERE s.request_id=r.id AND s.source='self' AND s.status IN ('submitted','approved') ORDER BY s.id DESC LIMIT 1) AS self_pay
       FROM requests r JOIN users u ON u.id=r.client_id WHERE ${WHERE} ORDER BY COALESCE(r.closed_at, r.completed_at, r.close_at, r.created_at) DESC NULLS LAST LIMIT 300`);
     const rows = list.rows.map(x => {
       const info = x.status === 'completed' ? { by:'done', short:'تمت الترسية', text:'اختار مزوّد وتمت الترسية' } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
-      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status };
+      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status, revisit_at: x.revisit_at, reminded: x.reminded ? String(x.reminded).split(',') : [], self_pay: x.self_pay };
     });
+    // اتفاقات انلغت بعد الترسية (المزوّد بلّغ ← العميل/الإدارة أكّد) — ما كانت تطلع هنا أبداً
+    try {
+      const dc = await pool.query(`SELECT r.id, r.title, r.city, r.category, r.created_at, COALESCE(cu.name,'عميل') AS client_name, cu.phone AS client_phone,
+          COALESCE(NULLIF(pu.business_name,''), pu.name) AS provider_name, s.defer_note, s.defer_at, s.client_answer_at, s.defer_state,
+          COALESCE(s.client_answer_at, s.defer_at, s.created_at) AS closed_at, (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count
+        FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users pu ON pu.id=s.provider_id LEFT JOIN users cu ON cu.id=r.client_id
+        WHERE s.status='cancelled' ORDER BY COALESCE(s.client_answer_at, s.defer_at, s.created_at) DESC LIMIT 60`);
+      const seen = new Set(rows.map(x => x.id));
+      for (const x of dc.rows) {
+        if (seen.has(x.id)) continue;
+        const fd = d => d ? new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory', { day:'numeric', month:'long' }) : '';
+        const conf = x.defer_state === 'client_cancel' ? 'العميل أكّد الإلغاء' + (x.client_answer_at ? ' (' + fd(x.client_answer_at) + ')' : '') : (x.defer_state === 'admin_cancel' ? 'الإدارة ألغته' : 'انلغى');
+        rows.push({ id: x.id, title: x.title, close_reason: 'deal_cancelled', close_reason_note: x.defer_note || null, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at,
+          close_info: { by: 'deal', short: 'الاتفاق انلغى', text: `المزوّد «${x.provider_name}» بلّغ إن العميل ألغى الاتفاق${x.defer_at ? ' (' + fd(x.defer_at) + ')' : ''} ← ${conf} ← السعي انلغى` },
+          client_phone: x.client_phone, city: x.city, category: x.category, status: 'deal_cancelled', reminded: [] });
+      }
+      rows.sort((a, b) => new Date(b.closed_at || 0) - new Date(a.closed_at || 0));
+    } catch(e) { console.error('close-reasons deals:', e.message); }
     // وين ينقصنا مزوّدين؟ مشاريع ضاعت آخر 30 يوم (ما لقى عرض مناسب، أو انقفلت بعرض واحد أو أقل) حسب التخصص والمدينة
     const lost = (await pool.query(`SELECT r.category, r.city, COUNT(*)::int AS lost,
         (SELECT COUNT(*)::int FROM users u WHERE u.role='provider' AND u.is_active=true AND (u.city=r.city OR r.city = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))

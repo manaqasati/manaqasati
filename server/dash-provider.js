@@ -41,16 +41,15 @@ function _vbRender(){
   if(!u||u.email_verified!==false){b.style.display='none';return;}
   var em=u.email||'',mp=_vbMail(em),hid=false;
   try{hid=(+sessionStorage.getItem('mnq_vb_hide')||0)>0;}catch(e){}
-  b.className=hid?'vb-min':'';
+  b.className=''; // ما ينخفي: بدون التفعيل ما يقدر يقدّم/ينشر
   b.innerHTML='<div class="vb-full"><div class="vb-ic"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg><i></i></div>'
    +'<div class="vb-b"><div class="vb-t">باقي خطوة: فعّل بريدك</div>'
    +'<div class="vb-s">'+(em?'أرسلنا رابط التفعيل إلى <b>'+_vbEsc(em)+'</b>':'أرسلنا رابط التفعيل إلى بريدك')+'</div>'
-   +'<div class="vb-n">بعد التفعيل، تقدر تقدّم عروضك على المشاريع مباشرة</div>'
+   +'<div class="vb-n">بدون التفعيل ما تقدر تقدّم عروض — اضغط الرابط في الإيميل أو اكتب الرمز</div>'
    +'<div class="vb-acts">'+(mp?'<a class="vb-btn vb-pri" href="'+mp[1]+'" target="_blank" rel="noopener">افتح '+mp[0]+' <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M7 17L17 7M8 7h9v9"/></svg></a>':'')
    +'<button class="vb-btn '+(mp?'vb-sec':'vb-pri')+'" id="verify-resend" onclick="resendVerify()">إعادة الإرسال</button>'
-   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div></div>'
-   +'<button class="vb-x" aria-label="إخفاء" onclick="_vbHide()">×</button></div>'
-   +'<div class="vb-slim" onclick="_vbShow()">بريدك ما تفعّل للحين<u>فعّله</u></div>';
+   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div>'
+   +'<div style="display:flex;gap:8px;margin-top:10px;max-width:360px"><input id="vb-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="عندك الرمز؟ اكتبه هنا" style="flex:1;min-width:0;border:1.5px solid #dbe5f5;border-radius:11px;padding:10px 12px;font-family:inherit;font-size:15px;font-weight:800;text-align:center;direction:ltr"><button class="vb-btn vb-pri" onclick="_evCode(\'vb-code\',this)">تأكيد</button></div></div></div>';
   b.style.display='block';_vbTick();
 }
 function _vbHide(){try{sessionStorage.setItem('mnq_vb_hide','1');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='vb-min';}
@@ -968,7 +967,9 @@ async function _reallySubmitBid(){
   var d=window._pendingBid;if(!d)return;
   var btn=document.getElementById('bidConfirmBtn');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
-    var r=await _api('/api/requests/'+d.projId+'/bids',{method:'POST',body:JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),attachment:(window._bidAttach||null)},(window._bxGet?_bxGet():{})))});
+    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),attachment:(window._bidAttach||null)},(window._bxGet?_bxGet():{})));
+    var r=await _api('/api/requests/'+d.projId+'/bids',{method:'POST',body:_bb});
+    if(r&&r.code==='email_unverified'&&window._evOpen){ if(_bb.length<4000000)_evSavePending('/api/requests/'+d.projId+'/bids',_bb); _closeBidConfirm();closeModal(); _evOpen({saved:_bb.length<4000000,onChange:_vbChange}); return; }
     if(r&&(r.id||r.request_id)){window._bidAttach=null;window._pendingBid=null;_closeBidConfirm();closeModal();showToast('تم إرسال عرضك بنجاح','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('bid'); },900); }catch(e){}loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
   }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
@@ -1494,13 +1495,14 @@ function _pfWallet(){
       body='<div class="pf-wal-msg">أرسلت إيصال السداد — تراجعه الإدارة وتعتمده قريباً.</div>';
     }else{
       st='ok'; pill='<span class="pf-wal-pill ok">ما عليك شي ✓</span>';
-      body='<div class="pf-wal-msg">ما عليك سعي مستحق حالياً. يظهر هنا عند قبول عرضك على مشروع.</div>';
+      body='<div class="pf-wal-msg">ما عليك سعي مستحق داخل المنصة. اتفقت مع عميل برا العروض؟ سدّد من الزر تحت.</div>';
     }
     box.className='pf-wal '+st;
     box.innerHTML='<div class="pf-wal-h"><span class="pf-wal-ic">'+I+'</span><div style="flex:1;min-width:0"><div class="pf-wal-t">محفظة السعي</div><div class="pf-wal-s">سعي المنصة 3% من مبلغ الاتفاق النهائي</div></div>'+pill+'</div>'
       +body
       +(items.length?'<div class="pf-wal-stats"><div><b>'+fmtN(d.contract_total||0)+'</b><span>إجمالي العقود</span></div><div><b class="g">'+fmtN(d.approved_total||0)+'</b><span>مدفوع ومعتمد</span></div><div><b class="b">'+pend.length+'</b><span>مشروع مستحق</span></div></div>':'')
-      +(unpaid.length?'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="gotoPage(\'saai\')">سدّد وارفع الإيصال</button></div>':'<div class="pf-wal-btns"><button class="pf-wal-b2 wide" onclick="gotoPage(\'saai\')">التفاصيل</button></div>');
+      +(unpaid.length?'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="gotoPage(\'saai\')">سدّد وارفع الإيصال</button></div>'
+        :'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="_spSelfOpen()">سدّد السعي</button></div><div style="font-size:11.5px;color:var(--muted);font-weight:700;text-align:center;margin-top:8px;line-height:1.7">اتفقت مع عميل من المنصة؟ سدّد سعيك هنا حتى لو ما قبل عرضك داخل المنصة</div>');
   }).catch(function(){ box.innerHTML=''; box.style.display='none'; });
 }
 function _pfGo(t){
@@ -1748,7 +1750,8 @@ function loadSaai(){
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
     }
-    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+list+'<div id="saai-bank"></div></div>';
+    var selfBtn='<button class="btn-new" style="width:100%;margin-bottom:14px;padding:13px;font-size:14px" onclick="_spSelfOpen()">سدّد سعي على مشروع ثاني</button><div style="font-size:11.5px;color:var(--muted);font-weight:700;text-align:center;margin:-8px 0 14px">اتفقت مع عميل والعرض ما انقبل داخل المنصة؟ سدّد من هنا</div>';
+    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+selfBtn+list+'<div id="saai-bank"></div></div>';
     // بيانات التحويل + الحاسبة (لمن يحوّل مباشرة)
     _api('/api/bank-info').then(function(bk){
       bk=bk||{}; var bx=_el('saai-bank'); if(!bx)return;
@@ -1814,6 +1817,55 @@ function _spRender(step, diff){
     +'<button type="button" id="saai-send" class="sd-send" onclick="submitSaai()">إرسال للاعتماد</button>'
     +(S.contract>0?'<button type="button" class="sd-x" onclick="_spRender(1)">رجوع</button>':'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button>')
     +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد الإرسال تراجع الإدارة الإيصال وتعتمد الاستلام.</div></div>';
+}
+// ═══ السداد الذاتي: يختار المشروع (من عروضه حتى المقفلة) أو يكتب اسمه ← المبلغ ← الإيصال ═══
+window._ss={rid:null,title:'',amt:0,list:[]};
+function _spSelfOpen(){
+  window._ss={rid:null,title:'',amt:0,list:null}; window._saaiProof=null;
+  var m=_el('saaiModal'); if(!m){ m=document.createElement('div'); m.id='saaiModal'; document.body.appendChild(m); }
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)';
+  m.onclick=function(e){ if(e.target===m) m.remove(); };
+  m.innerHTML='<div class="sd-box"><div class="sd-t">سداد السعي</div><div class="sd-s">جاري تحميل مشاريعك…</div></div>';
+  if(!window._bankInfo) _api('/api/bank-info').then(function(b){ window._bankInfo=b||{}; _ssRender(); }).catch(function(){});
+  _api('/api/provider/saai/projects').then(function(l){ window._ss.list=Array.isArray(l)?l:[]; _ssRender(); }).catch(function(){ window._ss.list=[]; _ssRender(); });
+}
+function _ssPick(i){
+  var S=window._ss; S.rid=null;
+  if(i>=0){ var x=S.list[i]; S.rid=x.id; if(!S.amt&&x.price_unit==='total'&&parseFloat(x.price)>0)S.amt=Math.round(parseFloat(x.price)); }
+  else S.rid=-1;
+  _ssRender();
+}
+function _ssRender(){
+  var m=_el('saaiModal'); var S=window._ss; if(!m||S.list===null)return;
+  var bk=window._bankInfo||{};
+  var st={open:'مفتوح',in_progress:'قيد التنفيذ',completed:'مكتمل'};
+  var rows=S.list.slice(0,12).map(function(x,i){ var on=S.rid===x.id;
+    var meta=(x.price?'عرضك '+fmtN(x.price)+(x.price_unit&&x.price_unit!=='total'?'/'+(x.price_unit==='meter'?'م':'وحدة'):''):'')+(x.city?' · '+_esc(x.city):'')+' · '+(st[x.status]||'انقفل');
+    return '<button type="button" class="sd-opt'+(on?' on':'')+'" onclick="_ssPick('+i+')"><span class="sd-rd"></span><span><b>'+_esc(x.title||'مشروع')+'</b><small>'+meta+'</small></span></button>'; }).join('');
+  var other=S.rid===-1;
+  m.innerHTML='<div class="sd-box" role="dialog" aria-label="سداد السعي"><div class="sd-t">على أي مشروع اتفقت؟</div><div class="sd-s">مشاريع قدّمت عليها — حتى لو انقفلت</div>'
+    +(rows||'<div class="sd-info">ما لقينا عروض لك في آخر 6 شهور — اكتب اسم المشروع تحت.</div>')
+    +'<button type="button" class="sd-opt'+(other?' on':'')+'" onclick="_ssPick(-1)"><span class="sd-rd"></span><span><b>مشروع ما هو في القائمة</b><small>اكتب اسمه ونربطه حنا</small></span></button>'
+    +(other?'<input id="ss-title" maxlength="120" placeholder="اسم المشروع أو العميل" value="'+_esc(S.title)+'" oninput="window._ss.title=this.value" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px">':'')
+    +(S.rid?'<div><label style="display:block;font-size:12.5px;font-weight:800;color:#334766;margin-bottom:6px">المبلغ اللي اتفقتوا عليه (ر.س)</label><input id="ss-amt" type="number" inputmode="numeric" value="'+(S.amt||'')+'" oninput="window._ss.amt=parseFloat(this.value)||0;var e=_el(\'ss-fee\');if(e)e.textContent=fmtN(Math.round(window._ss.amt*0.03))+\' ر.س\'" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:16px;font-weight:900"></div>'
+      +'<div style="background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px;text-align:center"><div style="font-size:12px;color:#1d4ed8;font-weight:800">السعي (3%)</div><div id="ss-fee" style="font-family:Cairo,sans-serif;font-size:22px;font-weight:900;color:#0f2544">'+fmtN(Math.round((S.amt||0)*0.03))+' ر.س</div></div>'
+      +(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')+'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span><button type="button" class="sd-ch" style="padding:4px 10px;font-size:11.5px" onclick="_copyTxt(\''+_esc(String(bk.iban).replace(/\'/g,''))+'\',this)">نسخ</button></div></div>':'')
+      +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">'+(window._saaiProof?'✓ تم إرفاق الإيصال':'ارفع إيصال التحويل')+'</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span><input type="file" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
+      +'<button type="button" id="ss-send" class="sd-send" onclick="_ssSend()">إرسال للاعتماد</button>'
+      +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد اعتماد الإدارة ينحسب المشروع لك وتقدر تطلب تقييم العميل</div>':'')
+    +'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button></div>';
+}
+function _ssSend(){
+  var S=window._ss, amt=Math.round(parseFloat(S.amt)||0);
+  if(S.rid===-1&&String(S.title||'').trim().length<3){ showToast('اكتب اسم المشروع','error'); return; }
+  if(amt<50){ showToast('أدخل المبلغ اللي اتفقتوا عليه','error'); return; }
+  if(!window._saaiProof){ showToast('ارفع إيصال التحويل','error'); return; }
+  var b=_el('ss-send'); if(b){b.disabled=true;b.textContent='جاري الإرسال...';}
+  var body={contract_value:amt,proof:window._saaiProof}; if(S.rid>0)body.request_id=S.rid; else body.title=S.title;
+  _api('/api/provider/saai/self',{method:'POST',body:JSON.stringify(body)}).then(function(d){
+    if(d&&d.ok){ showToast('وصل الإيصال — بانتظار اعتماد الإدارة','success'); var m=_el('saaiModal'); if(m)m.remove(); try{ if(_el('page-saai')&&_el('page-saai').offsetParent)loadSaai(); _pfWallet(); }catch(e){} }
+    else { showToast((d&&d.message)||'تعذّر الإرسال','error'); if(b){b.disabled=false;b.textContent='إرسال للاعتماد';} }
+  }).catch(function(){ showToast('تعذّر الإرسال','error'); if(b){b.disabled=false;b.textContent='إرسال للاعتماد';} });
 }
 function _spFee(){ var e=_el('sp-fee'); if(e)e.textContent=fmtN(Math.round((window._sp.amt||0)*0.03))+' ر.س'; }
 // ═══ العميل أجّل البدء أو ألغى الاتفاق ═══

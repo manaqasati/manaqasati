@@ -131,16 +131,15 @@ function _vbRender(){
   if(!u||u.email_verified!==false){b.style.display='none';return;}
   var em=u.email||'',mp=_vbMail(em),hid=false;
   try{hid=(+sessionStorage.getItem('mnq_vb_hide')||0)>0;}catch(e){}
-  b.className=hid?'vb-min':'';
+  b.className=''; // ما ينخفي: بدون التفعيل ما يقدر يقدّم/ينشر
   b.innerHTML='<div class="vb-full"><div class="vb-ic"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg><i></i></div>'
    +'<div class="vb-b"><div class="vb-t">باقي خطوة: فعّل بريدك</div>'
    +'<div class="vb-s">'+(em?'أرسلنا رابط التفعيل إلى <b>'+_vbEsc(em)+'</b>':'أرسلنا رابط التفعيل إلى بريدك')+'</div>'
    +'<div class="vb-n">بعد التفعيل، مشاريعك تنشر مباشرة بعد المراجعة</div>'
    +'<div class="vb-acts">'+(mp?'<a class="vb-btn vb-pri" href="'+mp[1]+'" target="_blank" rel="noopener">افتح '+mp[0]+' <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M7 17L17 7M8 7h9v9"/></svg></a>':'')
    +'<button class="vb-btn '+(mp?'vb-sec':'vb-pri')+'" id="verify-resend" onclick="resendVerify()">إعادة الإرسال</button>'
-   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div></div>'
-   +'<button class="vb-x" aria-label="إخفاء" onclick="_vbHide()">×</button></div>'
-   +'<div class="vb-slim" onclick="_vbShow()">بريدك ما تفعّل للحين<u>فعّله</u></div>';
+   +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div>'
+   +'<div style="display:flex;gap:8px;margin-top:10px;max-width:360px"><input id="vb-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="عندك الرمز؟ اكتبه هنا" style="flex:1;min-width:0;border:1.5px solid #dbe5f5;border-radius:11px;padding:10px 12px;font-family:inherit;font-size:15px;font-weight:800;text-align:center;direction:ltr"><button class="vb-btn vb-pri" onclick="_evCode(\'vb-code\',this)">تأكيد</button></div></div></div>';
   b.style.display='block';_vbTick();
 }
 function _vbHide(){try{sessionStorage.setItem('mnq_vb_hide','1');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='vb-min';}

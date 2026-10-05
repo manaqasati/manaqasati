@@ -1182,14 +1182,17 @@ async function _reallySubmitBidP(){
   var al=document.getElementById('bid-al');
   var btn=document.getElementById('bidConfirmBtnP');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
+    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null)},(window._bxGet?_bxGet():{})));
     var r=await fetch(API+'/api/requests/'+_rid+'/bids',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},
-      body:JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null)},(window._bxGet?_bxGet():{})))
+      body:_bb
     });
     var dd={};try{dd=await r.json();}catch(_j){dd={};}
+    if(dd&&dd.code==='email_unverified'&&window._evOpen){ if(_bb.length<4000000)_evSavePending('/api/requests/'+_rid+'/bids',_bb); _closeBidConfirmP(); closeBid(); _evOpen({saved:_bb.length<4000000,onChange:function(){location.href='/dashboard-provider.html#profile';}}); return; }
     if(r.ok){
       window._bidAttachP=null;window._pendingBidP=null;_closeBidConfirmP();
+      try{ localStorage.setItem('mnq_app_moment','bid'); }catch(_m){}
       if(al){al.textContent='تم إرسال عرضك بنجاح!';al.style.cssText='display:block;background:var(--green-l);color:var(--green)';}
       setTimeout(function(){closeBid();load();},1200);
     } else {

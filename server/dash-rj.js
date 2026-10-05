@@ -427,3 +427,92 @@ window._nsoMount=function(radioName){
     });
   };
 })();
+
+/* ═══ تفعيل البريد: حالة حقيقية من الخادم + نافذة واضحة + رمز 6 أرقام + العرض المعلّق يرسل بعد التفعيل ═══ */
+(function(){
+  var W=window, D=document;
+  function api(){ return (typeof W.API==='string'&&W.API)||''; }
+  function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function lu(){ try{return JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){return {};} }
+  function toast(m,t){ try{ if(typeof W.showToast==='function')return W.showToast(m,t); if(typeof W.toast==='function')return W.toast(m,t); }catch(e){} }
+  function mailApp(e){ e=String(e||'').toLowerCase(); var d=e.split('@')[1]||'';
+    if(/^(hotmail|outlook|live|msn)\./.test(d))return['Outlook','https://outlook.live.com/mail/'];
+    if(/^(gmail|googlemail)\./.test(d))return['Gmail','https://mail.google.com/'];
+    if(/^(icloud|me|mac)\./.test(d))return['iCloud','https://www.icloud.com/mail'];
+    if(/^yahoo\./.test(d))return['Yahoo','https://mail.yahoo.com/'];
+    return null; }
+  // يحدّث حالة التفعيل في كل مكان (الذاكرة + المتغيرات + البطاقة)
+  function apply(v,email){
+    try{ var u=lu(); var was=u.email_verified; u.email_verified=!!v; if(email)u.email=email; localStorage.setItem('user',JSON.stringify(u));
+      if(W._me&&typeof W._me==='object'){ W._me.email_verified=!!v; if(email)W._me.email=email; }
+      try{ if(typeof user!=='undefined'&&user&&typeof user==='object'){ user.email_verified=!!v; if(email)user.email=email; } }catch(e){}
+      try{ if(typeof W._vbRender==='function')W._vbRender(); }catch(e){}
+      if(v&&was===false){ var m=D.getElementById('evModal'); if(m)m.remove(); toast('تم تفعيل بريدك ✓','success'); sendPending(); }
+    }catch(e){}
+  }
+  var busy=false;
+  W._evSync=function(){
+    if(busy||!tok())return; busy=true;
+    fetch(api()+'/api/auth/verify-status',{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():null;})
+      .then(function(d){ busy=false; if(d&&typeof d.verified==='boolean')apply(d.verified,d.email); }).catch(function(){busy=false;});
+  };
+  // العرض اللي انحجز بسبب البريد ← يرسل تلقائياً بعد التفعيل
+  W._evSavePending=function(url,body){ try{ localStorage.setItem('mnq_pend_bid',JSON.stringify({url:url,body:body,t:Date.now()})); }catch(e){} };
+  function sendPending(){
+    var p=null; try{ p=JSON.parse(localStorage.getItem('mnq_pend_bid')||'null'); }catch(e){}
+    if(!p||!p.url||Date.now()-(p.t||0)>3*86400000){ try{localStorage.removeItem('mnq_pend_bid');}catch(e){} return; }
+    try{localStorage.removeItem('mnq_pend_bid');}catch(e){}
+    fetch(api()+p.url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:p.body})
+      .then(function(r){ return r.json().then(function(d){ if(r.ok)toast('تم إرسال عرضك المحفوظ ✓','success'); else toast((d&&d.message)||'تعذّر إرسال العرض المحفوظ — قدّمه من جديد','error'); }); }).catch(function(){});
+  }
+  W._evCode=function(inputId,btn){
+    var i=D.getElementById(inputId); var c=String((i&&i.value)||'').replace(/\D/g,'');
+    if(c.length!==6){ toast('اكتب الرمز (6 أرقام) من الإيميل','error'); if(i)i.focus(); return; }
+    if(btn){btn.disabled=true;btn.textContent='...';}
+    fetch(api()+'/api/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:JSON.stringify({code:c})})
+      .then(function(r){return r.json();}).then(function(d){
+        if(btn){btn.disabled=false;btn.textContent='تأكيد';}
+        if(d&&d.ok){ var u=lu(); u.email_verified=false; try{localStorage.setItem('user',JSON.stringify(u));}catch(e){} apply(true); }
+        else toast((d&&d.message)||'الرمز غير صحيح','error');
+      }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='تأكيد';} toast('تعذّر الاتصال','error'); });
+  };
+  var cd=0;
+  W._evResend=function(btn){
+    if(Date.now()<cd)return; if(btn){btn.disabled=true;btn.textContent='...جاري الإرسال';}
+    fetch(api()+'/api/auth/resend-verification',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:'{}'})
+      .then(function(r){return r.json();}).then(function(d){
+        if(d&&d.already){ var u=lu(); u.email_verified=false; try{localStorage.setItem('user',JSON.stringify(u));}catch(e){} apply(true); return; }
+        cd=Date.now()+60000; if(btn){btn.textContent='أرسلناه ✓ — شيك بريدك'; setTimeout(function(){btn.disabled=false;btn.textContent='إعادة الإرسال';},60000);}
+      }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='إعادة الإرسال';} toast('تعذّر الإرسال','error'); });
+  };
+  // نافذة «فعّل بريدك عشان يوصل عرضك»
+  W._evOpen=function(opt){
+    opt=opt||{}; var em=opt.email||lu().email||'', mp=mailApp(em);
+    var o=D.getElementById('evModal'); if(o)o.remove();
+    o=D.createElement('div'); o.id='evModal';
+    o.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center;font-family:Tajawal,sans-serif;direction:rtl';
+    var B='border:0;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:14.5px;cursor:pointer;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;display:block';
+    o.innerHTML='<div role="dialog" aria-label="فعّل بريدك" style="background:#fff;width:100%;max-width:460px;border-radius:24px 24px 0 0;padding:16px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;box-sizing:border-box;max-height:94vh;overflow:auto">'
+      +'<div style="width:42px;height:5px;border-radius:5px;background:#dbe3ef;margin:0 auto"></div>'
+      +'<div style="width:80px;height:80px;margin:2px auto 0;border-radius:24px;background:linear-gradient(135deg,#dbeafe,#eff6ff);display:flex;align-items:center;justify-content:center;position:relative"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><span style="position:absolute;top:-6px;left:-6px;width:26px;height:26px;border-radius:50%;background:#f59e0b;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;border:3px solid #fff">!</span></div>'
+      +'<b style="font-family:Cairo,sans-serif;font-size:19px;text-align:center;color:#0f2544">'+esc(opt.title||'فعّل بريدك عشان يوصل عرضك')+'</b>'
+      +'<div style="text-align:center;font-size:13.5px;font-weight:700;color:#475569;line-height:1.8">أرسلنا رابط التفعيل ورمز من 6 أرقام إلى<br><b style="color:#0f2544;direction:ltr;display:inline-block;word-break:break-all">'+esc(em)+'</b></div>'
+      +(opt.saved?'<div style="background:#ecfdf5;border:1.5px solid #a7f3d0;border-radius:13px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#065f46;text-align:center">✓ عرضك محفوظ — يرسل تلقائياً أول ما تفعّل</div>':'')
+      +(mp?'<a href="'+mp[1]+'" target="_blank" rel="noopener" style="'+B+';background:#1d4ed8;color:#fff">افتح '+mp[0]+' ↗</a>':'')
+      +'<div style="display:flex;gap:8px"><input id="ev-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="الرمز من الإيميل" style="flex:1;min-width:0;border:1.5px solid #dbe5f5;border-radius:12px;padding:12px;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:4px;text-align:center;direction:ltr"><button type="button" onclick="_evCode(\'ev-code\',this)" style="border:0;background:#0f2544;color:#fff;border-radius:12px;padding:0 18px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">تأكيد</button></div>'
+      +'<div style="display:flex;gap:9px"><button type="button" onclick="_evResend(this)" style="'+B+';flex:1;background:#fff;color:#1e3a8a;border:1.5px solid #dbe5f5">إعادة الإرسال</button>'
+      +(opt.onChange?'<button type="button" id="ev-chg" style="'+B+';flex:1;background:#fff;color:#1e3a8a;border:1.5px solid #dbe5f5">البريد غلط؟</button>':'')+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#64748b;text-align:center">ما لقيته؟ شيك على «الرسائل غير المرغوبة» — وإذا فعّلت من جوال ثاني نحدّث تلقائياً</div>'
+      +'<button type="button" id="ev-x" style="border:0;background:none;color:#64748b;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;padding:4px">لاحقاً</button></div>';
+    D.body.appendChild(o);
+    o.addEventListener('click',function(e){ if(e.target===o)o.remove(); });
+    D.getElementById('ev-x').onclick=function(){ o.remove(); };
+    var c=D.getElementById('ev-chg'); if(c)c.onclick=function(){ o.remove(); opt.onChange(); };
+  };
+  // نتحقق من الخادم عند الفتح وعند الرجوع للتطبيق (بعد ما يضغط الرابط في البريد)
+  function boot(){ if(lu().email_verified===false||D.getElementById('verify-banner'))W._evSync(); }
+  if(D.readyState==='complete')setTimeout(boot,600); else W.addEventListener('load',function(){setTimeout(boot,600);});
+  D.addEventListener('visibilitychange',function(){ if(D.visibilityState==='visible'&&lu().email_verified===false)W._evSync(); });
+  setInterval(function(){ if(D.visibilityState==='visible'&&lu().email_verified===false)W._evSync(); },30000);
+})();
