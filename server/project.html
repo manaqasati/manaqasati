@@ -656,7 +656,7 @@ function _bidScore(b){
 }
 // القرب: نفس المدينة ← نفس المنطقة ← الأقرب فالأبعد (المدينة غير المعروفة آخر شي)
 function _pxRank(b){ var p=(b.prox==null?3:b.prox); return p*100000+(p===2&&b.prox_km!=null?b.prox_km:0); }
-function _pxChip(b){ if(b.serves==='city')return '<span style="color:#0f766e;font-weight:800">📍 يخدم مدينتك'+(b.provider_city?' · مقره '+esc(b.provider_city):'')+'</span>'; if(b.serves==='all'&&b.prox!==0&&b.prox!==1)return '📍 يخدم كل المدن'+(b.provider_city?' · مقره '+esc(b.provider_city):''); if(b.prox===0)return '<span style="color:#15803d;font-weight:800">📍 من مدينتك</span>'; if(b.prox===1)return '<span style="color:#0f766e;font-weight:800">📍 من منطقتك'+(b.provider_city?' · '+esc(b.provider_city):'')+'</span>'; if(b.provider_city)return '📍 '+esc(b.provider_city)+(b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':''); return ''; }
+function _pxChip(b){ if(b.area_mode==='travel'&&b.prox===2)return '<span style="color:#c2410c;font-weight:800">📍 من '+esc(b.provider_city||'مدينة ثانية')+' · يقدر ينتقل لمدينتك</span>'; if(b.serves==='city')return '<span style="color:#0f766e;font-weight:800">📍 يخدم مدينتك'+(b.provider_city?' · مقره '+esc(b.provider_city):'')+'</span>'; if(b.serves==='all'&&b.prox!==0&&b.prox!==1)return '📍 يخدم كل المدن'+(b.provider_city?' · مقره '+esc(b.provider_city):''); if(b.prox===0)return '<span style="color:#15803d;font-weight:800">📍 من مدينتك</span>'; if(b.prox===1)return '<span style="color:#0f766e;font-weight:800">📍 من منطقتك'+(b.provider_city?' · '+esc(b.provider_city):'')+'</span>'; if(b.provider_city)return '📍 '+esc(b.provider_city)+(b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':''); return ''; }
 function _bestBid(){
   var c=_bids.filter(function(b){return b.status!=='rejected'&&!b.low_rank;});
   if(c.length<2)return null;
@@ -1115,6 +1115,7 @@ function openBid(){
   if(!u){goLogin();return;}
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
   if(_req&&_req.invite_locked){_pjToast('هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة',1);return;}
+  if(window._areaGate&&!window._agSkip&&!(_bids||[]).some(function(b){return b.is_mine;})){ _areaGate(getReqId(),function(){ window._agSkip=1; try{openBid();}finally{window._agSkip=0;} }); return; }
   document.getElementById('bidOverlay').classList.add('on');
   try{ if(window._bxMount)_bxMount(); }catch(e){}
   document.body.style.overflow='hidden';
@@ -1182,7 +1183,7 @@ async function _reallySubmitBidP(){
   var al=document.getElementById('bid-al');
   var btn=document.getElementById('bidConfirmBtnP');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
-    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null)},(window._bxGet?_bxGet():{})));
+    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),area_mode:(window._areaMode||null)},(window._bxGet?_bxGet():{})));
     var r=await fetch(API+'/api/requests/'+_rid+'/bids',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},

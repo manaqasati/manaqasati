@@ -516,3 +516,53 @@ window._nsoMount=function(radioName){
   D.addEventListener('visibilitychange',function(){ if(D.visibilityState==='visible'&&lu().email_verified===false)W._evSync(); });
   setInterval(function(){ if(D.visibilityState==='visible'&&lu().email_verified===false)W._evSync(); },30000);
 })();
+
+/* ═══ خارج المدينة: قبل ما يفتح نموذج العرض نسأله «تخدم مدينة المشروع؟» ═══ */
+(function(){
+  var W=window, D=document;
+  function api(){ return (typeof W.API==='string'&&W.API)||''; }
+  function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  W._areaMode=null;
+  // cb() يفتح النموذج — نناديه مباشرة لو المشروع في مدينته أو منطقته
+  W._areaGate=function(reqId, cb){
+    W._areaMode=null;
+    var done=false, go=function(){ if(!done){ done=true; cb(); } };
+    var t=setTimeout(go,2500); // لو الخادم بطيء ما نعطّله
+    fetch(api()+'/api/requests/'+reqId+'/area-check',{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():{};}).then(function(d){
+      if(done)return; clearTimeout(t);
+      if(!d||!d.out){ go(); return; }
+      done=true; sheet(d,cb);
+    }).catch(function(){ clearTimeout(t); go(); });
+  };
+  function sheet(d,cb){
+    var o=D.getElementById('areaGate'); if(o)o.remove();
+    o=D.createElement('div'); o.id='areaGate';
+    o.style.cssText='position:fixed;inset:0;z-index:10040;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center;font-family:Tajawal,sans-serif;direction:rtl';
+    var km=d.km?(Math.round(d.km/50)*50||d.km).toLocaleString('en-US'):'';
+    var B='border:0;border-radius:13px;padding:13px;font-family:inherit;font-weight:900;font-size:14.5px;cursor:pointer;width:100%;box-sizing:border-box';
+    var city=esc(d.req_city||'مدينة المشروع');
+    o.innerHTML='<div role="dialog" aria-label="المشروع خارج مدينتك" style="background:#fff;width:100%;max-width:460px;border-radius:24px 24px 0 0;padding:16px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;box-sizing:border-box">'
+      +'<div style="width:42px;height:5px;border-radius:5px;background:#dbe3ef;margin:0 auto"></div>'
+      +'<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 2px">'
+        +'<div style="text-align:center;min-width:76px"><div style="width:52px;height:52px;margin:0 auto;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:22px">🏢</div><div style="font-size:12px;font-weight:800;color:#64748b;margin-top:5px">'+esc(d.prov_city||'مدينتك')+' (أنت)</div></div>'
+        +'<div style="flex:1;max-width:120px;border-top:2.5px dashed #f59e0b;position:relative;margin-bottom:18px">'+(km?'<span style="position:absolute;top:-25px;right:50%;transform:translateX(50%);background:#fff7ed;color:#c2410c;font-size:12px;font-weight:900;border-radius:999px;padding:3px 10px;white-space:nowrap">≈ '+km+' كم</span>':'')+'</div>'
+        +'<div style="text-align:center;min-width:76px"><div style="width:52px;height:52px;margin:0 auto;border-radius:50%;background:#ffedd5;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div><div style="font-size:12px;font-weight:800;color:#64748b;margin-top:5px">'+city+' (المشروع)</div></div></div>'
+      +'<b style="font-family:Cairo,sans-serif;font-size:18px;text-align:center;color:#0f2544">هالمشروع خارج مدينتك</b>'
+      +'<div style="text-align:center;font-size:13.5px;font-weight:700;color:#475569;line-height:1.8">العملاء يفضّلون مزوّد قريب — تخدم '+city+'؟</div>'
+      +'<button type="button" data-a="yes" style="'+B+';background:#1d4ed8;color:#fff">نعم، أخدم '+city+'</button>'
+      +'<button type="button" data-a="travel" style="'+B+';background:#fff;color:#1e3a8a;border:1.5px solid #dbe5f5">أقدر أنتقل لهالمشروع بس</button>'
+      +'<button type="button" data-a="no" style="border:0;background:none;color:#94a3b8;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;padding:6px">لا، ما أخدمها</button>'
+      +'<div style="font-size:11.5px;font-weight:700;color:#94a3b8;text-align:center;line-height:1.7">«نعم» تضيف '+city+' لمدنك وتوصلك مشاريعها · «أنتقل» يطلع للعميل إنك من '+esc(d.prov_city||'مدينة ثانية')+' وتقدر تنتقل</div></div>';
+    D.body.appendChild(o);
+    o.addEventListener('click',function(e){
+      if(e.target===o){ o.remove(); return; }
+      var b=e.target.closest('button[data-a]'); if(!b)return; var a=b.getAttribute('data-a');
+      if(a==='no'){ o.remove(); return; }
+      if(a==='travel'){ W._areaMode='travel'; o.remove(); cb(); return; }
+      b.disabled=true; b.textContent='...';
+      fetch(api()+'/api/provider/service-city',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:JSON.stringify({city:d.req_city})})
+        .then(function(){ o.remove(); cb(); }).catch(function(){ o.remove(); cb(); });
+    });
+  }
+})();

@@ -785,7 +785,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN $3::boolean THEN (u.ask_penalty_until > NOW()) IS TRUE ELSE FALSE END as low_rank,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
-        b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url,
+        b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -2665,7 +2665,7 @@ async function setupDatabase() {
     // بروفايل الشركة (يرفعه المزوّد مرة وحدة) + اختيار إرفاقه وصور الأعمال مع كل عرض
     try { await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_url TEXT`); await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_name TEXT`); } catch(e){}
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_at TIMESTAMP`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_sent BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_unknown BOOLEAN DEFAULT FALSE`); } catch(e){}
-    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS show_profile BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_images TEXT[]`); } catch(e){}
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS show_profile BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_images TEXT[]`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS area_mode VARCHAR(10)`); } catch(e){}
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
     // طلب اعتماد العرض: المزوّد يطلب من العميل يعتمد عرضه داخل المنصة بعد ما اتفقوا
     await _mig(`CREATE TABLE IF NOT EXISTS bid_accept_asks (id SERIAL PRIMARY KEY, bid_id INTEGER UNIQUE NOT NULL, request_id INTEGER NOT NULL, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', sends INTEGER NOT NULL DEFAULT 1, last_sent_at TIMESTAMPTZ DEFAULT NOW(), responded_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -4433,7 +4433,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
-             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url,
+             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
@@ -4463,6 +4463,24 @@ const _CN_COLS=['client_note','client_note_at','client_note_seen_at','client_not
 function _stripClientNote(row){ if(row){ for(const k of _CN_COLS) delete row[k]; } return row; }
 function _matVal(v){ if(v==='yes'||v===true||v==='1') return 'yes'; if(v==='no'||v===false||v==='0') return 'no'; return null; }
 function _bidMinMsg(){ return 'اكتب سعرك الحقيقي للمشروع — أقل سعر إجمالي مقبول '+BID_MIN_TOTAL+' ريال. العميل يبي سعر واضح يقارن فيه. لو سعرك للمتر أو للقطعة، غيّر «نوع السعر».'; }
+// ═══ خارج المدينة: قبل تقديم العرض نسأل المزوّد إذا يخدم مدينة المشروع ═══
+app.get('/api/requests/:id/area-check', auth, async (req, res) => {
+  try {
+    const rq = (await pool.query('SELECT city FROM requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
+    const u = (await pool.query('SELECT city, service_cities, COALESCE(serves_all_cities,FALSE) AS sa FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (!rq || !u || !rq.city) return res.json({ out: false });
+    const px = _proximity(rq.city, u.city, u.service_cities, u.sa);
+    res.json({ out: px.prox === 2 && !px.serves, req_city: _cityNorm(rq.city), prov_city: u.city || null, km: px.prox_km });
+  } catch(e) { res.json({ out: false }); }
+});
+app.post('/api/provider/service-city', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    const c = _cityNorm(_cleanTxt(req.body.city || '', 40)); if (!c) return res.status(400).json({ message: 'المدينة مطلوبة' });
+    await pool.query(`UPDATE users SET service_cities = CASE WHEN $1 = ANY(COALESCE(service_cities,ARRAY[]::text[])) THEN service_cities ELSE (COALESCE(service_cities,ARRAY[]::text[]) || ARRAY[$1::text])[1:30] END WHERE id=$2`, [c, req.user.id]);
+    res.json({ ok: true, city: c });
+  } catch(e) { console.error('service-city:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
 // إضافات العرض: إرفاق بروفايل الشركة + صور من مشاريع سابقة (روابط من ملفه أو صور جديدة)
 async function _bidExtras(bidId, providerId, body){
   try {
@@ -4470,6 +4488,7 @@ async function _bidExtras(bidId, providerId, body){
       const has = (await pool.query('SELECT company_profile_url FROM users WHERE id=$1', [providerId])).rows[0];
       await pool.query('UPDATE bids SET show_profile=$1 WHERE id=$2', [!!body.show_profile && !!(has && has.company_profile_url), bidId]);
     }
+    if (body.area_mode !== undefined) await pool.query('UPDATE bids SET area_mode=$1 WHERE id=$2', [body.area_mode === 'travel' ? 'travel' : null, bidId]);
     if (Array.isArray(body.work_images)) {
       const out = [];
       for (const im of body.work_images.slice(0, 6)) {
