@@ -1264,7 +1264,7 @@ app.get('/og/card/:token', async (req, res) => {
     const avg = parseFloat(p.rating)||0;
     const initial = esc((String(p.name||'?').trim()[0])||'م');
     const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#0ea5e9"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.55)" text-anchor="middle">بطاقة رقمية · مناقصة</text><circle cx="600" cy="235" r="72" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" stroke-width="4"/><text x="600" y="235" font-family="Arial" font-size="70" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">${initial}</text><text x="600" y="380" font-family="Arial" font-size="64" font-weight="bold" fill="#fff" text-anchor="middle">${name}</text><text x="600" y="450" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.85)" text-anchor="middle">${specs}</text>${avg>0?`<text x="600" y="520" font-family="Arial" font-size="34" fill="#7dd3fc" text-anchor="middle">★ ${avg.toFixed(1)}</text>`:''}<text x="600" y="585" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.4)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+    _sendOg(res, svg, null);
   }catch(e){ res.status(500).send('error'); }
 });
 
@@ -6206,7 +6206,7 @@ app.get('/api/providers', async (req, res) => {
 app.get('/api/providers/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,tier,bio,profile_image,experience_years,portfolio_images,business_name,last_active,last_bumped_at,created_at,website,location_url,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
+    const r = await pool.query(`SELECT id,name,phone,city,specialties,notify_categories,badge,tier,bio,profile_image,experience_years,portfolio_images,business_name,company_profile_url,company_profile_name,last_active,last_bumped_at,created_at,website,location_url,instagram,twitter,snapchat,tiktok,youtube,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const prov = r.rows[0];
     // اعرض كل الصور (base64 أو http)
@@ -9426,22 +9426,150 @@ app.get('/og/project/:id', async (req, res) => {
     const cat = esc(p.category||'مشروع');
     const city = esc(p.city||'السعودية');
     const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="110" font-family="Arial" font-size="30" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><rect x="410" y="150" width="380" height="56" rx="28" fill="rgba(201,146,10,0.18)" stroke="#C9920A" stroke-width="1.5"/><text x="600" y="188" font-family="Arial" font-size="30" fill="#C9920A" text-anchor="middle">${cat}</text><text x="600" y="315" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l1)}</text>${l2?`<text x="600" y="388" font-family="Arial" font-size="58" font-weight="bold" fill="#ffffff" text-anchor="middle">${esc(l2)}</text>`:''}<text x="600" y="478" font-family="Arial" font-size="34" fill="rgba(255,255,255,0.7)" text-anchor="middle">${city}</text><text x="600" y="558" font-family="Arial" font-size="32" font-weight="bold" fill="#7dd3fc" text-anchor="middle">قدّم عرضك الآن</text><text x="600" y="598" font-family="Arial" font-size="20" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
+    _sendOg(res, svg, null);
   } catch(e) { res.status(500).end(); }
 });
 
+// ═══ صور المشاركة (واتساب/إكس/تيك توك) — PNG حقيقي: المنصات ما تعرض SVG في معاينة الروابط ═══
+let _Resvg = null, _QR = null, _OG_FONTS = [];
+try { _Resvg = require('@resvg/resvg-js').Resvg; } catch(e) { console.warn('resvg غير مثبّت — صور المشاركة ترجع SVG'); }
+try { _QR = require('qrcode'); } catch(e) {}
+try { const fd = require('path').dirname(require.resolve('@expo-google-fonts/cairo/package.json')); _OG_FONTS = ['900Black/Cairo_900Black.ttf','700Bold/Cairo_700Bold.ttf','600SemiBold/Cairo_600SemiBold.ttf'].map(f => fd + '/' + f); } catch(e) {}
+const _ogCache = new Map(); // key → {at, buf, type}
+function _svgToPng(svg){
+  if (!_Resvg || !_OG_FONTS.length) return null;
+  try { return new _Resvg(svg, { font: { fontFiles: _OG_FONTS, loadSystemFonts: false, defaultFontFamily: 'Cairo' } }).render().asPng(); } catch(e) { console.error('og render:', e.message); return null; }
+}
+function _sendOg(res, svg, key){
+  const c = key && _ogCache.get(key);
+  if (c && Date.now() - c.at < 6 * 3600000) { res.header('Content-Type', c.type); res.header('Cache-Control','public, max-age=3600'); return res.send(c.buf); }
+  const png = _svgToPng(svg);
+  const out = png ? { buf: png, type: 'image/png' } : { buf: svg, type: 'image/svg+xml' };
+  if (key) { if (_ogCache.size > 400) _ogCache.clear(); _ogCache.set(key, Object.assign({ at: Date.now() }, out)); }
+  res.header('Content-Type', out.type); res.header('Cache-Control','public, max-age=3600');
+  if (!png) res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:");
+  res.send(out.buf);
+}
+async function _ogQr(url){
+  if (!_QR) return '';
+  try { const s = await _QR.toString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#0b1f4d', light: '#ffffff' } });
+    const vb = (s.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 33 33'; const paths = s.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+    return { vb, paths };
+  } catch(e) { return ''; }
+}
+// صورة المزوّد كـ data URI (الصور على R2) — ما نعطّل الرسم لو تأخرت
+async function _ogImg(u){
+  try {
+    if (!u) return null; u = String(u);
+    if (/^data:image\/(png|jpe?g);base64,/i.test(u)) return u.length < 3000000 ? u : null;
+    if (!/^https:\/\//i.test(u)) return null;
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 3000);
+    const r = await fetch(u, { signal: ctl.signal }); clearTimeout(t);
+    if (!r.ok) return null; const ct = String(r.headers.get('content-type')||'').toLowerCase();
+    if (!/image\/(png|jpe?g)/.test(ct)) return null;
+    const b = Buffer.from(await r.arrayBuffer()); if (b.length > 2500000) return null;
+    return 'data:' + ct.split(';')[0] + ';base64,' + b.toString('base64');
+  } catch(e) { return null; }
+}
+function _ogFit(text, maxW, big, small){ // حجم الخط حسب طول الاسم (تقدير عرض Cairo)
+  const n = [...String(text)].length || 1; let fs = big;
+  while (fs > small && n * fs * 0.58 > maxW) fs -= 2;
+  return fs;
+}
+function _ogLines(text, maxW, fs){ // سطرين لو الاسم طويل
+  const words = String(text).split(/\s+/); if ([...text].length * fs * 0.58 <= maxW) return [text];
+  let a = '', b = ''; for (const w of words) { if (!b && ([...(a + ' ' + w)].length * fs * 0.58 <= maxW || !a)) a = a ? a + ' ' + w : w; else b = b ? b + ' ' + w : w; }
+  return b ? [a, b] : [a];
+}
+const _STAR = (x, y, s, f) => `<path transform="translate(${x},${y}) scale(${s/24})" d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z" fill="${f}"/>`;
+async function _ogProData(id){
+  const r = await pool.query(`SELECT u.id, u.name, u.business_name, u.city, u.specialties, u.profile_image, u.experience_years, u.bio,
+      COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=u.id),0)::float AS avg, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0)::int AS rc,
+      (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=u.id AND status='completed')::int AS done, COALESCE(u.badge,'') AS badge
+    FROM users u WHERE u.id=$1 AND u.role='provider'`, [id]);
+  const x = r.rows[0]; if (!x) return null;
+  x.vrf = x.badge === 'verified' || x.badge === 'موثق' || !!(x.profile_image && x.bio && (x.specialties||[]).length && (x.done + x.rc) >= 3);
+  return x;
+}
+function _ogEsc(s){ return String(s==null?'':s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+// الصورة العريضة 1200×630 (معاينة الرابط)
 app.get('/og/pro/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT name, business_name, city, specialties, avg_rating, review_count FROM users LEFT JOIN LATERAL (SELECT COALESCE(AVG(rating),0)::float as avg_rating, COUNT(*)::int as review_count FROM reviews WHERE reviewed_id=users.id) rv ON true WHERE id=$1 AND role='provider'`, [id]);
-    if (!r.rows.length) return res.status(404).send('Not found');
-    const _e = s => String(s==null?'':s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
-    const p=r.rows[0]; const name=_e(String(p.business_name||p.name||'مزود').slice(0,60)); const city=_e(p.city||'السعودية');
-    const specs=_e((p.specialties||[]).slice(0,2).join(' · ')); const avg=parseFloat(p.avg_rating)||0;
-    const stars='★';
-    const svg=`<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#0D1829"/><stop offset="100%" style="stop-color:#16213E"/></linearGradient></defs><rect width="1200" height="630" fill="url(#bg)"/><rect x="0" y="620" width="1200" height="10" fill="#C9920A"/><text x="600" y="120" font-family="Arial" font-size="32" fill="rgba(255,255,255,0.4)" text-anchor="middle">مناقصة — منصة المشاريع والخدمات</text><text x="600" y="280" font-family="Arial" font-size="72" font-weight="bold" fill="white" text-anchor="middle">${name}</text><text x="600" y="360" font-family="Arial" font-size="36" fill="#C9920A" text-anchor="middle">${specs||'مزود خدمة'}</text><text x="600" y="430" font-family="Arial" font-size="28" fill="rgba(255,255,255,0.6)" text-anchor="middle">${city}</text>${avg>0?`<text x="600" y="500" font-family="Arial" font-size="32" fill="#C9920A" text-anchor="middle">${stars} ${avg.toFixed(1)}</text>`:''}<text x="600" y="580" font-family="Arial" font-size="22" fill="rgba(255,255,255,0.3)" text-anchor="middle">manaqasa.com</text></svg>`;
-    res.header('Content-Type','image/svg+xml'); res.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"); res.header('Cache-Control','public, max-age=3600'); res.send(svg);
-  } catch(e) { res.status(500).send('error'); }
+    const id = parseInt(req.params.id); const p = await _ogProData(id);
+    if (!p) return res.status(404).send('Not found');
+    const url = SITE_URL + '/pro/' + id, key = 'pro:' + id;
+    const c = _ogCache.get(key); if (c && Date.now() - c.at < 6 * 3600000) return _sendOg(res, '', key);
+    const nm = String(p.business_name || p.name || 'مزوّد').trim().slice(0, 70);
+    const specs = (p.specialties || []).slice(0, 3).join(' · ');
+    const img = await _ogImg(p.profile_image); const qr = await _ogQr(url);
+    const fs = _ogFit(nm, 470, 58, 38), lines = _ogLines(nm, 490, fs);
+    const ny = 262;
+    const pill = (x, w, label, val, starOn) => `<g transform="translate(${x},446)"><rect width="${w}" height="88" rx="20" fill="#ffffff" fill-opacity=".08" stroke="#ffffff" stroke-opacity=".14"/><text x="${w-22}" y="40" text-anchor="end" font-family="Cairo" font-weight="900" font-size="32" fill="#fff">${val}</text>${starOn ? _STAR(22, 18, 30, '#f5b301') : ''}<text x="${w-22}" y="72" text-anchor="end" font-family="Cairo" font-weight="600" font-size="19" fill="#9fb3e0">${label}</text></g>`;
+    const rating = p.rc ? (Math.round(p.avg * 10) / 10).toFixed(1) : 'جديد';
+    const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs><linearGradient id="bg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1f4d"/><stop offset=".6" stop-color="#132a63"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient>
+<radialGradient id="gl" cx=".85" cy=".1" r=".6"><stop offset="0" stop-color="#60a5fa" stop-opacity=".35"/><stop offset="1" stop-color="#60a5fa" stop-opacity="0"/></radialGradient>
+<linearGradient id="gd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f5b301"/><stop offset="1" stop-color="#fcd34d"/></linearGradient>
+<clipPath id="av"><rect x="1000" y="70" width="140" height="140" rx="36"/></clipPath></defs>
+<rect width="1200" height="630" fill="url(#bg)"/><rect width="1200" height="630" fill="url(#gl)"/>
+<g stroke="#ffffff" stroke-opacity=".05" stroke-width="2">${Array.from({length:14},(_,k)=>`<line x1="${-200+k*110}" y1="630" x2="${200+k*110}" y2="0"/>`).join('')}</g>
+<rect x="1000" y="70" width="140" height="140" rx="36" fill="#fff"/>
+${img ? `<image x="1000" y="70" width="140" height="140" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)" xlink:href="${img}" href="${img}"/>` : `<text x="1070" y="168" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="72" fill="#1e3a8a">${_ogEsc([...nm][0]||'م')}</text>`}
+${p.vrf ? `<circle cx="1132" cy="202" r="20" fill="#1d4ed8" stroke="#fff" stroke-width="4"/><path d="M1123 202l6 6 12-12" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+<text x="970" y="104" text-anchor="end" font-family="Cairo" font-weight="700" font-size="22" fill="#9fb3e0">${p.vrf ? 'مزوّد موثّق على منصة مناقصة' : 'على منصة مناقصة'}</text>
+${lines.map((l, k) => `<text x="970" y="${ny + k * (fs + 12) - 100}" text-anchor="end" font-family="Cairo" font-weight="900" font-size="${fs}" fill="#fff">${_ogEsc(l)}</text>`).join('')}
+${specs ? `<text x="1140" y="${ny - 100 + (lines.length - 1) * (fs + 12) + 66}" text-anchor="end" font-family="Cairo" font-weight="700" font-size="28" fill="url(#gd)">${_ogEsc(specs)}</text>` : ''}
+<text x="1140" y="${ny - 100 + (lines.length - 1) * (fs + 12) + 110}" text-anchor="end" font-family="Cairo" font-weight="600" font-size="24" fill="#c9d8ff">${_ogEsc(p.city || 'السعودية')}</text>
+${pill(940, 200, p.rc ? p.rc + ' تقييم' : 'التقييم', rating, true)}${pill(724, 200, 'مشروع منجز', String(p.done || 0), false)}${p.experience_years ? pill(508, 200, 'سنة خبرة', String(parseInt(p.experience_years)), false) : ''}
+<g transform="translate(60,70)"><rect width="370" height="470" rx="32" fill="#ffffff"/>
+${qr ? `<svg x="55" y="46" width="260" height="260" viewBox="${qr.vb}">${qr.paths}</svg>` : ''}
+<text x="185" y="356" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="27" fill="#0b1f4d">امسح وشوف أعمالنا</text>
+<text x="185" y="394" text-anchor="middle" font-family="Cairo" font-weight="600" font-size="19" fill="#64748b">وتقييمات عملائنا الحقيقية</text>
+<rect x="40" y="420" width="290" height="2" fill="#e3e9f3"/><text x="185" y="455" text-anchor="middle" font-family="Cairo" font-weight="700" font-size="18" fill="#1d4ed8">manaqasa.com/pro/${id}</text></g>
+<g transform="translate(1140,582)"><text x="0" y="0" text-anchor="end" font-family="Cairo" font-weight="900" font-size="30" fill="#fff">مناقصة</text><circle cx="-118" cy="-10" r="7" fill="#38bdf8"/><text x="-140" y="0" text-anchor="end" font-family="Cairo" font-weight="600" font-size="19" fill="#9fb3e0">منصة المشاريع والخدمات</text></g>
+<rect y="618" width="1200" height="12" fill="url(#gd)"/></svg>`;
+    _sendOg(res, svg, key);
+  } catch(e) { console.error('og pro:', e.message); res.status(500).send('error'); }
+});
+// صورة ستوري 1080×1920 (تيك توك/سناب/انستقرام) — فيها QR كبير لأن الروابط ما تنضغط هناك
+app.get('/og/pro/:id/story', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const p = await _ogProData(id);
+    if (!p) return res.status(404).send('Not found');
+    const url = SITE_URL + '/pro/' + id + '?ref=story', key = 'story:' + id;
+    const c = _ogCache.get(key); if (c && Date.now() - c.at < 6 * 3600000) { if (req.query.dl) res.header('Content-Disposition', 'attachment; filename="manaqasa-' + id + '.png"'); return _sendOg(res, '', key); }
+    const nm = String(p.business_name || p.name || 'مزوّد').trim().slice(0, 70);
+    const specs = (p.specialties || []).slice(0, 3).join(' · ');
+    const img = await _ogImg(p.profile_image); const qr = await _ogQr(url);
+    const fs = _ogFit(nm, 900, 80, 50), lines = _ogLines(nm, 940, fs);
+    const rating = p.rc ? (Math.round(p.avg * 10) / 10).toFixed(1) : 'جديد';
+    const ty = 760 + (lines.length - 1) * (fs + 12);
+    const st = (cx, val, label, star) => `<g transform="translate(${cx},0)"><text x="0" y="${ty + 236}" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="64" fill="#fff">${val}</text>${star ? _STAR(-118, ty + 186, 52, '#f5b301') : ''}<text x="0" y="${ty + 286}" text-anchor="middle" font-family="Cairo" font-weight="600" font-size="30" fill="#9fb3e0">${label}</text></g>`;
+    const svg = `<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1f4d"/><stop offset=".55" stop-color="#132a63"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient>
+<radialGradient id="gl" cx=".5" cy=".18" r=".5"><stop offset="0" stop-color="#60a5fa" stop-opacity=".4"/><stop offset="1" stop-color="#60a5fa" stop-opacity="0"/></radialGradient>
+<linearGradient id="gd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f5b301"/><stop offset="1" stop-color="#fcd34d"/></linearGradient>
+<clipPath id="av"><rect x="390" y="300" width="300" height="300" rx="76"/></clipPath></defs>
+<rect width="1080" height="1920" fill="url(#bg)"/><rect width="1080" height="1920" fill="url(#gl)"/>
+<g stroke="#ffffff" stroke-opacity=".045" stroke-width="2">${Array.from({length:22},(_,k)=>`<line x1="${-900+k*110}" y1="1920" x2="${100+k*110}" y2="0"/>`).join('')}</g>
+<text x="540" y="160" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="52" fill="#fff">مناقصة</text>
+<text x="540" y="214" text-anchor="middle" font-family="Cairo" font-weight="600" font-size="28" fill="#9fb3e0">منصة المشاريع والخدمات</text>
+<rect x="382" y="292" width="316" height="316" rx="82" fill="#ffffff" fill-opacity=".15"/><rect x="390" y="300" width="300" height="300" rx="76" fill="#fff"/>
+${img ? `<image x="390" y="300" width="300" height="300" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)" xlink:href="${img}" href="${img}"/>` : `<text x="540" y="500" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="150" fill="#1e3a8a">${_ogEsc([...nm][0]||'م')}</text>`}
+${p.vrf ? `<circle cx="672" cy="590" r="38" fill="#1d4ed8" stroke="#fff" stroke-width="7"/><path d="M655 590l11 11 22-22" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+${lines.map((l, k) => `<text x="540" y="${740 + k * (fs + 12)}" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="${fs}" fill="#fff">${_ogEsc(l)}</text>`).join('')}
+${specs ? `<text x="540" y="${ty + 70}" text-anchor="middle" font-family="Cairo" font-weight="700" font-size="40" fill="url(#gd)">${_ogEsc(specs)}</text>` : ''}
+<text x="540" y="${ty + 128}" text-anchor="middle" font-family="Cairo" font-weight="600" font-size="34" fill="#c9d8ff">${_ogEsc(p.city || 'السعودية')}</text>
+${st(810, rating, p.rc ? p.rc + ' تقييم' : 'التقييم', true)}${st(540, String(p.done || 0), 'مشروع منجز', false)}${st(270, p.experience_years ? String(parseInt(p.experience_years)) : '—', 'سنة خبرة', false)}
+<g transform="translate(240,${ty + 360})"><rect width="600" height="640" rx="48" fill="#fff"/>
+${qr ? `<svg x="90" y="70" width="420" height="420" viewBox="${qr.vb}">${qr.paths}</svg>` : ''}
+<text x="300" y="560" text-anchor="middle" font-family="Cairo" font-weight="900" font-size="40" fill="#0b1f4d">امسح وشوف أعمالنا</text>
+<text x="300" y="606" text-anchor="middle" font-family="Cairo" font-weight="600" font-size="28" fill="#64748b">واطلب عرض سعر مباشرة</text></g>
+<text x="540" y="${Math.min(1850, ty + 1080)}" text-anchor="middle" font-family="Cairo" font-weight="700" font-size="32" fill="#c9d8ff">manaqasa.com/pro/${id}</text>
+<rect y="1900" width="1080" height="20" fill="url(#gd)"/></svg>`;
+    if (req.query.dl) res.header('Content-Disposition', 'attachment; filename="manaqasa-' + id + '.png"');
+    _sendOg(res, svg, key);
+  } catch(e) { console.error('og story:', e.message); res.status(500).send('error'); }
 });
 
 app.get('/sitemap.xml', async (req, res) => {

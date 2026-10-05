@@ -135,6 +135,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.ok{background:var(--green)}
 #toast.err{background:var(--red)}
+/* ── الكمبيوتر: القائمة يمين والمحادثة جنبها ── */
+#dkEmpty{display:none}
+@media(min-width:1024px){
+  #app{flex-direction:row;gap:16px;padding:18px;background:#eef3fb;box-sizing:border-box}
+  #scList{display:flex!important;flex:0 0 380px;border-radius:20px;border:1px solid var(--border);overflow:hidden;background:var(--white,#fff)}
+  #scChat,#scNew{flex:1 1 auto;border-radius:20px;border:1px solid var(--border);overflow:hidden;background:var(--white,#fff)}
+  #scChat:not(.on),#scNew:not(.on){display:none}
+  #dkEmpty{display:flex;flex:1 1 auto;border-radius:20px;border:1px dashed #c9d6ea;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#64748b;font-weight:800;font-size:15px;background:rgba(255,255,255,.5)}
+  #scChat.on~#dkEmpty,#scNew.on~#dkEmpty{display:none}
+  #scChat .hd .hd-btn:first-child{display:none}
+  .conv.dk-on{background:#eff6ff!important}
+}
+[data-theme="dark"] #app{background:#0b1220}
 </style>
 </head>
 <body>
@@ -206,6 +219,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
       <button onclick="stopRec(true)" title="إرسال" style="background:var(--p);border:none;cursor:pointer;color:#fff;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" style="transform:scaleX(-1)"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
     </div>
   </div>
+  <div id="dkEmpty"><div style="font-size:44px">💬</div>اختر محادثة من القائمة</div>
 </div>
 
 <div id="sheet" onclick="if(event.target===this)closeSheet()"></div>
@@ -388,6 +402,7 @@ function startNew(provId,provName){
 
 /* ═══ فتح محادثة ═══ */
 function openChat(reqId,withId,name,proj){
+  try{ [].forEach.call(document.querySelectorAll('.conv'),function(e){ e.classList.toggle('dk-on', (e.getAttribute('onclick')||'').indexOf('openChat('+reqId+','+withId+',')===0); }); }catch(_e){}
   window._recovered=false; _msgsSig='';
   curReq=reqId; curWith=withId; curName=name||''; curProj=proj||''; window._remindedBid=false;
   var _bb=document.getElementById('bidBar');
@@ -467,7 +482,25 @@ function loadMsgs(silent){
     if(!silent&&!msgs.length)document.getElementById('msgs').innerHTML='<div class="empty"><div class="empty-ic">📡</div><div class="empty-t">تعذّر التحميل</div><button onclick="loadMsgs()" style="margin-top:12px;background:var(--p);color:#fff;border:none;padding:9px 22px;border-radius:10px;font-family:inherit;font-weight:800;cursor:pointer">حاول مجدداً</button></div>';
   });
 }
+// المزوّد كتب للعميل ومرّ يوم بدون رد، ورقمه مفتوح له ← «كلّمه واتساب أسرع»
+var _nrBids=null;
+function _noReplyNudge(){
+  var ex=document.getElementById('nrBar'), ib=document.getElementById('inputBar'); if(!ib)return;
+  if(!isProvider){ if(ex)ex.remove(); return; }
+  if(_nrBids===null){ _nrBids=[]; api('/api/provider/bids').then(function(b){ _nrBids=Array.isArray(b)?b:[]; _noReplyNudge(); }).catch(function(){}); return; }
+  var real=(msgs||[]).filter(function(m){return m&&m.id!=null&&String(m.id).indexOf('tmp_')!==0;}), last=real[real.length-1];
+  var bid=_nrBids.filter(function(b){return String(b.request_id)===String(curReq)&&b.contact_unlocked&&b.client_phone;})[0];
+  var show=!!(last&&bid&&String(last.sender_id)===String(user.id)&&(Date.now()-new Date(last.created_at).getTime())>24*3600000);
+  if(!show){ if(ex)ex.remove(); return; } if(ex)return;
+  var pc=String(bid.client_phone).replace(/[^0-9]/g,''); var wn=pc.indexOf('966')===0?pc:(pc.indexOf('0')===0?'966'+pc.slice(1):'966'+pc);
+  var wt='مرحباً '+(bid.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(bid.request_title||'');
+  var d=document.createElement('div'); d.id='nrBar';
+  d.style.cssText='flex:0 0 auto;display:flex;align-items:center;gap:10px;background:#fffbeb;border-top:1px solid #fde68a;padding:9px 14px';
+  d.innerHTML='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:900;color:#92400e">العميل ما رد؟ رقمه عندك</div><div style="font-size:11.5px;font-weight:700;color:#92400e">كلّمه واتساب — أسرع</div></div><a href="https://wa.me/'+wn+'?text='+encodeURIComponent(wt)+'" target="_blank" rel="noopener" style="background:#25d366;color:#fff;border-radius:10px;padding:9px 16px;font-weight:900;font-size:13px;text-decoration:none">واتساب</a>';
+  ib.parentNode.insertBefore(d,ib);
+}
 function renderMsgs(scroll){
+  setTimeout(_noReplyNudge,0);
   var el=document.getElementById('msgs'); if(!el)return;
   if(!msgs.length){
     el.innerHTML='<div class="empty"><div class="empty-ic">💬</div><div class="empty-t">ابدأ المحادثة</div><div>'+(isProvider?'وضّح عرضك أو اسأل عن تفاصيل المشروع':'اسأل عن التفاصيل، الأسعار، أو موعد التنفيذ')+'</div></div>';

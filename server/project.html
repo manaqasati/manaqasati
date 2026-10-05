@@ -42,6 +42,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .cover-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,var(--sky),transparent)}
 /* PROFILE TOP */
 .wrap{max-width:680px;margin:0 auto;padding:0 16px}
+@media(min-width:1100px){.wrap{max-width:1180px}.pj-grid{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:18px;align-items:start}.pj-main,.pj-rail{display:flex;flex-direction:column;gap:12px;min-width:0}.pj-rail{position:sticky;top:76px}.pj-rail>*{margin:0!important}}
 .profile-top{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-48px;margin-bottom:14px;gap:10px;flex-wrap:wrap;position:relative;z-index:2}
 .proj-icon{width:96px;height:96px;border-radius:16px;border:4px solid #fff;background:linear-gradient(135deg,#172554,#1e3a8a);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:var(--shadow-md);flex-shrink:0;overflow:hidden}
 .proj-icon img{width:100%;height:100%;object-fit:cover}
@@ -888,7 +889,7 @@ function _pjClientHtml(req){
   var since=client.member_since?new Date(client.member_since).getFullYear():'';
   var ls=client.last_seen?Math.floor((Date.now()-new Date(client.last_seen))/60000):null;
   var act=ls===null?'':(ls<60?'نشط الآن':(ls<1440?'نشط اليوم':(ls<10080?'نشط هذا الأسبوع':'')));
-  var h='<div class="pj-card"><div class="pj-h">صاحب المشروع</div>';
+  var h='<div class="pj-card pj-r"><div class="pj-h">صاحب المشروع</div>';
   h+='<div style="display:flex;align-items:center;gap:11px"><span class="pj-cav">'+(isImg(client.profile_image)?'<img src="'+esc(client.profile_image)+'" alt="">':esc(nm.charAt(0)))+'</span><div style="flex:1;min-width:0"><b style="font-size:15px">'+esc(nm)+'</b><div class="pj-bs">'+[since?'عضو منذ '+since:'',act,client.city?esc(client.city):''].filter(Boolean).join(' · ')+'</div></div>'+badge+'</div>';
   h+='<div class="pj-m three"><div><b>'+posted+'</b><span>مشاريع نشرها</span></div><div><b style="color:#15803d">'+chosen+'</b><span>اختار فيها مزوّد</span></div><div><b>'+(posted?Math.round(chosen/posted*100)+'%':'—')+'</b><span>نسبة الاختيار</span></div></div>';
   if(clientPhone){
@@ -903,7 +904,7 @@ function _pjClientHtml(req){
 function _pjMyBidHtml(req){
   var b=_bids.filter(function(x){return x.is_mine;})[0];if(!b)return '';
   var st=b.status||'pending';
-  var h='<div class="pj-card" style="border:2px solid #1d4ed8"><div class="pj-h">عرضك على هذا المشروع</div>';
+  var h='<div class="pj-card pj-r" style="border:2px solid #1d4ed8"><div class="pj-h">عرضك على هذا المشروع</div>';
   h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="pj-pr" style="font-size:24px">'+fmtN(b.price)+' <small>ر.س'+((b.price_unit||'total')!=='total'?' '+_unitLabel(b.price_unit):'')+'</small></div>';
   if(st==='accepted')h+='<span class="pj-pill" style="background:#16a34a;color:#fff;margin-right:auto">🎉 العميل اختار عرضك</span>';
   else if(st==='rejected')h+='<span class="pj-pill" style="background:#fef2f2;color:#b91c1c;margin-right:auto">لم يُختر هذا العرض</span>';
@@ -1016,7 +1017,7 @@ function render(){
     h+=_pjInvHtml(req);
     var bs=_bidStats();
     if(_bids.length){
-      h+='<div class="pj-sum"><div style="display:flex;align-items:center;gap:8px"><b class="t">وصلك '+_bids.length+' '+(_bids.length>=3&&_bids.length<=10?'عروض':'عرض')+'</b>'+(req.bids_today?'<span class="pj-pill" style="margin-right:auto;background:rgba(255,255,255,.16);color:#fff">+'+req.bids_today+' اليوم</span>':'')+'</div>';
+      h+='<div class="pj-sum pj-r"><div style="display:flex;align-items:center;gap:8px"><b class="t">وصلك '+_bids.length+' '+(_bids.length>=3&&_bids.length<=10?'عروض':'عرض')+'</b>'+(req.bids_today?'<span class="pj-pill" style="margin-right:auto;background:rgba(255,255,255,.16);color:#fff">+'+req.bids_today+' اليوم</span>':'')+'</div>';
       if(bs&&bs.n>=2)h+='<div class="pj-sg"><div><small>أقل سعر</small><b style="color:#86efac">'+fmtN(bs.min)+'</b></div><div><small>المتوسط</small><b>'+fmtN(bs.avg)+'</b></div><div><small>أعلى سعر</small><b>'+fmtN(bs.max)+'</b></div></div>';
       if(req.status==='open')h+='<div class="tip">💡 لا تختار الأرخص بس — شوف التقييم والأعمال السابقة، وكلّم اثنين قبل تقرر.</div>';
       h+='</div>';
@@ -1032,7 +1033,7 @@ function render(){
     if(req.status==='open'){
       var n=req.bids_n!=null?req.bids_n:_bids.length;
       var lvl=n<=2?['منخفضة','#15803d']:(n<=6?['متوسطة','#b45309']:['عالية','#b91c1c']);
-      h+='<div class="pj-duo"><div class="pj-mini" style="background:#ecfdf5;border-color:#bbf7d0"><span style="color:#15803d">الوقت المتبقي</span><b>'+(dl===null?'مفتوح':(dl<=0?'آخر يوم':dl+' '+_dWord(dl)))+'</b><small>'+(req.last_bid_at?'آخر عرض قبل '+ago(req.last_bid_at):'ما أحد قدّم للحين')+'</small></div>';
+      h+='<div class="pj-duo pj-r"><div class="pj-mini" style="background:#ecfdf5;border-color:#bbf7d0"><span style="color:#15803d">الوقت المتبقي</span><b>'+(dl===null?'مفتوح':(dl<=0?'آخر يوم':dl+' '+_dWord(dl)))+'</b><small>'+(req.last_bid_at?'آخر عرض قبل '+ago(req.last_bid_at):'ما أحد قدّم للحين')+'</small></div>';
       h+='<div class="pj-mini"><span>المنافسة</span><b>'+n+' '+(n>=3&&n<=10?'عروض':'عرض')+' <em style="color:'+lvl[1]+'">· '+lvl[0]+'</em></b><small>'+(n===0?'كن أول واحد يقدّم':'قدّم عرض واضح وتميّز')+'</small></div></div>';
     }
     if(req.status==='open'&&req.client_silent_days)h+='<div class="pj-card" style="background:#fff7ed;border:1.5px solid #fdba74;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">⚠️</span><div style="font-size:13px;font-weight:800;color:#9a3412;line-height:1.8">صاحب المشروع ما اطّلع على العروض من '+req.client_silent_days+' '+(req.client_silent_days>=3&&req.client_silent_days<=10?'أيام':'يوم')+' — ممكن يتأخر رده.</div></div>';
@@ -1059,7 +1060,7 @@ function render(){
     var canExt=['open','closed_auto','expired'].indexOf(req.status)>=0&&!_bids.some(function(b){return b.status==='accepted';});
     var bz=req.boosted_at?Math.ceil((48*3600000-(Date.now()-new Date(req.boosted_at).getTime()))/3600000):0;
     if(req.status==='open'||canExt){
-      h+='<div class="pj-card" style="gap:10px"><div class="pj-h" style="font-size:14.5px">إدارة المشروع</div><div class="pj-tools">';
+      h+='<div class="pj-card pj-r" style="gap:10px"><div class="pj-h" style="font-size:14.5px">إدارة المشروع</div><div class="pj-tools">';
       if(req.status==='open')h+='<a class="pj-b" href="/dashboard-client.html?edit='+req.id+'">✏️ تعديل التفاصيل</a>';
       if(canExt)h+='<button class="pj-b" onclick="_pjExtend(this)">⏳ '+(req.status==='open'?'تمديد 7 أيام':'أعد الفتح 7 أيام')+'</button>';
       if(req.status==='open')h+=(bz>0?'<button class="pj-b" disabled>📣 تقدر تعيده بعد '+bz+' س</button>':'<button class="pj-b" onclick="_pjBoost(this)">📣 أبي عروض أكثر</button>');
@@ -1069,7 +1070,7 @@ function render(){
       h+='</div>';
     }
   }
-  if(!isOwner)h+='<div class="pj-card" id="pj-sim" style="display:none"></div>';
+  if(!isOwner)h+='<div class="pj-card pj-r" id="pj-sim" style="display:none"></div>';
   if(req.status==='open'&&!u){
     var _bene='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
     h+='<div class="cta"><div style="font-family:\'Cairo\',sans-serif;font-size:18px;font-weight:900;color:var(--p);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px"><span class="logo-dot"></span>مناقصة</div>';
@@ -1077,12 +1078,13 @@ function render(){
     h+='<div class="cta-benes"><div class="cta-bene">'+_bene+'<span>وصول لآلاف العملاء الباحثين عن خدمتك</span></div><div class="cta-bene">'+_bene+'<span>تقديم العروض مجاناً بلا رسوم اشتراك</span></div><div class="cta-bene">'+_bene+'<span>تواصل مباشر وإدارة سهلة من حسابك</span></div></div>';
     h+='<a onclick="goRegisterProvider()" class="cta-btn" href="javascript:void(0)">سجّل كمزوّد مجاناً</a><div style="margin-top:11px;font-size:12px;color:var(--muted)">لديك حساب؟ <a onclick="goLogin()" href="javascript:void(0)" style="color:var(--p);font-weight:800;text-decoration:none">تسجيل الدخول</a></div></div>';
   }
-  h+='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+  h+='<div class="pj-r" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
   h+='<button onclick="shareProject()" class="pj-b" style="border-radius:22px">🔗 مشاركة المشروع</button>';
   if(u&&!isOwner){var _psv=!!req.is_saved;h+='<button id="pj-save-btn" onclick="_pjToggleSave()" class="pj-b" style="border-radius:22px;'+(_psv?'background:#eef2ff;border-color:#1d4ed8;color:#1d4ed8':'')+'">🔖 <span>'+(_psv?'محفوظ':'حفظ')+'</span></button>';}
   h+='</div>';
   h+='<div class="foot">© مناقصة — جميع الحقوق محفوظة</div>';
   document.getElementById('main-content').innerHTML=h;
+  try{ _pjDesk(); }catch(_d){}
 
   if(_bids.length)_renderBidsList(_bidSort);
   loadQuestions(_rid);
@@ -1452,6 +1454,16 @@ function _cmConfirm(){
     else alert((d&&d.message)||'تعذّر الإغلاق');
   }).catch(function(){ alert('تعذّر الإغلاق'); });
 }
+// الكمبيوتر: التفاصيل والعروض في عمود، وعرضك/الوقت/صاحب المشروع في عمود جانبي ثابت
+function _pjDesk(){
+  var mc=document.getElementById('main-content'); if(!mc||!window.matchMedia||!matchMedia('(min-width:1100px)').matches)return;
+  var kids=[].slice.call(mc.children); if(!kids.length||mc.querySelector(':scope > .pj-grid'))return;
+  var g=document.createElement('div'); g.className='pj-grid'; g.innerHTML='<div class="pj-main"></div><div class="pj-rail"></div>';
+  var m=g.firstChild, r=g.lastChild, foot=null;
+  kids.forEach(function(k){ if(k.classList.contains('foot')){foot=k;return;} (k.classList.contains('pj-r')?r:m).appendChild(k); });
+  mc.appendChild(g); if(foot)mc.appendChild(foot);
+}
+window.addEventListener('resize',function(){ clearTimeout(window._pjR); window._pjR=setTimeout(function(){ var mc=document.getElementById('main-content'), g=mc&&mc.querySelector(':scope > .pj-grid'); if(g&&!matchMedia('(min-width:1100px)').matches){ [].slice.call(g.querySelectorAll(':scope > div > *')).forEach(function(k){ mc.insertBefore(k,g); }); g.remove(); } else _pjDesk(); },250); });
 function _pjToggleSave(){
   if(!getUser()){ goLogin(); return; }
   var btn=document.getElementById('pj-save-btn');

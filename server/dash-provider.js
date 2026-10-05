@@ -1529,11 +1529,23 @@ function _pfLinkHtml(){
       +ic('#000',T,'تيك توك',"_pfLinkBio('تيك توك')")
       +ic('radial-gradient(circle at 30% 107%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285AEB 90%)',I,'انستقرام',"_pfLinkBio('انستقرام')")
       +ic('#000',X,'إكس',"window.open('https://x.com/intent/post?text='+encodeURIComponent('"+txt+"')+'&url='+encodeURIComponent('"+_esc(u)+"'),'_blank')")
-      +ic('#eef3fb',D,'صورة للنشر',"window.open('"+location.origin+"/og/pro/"+((_me&&_me.id)||'')+"','_blank')")
+      +ic('#eef3fb',D,'صورة ستوري',"_pfStory()")
     +'</div>'
     +'<a href="'+_esc(u)+'" target="_blank" rel="noopener" style="display:block;text-align:center;border:1.5px solid #dbe5f5;border-radius:12px;padding:11px;font-weight:900;font-size:13.5px;color:#1e3a8a;text-decoration:none">👁 شوف صفحتك مثل ما يشوفها العميل</a></div>';
 }
 // تيك توك وانستقرام ما يقبلون روابط في المنشور — ننسخ الرابط ونقول له يحطه في البايو
+// صورة ستوري جاهزة (فيها QR) — للتيك توك والسناب وحالة الواتساب
+function _pfStory(){
+  var u=location.origin+'/og/pro/'+((_me&&_me.id)||'')+'/story';
+  var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.75);display:flex;align-items:center;justify-content:center;padding:16px;font-family:Tajawal,sans-serif;direction:rtl';
+  ov.innerHTML='<div style="background:#fff;border-radius:20px;padding:16px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:12px;max-height:94vh;overflow:auto"><b style="font-family:Cairo,sans-serif;font-size:16px;color:#0f2544;text-align:center">صورة ستوري لصفحتك</b>'
+    +'<img src="'+u+'" alt="صورة ستوري" style="width:100%;border-radius:14px;aspect-ratio:9/16;background:#0b1f4d;object-fit:cover">'
+    +'<a href="'+u+'?dl=1" download="manaqasa-story.png" style="display:block;text-align:center;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px;font-weight:900;text-decoration:none">⬇ حمّل الصورة</a>'
+    +'<div style="font-size:12.5px;font-weight:700;color:#475569;line-height:1.8;text-align:center">انشرها في تيك توك أو سناب أو حالة الواتساب — أي أحد يمسح الكود يدخل صفحتك مباشرة</div>'
+    +'<button type="button" style="border:0;background:none;color:#64748b;font-family:inherit;font-weight:800;cursor:pointer;padding:6px">إغلاق</button></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov||e.target.tagName==='BUTTON')ov.remove(); });
+  document.body.appendChild(ov);
+}
 function _pfLinkBio(app){ _copyText(_pfLinkUrl()); setTimeout(function(){ showToast('نسخنا الرابط — الصقه في البايو حق '+app,'success'); },300); }
 function _pfEnhance(pg,n){
   var I=function(p){return '<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+p+'</svg>';};
@@ -1778,7 +1790,7 @@ function loadSaai(){
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
     }
     var selfBtn='<button class="btn-new" style="width:100%;margin-bottom:14px;padding:13px;font-size:14px" onclick="_spSelfOpen()">سدّد سعي على مشروع ثاني</button><div style="font-size:11.5px;color:var(--muted);font-weight:700;text-align:center;margin:-8px 0 14px">اتفقت مع عميل والعرض ما انقبل داخل المنصة؟ سدّد من هنا</div>';
-    pg.innerHTML='<div style="max-width:640px;margin:0 auto">'+wallet+selfBtn+list+'<div id="saai-bank"></div></div>';
+    pg.innerHTML='<div class="sa-wrap"><div class="sa-m">'+wallet+list+'</div><div class="sa-s">'+selfBtn+'<div id="saai-bank"></div></div></div>';
     // بيانات التحويل + الحاسبة (لمن يحوّل مباشرة)
     _api('/api/bank-info').then(function(bk){
       bk=bk||{}; var bx=_el('saai-bank'); if(!bx)return;
