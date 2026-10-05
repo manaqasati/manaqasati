@@ -1,0 +1,53 @@
+/* مناقصة — شكل الكمبيوتر (النموذج 1): قائمة داكنة كاملة + شريط علوي فاتح + عمودين في الرئيسية
+   يشتغل فقط على الشاشات العريضة؛ الجوال ما يتأثر */
+@media (min-width:769px){
+  body{background:#f4f7fc}
+  /* ── القائمة الجانبية الداكنة ── */
+  .side{background:linear-gradient(180deg,#0b1f4d 0%,#132a63 100%)!important;border-left:0!important;box-shadow:none!important;color:#c9d8ff}
+  .side-head,.side-brand{background:transparent!important;border:0!important;box-shadow:none!important}
+  .side-brand{padding:22px 22px 8px!important}
+  .side-brand::before,.side-brand::after,.side-brand .net-svg{display:none!important}
+  .side .logo{color:#fff!important;font-family:'Cairo',sans-serif;font-size:24px!important}
+  .side .logo-sub{color:#7f93c4!important}
+  .side .user-pill{display:none!important}
+  .side .nav{padding:6px 14px!important;flex:1;overflow-y:auto}
+  .side .nav-sec{color:#7f93c4!important;font-size:11px!important;margin:16px 0 6px!important}
+  .side .ni{color:#c9d8ff!important;font-size:14px!important;font-weight:800!important;padding:10px 12px!important;border-radius:12px!important;margin-bottom:2px;position:relative}
+  .side .ni:hover{background:rgba(255,255,255,.07)!important;color:#fff!important}
+  .side .ni .ni-ic{background:transparent!important;box-shadow:none!important}
+  .side .ni .ni-ic svg{stroke:currentColor!important}
+  .side .ni.on{background:#fff!important;color:#0b1f4d!important;box-shadow:0 8px 20px -10px rgba(0,0,0,.55)}
+  .side .ni.on::before{display:none!important}
+  .side .ni.on .ni-ic{background:transparent!important}
+  .side .ni.on .ni-ic svg{stroke:#1d4ed8!important}
+  .side .side-foot{border-top:1px solid rgba(255,255,255,.08)!important;padding:12px 14px 16px!important;display:flex;flex-direction:column;gap:10px}
+  .side .logoutbtn{color:#fca5a5!important}
+  .side .logoutbtn:hover{background:rgba(239,68,68,.12)!important}
+  /* بطاقة التطبيق والمستخدم (تنضاف من dash-desk.js) */
+  .dk-app{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.07);border-radius:14px;padding:10px;font-size:12px;font-weight:700;line-height:1.6;color:#c9d8ff;text-decoration:none}
+  .dk-app img{width:58px;height:58px;border-radius:9px;background:#fff;flex-shrink:0;padding:3px;box-sizing:border-box}
+  .dk-me{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.07);border-radius:14px;padding:10px}
+  .dk-me .dk-av{width:38px;height:38px;border-radius:12px;background:#fff;color:#1e3a8a;font-family:'Cairo',sans-serif;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+  .dk-me .dk-av img{width:100%;height:100%;object-fit:cover}
+  .dk-me b{display:block;color:#fff;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dk-me small{font-size:11.5px;color:#9fb3e0}
+  /* ── الشريط العلوي الفاتح ── */
+  .topbar{background:#fff!important;height:72px!important;border-bottom:1px solid #e3e9f3;padding:0 28px!important;box-shadow:none!important}
+  .topbar .topbar-title{color:#0f2544!important;font-family:'Cairo',sans-serif;font-size:21px!important;font-weight:900!important}
+  .topbar button:not(.btn-new),.topbar a#switchDash{background:#eef3fb!important;color:#1e3a8a!important;border:0!important}
+  .topbar .my-page-btn{background:#eef3fb!important;color:#1e3a8a!important;border:0!important}
+  .dk-sub{font-size:12.5px;font-weight:700;color:#64748b;margin-top:1px}
+  .content{padding-top:22px!important}
+  #appDlCard{display:none!important} /* بطاقة التطبيق صارت في القائمة الجانبية */
+}
+/* ── الرئيسية: عمودين على الشاشات الواسعة ── */
+@media (min-width:1200px){
+  .content{max-width:1240px!important}
+  .dk-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+  .dk-main{min-width:0}
+  .dk-rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:90px}
+  .dk-rail>*{margin:0!important}
+}
+[data-theme="dark"] .topbar{background:#0f172a!important;border-color:rgba(148,163,184,.2)}
+[data-theme="dark"] .topbar .topbar-title{color:#e5e7eb!important}
+[data-theme="dark"] .topbar button:not(.btn-new),[data-theme="dark"] .topbar .my-page-btn{background:rgba(148,163,184,.15)!important;color:#e5e7eb!important}
