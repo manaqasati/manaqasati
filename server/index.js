@@ -4362,9 +4362,20 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (_has('address')) { sets.push('address=$'+i); params.push(address||null); i++; }
     if (_has('budget_max')) { sets.push('budget_max=$'+i); params.push(budget_max||null); i++; }
     if (_has('deadline')) { sets.push('deadline=$'+i); params.push(deadline||null); i++; }
+    if (_has('district')) { sets.push('district=$'+i); params.push(String(req.body.district||'').trim().slice(0,80) || null); i++; }
+    if (Array.isArray(req.body.images)) {
+      const imgs = [];
+      for (const img of req.body.images.slice(0, req.user.role === 'admin' ? 10 : 8)) {
+        if (typeof img !== 'string') continue;
+        if (img.startsWith('data:image/')) { try { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) imgs.push(u); } catch(_) {} }
+        else if (_safeUrl(img)) imgs.push(_safeUrl(img));
+      }
+      sets.push('images=$'+i); params.push(imgs.length ? imgs : null); i++;
+    }
     const gLat = (geo_lat != null && geo_lat !== '') ? parseFloat(geo_lat) : null;
     const gLng = (geo_lng != null && geo_lng !== '') ? parseFloat(geo_lng) : null;
     if (Number.isFinite(gLat) && Number.isFinite(gLng)) { sets.push('geo_lat=$'+i); params.push(gLat); i++; sets.push('geo_lng=$'+i); params.push(gLng); i++; }
+    else if (req.body.geo_clear === true) { sets.push('geo_lat=NULL'); sets.push('geo_lng=NULL'); }
     if (_hasCat && (category !== 'أخرى' || _nc.category_other)) { sets.push('category_other=$'+i); params.push(category === 'أخرى' ? _nc.category_other : null); i++; }
     if (_hasCat || _has('extra_categories')) { const _ex = _normExtras(req.body.extra_categories, category); if (_ex) { sets.push('extra_categories=$'+i); params.push(_ex.length ? _ex : null); i++; }
       else if (category) { sets.push('extra_categories=array_remove(extra_categories,$'+i+')'); params.push(category); i++; } }

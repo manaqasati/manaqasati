@@ -377,29 +377,47 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="modal-head"><h3>تعديل المشروع</h3><button class="modal-x" onclick="closeEditReq()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div id="edit-msg" class="alert"></div>
-      <div class="fg" style="margin-bottom:12px"><label>العنوان</label><input type="text" id="e-title"></div>
-      <div class="fg" style="margin-bottom:12px"><label>التفاصيل</label><textarea id="e-desc"></textarea></div>
+      <div id="e-notes" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;padding:11px 13px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:900;color:#dc2626;margin-bottom:4px">📝 المطلوب من الإدارة</div>
+        <div id="e-notes-t" style="font-size:13px;color:#7f1d1d;line-height:1.9;font-weight:600;white-space:pre-wrap"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>العنوان <span style="color:var(--red)">*</span></label><input type="text" id="e-title" maxlength="150"></div>
+      <div class="fg" style="margin-bottom:12px"><label>التفاصيل <span style="color:var(--red)">*</span></label><textarea id="e-desc" maxlength="5000" style="min-height:120px"></textarea></div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>التخصص الرئيسي <span style="color:var(--red)">*</span></label>
+        <select id="e-cat" onchange="_eCatChange()"></select>
+        <input type="text" id="e-cat-other" placeholder="وش الخدمة المطلوبة؟" maxlength="120" style="display:none;margin-top:8px">
+        <label style="margin-top:12px;display:block">تخصصات إضافية <small style="font-size:11px;color:var(--muted);font-weight:500">(حتى 2 — توصل مشروعك لمزوّدين أكثر)</small></label>
+        <div id="e-extras" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>
+      </div>
       <div class="form-grid" style="margin-bottom:12px">
-        <div class="fg"><label>التصنيف</label><select id="e-cat"></select></div>
-        <div class="fg"><label>المدينة</label><select id="e-city"></select></div>
+        <div class="fg"><label>المدينة <span style="color:var(--red)">*</span></label><select id="e-city"></select></div>
+        <div class="fg"><label>الحي <small style="font-size:11px;color:var(--muted);font-weight:500">(اختياري)</small></label><input type="text" id="e-district" placeholder="مثال: حي النرجس" maxlength="80" autocomplete="off"></div>
       </div>
       <div class="fg" style="margin-bottom:12px">
-        <label>الموقع على الخريطة (اختياري)</label>
+        <label>الموقع على الخريطة <small style="font-size:11px;color:var(--muted);font-weight:500">(اختياري)</small></label>
         <div style="display:flex;gap:8px;align-items:stretch">
-          <input type="text" id="e-maploc" placeholder="ألصق رابط خرائط جوجل أو الإحداثيات" oninput="_editParseGeo()" style="flex:1">
+          <input type="text" id="e-maploc" placeholder="ألصق رابط خرائط جوجل أو الإحداثيات" oninput="_editParseGeo()" style="flex:1;direction:ltr;text-align:left">
           <button type="button" onclick="_editPickLoc()" style="white-space:nowrap;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:9px;padding:0 14px;font-family:Tajawal,sans-serif;font-weight:800;font-size:13px;cursor:pointer">📍 موقعي</button>
+          <button type="button" id="e-loc-clear" onclick="_editClearLoc()" title="حذف الموقع" style="display:none;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:9px;padding:0 12px;font-weight:900;cursor:pointer">✕</button>
         </div>
         <div id="e-loc-hint" style="font-size:11px;color:var(--muted);margin-top:5px"></div>
       </div>
       <div class="form-grid" style="margin-bottom:12px">
-        <div class="fg"><label>الميزانية</label><input type="number" id="e-budget"></div>
-        <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div><div class="fg"><label>مدة استقبال العروض</label><select id="e-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div>
+        <div class="fg"><label>الميزانية القصوى (ر.س)</label><input type="number" id="e-budget" min="0" placeholder="اختياري"></div>
+        <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div>
+        <div class="fg"><label>مدة استقبال العروض</label><select id="e-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>الصور <small style="font-size:11px;color:var(--muted);font-weight:500">(حتى 8 · 10MB للصورة)</small></label>
+        <div id="e-img-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px"></div>
+        <input type="file" id="e-img-input" accept="image/*" multiple onchange="_editImgAdd(this)" style="padding:8px;font-size:12px">
       </div>
       <div class="fg" style="margin-bottom:4px">
-        <label>المخططات والملفات</label>
+        <label>المخططات والملفات <small style="font-size:11px;color:var(--muted);font-weight:500">(حتى 12 · 30MB للملف)</small></label>
         <div id="e-att-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
         <input type="file" id="e-att-input" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar,.7z,.csv,image/*" multiple onchange="_editAttAdd(this)" style="padding:8px;font-size:12px">
-        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · ZIP · RAR · صور — حتى 12 ملف (حد 30MB للملف)</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · ZIP · RAR</div>
       </div>
     </div>
     <div class="modal-foot">

@@ -1697,19 +1697,67 @@ function openEditReq(id,e){
     document.getElementById('e-desc').value=req.description||'';
     document.getElementById('e-budget').value=req.budget_max||'';
     document.getElementById('e-deadline').value=req.deadline?req.deadline.substring(0,10):'';
+    var _ed=document.getElementById('e-district'); if(_ed)_ed.value=req.district||'';
     _cdPrefill(document.getElementById('e-closedur'),req.close_at,req.created_at);
-    var _ec=document.getElementById('e-cat'), _nc=document.getElementById('n-cat'); if(_ec&&_nc){ _ec.innerHTML=_nc.innerHTML; _ec.value=req.category||''; }
+    // التخصص الرئيسي + الإضافية (حتى 2) — نفس خيارات نموذج «مشروع جديد»
+    var _ec=document.getElementById('e-cat'), _nc=document.getElementById('n-cat');
+    if(_ec&&_nc){ _ec.innerHTML=_nc.innerHTML; var _o=_ec.querySelector('option[value=""]'); if(_o)_o.textContent='اختر التخصص';
+      if(req.category&&![].some.call(_ec.options,function(o){return (o.value||o.text)===req.category;})){ var op=document.createElement('option'); op.textContent=req.category; _ec.insertBefore(op,_ec.options[1]||null); }
+      _ec.value=req.category||''; }
+    var _eo=document.getElementById('e-cat-other'); if(_eo)_eo.value=req.category_other||'';
+    _editExtras=(Array.isArray(req.extra_categories)?req.extra_categories:[]).filter(function(c){return c&&c!==req.category;}).slice(0,2);
+    _eCatChange();
     var _ecy=document.getElementById('e-city'), _ncy=document.getElementById('n-city'); if(_ecy&&_ncy){ _ecy.innerHTML=_ncy.innerHTML; _ecy.value=req.city||''; }
-    _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)};
+    _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)}; _editGeoClear=false;
     var _eml=document.getElementById('e-maploc'); if(_eml)_eml.value=(_editGeo.lat&&_editGeo.lng)?('https://www.google.com/maps?q='+_editGeo.lat+','+_editGeo.lng):'';
-    var _elh=document.getElementById('e-loc-hint'); if(_elh)_elh.innerHTML=(_editGeo.lat&&_editGeo.lng)?'<span style="color:var(--green);font-weight:700">\u2713 الموقع محدّد</span>':'';
+    var _elh=document.getElementById('e-loc-hint'); if(_elh)_elh.innerHTML=(_editGeo.lat&&_editGeo.lng)?'<span style="color:var(--green);font-weight:700">✓ الموقع محدّد</span>':'';
+    _editLocBtn();
+    _editImgs=(Array.isArray(req.images)?req.images:[]).filter(function(u){return typeof u==='string'&&/^https?:/.test(u);}).slice(0,_MQ_IMG).map(function(u){return {url:u};});
+    _editImgRender();
     _editAtts=(Array.isArray(req.attachments)?req.attachments.slice(0,_MQ_ATT):[]).map(function(a){return {name:a.name||'ملف',url:a.url};});
     _editAttRender();
+    var _nb=document.getElementById('e-notes'), _nt=document.getElementById('e-notes-t');
+    if(_nb){ var _show=(req.status==='needs_edit'); _nb.style.display=_show?'block':'none'; if(_nt)_nt.textContent=req.review_notes||'أكمل التفاصيل الناقصة (المخططات، الكميات، الموقع) ليُعتمد مشروعك.'; }
     window._editNeeds=(req.status==='needs_edit');
     var _eb=document.getElementById('edit-btn'); if(_eb)_eb.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
   }).catch(function(){showToast('تعذّر تحميل المشروع — حدّث الصفحة','error');});
+}
+var _editExtras=[], _editImgs=[], _editGeoClear=false;
+function _eCatChange(){
+  var c=(document.getElementById('e-cat')||{}).value||'';
+  var o=document.getElementById('e-cat-other'); if(o)o.style.display=(c==='أخرى')?'block':'none';
+  _editExtras=_editExtras.filter(function(x){return x!==c;});
+  _eExtrasRender();
+}
+function _eExtrasRender(){
+  var box=document.getElementById('e-extras'); if(!box)return;
+  var main=(document.getElementById('e-cat')||{}).value||'';
+  var h=_editExtras.map(function(c,i){return '<span style="display:inline-flex;align-items:center;gap:6px;background:#eef3fb;border:1.5px solid #1d4ed8;color:#1e3a8a;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:800">'+esc(c)+'<span onclick="_editExtras.splice('+i+',1);_eExtrasRender()" style="cursor:pointer;color:#dc2626;font-weight:900">×</span></span>';}).join('');
+  if(main==='أخرى'){ h='<span style="font-size:11.5px;color:var(--muted)">التخصصات الإضافية تتاح لما تختار تخصص رئيسي من القائمة</span>'; _editExtras=[]; }
+  else if(_editExtras.length<2){
+    var opts=[].map.call((document.getElementById('n-cat')||{options:[]}).options,function(o){return o.value||o.text;}).filter(function(v){return v&&v!=='أخرى'&&v!==main&&_editExtras.indexOf(v)<0&&v!=='اختر التصنيف';});
+    h+='<select onchange="if(this.value){_editExtras.push(this.value);_eExtrasRender();}" style="width:auto;min-width:150px;padding:6px 10px;font-size:12.5px;border-radius:999px;border:1.5px dashed #94a3b8"><option value="">+ أضف تخصص</option>'+opts.map(function(v){return '<option>'+esc(v)+'</option>';}).join('')+'</select>';
+  }
+  box.innerHTML=h;
+}
+function _editLocBtn(){ var b=document.getElementById('e-loc-clear'); if(b)b.style.display=((_editGeo.lat&&_editGeo.lng)||((document.getElementById('e-maploc')||{}).value||'').trim())?'block':'none'; }
+function _editClearLoc(){ _editGeo={lat:null,lng:null}; _editGeoClear=true; var el=document.getElementById('e-maploc'); if(el)el.value=''; var h=document.getElementById('e-loc-hint'); if(h)h.innerHTML='<span style="color:var(--muted);font-weight:700">بيُحذف الموقع عند الحفظ</span>'; _editLocBtn(); }
+function _editImgRender(){
+  var g=document.getElementById('e-img-grid'); if(!g)return;
+  _mqCnt('e-img-grid',_editImgs.length,_MQ_IMG,'صور');
+  g.innerHTML=_editImgs.map(function(im,i){return '<div style="position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;background:#eef3fb"><img src="'+esc(im.url||im.data)+'" style="width:100%;height:100%;object-fit:cover"><button type="button" onclick="_editImgs.splice('+i+',1);_editImgRender()" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.9);border:none;color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button></div>';}).join('');
+  g.style.display=_editImgs.length?'grid':'none';
+}
+function _editImgAdd(input){
+  var all=[].slice.call(input.files); input.value='';
+  var room=Math.max(0,_MQ_IMG-_editImgs.length), files=all.slice(0,room);
+  if(all.length>room) showToast(room?('تمت إضافة '+room+' صور — الحد الأقصى '+_MQ_IMG+' صور'):('وصلت الحد الأقصى ('+_MQ_IMG+' صور)'),'error');
+  files.forEach(function(f){
+    if(f.size>10*1024*1024){showToast(f.name+': الحجم الأقصى 10MB','error');return;}
+    compressImage(f,function(d){ if(_editImgs.length<_MQ_IMG){_editImgs.push({data:d});_editImgRender();} });
+  });
 }
 function closeEditReq(){document.getElementById('editReqOverlay').className='overlay';}
 var _editGeo={lat:null,lng:null}; var _editAtts=[];
@@ -1717,15 +1765,16 @@ function _editParseGeo(){
   var v=(document.getElementById('e-maploc')||{}).value||'';
   var m=v.match(/(-?\d{1,2}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})/);
   var h=document.getElementById('e-loc-hint');
-  if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){_editGeo.lat=la;_editGeo.lng=ln;if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد الموقع</span>';return;}}
+  if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){_editGeo.lat=la;_editGeo.lng=ln;_editGeoClear=false;_editLocBtn();if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد الموقع</span>';return;}}
   _editGeo.lat=null;_editGeo.lng=null;if(h)h.innerHTML='';
   if(v.trim())_geoResolve('e',v,_editGeo,'e-loc-hint');
+  _editLocBtn();
 }
 function _editPickLoc(){
   if(!navigator.geolocation){showToast('متصفحك لا يدعم تحديد الموقع','error');return;}
   showToast('جارٍ تحديد موقعك...','info');
   navigator.geolocation.getCurrentPosition(function(pos){
-    _editGeo.lat=pos.coords.latitude;_editGeo.lng=pos.coords.longitude;
+    _editGeo.lat=pos.coords.latitude;_editGeo.lng=pos.coords.longitude;_editGeoClear=false;setTimeout(_editLocBtn,0);
     var el=document.getElementById('e-maploc');if(el)el.value='https://www.google.com/maps?q='+_editGeo.lat+','+_editGeo.lng;
     var h=document.getElementById('e-loc-hint');if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد موقعك</span>';
     showToast('تم تحديد موقعك \u2713','success');
@@ -1755,6 +1804,14 @@ function submitEditReq(){
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[]).map(function(a){return a.url?{name:a.name,url:a.url}:{name:a.name,data:a.data};})};
   var _cdv=_cdVal('e-closedur'); if(_cdv!==undefined) body.close_days=_cdv;
+  var _cat=body.category||'';
+  if(!_cat){var e3=document.getElementById('edit-msg');e3.textContent='اختر التخصص الرئيسي';e3.className='alert err';btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';return;}
+  if(!body.city){var e4=document.getElementById('edit-msg');e4.textContent='اختر المدينة';e4.className='alert err';btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';return;}
+  if(_cat==='أخرى'){ var _co=((document.getElementById('e-cat-other')||{}).value||'').trim(); if(_co)body.category_other=_co; }
+  body.extra_categories=(_cat==='أخرى')?[]:_editExtras.filter(function(x){return x!==_cat;}).slice(0,2);
+  body.district=((document.getElementById('e-district')||{}).value||'').trim();
+  body.images=_editImgs.map(function(im){return im.url||im.data;});
+  if(_editGeoClear&&!(_editGeo.lat&&_editGeo.lng)) body.geo_clear=true;
   if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
   else { var _eml2=((document.getElementById('e-maploc')||{}).value||'').trim(); if(_eml2) body.map_url=_eml2.slice(0,1000); }
   var xhr=new XMLHttpRequest();
