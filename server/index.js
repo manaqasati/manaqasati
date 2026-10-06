@@ -3210,6 +3210,7 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(100)'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS social_twitter VARCHAR(100)'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE'); } catch(e){}
+    try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_via VARCHAR(12)'); } catch(e){}
     try { await _mig(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='bids_request_id_provider_id_key') THEN ALTER TABLE bids ADD CONSTRAINT bids_request_id_provider_id_key UNIQUE (request_id, provider_id); END IF;END$$;`); } catch(e){ console.error(' bids unique constraint:', e.message); }
     try { await _mig(`DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='reviews_request_id_reviewer_id_key') THEN ALTER TABLE reviews ADD CONSTRAINT reviews_request_id_reviewer_id_key UNIQUE (request_id, reviewer_id); END IF;END$$;`); } catch(e){ console.error(' reviews unique constraint:', e.message); }
     // ═══ فهارس الأداء — تمنع مسح الجداول كاملة مع نمو البيانات ═══
@@ -3282,7 +3283,7 @@ app.get('/api/auth/verify-email', async (req, res) => {
       if (cur.rows.length && p.em && cur.rows[0].em !== p.em) { cur.rows.length = 0; } // رابط لإيميل قديم تغيّر بعده
       if (cur.rows.length) {
         if (cur.rows[0].ev) already=true;
-        else { try { await pool.query('UPDATE users SET email_verified=true WHERE id=$1', [p.id]); } catch(e){} }
+        else { try { await pool.query("UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via='link' WHERE id=$1", [p.id]); } catch(e){} }
         ok=true;
       }
     }
@@ -3306,7 +3307,7 @@ app.post('/api/auth/verify-code', auth, rateLimiter(12, 600000), async (req, res
     if (!u.verify_code || !u.verify_code_exp || new Date(u.verify_code_exp) < new Date()) return res.status(400).json({ message: 'الرمز انتهى — اضغط «إعادة الإرسال» يوصلك رمز جديد' });
     if (u.tries >= 6) return res.status(429).json({ message: 'محاولات كثيرة — اضغط «إعادة الإرسال» يوصلك رمز جديد' });
     if (code.length !== 6 || code !== u.verify_code) { await pool.query('UPDATE users SET verify_code_tries=COALESCE(verify_code_tries,0)+1 WHERE id=$1', [req.user.id]); return res.status(400).json({ message: 'الرمز غير صحيح' }); }
-    await pool.query('UPDATE users SET email_verified=true, verify_code=NULL, verify_code_exp=NULL WHERE id=$1', [req.user.id]);
+    await pool.query("UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via='code', verify_code=NULL, verify_code_exp=NULL WHERE id=$1", [req.user.id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4995,20 +4996,8 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
 });
 
 app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT provider_id, status FROM bids WHERE id=$1', [id]);
-    if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
-    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'لا يمكن حذف عرض مقبول' });
-    // بعد ما ينفتح رقم العميل للمزوّد ما يقدر يحذف عرضه (يمنع: يقدّم ← ياخذ الرقم ← يحذف ← يتفق برا)
-    try {
-      const ul = await pool.query('SELECT 1 FROM contact_unlocks cu JOIN bids b ON b.request_id=cu.request_id AND b.provider_id=cu.provider_id WHERE b.id=$1 LIMIT 1', [id]);
-      if (ul.rows.length) return res.status(400).json({ code: 'unlocked', message: 'ما تقدر تحذف عرضك بعد ما ظهر لك رقم العميل — تقدر تعدّله، أو تواصل مع الإدارة لو فيه سبب' });
-    } catch(_) {}
-    await pool.query('DELETE FROM bids WHERE id=$1', [id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  // حذف العروض للإدارة فقط — المزوّد يقدر يعدّل عرضه بس (يمنع: يقدّم ← ياخذ الرقم ← يحذف)
+  res.status(403).json({ code: 'admin_only', message: 'ما تقدر تحذف العرض — تقدر تعدّله، ولو تبي تلغيه تواصل مع الإدارة' });
 });
 
 // ═══ عدّاد زيارات صفحة المشروع (يُرسل من المتصفح مرة لكل جلسة — الروبوتات ما تشغّل الجافاسكربت) ═══
@@ -7635,6 +7624,34 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+
+// ═══ إحصائيات تفعيل البريد: مين فعّل وبأي طريقة (رابط / رمز / الإدارة) + وين علقوا ═══
+app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to];
+    const REG = `(u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const VER = `(u.email_verified_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const reg = (await pool.query(`SELECT u.role, COUNT(*)::int AS n,
+        COUNT(*) FILTER (WHERE COALESCE(u.email_verified,true))::int AS ver,
+        COUNT(*) FILTER (WHERE u.email_verified=false)::int AS unver
+      FROM users u WHERE u.role IN ('client','provider') AND ${REG} GROUP BY 1`, P)).rows;
+    const via = (await pool.query(`SELECT u.role, COALESCE(u.email_verified_via,'other') AS via, COUNT(*)::int AS n,
+        ROUND(AVG(EXTRACT(EPOCH FROM (u.email_verified_at - u.created_at))/60) FILTER (WHERE u.email_verified_at >= u.created_at))::int AS avg_min
+      FROM users u WHERE u.role IN ('client','provider') AND u.email_verified_at IS NOT NULL AND ${VER} GROUP BY 1,2`, P)).rows;
+    const mail = (await pool.query(`SELECT e.status, COUNT(DISTINCT e.user_id)::int AS n FROM email_log e
+      WHERE e.kind='verify' AND (e.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2 GROUP BY 1`, P)).rows;
+    // اللي ما فعّلوا (الأحدث أول) — مع حالة آخر إيميل تفعيل
+    const pend = (await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.city, u.created_at,
+        (SELECT COUNT(*) FROM requests r WHERE r.client_id=u.id)::int AS projects,
+        (SELECT COUNT(*) FROM bids b WHERE b.provider_id=u.id)::int AS bids,
+        el.status AS mail_status, el.created_at AS mail_at, (SELECT COUNT(*) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')::int AS sends
+      FROM users u LEFT JOIN LATERAL (SELECT status, created_at FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) el ON TRUE
+      WHERE u.email_verified=false AND u.role IN ('client','provider') AND COALESCE(u.is_active,true)
+      ORDER BY u.created_at DESC LIMIT 200`)).rows;
+    const allUnver = (await pool.query(`SELECT role, COUNT(*)::int AS n FROM users WHERE email_verified=false AND role IN ('client','provider') AND COALESCE(is_active,true) GROUP BY 1`)).rows;
+    res.json({ range: R, reg, via, mail, pending: pend, all_unverified: allUnver });
+  } catch(e) { console.error('verify-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/users/:id/emails', requirePermission('users.view'), async (req, res) => {
   try { const r = await pool.query('SELECT id, to_email, subject, kind, status, error, created_at, updated_at FROM email_log WHERE user_id=$1 ORDER BY id DESC LIMIT 15', [parseInt(req.params.id)]); res.json(r.rows); }
   catch(e) { res.json([]); }
@@ -7655,7 +7672,7 @@ app.post('/api/admin/users/:id/resend-verification', requirePermission('users.ed
 app.put('/api/admin/users/:id/verify-email', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);
-    const r = await pool.query('UPDATE users SET email_verified=true WHERE id=$1 RETURNING id, name', [uid]);
+    const r = await pool.query("UPDATE users SET email_verified=true, email_verified_at=COALESCE(email_verified_at,NOW()), email_verified_via=COALESCE(email_verified_via,'admin') WHERE id=$1 RETURNING id, name", [uid]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, 'verify_email', 'user', uid, 'توثيق بريد يدوي');
     res.json({ ok: true });
