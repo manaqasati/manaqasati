@@ -266,6 +266,17 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-imgs .pimg{aspect-ratio:1;border-radius:12px;overflow:hidden;position:relative;cursor:zoom-in}
 .pj-imgs .pimg img{width:100%;height:100%;object-fit:cover}
 .pj-imgs .mr{position:absolute;inset:0;background:rgba(15,23,42,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px}
+.pj-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pj-tiles.odd .pj-tile:last-child{grid-column:1/-1}
+@media(min-width:900px){.pj-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.pj-tiles.odd .pj-tile:last-child{grid-column:auto}}
+.pj-tile{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:var(--tb);border:2px solid transparent;font-family:inherit;text-align:right;cursor:pointer;min-width:0;transition:transform .12s,border-color .12s}
+.pj-tile:active{transform:scale(.98)}
+.pj-tile.on{border-color:var(--tf);box-shadow:0 8px 18px -12px var(--tf)}
+.pj-ti{width:38px;height:38px;border-radius:11px;background:#fff;color:var(--tf);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pj-tt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.pj-tt b{font-size:14px;font-weight:900;color:#0f2544;white-space:nowrap}
+.pj-tt b em{font-style:normal;background:var(--tf);color:#fff;border-radius:999px;padding:0 7px;font-size:11.5px;margin-right:3px}
+.pj-tt small{font-size:11px;font-weight:700;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pj-tabs{display:flex;gap:4px;background:#f1f5fb;border-radius:14px;padding:4px;overflow-x:auto;scrollbar-width:none}
 .pj-tabs::-webkit-scrollbar{display:none}
 .pj-tab{flex:1;white-space:nowrap;border:0;background:transparent;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13.5px;font-weight:800;color:#475569;cursor:pointer}
@@ -859,10 +870,11 @@ function _pjSimilar(){
   }).catch(function(){});
 }
 var _pjEye='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+var _pjIc={doc:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',clip:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11l-9 9a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/></svg>',cam:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 8"/></svg>',pin:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>'};
 var _pjDl='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>';
 function _pjFT(e){ var M={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed8','DWG'],dxf:['#dbeafe','#1d4ed8','DXF'],rvt:['#dbeafe','#1d4ed8','RVT'],rar:['#ede9fe','#6d28d9','RAR'],zip:['#ede9fe','#6d28d9','ZIP'],'7z':['#ede9fe','#6d28d9','7Z'],xlsx:['#dcfce7','#15803d','XLS'],xls:['#dcfce7','#15803d','XLS'],csv:['#dcfce7','#15803d','CSV'],docx:['#e0f2fe','#0369a1','DOC'],doc:['#e0f2fe','#0369a1','DOC'],pptx:['#ffedd5','#c2410c','PPT'],ppt:['#ffedd5','#c2410c','PPT']}; if(/^(jpe?g|png|webp|gif|heic)$/.test(e)) return ['#e0f2fe','#0369a1',e==='jpeg'?'JPG':e.toUpperCase()]; return M[e]||['#f1f5f9','#334766',(e||'ملف').toUpperCase()]; }
 function _pjSize(b){ b=+b||0; if(b>=1048576) return (b/1048576).toFixed(b>=10485760?0:1)+'MB'; if(b>=1024) return Math.round(b/1024)+'KB'; return b+'B'; }
-function _pjTab(el,t){ var c=el.closest('.pj-card'); if(!c)return; c.querySelectorAll('.pj-tab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===t);}); c.querySelectorAll('.pj-pane').forEach(function(p){ var on=p.getAttribute('data-p')===t; p.hidden=!on; if(on){ p.querySelectorAll('iframe[data-src]').forEach(function(f){ if(!f.src) f.src=f.getAttribute('data-src'); }); } }); }
+function _pjTab(el,t){ var c=el.closest('.pj-card'); if(!c)return; c.querySelectorAll('.pj-tab,.pj-tile').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===t);}); c.querySelectorAll('.pj-pane').forEach(function(p){ var on=p.getAttribute('data-p')===t; p.hidden=!on; if(on){ p.querySelectorAll('iframe[data-src]').forEach(function(f){ if(!f.src) f.src=f.getAttribute('data-src'); }); } }); }
 function _pjZip(id,btn){
   var tk=localStorage.getItem('token')||''; var o=btn.innerHTML; btn.disabled=true; btn.textContent='جاري التجهيز…';
   fetch(API+'/api/requests/'+id+'/files.zip',{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='مناقصة-مشروع-'+id+'-الملفات.zip'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000); }).catch(function(){ alert('تعذّر تجهيز الملفات — حمّلها وحدة وحدة'); }).finally(function(){ btn.disabled=false; btn.innerHTML=o; });
@@ -915,9 +927,11 @@ function _pjDetailsHtml(req){
     P.loc='<div class="pj-lock">🔒 الموقع الدقيق يظهر للمزوّدين المسجّلين</div>';
   }
   var _fixMap=function(html,first){ return first?html.replace('<iframe class="loc-map" data-src=','<iframe class="loc-map" src='):html; };
-  var tabs=[['desc','الوصف'],['files','الملفات',_atts.length],['imgs','الصور',imgs.length],['loc','الموقع']].filter(function(t){return P[t[0]];});
+  var _nF=_atts.length, _nI=imgs.length, _w=function(n,one,few,many){return n===1?one:(n===2?(few==='ملفات'?'ملفين':'صورتين'):(n<=10?n+' '+few:n+' '+many));};
+  var _fSub=_w(_nF,'ملف واحد','ملفات','ملف'); if(P.files){ var _tt=0,_kk=0; _atts.forEach(function(a){if(+a.size){_tt+=+a.size;_kk++;}}); if(_kk===_nF&&_tt)_fSub+=' · '+_pjSize(_tt); }
+  var tabs=[['desc','الوصف',0,'تفاصيل المطلوب','#dbeafe','#1d4ed8','doc'],['files','الملفات',_nF,_fSub,'#fee2e2','#b91c1c','clip'],['imgs','الصور',_nI,_nI===1?'صورة وحدة':_w(_nI,'صورة','صور','صورة'),'#e0f2fe','#0369a1','cam'],['loc','الموقع',0,_locMode==='geo'?'افتح في الخرائط':(_locMode==='link'?'رابط خرائط جوجل':'للمزوّدين المسجّلين'),'#dcfce7','#15803d','pin']].filter(function(t){return P[t[0]];});
   if(tabs.length>1){
-    h+='<div class="pj-tabs" role="tablist">'+tabs.map(function(t,i){return '<button type="button" role="tab" class="pj-tab'+(i===0?' on':'')+'" data-t="'+t[0]+'" onclick="_pjTab(this,\''+t[0]+'\')">'+t[1]+(t[2]?' <em>'+t[2]+'</em>':'')+'</button>';}).join('')+'</div>';
+    h+='<div class="pj-tiles'+(tabs.length%2?' odd':'')+'" role="tablist">'+tabs.map(function(t,i){return '<button type="button" role="tab" class="pj-tile'+(i===0?' on':'')+'" data-t="'+t[0]+'" style="--tb:'+t[4]+';--tf:'+t[5]+'" onclick="_pjTab(this,\''+t[0]+'\')"><span class="pj-ti">'+_pjIc[t[6]]+'</span><span class="pj-tt"><b>'+t[1]+(t[2]?' <em>'+t[2]+'</em>':'')+'</b><small>'+esc(t[3])+'</small></span></button>';}).join('')+'</div>';
     h+=tabs.map(function(t,i){return '<div class="pj-pane" data-p="'+t[0]+'"'+(i===0?'':' hidden')+'>'+_fixMap(P[t[0]],i===0)+'</div>';}).join('');
   } else if(tabs.length){ h+='<div class="pj-pane" data-p="'+tabs[0][0]+'">'+_fixMap(P[tabs[0][0]],true)+'</div>'; }
   return h+'</div>';
