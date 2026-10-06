@@ -263,12 +263,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <select id="n-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select>
             </div>
             <div class="fg ff">
-              <label>الصور (حتى 3)</label>
+              <label>الصور (حتى 8)</label>
               <input type="file" accept="image/*" multiple onchange="previewImages(this)" style="padding:8px">
               <div id="img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
             </div>
             <div class="fg ff">
-              <label>مخططات أو ملفات (PDF · DWG · Excel · Word — اختياري)</label>
+              <label>مخططات أو ملفات (حتى 12 · PDF · DWG · Excel · Word — اختياري)</label>
               <input type="file" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv" multiple onchange="previewFiles(this)" style="padding:8px">
               <div id="file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
               <div style="display:flex;gap:7px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:9px 12px;font-size:12px;color:#1e40af;margin-top:8px;line-height:1.7"><span>💡</span><span>إرفاق مخطط أو صورة (إن وُجد) يجعل عروض المنفذين <b>أدق وأسرع</b> — ويرفع فرصة قبول مشروعك.</span></div>
@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <label>المخططات والملفات</label>
         <div id="e-att-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
         <input type="file" id="e-att-input" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.csv,image/*" multiple onchange="_editAttAdd(this)" style="padding:8px;font-size:12px">
-        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · صور — حتى 3 ملفات (حد 30MB للملف)</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">PDF · DWG · Excel · Word · صور — حتى 12 ملف (حد 30MB للملف)</div>
       </div>
     </div>
     <div class="modal-foot">

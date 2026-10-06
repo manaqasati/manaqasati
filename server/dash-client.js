@@ -1,3 +1,6 @@
+// حدود المرفقات في المشروع (لازم تطابق السيرفر)
+var _MQ_IMG=8, _MQ_ATT=12;
+function _mqCnt(id,n,max,lbl){ var g=document.getElementById(id); if(!g)return; var c=document.getElementById(id+'-cnt'); if(!c){ c=document.createElement('div'); c.id=id+'-cnt'; c.style.cssText='font-size:11.5px;font-weight:800;color:#64748b;margin-top:6px'; g.parentNode.insertBefore(c,g.nextSibling); } c.textContent=n?(n+' من '+max+' '+lbl):''; c.style.color=n>=max?'#b45309':'#64748b'; }
 /* مناقصة — كود dashboard-client.html (مفصول عشان يتخزّن في الجوال ويفتح أسرع) */
 
 // ═══════════════════════════════════
@@ -1263,7 +1266,8 @@ function fillCitySelect(sel){
   });
 }
 function previewImages(input){
-  var files=[].slice.call(input.files).slice(0,3-_reqImages.length);
+  var _all=[].slice.call(input.files), _room=Math.max(0,_MQ_IMG-_reqImages.length), files=_all.slice(0,_room);
+  if(_all.length>_room) showToast(_room?('تمت إضافة '+_room+' صور — الحد الأقصى '+_MQ_IMG+' صور'):('وصلت الحد الأقصى ('+_MQ_IMG+' صور)'),'error');
   files.forEach(function(f){
     if(f.size>10*1024*1024){showToast('الحجم الأقصى 10MB','error');return;}
     compressImage(f,function(dataUrl){_reqImages.push({name:f.name,data:dataUrl});renderImgGrid();});
@@ -1290,6 +1294,7 @@ function compressImage(file,cb){
 }
 function renderImgGrid(){
   var g=document.getElementById('img-grid');if(!g)return;
+  _mqCnt('img-grid',_reqImages.length,_MQ_IMG,'صور');
   g.innerHTML=_reqImages.map(function(img,i){return'<div style="position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1"><img loading="lazy" src="'+img.data+'" style="width:100%;height:100%;object-fit:cover"><button onclick="removeReqImg('+i+')" style="position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;font-size:13px;cursor:pointer"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
   if(window.updateQuality)updateQuality();
 }
@@ -1307,7 +1312,8 @@ function _mqUpAtt(f,slot,done){
     });}).catch(function(){fb('');});
 }
 function previewFiles(input){
-  var files=[].slice.call(input.files).slice(0,3-_reqFiles.length);
+  var _all=[].slice.call(input.files), _room=Math.max(0,_MQ_ATT-_reqFiles.length), files=_all.slice(0,_room);
+  if(_all.length>_room) showToast(_room?('تمت إضافة '+_room+' ملفات — الحد الأقصى '+_MQ_ATT+' ملف'):('وصلت الحد الأقصى ('+_MQ_ATT+' ملف)'),'error');
   files.forEach(function(f){
     if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP)','error');return;}
     if(f.size>30*1024*1024){showToast('الحجم الأقصى 30MB','error');return;}
@@ -1318,6 +1324,7 @@ function previewFiles(input){
 }
 function renderFileList(){
   var g=document.getElementById('file-list');if(!g)return;
+  _mqCnt('file-list',_reqFiles.length,_MQ_ATT,'ملفات');
   g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(f.up?'⏳ جاري الرفع… ':'')+esc(f.name)+'</span><button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
   if(window.updateQuality)updateQuality();
 }
@@ -1677,7 +1684,7 @@ function openEditReq(id,e){
     _editGeo={lat:(req.geo_lat!=null?Number(req.geo_lat):null), lng:(req.geo_lng!=null?Number(req.geo_lng):null)};
     var _eml=document.getElementById('e-maploc'); if(_eml)_eml.value=(_editGeo.lat&&_editGeo.lng)?('https://www.google.com/maps?q='+_editGeo.lat+','+_editGeo.lng):'';
     var _elh=document.getElementById('e-loc-hint'); if(_elh)_elh.innerHTML=(_editGeo.lat&&_editGeo.lng)?'<span style="color:var(--green);font-weight:700">\u2713 الموقع محدّد</span>':'';
-    _editAtts=(Array.isArray(req.attachments)?req.attachments.slice(0,3):[]).map(function(a){return {name:a.name||'ملف',url:a.url};});
+    _editAtts=(Array.isArray(req.attachments)?req.attachments.slice(0,_MQ_ATT):[]).map(function(a){return {name:a.name||'ملف',url:a.url};});
     _editAttRender();
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
@@ -1710,7 +1717,7 @@ function _editAttDel(idx){ _editAtts.splice(idx,1); _editAttRender(); }
 function _editAttAdd(input){
   var files=[].slice.call(input.files); input.value='';
   files.forEach(function(f){
-    if(_editAtts.length>=3){showToast('الحد الأقصى 3 ملفات','error');return;}
+    if(_editAtts.length>=_MQ_ATT){showToast('الحد الأقصى '+_MQ_ATT+' ملف','error');return;}
     if(f.size>30*1024*1024){showToast(f.name+': كبير جداً (حد 30MB)','error');return;}
     var slot={name:f.name,up:true}; _editAtts.push(slot); _editAttRender();
     _mqUpAtt(f,slot,function(ok,msg){ if(!ok){var i=_editAtts.indexOf(slot);if(i>-1)_editAtts.splice(i,1);showToast(msg||('تعذّر رفع «'+f.name+'»'),'error');} _editAttRender(); });

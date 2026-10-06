@@ -2496,7 +2496,7 @@ function _reMediaRender(){
   bi.innerHTML=_reImgs.map(function(m,i){var src=m.url||m.data;return '<div class="re-th"><img src="'+esc(_safeUrl(src))+'" onclick="window.open(this.src)"><button type="button" class="x" title="حذف" onclick="_reImgs.splice('+i+',1);_reMediaRender()">✕</button>'+(m.data?'<span class="nw">جديدة</span>':'')+'</div>';}).join('');
   document.getElementById('re-imgs-n').textContent='('+_reImgs.length+'/10)';
   document.getElementById('re-atts').innerHTML=_reAtts.map(function(a,i){return '<div class="re-at">📄 '+(a.url?'<a href="'+esc(_safeUrl(a.url))+'" target="_blank" rel="noopener">'+esc(a.name)+'</a>':'<span style="flex:1">'+esc(a.name)+'</span><span style="font-size:10.5px;background:'+(a.up?'#d97706':'#16a34a')+';color:#fff;border-radius:6px;padding:1px 6px">'+(a.up?'⏳ جاري الرفع':'جديد')+'</span>')+'<button type="button" class="x" title="حذف" onclick="_reAtts.splice('+i+',1);_reMediaRender()">✕</button></div>';}).join('');
-  document.getElementById('re-atts-n').textContent='('+_reAtts.length+'/3)';
+  document.getElementById('re-atts-n').textContent='('+_reAtts.length+'/12)';
 }
 function _reShrink(file){return new Promise(function(res){var fr=new FileReader();fr.onload=function(){var img=new Image();img.onload=function(){var m=1600,w=img.width,h=img.height;if(w>m||h>m){var k=m/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k);}var c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.82));};img.onerror=function(){res(fr.result);};img.src=fr.result;};fr.onerror=function(){res(null);};fr.readAsDataURL(file);});}
 async function _reImgAdd(inp){
@@ -2507,7 +2507,7 @@ async function _reImgAdd(inp){
 function _reAttAdd(inp){
   var fs=[].slice.call(inp.files||[]); inp.value='';
   fs.forEach(function(f){
-    if(_reAtts.length>=3){toast('الحد الأقصى 3 ملفات','error');return;}
+    if(_reAtts.length>=12){toast('الحد الأقصى 12 ملف','error');return;}
     if(f.size>30*1024*1024){toast('«'+f.name+'» أكبر من 30MB','error');return;}
     var slot={name:f.name,up:true}; _reAtts.push(slot);
     _mqUpAtt(f,slot,function(ok,msg){ if(!ok){var i=_reAtts.indexOf(slot);if(i>-1)_reAtts.splice(i,1);toast(msg||('تعذّر رفع «'+f.name+'»'),'error');} _reMediaRender(); });

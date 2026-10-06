@@ -4192,12 +4192,12 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     const pxDistrict = (req.body.district||'').toString().trim().slice(0,80) || null;
     // رفع صور ومرفقات المشروع (نفس آلية نشر العميل)
     const pxImages = [];
-    for (const img of (Array.isArray(req.body.images) ? req.body.images.slice(0,5) : [])) {
+    for (const img of (Array.isArray(req.body.images) ? req.body.images.slice(0,10) : [])) {
       if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) pxImages.push(u); }
       else if (img && _safeUrl(img)) pxImages.push(_safeUrl(img));
     }
     const pxAtts = [];
-    for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,3) : [])) {
+    for (const att of (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0,12) : [])) {
       if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
       else if (att && att.url && _safeUrl(att.url)) pxAtts.push({ name: String(att.name||'ملف').slice(0,80), url: _safeUrl(att.url) });
     }
@@ -4274,7 +4274,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const closeAt = _cd>0 ? new Date(Date.now()+_cd*86400000) : null;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
     const rawImages = req.body.images || [];
-    const images_arr = Array.isArray(rawImages) ? rawImages : [];
+    const images_arr = Array.isArray(rawImages) ? rawImages.slice(0, 10) : [];
     const uploadedImages = [];
     for (const img of images_arr) {
       if (img && img.startsWith('data:')) { const u = await uploadToCloud(img, 'manaqasa/projects'); if (u) uploadedImages.push(u); }
@@ -4284,7 +4284,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     let processedAttachments = null;
     if (Array.isArray(attachments) && attachments.length) {
       processedAttachments = [];
-      for (const att of attachments.slice(0,3)) {
+      for (const att of attachments.slice(0,12)) {
         if (att && att.data && String(att.data).startsWith('data:')) {
           const url = await uploadToCloud(att.data, 'manaqasa/attachments', att.name);
           if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
@@ -4378,7 +4378,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     }
     if (Array.isArray(attachments)) {
       const atts = []; const _attDbg = [];
-      for (const a of attachments.slice(0, 3)) {
+      for (const a of attachments.slice(0, 12)) {
         if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name||'ملف').slice(0,80), url: _safeUrl(a.url) });
         else if (a && a.data) {
           let u = null;
@@ -8545,7 +8545,7 @@ app.put('/api/admin/requests/:id', requirePermission('requests.edit'), async (re
     }
     if (Array.isArray(req.body.attachments)) {
       const atts = [];
-      for (const a of req.body.attachments.slice(0, 3)) {
+      for (const a of req.body.attachments.slice(0, 12)) {
         if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name||'ملف').slice(0,120), url: _safeUrl(a.url) });
         else if (a && a.data && String(a.data).startsWith('data:')) {
           let u = null; try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(_){}
