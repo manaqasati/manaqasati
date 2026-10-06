@@ -689,7 +689,7 @@ function openUserView(uid){
   document.getElementById('userModal').classList.add('show');
   _umMail(u);
 }
-var _MST={sending:['جاري الإرسال','#64748b','#f1f5f9'],sent:['انرسل','#1d4ed8','#dbeafe'],delayed:['متأخر','#92400e','#fef3c7'],delivered:['وصل ✓','#15803d','#dcfce7'],opened:['فتحه ✓','#15803d','#dcfce7'],clicked:['ضغط الرابط ✓','#15803d','#dcfce7'],bounced:['رجع ✗','#b91c1c','#fee2e2'],complained:['سبام ✗','#b91c1c','#fee2e2'],failed:['فشل ✗','#b91c1c','#fee2e2']};
+var _MST={sending:['جاري الإرسال','#64748b','#f1f5f9'],sent:['انرسل','#1d4ed8','#dbeafe'],delayed:['متأخر','#92400e','#fef3c7'],delivered:['وصل ✓','#15803d','#dcfce7'],opened:['فتحه ✓','#15803d','#dcfce7'],clicked:['ضغط الرابط ✓','#15803d','#dcfce7'],bounced:['رجع ✗','#b91c1c','#fee2e2'],complained:['سبام ✗','#b91c1c','#fee2e2'],failed:['فشل ✗','#b91c1c','#fee2e2'],suppressed:['محظور — البريد غير موجود ✗','#b91c1c','#fee2e2']};
 function _umMail(u){
   var el=document.getElementById('um-mail'); if(!el)return;
   el.innerHTML='<div style="font-size:12.5px;color:var(--muted)">جاري تحميل الإيميلات…</div>';

@@ -65,7 +65,7 @@ function _vbStatus(){
   var tk=(typeof token!=='undefined'&&token)||localStorage.getItem('token')||'';
   fetch(API+'/api/auth/verify-status',{headers:{'Authorization':'Bearer '+tk},cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
     if(!d||d.verified)return; var m=d.mail, st=m&&m.status, h='';
-    if(st==='bounced'||st==='failed') h='<div class="vb-warn">⚠️ الإيميل ما قدر يوصل لبريدك — غالباً البريد مكتوب غلط أو الصندوق مقفل. <a href="#" onclick="event.preventDefault();_vbChange()">غيّر البريد</a></div>';
+    if(st==='bounced'||st==='failed'||st==='suppressed') h='<div class="vb-warn">⚠️ الإيميل ما قدر يوصل لبريدك — غالباً البريد مكتوب غلط أو الصندوق مقفل. <a href="#" onclick="event.preventDefault();_vbChange()">غيّر البريد</a></div>';
     else if(st==='complained') h='<div class="vb-warn">الإيميل انحط في البريد المزعج — افتح «Junk / البريد غير الهام» وطلّعه منه.</div>';
     else if(st==='delivered'||st==='opened'||st==='clicked') h='<div class="vb-ok">✓ الإيميل وصل بريدك — لو ما لقيته، شيّك على «البريد المزعج / Junk»'+(/gmail/.test(em)?' أو تبويب «العروض الترويجية»':'')+'.</div>';
     else h='<div class="vb-tip">ما وصلك؟ شيّك على «البريد المزعج / Junk»'+(/gmail/.test(em)?' أو تبويب «العروض الترويجية»':'')+'، وقد يتأخر دقيقة أو دقيقتين.</div>';

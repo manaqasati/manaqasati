@@ -209,13 +209,13 @@ app.post('/api/webhooks/resend', express.raw({ type: () => true, limit: '1mb' })
     const ok = sigH.split(' ').some(p => { const v = p.split(',')[1] || ''; try { return v.length === exp.length && crypto.timingSafeEqual(Buffer.from(v), Buffer.from(exp)); } catch(_) { return false; } });
     if (!ok) return res.status(401).json({ message: 'bad signature' });
     const ev = JSON.parse(body || '{}'), rid = ev && ev.data && ev.data.email_id;
-    const MAP = { 'email.sent':'sent', 'email.delivered':'delivered', 'email.delivery_delayed':'delayed', 'email.bounced':'bounced', 'email.complained':'complained', 'email.opened':'opened', 'email.clicked':'clicked', 'email.failed':'failed' };
+    const MAP = { 'email.sent':'sent', 'email.delivered':'delivered', 'email.delivery_delayed':'delayed', 'email.bounced':'bounced', 'email.complained':'complained', 'email.opened':'opened', 'email.clicked':'clicked', 'email.failed':'failed', 'email.suppressed':'suppressed' };
     const st = MAP[ev.type];
     if (rid && st) {
-      const RANK = { sending:0, sent:1, delayed:2, delivered:3, opened:4, clicked:5, bounced:6, complained:6, failed:6 };
+      const RANK = { sending:0, sent:1, delayed:2, delivered:3, opened:4, clicked:5, bounced:6, complained:6, failed:6, suppressed:6 };
       const cur = (await pool.query('SELECT id, status FROM email_log WHERE resend_id=$1 LIMIT 1', [rid])).rows[0];
       if (cur && (RANK[st] || 0) >= (RANK[cur.status] || 0)) {
-        const err = st === 'bounced' ? JSON.stringify((ev.data && ev.data.bounce) || {}).slice(0, 500) : null;
+        const err = (st === 'bounced' || st === 'suppressed') ? JSON.stringify((ev.data && (ev.data.bounce || ev.data.suppressed || ev.data.failed)) || {}).slice(0, 500) : null;
         await pool.query('UPDATE email_log SET status=$1, error=COALESCE($2,error), updated_at=NOW() WHERE id=$3', [st, err, cur.id]);
       }
     }
