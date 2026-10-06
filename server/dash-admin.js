@@ -684,8 +684,30 @@ function openUserView(uid){
     +(hasProvData||u.role==='provider'?row('النبذة', u.bio):'')
     +row('الحالة', u.is_active?'نشط':'موقوف')
     +row('تاريخ التسجيل', u.created_at?String(u.created_at).slice(0,10):'')
+    +'<div id="um-mail" style="margin-top:12px"></div>'
     +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:14px" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة / تعديل</button>';
   document.getElementById('userModal').classList.add('show');
+  _umMail(u);
+}
+var _MST={sending:['جاري الإرسال','#64748b','#f1f5f9'],sent:['انرسل','#1d4ed8','#dbeafe'],delayed:['متأخر','#92400e','#fef3c7'],delivered:['وصل ✓','#15803d','#dcfce7'],opened:['فتحه ✓','#15803d','#dcfce7'],clicked:['ضغط الرابط ✓','#15803d','#dcfce7'],bounced:['رجع ✗','#b91c1c','#fee2e2'],complained:['سبام ✗','#b91c1c','#fee2e2'],failed:['فشل ✗','#b91c1c','#fee2e2']};
+function _umMail(u){
+  var el=document.getElementById('um-mail'); if(!el)return;
+  el.innerHTML='<div style="font-size:12.5px;color:var(--muted)">جاري تحميل الإيميلات…</div>';
+  fetch(API+'/api/admin/users/'+u.id+'/emails',hdr()).then(function(r){return r.json();}).then(function(list){
+    list=Array.isArray(list)?list:[];
+    var unv=(u.email_verified===false);
+    var h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="font-size:13.5px">📧 الإيميلات</b>'+(unv?'<span style="background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:800">البريد غير مفعّل</span>':'<span style="background:#dcfce7;color:#15803d;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:800">البريد مفعّل</span>')+'</div>';
+    if(!list.length) h+='<div style="font-size:12.5px;color:var(--muted)">ما فيه إيميلات مسجّلة له (التسجيل بدأ مع هالتحديث)</div>';
+    else h+=list.slice(0,6).map(function(m){var st=_MST[m.status]||[m.status,'#334766','#f1f5f9'];return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700" title="'+esc(m.to_email)+'">'+esc(m.subject||'')+'</span><span style="color:var(--muted);white-space:nowrap">'+esc(String(m.created_at||'').slice(5,16).replace('T',' '))+'</span><span title="'+esc(m.error||'')+'" style="background:'+st[2]+';color:'+st[1]+';border-radius:999px;padding:2px 9px;font-weight:800;white-space:nowrap">'+st[0]+'</span></div>';}).join('');
+    if(unv) h+='<div style="display:flex;gap:8px;margin-top:10px"><button class="act-btn ab-default" style="flex:1;justify-content:center" onclick="_umResend('+u.id+',this)">إعادة إرسال التفعيل</button><button class="act-btn ab-primary" style="flex:1;justify-content:center" onclick="verifyUserEmail('+u.id+')">تفعيل يدوي</button></div>';
+    el.innerHTML=h;
+  }).catch(function(){el.innerHTML='';});
+}
+function _umResend(uid,btn){ btn.disabled=true;btn.textContent='...';
+  fetch(API+'/api/admin/users/'+uid+'/resend-verification',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.already){toast('بريده مفعّل','success');} else if(d&&d.ok){toast('انرسل ✓','success');} else toast((d&&d.message)||'تعذّر الإرسال','error');
+    var u=_allUsers.find(function(x){return x.id===uid;}); if(u)setTimeout(function(){_umMail(u);},1500);
+  }).catch(function(){toast('تعذّر الاتصال','error');}).finally(function(){btn.disabled=false;btn.textContent='إعادة إرسال التفعيل';});
 }
 function verifyUserEmail(uid){
   if(!confirm('توثيق بريد هذا المستخدم يدوياً؟ (يتمكّن من النشر/تقديم العروض فوراً بدون رابط إيميل)'))return;

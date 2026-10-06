@@ -196,6 +196,32 @@ app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['appli
     }
   } catch(e) {}
 });
+// ── Resend webhook: حالة وصول الإيميلات (وصل / رجع / سبام) — موقّع بـ Svix ──
+app.post('/api/webhooks/resend', express.raw({ type: () => true, limit: '1mb' }), async (req, res) => {
+  try {
+    const secret = process.env.RESEND_WEBHOOK_SECRET || '';
+    if (!secret) return res.status(503).json({ message: 'webhook not configured' });
+    const id = req.get('svix-id') || '', ts = req.get('svix-timestamp') || '', sigH = req.get('svix-signature') || '';
+    const body = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
+    if (!id || !ts || !sigH || Math.abs(Date.now()/1000 - Number(ts)) > 600) return res.status(400).json({ message: 'bad headers' });
+    const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+    const exp = crypto.createHmac('sha256', key).update(id + '.' + ts + '.' + body).digest('base64');
+    const ok = sigH.split(' ').some(p => { const v = p.split(',')[1] || ''; try { return v.length === exp.length && crypto.timingSafeEqual(Buffer.from(v), Buffer.from(exp)); } catch(_) { return false; } });
+    if (!ok) return res.status(401).json({ message: 'bad signature' });
+    const ev = JSON.parse(body || '{}'), rid = ev && ev.data && ev.data.email_id;
+    const MAP = { 'email.sent':'sent', 'email.delivered':'delivered', 'email.delivery_delayed':'delayed', 'email.bounced':'bounced', 'email.complained':'complained', 'email.opened':'opened', 'email.clicked':'clicked', 'email.failed':'failed' };
+    const st = MAP[ev.type];
+    if (rid && st) {
+      const RANK = { sending:0, sent:1, delayed:2, delivered:3, opened:4, clicked:5, bounced:6, complained:6, failed:6 };
+      const cur = (await pool.query('SELECT id, status FROM email_log WHERE resend_id=$1 LIMIT 1', [rid])).rows[0];
+      if (cur && (RANK[st] || 0) >= (RANK[cur.status] || 0)) {
+        const err = st === 'bounced' ? JSON.stringify((ev.data && ev.data.bounce) || {}).slice(0, 500) : null;
+        await pool.query('UPDATE email_log SET status=$1, error=COALESCE($2,error), updated_at=NOW() WHERE id=$3', [st, err, cur.id]);
+      }
+    }
+    res.json({ ok: true });
+  } catch(e) { console.error('resend webhook:', e.message); res.status(400).json({ message: 'bad payload' }); }
+});
 app.use(express.json({ limit: '45mb' }));
 // صفحات HTML (ومنها الروابط بدون .html مثل /pro/... و/project/...) لا تُخزَّن أبداً —
 // ضروري لتطبيق أندرويد (WebView) اللي يحتفظ بكاش قوي، عشان يوصله التحديث فور الرفع
@@ -1578,19 +1604,33 @@ app.get('/api/admin/requests/:id/match-leads', requirePermission('outreach.manag
 app.get('/brief/:id', (req, res) => res.sendFile(__dirname + '/brief.html'));
 
 // ═══ EMAIL ═══
-async function sendEmail(to, subject, html) {
+// نسخة نص عادي من الإيميل (تحسّن الوصول — الفلاتر تشك في الإيميل اللي HTML بس)
+function _htmlToText(h){
+  return String(h||'').replace(/<(head|style|script)[\s\S]*?<\/\1>/gi,'').replace(/<div style="display:none[\s\S]*?<\/div>/i,'')
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi,function(_,u,t){ t=t.replace(/<[^>]+>/g,'').trim(); return t&&t!==u ? t+': '+u : u; })
+    .replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|h[1-6]|li|tr|table)>/gi,'\n').replace(/<li[^>]*>/gi,'• ').replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+    .replace(/[ \t]+/g,' ').replace(/\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+async function sendEmail(to, subject, html, meta) {
+  meta = meta || {};
   if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
-  if (!to) return false;
+  if (!to || /@manaqasa\.local$/i.test(String(to))) return false;
+  let logId = null;
+  try { logId = (await pool.query('INSERT INTO email_log (user_id, to_email, subject, kind, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', [meta.uid || null, String(to).slice(0,200), String(subject||'').slice(0,200), meta.kind || 'other', 'sending'])).rows[0].id; } catch(e) {}
+  const _fail = (msg) => { if (logId) pool.query("UPDATE email_log SET status='failed', error=$1, updated_at=NOW() WHERE id=$2", [String(msg||'').slice(0,500), logId]).catch(()=>{}); };
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html })
+      body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html, text: _htmlToText(html), reply_to: FROM_EMAIL })
     });
-    if (!r.ok) { console.error('Resend error:', await r.text()); return false; }
+    const txt = await r.text(); let d = null; try { d = JSON.parse(txt); } catch(_) {}
+    if (!r.ok) { console.error('Resend error:', txt); _fail((d && (d.message || d.name)) || txt); return false; }
+    if (logId) pool.query("UPDATE email_log SET status='sent', resend_id=$1, updated_at=NOW() WHERE id=$2", [(d && d.id) || null, logId]).catch(()=>{});
     console.log(`📧 Email sent → ${to} — "${subject}"`);
     return true;
-  } catch(e) { console.error('sendEmail:', e.message); return false; }
+  } catch(e) { console.error('sendEmail:', e.message); _fail(e.message); return false; }
 }
 
 // تهريب HTML لمنع حقن روابط/وسوم في الإيميلات (ناقل تصيّد)
@@ -1603,9 +1643,9 @@ async function _afterEmailChange(uid, oldEm, newEm){
     await pool.query('UPDATE users SET email_verified=false WHERE id=$1', [uid]);
     const vtok = jwt.sign({ id: uid, purpose: 'verify_email', em: String(newEm).toLowerCase() }, JWT_SECRET, { expiresIn: '30d' });
     const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
-    const t = '✅ أكّد بريدك الجديد في مناقصة';
+    const t = 'أكّد بريدك الجديد في منصة مناقصة';
     const _cd = await _verifyCode(uid);
-    sendEmail(newEm, t, emailTpl(t, '<p>تم تغيير البريد في حسابك على منصة مناقصة إلى هذا البريد. اضغط الزر لتأكيده:</p>' + _codeBox(_cd), 'تأكيد البريد', vlink)).catch(()=>{});
+    sendEmail(newEm, t, emailTpl(t, '<p>تم تغيير البريد في حسابك على منصة مناقصة إلى هذا البريد. اضغط الزر لتأكيده:</p>' + _codeBox(_cd), 'تأكيد البريد', vlink), { uid, kind: 'verify' }).catch(()=>{});
     if (oldEm && !/@manaqasa\.local$/i.test(oldEm)) { const t2 = 'تنبيه: تغيّر البريد في حسابك'; sendEmail(oldEm, t2, emailTpl(t2, '<p>تم تغيير البريد الإلكتروني لحسابك في منصة مناقصة. إذا ما كنت أنت، تواصل معنا فوراً على <a href="mailto:cs@manaqasa.com">cs@manaqasa.com</a>.</p>')).catch(()=>{}); }
   } catch(e) { console.error('email change:', e.message); }
 }
@@ -3200,6 +3240,8 @@ async function setupDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_bids_created ON bids(created_at DESC)',
       'CREATE INDEX IF NOT EXISTS idx_saai_request ON saai_ledger(request_id)'
     ];
+    await _mig(`CREATE TABLE IF NOT EXISTS email_log (id SERIAL PRIMARY KEY, user_id INTEGER, to_email VARCHAR(200), subject VARCHAR(200), kind VARCHAR(30), resend_id VARCHAR(80), status VARCHAR(30) DEFAULT 'sent', error TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
+    try { await _mig('CREATE INDEX IF NOT EXISTS email_log_rid ON email_log(resend_id)'); await _mig('CREATE INDEX IF NOT EXISTS email_log_uid ON email_log(user_id, created_at DESC)'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS contract_downloads (id SERIAL PRIMARY KEY, user_id INTEGER, slug VARCHAR(60), created_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS csp_reports (id SERIAL PRIMARY KEY, directive TEXT NOT NULL, blocked TEXT NOT NULL DEFAULT '', page TEXT NOT NULL DEFAULT '', sample TEXT, n INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(directive, blocked, page))`);
     for (const q of _idx) { try { await _mig(q); } catch(e) {} }
@@ -3252,7 +3294,7 @@ app.get('/api/auth/verify-email', async (req, res) => {
   res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل البريد</title><style>body{font-family:system-ui,Tahoma,sans-serif;background:#eef2f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}.c{background:#fff;border-radius:18px;padding:36px 28px;max-width:420px;text-align:center;box-shadow:0 12px 40px rgba(15,23,42,.1)}.i{font-size:52px;margin-bottom:10px}h1{font-size:20px;color:${color};margin:0 0 10px}p{color:#475569;font-size:14px;line-height:1.8;margin:0 0 22px}a{display:inline-block;background:#1e3a8a;color:#fff;text-decoration:none;padding:13px 28px;border-radius:12px;font-weight:800;font-size:14px}</style></head><body><div class="c"><div class="i">${ok?'✅':'⚠️'}</div><h1>${title}</h1><p>${msg}</p><a href="${SITE_URL}/auth.html">ارجع لحسابك</a></div></body></html>`);
 });
 app.get('/api/auth/verify-status', auth, async (req, res) => {
-  try { const u = (await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id])).rows[0] || {}; res.json({ verified: !!u.ev, email: u.email || null }); }
+  try { const u = (await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id])).rows[0] || {}; let mail = null; if (!u.ev) { try { mail = (await pool.query("SELECT status, to_email, created_at FROM email_log WHERE user_id=$1 AND kind='verify' ORDER BY id DESC LIMIT 1", [req.user.id])).rows[0] || null; if (mail && String(mail.to_email||'').toLowerCase() !== String(u.email||'').toLowerCase()) mail = null; } catch(_) {} } res.json({ verified: !!u.ev, email: u.email || null, mail: mail ? { status: mail.status, at: mail.created_at } : null }); }
   catch(e) { res.json({ verified: true }); }
 });
 app.post('/api/auth/verify-code', auth, rateLimiter(12, 600000), async (req, res) => {
@@ -3268,16 +3310,17 @@ app.post('/api/auth/verify-code', auth, rateLimiter(12, 600000), async (req, res
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
-app.post('/api/auth/resend-verification', auth, async (req, res) => {
+app.post('/api/auth/resend-verification', auth, rateLimiter(6, 3600000), async (req, res) => {
   try {
     const u = await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id]);
     if (!u.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (u.rows[0].ev) return res.json({ ok: true, already: true });
     if (!u.rows[0].email) return res.status(400).json({ message: 'لا يوجد بريد مسجّل' });
+    try { const lst = (await pool.query("SELECT created_at FROM email_log WHERE user_id=$1 AND kind='verify' ORDER BY id DESC LIMIT 1", [req.user.id])).rows[0]; if (lst && Date.now() - new Date(lst.created_at).getTime() < 55000) return res.status(429).json({ message: 'انتظر دقيقة قبل إعادة الإرسال' }); } catch(_) {}
     const vtok = jwt.sign({ id: req.user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '30d' });
     const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
     const _cd = await _verifyCode(req.user.id);
-    sendEmail(u.rows[0].email, '✅ فعّل بريدك في مناقصة', emailTpl('✅ فعّل بريدك في مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>' + _codeBox(_cd), 'تفعيل البريد', vlink)).catch(()=>{});
+    sendEmail(u.rows[0].email, 'فعّل بريدك في منصة مناقصة', emailTpl('فعّل بريدك في منصة مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>' + _codeBox(_cd), 'تفعيل البريد', vlink), { uid: req.user.id, kind: 'verify' }).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -3397,7 +3440,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const verifyNote = `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin:14px 0;color:#1e40af"><strong>خطوة أخيرة:</strong> فعّل بريدك لتتمكن من ${isProvider?'تقديم العروض':'نشر مشاريعك'} — اضغط الزر أدناه.</p>`;
       await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! فعّل بريدك من الرسالة المرسلة إلى إيميلك.`, 'welcome', null);
       const _cd = email ? await _verifyCode(user.id) : '';
-      if (email) sendEmail(email, '✅ فعّل بريدك في مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote + _codeBox(_cd), 'تفعيل البريد', vlink)).catch(()=>{});
+      if (email) sendEmail(email, 'فعّل بريدك في منصة مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote + _codeBox(_cd), 'تفعيل البريد', vlink), { uid: user.id, kind: 'verify' }).catch(()=>{});
     } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -7397,7 +7440,7 @@ app.get('/api/admin/users', requirePermission('users.view'), async (req, res) =>
       ap AS (SELECT assigned_provider_id AS pid, COUNT(*) AS cp FROM requests WHERE assigned_provider_id IS NOT NULL AND status='completed' GROUP BY 1),
       bc AS (SELECT provider_id, COUNT(*) AS n FROM bids GROUP BY 1),
       rv AS (SELECT reviewed_id, AVG(rating) AS a, COUNT(*) AS n FROM reviews GROUP BY 1)
-      SELECT u.id,u.name,u.email,u.phone,u.role,u.service_cities,COALESCE(u.serves_all_cities,FALSE) AS serves_all_cities,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,
+      SELECT u.id,u.name,u.email,COALESCE(u.email_verified,TRUE) AS email_verified,u.phone,u.role,u.service_cities,COALESCE(u.serves_all_cities,FALSE) AS serves_all_cities,u.specialties,u.notify_categories,u.city,u.bio,u.badge,u.tier,u.tier_locked,u.is_active,u.experience_years,u.profile_image,u.created_at,u.business_name,COALESCE(u.can_provide,FALSE) AS can_provide,GREATEST(u.last_seen_at,u.last_active) AS last_seen,COALESCE(array_length(u.portfolio_images,1),0) AS port_n,
         COALESCE(rq.rc,0) AS request_count, COALESCE(rq.cr,0) AS completed_requests, COALESCE(bc.n,0) AS bid_count, COALESCE(ap.cp,0) AS completed_projects, COALESCE(rv.a,0) AS avg_rating, COALESCE(rv.n,0) AS review_count
       FROM users u LEFT JOIN rq ON rq.client_id=u.id LEFT JOIN ap ON ap.pid=u.id LEFT JOIN bc ON bc.provider_id=u.id LEFT JOIN rv ON rv.reviewed_id=u.id`;
     const params = [];
@@ -7586,6 +7629,23 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+app.get('/api/admin/users/:id/emails', requirePermission('users.view'), async (req, res) => {
+  try { const r = await pool.query('SELECT id, to_email, subject, kind, status, error, created_at, updated_at FROM email_log WHERE user_id=$1 ORDER BY id DESC LIMIT 15', [parseInt(req.params.id)]); res.json(r.rows); }
+  catch(e) { res.json([]); }
+});
+app.post('/api/admin/users/:id/resend-verification', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const u = (await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [uid])).rows[0];
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    if (u.ev) return res.json({ ok: true, already: true });
+    if (!u.email) return res.status(400).json({ message: 'ما عنده بريد' });
+    const vtok = jwt.sign({ id: uid, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '30d' });
+    const _cd = await _verifyCode(uid);
+    const ok = await sendEmail(u.email, 'فعّل بريدك في منصة مناقصة', emailTpl('فعّل بريدك في منصة مناقصة', '<p>لتفعيل بريدك في منصة مناقصة، اضغط الزر أدناه:</p>' + _codeBox(_cd), 'تفعيل البريد', SITE_URL + '/api/auth/verify-email?token=' + vtok), { uid, kind: 'verify' });
+    res.json({ ok });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.put('/api/admin/users/:id/verify-email', requirePermission('users.edit'), async (req, res) => {
   try {
     const uid = parseInt(req.params.id);

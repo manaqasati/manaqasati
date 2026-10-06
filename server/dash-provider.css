@@ -630,3 +630,4 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .sa-s{position:sticky;top:90px}
   .sa-s #saai-bank .card{margin-top:0!important}
 }
+.vb-st{margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.7}.vb-st a{font-weight:900;text-decoration:underline}.vb-warn{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:7px 10px}.vb-ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:10px;padding:7px 10px}.vb-tip{color:#64748b}

@@ -46,12 +46,33 @@ function _vbRender(){
    +'<div class="vb-b"><div class="vb-t">باقي خطوة: فعّل بريدك</div>'
    +'<div class="vb-s">'+(em?'أرسلنا رابط التفعيل إلى <b>'+_vbEsc(em)+'</b>':'أرسلنا رابط التفعيل إلى بريدك')+'</div>'
    +'<div class="vb-n">بدون التفعيل ما تقدر تقدّم عروض — اضغط الرابط في الإيميل أو اكتب الرمز</div>'
+   +'<div id="vb-st" class="vb-st"></div>'
    +'<div class="vb-acts">'+(mp?'<a class="vb-btn vb-pri" href="'+mp[1]+'" target="_blank" rel="noopener">افتح '+mp[0]+' <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M7 17L17 7M8 7h9v9"/></svg></a>':'')
    +'<button class="vb-btn '+(mp?'vb-sec':'vb-pri')+'" id="verify-resend" onclick="resendVerify()">إعادة الإرسال</button>'
    +'<button class="vb-lnk" onclick="_vbChange()">البريد غلط؟ غيّره</button></div>'
    +'<div style="display:flex;gap:8px;margin-top:10px;max-width:360px"><input id="vb-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="عندك الرمز؟ اكتبه هنا" style="flex:1;min-width:0;border:1.5px solid #dbe5f5;border-radius:11px;padding:10px 12px;font-family:inherit;font-size:15px;font-weight:800;text-align:center;direction:ltr"><button class="vb-btn vb-pri" onclick="_evCode(\'vb-code\',this)">تأكيد</button></div></div></div>';
-  b.style.display='block';_vbTick();
+  b.style.display='block';_vbTick();try{_vbStatus();}catch(e){}
 }
+// حالة إيميل التفعيل (وصل / رجع) + تنبيه لو البريد فيه غلطة إملائية
+function _vbTypo(em){ em=String(em||'').toLowerCase().trim(); var p=em.split('@'); if(p.length!==2)return '';
+  var d=p[1], F={'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmai.com':'gmail.com','gmil.com':'gmail.com','gnail.com':'gmail.com','gmaill.com':'gmail.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','hotmal.com':'hotmail.com','homail.com':'hotmail.com','outlok.com':'outlook.com','outlook.co':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.co':'yahoo.com','icloud.co':'icloud.com','iclod.com':'icloud.com','icoud.com':'icloud.com'};
+  return F[d]?p[0]+'@'+F[d]:''; }
+function _vbStatus(){
+  var el=document.getElementById('vb-st'); if(!el)return;
+  var em=(typeof user!=='undefined'&&user&&user.email)||(typeof _me!=='undefined'&&_me&&_me.email)||'';
+  var sug=_vbTypo(em);
+  if(sug){ el.innerHTML='<div class="vb-warn">⚠️ يمكن بريدك مكتوب غلط — تقصد <b dir="ltr">'+_vbEsc(sug)+'</b>؟ <a href="#" onclick="event.preventDefault();_vbChange()">صحّحه</a></div>'; return; }
+  var tk=(typeof token!=='undefined'&&token)||localStorage.getItem('token')||'';
+  fetch(API+'/api/auth/verify-status',{headers:{'Authorization':'Bearer '+tk},cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    if(!d||d.verified)return; var m=d.mail, st=m&&m.status, h='';
+    if(st==='bounced'||st==='failed') h='<div class="vb-warn">⚠️ الإيميل ما قدر يوصل لبريدك — غالباً البريد مكتوب غلط أو الصندوق مقفل. <a href="#" onclick="event.preventDefault();_vbChange()">غيّر البريد</a></div>';
+    else if(st==='complained') h='<div class="vb-warn">الإيميل انحط في البريد المزعج — افتح «Junk / البريد غير الهام» وطلّعه منه.</div>';
+    else if(st==='delivered'||st==='opened'||st==='clicked') h='<div class="vb-ok">✓ الإيميل وصل بريدك — لو ما لقيته، شيّك على «البريد المزعج / Junk»'+(/gmail/.test(em)?' أو تبويب «العروض الترويجية»':'')+'.</div>';
+    else h='<div class="vb-tip">ما وصلك؟ شيّك على «البريد المزعج / Junk»'+(/gmail/.test(em)?' أو تبويب «العروض الترويجية»':'')+'، وقد يتأخر دقيقة أو دقيقتين.</div>';
+    el.innerHTML=h;
+  }).catch(function(){});
+}
+
 function _vbHide(){try{sessionStorage.setItem('mnq_vb_hide','1');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='vb-min';}
 function _vbShow(){try{sessionStorage.removeItem('mnq_vb_hide');}catch(e){}var b=document.getElementById('verify-banner');if(b)b.className='';gotoPage('profile');window.scrollTo({top:0,behavior:'smooth'});}
 function _vbChange(){gotoPage('profile');var n=0;(function f(){var i=document.getElementById('p-email');if(i&&i.offsetParent){i.focus();try{i.select();}catch(e){}i.scrollIntoView({block:'center',behavior:'smooth'});return;}if(++n<40)setTimeout(f,100);})();}
@@ -63,7 +84,7 @@ function resendVerify(){
   btn.disabled=true;btn.textContent='...جاري الإرسال';
   _api('/api/auth/resend-verification',{method:'POST',body:JSON.stringify({})}).then(function(d){
     if(d&&d.ok){ if(d.already){var u=_me;if(u)u.email_verified=true;try{var lu=JSON.parse(localStorage.getItem('user')||'{}');lu.email_verified=true;localStorage.setItem('user',JSON.stringify(lu));}catch(e){}var bb=document.getElementById('verify-banner');if(bb)bb.style.display='none';showToast('بريدك مفعّل مسبقاً','success');return;}
-      _vbCd=Date.now()+60000;_vbTick(); }
+      _vbCd=Date.now()+60000;_vbTick();setTimeout(function(){try{_vbStatus();}catch(e){}},2500); }
     else { btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast((d&&d.message)||'تعذّر الإرسال','error'); }
   }).catch(function(){ btn.disabled=false;btn.textContent='إعادة الإرسال'; if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); });
 }
