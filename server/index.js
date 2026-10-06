@@ -7625,6 +7625,70 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
 });
 
 
+// ═══ تشخيص: ليش هالشخص ما فعّل؟ (أول سبب ينطبق) ═══
+const _MAIL_TYPO = {'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmai.com':'gmail.com','gmil.com':'gmail.com','gnail.com':'gmail.com','gmaill.com':'gmail.com','gamail.com':'gmail.com','gmeil.com':'gmail.com','gmail.om':'gmail.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','hotmal.com':'hotmail.com','homail.com':'hotmail.com','hotamil.com':'hotmail.com','outlok.com':'outlook.com','outlook.co':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.co':'yahoo.com','icloud.co':'icloud.com','iclod.com':'icloud.com','icoud.com':'icloud.com'};
+function _mailTypo(em){ const p = String(em||'').toLowerCase().trim().split('@'); if (p.length !== 2) return ''; return _MAIL_TYPO[p[1]] ? p[0] + '@' + _MAIL_TYPO[p[1]] : ''; }
+function _vsWhy(u){
+  const st = u.mail_status || '', reg = new Date(u.created_at).getTime(), seen = u.last_seen ? new Date(u.last_seen).getTime() : 0;
+  const lm = u.last_mail ? new Date(u.last_mail).getTime() : 0;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(u.email||'').trim())) return 'invalid';
+  if (_mailTypo(u.email)) return 'typo';
+  if (/bounced|suppressed|failed/.test(st)) return 'bad';
+  if (st === 'complained') return 'spam';
+  if (!st) return 'nosend';
+  if (u.tries > 0) return 'code_wrong';
+  if (u.ever_opened || /opened|clicked/.test(st)) return 'opened';
+  if (/sent|sending|delayed/.test(st) && lm > Date.now() - 6 * 3600000) return 'waiting';
+  if (seen && seen > Math.max(reg, lm) + 30 * 60000) return 'ignored';
+  return 'gone';
+}
+// إرسال جماعي للي ما فعّلوا: إيميل تفعيل و/أو إشعار بالتطبيق
+app.post('/api/admin/verify-bulk', requirePermission('users.edit'), async (req, res) => {
+  try {
+    const ids = [...new Set((Array.isArray(req.body.ids) ? req.body.ids : []).map(x => parseInt(x)).filter(x => x > 0))].slice(0, 500);
+    const wantMail = !!req.body.email, wantNote = !!req.body.notify;
+    if (!ids.length || (!wantMail && !wantNote)) return res.status(400).json({ message: 'اختر أشخاص وطريقة إرسال' });
+    const rows = (await pool.query(`SELECT u.id, u.name, u.email, u.role,
+        (SELECT status FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) AS st,
+        (SELECT MAX(created_at) FROM email_log e WHERE e.user_id=u.id AND e.kind='verify') AS lm
+      FROM users u WHERE u.id = ANY($1::int[]) AND u.email_verified=false AND u.role IN ('client','provider')`, [ids])).rows;
+    const out = { total: rows.length, notified: 0, emailed: 0, skip_bad: 0, skip_recent: 0, skip_typo: 0 };
+    const mailQ = [];
+    for (const u of rows) {
+      if (wantNote) {
+        const t = 'فعّل بريدك ✉️', b = 'باقي خطوة وحدة: فعّل بريدك ' + (u.email||'') + (u.role === 'provider' ? ' عشان تقدر تقدّم عروضك.' : ' عشان يُنشر مشروعك ويوصلك عروض.') + ' ما وصلك الإيميل؟ اضغط هنا وغيّر البريد أو أعد الإرسال.';
+        try {
+          await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [u.id, t, b, 'verify_email', null]);
+          const url = u.role === 'provider' ? '/dashboard-provider.html' : '/dashboard-client.html';
+          sendPush(u.id, t, b, url, 'verify_email', null).catch(() => {});
+          try { wsBroadcast(u.id, { type: 'notification', notif: { title: t, body: b, ntype: 'verify_email', url, created_at: new Date().toISOString() } }); } catch(_) {}
+          out.notified++;
+        } catch(_) {}
+      }
+      if (wantMail) {
+        if (!u.email) { out.skip_bad++; continue; }
+        if (_mailTypo(u.email)) { out.skip_typo++; continue; }
+        if (/bounced|suppressed|complained/.test(u.st || '')) { out.skip_bad++; continue; }
+        if (u.lm && Date.now() - new Date(u.lm).getTime() < 6 * 3600000) { out.skip_recent++; continue; }
+        mailQ.push(u); out.emailed++;
+      }
+    }
+    logAdmin(req, 'verify_bulk', 'user', null, `تذكير تفعيل جماعي: ${out.total} (إشعار ${out.notified} · إيميل ${out.emailed})`).catch(() => {});
+    res.json(Object.assign({ ok: true }, out));
+    // الإيميلات بالخلفية بهدوء (حد Resend تقريباً 2 بالثانية)
+    (async () => {
+      for (const u of mailQ) {
+        try {
+          const vtok = jwt.sign({ id: u.id, purpose: 'verify_email', em: String(u.email).toLowerCase() }, JWT_SECRET, { expiresIn: '30d' });
+          const cd = await _verifyCode(u.id);
+          await sendEmail(u.email, 'فعّل بريدك في منصة مناقصة', emailTpl('فعّل بريدك في منصة مناقصة', '<p>هلا ' + eEsc(u.name||'') + '، باقي خطوة وحدة: فعّل بريدك ' + (u.role === 'provider' ? 'عشان تقدر تقدّم عروضك على المشاريع' : 'عشان يُنشر مشروعك ويوصلك عروض') + '.</p>' + _codeBox(cd), 'تفعيل البريد', SITE_URL + '/api/auth/verify-email?token=' + vtok), { uid: u.id, kind: 'verify' });
+        } catch(e) { console.warn('verify-bulk mail:', e.message); }
+        await new Promise(r => setTimeout(r, 650));
+      }
+    })();
+  } catch(e) { console.error('verify-bulk:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
 // ═══ إحصائيات تفعيل البريد: مين فعّل وبأي طريقة (رابط / رمز / الإدارة) + وين علقوا ═══
 app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, res) => {
   try {
@@ -7641,13 +7705,22 @@ app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, 
     const mail = (await pool.query(`SELECT e.status, COUNT(DISTINCT e.user_id)::int AS n FROM email_log e
       WHERE e.kind='verify' AND (e.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2 GROUP BY 1`, P)).rows;
     // اللي ما فعّلوا (الأحدث أول) — مع حالة آخر إيميل تفعيل
+    // فترة القائمة مستقلة (lfrom/lto) — بدونها = كل الفترات
+    const okd = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||''));
+    const LP = (okd(req.query.lfrom) && okd(req.query.lto)) ? [req.query.lfrom, req.query.lto].sort() : [];
+    const LR = LP.length ? `AND (u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2` : '';
     const pend = (await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.city, u.created_at,
+        COALESCE(u.verify_code_tries,0)::int AS tries, GREATEST(u.last_seen_at,u.last_active) AS last_seen,
+        EXISTS(SELECT 1 FROM push_tokens pt WHERE pt.user_id=u.id) AS has_app,
+        (SELECT MAX(x.created_at) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS last_mail,
+        (SELECT bool_or(x.status IN ('opened','clicked')) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS ever_opened,
         (SELECT COUNT(*) FROM requests r WHERE r.client_id=u.id)::int AS projects,
         (SELECT COUNT(*) FROM bids b WHERE b.provider_id=u.id)::int AS bids,
         el.status AS mail_status, el.created_at AS mail_at, (SELECT COUNT(*) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')::int AS sends
       FROM users u LEFT JOIN LATERAL (SELECT status, created_at FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) el ON TRUE
-      WHERE u.email_verified=false AND u.role IN ('client','provider') AND COALESCE(u.is_active,true)
-      ORDER BY u.created_at DESC LIMIT 200`)).rows;
+      WHERE u.email_verified=false AND u.role IN ('client','provider') AND COALESCE(u.is_active,true) ${LR}
+      ORDER BY u.created_at DESC LIMIT 1000`, LP)).rows;
+    pend.forEach(u => { u.why = _vsWhy(u); });
     const allUnver = (await pool.query(`SELECT role, COUNT(*)::int AS n FROM users WHERE email_verified=false AND role IN ('client','provider') AND COALESCE(is_active,true) GROUP BY 1`)).rows;
     res.json({ range: R, reg, via, mail, pending: pend, all_unverified: allUnver });
   } catch(e) { console.error('verify-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }

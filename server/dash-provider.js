@@ -2540,6 +2540,7 @@ var _NF_I={
 };
 function _nfKind(t){
   t=String(t||'');
+  if(t==='verify_email')return {g:'system',i:'q',c:'#b45309',b:'#fef3c7'};
   if(t==='accept_ask')return {g:'offers',i:'hand',c:'#b45309',b:'#fef3c7'};
   if(t==='bid_rejected')return {g:'offers',i:'x',c:'#b91c1c',b:'#fee2e2'};
   if(t==='bid_accepted'||t==='completed')return {g:t==='completed'?'projects':'offers',i:'check',c:'#15803d',b:'#dcfce7'};
@@ -2607,6 +2608,7 @@ function _nfOpenP(id){
   var n=_nfList.find(function(x){return String(x.id)===String(id);}); if(!n)return;
   if(!n.is_read){ n.is_read=true; _api('/api/notifications/'+id+'/read',{method:'PUT'}); _cacheSet('notifs',_nfList); _nfPaintP(); try{_loadNotifCount();}catch(e){} }
   var t=n.type, k=_nfKind(t).g;
+  if(t==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }

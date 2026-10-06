@@ -5975,7 +5975,7 @@ var _VS=null,_vsF='all';
 function _loadVStats(){
   var box=document.getElementById('dash-vstats'); if(!box)return; var R=_perRange();
   if(!_VS)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-  fetch(API+'/api/admin/verify-stats?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+  var LR=_vsLRange(); fetch(API+'/api/admin/verify-stats?from='+R.from+'&to='+R.to+(LR?'&lfrom='+LR.from+'&lto='+LR.to:''),hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d){box.innerHTML=emptyState('تعذر التحميل');return;} _VS=d; _vsPaint();
     try{var u=(d.all_unverified||[]).reduce(function(a,x){return a+x.n;},0);_miniSet('vs','✉️ تفعيل البريد','<b>'+fmtNum(u)+'</b> ما فعّلوا للحين','vstats');}catch(e){}
   }).catch(function(){box.innerHTML=emptyState('تعذر التحميل');});
@@ -6007,25 +6007,94 @@ function _vsPaint(){
         +'<div class="vs-s" style="margin-top:8px">«رجع / محظور» = البريد غالباً مكتوب غلط — كلّمهم واتساب يصحّحونه أو فعّلهم يدوي.</div>'
       +'</div>'
     +'</div>';
-  // قائمة اللي ما فعّلوا
-  var P=d.pending||[], bad=function(u){return /bounced|suppressed|failed|complained/.test(u.mail_status||'');};
-  var chips=[['all','الكل',P.length],['client','عملاء',P.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',P.filter(function(u){return u.role==='provider';}).length],['bad','⚠️ الإيميل رجع',P.filter(bad).length],['work','عندهم مشروع/عرض معلّق',P.filter(function(u){return u.projects||u.bids;}).length]];
-  var L=P.filter(function(u){return _vsF==='all'||(_vsF==='bad'?bad(u):_vsF==='work'?(u.projects||u.bids):u.role===_vsF);});
-  var ST={sending:['جاري','#64748b'],sent:['انرسل','#1d4ed8'],delayed:['متأخر','#92400e'],delivered:['وصل ✓','#15803d'],opened:['فتحه ✓','#15803d'],clicked:['ضغط ✓','#15803d'],bounced:['رجع ✗','#b91c1c'],suppressed:['محظور ✗','#b91c1c'],complained:['سبام ✗','#b91c1c'],failed:['فشل ✗','#b91c1c']};
+  h+=_vsList(d);
+  box.innerHTML=h;
+}
+// ═══ قائمة اللي ما فعّلوا: فترة خاصة + تشخيص «ليش ما فعّل» + إرسال جماعي ═══
+var _vsLP={k:'all'}, _vsW='', _vsSel={}, _vsCh={email:true,notify:true};
+var _VSWHY={
+  invalid:['✗ البريد غير صالح','#b91c1c','مكتوب بشكل خاطئ — كلّمه واتساب ياخذ بريده الصحيح أو فعّله يدوي'],
+  typo:['✍️ غلطة إملائية في البريد','#b91c1c','مثل gmial بدل gmail — الإيميل ما راح يوصله. كلّمه واتساب يصحّحه'],
+  bad:['✗ البريد رجع / غير موجود','#b91c1c','Resend رفضه — البريد غلط أو مقفل. واتساب يصحّحه أو فعّله يدوي'],
+  spam:['🚫 حط إيميلنا سبام','#b91c1c','ما نقدر نرسل له إيميل — كلّمه واتساب'],
+  nosend:['📭 ما انرسل له إيميل تفعيل','#64748b','غالباً سجّل قبل تتبّع الإيميلات — أرسل له الحين'],
+  code_wrong:['🔢 حاول يكتب الرمز وغلط','#92400e','يبي يفعّل بس الرمز ما ضبط — أرسل له رمز جديد'],
+  opened:['👀 فتح الإيميل وما كمّل','#92400e','شاف الإيميل وما ضغط — ذكّره بإشعار أو واتساب'],
+  waiting:['⏳ انرسل له قريب','#1d4ed8','الإيميل انرسل خلال آخر 6 ساعات — انتظر شوي'],
+  ignored:['🙈 يدخل المنصة ومتجاهل التفعيل','#7c3aed','يستخدم المنصة بس ما فعّل — إشعار + واتساب'],
+  gone:['💤 سجّل وما رجع','#64748b','ما رجع للمنصة بعد التسجيل — إيميل تذكير + واتساب']
+};
+var _VSORD=['typo','invalid','bad','spam','nosend','code_wrong','opened','ignored','gone','waiting'];
+function _vsLRange(){ var now=new Date(),t=_ymd(now),dd=function(n){return _ymd(new Date(now.getTime()-n*86400000));},k=_vsLP.k;
+  if(k==='today')return {from:t,to:t,lbl:'اليوم'}; if(k==='yesterday')return {from:dd(1),to:dd(1),lbl:'أمس'};
+  if(k==='7d')return {from:dd(6),to:t,lbl:'آخر 7 أيام'}; if(k==='month')return {from:t.slice(0,8)+'01',to:t,lbl:'هالشهر'};
+  if(k==='custom'&&_vsLP.from&&_vsLP.to)return {from:_vsLP.from,to:_vsLP.to,lbl:_vsLP.from+' ← '+_vsLP.to};
+  return null; }
+function _vsLSet(k){ if(k==='custom'){ var f=(document.getElementById('vsl-f')||{}).value,t=(document.getElementById('vsl-t')||{}).value; if(!f||!t){_vsLP={k:'custom'};_vsPaint();return;} _vsLP={k:'custom',from:f,to:t}; } else _vsLP={k:k}; _vsSel={}; window._vsAll=false; _loadVStats(); }
+function _vsWhyTxt(u){ var w=_VSWHY[u.why]||['—','#64748b',''], t=w[0];
+  if(u.why==='typo'){ var p=String(u.email||'').split('@'); t+=' <span dir="ltr" style="font-weight:700">('+esc(p[1]||'')+')</span>'; }
+  if(u.why==='code_wrong')t+=' ('+u.tries+' مرات)';
+  if(u.why==='gone'&&/delivered|opened/.test(u.mail_status||''))t='💤 وصله الإيميل وما رجع';
+  return '<b style="color:'+w[1]+'">'+t+'</b>'; }
+function _vsList(d){
+  var P=d.pending||[], LR=_vsLRange(), work=function(u){return u.projects||u.bids;};
+  var base=P.filter(function(u){return _vsF==='all'||(_vsF==='work'?work(u):u.role===_vsF);});
+  var L=base.filter(function(u){return !_vsW||u.why===_vsW;});
+  var W={}; base.forEach(function(u){W[u.why]=(W[u.why]||0)+1;});
+  var seg=[['all','الكل'],['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
+  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">ما فعّلوا للحين <span style="color:var(--muted);font-weight:700">('+fmtNum(P.length)+' — '+(LR?'سجّلوا '+esc(LR.lbl):'من كل الفترات')+')</span></div>'
+    +'<div class="vs-seg" style="margin-bottom:8px;align-self:flex-start">'+seg.map(function(x){return '<button type="button" class="'+(_vsLP.k===x[0]?'on':'')+'" onclick="_vsLSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
+    +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':'');
+  // وين المشكلة؟
+  var wt=base.length;
+  h+='<div class="vsw"><div class="vsw-h">🔍 وين المشكلة؟ <small>اضغط أي سبب يطلع لك أصحابه</small></div>'
+    +(wt?_VSORD.filter(function(k){return W[k];}).map(function(k){var w=_VSWHY[k],n=W[k],pc=Math.round(n/wt*100);
+      return '<button type="button" class="vsw-r'+(_vsW===k?' on':'')+'" onclick="_vsW=_vsW===\''+k+'\'?\'\':\''+k+'\';_vsSel={};window._vsAll=false;_vsPaint()"><span class="vsw-n"><b style="color:'+w[1]+'">'+w[0]+'</b><small>'+w[2]+'</small></span><span class="ct2-bar"><i style="width:'+Math.max(4,pc)+'%;background:'+w[1]+'"></i></span><b class="vsw-c">'+fmtNum(n)+' <small>('+pc+'%)</small></b></button>';}).join('')
+      :'<div class="vs-s">ما فيه أحد 👌</div>')+'</div>';
+  var chips=[['all','الكل',P.length],['client','عملاء',P.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',P.filter(function(u){return u.role==='provider';}).length],['work','عندهم مشروع/عرض معلّق',P.filter(work).length]];
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px">'+chips.map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';_vsSel={};window._vsAll=false;_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')
+    +(_vsW?'<button type="button" class="ct2-b" style="border-color:#fca5a5;color:#b91c1c" onclick="_vsW=\'\';_vsSel={};_vsPaint()">'+_VSWHY[_vsW][0]+' ✕</button>':'')+'</div>';
+  // شريط الإرسال الجماعي
+  var selN=L.filter(function(u){return _vsSel[u.id];}).length, allOn=L.length&&selN===L.length;
+  var appN=L.filter(function(u){return _vsSel[u.id]&&u.has_app;}).length;
+  h+='<div class="vsb'+(selN?' on':'')+'"><label class="vsb-all"><input type="checkbox" '+(allOn?'checked':'')+' onchange="_vsSelAll(this.checked)"> تحديد الكل ('+fmtNum(L.length)+')</label>'
+    +(selN?'<span class="vsb-n">محدد <b>'+fmtNum(selN)+'</b></span>'
+      +'<label class="vsb-c"><input type="checkbox" '+(_vsCh.email?'checked':'')+' onchange="_vsCh.email=this.checked"> ✉️ إيميل تفعيل</label>'
+      +'<label class="vsb-c" title="يوصل كإشعار داخل المنصة، وإشعار جوال للي عندهم التطبيق"><input type="checkbox" '+(_vsCh.notify?'checked':'')+' onchange="_vsCh.notify=this.checked"> 🔔 إشعار <small>('+fmtNum(appN)+' عندهم التطبيق)</small></label>'
+      +'<button class="ct2-b pri" onclick="_vsBulk(this)">إرسال للمحددين</button>':'<span class="vs-s">حدد أشخاص عشان ترسل لهم إيميل أو إشعار دفعة وحدة</span>')+'</div>';
   var wa=function(u){var ph=_waNorm(u.phone); if(!ph)return ''; var why=u.role==='provider'?'عشان تقدر تقدّم عروضك على المشاريع':'عشان يُنشر مشروعك ويوصلك عروض';
-    var m='السلام عليكم '+(u.name||'')+'، معك منصة مناقصة 👋\nلاحظنا إن بريدك '+(u.email||'')+' ما تفعّل للحين — فعّله '+why+'.\nلو ما وصلك إيميل التفعيل (شيّك على البريد المزعج)، أو بريدك مكتوب غلط، رد علينا هنا ونفعّله لك.';
+    var fix=/typo|invalid|bad|spam/.test(u.why)?'\nيبدو إن بريدك مكتوب غلط والإيميل ما يوصلك — أرسل لنا بريدك الصحيح هنا ونصحّحه ونفعّله لك.':'\nلو ما وصلك إيميل التفعيل (شيّك على البريد المزعج)، رد علينا هنا ونفعّله لك.';
+    var m='السلام عليكم '+(u.name||'')+'، معك منصة مناقصة 👋\nلاحظنا إن بريدك '+(u.email||'')+' ما تفعّل للحين — فعّله '+why+'.'+fix;
     return '<a class="ct2-b wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent(m)+'">واتساب</a>';};
-  h+='<div class="ct2-c" style="margin-top:14px"><div class="ct2-h">ما فعّلوا للحين <span style="color:var(--muted);font-weight:700">('+fmtNum(allU)+' — من كل الفترات)</span></div>'
-    +'<div class="per" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'+chips.map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
-    +(L.length?L.slice(0,window._vsAll?200:15).map(function(u,i){var st=ST[u.mail_status]||['ما انرسل','#64748b'],prov=u.role==='provider';
-      return '<div class="ct2-u"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
-        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span>'+((u.projects||u.bids)?' <span class="ct2-pl" style="background:#fef3c7;color:#92400e">'+(prov?u.bids+' عرض':u.projects+' مشروع')+' معلّق</span>':'')+'</div>'
-        +'<small><span dir="ltr">'+esc(u.email||'')+'</span> · سجّل '+_adAgo(u.created_at)+' · <b style="color:'+st[1]+'">'+st[0]+'</b>'+(u.sends>1?' · أرسلنا '+u.sends+' مرات':'')+'</small></div>'
+  h+=(L.length?L.slice(0,window._vsAll?1000:15).map(function(u){var prov=u.role==='provider';
+      return '<div class="ct2-u'+(_vsSel[u.id]?' sel':'')+'"><input type="checkbox" aria-label="تحديد" '+(_vsSel[u.id]?'checked':'')+' onchange="_vsSelOne('+u.id+',this.checked)"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
+        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span>'+(work(u)?' <span class="ct2-pl" style="background:#fef3c7;color:#92400e">'+(prov?u.bids+' عرض':u.projects+' مشروع')+' معلّق</span>':'')+(u.has_app?' <span class="ct2-pl" style="background:#ede9fe;color:#6d28d9">📱 التطبيق</span>':'')+'</div>'
+        +'<small class="vs-why">'+_vsWhyTxt(u)+'</small>'
+        +'<small><span dir="ltr">'+esc(u.email||'')+'</span> · سجّل '+_adAgo(u.created_at)+(u.last_seen?' · آخر دخول '+_adAgo(u.last_seen):'')+(u.sends?' · أرسلنا '+u.sends+(u.sends>1?' مرات':' مرة'):'')+'</small></div>'
         +'<div class="ct2-acts">'+wa(u)+'<button class="ct2-b" onclick="_vsResend('+u.id+',this)">إعادة الإرسال</button><button class="ct2-b pri" onclick="_vsVerify('+u.id+',this)">تفعيل يدوي</button></div></div>';}).join('')
       +(L.length>15?'<a href="#" class="ct2-more" onclick="event.preventDefault();window._vsAll=!window._vsAll;_vsPaint()">'+(window._vsAll?'عرض أقل':'عرض الكل ('+L.length+')')+'</a>':'')
       :'<div class="vs-s" style="padding:10px 0">ما فيه أحد في هالقائمة 👌</div>')
     +'</div>';
-  box.innerHTML=h;
+  return h;
+}
+function _vsCur(){ var P=(_VS&&_VS.pending)||[]; return P.filter(function(u){return (_vsF==='all'||(_vsF==='work'?(u.projects||u.bids):u.role===_vsF))&&(!_vsW||u.why===_vsW);}); }
+function _vsSelAll(on){ _vsSel={}; if(on)_vsCur().forEach(function(u){_vsSel[u.id]=1;}); _vsPaint(); }
+function _vsSelOne(id,on){ if(on)_vsSel[id]=1; else delete _vsSel[id]; _vsPaint(); }
+function _vsBulk(btn){
+  var ids=_vsCur().filter(function(u){return _vsSel[u.id];}).map(function(u){return u.id;});
+  if(!ids.length){toast('حدد أشخاص أول','error');return;}
+  if(!_vsCh.email&&!_vsCh.notify){toast('اختر إيميل أو إشعار','error');return;}
+  var what=[_vsCh.email?'إيميل تفعيل':'',_vsCh.notify?'إشعار':''].filter(Boolean).join(' + ');
+  if(!confirm('إرسال '+what+' لـ '+ids.length+' شخص؟'))return;
+  btn.disabled=true;btn.textContent='جاري الإرسال...';
+  fetch(API+'/api/admin/verify-bulk',Object.assign({method:'POST',body:JSON.stringify({ids:ids,email:_vsCh.email,notify:_vsCh.notify})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){
+    if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');return;} var d=x.d, m=[];
+    if(_vsCh.notify)m.push('🔔 '+d.notified+' إشعار');
+    if(_vsCh.email)m.push('✉️ '+d.emailed+' إيميل');
+    var sk=[]; if(d.skip_recent)sk.push(d.skip_recent+' انرسل لهم خلال 6 ساعات'); if(d.skip_bad)sk.push(d.skip_bad+' بريدهم مرفوض'); if(d.skip_typo)sk.push(d.skip_typo+' بريدهم فيه غلطة');
+    toast('تم ✓ '+m.join(' · ')+(sk.length?' — تخطّينا: '+sk.join('، ')+' (كلّمهم واتساب)':''),'success');
+    _vsSel={}; setTimeout(_loadVStats,2500);
+  }).catch(function(){toast('تعذّر الاتصال','error');}).finally(function(){btn.disabled=false;btn.textContent='إرسال للمحددين';});
 }
 function _vsOpen(id){ try{ if((_allUsers||[]).some(function(x){return x.id===id;})){openUserView(id);return;} }catch(e){} location.hash='#users'; }
 function _vsResend(id,btn){ btn.disabled=true;btn.textContent='...';

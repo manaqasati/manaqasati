@@ -2881,6 +2881,7 @@ var _NF_I={
 };
 function _nfKind(t){
   t=String(t||'');
+  if(t==='verify_email')return {g:'system',i:'q',c:'#b45309',b:'#fef3c7'};
   if(t==='accept_ask')return {g:'offers',i:'hand',c:'#b45309',b:'#fef3c7'};
   if(t==='bid_rejected')return {g:'offers',i:'x',c:'#b91c1c',b:'#fee2e2'};
   if(t==='bid_accepted'||t==='completed')return {g:t==='completed'?'projects':'offers',i:'check',c:'#15803d',b:'#dcfce7'};
@@ -2944,6 +2945,7 @@ function _nfOpenC(id){
   var n=_nfList.find(function(x){return String(x.id)===String(id);}); if(!n)return;
   if(!n.is_read){ n.is_read=true; fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){}); _nfPaintC(); try{_notifRecount();}catch(e){} try{loadNotifCount();}catch(e){} }
   var k=_nfKind(n.type).g;
+  if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
 }
