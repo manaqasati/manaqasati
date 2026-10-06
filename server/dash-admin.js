@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -116,13 +116,15 @@ function showPage(pg,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
-  var meta={dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();}
   if(pg==='analytics')loadAnalytics();
+  if(pg==='appstats'){_perMini('per-app');_loadAppStats();}
+  if(pg==='ctstats'){_perMini('per-ct');_loadCtStats();}
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -5555,7 +5557,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -5737,7 +5739,7 @@ function _perRange(){
   if(k==='custom'&&_PER.from&&_PER.to)return {from:_PER.from,to:_PER.to,lbl:_PER.from+' ← '+_PER.to,cmp:'عن نفس المدة قبلها'};
   return {from:t,to:t,lbl:'اليوم',cmp:'عن أمس'};
 }
-function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _loadVisits(); _loadAppStats(); _loadCtStats(); }
+function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _perMini('per-app'); _perMini('per-ct'); _loadVisits(); _loadAppStats(); _loadCtStats(); }
 function _perRender(showCustom){
   var old=document.getElementById('dash-period'); if(old)old.innerHTML='';
   var box=document.getElementById('vs-seg'); if(!box)return; var R=_perRange();
@@ -5859,6 +5861,8 @@ function _loadAppStats(){
   var box=document.getElementById('dash-app'); if(!box)return; var R=_perRange();
   fetch(API+'/api/admin/app-stats?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d||!d.own){box.style.display='none';return;}
+    box.style.display='';
+    try{var _o=d.own;_miniSet('app','📱 التطبيق','<b>'+(_o.providers?Math.round(_o.providers_app/_o.providers*100):0)+'%</b> من المزوّدين · <b>'+(_o.clients?Math.round(_o.clients_app/_o.clients*100):0)+'%</b> من العملاء عندهم التطبيق','appstats');}catch(e){}
     var o=d.own, pc=function(a,b){return b?Math.round(a/b*100):0;};
     var kb=function(lbl,a,b,c){var p=pc(a,b);return '<div class="vs-b"><span class="t">'+lbl+'</span><span class="big" style="color:'+c+'">'+p+'%</span><div class="ap-bar"><i style="width:'+p+'%;background:'+c+'"></i></div><span class="vs-s">'+fmtNum(a)+' من '+fmtNum(b)+' نزّلوه</span></div>';};
     var views=0,clicks=0,cl={},vw={};
@@ -5881,11 +5885,12 @@ function _loadCtStats(){
   var box=document.getElementById('dash-contracts'); if(!box)return; var R=_perRange();
   fetch(API+'/api/admin/contract-stats?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d||!d.tot){box.style.display='none';return;} box.style.display=''; _CT=d;
+    try{_miniSet('ct','📄 عقود المقاولات','<b>'+fmtNum(d.tot.n)+'</b> تحميل · <b>'+fmtNum(d.tot.users)+'</b> شخص ('+esc(_perRange().lbl)+')','ctstats');}catch(e){}
     var t=d.tot, nm=function(s){return (d.names&&d.names[s])||s;};
     var mx=d.top.length?d.top[0].n:1;
     var rows=d.top.map(function(x){return '<div class="vs-br"><span class="nm" style="width:230px">'+esc(nm(x.slug))+'</span><span class="bar"><i style="width:'+Math.round(x.n/mx*100)+'%;background:#1d4ed8"></i></span><span class="v">'+fmtNum(x.n)+'</span></div>';}).join('');
     var ph=function(p){p=String(p||'').replace(/\D/g,''); if(p.indexOf('05')===0)p='966'+p.slice(1); return p;};
-    var list=d.users.slice(0,60).map(function(u){var p=ph(u.phone);
+    var list=d.users.slice(0,200).map(function(u){var p=ph(u.phone);
       return '<tr><td style="width:34px"><input type="checkbox" class="ct-ck" data-id="'+u.id+'" onchange="_ctSelUpd()" style="width:17px;height:17px"></td><td><a href="#" onclick="event.preventDefault();openUserView('+u.id+')" style="font-weight:800">'+esc(u.name||'—')+'</a><div class="vs-s">'+(u.role==='provider'?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</div></td>'
         +'<td style="font-size:12.5px">'+u.slugs.map(function(s){return esc(nm(s).replace(/^عقد /,''));}).join('، ')+'</td>'
         +'<td style="white-space:nowrap;font-size:12.5px">'+esc(String(u.last_at||'').slice(0,10))+'</td>'
@@ -5897,7 +5902,7 @@ function _loadCtStats(){
       +(rows?'<div class="vs-st" style="margin-top:12px">أكثر العقود تحميلاً</div>'+rows:'<div class="vs-s" style="margin-top:10px">ما فيه تحميلات في هالفترة</div>')
       +(list?'<div style="display:flex;align-items:center;margin-top:14px"><div class="vs-st" style="margin:0">اللي حمّلوا ('+fmtNum(d.users.length)+')</div><button class="act-btn ab-primary" id="ct-send" style="margin-inline-start:auto" onclick="_ctMsg()">📣 أرسل رسالة للكل ('+fmtNum(d.users.length)+')</button><button class="act-btn ab-default" style="margin-inline-start:8px" onclick="_ctCsv()">⬇ تصدير Excel</button></div>'
         +'<div style="overflow-x:auto;margin-top:6px"><table class="ct-t"><thead><tr><th><input type="checkbox" id="ct-all" title="تحديد الكل" onchange="_ctAll(this.checked)" style="width:17px;height:17px"></th><th>الاسم</th><th>العقود</th><th>آخر تحميل</th><th></th></tr></thead><tbody>'+list+'</tbody></table></div>'
-        +(d.users.length>60?'<div class="vs-s" style="margin-top:6px">يظهر أول 60 — صدّر Excel للقائمة كاملة</div>':''):'');
+        +(d.users.length>200?'<div class="vs-s" style="margin-top:6px">يظهر أول 200 — صدّر Excel للقائمة كاملة</div>':''):'');
   }).catch(function(){ box.style.display='none'; });
 }
 function _ctCsv(){
@@ -5924,4 +5929,18 @@ function _ctMsg(){
   fillMsgTemplates(); applyMsgTemplate(0);
   document.getElementById('sm-channel').value='both';
   document.getElementById('selMsgModal').classList.add('show');
+}
+
+// ملخص صغير في لوحة المعلومات + روابط لصفحات التفاصيل (التطبيق / العقود)
+var _MINI={};
+function _miniSet(k,t,html,pg){
+  _MINI[k]={t:t,h:html,pg:pg};
+  var box=document.getElementById('dash-mini'); if(!box)return;
+  box.innerHTML='<div class="vs-h"><h3>📊 متابعة سريعة</h3></div>'+['app','ct'].filter(function(x){return _MINI[x];}).map(function(x){var m=_MINI[x];
+    return '<button type="button" onclick="_gtGo(\''+m.pg+'\')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:1px solid var(--border);background:var(--bg);border-radius:14px;padding:13px 14px;margin-top:10px;cursor:pointer;font-family:inherit;color:inherit"><div style="flex:1"><div style="font-weight:900;font-size:14.5px">'+m.t+'</div><div class="vs-s" style="font-size:13px;margin-top:3px">'+m.h+'</div></div><span style="font-weight:900;color:var(--p);font-size:13px;white-space:nowrap">التفاصيل ←</span></button>';}).join('');
+}
+function _perMini(id){
+  var box=document.getElementById(id); if(!box)return;
+  var ks=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['30d','30 يوم'],['month','هالشهر'],['year','هالسنة']];
+  box.innerHTML='<div class="vs-seg" role="tablist" aria-label="الفترة" style="margin-bottom:14px">'+ks.map(function(x){return '<button type="button" class="'+(_PER.k===x[0]?'on':'')+'" onclick="_perSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>';
 }
