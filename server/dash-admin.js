@@ -1345,7 +1345,7 @@ function _cuPaint(){
     +seg.map(function(x){var v=t[x[0]]||0;return v?'<i style="width:'+pc(v)+'%;background:'+x[1]+'" title="'+x[2]+': '+v+'"></i>':'';}).join('')+'</div><div class="cu-lg">'
     +seg.map(function(x){return '<span><b style="background:'+x[1]+'"></b>'+x[2]+' '+fmtNum(t[x[0]]||0)+'</span>';}).join('')+'</div></div>';
   var P=_clList, cnt=function(o){return P.filter(function(p){return p.outcome===o;}).length;};
-  var chips=[['risk','⚠️ خطر تسريب',cnt('risk')],['all','الكل',P.length],['won','رست عليه',cnt('won')],['open','مفتوحة',cnt('open')],['other','رست على غيره',cnt('other')]];
+  var chips=[['risk','⚠️ خطر تسريب',cnt('risk')],['gone','🚩 حذف عرضه',P.filter(function(p){return p.gone;}).length],['all','الكل',P.length],['won','رست عليه',cnt('won')],['open','مفتوحة',cnt('open')],['other','رست على غيره',cnt('other')]];
   h+='<div class="cu-2"><div class="ad-card cu-list"><div class="cu-bar"><div class="cu-chips">'+chips.map(function(c){return '<button type="button" class="cu-chip'+(c[0]===_cuF?' on':'')+(c[0]==='risk'?' rk':'')+'" onclick="_cuF=\''+c[0]+'\';_cuPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
     +'<input id="cl-search" class="cu-srch" oninput="clSearch()" placeholder="🔍 مزوّد، عميل، أو مشروع…"></div><div id="cl-cards"></div></div>';
   var pv=d.providers||[], mx=Math.max.apply(null,pv.map(function(x){return x.opens;}).concat([1]));
@@ -1361,7 +1361,7 @@ function _clRenderCards(list){
   if(!list.length){box.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-weight:700">'+(_cuF==='risk'?'ما فيه مشاريع انقفلت بدون ترسية بعد فتح الرقم 👌':'لا نتائج')+'</div>';return;}
   box.innerHTML=list.slice(0,150).map(function(p){
     var oc=_CU_OC[p.outcome]||_CU_OC.open, risk=p.outcome==='risk';
-    var provs=p.provs.map(function(v){var ph=_waNorm(v.phone);return '<'+(ph?'a href="https://wa.me/'+ph+'" target="_blank" rel="noopener" title="واتساب '+esc(v.name||'')+'"':'span')+' class="cu-pv"><i>'+esc((v.name||'م').charAt(0))+'</i>'+esc(v.name||'—')+'<small>· '+fmtDate(v.at)+'</small>'+(v.won?'<b>✓ رسى عليه</b>':'')+'</'+(ph?'a':'span')+'>';}).join('');
+    var provs=p.provs.map(function(v){var ph=_waNorm(v.phone);return '<'+(ph?'a href="https://wa.me/'+ph+'" target="_blank" rel="noopener" title="واتساب '+esc(v.name||'')+'"':'span')+' class="cu-pv"><i>'+esc((v.name||'م').charAt(0))+'</i>'+esc(v.name||'—')+'<small>· '+fmtDate(v.at)+'</small>'+(v.won?'<b>✓ رسى عليه</b>':'')+(v.bid_gone?(v.gone_by==='admin'?'<b style="color:#64748b">العرض حذفته الإدارة</b>':'<b style="color:#dc2626">⚠️ حذف عرضه بعد ما أخذ الرقم</b>'):'')+'</'+(ph?'a':'span')+'>';}).join('');
     var cph=_waNorm(p.client_phone), acts='';
     if(p.outcome==='risk'||p.outcome==='open'){
       if(cph)acts+='<a class="act-btn ab-default cu-w" href="https://wa.me/'+cph+'?text='+encodeURIComponent('السلام عليكم '+(p.client_name||'')+'،\nمعك منصة مناقصة بخصوص مشروعك «'+(p.title||'')+'». هل اتفقت مع أحد من المزوّدين اللي قدّموا عروضهم؟ إذا تم، نقدر نوثّق المشروع ونفتح لك تقييم المزوّد.')+'" target="_blank" rel="noopener">💬 اسأل العميل</a>';
@@ -1374,7 +1374,7 @@ function _clRenderCards(list){
 }
 function clSearch(){
   var q=((document.getElementById('cl-search')||{}).value||'').trim().toLowerCase();
-  var L=_clList.filter(function(p){return _cuF==='all'||p.outcome===_cuF;});
+  var L=_clList.filter(function(p){return _cuF==='all'||(_cuF==='gone'?p.gone:p.outcome===_cuF);});
   if(q)L=L.filter(function(p){return ((p.title||'')+' '+(p.client_name||'')+' '+p.provs.map(function(v){return v.name||'';}).join(' ')).toLowerCase().indexOf(q)>=0;});
   _clRenderCards(L);
 }

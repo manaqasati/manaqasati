@@ -3042,7 +3042,7 @@ async function setupDatabase() {
     } catch(e) { console.error('bid_reports migrate:', e.message); }
     await _mig(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
-    try { await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); } catch(e){}
+    try { await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_by VARCHAR(20)'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_at TIMESTAMP'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await _mig(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -5001,6 +5001,11 @@ app.delete('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'لا يمكن حذف عرض مقبول' });
+    // بعد ما ينفتح رقم العميل للمزوّد ما يقدر يحذف عرضه (يمنع: يقدّم ← ياخذ الرقم ← يحذف ← يتفق برا)
+    try {
+      const ul = await pool.query('SELECT 1 FROM contact_unlocks cu JOIN bids b ON b.request_id=cu.request_id AND b.provider_id=cu.provider_id WHERE b.id=$1 LIMIT 1', [id]);
+      if (ul.rows.length) return res.status(400).json({ code: 'unlocked', message: 'ما تقدر تحذف عرضك بعد ما ظهر لك رقم العميل — تقدر تعدّله، أو تواصل مع الإدارة لو فيه سبب' });
+    } catch(_) {}
     await pool.query('DELETE FROM bids WHERE id=$1', [id]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -7411,8 +7416,9 @@ app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) 
 app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id', [id]);
+    const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id, request_id, provider_id', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
+    try { await pool.query("UPDATE contact_unlocks SET bid_deleted_by='admin', bid_deleted_at=NOW() WHERE request_id=$1 AND provider_id=$2", [r.rows[0].request_id, r.rows[0].provider_id]); } catch(_) {}
     await logAdmin(req, 'delete_bid', 'bid', id, 'حذف عرض');
     res.json({ ok: true });
   } catch(e) { console.error('del bid:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -7916,10 +7922,12 @@ app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async 
     const t = (await pool.query(`SELECT COUNT(*)::int AS opens, COUNT(DISTINCT cu.client_id)::int AS clients, COUNT(DISTINCT cu.provider_id)::int AS providers,
         COUNT(*) FILTER (WHERE ${OUT}='won')::int AS won, COUNT(*) FILTER (WHERE ${OUT}='other')::int AS other,
         COUNT(*) FILTER (WHERE ${OUT}='risk')::int AS risk, COUNT(*) FILTER (WHERE ${OUT}='open')::int AS open,
-        COUNT(DISTINCT cu.request_id) FILTER (WHERE ${OUT}='risk')::int AS risk_projects
+        COUNT(DISTINCT cu.request_id) FILTER (WHERE ${OUT}='risk')::int AS risk_projects,
+        COUNT(*) FILTER (WHERE COALESCE(cu.bid_deleted_by,'')<>'admin' AND NOT EXISTS (SELECT 1 FROM bids bb WHERE bb.request_id=cu.request_id AND bb.provider_id=cu.provider_id))::int AS gone
       FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE ${IN}`, P)).rows[0];
     t.saai_protected = (await pool.query(`SELECT COALESCE(SUM(s.saai_amount),0)::int AS v FROM saai_ledger s WHERE EXISTS (SELECT 1 FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE cu.request_id=s.request_id AND cu.provider_id=s.provider_id AND rq.assigned_provider_id=cu.provider_id AND ${IN})`, P)).rows[0].v;
-    const rows = (await pool.query(`SELECT cu.request_id, cu.created_at, cu.commission_reminded, cu.provider_id, ${OUT} AS outcome,
+    const rows = (await pool.query(`SELECT cu.request_id, cu.created_at, cu.commission_reminded, cu.provider_id, ${OUT} AS outcome, cu.bid_deleted_by,
+        NOT EXISTS (SELECT 1 FROM bids bb WHERE bb.request_id=cu.request_id AND bb.provider_id=cu.provider_id) AS bid_gone,
         COALESCE(NULLIF(p.business_name,''), p.name) AS provider_name, p.phone AS provider_phone,
         rq.title, rq.status, rq.city, rq.assigned_provider_id, c.id AS client_id, c.name AS client_name, c.phone AS client_phone
       FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id LEFT JOIN users p ON p.id=cu.provider_id LEFT JOIN users c ON c.id=cu.client_id
@@ -7929,7 +7937,8 @@ app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async 
     for (const x of rows) {
       let g = map.get(x.request_id);
       if (!g) { g = { request_id: x.request_id, title: x.title, status: x.status, city: x.city, client_id: x.client_id, client_name: x.client_name, client_phone: x.client_phone, last_at: x.created_at, reminded_at: null, provs: [] }; map.set(x.request_id, g); }
-      g.provs.push({ id: x.provider_id, name: x.provider_name, phone: x.provider_phone, at: x.created_at, won: x.outcome === 'won' });
+      g.provs.push({ id: x.provider_id, name: x.provider_name, phone: x.provider_phone, at: x.created_at, won: x.outcome === 'won', bid_gone: !!x.bid_gone, gone_by: x.bid_deleted_by || null });
+      if (x.bid_gone && x.bid_deleted_by !== 'admin') g.gone = true;
       if (x.commission_reminded && (!g.reminded_at || x.commission_reminded > g.reminded_at)) g.reminded_at = x.commission_reminded;
       g.outcome = x.assigned_provider_id ? (g.provs.some(v => v.won) || x.outcome === 'won' ? 'won' : 'other') : x.outcome;
     }

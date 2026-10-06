@@ -1218,7 +1218,7 @@ function _renderBids(list){
     if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
     if(!isAcc&&!isRej){
       h+='<button onclick="_editBidById('+(parseInt(b.id)||0)+')" class="ca-btn ca-view">تعديل العرض</button>';
-      h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del">سحب</button>';
+      if(!b.contact_unlocked)h+='<button onclick="_delBid('+b.id+')" class="ca-btn ca-del">سحب</button>';
     }
     h+='</div></div>';
     return h;
