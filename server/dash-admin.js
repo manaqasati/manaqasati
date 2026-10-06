@@ -1917,10 +1917,12 @@ function _prExtras(r){
   else h.push('<span class="pr-tag" style="background:#fffbeb;color:#92400e">📍 ما حدّد الموقع على الخريطة</span>');
   return '<div style="display:flex;flex-wrap:wrap;gap:8px">'+h.join('')+'</div>';
 }
+function _prZip(id,btn){ var o=btn.textContent; btn.disabled=true; btn.textContent='جاري التجهيز…';
+  fetch(API+'/api/requests/'+id+'/files.zip',hdr()).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='مشروع-'+id+'-الملفات.zip'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000); }).catch(function(){ showToast('تعذّر تجهيز الملفات','error'); }).finally(function(){ btn.disabled=false; btn.textContent=o; }); }
 function _prFiles(r){
   var at=_prAtts(r); if(!at.length) return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>0</span></div><div style="font-size:13px;color:var(--muted);font-weight:700">ما أرفق العميل أي ملف أو مخطط</div></div>';
   var C={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed8','DWG'],dxf:['#dbeafe','#1d4ed8','DXF'],rar:['#ede9fe','#6d28d9','RAR'],zip:['#ede9fe','#6d28d9','ZIP'],'7z':['#ede9fe','#6d28d9','7Z'],xlsx:['#dcfce7','#15803d','XLS'],xls:['#dcfce7','#15803d','XLS'],csv:['#dcfce7','#15803d','CSV'],docx:['#e0f2fe','#0369a1','DOC'],doc:['#e0f2fe','#0369a1','DOC']};
-  return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>'+at.length+'</span></div><div class="pr-files">'+at.map(function(a){
+  return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>'+at.length+'</span>'+(at.length>1?'<button type="button" onclick="_prZip('+r.id+',this)" style="margin-right:auto;border:1.5px solid var(--border);background:var(--card,#fff);color:#1d4ed8;border-radius:10px;padding:5px 11px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">⬇ تحميل الكل</button>':'')+'</div><div class="pr-files">'+at.map(function(a){
     var u=_safeUrl(a.url), nm=String(a.name||'ملف'), ext=((nm.match(/\.([a-z0-9]+)$/i)||u.match(/\.([a-z0-9]{2,4})(?:[?#]|$)/i)||[])[1]||'').toLowerCase();
     var img=/^(jpe?g|png|webp|gif|heic)$/.test(ext), c=C[ext]||['#f1f5f9','#334766',(ext||'ملف').toUpperCase()];
     var view=(ext==='pdf'||img);

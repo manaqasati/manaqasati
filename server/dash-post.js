@@ -1001,7 +1001,7 @@ function _mqUpAtt(f,slot,done){
   function fb(msg){ if(f.size<=10*1024*1024){var r=new FileReader();r.onload=function(e){slot.data=e.target.result;slot.up=false;done(true);};r.onerror=function(){done(false,msg);};r.readAsDataURL(f);} else done(false,msg); }
   fetch(API+'/api/upload/attachment',{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f})
     .then(function(r){return r.json().catch(function(){return {};}).then(function(d){
-      if(r.ok&&d.url){slot.url=d.url;slot.up=false;done(true);}
+      if(r.ok&&d.url){slot.url=d.url;slot.size=d.size||f.size;slot.up=false;done(true);}
       else if(r.status===400||r.status===413)done(false,d.message);
       else fb(d.message);
     });}).catch(function(){fb('');});
@@ -1149,7 +1149,7 @@ function acceptAgree(){
   if(budget)body.budget_max=Number(budget);
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
-  if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url}:{name:f.name,data:f.data};});
+  if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};});
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(r){

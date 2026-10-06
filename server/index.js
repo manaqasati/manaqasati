@@ -394,6 +394,67 @@ app.use(express.static('.', {
 }));
 
 // تحميل مرفق كملف (بدل فتحه) — فقط من تخزيننا (R2/Cloudinary)
+// ── أحجام المرفقات: تُقرأ من R2 مرة وحدة وتنحفظ مع المشروع ──
+function _r2KeyOf(u){ try{ const base = String(R2_PUBLIC_URL||'').replace(/\/+$/,'') + '/'; u = String(u||''); if (!R2_PUBLIC_URL || u.indexOf(base) !== 0) return null; return decodeURIComponent(u.slice(base.length).split(/[?#]/)[0]); }catch(_){ return null; } }
+async function _attSizes(id, atts){
+  if (!r2Client || !Array.isArray(atts)) return atts;
+  const { HeadObjectCommand } = require('@aws-sdk/client-s3');
+  let changed = false;
+  await Promise.all(atts.map(async a => {
+    if (!a || !a.url || (a.size != null && a.size !== '')) return;
+    const key = _r2KeyOf(a.url); if (!key) return;
+    try { const h = await r2Client.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key })); if (h && h.ContentLength != null) { a.size = Number(h.ContentLength); changed = true; } } catch(_) {}
+  }));
+  if (changed) pool.query('UPDATE requests SET attachments=$1 WHERE id=$2', [JSON.stringify(atts), id]).catch(()=>{});
+  return atts;
+}
+// ── تحميل كل مرفقات المشروع في ملف ZIP واحد (بدون ضغط — المخططات أصلاً مضغوطة) ──
+const _CRC_T = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+function _crc32(buf){ const z = require('zlib'); if (typeof z.crc32 === 'function') return z.crc32(buf) >>> 0; let c = -1; for (let i = 0; i < buf.length; i++) c = _CRC_T[(c ^ buf[i]) & 0xff] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+async function _fetchAttBuf(u){
+  const key = _r2KeyOf(u);
+  if (key && r2Client) { const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key })); const ch = []; for await (const c of g.Body) ch.push(c); return Buffer.concat(ch); }
+  if (/^https:\/\/res\.cloudinary\.com\//.test(u) || (process.env.ZIP_TEST_FETCH && /^http:\/\/localhost:/.test(u))) { const r = await fetch(u); if (!r.ok) throw new Error('fetch ' + r.status); return Buffer.from(await r.arrayBuffer()); }
+  throw new Error('رابط غير مدعوم');
+}
+app.get('/api/requests/:id/files.zip', rateLimiter(15, 600000), optionalAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = await pool.query('SELECT id, title, status, category, client_id, assigned_provider_id, attachments FROM requests WHERE id=$1', [id]);
+    if (!q.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const row = q.rows[0], uid = req.user && req.user.id, isAdmin = req.user && req.user.role === 'admin';
+    const isOwner = uid && uid === row.client_id, isAssigned = uid && uid === row.assigned_provider_id;
+    if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) return res.status(404).json({ message: 'غير موجود' });
+    if (row.category === 'direct' && !(isOwner || isAssigned || isAdmin)) return res.status(404).json({ message: 'غير موجود' });
+    let atts = row.attachments; if (typeof atts === 'string') { try { atts = JSON.parse(atts); } catch(_) { atts = []; } }
+    atts = (Array.isArray(atts) ? atts : []).filter(a => a && a.url && _safeUrl(a.url)).slice(0, 12);
+    if (!atts.length) return res.status(404).json({ message: 'ما فيه ملفات مرفقة' });
+    const zipName = 'مناقصة-مشروع-' + id + '-الملفات.zip';
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="manaqasa-project-${id}-files.zip"; filename*=UTF-8''${encodeURIComponent(zipName)}`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    const d = new Date(), dosT = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosD = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    const used = {}, central = []; let off = 0;
+    const write = b => new Promise(r => { off += b.length; if (!res.write(b)) res.once('drain', r); else r(); });
+    for (const a of atts) {
+      let buf; try { buf = await _fetchAttBuf(a.url); } catch(e) { console.error('zip fetch:', e.message); continue; }
+      const urlExt = (String(a.url).split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '';
+      let nm = String(a.name || 'ملف').replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim().slice(0, 120) || 'ملف';
+      if (urlExt && !/\.[a-z0-9]{2,5}$/i.test(nm)) nm += '.' + urlExt;
+      const base = nm; let k = 2; while (used[nm.toLowerCase()]) { nm = base.replace(/(\.[a-z0-9]{2,5})?$/i, m => ' (' + (k++) + ')' + m); } used[nm.toLowerCase()] = 1;
+      const nb = Buffer.from(nm, 'utf8'), crc = _crc32(buf), sz = buf.length, at = off;
+      const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x0800, 6); lh.writeUInt16LE(0, 8); lh.writeUInt16LE(dosT, 10); lh.writeUInt16LE(dosD, 12); lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(sz, 18); lh.writeUInt32LE(sz, 22); lh.writeUInt16LE(nb.length, 26); lh.writeUInt16LE(0, 28);
+      await write(lh); await write(nb); await write(buf);
+      const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8); ch.writeUInt16LE(0, 10); ch.writeUInt16LE(dosT, 12); ch.writeUInt16LE(dosD, 14); ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(sz, 20); ch.writeUInt32LE(sz, 24); ch.writeUInt16LE(nb.length, 28); ch.writeUInt16LE(0, 30); ch.writeUInt16LE(0, 32); ch.writeUInt16LE(0, 34); ch.writeUInt16LE(0, 36); ch.writeUInt32LE(0, 38); ch.writeUInt32LE(at, 42);
+      central.push(ch, nb);
+    }
+    const cdStart = off, cd = Buffer.concat(central), n = central.length / 2;
+    await write(cd);
+    const e = Buffer.alloc(22); e.writeUInt32LE(0x06054b50, 0); e.writeUInt16LE(0, 4); e.writeUInt16LE(0, 6); e.writeUInt16LE(n, 8); e.writeUInt16LE(n, 10); e.writeUInt32LE(cd.length, 12); e.writeUInt32LE(cdStart, 16); e.writeUInt16LE(0, 20);
+    res.end(e);
+  } catch(e) { console.error('files.zip:', e.message); if (!res.headersSent) res.status(500).json({ message: 'تعذّر تجهيز الملفات' }); else res.end(); }
+});
+
 app.get('/api/dl', async (req, res) => {
   try {
     const u = String(req.query.u || '');
@@ -4177,6 +4238,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     // ملاحظات الإدارة للعميل: لصاحب المشروع والإدارة فقط
     if (!(isOwner || isAdmin)) _stripClientNote(row);
     else if (isOwner && row.client_note && !row.client_note_seen_at) { try { await pool.query('UPDATE requests SET client_note_seen_at=NOW() WHERE id=$1', [id]); row.client_note_seen_at = new Date(); } catch(e){} }
+    try { let _a = row.attachments; if (typeof _a === 'string') _a = JSON.parse(_a); if (Array.isArray(_a) && _a.some(x => x && x.url && x.size == null)) row.attachments = await _attSizes(id, _a); } catch(_) {}
     res.json({ ...row, status: normalizeStatus(row.status) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -4291,7 +4353,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
           const url = await uploadToCloud(att.data, 'manaqasa/attachments', att.name);
           if (url) processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url });
         } else if (att && att.url && _safeUrl(att.url)) {
-          processedAttachments.push({ name: String(att.name||'ملف').slice(0,120), url: _safeUrl(att.url) });
+          processedAttachments.push(Object.assign({ name: String(att.name||'ملف').slice(0,120), url: _safeUrl(att.url) }, Number.isFinite(+att.size) && +att.size > 0 ? { size: +att.size } : {}));
         }
       }
       if (!processedAttachments.length) processedAttachments = null;
@@ -4393,7 +4455,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (Array.isArray(attachments)) {
       const atts = []; const _attDbg = [];
       for (const a of attachments.slice(0, 12)) {
-        if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name||'ملف').slice(0,80), url: _safeUrl(a.url) });
+        if (a && a.url && _safeUrl(a.url)) atts.push(Object.assign({ name: String(a.name||'ملف').slice(0,80), url: _safeUrl(a.url) }, Number.isFinite(+a.size) && +a.size > 0 ? { size: +a.size } : {}));
         else if (a && a.data) {
           let u = null;
           try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(e) { _attDbg.push({ name: a.name, error: e.message }); }

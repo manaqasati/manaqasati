@@ -266,6 +266,22 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-imgs .pimg{aspect-ratio:1;border-radius:12px;overflow:hidden;position:relative;cursor:zoom-in}
 .pj-imgs .pimg img{width:100%;height:100%;object-fit:cover}
 .pj-imgs .mr{position:absolute;inset:0;background:rgba(15,23,42,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px}
+.pj-tabs{display:flex;gap:4px;background:#f1f5fb;border-radius:14px;padding:4px;overflow-x:auto;scrollbar-width:none}
+.pj-tabs::-webkit-scrollbar{display:none}
+.pj-tab{flex:1;white-space:nowrap;border:0;background:transparent;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13.5px;font-weight:800;color:#475569;cursor:pointer}
+.pj-tab em{font-style:normal;background:#e2e8f0;color:#334766;border-radius:999px;padding:0 7px;font-size:11.5px;margin-right:3px}
+.pj-tab.on{background:#fff;color:#1d4ed8;box-shadow:0 4px 12px -6px rgba(11,31,77,.35)}.pj-tab.on em{background:#dbeafe;color:#1d4ed8}
+.pj-pane{display:flex;flex-direction:column;gap:10px}.pj-pane[hidden]{display:none}
+.pj-empty{font-size:13px;color:#5b6b85;font-weight:700}
+.pj-maplnk{align-self:flex-start;border:0;background:#ecfdf5;color:#047857;border-radius:999px;padding:7px 13px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.pj-fh{display:flex;align-items:center;gap:8px}.pj-fh b{font-size:14px;color:#14223d}
+.pj-zip{margin-right:auto;display:inline-flex;align-items:center;gap:6px;border:1.5px solid #dbe5f5;background:#fff;color:#1d4ed8;border-radius:10px;padding:7px 12px;font-family:inherit;font-size:13px;font-weight:800;text-decoration:none;cursor:pointer}
+.pj-flist{display:flex;flex-direction:column}
+.pj-frow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #eef2f8}.pj-frow:last-child{border-bottom:0}
+.pj-fx{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:900;flex-shrink:0;letter-spacing:.3px}
+.pj-fi{flex:1;min-width:0}.pj-fi b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;line-height:1.5;color:#14223d;word-break:break-word}.pj-fi small{font-size:11.5px;color:#5b6b85;font-weight:700}
+.pj-ib{width:38px;height:38px;border-radius:10px;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;text-decoration:none;padding:0}
+.pj-ib.dl{background:#1d4ed8;border-color:#1d4ed8;color:#fff}.pj-ib.off{opacity:.35;cursor:default}
 .pj-file{display:flex;align-items:center;gap:8px;border:1px solid #e1e9f6;border-radius:12px;padding:10px 12px;text-decoration:none;color:#14223d}
 .pj-fo{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit}
 .pj-fb{flex-shrink:0;border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap}
@@ -842,6 +858,15 @@ function _pjSimilar(){
     w.innerHTML=h;w.style.display='';
   }).catch(function(){});
 }
+var _pjEye='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+var _pjDl='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>';
+function _pjFT(e){ var M={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed8','DWG'],dxf:['#dbeafe','#1d4ed8','DXF'],rvt:['#dbeafe','#1d4ed8','RVT'],rar:['#ede9fe','#6d28d9','RAR'],zip:['#ede9fe','#6d28d9','ZIP'],'7z':['#ede9fe','#6d28d9','7Z'],xlsx:['#dcfce7','#15803d','XLS'],xls:['#dcfce7','#15803d','XLS'],csv:['#dcfce7','#15803d','CSV'],docx:['#e0f2fe','#0369a1','DOC'],doc:['#e0f2fe','#0369a1','DOC'],pptx:['#ffedd5','#c2410c','PPT'],ppt:['#ffedd5','#c2410c','PPT']}; if(/^(jpe?g|png|webp|gif|heic)$/.test(e)) return ['#e0f2fe','#0369a1',e==='jpeg'?'JPG':e.toUpperCase()]; return M[e]||['#f1f5f9','#334766',(e||'ملف').toUpperCase()]; }
+function _pjSize(b){ b=+b||0; if(b>=1048576) return (b/1048576).toFixed(b>=10485760?0:1)+'MB'; if(b>=1024) return Math.round(b/1024)+'KB'; return b+'B'; }
+function _pjTab(el,t){ var c=el.closest('.pj-card'); if(!c)return; c.querySelectorAll('.pj-tab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===t);}); c.querySelectorAll('.pj-pane').forEach(function(p){ var on=p.getAttribute('data-p')===t; p.hidden=!on; if(on){ p.querySelectorAll('iframe[data-src]').forEach(function(f){ if(!f.src) f.src=f.getAttribute('data-src'); }); } }); }
+function _pjZip(id,btn){
+  var tk=localStorage.getItem('token')||''; var o=btn.innerHTML; btn.disabled=true; btn.textContent='جاري التجهيز…';
+  fetch(API+'/api/requests/'+id+'/files.zip',{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='مناقصة-مشروع-'+id+'-الملفات.zip'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000); }).catch(function(){ alert('تعذّر تجهيز الملفات — حمّلها وحدة وحدة'); }).finally(function(){ btn.disabled=false; btn.innerHTML=o; });
+}
 function _pjDetailsHtml(req){
   var h='';
   var loc=[req.district,req.city].filter(Boolean).map(esc).join(' — ')||'غير محدد';
@@ -851,31 +876,50 @@ function _pjDetailsHtml(req){
   if(req.deadline)facts+='<div class="pj-f"><span>الموعد المطلوب</span><b>'+fmtDate(req.deadline)+'</b></div>';
   facts+='<div class="pj-f"><span>آخر موعد للعروض</span><b>'+(req.status==='open'&&dl!==null?(dl<=0?'اليوم':'بعد '+dl+' '+_dWord(dl)):(req.status==='open'?'—':_stTxt(req.status)))+'</b></div>';
   h+='<div class="pj-card"><div class="pj-h">تفاصيل المشروع<span class="pj-hs">نُشر قبل '+ago(req.created_at)+'</span></div><div class="pj-facts">'+facts+'</div>';
-  if(req.description)h+='<div class="desc-text fmt-text pj-desc">'+fmtText(req.description)+'</div>';
+  // ── التبويبات: الوصف / المخططات والملفات / الصور / الموقع ──
+  var _MAPRE=/https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.[a-z.]+|(?:www\.)?google\.[a-z.]+\/maps)\S*/gi;
+  var _desc=String(req.description||''), _mapLinks=_desc.match(_MAPRE)||[];
+  _desc=_desc.replace(_MAPRE,'').replace(/(الموقع|موقع المشروع|اللوكيشن)\s*[:：]?\s*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
+  var _glat=parseFloat(req.geo_lat),_glng=parseFloat(req.geo_lng), _hasGeo=!!(req.geo_lat&&req.geo_lng&&isFinite(_glat)&&isFinite(_glng));
   var imgs=(req.images||[]).filter(function(i){return isImg(i);});
-  if(imgs.length){
-    h+='<div class="pj-imgs">';
-    imgs.slice(0,6).forEach(function(img,i){var more=(i===5&&imgs.length>6)?'<span class="mr">+'+(imgs.length-6)+'</span>':'';h+='<div class="pimg" data-src="'+esc(img)+'" onclick="openViewer(this.getAttribute(\'data-src\'))"><img src="'+esc(img)+'" loading="lazy" alt="صورة">'+more+'</div>';});
-    h+='</div>';
-  }
   var _atts=[];try{_atts=typeof req.attachments==='string'?JSON.parse(req.attachments):(req.attachments||[]);}catch(e){_atts=[];}
-  if(Array.isArray(_atts)&&_atts.length){
-    _atts.forEach(function(a){
-      var url=(a&&(a.url||a.data||a))||'';var nm=(a&&a.name)?a.name:'ملف مرفق';
-      if(!/^https?:/i.test(String(url))||!_safeUrl(url))return;
-      var ext=String(nm).split('.').pop().toLowerCase();
-      var ic=ext==='pdf'?'📄':(['doc','docx'].indexOf(ext)>-1?'📝':(['xls','xlsx'].indexOf(ext)>-1?'📊':'📎'));
+  _atts=(Array.isArray(_atts)?_atts:[]).filter(function(a){var u=(a&&(a.url||a))||'';return /^https?:/i.test(String(u))&&_safeUrl(u);});
+  var _locMode=_hasGeo?'geo':(_mapLinks.length?(getUser()?'link':'lock'):(!getUser()?'lock0':''));
+  var P={};
+  P.desc=(_desc?'<div class="desc-text fmt-text pj-desc">'+fmtText(_desc)+'</div>':'<div class="pj-empty">ما كتب العميل وصفاً</div>')
+    +((_locMode==='geo'||_locMode==='link')?'<button type="button" class="pj-maplnk" onclick="_pjTab(this,\'loc\')">📍 موقع المشروع على الخريطة</button>':'');
+  if(_atts.length){
+    var tot=0, known=0;
+    var rows=_atts.map(function(a){
+      var url=a.url||a, nm=a.name||'ملف مرفق', sz=+a.size||0; if(sz){tot+=sz;known++;}
+      var ext=((String(nm).match(/\.([a-z0-9]{2,5})$/i)||String(url).split('?')[0].match(/\.([a-z0-9]{2,5})$/i)||[])[1]||'').toLowerCase();
+      var T=_pjFT(ext), view=(ext==='pdf'||/^(jpe?g|png|webp|gif|heic)$/.test(ext));
       var dl=API+'/api/dl?u='+encodeURIComponent(url)+'&n='+encodeURIComponent(nm);
-      h+='<div class="pj-file"><a class="pj-fo" href="'+esc(url)+'" target="_blank" rel="noopener"><span style="font-size:22px">'+ic+'</span><div style="flex:1;min-width:0"><b>'+esc(nm)+'</b><small>'+(ext?esc(ext.toUpperCase())+' · ':'')+'اضغط للعرض</small></div></a><a class="pj-fb" href="'+esc(url)+'" target="_blank" rel="noopener">فتح</a><a class="pj-fb pj-fd" href="'+esc(dl)+'">⬇ تحميل</a></div>';
-    });
+      var eye=view?(/^(jpe?g|png|webp|gif|heic)$/.test(ext)?'<button type="button" class="pj-ib" title="عرض" data-src="'+esc(url)+'" onclick="openViewer(this.getAttribute(\'data-src\'))">'+_pjEye+'</button>':'<a class="pj-ib" title="عرض" href="'+esc(url)+'" target="_blank" rel="noopener">'+_pjEye+'</a>'):'<span class="pj-ib off" title="يُعرض بعد التحميل على جهازك">'+_pjEye+'</span>';
+      return '<div class="pj-frow"><span class="pj-fx" style="background:'+T[0]+';color:'+T[1]+'">'+T[2]+'</span><div class="pj-fi"><b title="'+esc(nm)+'">'+esc(nm)+'</b><small>'+T[2]+(sz?' · '+_pjSize(sz):'')+(view?'':' · يفتح بعد التحميل')+'</small></div>'+eye+'<a class="pj-ib dl" title="تحميل" href="'+esc(dl)+'">'+_pjDl+'</a></div>';
+    }).join('');
+    var zipHref=API+'/api/requests/'+req.id+'/files.zip';
+    var _pub=['pending_review','review','needs_edit','rejected'].indexOf(req.status)<0;
+    P.files='<div class="pj-fh"><b>'+_atts.length+' '+(_atts.length>=3&&_atts.length<=10?'ملفات':'ملف')+(known===_atts.length&&tot?' · '+_pjSize(tot):'')+'</b>'+(_atts.length>1?(_pub?'<a class="pj-zip" href="'+esc(zipHref)+'">'+_pjDl+' تحميل الكل</a>':'<button type="button" class="pj-zip" onclick="_pjZip('+req.id+',this)">'+_pjDl+' تحميل الكل</button>'):'')+'</div><div class="pj-flist">'+rows+'</div>';
   }
-  var _glat=parseFloat(req.geo_lat),_glng=parseFloat(req.geo_lng);
-  if(req.geo_lat&&req.geo_lng&&isFinite(_glat)&&isFinite(_glng)){
-    h+='<div style="border:1px solid #e1e9f6;border-radius:12px;overflow:hidden"><iframe class="loc-map" src="https://maps.google.com/maps?q='+_glat+','+_glng+'&z=15&output=embed" style="width:100%;height:180px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="موقع المشروع"></iframe></div>';
-    h+='<a class="pj-b" href="https://www.google.com/maps/search/?api=1&query='+_glat+','+_glng+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a>';
-  } else if(!getUser()){
-    h+='<div class="pj-lock">🔒 الموقع الدقيق يظهر للمزوّدين المسجّلين</div>';
+  if(imgs.length){
+    P.imgs='<div class="pj-imgs">'+imgs.map(function(img){return '<div class="pimg" data-src="'+esc(img)+'" onclick="openViewer(this.getAttribute(\'data-src\'))"><img src="'+esc(img)+'" loading="lazy" alt="صورة"></div>';}).join('')+'</div>';
   }
+  if(_locMode==='geo'){
+    P.loc='<div style="border:1px solid #e1e9f6;border-radius:12px;overflow:hidden"><iframe class="loc-map" data-src="https://maps.google.com/maps?q='+_glat+','+_glng+'&z=15&output=embed" style="width:100%;height:240px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="موقع المشروع"></iframe></div>'
+      +'<a class="pj-b" href="https://www.google.com/maps/search/?api=1&query='+_glat+','+_glng+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a>';
+  } else if(_locMode==='link'){
+    var ml=_safeUrl(_mapLinks[0]);
+    P.loc='<div class="pj-info">العميل أرسل رابط الموقع من خرائط جوجل</div>'+(ml?'<a class="pj-b" href="'+esc(ml)+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a>':'');
+  } else if(_locMode==='lock'||_locMode==='lock0'){
+    P.loc='<div class="pj-lock">🔒 الموقع الدقيق يظهر للمزوّدين المسجّلين</div>';
+  }
+  var _fixMap=function(html,first){ return first?html.replace('<iframe class="loc-map" data-src=','<iframe class="loc-map" src='):html; };
+  var tabs=[['desc','الوصف'],['files','الملفات',_atts.length],['imgs','الصور',imgs.length],['loc','الموقع']].filter(function(t){return P[t[0]];});
+  if(tabs.length>1){
+    h+='<div class="pj-tabs" role="tablist">'+tabs.map(function(t,i){return '<button type="button" role="tab" class="pj-tab'+(i===0?' on':'')+'" data-t="'+t[0]+'" onclick="_pjTab(this,\''+t[0]+'\')">'+t[1]+(t[2]?' <em>'+t[2]+'</em>':'')+'</button>';}).join('')+'</div>';
+    h+=tabs.map(function(t,i){return '<div class="pj-pane" data-p="'+t[0]+'"'+(i===0?'':' hidden')+'>'+_fixMap(P[t[0]],i===0)+'</div>';}).join('');
+  } else if(tabs.length){ h+='<div class="pj-pane" data-p="'+tabs[0][0]+'">'+_fixMap(P[tabs[0][0]],true)+'</div>'; }
   return h+'</div>';
 }
 function _pjClientHtml(req){
