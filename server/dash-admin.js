@@ -1895,7 +1895,9 @@ function _prQuality(r,info){
   var hasPhone=_PR_PHONE.test((r.title||'')+' '+(r.description||''));
   var ck=[
     {t:words>=15?'الوصف واضح ('+words+' كلمة)':(words>=6?'الوصف قصير ('+words+' كلمات)':'الوصف ناقص جداً'),s:words>=15?'ok':(words>=6?'warn':'bad')},
-    {t:imgs?'فيه صور ('+imgs+')':'ما فيه صور ولا مخطط',s:imgs?'ok':'warn'},
+    {t:_prImgs(r).length?'فيه صور ('+_prImgs(r).length+')':'ما فيه صور',s:_prImgs(r).length?'ok':'warn'},
+    {t:_prAtts(r).length?'فيه مخططات/ملفات ('+_prAtts(r).length+')':(['بناء','ترميم مبانٍ','تصاميم داخلي وخارجي','تشطيبات ومقاولات عامة'].indexOf(r.category)>=0?'ما أرفق مخطط — مشاريع «'+r.category+'» تحتاجه':'ما فيه مخططات أو ملفات'),s:_prAtts(r).length?'ok':(['بناء','ترميم مبانٍ','تصاميم داخلي وخارجي','تشطيبات ومقاولات عامة'].indexOf(r.category)>=0?'bad':'warn')},
+    {t:(r.geo_lat&&r.geo_lng)?'الموقع محدد على الخريطة':'ما حدّد الموقع على الخريطة',s:(r.geo_lat&&r.geo_lng)?'ok':'warn'},
     {t:r.city?'المدينة محددة'+(r.district?' والحي':''):'ما حدّد المدينة',s:r.city?'ok':'bad'},
     {t:hasPhone?'فيه رقم جوال أو إيميل':'ما فيه أرقام تواصل',s:hasPhone?'bad':'ok'},
     {t:r.budget_max?'حدّد ميزانية تقريبية':'ما حدّد ميزانية تقريبية',s:r.budget_max?'ok':'warn'}
@@ -1903,6 +1905,28 @@ function _prQuality(r,info){
   if(info&&info.duplicates) ck.push({t:info.duplicates.length?'يشبه مشروع سابق له (#'+info.duplicates[0].id+')':'مو مكرر مع مشروع سابق',s:info.duplicates.length?'warn':'ok'});
   var sc=Math.round(ck.reduce(function(a,c){return a+(c.s==='ok'?1:(c.s==='warn'?.5:0));},0)/ck.length*100);
   return {score:sc,checks:ck,phone:hasPhone};
+}
+
+function _prAtts(r){ var a=r.attachments; if(typeof a==='string'){try{a=JSON.parse(a);}catch(e){a=[];}} return Array.isArray(a)?a.filter(function(x){return x&&x.url&&_safeUrl(x.url);}):[]; }
+function _prExtras(r){
+  var h=[];
+  var ex=Array.isArray(r.extra_categories)?r.extra_categories.filter(function(c){return c&&c!==r.category;}):[];
+  if(ex.length) h.push('<span class="pr-tag">تخصصات إضافية: '+ex.map(esc).join('، ')+'</span>');
+  if(r.category==='أخرى'&&r.category_other) h.push('<span class="pr-tag">الخدمة: '+esc(r.category_other)+'</span>');
+  if(r.geo_lat&&r.geo_lng) h.push('<a class="pr-tag" style="background:#ecfdf5;color:#047857;text-decoration:none" href="https://www.google.com/maps?q='+Number(r.geo_lat)+','+Number(r.geo_lng)+'" target="_blank" rel="noopener">📍 الموقع على الخريطة ↗</a>');
+  else h.push('<span class="pr-tag" style="background:#fffbeb;color:#92400e">📍 ما حدّد الموقع على الخريطة</span>');
+  return '<div style="display:flex;flex-wrap:wrap;gap:8px">'+h.join('')+'</div>';
+}
+function _prFiles(r){
+  var at=_prAtts(r); if(!at.length) return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>0</span></div><div style="font-size:13px;color:var(--muted);font-weight:700">ما أرفق العميل أي ملف أو مخطط</div></div>';
+  var C={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed8','DWG'],dxf:['#dbeafe','#1d4ed8','DXF'],rar:['#ede9fe','#6d28d9','RAR'],zip:['#ede9fe','#6d28d9','ZIP'],'7z':['#ede9fe','#6d28d9','7Z'],xlsx:['#dcfce7','#15803d','XLS'],xls:['#dcfce7','#15803d','XLS'],csv:['#dcfce7','#15803d','CSV'],docx:['#e0f2fe','#0369a1','DOC'],doc:['#e0f2fe','#0369a1','DOC']};
+  return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>'+at.length+'</span></div><div class="pr-files">'+at.map(function(a){
+    var u=_safeUrl(a.url), nm=String(a.name||'ملف'), ext=((nm.match(/\.([a-z0-9]+)$/i)||u.match(/\.([a-z0-9]{2,4})(?:[?#]|$)/i)||[])[1]||'').toLowerCase();
+    var img=/^(jpe?g|png|webp|gif|heic)$/.test(ext), c=C[ext]||['#f1f5f9','#334766',(ext||'ملف').toUpperCase()];
+    var view=(ext==='pdf'||img);
+    var ic=img?'<img src="'+esc(u)+'" alt="" loading="lazy" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0">':'<span class="pr-fx" style="background:'+c[0]+';color:'+c[1]+'">'+esc(c[2])+'</span>';
+    return '<a class="pr-file" href="'+esc(u)+'" target="_blank" rel="noopener"'+(view?'':' download')+'>'+ic+'<span class="pr-fn" title="'+esc(nm)+'">'+esc(nm)+'</span><span class="pr-fa">'+(view?'فتح ↗':'تحميل ↓')+'</span></a>';
+  }).join('')+'</div>'+(at.some(function(a){return /\.(rar|zip|7z)$/i.test(a.name||a.url);})?'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:700">الملفات المضغوطة (RAR/ZIP) تتحمّل عندك وتفتحها من جهازك</div>':'')+'</div>';
 }
 window._prInfo=window._prInfo||{};
 function renderProjReview(){
@@ -1926,7 +1950,9 @@ function renderProjReview(){
       +'<div style="display:flex;align-items:flex-start;gap:12px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+sel.id+' · '+(_catLbl(sel)||'بدون تصنيف')+' · '+(sel.city?esc(sel.city)+(sel.district?'، '+esc(sel.district):''):'بدون مدينة')+' · '+_adAgo(sel.created_at)+'</div><div style="font-size:21px;font-weight:900;line-height:1.4">'+hl(sel.title||'مشروع')+'</div></div>'
         +'<button class="btn-g" onclick="openReqEdit('+sel.id+')">تعديل النص</button><a class="btn-g" style="text-decoration:none" href="/project/x-'+sel.id+'?id='+sel.id+'" target="_blank" rel="noopener">معاينة ↗</a></div>'
       +'<div class="pr-desc">'+(sel.description?hl(sel.description):'<span style="color:var(--muted)">بدون وصف</span>')+'</div>'
-      +(imgs.length?'<div class="pr-imgs">'+imgs.slice(0,6).map(function(u){return '<a href="'+esc(_safeUrl(u))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(u))+'" alt="صورة المشروع" loading="lazy"></a>';}).join('')+'</div>':'')
+      +_prExtras(sel)
+      +(imgs.length?'<div class="pr-sec"><div class="pr-sh">🖼️ الصور <span>'+imgs.length+'</span></div><div class="pr-imgs">'+imgs.map(function(u){return '<a href="'+esc(_safeUrl(u))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(u))+'" alt="صورة المشروع" loading="lazy"></a>';}).join('')+'</div></div>':'')
+      +_prFiles(sel)
       +'<div class="pr-facts"><div><small>الميزانية</small>'+(sel.budget_max?fmtNum(sel.budget_max)+' ر.س':'غير محددة')+'</div><div><small>الموعد</small>'+(sel.deadline?new Date(sel.deadline).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'مرن')+'</div><div><small>المزوّدون المطابقون</small><span style="color:#1d4ed8">'+(info&&info.matches!=null?info.matches+' مزوّد':'…')+'</span></div><div><small>العميل</small>'+(info&&info.client_prev!=null?(info.client_prev?info.client_prev+' مشاريع سابقة':'أول مشروع له'):'…')+'</div></div>'
       +'<details style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:10px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#166534">💡 ملاحظة للعميل مع النشر (اختيارية — تظهر له في صفحة مشروعه)</summary>'+tipChips('rv-tip-'+sel.id)+'<textarea id="rv-tip-'+sel.id+'" placeholder="مثال: أرفق المخططات لتحصل على عروض أدق..." style="width:100%;padding:9px 11px;border:1.5px solid #bbf7d0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;min-height:44px;resize:vertical;background:#fff;box-sizing:border-box"></textarea></details>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
