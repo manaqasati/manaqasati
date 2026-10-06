@@ -19,6 +19,7 @@ a{color:inherit;text-decoration:none}
 .top{position:sticky;top:0;z-index:50;background:var(--p3);display:flex;align-items:center;gap:12px;padding:12px 18px}
 .logo{font:900 20px Cairo,sans-serif;color:#fff;display:inline-flex;align-items:center;gap:8px}
 .dot{width:9px;height:9px;border-radius:50%;background:#38bdf8;box-shadow:0 0 0 4px rgba(14,165,233,.25)}
+.bk{display:inline-flex;align-items:center;gap:4px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:11px;padding:8px 12px 8px 10px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap}.bk:hover{background:rgba(255,255,255,.2)}.bk svg{flex-shrink:0}
 .top .post{margin-right:auto;background:#fff;color:var(--p3);font-weight:900;font-size:13.5px;border-radius:11px;padding:8px 14px}
 .hero{background:linear-gradient(150deg,#0b1f4d,#1e3a8a 60%,#2563eb);color:#fff;padding:30px 18px 70px}
 .hero .in,.wrap{max-width:1080px;margin:0 auto}
@@ -77,7 +78,7 @@ a{color:inherit;text-decoration:none}
 </style>
 </head>
 <body>
-<div class="top"><a class="logo" href="/"><span class="dot"></span>مناقصة</a><a class="post" href="/post.html">اعرض مشروعك</a></div>
+<div class="top"><button class="bk" onclick="_bk()" aria-label="رجوع"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span id="bkL">رجوع</span></button><a class="logo" href="/"><span class="dot"></span>مناقصة</a><a class="post" id="topAct" href="/post.html">اعرض مشروعك</a></div>
 <section class="hero"><div class="in">
 <span class="tag">مجاناً · من تطبيق مناقصة</span>
 <h1>مكتبة عقود المقاولات</h1>
@@ -159,5 +160,17 @@ chips();render();
 </script>
 <script src="/up.js?v=4" defer></script>
 <script src="/track.js" defer></script>
+<script>
+function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';}
+(function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';
+ if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}
+ if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\/contracts(\?|$|#)/.test(r))l.textContent='العقود';else if(/\/project\//.test(r))l.textContent='المشروع';else if(/\/dalil\//.test(r))l.textContent='الدليل';
+ var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}
+ var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){
+   if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}
+   else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}
+   else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}
+ }})();
+</script>
 </body>
 </html>

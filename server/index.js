@@ -324,7 +324,7 @@ app.get('/contracts/:slug', (req, res, next) => {
 <script type="application/ld+json">${JSON.stringify(ld).replace(/</g,'\\u003c')}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;line-height:1.9}a{color:inherit;text-decoration:none}
-.top{position:sticky;top:0;z-index:5;background:#0b1f4d;display:flex;align-items:center;gap:12px;padding:12px 18px}.logo{font:900 20px Cairo,sans-serif;color:#fff}.logo i{color:#38bdf8;font-style:normal}
+.top{position:sticky;top:0;z-index:5;background:#0b1f4d;display:flex;align-items:center;gap:12px;padding:12px 18px}.bk{display:inline-flex;align-items:center;gap:4px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:11px;padding:8px 12px 8px 10px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap}.bk:hover{background:rgba(255,255,255,.2)}.bk svg{flex-shrink:0}.logo{font:900 20px Cairo,sans-serif;color:#fff;display:inline-flex;align-items:center;gap:8px}.logo i{color:#38bdf8;font-style:normal}.dot{width:9px;height:9px;border-radius:50%;background:#38bdf8;box-shadow:0 0 0 4px rgba(14,165,233,.25)}
 .top .p{margin-right:auto;background:#fff;color:#0b1f4d;font-weight:900;font-size:13.5px;border-radius:11px;padding:8px 14px}
 .hero{background:linear-gradient(150deg,#0b1f4d,#1e3a8a 60%,#2563eb);color:#fff;padding:22px 18px 64px}.in{max-width:900px;margin:0 auto}
 .bc{font-size:12.5px;opacity:.8}.bc a{text-decoration:underline}
@@ -341,7 +341,7 @@ details{border-bottom:1px solid #eef2f8;padding:10px 0}summary{font-weight:900;c
 .note{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px 14px;font-size:13px;color:#7c2d12}
 .foot{text-align:center;padding:24px;font-size:13px;color:#64748b}.foot a{margin:0 8px;font-weight:700}
 </style></head><body>
-<div class="top"><a class="logo" href="/">مناقصة<i>.</i></a><a class="p" href="/post.html">اعرض مشروعك</a></div>
+<div class="top"><button class="bk" onclick="_bk()" aria-label="رجوع"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span id="bkL">رجوع</span></button><a class="logo" href="/"><span class="dot"></span>مناقصة</a><a class="p" id="topAct" href="/post.html">اعرض مشروعك</a></div>
 <header class="hero"><div class="in"><nav class="bc"><a href="/">الرئيسية</a> › <a href="/contracts">عقود المقاولات</a> › ${E(c.title)}</nav>
 <h1>${E(c.title)}</h1><p>نموذج ${E(short)} جاهز للتعبئة — ${E(c.desc)}. حمّله مجاناً بصيغة PDF وعدّله بما يناسب مشروعك.</p>
 <div class="chips"><span>PDF · ${c.pages} صفحة</span><span>مجاني</span><span>${E(c.cat)}</span></div></div></header>
@@ -357,7 +357,7 @@ ${rel.length ? `<section class="card"><h2>عقود مشابهة</h2><div class="
 ${(function(){ const cat = Object.keys(_SEO_CT).find(k => _SEO_CT[k] === slug); if (!cat) return ''; const who = _SEO_WHO[cat] || cat; return `<section class="card"><h2>تبحث عن ${E(who)}؟</h2><div class="grid">${['الرياض','جدة','الدمام','مكة المكرمة','المدينة المنورة','الخبر','الطائف','بريدة','أبها','حائل'].map(ci => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(ci)}">${E(who)} في ${E(ci)}</a>`).join('')}</div></section>`; })()}
 <p class="note">هذا العقد نموذج استرشادي جاهز، وليس عقدًا موحدًا يناسب جميع المشاريع. راجعه قبل التوقيع، ويُفضّل مراجعته من مختص قانوني. ولا يُعدّ استشارة قانونية.</p>
 </main><div class="foot"><a href="/">الرئيسية</a><a href="/contracts">عقود المقاولات</a><a href="/terms.html">الشروط والأحكام</a></div>
-<script src="/track.js" defer></script></body></html>`;
+<script> function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';} (function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';  if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}  if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\\/contracts(\\?|$|#)/.test(r))l.textContent='العقود';else if(/\\/project\\//.test(r))l.textContent='المشروع';else if(/\\/dalil\\//.test(r))l.textContent='الدليل';  var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}  var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){    if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}    else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}    else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}  }})(); </script><script src="/track.js" defer></script></body></html>`;
   res.setHeader('Cache-Control', 'public, max-age=600');
   res.type('html').send(html);
 });

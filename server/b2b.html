@@ -15,6 +15,7 @@
 :root{--p:#1e3a8a;--p2:#2563eb;--p3:#172554;--accent:#0ea5e9;--bg:#eef4ff;--card:#fff;--text:#1e293b;--text2:#3a4c6b;--muted:#64748b;--border:#e6eefb;--green:#16a34a;--gold:#F0A500}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:'Tajawal',system-ui,sans-serif}
 body{background:#f7faff;color:var(--text);line-height:1.8}
+.bk{display:inline-flex;align-items:center;gap:4px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:11px;padding:8px 12px 8px 10px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap}.bk:hover{background:rgba(255,255,255,.2)}.bk svg{flex-shrink:0}
 .nav{background:var(--p3);padding:13px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
 .nav .logo{font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;color:#fff;text-decoration:none;display:flex;align-items:center;gap:7px}
 .nav .logo .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
@@ -64,7 +65,7 @@ body{background:#f7faff;color:var(--text);line-height:1.8}
 </head>
 <body>
 <nav class="nav">
-  <a class="logo" href="/"><span class="dot"></span>مناقصة <span style="font-size:12px;opacity:.7;font-weight:700">للأعمال</span></a>
+  <div style="display:flex;align-items:center;gap:10px"><button class="bk" onclick="_bk()" aria-label="رجوع"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span id="bkL">رجوع</span></button><a class="logo" href="/"><span class="dot"></span>مناقصة <span style="font-size:12px;opacity:.7;font-weight:700">للأعمال</span></a></div>
   <button class="cta-sm" onclick="goRegister()">ابدأ الآن</button>
 </nav>
 
@@ -155,6 +156,18 @@ function goRegister(){
   try{ sessionStorage.setItem('auth_role','client'); sessionStorage.setItem('auth_mode','register'); }catch(e){}
   location.href='/auth.html?ref=b2b';
 }
+</script>
+<script>
+function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';}
+(function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';
+ if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}
+ if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\/contracts(\?|$|#)/.test(r))l.textContent='العقود';else if(/\/project\//.test(r))l.textContent='المشروع';else if(/\/dalil\//.test(r))l.textContent='الدليل';
+ var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}
+ var a=null;if(a&&localStorage.getItem('token')&&u.role){
+   if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}
+   else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}
+   else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}
+ }})();
 </script>
 </body>
 </html>
