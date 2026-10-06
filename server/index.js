@@ -7738,7 +7738,7 @@ app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, 
         (SELECT COUNT(*) FROM bids b WHERE b.provider_id=u.id)::int AS bids,
         (SELECT COUNT(*) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')::int AS sends
       FROM users u WHERE u.email_verified=true AND u.role IN ('client','provider')
-        AND (u.email_verified_at IS NOT NULL OR EXISTS(SELECT 1 FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')) ${LR}
+        AND (u.email_verified_at IS NOT NULL OR u.created_at >= '2026-09-19 03:00' OR EXISTS(SELECT 1 FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')) ${LR}
       ORDER BY COALESCE(u.email_verified_at, u.created_at) DESC LIMIT 1000`, LP)).rows;
     res.json({ range: R, reg, via, mail, pending: pend, verified: done, all_unverified: allUnver });
   } catch(e) { console.error('verify-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }

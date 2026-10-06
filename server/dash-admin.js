@@ -6057,12 +6057,12 @@ function _vsMins(a,b){ var m=Math.round((new Date(b)-new Date(a))/60000); if(!(m
 function _vsTabs(d,LR){ var seg=[['all','الكل'],['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
   var np=(d.pending||[]).length, nv=(d.verified||[]).length;
   return '<div class="vsm"><button type="button" class="'+(_vsMode==='pend'?'on':'')+'" onclick="_vsMode=\'pend\';_vsF=\'all\';_vsPaint()">⏳ ما فعّلوا <b>'+fmtNum(np)+'</b></button><button type="button" class="'+(_vsMode==='done'?'on ok':'')+'" onclick="_vsMode=\'done\';_vsF=\'all\';window._vsAll=false;_vsPaint()">✓ سجّلوا وفعّلوا <b>'+fmtNum(nv)+'</b></button></div>'
-    +'<div class="vs-s" style="margin:2px 0 8px">'+(LR?'اللي سجّلوا '+esc(LR.lbl):'من كل الفترات')+(np+nv?' · نسبة التفعيل: <b style="color:#15803d">'+Math.round(nv/(np+nv)*100)+'%</b>':'')+'</div>'
+    +'<div class="vs-s" style="margin:2px 0 8px">ℹ️ التفعيل إلزامي للحسابات من 19 سبتمبر · تتبّع «كيف فعّل ومتى» بدأ 6 أكتوبر · '+(LR?'اللي سجّلوا '+esc(LR.lbl):'من كل الفترات')+(np+nv?' · نسبة التفعيل: <b style="color:#15803d">'+Math.round(nv/(np+nv)*100)+'%</b>':'')+'</div>'
     +'<div class="vs-seg" style="margin-bottom:8px;align-self:flex-start">'+seg.map(function(x){return '<button type="button" class="'+(_vsLP.k===x[0]?'on':'')+'" onclick="_vsLSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
     +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':''); }
 function _vsDone(d){
   var V=d.verified||[], LR=_vsLRange();
-  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],other:['قبل التتبّع','#64748b','#f1f5f9']};
+  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],other:['فعّل قبل 6 أكتوبر','#64748b','#f1f5f9']};
   var base=V.filter(function(u){return _vsF==='all'||u.role===_vsF;}), L=base.filter(function(u){return !_vsVia||u.via===_vsVia;});
   var C={}; base.forEach(function(u){C[u.via]=(C[u.via]||0)+1;});
   var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
