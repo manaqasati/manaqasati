@@ -5856,7 +5856,7 @@ function _vsKpis(d){
   if(d.pfunnel) _adFunnel(d.pfunnel,R.lbl);
 }
 // ═══ بطاقة «التطبيق»: كم عندهم التطبيق + ضغطات «حمّل من المتجر» حسب المكان ═══
-var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};
+var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',contracts:'مكتبة العقود (للتحميل من التطبيق)',mnav:'قائمة الجوال في الرئيسية',mnav_card:'بطاقة التطبيق في قائمة الجوال',more:'زر «المزيد» في اللوحة',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};
 function _nClk(n){return n===1?'ضغطة وحدة':(n===2?'ضغطتين':(n>=3&&n<=10?fmtNum(n)+' ضغطات':fmtNum(n)+' ضغطة'));}
 function _loadAppStats(){
   var box=document.getElementById('dash-app'); if(!box)return; var R=_perRange();
@@ -5876,6 +5876,7 @@ function _loadAppStats(){
       +'<div class="vs-k">'+kb('المزوّدين',o.providers_app,o.providers,'#c2410c')+kb('العملاء',o.clients_app,o.clients,'#1d4ed8')+'</div>'
       +'<div class="vs-st" style="margin-top:6px">'+esc(R.lbl)+': '+_nClk(clicks)+' على «حمّل من المتجر»</div>'
       +(rows?'<div class="vs-s" style="margin-bottom:4px">من وين ضغطوا:</div>'+rows:'<div class="vs-s">ما فيه ضغطات في هالفترة</div>')
+      +_appExtra(d,R)
       +'<div class="vs-note">صفحة manaqasa.com/app انفتحت '+fmtNum(views)+' مرة'+(topView&&views?' — أغلبها من «'+esc(_APP_SRC[topView]||topView)+'» ('+vw[topView]+')':'')+'. وكثير يضغطون زر المتجر مباشرة من غير ما يفتحون الصفحة، عشان كذا الضغطات ممكن تكون أكثر من الزيارات.</div>';
   }).catch(function(){ box.style.display='none'; });
 }
@@ -5944,4 +5945,23 @@ function _perMini(id){
   var box=document.getElementById(id); if(!box)return;
   var ks=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['30d','30 يوم'],['month','هالشهر'],['year','هالسنة']];
   box.innerHTML='<div class="vs-seg" role="tablist" aria-label="الفترة" style="margin-bottom:14px">'+ks.map(function(x){return '<button type="button" class="'+(_PER.k===x[0]?'on':'')+'" onclick="_perSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>';
+}
+
+// إضافات صفحة التطبيق: جديد في الفترة، آيفون/أندرويد، والضغطات يوم بيوم
+function _appExtra(d,R){
+  var h='', f=d.fresh||{};
+  h+='<div class="vs-st" style="margin-top:16px">فعّلوا التطبيق لأول مرة ('+esc(R.lbl)+')</div><div class="vs-k">'
+    +'<div class="vs-b"><span class="t">مزوّدين جدد على التطبيق</span><span class="big" style="color:#c2410c">'+fmtNum(f.providers||0)+'</span></div>'
+    +'<div class="vs-b"><span class="t">عملاء جدد على التطبيق</span><span class="big" style="color:#1d4ed8">'+fmtNum(f.clients||0)+'</span></div></div>';
+  var os={}; (d.byOs||[]).forEach(function(x){os[x.os]=x.clicks||0;});
+  var tot=(os.ios||0)+(os.android||0)+(os.desktop||0);
+  if(tot){ var pc=function(v){return Math.round(v/tot*100);};
+    h+='<div class="vs-st" style="margin-top:16px">الضغطات حسب الجهاز</div>'
+      +[['ios','🍎 آيفون','#0f172a'],['android','🤖 أندرويد','#16a34a'],['desktop','💻 كمبيوتر','#64748b']].filter(function(x){return os[x[0]];}).map(function(x){return '<div class="vs-br"><span class="nm">'+x[1]+'</span><span class="bar"><i style="width:'+pc(os[x[0]])+'%;background:'+x[2]+'"></i></span><span class="v">'+fmtNum(os[x[0]])+' ('+pc(os[x[0]])+'%)</span></div>';}).join(''); }
+  var dl=d.daily||[];
+  if(dl.length>1){ var mx=Math.max.apply(null,dl.map(function(x){return x.clicks||0;}))||1;
+    h+='<div class="vs-st" style="margin-top:16px">الضغطات يوم بيوم</div><div style="display:flex;align-items:flex-end;gap:3px;height:110px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +dl.map(function(x){var v=x.clicks||0;return '<div title="'+esc(x.day)+': '+v+' ضغطة" style="flex:1;min-width:3px;height:'+Math.max(2,Math.round(v/mx*100))+'%;background:#1d4ed8;border-radius:4px 4px 0 0;opacity:'+(v?1:.25)+'"></div>';}).join('')
+      +'</div><div class="vs-s" style="display:flex;justify-content:space-between;margin-top:4px"><span>'+esc(dl[0].day.slice(5))+'</span><span>'+esc(dl[dl.length-1].day.slice(5))+'</span></div>'; }
+  return h;
 }

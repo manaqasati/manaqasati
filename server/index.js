@@ -258,6 +258,82 @@ app.get(['/contracts', '/contracts/'], (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(__dirname + '/contracts.html');
 });
+// صفحة لكل عقد (/contracts/<slug>) — محتوى حقيقي من العقد عشان يطلع في بحث جوجل «عقد ...»
+let _ctSeo = null;
+function _ctSeoData(){
+  if (_ctSeo) return _ctSeo;
+  const fs = require('fs');
+  for (const f of ['/contracts/seo.json', '/seo.json']) { try { _ctSeo = JSON.parse(fs.readFileSync(__dirname + f, 'utf8')); return _ctSeo; } catch(e) {} }
+  _ctSeo = {}; return _ctSeo;
+}
+app.get('/contracts/:slug', (req, res, next) => {
+  const slug = String(req.params.slug || '');
+  if (!/^[a-z0-9-]{2,40}$/.test(slug)) return next();
+  const all = _ctSeoData(), c = all[slug];
+  if (!c) return res.redirect(301, '/contracts');
+  const E = eEsc, url = SITE_URL + '/contracts/' + slug;
+  const short = c.title.replace(/^عقد\s+/, '');
+  const metaD = `حمّل ${c.title} مجاناً — نموذج جاهز للتعبئة PDF (${c.pages} صفحة): الوثيقة الأساسية وملحق الشروط الخاصة والمواصفات الفنية. ${c.desc}.`;
+  const rel = Object.keys(all).filter(k => k !== slug && all[k].cat === c.cat).slice(0, 6);
+  const faq = [
+    [`هل ${c.title} مجاني؟`, `نعم. النموذج مجاني لكل المسجّلين في منصة مناقصة، ويتحمّل بصيغة PDF من تطبيق مناقصة.`],
+    [`وش يشمل ${c.title}؟`, `يتكوّن من ثلاثة أجزاء: وثيقة العقد الأساسية (الأطراف، المدة، القيمة والدفعات، غرامة التأخير، أوامر التغيير، الضمان، إنهاء العقد)، وملحق الشروط الخاصة (نطاق العمل وطريقة القياس)، وملحق المواصفات الفنية.`],
+    [`هل أقدر أعدّل على بنود العقد؟`, `نعم. هذا نموذج استرشادي، تقدر تضيف أو تعدّل أو تحذف أي بند حسب اتفاقك مع المقاول، ويُفضّل مراجعته من مختص قانوني قبل التوقيع.`],
+    [`كيف ألقى مقاول ${short}؟`, `انشر مشروعك مجاناً على منصة مناقصة، وتوصلك عروض أسعار من مقاولين ومزوّدين في مدينتك، وتختار الأنسب لك.`]
+  ];
+  const ld = [
+    { '@context':'https://schema.org', '@type':'BreadcrumbList', itemListElement:[
+      { '@type':'ListItem', position:1, name:'مناقصة', item: SITE_URL + '/' },
+      { '@type':'ListItem', position:2, name:'عقود المقاولات', item: SITE_URL + '/contracts' },
+      { '@type':'ListItem', position:3, name:c.title, item:url } ] },
+    { '@context':'https://schema.org', '@type':'FAQPage', mainEntity: faq.map(q => ({ '@type':'Question', name:q[0], acceptedAnswer:{ '@type':'Answer', text:q[1] } })) },
+    { '@context':'https://schema.org', '@type':'DigitalDocument', name:c.title, description:metaD, inLanguage:'ar', isAccessibleForFree:true, encodingFormat:'application/pdf', numberOfPages:c.pages, publisher:{ '@type':'Organization', name:'منصة مناقصة', url:SITE_URL } }
+  ];
+  const li = a => a.map(x => `<li>${E(x)}</li>`).join('');
+  const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${E(c.title)} — نموذج جاهز PDF مجاناً | مناقصة</title>
+<meta name="description" content="${E(metaD)}"><link rel="canonical" href="${url}">
+<meta property="og:type" content="article"><meta property="og:title" content="${E(c.title)} — نموذج جاهز مجاناً"><meta property="og:description" content="${E(metaD)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${SITE_URL}/og-image.png"><meta property="og:locale" content="ar_SA">
+<link rel="icon" href="/favicon.ico"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/</g,'\\u003c')}</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;line-height:1.9}a{color:inherit;text-decoration:none}
+.top{position:sticky;top:0;z-index:5;background:#0b1f4d;display:flex;align-items:center;gap:12px;padding:12px 18px}.logo{font:900 20px Cairo,sans-serif;color:#fff}.logo i{color:#38bdf8;font-style:normal}
+.top .p{margin-right:auto;background:#fff;color:#0b1f4d;font-weight:900;font-size:13.5px;border-radius:11px;padding:8px 14px}
+.hero{background:linear-gradient(150deg,#0b1f4d,#1e3a8a 60%,#2563eb);color:#fff;padding:22px 18px 64px}.in{max-width:900px;margin:0 auto}
+.bc{font-size:12.5px;opacity:.8}.bc a{text-decoration:underline}
+h1{font:900 clamp(24px,4vw,34px)/1.45 Cairo,sans-serif;margin:10px 0 6px}.hero p{opacity:.88;font-size:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chips span{background:rgba(255,255,255,.14);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:800}
+.wrap{max-width:900px;margin:-40px auto 0;padding:0 16px 40px;display:flex;flex-direction:column;gap:14px}
+.card{background:#fff;border:1px solid #e6eefb;border-radius:18px;padding:18px 18px}
+.dl{display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:0 18px 40px -26px rgba(11,31,77,.45)}.dl div{flex:1;min-width:220px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:#1d4ed8;color:#fff;border-radius:13px;padding:13px 22px;font-weight:900;font-size:15px}
+h2{font:900 19px Cairo,sans-serif;color:#0b1f4d;margin-bottom:8px}ul,ol{padding-right:20px}li{margin:4px 0;font-size:14.5px}
+.muted{color:#64748b;font-size:13.5px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.grid a{border:1px solid #e6eefb;border-radius:14px;padding:12px;font-weight:800;font-size:14px;background:#f8fafd}
+details{border-bottom:1px solid #eef2f8;padding:10px 0}summary{font-weight:900;cursor:pointer;font-size:15px}details p{margin-top:6px;font-size:14px;color:#334155}
+.note{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px 14px;font-size:13px;color:#7c2d12}
+.foot{text-align:center;padding:24px;font-size:13px;color:#64748b}.foot a{margin:0 8px;font-weight:700}
+</style></head><body>
+<div class="top"><a class="logo" href="/">مناقصة<i>.</i></a><a class="p" href="/post.html">اعرض مشروعك</a></div>
+<header class="hero"><div class="in"><nav class="bc"><a href="/">الرئيسية</a> › <a href="/contracts">عقود المقاولات</a> › ${E(c.title)}</nav>
+<h1>${E(c.title)}</h1><p>نموذج ${E(short)} جاهز للتعبئة — ${E(c.desc)}. حمّله مجاناً بصيغة PDF وعدّله بما يناسب مشروعك.</p>
+<div class="chips"><span>PDF · ${c.pages} صفحة</span><span>مجاني</span><span>${E(c.cat)}</span></div></div></header>
+<main class="wrap">
+<section class="card dl"><div><h2 style="margin:0">حمّل ${E(c.title)}</h2><div class="muted">مجاناً للمسجّلين — يتحمّل من تطبيق مناقصة</div></div><a class="btn" href="/contracts?c=${slug}&amp;dl=1">⬇ تحميل العقد PDF</a></section>
+${c.intro ? `<section class="card"><h2>نطاق العمل في ${E(c.title)}</h2><p style="font-size:14.5px">${E(c.intro)}</p>${c.scope.length ? `<ul style="margin-top:8px">${li(c.scope)}</ul>` : ''}</section>` : ''}
+<section class="card"><h2>بنود العقد الأساسية</h2><p class="muted" style="margin-bottom:6px">صيغة ${E(short)} تتكوّن من وثيقة العقد الأساسية وفيها المواد التالية:</p><ol>${li(c.articles.map(a => a.replace(/^المادة [^:]+:\s*/, '')))}</ol></section>
+${c.measure || c.warranty ? `<section class="card"><h2>طريقة القياس والضمان</h2>${c.measure ? `<p style="font-size:14.5px"><b>طريقة القياس:</b> ${E(c.measure)}</p>` : ''}${c.warranty ? `<p style="font-size:14.5px;margin-top:6px"><b>الضمان:</b> ${E(c.warranty)}</p>` : ''}</section>` : ''}
+${c.spec.length ? `<section class="card"><h2>ملحق المواصفات الفنية يغطي</h2><ul>${li(c.spec)}</ul></section>` : ''}
+<section class="card"><h2>أسئلة شائعة</h2>${faq.map(q => `<details><summary>${E(q[0])}</summary><p>${E(q[1])}</p></details>`).join('')}</section>
+<section class="card dl" style="background:#eef4ff"><div><h2 style="margin:0">تحتاج تسعير لمشروعك؟</h2><div class="muted">انشر مشروعك على مناقصة، واستقبل عروضًا من المنفذين، واختر العرض الأنسب لك.</div></div><a class="btn" href="/post.html">اعرض مشروعك مجاناً</a></section>
+${rel.length ? `<section class="card"><h2>عقود مشابهة</h2><div class="grid">${rel.map(k => `<a href="/contracts/${k}">${E(all[k].title)}</a>`).join('')}</div><p style="margin-top:10px"><a href="/contracts" style="color:#1d4ed8;font-weight:900">كل عقود المقاولات (36) ←</a></p></section>` : ''}
+<p class="note">هذا العقد نموذج استرشادي جاهز، وليس عقدًا موحدًا يناسب جميع المشاريع. راجعه قبل التوقيع، ويُفضّل مراجعته من مختص قانوني. ولا يُعدّ استشارة قانونية.</p>
+</main><div class="foot"><a href="/">الرئيسية</a><a href="/contracts">عقود المقاولات</a><a href="/terms.html">الشروط والأحكام</a></div>
+<script src="/track.js" defer></script></body></html>`;
+  res.setHeader('Cache-Control', 'public, max-age=600');
+  res.type('html').send(html);
+});
 // التحميل: للمسجّلين فقط ومن داخل التطبيق — نصدر رابط موقّع صالح 15 دقيقة
 function _ctSig(slug, exp, uid){ return crypto.createHmac('sha256', JWT_SECRET).update('ct|' + slug + '|' + exp + '|' + uid).digest('base64url').slice(0, 22); }
 function _ctInApp(req){ return req.get('x-mnq-app') === '1' || /ManaqasaApp|; wv\)/i.test(req.get('user-agent') || ''); }
@@ -3665,7 +3741,12 @@ app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req,
     const R = (req.query.from || req.query.to) ? _rangeFromQuery(req.query) : _rangeFromQuery({ from: new Date(Date.now() + 3*3600000 - 29*86400000).toISOString().slice(0,10) });
     const hits = (await pool.query(`SELECT kind, src, SUM(n)::int AS n FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY kind, src ORDER BY n DESC`, [R.from, R.to])).rows;
     const byOs = (await pool.query(`SELECT os, SUM(n) FILTER (WHERE kind='view')::int AS views, SUM(n) FILTER (WHERE kind='click')::int AS clicks FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY os`, [R.from, R.to])).rows;
-    res.json({ own, hits, byOs, range: R });
+    // جديد في الفترة: مستخدمين أول مرة يفعّلون التطبيق، والضغطات يوم بيوم
+    const fresh = (await pool.query(`SELECT COUNT(*) FILTER (WHERE u.role='provider' OR COALESCE(u.can_provide,FALSE))::int AS providers, COUNT(*) FILTER (WHERE NOT (u.role='provider' OR COALESCE(u.can_provide,FALSE)))::int AS clients
+      FROM (SELECT user_id, MIN(created_at) AS first_at FROM push_tokens WHERE platform IN ('ios','android','expo') GROUP BY user_id) f JOIN users u ON u.id=f.user_id
+      WHERE u.role<>'admin' AND (f.first_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`, [R.from, R.to])).rows[0];
+    const daily = (await pool.query(`SELECT day::text AS day, SUM(n) FILTER (WHERE kind='click')::int AS clicks, SUM(n) FILTER (WHERE kind='view')::int AS views FROM app_page_hits WHERE day BETWEEN $1 AND $2 GROUP BY day ORDER BY day`, [R.from, R.to])).rows;
+    res.json({ own, hits, byOs, fresh, daily, range: R });
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // إحصائية تحميل عقود المقاولات (للتسويق): مين حمّل وأي عقد
@@ -9642,6 +9723,7 @@ app.get('/sitemap.xml', async (req, res) => {
     const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE ORDER BY created_at DESC`);
     const now=new Date().toISOString().split('T')[0];
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/auth.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>\n  <url><loc>${SITE_URL}/contracts</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
+    try { Object.keys(_ctSeoData()).forEach(k => { xml += `\n  <url><loc>${SITE_URL}/contracts/${k}</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`; }); } catch(e) {}
     xml+=`\n  <url><loc>${SITE_URL}/dalil</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
     xml+=`\n  <url><loc>${SITE_URL}/app</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`;
     Object.keys(INTENT_PAGES).forEach(sl=>{ xml+=`\n  <url><loc>${SITE_URL}/${encodeURIComponent(sl)}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`; });
