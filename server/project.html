@@ -889,7 +889,7 @@ function _pjDetailsHtml(req){
   var h='';
   var loc=[req.district,req.city].filter(Boolean).map(esc).join(' — ')||'غير محدد';
   var dl=_daysLeft();
-  var facts='<div class="pj-f"><span>الموقع</span><b>'+loc+'</b></div>';
+  var facts=req.city?'':'<div class="pj-f"><span>الموقع</span><b>'+loc+'</b></div>';
   facts+='<div class="pj-f"><span>الميزانية</span><b>'+(req.budget_max?fmtN(req.budget_max)+' ر.س':'غير محددة')+'</b></div>';
   if(req.deadline)facts+='<div class="pj-f"><span>الموعد المطلوب</span><b>'+fmtDate(req.deadline)+'</b></div>';
   facts+='<div class="pj-f"><span>آخر موعد للعروض</span><b>'+(req.status==='open'&&dl!==null?(dl<=0?'اليوم':'بعد '+dl+' '+_dWord(dl)):(req.status==='open'?'—':_stTxt(req.status)))+'</b></div>';
@@ -1042,7 +1042,7 @@ function render(){
   var dl=_daysLeft();
   var stc=_stCol(req.status);
   var stLine='● '+_stTxt(req.status)+(req.status==='open'&&dl!==null?' · '+(dl<=0?'آخر يوم':'باقي '+dl+' '+_dWord(dl)):'');
-  var catcity=[((req.category==='أخرى'&&req.category_other)?req.category_other:req.category)+((req.extra_categories&&req.extra_categories.length)?' + '+req.extra_categories.join(' + '):''),[req.district,req.city].filter(Boolean).join(' — ')].filter(Boolean).map(esc).join(' · ');
+  var catcity=[((req.category==='أخرى'&&req.category_other)?req.category_other:req.category)+((req.extra_categories&&req.extra_categories.length)?' + '+req.extra_categories.join(' + '):''),(req.city?'':[req.district,req.city].filter(Boolean).join(' — '))].filter(Boolean).map(esc).join(' · ');
   var nImgs=imgs.filter(isImg).length;
   // ── الغلاف ──
   var coverEl=document.getElementById('cover');
@@ -1712,6 +1712,7 @@ function fmtText(s){
   String(s).split(/\r?\n/).forEach(function(ln){
     var t=ln.trim();
     if(!t){ out+='<div style="height:7px"></div>'; return; }
+    var mH=t.match(/^#{1,6}\s+(.*)$/); if(mH){ out+='<div class="fx-h">'+EB(mH[1])+'</div>'; return; }
     var mN=t.match(/^(\d+)[\.\)\-]\s+(.*)$/);
     if(/^[-•*]\s+/.test(t)) out+='<div class="fx-b"><span>'+EB(t.replace(/^[-•*]\s+/,''))+'</span></div>';
     else if(mN) out+='<div class="fx-n"><span class="fx-num">'+E(mN[1])+'.</span><span>'+EB(mN[2])+'</span></div>';
