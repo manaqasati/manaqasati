@@ -898,8 +898,7 @@ function _pjDetailsHtml(req){
   _atts=(Array.isArray(_atts)?_atts:[]).filter(function(a){var u=(a&&(a.url||a))||'';return /^https?:/i.test(String(u))&&_safeUrl(u);});
   var _locMode=_hasGeo?'geo':(_mapLinks.length?(getUser()?'link':'lock'):(!getUser()?'lock0':''));
   var P={};
-  P.desc=(_desc?'<div class="desc-text fmt-text pj-desc">'+fmtText(_desc)+'</div>':'<div class="pj-empty">ما كتب العميل وصفاً</div>')
-    +((_locMode==='geo'||_locMode==='link')?'<button type="button" class="pj-maplnk" onclick="_pjTab(this,\'loc\')">📍 موقع المشروع على الخريطة</button>':'');
+  P.desc=(_desc?'<div class="desc-text fmt-text pj-desc">'+fmtText(_desc)+'</div>':'<div class="pj-empty">ما كتب العميل وصفاً</div>');
   if(_atts.length){
     var tot=0, known=0;
     var rows=_atts.map(function(a){
