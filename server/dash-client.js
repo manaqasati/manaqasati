@@ -327,6 +327,7 @@ function showTab(t,el){
   if(el)el.className='tab-btn on';
   if(t==='bids')loadBids(curRequestId);
   if(t==='actions')loadActions(curRequestId);
+  if(t==='details'&&window._curReq)_detDetails(window._curReq);
   if(t==='timeline')loadTimeline(curRequestId);
   if(t==='cq')loadClientQuestions(curRequestId);
 }
@@ -706,7 +707,7 @@ function _paintHome(all){
   window._allMyReqs=all||[];        // متاح لمعالج النبيه
   var el=document.getElementById('home-reqs');
   var so=document.getElementById('s-open'),sd=document.getElementById('s-done'),sof=document.getElementById('s-offers');
-  var openN=all.filter(function(r){return r.status==='open';}).length;
+  var openN=all.filter(function(r){return ['open','pending_review','review','needs_edit','in_progress'].indexOf(r.status)>=0;}).length;
   var doneN=all.filter(function(r){return r.status==='completed'||r.status==='done';}).length;
   var offers=all.reduce(function(a,r){return a+(parseInt(r.bid_count)||0);},0);
   if(so)so.textContent=openN;
@@ -878,23 +879,7 @@ function openDetail(id,e){
     var money='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
     var cal='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
     var tag='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
-    var h='<div class="req-detail-head">'
-      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">'
-      +'<div class="rdh-title" style="margin-bottom:0;flex:1">'+esc(req.title)+'</div>'
-      +stTag(req.status)
-      +'</div>'
-      +'<div class="rdh-meta">'
-      +(req.category?'<span>'+tag+' '+esc(req.category)+'</span>':'')
-      +(req.city?'<span>'+pin+' '+esc(req.city)+'</span>':'')
-      +(req.deadline?'<span>'+cal+' '+fmtDate(req.deadline)+'</span>':'')
-      +'</div>'
-      +(req.description?'<div class="rdh-desc fmt-text">'+fmtText(req.description)+'</div>':'')
-    +'</div>'+_cnCardHtml(req)+_invCardHtml(req);
-    document.getElementById('det-head').innerHTML=h;
-    window._curReq=req; _closedBanner(req);
-    var _ne=(req.status==='needs_edit');
-    var _adot=document.getElementById('actions-dot');if(_adot)_adot.style.display=_ne?'inline-flex':'none';
-    if(_ne){var _ab=document.querySelector('.tab-btn[onclick*="actions"]');if(_ab)showTab('actions',_ab);}
+    window._curReq=req; _detRender(req); _closedBanner(req); loadActions(id);
   }).catch(function(){
     // المشروع غير موجود أو ليس للعميل → ارجع للرئيسية
     showToast('المشروع غير متاح','error');
@@ -1061,10 +1046,126 @@ function rejectBid(bidId,reqId){
 // ═══════════════════════════════════
 // LOAD ACTIONS / TIMELINE
 // ═══════════════════════════════════
+
+// ═══════════════════════════════════
+// صفحة المشروع — رأس جديد: الحالة + المسار + الأزرار (جوال: النموذج 1 · كمبيوتر: عمودين — النموذج 2)
+// ═══════════════════════════════════
+var _DI={edit:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>',
+ eye:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+ share:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+ lock:'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+ dots:'<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'};
+function _detAtts(r){ var a=r.attachments; if(typeof a==='string'){try{a=JSON.parse(a);}catch(e){a=[];}} return (Array.isArray(a)?a:[]).filter(function(x){return x&&x.url;}); }
+function _detImgs(r){ return (Array.isArray(r.images)?r.images:[]).filter(function(u){return typeof u==='string'&&/^https?:/.test(u);}); }
+function _detStage(st){ if(st==='open')return 2; if(st==='in_progress')return 3; if(st==='completed'||st==='done')return 5; return 1; }
+function _detDaysLeft(r){ if(!r.close_at)return null; var d=Math.ceil((new Date(r.close_at)-Date.now())/86400000); return d; }
+function _detBanner(r){
+  var st=r.status, nb=parseInt(r.bid_count)||0;
+  if(st==='pending_review'||st==='review') return '<div class="dh-ban y"><span class="e">🕒</span><div><b>مشروعك تحت المراجعة</b><p>نراجعه عادة خلال ساعات، وبعدها يُنشر ويوصل إشعار للمزوّدين'+(r.city?' في '+esc(r.city):'')+'. نبلغك أول ما يُعتمد.</p></div></div>';
+  if(st==='needs_edit') return '<div class="dh-ban r"><span class="e">📝</span><div style="flex:1"><b>الإدارة طلبت تعديل قبل النشر</b><p>'+(r.review_notes?esc(r.review_notes):'أكمل التفاصيل الناقصة ليُنشر مشروعك.')+'</p><button class="dh-b red" onclick="openEditReq('+r.id+',event)">'+_DI.edit+' عدّل وأعد الإرسال</button></div></div>';
+  if(st==='rejected') return '<div class="dh-ban r"><span class="e">⛔</span><div><b>ما انقبل نشر هذا المشروع</b><p>'+(r.review_notes?esc(r.review_notes):'للاستفسار تواصل مع خدمة العملاء.')+'</p></div></div>';
+  if(st==='open'){ var dl=_detDaysLeft(r); return '<div class="dh-ban g"><span class="e">✅</span><div><b>مشروعك منشور ويستقبل العروض</b><p>'+(nb?('وصلك '+nb+' '+(nb>=3&&nb<=10?'عروض':'عرض')+' — قارن بينها في تبويب «العروض»'):'العروض توصلك هنا، ونرسل لك إشعار مع كل عرض جديد')+(dl!=null&&dl>0?' · باقي '+dl+' يوم على إغلاق العروض':'')+'</p></div></div>'; }
+  if(st==='in_progress') return '<div class="dh-ban b"><span class="e">🔨</span><div><b>قيد التنفيذ'+(r.provider_name?' مع '+esc(r.provider_name):'')+'</b><p>لما يخلص المزوّد، أكّد الإنجاز وقيّمه.</p></div></div>';
+  if(st==='completed'||st==='done') return '<div class="dh-ban g"><span class="e">🎉</span><div><b>المشروع مكتمل</b><p>شكراً لاستخدامك مناقصة — تقييمك يساعد غيرك يختار صح.</p></div></div>';
+  return '';
+}
+function _detSteps(r){
+  var st=r.status; if(['closed_auto','expired','closed','cancelled'].indexOf(st)>=0) return '';
+  var on=_detStage(st), bad=(st==='needs_edit'||st==='rejected');
+  var N=['أرسلته','مراجعة الإدارة','استقبال العروض','اخترت مزوّد','مكتمل'];
+  return '<div class="dh-steps">'+N.map(function(n,i){ var c=i<on?'dn':(i===on?(bad?'bad':'on'):''); if(on===5)c='dn'; return '<div class="'+c+'"><span class="d">'+(c==='dn'?'✓':(c==='bad'?'!':(i+1)))+'</span><span class="l">'+n+'</span></div>'; }).join('')+'</div>';
+}
+function _detCan(r){ var st=r.status; return {edit:['open','pending_review','review','needs_edit'].indexOf(st)>=0, close:st==='open', share:st==='open'||st==='in_progress'||st==='completed', preview:['rejected','deleted'].indexOf(st)<0}; }
+function _detPageUrl(r){ return '/project/x-'+r.id+'?id='+r.id; }
+function _detShare(id){
+  var r=window._curReq||{}; var url=location.origin+_detPageUrl(r); var t='مشروعي على مناقصة: '+(r.title||'');
+  if(navigator.share){ navigator.share({title:t,text:t,url:url}).catch(function(){}); return; }
+  try{ navigator.clipboard.writeText(url); showToast('✓ نسخت رابط المشروع','success'); }catch(e){ prompt('انسخ الرابط',url); }
+}
+function _detMenu(btn,id){
+  var old=document.getElementById('dh-menu'); if(old){ old.remove(); return; }
+  var r=window._curReq||{}, c=_detCan(r);
+  var m=document.createElement('div'); m.id='dh-menu'; m.className='dh-menu';
+  m.innerHTML=(c.edit?'<button onclick="openEditReq('+id+',event)">'+_DI.edit+' تعديل المشروع</button>':'')
+    +(c.preview?'<a href="'+_detPageUrl(r)+'" target="_blank" rel="noopener">'+_DI.eye+' معاينة صفحة المشروع</a>':'')
+    +(c.share?'<button onclick="_detShare('+id+')">'+_DI.share+' مشاركة الرابط</button>':'')
+    +(c.close?'<button class="red" onclick="openCloseModalC('+id+',event)">'+_DI.lock+' إغلاق المشروع</button>':'');
+  document.body.appendChild(m);
+  var b=btn.getBoundingClientRect(); var top=b.bottom+6, left=Math.max(8,b.left);
+  if(top+m.offsetHeight>innerHeight-10||btn.closest('#det-bar')) top=Math.max(8,b.top-m.offsetHeight-6);
+  m.style.top=top+'px'; m.style.left=Math.min(left,innerWidth-m.offsetWidth-8)+'px';
+  setTimeout(function(){ document.addEventListener('click',function f(e){ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('click',f,true);} },true); },0);
+}
+function _detChips(r){
+  var at=_detAtts(r).length, im=_detImgs(r).length, ch=[];
+  if(r.category) ch.push('🏷️ '+esc(r.category));
+  if(r.city) ch.push('📍 '+esc(r.city)+(r.district?' — '+esc(r.district):''));
+  if(r.budget_max) ch.push('💰 '+fmtN(r.budget_max)+' ر.س');
+  if(at) ch.push('📎 '+at+' '+(at>=3&&at<=10?'ملفات':'ملف'));
+  if(im) ch.push('🖼️ '+im+' '+(im===1?'صورة':(im<=10?'صور':'صورة')));
+  if(r.geo_lat&&r.geo_lng) ch.push('🗺️ الموقع محدد');
+  return ch.map(function(c){return '<span>'+c+'</span>';}).join('');
+}
+function _detRender(r){
+  var c=_detCan(r), id=r.id;
+  var ago=r.created_at?_detAgo(r.created_at):'';
+  var head='<div class="dh">'
+    +'<div class="dh-top">'+stTag(r.status)+'<span class="dh-no">#'+(r.project_number||id)+'</span><button class="dh-dots" onclick="_detMenu(this,'+id+')" aria-label="خيارات">'+_DI.dots+'</button></div>'
+    +'<div class="rdh-title" style="margin:6px 0 2px">'+esc(r.title)+'</div>'
+    +(ago?'<div class="dh-sub">أُرسل '+ago+'</div>':'')
+    +'<div class="dh-chips">'+_detChips(r)+'</div>'
+    +_detSteps(r)+_detBanner(r)
+    +'<div id="actions-wrap" class="dh-cta"></div>'
+    +'<div class="dh-acts">'
+      +(c.edit&&r.status!=='needs_edit'?'<button class="dh-b pri" onclick="openEditReq('+id+',event)">'+_DI.edit+' تعديل المشروع</button>':'')
+      +(c.preview?'<a class="dh-b" href="'+_detPageUrl(r)+'" target="_blank" rel="noopener">'+_DI.eye+' معاينة</a>':'')
+      +(c.share?'<button class="dh-b" onclick="_detShare('+id+')">'+_DI.share+' مشاركة</button>':'')
+    +'</div>'
+  +'</div>'+_cnCardHtml(r)+_invCardHtml(r);
+  document.getElementById('det-head').innerHTML=head;
+  // العمود الجانبي (كمبيوتر)
+  var rail=document.getElementById('det-rail');
+  if(rail){
+    rail.innerHTML='<div class="dr-card">'+stTag(r.status)
+      +'<div class="dr-t">'+esc(r.title)+'</div>'
+      +'<div class="dr-l">'+(r.city?'<div>📍 '+esc(r.city)+(r.district?' — '+esc(r.district):'')+'</div>':'')+(r.budget_max?'<div>💰 '+fmtN(r.budget_max)+' ر.س</div>':'<div>💰 بدون ميزانية محددة</div>')
+        +'<div>📎 '+_detAtts(r).length+' ملفات · 🖼️ '+_detImgs(r).length+' صور</div>'+(r.close_at&&r.status==='open'?'<div>⏱️ العروض تُقفل '+fmtDate(r.close_at)+'</div>':'')+'</div>'
+      +(c.edit?'<button class="dh-b '+(r.status==='needs_edit'?'red':'pri')+' big" onclick="openEditReq('+id+',event)">'+_DI.edit+(r.status==='needs_edit'?' عدّل وأعد الإرسال':' تعديل المشروع')+'</button>':'')
+      +(c.preview?'<a class="dh-b" href="'+_detPageUrl(r)+'" target="_blank" rel="noopener">'+_DI.eye+' معاينة صفحة المشروع</a>':'')
+      +(c.share?'<button class="dh-b" onclick="_detShare('+id+')">'+_DI.share+' مشاركة</button>':'')
+      +(c.close?'<button class="dr-close" onclick="openCloseModalC('+id+',event)">إغلاق المشروع</button>':'')
+    +'</div>';
+  }
+  // شريط ثابت تحت (جوال)
+  var bar=document.getElementById('det-bar');
+  if(bar){ bar.innerHTML=c.edit?('<button class="dh-b '+(r.status==='needs_edit'?'red':'pri')+'" style="flex:1" onclick="openEditReq('+id+',event)">'+_DI.edit+(r.status==='needs_edit'?' عدّل وأعد الإرسال':' تعديل المشروع')+'</button><button class="dh-b sq" onclick="_detMenu(this,'+id+')" aria-label="خيارات">'+_DI.dots+'</button>'):''; bar.style.display=c.edit?'':'none'; document.getElementById('page-detail').classList.toggle('has-bar',!!c.edit); }
+  // تبويب التفاصيل
+  _detDetails(r);
+}
+function _detAgo(d){ var s=(Date.now()-new Date(d))/1000; if(s<3600)return 'قبل '+Math.max(1,Math.round(s/60))+' دقيقة'; if(s<86400)return 'قبل '+Math.round(s/3600)+' ساعة'; var n=Math.round(s/86400); return n<30?'قبل '+n+' يوم':'في '+fmtDate(d); }
+function _detSize(b){ b=+b||0; if(!b)return ''; if(b>=1048576)return (b/1048576).toFixed(b>=10485760?0:1)+'MB'; return Math.max(1,Math.round(b/1024))+'KB'; }
+function _detDetails(r){
+  var el=document.getElementById('det-details'); if(!el)return;
+  var MAP=/https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.[a-z.]+|(?:www\.)?google\.[a-z.]+\/maps)\S*/gi;
+  var desc=String(r.description||'').replace(MAP,'').replace(/(الموقع|موقع المشروع|اللوكيشن)\s*[:：]?\s*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
+  var h='<div class="card"><div class="ch"><h3>الوصف</h3></div>'+(desc?'<div class="rdh-desc fmt-text" style="margin:0;padding:0;border:0">'+(typeof fmtText==='function'?fmtText(desc):esc(desc))+'</div>':'<div style="color:var(--muted);font-size:13px">بدون وصف</div>')+'</div>';
+  var at=_detAtts(r);
+  if(at.length){
+    h+='<div class="card"><div class="ch"><h3>المخططات والملفات ('+at.length+')</h3></div><div class="dt-files">'+at.map(function(a){
+      var u=_safeUrl(a.url)||'#', nm=a.name||'ملف', ext=((nm.match(/\.([a-z0-9]{2,5})$/i)||[])[1]||'').toLowerCase();
+      return '<a class="dt-file" href="'+esc(u)+'" target="_blank" rel="noopener"><span class="dt-fx">'+esc((ext||'ملف').toUpperCase())+'</span><span class="dt-fn">'+esc(nm)+'<small>'+_detSize(a.size)+'</small></span></a>';
+    }).join('')+'</div></div>';
+  }
+  var im=_detImgs(r);
+  if(im.length) h+='<div class="card"><div class="ch"><h3>الصور ('+im.length+')</h3></div><div class="dt-imgs">'+im.map(function(u){return '<img src="'+esc(u)+'" loading="lazy" alt="" onclick="openImgFull(this.src)">';}).join('')+'</div></div>';
+  if(r.geo_lat&&r.geo_lng) h+='<div class="card"><div class="ch"><h3>الموقع</h3></div><a class="dh-b" style="align-self:flex-start" href="https://www.google.com/maps/search/?api=1&query='+Number(r.geo_lat)+','+Number(r.geo_lng)+'" target="_blank" rel="noopener">🗺️ افتح الموقع في الخرائط</a></div>';
+  el.innerHTML=h;
+}
 function loadActions(id){
   var el=document.getElementById('actions-wrap');if(!el)return;
-  el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  el.innerHTML='';
   fetch(API+'/api/requests/'+id,hdr()).then(function(r){return r.json();}).then(function(req){
+    if(['open','pending_review','review','needs_edit','rejected'].indexOf(req.status)>=0){ el.innerHTML=''; return; }
     var h='';
     var check='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>';
     var star='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>';
@@ -1120,12 +1221,12 @@ function loadActions(id){
       _mgmtBtns+='<button class="btn-sm" onclick="openEditReq('+id+',event)" style="width:100%;padding:13px;background:var(--white);border:1.5px solid var(--p);color:var(--p);font-weight:800;margin-bottom:9px"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>تعديل المشروع</button>';
       _mgmtBtns+='<button class="btn-sm" onclick="openCloseModalC('+id+',event)" style="width:100%;padding:13px;background:#fff;border:1.5px solid #fed7aa;color:#ea580c;font-weight:800"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px;margin-left:6px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>إغلاق المشروع</button>';
     }
-    if(_mgmtBtns){
+    if(false&&_mgmtBtns){
       var _mgmtHint='تقدر تعدّل تفاصيل المشروع طالما هو مفتوح، أو تُغلق المشروع عند إيجاد المزوّد المناسب أو الاستغناء عنه.';
       h+='<div class="card" style="margin-top:14px"><div class="ch"><h3>إدارة المشروع</h3></div>'+_mgmtBtns
         +'<p style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;text-align:center">'+_mgmtHint+'</p></div>';
     }
-    el.innerHTML=h||emptyH('لا يوجد إجراءات','');
+    el.innerHTML=h||'';
   }).catch(function(){if(el)el.innerHTML=errH(function(){loadActions(curRequestId);});});
 }
 function loadTimeline(id){

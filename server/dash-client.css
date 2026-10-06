@@ -656,3 +656,55 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .ak-ok{border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px 15px;font-family:inherit;font-weight:900;font-size:13px;cursor:pointer;min-height:40px;flex-shrink:0}
 .ak-more{display:block;width:100%;border:0;border-top:1px solid var(--border,#eef2f8);background:none;padding:10px;font-family:inherit;font-weight:800;font-size:12.5px;color:#1d4ed8;cursor:pointer}
 .ak-f{display:flex;border-top:1px solid var(--border,#eef2f8)}.ak-f button{flex:1;border:0;background:none;padding:12px 6px;font-family:inherit;font-size:12.5px;font-weight:800;color:var(--text2,#475569);cursor:pointer;min-height:44px}.ak-f button+button{border-right:1px solid var(--border,#eef2f8)}
+
+/* ── صفحة المشروع: الرأس الجديد ── */
+.dh{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:16px 18px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.dh-top{display:flex;align-items:center;gap:8px}.dh-no{font-size:12px;color:var(--muted);font-weight:700}
+.dh-dots{margin-right:auto;width:38px;height:38px;border-radius:11px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.dh-sub{font-size:12.5px;color:var(--muted);font-weight:700}
+.dh-chips{display:flex;flex-wrap:wrap;gap:6px}.dh-chips span{background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--text2)}
+.dh-steps{display:flex;margin:6px 0 2px}
+.dh-steps>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;text-align:center}
+.dh-steps>div:before{content:'';position:absolute;top:13px;left:50%;width:100%;height:3px;background:var(--border);z-index:0}
+.dh-steps>div:first-child:before{display:none}
+.dh-steps>div.dn:before,.dh-steps>div.on:before,.dh-steps>div.bad:before{background:#1d4ed8}
+.dh-steps .d{width:28px;height:28px;border-radius:50%;background:var(--border);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:900;z-index:1}
+.dh-steps .dn .d{background:#1d4ed8}.dh-steps .on .d{background:#f59e0b;box-shadow:0 0 0 5px #fef3c7}.dh-steps .bad .d{background:#dc2626;box-shadow:0 0 0 5px #fee2e2}
+.dh-steps .l{font-size:11px;font-weight:800;color:var(--muted);line-height:1.3}.dh-steps .dn .l,.dh-steps .on .l,.dh-steps .bad .l{color:var(--text)}
+.dh-ban{display:flex;gap:11px;align-items:flex-start;border-radius:14px;padding:12px 14px;border:1.5px solid}
+.dh-ban .e{font-size:22px;line-height:1.2}.dh-ban b{font-size:14.5px}.dh-ban p{margin:3px 0 0;font-size:12.5px;line-height:1.8;font-weight:700;white-space:pre-wrap}
+.dh-ban.y{background:#fffbeb;border-color:#fcd34d;color:#92400e}.dh-ban.r{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.dh-ban.g{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.dh-ban.b{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
+.dh-ban .dh-b{margin-top:10px}
+.dh-acts{display:flex;gap:8px;flex-wrap:wrap}
+.dh-b{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid var(--border);background:var(--white);color:#1e3a8a;border-radius:12px;padding:10px 14px;font-family:'Tajawal',sans-serif;font-size:13.5px;font-weight:800;cursor:pointer;text-decoration:none;white-space:nowrap}
+.dh-b.pri{background:#1d4ed8;border-color:#1d4ed8;color:#fff}.dh-b.red{background:#dc2626;border-color:#dc2626;color:#fff}
+.dh-b.big{padding:13px;font-size:14.5px}.dh-b.sq{padding:10px 13px}
+.dh-cta:empty{display:none}.dh-cta .card{margin:0}
+.dh-menu{position:fixed;z-index:9999;background:#fff;border:1px solid #e1e9f6;border-radius:14px;box-shadow:0 20px 40px -12px rgba(11,31,77,.35);padding:6px;min-width:210px;display:flex;flex-direction:column}
+.dh-menu button,.dh-menu a{display:flex;align-items:center;gap:9px;border:0;background:none;padding:11px 12px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;color:#0f2544;text-decoration:none;cursor:pointer;text-align:right}
+.dh-menu button:hover,.dh-menu a:hover{background:#f1f5fb}.dh-menu .red{color:#dc2626}
+#det-rail{display:none}
+.dt-files{display:flex;flex-direction:column;gap:6px}
+.dt-file{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;padding:8px 10px;text-decoration:none;color:var(--text)}
+.dt-fx{width:38px;height:38px;border-radius:9px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dt-fn{flex:1;min-width:0;font-size:13px;font-weight:800;word-break:break-word}.dt-fn small{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.dt-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.dt-imgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;cursor:zoom-in}
+/* جوال: شريط ثابت فوق الشريط السفلي */
+#det-bar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:90;display:flex;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:8px;box-shadow:0 12px 30px -12px rgba(11,31,77,.35)}
+#page-detail.has-bar{padding-bottom:80px}
+@media(min-width:769px){#det-bar{display:none!important}#page-detail.has-bar{padding-bottom:0}}
+/* كمبيوتر: عمودين — بطاقة المشروع جنب */
+@media(min-width:1100px){
+  #page-detail.on,#page-detail.active{display:grid!important}
+  #page-detail{grid-template-columns:minmax(0,1fr) 300px;column-gap:18px;align-items:start}
+  #page-detail>*{grid-column:1}
+  #det-rail{display:block;grid-column:2;grid-row:1/span 20;position:sticky;top:90px}
+  #page-detail .dh-acts,#page-detail .dh-dots{display:none}
+  .dr-card{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .dr-card>.tag{align-self:flex-start}
+  .dr-t{font-family:'Cairo',sans-serif;font-size:16px;font-weight:900;line-height:1.5;color:var(--text)}
+  .dr-l{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:800;color:var(--text2);padding-bottom:4px}
+  .dr-close{border:0;border-top:1px solid var(--border);background:none;padding-top:12px;margin-top:2px;color:#dc2626;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13.5px;cursor:pointer}
+}
+[data-theme="dark"] .dh-menu{background:#1e293b;border-color:#334155}[data-theme="dark"] .dh-menu button,[data-theme="dark"] .dh-menu a{color:#e5e7eb}
