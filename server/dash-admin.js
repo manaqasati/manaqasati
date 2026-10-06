@@ -1482,10 +1482,12 @@ var OW_RS_COL={spam:['#fff7ed','#c2410c'],scope:['#eff6ff','#1d4ed8'],price:['#f
 var OW_RS_SHORT={spam:'عشوائي/منسوخ',scope:'خارج التخصص',price:'سعر غير منطقي',abuse:'إساءة أو إزعاج'};
 function _owPill(t,bg,fg){return '<span style="display:inline-block;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;white-space:nowrap;background:'+bg+';color:'+fg+'">'+t+'</span>';}
 function _owState(p){
-  if(p.is_active===false)return _owPill('موقوف','#1f2937','#fff');
-  if(p.bid_review)return _owPill('عروضه تحت المراجعة','#fef3c7','#92400e');
+  var pc=(p.open_reports===0&&p.pending_close>0)?' · بانتظار إغلاقك':'';
+  if(p.is_active===false)return _owPill('موقوف'+pc,'#1f2937','#fff');
+  if(p.bid_review)return _owPill('عروضه تحت المراجعة'+pc,'#fef3c7','#92400e');
   if(p.open_reports===0&&p.dismissed>=p.reports)return _owPill('البلاغات غير صحيحة','#f1f5f9','#475569');
-  if(p.bid_warned_at)return _owPill('أُرسل له تنبيه','#eff6ff','#1d4ed8');
+  if(p.bid_warned_at)return _owPill('أُرسل له تنبيه'+pc,'#eff6ff','#1d4ed8');
+  if(pc)return _owPill('تم الإجراء'+pc,'#f0fdf4','#15803d');
   return _owPill('جديد','#fef2f2','#b91c1c');
 }
 function _owLoadReports(){
@@ -1496,7 +1498,7 @@ function _owLoadReports(){
     if(!Array.isArray(list)){host.innerHTML=emptyState('تعذر التحميل');return;}
     _owRep=list;
     var done=_owCur==='done';
-    var arr=list.filter(function(p){return done?p.open_reports===0:p.open_reports>0;});
+    var arr=list.filter(function(p){var live=p.open_reports>0||p.pending_close>0;return done?!live:live;});
     if(!arr.length){host.innerHTML=emptyState(done?'ما فيه بلاغات معالجة بعد':'ما فيه بلاغات جديدة من العملاء 🎉');return;}
     host.innerHTML='<div class="card" style="padding:0;overflow:hidden">'
       +'<div class="ow-row ow-hd"><span>المزوّد</span><span>البلاغات</span><span>من عملاء</span><span>الأسباب</span><span>الحالة</span></div>'
@@ -1573,6 +1575,7 @@ function _owDrawer(d){
     +(u.bid_review?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0" onclick="_owAct('+u.id+',\'lift\',this)">▶ رفع المراجعة</button>':'<button style="'+gb+';color:#92400e;border-color:#fde68a" onclick="_owAct('+u.id+',\'review\',this)">⏸ عروضه تنتظر موافقتي</button>')
     +(u.is_active!==false?'<button style="'+gb+';color:#dc2626;border-color:#fecaca" onclick="_owAct('+u.id+',\'suspend\',this)">⛔ إيقاف الحساب</button>':'')
     +'<button style="'+gb+'" onclick="_owAct('+u.id+',\'dismiss\',this)">✓ البلاغات غير صحيحة</button>'
+    +(d.reports.some(function(r){return r.status==='actioned'&&!r.closed_at;})?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0;background:#f0fdf4" onclick="_owAct('+u.id+',\'close\',this)">✓ خلصت — شيله من القائمة</button>':'')
     +'</div>';
   h+='<div class="ow-foot" style="margin:0">المزوّد ما يشوف اسم المبلّغ ولا المشروع اللي انبلّغ منه.</div></div>';
   box.innerHTML=h;
@@ -1608,10 +1611,11 @@ function _owRepCard(p){
   var rs=(p.reasons||[]).map(function(x){var c=OW_RS_COL[x.key]||['#f1f5f9','#475569'];return _owPill(esc(OW_RS_SHORT[x.key]||x.label)+' · '+x.n,c[0],c[1]);}).join(' ');
   return '<div class="card ow-hc" style="margin-bottom:12px">'+_owTag('🚩 بلاغات من العملاء','#ffedd5','#9a3412')
     +'<div style="display:flex;gap:10px;align-items:flex-start"><span class="ow-av">'+esc(nm.charAt(0))+'</span><div style="flex:1;min-width:0"><b style="font-size:14.5px">'+esc(nm)+'</b>'
-    +'<div style="font-size:12.5px;color:#b91c1c;font-weight:800;margin-top:2px">'+_fuN(p.open_reports,'بلاغ جديد','بلاغين جداد','بلاغات جديدة','بلاغ جديد')+' من '+_fuN(p.clients,'عميل واحد','عميلين','عملاء','عميل')+'</div>'
+    +'<div style="font-size:12.5px;color:#b91c1c;font-weight:800;margin-top:2px">'+(p.open_reports?_fuN(p.open_reports,'بلاغ جديد','بلاغين جداد','بلاغات جديدة','بلاغ جديد'):'<span style="color:#15803d">✓ اتخذت إجراء — باقي تتابعه (واتساب) وتشيله من القائمة</span>')+' من '+_fuN(p.clients,'عميل واحد','عميلين','عملاء','عميل')+'</div>'
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+rs+'</div></div><span>'+_owState(p)+'</span></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
-    +'<button class="act-btn ab-default" style="background:#1e3a8a;border-color:#1e3a8a;color:#fff" onclick="_owRepOpen('+p.id+')">افتح البلاغات وقرّر</button>'
+    +'<button class="act-btn ab-default" style="background:#1e3a8a;border-color:#1e3a8a;color:#fff" onclick="_owRepOpen('+p.id+')">'+(p.open_reports?'افتح البلاغات وقرّر':'افتح الملف')+'</button>'
+    +(!p.open_reports&&p.pending_close?'<button class="act-btn ab-default" style="color:#15803d;border-color:#bbf7d0" onclick="_owAct('+p.id+',\'close\',this)">✓ خلصت — شيله من القائمة</button>':'')
     +'<button class="act-btn ab-default" onclick="_provDrawer('+p.id+')">👤 ملف المزوّد</button></div></div>';
 }
 function _owLoadAll(){
@@ -1623,7 +1627,7 @@ function _owLoadAll(){
     if(r[0])_owHeld=r[0]; _owRep=reps; _owFlags=flags;
     var items=[];
     held.forEach(function(b){items.push({t:new Date(b.created_at||0).getTime(),h:_owHeldCard(b).replace(/^(<div class="card[^>]*>)/,'$1'+_owTag('⏸ معلّق قبل النشر','#dbeafe','#1e40af'))});});
-    reps.filter(function(p){return p.open_reports>0;}).forEach(function(p){items.push({t:new Date(p.last_at||0).getTime(),h:_owRepCard(p)});});
+    reps.filter(function(p){return p.open_reports>0||p.pending_close>0;}).forEach(function(p){items.push({t:new Date(p.last_at||0).getTime(),h:_owRepCard(p)});});
     flags.forEach(function(f){items.push({t:new Date(f.created_at||0).getTime(),h:_owFlagCard(f).replace(/^(<div class="card[^>]*>)/,'$1'+_owTag('🔎 رصد تلقائي','#ede9fe','#6d28d9'))});});
     items.sort(function(a,b){return a.t-b.t;});
     host.innerHTML=items.length?('<div class="ow-note">كل اللي ينتظر قرارك في مكان واحد — الأقدم أولاً عشان ما يتأخر أحد. العروض المعلّقة تنعتمد تلقائياً إذا ما راجعتها في الوقت.</div>'+items.map(function(x){return x.h;}).join('')):emptyState('ما فيه شي ينتظرك 🎉');

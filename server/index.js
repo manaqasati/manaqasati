@@ -2999,6 +2999,8 @@ async function setupDatabase() {
     // بلاغات العملاء على العروض + المراجعة قبل النشر
     try {
       await _mig(`CREATE TABLE IF NOT EXISTS bid_reports (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, client_id INTEGER, request_id INTEGER, reason VARCHAR(20) NOT NULL, status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(bid_id, client_id))`);
+      await _mig(`ALTER TABLE bid_reports ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
+      await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS held_until TIMESTAMP`);
@@ -8246,7 +8248,7 @@ const _BLANK_RE = /\(\s*(?:عدد|اشرح[^)]{0,40}|نوعها[^)]{0,40}|اذك
 app.get('/api/admin/bid-watch-counts', requirePermission('requests.view'), async (req, res) => {
   try {
     const r = (await pool.query(`SELECT (SELECT COUNT(*) FROM bids WHERE hold_state='held')::int AS held,
-      (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS report_providers,
+      (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE (status='open' OR (status='actioned' AND closed_at IS NULL)))::int AS report_providers,
       (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags`)).rows[0];
     res.json(r);
   } catch(e) { res.json({ held: 0, report_providers: 0, flags: 0 }); }
@@ -8259,12 +8261,13 @@ app.get('/api/admin/bid-reports', requirePermission('requests.view'), async (req
         COUNT(br.*)::int AS reports, COUNT(DISTINCT br.client_id)::int AS clients,
         COUNT(br.*) FILTER (WHERE br.status='open')::int AS open_reports,
         COUNT(br.*) FILTER (WHERE br.status='dismissed')::int AS dismissed,
+        COUNT(br.*) FILTER (WHERE br.status='actioned' AND br.closed_at IS NULL)::int AS pending_close,
         MAX(br.created_at) AS last_at,
         (SELECT COUNT(*) FROM bids WHERE provider_id=u.id AND created_at > NOW() - INTERVAL '30 days')::int AS bids_30d,
         (SELECT COUNT(*) FROM bids WHERE provider_id=u.id AND hold_state='held')::int AS held
       FROM bid_reports br JOIN users u ON u.id=br.provider_id
       WHERE br.created_at > NOW() - INTERVAL '120 days'
-      GROUP BY u.id ORDER BY COUNT(br.*) FILTER (WHERE br.status='open') DESC, MAX(br.created_at) DESC LIMIT 200`)).rows;
+      GROUP BY u.id ORDER BY COUNT(br.*) FILTER (WHERE br.status='open') DESC, COUNT(br.*) FILTER (WHERE br.status='actioned' AND br.closed_at IS NULL) DESC, MAX(br.created_at) DESC LIMIT 200`)).rows;
     const reasons = (await pool.query(`SELECT provider_id, reason, COUNT(*)::int n FROM bid_reports WHERE created_at > NOW() - INTERVAL '120 days' AND status<>'dismissed' GROUP BY provider_id, reason`)).rows;
     const out = rows.map(x => { const o = x; o.reasons = reasons.filter(y => y.provider_id === x.id).map(y => ({ key: y.reason, label: BID_REP_REASONS[y.reason] || y.reason, n: y.n })).sort((a,b)=>b.n-a.n); return o; });
     res.json(out);
@@ -8281,7 +8284,7 @@ app.get('/api/admin/bid-reports/provider/:id', requirePermission('requests.view'
       (SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id)::int AS reviews
       FROM users WHERE id=$1`, [pid])).rows[0];
     if (!u) return res.status(404).json({ message: 'غير موجود' });
-    const reports = (await pool.query(`SELECT br.id, br.bid_id, br.reason, br.status, br.created_at, br.request_id, q.title AS request_title, c.name AS client_name
+    const reports = (await pool.query(`SELECT br.id, br.bid_id, br.reason, br.status, br.closed_at, br.created_at, br.request_id, q.title AS request_title, c.name AS client_name
       FROM bid_reports br LEFT JOIN requests q ON q.id=br.request_id LEFT JOIN users c ON c.id=br.client_id WHERE br.provider_id=$1 ORDER BY br.created_at DESC LIMIT 50`, [pid])).rows
       .map(x => Object.assign(x, { reason_label: BID_REP_REASONS[x.reason] || x.reason }));
     const bids = (await pool.query(`SELECT b.id, b.request_id, b.note, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit, b.status, b.hold_state, b.created_at, q.title AS request_title, q.city AS request_city,
@@ -8315,8 +8318,11 @@ app.post('/api/admin/bid-reports/provider/:id/action', requirePermission('reques
       const n = await _releaseAllHeld(pid, 'approved');
       await notify(pid, '✅ رُفعت المراجعة عن عروضك', 'عروضك الجديدة ترجع تظهر للعملاء مباشرة. استمر بكتابة عروض تخص كل مشروع.', 'bid', null);
       msg = 'رُفعت المراجعة' + (n ? ' واعتُمد ' + n + ' عرض معلّق' : '');
+    } else if (act === 'close') {
+      const r = await pool.query(`UPDATE bid_reports SET closed_at=NOW() WHERE provider_id=$1 AND status='actioned' AND closed_at IS NULL`, [pid]);
+      msg = r.rowCount ? 'انشال من قائمة البلاغات — تلقاه في «تمت معالجتها»' : 'ما فيه شي يحتاج إغلاق';
     } else if (act === 'dismiss') {
-      await pool.query(`UPDATE bid_reports SET status='dismissed' WHERE provider_id=$1 AND status<>'dismissed'`, [pid]);
+      await pool.query(`UPDATE bid_reports SET status='dismissed', closed_at=COALESCE(closed_at,NOW()) WHERE provider_id=$1 AND status<>'dismissed'`, [pid]);
       await pool.query('UPDATE users SET bid_review=FALSE, bid_warned_at=NULL WHERE id=$1', [pid]);
       const n = await _releaseAllHeld(pid, 'approved');
       msg = 'أُلغي أثر البلاغات' + (n ? ' واعتُمد ' + n + ' عرض معلّق' : '');
@@ -9619,7 +9625,7 @@ async function _adminOverview(){
         (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flag_providers,
         (SELECT COUNT(*) FROM bids WHERE hold_state='held')::int AS held_bids,
         (SELECT GREATEST(0, EXTRACT(EPOCH FROM (MIN(held_until) - NOW())))::int FROM bids WHERE hold_state='held') AS held_next_sec,
-        (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open')::int AS bid_report_providers,
+        (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE (status='open' OR (status='actioned' AND closed_at IS NULL)))::int AS bid_report_providers,
         (SELECT COUNT(*) FROM completion_claims WHERE status='denied' AND admin_done IS NOT TRUE)::int AS claims_denied,
         (SELECT COUNT(*) FROM users WHERE ask_penalty_until > NOW())::int AS ask_penalized,
         (SELECT COUNT(*) FROM requests WHERE close_help IS TRUE AND close_help_done IS NOT TRUE)::int AS close_help,
