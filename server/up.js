@@ -105,7 +105,7 @@
   var standalone = false; try { standalone = W.navigator.standalone === true || (W.matchMedia && W.matchMedia('(display-mode: standalone)').matches); } catch(e){}
   if (!app && !standalone && !/[?&]mqviewer=1/.test(location.search)) return;
 
-  var IMG = /^(jpe?g|png|webp|gif|heic)$/i, OTHER = /^(dwg|dxf|xlsx?|docx?|zip|csv|rvt|pptx?)$/i;
+  var IMG = /^(jpe?g|png|webp|gif|heic)$/i, OTHER = /^(dwg|dxf|xlsx?|docx?|zip|rar|7z|csv|rvt|pptx?)$/i;
   function kind(u){
     if (!u) return null; u = String(u);
     if (/^data:application\/pdf/i.test(u)) return 'pdf';

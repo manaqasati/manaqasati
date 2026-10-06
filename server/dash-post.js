@@ -1010,7 +1010,7 @@ function previewFiles(input){
   var _all=[].slice.call(input.files), _room=Math.max(0,_MQ_ATT-_reqFiles.length), files=_all.slice(0,_room);
   if(_all.length>_room) showToast(_room?('تمت إضافة '+_room+' ملفات — الحد الأقصى '+_MQ_ATT+' ملف'):('وصلت الحد الأقصى ('+_MQ_ATT+' ملف)'),'error');
   files.forEach(function(f){
-    if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP)','error');return;}
+    if(!/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|rar|7z|csv)$/i.test(f.name)){showToast('صيغة غير مدعومة (PDF/DWG/Excel/Word/ZIP/RAR)','error');return;}
     if(f.size>30*1024*1024){showToast('الحجم الأقصى 30MB','error');return;}
     var slot={name:f.name,up:true}; _reqFiles.push(slot); renderFileList();
     _mqUpAtt(f,slot,function(ok,msg){ if(!ok){var i=_reqFiles.indexOf(slot);if(i>-1)_reqFiles.splice(i,1);showToast(msg||('تعذّر رفع «'+f.name+'»'),'error');} renderFileList(); });

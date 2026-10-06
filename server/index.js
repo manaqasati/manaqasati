@@ -33,7 +33,7 @@ const UPLOAD_TYPES = {
   'audio/webm':'webm', 'audio/ogg':'ogg', 'audio/mp4':'m4a', 'audio/mpeg':'mp3', 'audio/wav':'wav', 'audio/x-m4a':'m4a', 'audio/aac':'aac'
 };
 // ملفات فنية/مكتبية تُحمَّل فقط (غير قابلة للتنفيذ في المتصفح) — تُقبل بالامتداد
-const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, csv:1, rvt:1, pptx:1, ppt:1 };
+const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, rar:1, '7z':1, csv:1, rvt:1, pptx:1, ppt:1 };
 const UPLOAD_MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
 async function uploadToR2(base64Data, folder, filename) {
@@ -218,7 +218,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '4'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '5'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
