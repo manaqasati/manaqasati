@@ -724,6 +724,40 @@ function loadHome(){
   try{if(typeof _clmClientLoad==='function')_clmClientLoad();}catch(e){}
 }
 // عرض بيانات الرئيسية (يُستخدم للكاش والخادم)
+
+// ═══ الرئيسية: بطاقة «مشروعك الحالي» داخل البلوك الأزرق (النموذج 3) ═══
+function _hhCurPick(all){
+  var A=(all||[]).filter(function(r){return ['needs_edit','pending_review','review','open','in_progress'].indexOf(r.status)>=0;});
+  if(!A.length)return null;
+  var pr=function(r){ if(r.status==='needs_edit')return 0; if(r.status==='open'&&_hasUnseenOffers(r))return 1; if(r.status==='open'&&(parseInt(r.bid_count)||0)>0)return 2; if(r.status==='pending_review'||r.status==='review')return 3; if(r.status==='open')return 4; return 5; };
+  A.sort(function(a,b){ return pr(a)-pr(b) || new Date(b.created_at)-new Date(a.created_at); });
+  return {r:A[0], n:A.length};
+}
+function _hhCurrent(all){
+  var hero=document.querySelector('#page-home .hh-hero'); if(!hero)return;
+  var box=document.getElementById('hhCur');
+  var pk=_hhCurPick(all);
+  if(!pk){ hero.classList.remove('has-cur'); if(box)box.remove(); return; }
+  if(!box){ box=document.createElement('div'); box.id='hhCur'; hero.appendChild(box); }
+  hero.classList.add('has-cur');
+  var r=pk.r, st=r.status, nb=parseInt(r.bid_count)||0, id=r.id;
+  var bad=(st==='needs_edit'), on=st==='in_progress'?3:(st==='open'?2:1);
+  var N=['أرسلته','مراجعة الإدارة','استقبال العروض','اخترت مزوّد','مكتمل'];
+  var steps='<div class="hc-steps">'+N.map(function(n,i){ var c=i<on?'dn':(i===on?(bad?'bad':'on'):''); return '<div class="'+c+'"><span>'+(c==='dn'?'✓':(c==='bad'?'!':(i+1)))+'</span><em>'+n+'</em></div>'; }).join('')+'</div>';
+  var pill={needs_edit:['مطلوب تعديل','#fee2e2','#b91c1c'],pending_review:['تحت المراجعة','#fef3c7','#92400e'],review:['تحت المراجعة','#fef3c7','#92400e'],open:['يستقبل عروض','#dcfce7','#15803d'],in_progress:['قيد التنفيذ','#dbeafe','#1d4ed8']}[st];
+  var unseen=st==='open'&&_hasUnseenOffers(r);
+  var note= bad?'📝 الإدارة طلبت تعديل بسيط قبل النشر — اضغط «عدّل وأعد الإرسال» وشوف المطلوب'
+    : (st==='pending_review'||st==='review')?'🕒 مشروعك تحت المراجعة — نراجعه عادة خلال ساعات ونبلغك أول ما يُنشر'
+    : st==='in_progress'?'🔨 قيد التنفيذ'+(r.provider_name?' مع '+esc(r.provider_name):'')+' — أكّد الإنجاز لما يخلص'
+    : nb?('📬 '+(unseen?'وصلتك عروض جديدة — ':'')+'عندك '+nb+' '+(nb>=3&&nb<=10?'عروض':'عرض')+' على هالمشروع'):'✅ منشور ويستقبل العروض — نرسل لك إشعار مع كل عرض';
+  var b1= bad?'<button class="hc-b1" onclick="openEditReq('+id+',event)">عدّل وأعد الإرسال</button>'
+    : (st==='open'&&nb)?'<button class="hc-b1" onclick="_markOffersSeen(window._allMyReqs||[]);openDetail('+id+',event)">شاهد العروض</button>'
+    : '<button class="hc-b1" onclick="openDetail('+id+',event)">تفاصيل المشروع</button>';
+  var b2= (bad||(st==='open'&&nb))?'<button class="hc-b2" onclick="openDetail('+id+',event)">التفاصيل</button>':'<button class="hc-b2" onclick="show(\'new\',null,\'new\')">+ مشروع جديد</button>';
+  var th=(r.thumbnail&&_safeUrl(r.thumbnail))?'<img src="'+esc(_safeUrl(r.thumbnail))+'" alt="">':catSvg(r.category,24);
+  box.innerHTML='<div class="hc-top"><span class="hc-th">'+th+'</span><div class="hc-tt"><small>'+(pk.n>1?'مشروعك الحالي · من '+pk.n+' مشاريع نشطة':'مشروعك الحالي')+'</small><b>'+esc(r.title||'مشروع')+'</b></div><span class="hc-pl" style="background:'+pill[1]+';color:'+pill[2]+'">'+pill[0]+'</span></div>'
+    +steps+'<div class="hc-note'+(bad?' bad':'')+'">'+note+'</div><div class="hc-acts">'+b1+b2+'</div>';
+}
 function _paintHome(all){
   window._allMyReqs=all||[];        // متاح لمعالج النبيه
   var el=document.getElementById('home-reqs');
@@ -753,6 +787,7 @@ function _paintHome(all){
   }
   var _homeList=all.filter(_cnActive).concat(all.filter(function(r){return !_cnActive(r);}));
   if(el)el.innerHTML=all.length?_homeList.slice(0,3).map(_hhCard).join(''):emptyReqsH(); var _hs=document.querySelector('.hh-sec .ch-link'); if(_hs)_hs.textContent=all.length>3?'عرض الكل ('+all.length+')':'عرض الكل';
+  try{_hhCurrent(all);}catch(e){}
   renderNudges(all);
   renderQuestionNudge(all);
   renderBestOffer(all);

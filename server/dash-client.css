@@ -709,3 +709,51 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 }
 [data-theme="dark"] .dh-menu{background:#1e293b;border-color:#334155}[data-theme="dark"] .dh-menu button,[data-theme="dark"] .dh-menu a{color:#e5e7eb}
 .vb-st{margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.7}.vb-st a{font-weight:900;text-decoration:underline}.vb-warn{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:7px 10px}.vb-ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:10px;padding:7px 10px}.vb-tip{color:#64748b}
+
+/* ═══ الرئيسية — النموذج 3: مشروعك الحالي داخل البلوك الأزرق ═══ */
+.hh-hero.has-cur{background:linear-gradient(135deg,#0b1f4d,#1e3a8a)}
+.hh-hero.has-cur .hh-hl,.hh-hero.has-cur .hh-acts{display:none}
+.hh-hero.has-cur .hh-top{display:none}
+#hhCur{display:flex;flex-direction:column;gap:14px}
+.hc-top{display:flex;align-items:center;gap:12px}
+.hc-th{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;color:#fff}
+.hc-th img{width:100%;height:100%;object-fit:cover}
+.hc-tt{flex:1;min-width:0}.hc-tt small{display:block;font-size:12px;font-weight:800;color:#93c5fd}
+.hc-tt b{display:block;font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc-pl{font-size:12px;font-weight:900;border-radius:999px;padding:4px 11px;white-space:nowrap}
+.hc-steps{display:flex}
+.hc-steps>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;text-align:center}
+.hc-steps>div:before{content:'';position:absolute;top:13px;left:50%;width:100%;height:3px;background:rgba(255,255,255,.18)}
+.hc-steps>div:first-child:before{display:none}
+.hc-steps>div.dn:before,.hc-steps>div.on:before,.hc-steps>div.bad:before{background:#60a5fa}
+.hc-steps span{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:900;z-index:1}
+.hc-steps .dn span{background:#3b82f6}.hc-steps .on span{background:#f59e0b;box-shadow:0 0 0 5px rgba(245,158,11,.3)}.hc-steps .bad span{background:#dc2626;box-shadow:0 0 0 5px rgba(220,38,38,.3)}
+.hc-steps em{font-style:normal;font-size:11px;font-weight:800;color:#7f93c4;line-height:1.3}.hc-steps .dn em,.hc-steps .on em,.hc-steps .bad em{color:#fff}
+.hc-note{background:rgba(255,255,255,.09);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;line-height:1.7;color:#dbeafe}
+.hc-note.bad{color:#fecaca}
+.hc-acts{display:flex;gap:8px}
+.hc-b1,.hc-b2{border:0;border-radius:13px;padding:12px 16px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:14px;cursor:pointer}
+.hc-b1{background:#fff;color:#0b1f4d;flex:1}.hc-b2{background:rgba(255,255,255,.12);color:#fff}
+@media(min-width:769px){.hc-b1{flex:0 0 auto}}
+/* أزرار سريعة — تظهر في العمود الجانبي (كمبيوتر) */
+.hh-quick{display:none}
+@media(min-width:1200px){
+  .hh-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hh-quick button{border:0;background:var(--qb);border-radius:16px;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer;font-family:'Tajawal',sans-serif;text-align:right;transition:transform .12s}
+  .hh-quick button:hover{transform:translateY(-2px)}
+  .hh-quick span{font-size:21px}.hh-quick b{font-size:14px;color:#0f2544}.hh-quick small{font-size:11.5px;font-weight:700;color:#64748b}
+}
+/* شريط تفعيل البريد — مضغوط على الكمبيوتر */
+@media(min-width:900px){
+  .vb-full{background:#fffbeb;border-color:#fcd34d;padding:12px 16px;align-items:center;box-shadow:none}
+  .vb-full::before{display:none}
+  .vb-ic{width:42px;height:42px;background:#fef3c7;color:#92400e}.vb-ic svg{width:20px;height:20px}
+  .vb-b{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;align-items:center}
+  .vb-b>*{grid-column:1}
+  .vb-b .vb-t{font-size:15px;color:#92400e}
+  .vb-b .vb-n{display:none}
+  .vb-b .vb-st{margin-top:4px}
+  .vb-b .vb-acts{grid-column:2;grid-row:1/span 2;margin:0;flex-wrap:nowrap}
+  .vb-b>div:last-child{grid-column:2;grid-row:3/span 2;margin-top:8px!important;max-width:none!important}
+}
+[data-theme="dark"] .vb-full{background:#1e293b;border-color:#334155}
