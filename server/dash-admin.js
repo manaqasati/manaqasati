@@ -5917,22 +5917,30 @@ function _loadCtStats(){
     if(!d||!d.tot){box.style.display='none';return;} box.style.display=''; _CT=d;
     try{_miniSet('ct','📄 عقود المقاولات','<b>'+fmtNum(d.tot.n)+'</b> تحميل · <b>'+fmtNum(d.tot.users)+'</b> شخص ('+esc(_perRange().lbl)+')','ctstats');}catch(e){}
     var t=d.tot, nm=function(s){return (d.names&&d.names[s])||s;};
-    var mx=d.top.length?d.top[0].n:1;
-    var rows=d.top.map(function(x){return '<div class="vs-br"><span class="nm" style="width:230px">'+esc(nm(x.slug))+'</span><span class="bar"><i style="width:'+Math.round(x.n/mx*100)+'%;background:#1d4ed8"></i></span><span class="v">'+fmtNum(x.n)+'</span></div>';}).join('');
+    var mx=d.top.length?d.top[0].n:1, showAllCt=!!window._ctAllTop, showAllU=!!window._ctAllU;
+    var top=(showAllCt?d.top:d.top.slice(0,6)).map(function(x,i){return '<div class="ct2-r"><span class="ct2-i">'+(i+1)+'</span><span class="ct2-n" title="'+esc(nm(x.slug))+'">'+esc(nm(x.slug).replace(/^عقد /,''))+'</span><span class="ct2-bar"><i style="width:'+Math.max(4,Math.round(x.n/mx*100))+'%"></i></span><b>'+fmtNum(x.n)+'</b></div>';}).join('');
     var ph=function(p){p=String(p||'').replace(/\D/g,''); if(p.indexOf('05')===0)p='966'+p.slice(1); return p;};
-    var list=d.users.slice(0,200).map(function(u){var p=ph(u.phone);
-      return '<tr><td style="width:34px"><input type="checkbox" class="ct-ck" data-id="'+u.id+'" onchange="_ctSelUpd()" style="width:17px;height:17px"></td><td><a href="#" onclick="event.preventDefault();openUserView('+u.id+')" style="font-weight:800">'+esc(u.name||'—')+'</a><div class="vs-s">'+(u.role==='provider'?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</div></td>'
-        +'<td style="font-size:12.5px">'+u.slugs.map(function(s){return esc(nm(s).replace(/^عقد /,''));}).join('، ')+'</td>'
-        +'<td style="white-space:nowrap;font-size:12.5px">'+esc(String(u.last_at||'').slice(0,10))+'</td>'
-        +'<td>'+(p?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+p+'">واتساب</a>':'')+'</td></tr>';}).join('');
+    var COL=['#1d4ed8','#0f766e','#7c3aed','#be185d','#c2410c','#0369a1'];
+    var us=showAllU?d.users.slice(0,300):d.users.slice(0,8);
+    var list=us.map(function(u,i){var p=ph(u.phone), prov=u.role==='provider';
+      return '<div class="ct2-u"><input type="checkbox" class="ct-ck" data-id="'+u.id+'" onchange="_ctSelUpd()"'+(_ctSel[u.id]?' checked':'')+'>'
+        +'<span class="ct2-av" style="background:'+COL[(u.id||i)%COL.length]+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
+        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();openUserView('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span></div>'
+        +'<small>'+[u.city?esc(u.city):'',u.slugs.map(function(s){return esc(nm(s).replace(/^عقد /,''));}).join('، '),esc(String(u.last_at||'').slice(5,10).replace('-','/'))].filter(Boolean).join(' · ')+'</small></div>'
+        +'<div class="ct2-acts">'+(p?'<a class="ct2-b wa" target="_blank" rel="noopener" href="https://wa.me/'+p+'">واتساب</a>':'')+'<button class="ct2-b" onclick="_ctMsg1('+u.id+')">رسالة</button></div></div>';}).join('');
+    var kp=function(lbl,v,sub,c){return '<div class="ct2-k"><small>'+lbl+'</small><b'+(c?' style="color:'+c+'"':'')+'>'+v+'</b><span>'+sub+'</span></div>';};
+    var pct=function(a){return t.users?Math.round(a/t.users*100)+'% من اللي حمّلوا':'—';};
     box.innerHTML='<div class="vs-h"><h3>📄 عقود المقاولات</h3><a href="/contracts" target="_blank" rel="noopener" style="margin-inline-start:auto;font-size:12.5px;font-weight:800">manaqasa.com/contracts ↗</a></div>'
-      +'<div class="vs-s" style="font-size:13.5px;color:var(--text2);margin:4px 0 10px">مين حمّل العقود من التطبيق — عملاء مهتمين بمشروع قريب، استهدفهم بالتسويق</div>'
-      +'<div class="vs-k"><div class="vs-b"><span class="t">'+esc(R.lbl)+': تحميلات</span><span class="big">'+fmtNum(t.n)+'</span><span class="vs-s">الإجمالي من البداية '+fmtNum(d.all.n)+'</span></div>'
-      +'<div class="vs-b"><span class="t">أشخاص حمّلوا</span><span class="big" style="color:#1d4ed8">'+fmtNum(t.users)+'</span><span class="vs-s">'+fmtNum(t.clients)+' عميل · '+fmtNum(t.providers)+' مزوّد</span></div></div>'
-      +(rows?'<div class="vs-st" style="margin-top:12px">أكثر العقود تحميلاً</div>'+rows:'<div class="vs-s" style="margin-top:10px">ما فيه تحميلات في هالفترة</div>')
-      +(list?'<div style="display:flex;align-items:center;margin-top:14px"><div class="vs-st" style="margin:0">اللي حمّلوا ('+fmtNum(d.users.length)+')</div><button class="act-btn ab-primary" id="ct-send" style="margin-inline-start:auto" onclick="_ctMsg()">📣 أرسل رسالة للكل ('+fmtNum(d.users.length)+')</button><button class="act-btn ab-default" style="margin-inline-start:8px" onclick="_ctCsv()">⬇ تصدير Excel</button></div>'
-        +'<div style="overflow-x:auto;margin-top:6px"><table class="ct-t"><thead><tr><th><input type="checkbox" id="ct-all" title="تحديد الكل" onchange="_ctAll(this.checked)" style="width:17px;height:17px"></th><th>الاسم</th><th>العقود</th><th>آخر تحميل</th><th></th></tr></thead><tbody>'+list+'</tbody></table></div>'
-        +(d.users.length>200?'<div class="vs-s" style="margin-top:6px">يظهر أول 200 — صدّر Excel للقائمة كاملة</div>':''):'');
+      +'<div class="ct2-kp">'+kp('تحميلات · '+esc(R.lbl),fmtNum(t.n),'الإجمالي من البداية '+fmtNum(d.all.n))+kp('أشخاص حمّلوا',fmtNum(t.users),'عملاء محتملين للتسويق','#1d4ed8')+kp('عملاء',fmtNum(t.clients),pct(t.clients),'#1d4ed8')+kp('مزوّدين',fmtNum(t.providers),pct(t.providers),'#0f766e')+'</div>'
+      +'<div class="ct2-g">'
+        +'<div class="ct2-c"><div class="ct2-h">أكثر العقود تحميلاً'+(d.top.length>6?'<a href="#" onclick="event.preventDefault();window._ctAllTop=!window._ctAllTop;_loadCtStats()">'+(showAllCt?'أقل':'عرض الكل ('+d.top.length+')')+'</a>':'')+'</div>'+(top||'<div class="vs-s">ما فيه تحميلات في هالفترة</div>')+'</div>'
+        +'<div class="ct2-c"><div class="ct2-h">آخر من حمّل <span style="color:var(--muted);font-weight:700">('+fmtNum(d.users.length)+')</span><span class="ct2-hb"><button class="ct2-b pri" id="ct-send" onclick="_ctMsg()">📣 رسالة للكل ('+fmtNum(d.users.length)+')</button><button class="ct2-b" onclick="_ctCsv()">⬇ Excel</button></span></div>'
+          +(list?'<label class="ct2-all"><input type="checkbox" id="ct-all" onchange="_ctAll(this.checked)"> تحديد الكل</label>'+list:'<div class="vs-s">ما أحد حمّل في هالفترة</div>')
+          +(d.users.length>8?'<a href="#" class="ct2-more" onclick="event.preventDefault();window._ctAllU=!window._ctAllU;_loadCtStats()">'+(showAllU?'عرض أقل':'عرض الكل ('+fmtNum(d.users.length)+') ‹')+'</a>':'')
+          +(showAllU&&d.users.length>300?'<div class="vs-s">يظهر أول 300 — صدّر Excel للقائمة كاملة</div>':'')
+        +'</div>'
+      +'</div>';
+    _ctSelUpd(true);
   }).catch(function(){ box.style.display='none'; });
 }
 function _ctCsv(){
@@ -5951,6 +5959,7 @@ function _ctSelUpd(skip){
   var n=Object.keys(_ctSel).length, b=document.getElementById('ct-send'); if(!b)return;
   b.textContent=n?('📣 أرسل رسالة للمحدّدين ('+fmtNum(n)+')'):('📣 أرسل رسالة للكل ('+fmtNum((_CT.users||[]).length)+')');
 }
+function _ctMsg1(id){ window._ctFrom=1; _selUsers={}; _selUsers[String(id)]=true; document.getElementById('sm-count').textContent=1; fillMsgTemplates(); applyMsgTemplate(0); document.getElementById('sm-channel').value='both'; document.getElementById('selMsgModal').classList.add('show'); }
 function _ctMsg(){
   var ids=Object.keys(_ctSel); if(!ids.length&&_CT.users)ids=_CT.users.map(function(u){return String(u.id);});
   if(!ids.length){toast('ما فيه أحد حمّل في هالفترة','error');return;}
