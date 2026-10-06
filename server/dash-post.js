@@ -1145,6 +1145,7 @@ function acceptAgree(){
   if(window._geoLat!=null&&window._geoLng!=null){body.geo_lat=window._geoLat;body.geo_lng=window._geoLng;}
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
+  if(!body.geo_lat){ var _ml=((document.getElementById("n-maploc")||{}).value||"").trim(); if(_ml) body.map_url=_ml.slice(0,1000); }
   if(budget)body.budget_max=Number(budget);
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});

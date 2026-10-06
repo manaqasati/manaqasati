@@ -1398,7 +1398,25 @@ function _parseMapLoc(){
   var hint=document.getElementById("n-loc-hint");
   if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){_reqGeo.lat=la;_reqGeo.lng=ln;if(hint)hint.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد الموقع</span>';return;}}
   _reqGeo.lat=null;_reqGeo.lng=null;if(hint)hint.innerHTML="";
+  if(v.trim())_geoResolve("n",v,_reqGeo,"n-loc-hint");
 }
+// قراءة رابط خرائط جوجل المختصر (maps.app.goo.gl) عن طريق السيرفر
+var _geoT={};
+function _geoResolve(key,v,geo,hintId){
+  clearTimeout(_geoT[key]);
+  var h=document.getElementById(hintId);
+  if(!/https?:\/\/\S*(goo\.gl|google\.|g\.co)/i.test(v)){ if(h&&v.trim())h.innerHTML='<span style="color:#b45309;font-weight:700">ألصق رابط خرائط جوجل أو اضغط «📍 موقعي»</span>'; return; }
+  if(h)h.innerHTML='<span style="color:var(--muted);font-weight:700">⏳ جارٍ قراءة الموقع…</span>';
+  geo.pending=true;
+  _geoT[key]=setTimeout(function(){
+    fetch(API+'/api/geo/resolve?u='+encodeURIComponent(v.trim())).then(function(r){return r.json();}).then(function(d){
+      geo.pending=false;
+      if(d&&d.ok){geo.lat=d.lat;geo.lng=d.lng;if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">✓ تم تحديد الموقع</span>';}
+      else if(h)h.innerHTML='<span style="color:#b45309;font-weight:700">ما قدرنا نقرأ الرابط — بنحفظه وتراجعه الإدارة، أو اضغط «📍 موقعي»</span>';
+    }).catch(function(){geo.pending=false;if(h)h.innerHTML='';});
+  },500);
+}
+
 function pickMyLocation(){
   var btn=document.getElementById('n-loc-btn'), hint=document.getElementById('n-loc-hint');
   if(!navigator.geolocation){ showToast('متصفحك لا يدعم تحديد الموقع','error'); return; }
@@ -1642,6 +1660,7 @@ function acceptAgree(){
   var _cd=(document.getElementById('n-closedur')||{}).value; if(_cd)body.close_days=parseInt(_cd);
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
+  else { var _ml=((document.getElementById("n-maploc")||{}).value||"").trim(); if(_ml) body.map_url=_ml.slice(0,1000); }
   if(budget)body.budget_max=Number(budget);
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
@@ -1686,6 +1705,8 @@ function openEditReq(id,e){
     var _elh=document.getElementById('e-loc-hint'); if(_elh)_elh.innerHTML=(_editGeo.lat&&_editGeo.lng)?'<span style="color:var(--green);font-weight:700">\u2713 الموقع محدّد</span>':'';
     _editAtts=(Array.isArray(req.attachments)?req.attachments.slice(0,_MQ_ATT):[]).map(function(a){return {name:a.name||'ملف',url:a.url};});
     _editAttRender();
+    window._editNeeds=(req.status==='needs_edit');
+    var _eb=document.getElementById('edit-btn'); if(_eb)_eb.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';
     document.getElementById('edit-msg').className='alert';
     document.getElementById('editReqOverlay').className='overlay show';
   }).catch(function(){showToast('تعذّر تحميل المشروع — حدّث الصفحة','error');});
@@ -1698,6 +1719,7 @@ function _editParseGeo(){
   var h=document.getElementById('e-loc-hint');
   if(m){var la=parseFloat(m[1]),ln=parseFloat(m[2]);if(la>=-90&&la<=90&&ln>=-180&&ln<=180){_editGeo.lat=la;_editGeo.lng=ln;if(h)h.innerHTML='<span style="color:var(--green);font-weight:700">\u2713 تم تحديد الموقع</span>';return;}}
   _editGeo.lat=null;_editGeo.lng=null;if(h)h.innerHTML='';
+  if(v.trim())_geoResolve('e',v,_editGeo,'e-loc-hint');
 }
 function _editPickLoc(){
   if(!navigator.geolocation){showToast('متصفحك لا يدعم تحديد الموقع','error');return;}
@@ -1710,6 +1732,7 @@ function _editPickLoc(){
   },function(){showToast('تعذّر تحديد الموقع','error');},{enableHighAccuracy:true,timeout:10000});
 }
 function _editAttRender(){
+  _mqCnt('e-att-list',(_editAtts||[]).length,_MQ_ATT,'ملفات');
   var box=document.getElementById('e-att-list'); if(!box)return;
   box.innerHTML=(_editAtts||[]).map(function(a,idx){return '<div style="display:flex;align-items:center;gap:8px;background:var(--card2,#f8fafc);border:1px solid var(--border);border-radius:9px;padding:8px 10px"><span style="flex:1;font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.up?'⏳ جاري الرفع… ':'')+esc(a.name||'ملف')+'</span><span onclick="_editAttDel('+idx+')" style="cursor:pointer;color:var(--red);font-weight:900;font-size:16px">\u00d7</span></div>';}).join('');
 }
@@ -1728,28 +1751,31 @@ function submitEditReq(){
   var desc=document.getElementById('e-desc').value.trim();
   if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
   if((_editAtts||[]).some(function(a){return a.up;})){showToast('انتظر حتى يكتمل رفع الملفات','error');return;}
+  if(_editGeo.pending){showToast('لحظة… نقرأ الموقع من الرابط','info');setTimeout(submitEditReq,900);return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
   var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[]).map(function(a){return a.url?{name:a.name,url:a.url}:{name:a.name,data:a.data};})};
   var _cdv=_cdVal('e-closedur'); if(_cdv!==undefined) body.close_days=_cdv;
   if(_editGeo.lat&&_editGeo.lng){ body.geo_lat=_editGeo.lat; body.geo_lng=_editGeo.lng; }
+  else { var _eml2=((document.getElementById('e-maploc')||{}).value||'').trim(); if(_eml2) body.map_url=_eml2.slice(0,1000); }
   var xhr=new XMLHttpRequest();
   xhr.open('PUT',API+'/api/requests/'+_editReqId);
   var _hh=(hdr().headers)||{}; Object.keys(_hh).forEach(function(k){try{xhr.setRequestHeader(k,_hh[k]);}catch(e){}});
   xhr.upload.onprogress=function(ev){ if(ev.lengthComputable){ var pct=Math.round(ev.loaded/ev.total*100); btn.textContent=(pct<100?('جاري الرفع... '+pct+'%'):'جاري الحفظ...'); } };
   xhr.onload=function(){
-    btn.disabled=false;btn.textContent='حفظ التعديلات';
+    btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';
     var r={}; try{r=JSON.parse(xhr.responseText);}catch(e){}
     if(xhr.status>=200&&xhr.status<300&&r.id){
-      var _g=(r.geo_lat&&r.geo_lng)?'الموقع ✓':'الموقع ✗';
-      var _atts=r.attachments; if(typeof _atts==='string'){try{_atts=JSON.parse(_atts);}catch(e){_atts=[];}}
-      var _a='المرفقات: '+((_atts&&_atts.length)||0);
-      console.log('EDIT SAVED:', {geo_lat:r.geo_lat, geo_lng:r.geo_lng, attachments:_atts, attDebug:r._attDebug});
-      closeEditReq();showToast('تم التحديث — '+_g+' · '+_a,'success');loadReqs();loadHome();
+      var _sent=(window._editNeeds&&r.status==='pending_review');
+      var _locMiss=(body.map_url&&!(r.geo_lat&&r.geo_lng));
+      closeEditReq();
+      showToast(_sent?'✓ تم إرسال مشروعك للمراجعة — بننشره فور اعتماده':('✓ تم حفظ التعديلات'+(_locMiss?' — ما قدرنا نقرأ رابط الموقع، جرّب «📍 موقعي»':'')),_locMiss&&!_sent?'info':'success');
+      if(curRequestId&&String(curRequestId)===String(_editReqId)&&/^#detail\//.test(location.hash)){ window._skipHash=true; try{openDetail(_editReqId);}finally{window._skipHash=false;} }
+      loadReqs();loadHome();
     }
     else { var e2=document.getElementById('edit-msg');e2.textContent=(r.message||'حدث خطأ، حاول مرة أخرى');e2.className='alert err'; }
   };
-  xhr.onerror=function(){ btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('تعذّر التحديث — تحقّق من اتصالك','error'); };
-  xhr.ontimeout=function(){ btn.disabled=false;btn.textContent='حفظ التعديلات';showToast('انتهت المهلة — الملف كبير أو الاتصال بطيء','error'); };
+  xhr.onerror=function(){ btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';showToast('تعذّر التحديث — تحقّق من اتصالك','error'); };
+  xhr.ontimeout=function(){ btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';showToast('انتهت المهلة — الملف كبير أو الاتصال بطيء','error'); };
   xhr.timeout=180000;
   xhr.send(JSON.stringify(body));
 }

@@ -4201,6 +4201,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
       if (att && att.data) { const u = await uploadToCloud(att.data, 'manaqasa/attachments', att.name); if (u) pxAtts.push({ name: (att.name||'ملف').slice(0,80), url: u }); }
       else if (att && att.url && _safeUrl(att.url)) pxAtts.push({ name: String(att.name||'ملف').slice(0,80), url: _safeUrl(att.url) });
     }
+    await _geoFill(req.body);
     const pxLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const _pxCd = parseInt(req.body.close_days)||0;
     const pxCloseAt = _pxCd>0 ? new Date(Date.now()+_pxCd*86400000) : null;
@@ -4268,6 +4269,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const { title, description, city, address, budget_max, deadline, attachments } = req.body;
     const _nc = _normCat(req.body.category, req.body.category_other); const category = _nc.category;
     const district = (req.body.district||'').toString().trim().slice(0,80) || null;
+    await _geoFill(req.body);
     const gLat = req.body.geo_lat ? parseFloat(req.body.geo_lat) : null;
     const gLng = req.body.geo_lng ? parseFloat(req.body.geo_lng) : null;
     const _cd = parseInt(req.body.close_days)||0;
@@ -4346,6 +4348,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
+    await _geoFill(req.body);
     const { title, description, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
     const _has = k => Object.prototype.hasOwnProperty.call(req.body, k);
     const _hasCat = _has('category');
@@ -4437,6 +4440,63 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
     _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+
+// ── قراءة إحداثيات رابط خرائط جوجل (يشمل الروابط المختصرة maps.app.goo.gl) ──
+const _GEO_HOST = /^(maps\.app\.goo\.gl|goo\.gl|g\.co|(www\.|maps\.)?google\.[a-z.]{2,6}|maps\.google\.[a-z.]{2,6}|consent\.google\.[a-z.]{2,6})$/i;
+function _geoFromText(s) {
+  s = String(s || '');
+  try { s = decodeURIComponent(s); } catch(_) {}
+  const ok = (a, b) => { a = parseFloat(a); b = parseFloat(b); return (Number.isFinite(a) && Number.isFinite(b) && a >= -90 && a <= 90 && b >= -180 && b <= 180 && !(a === 0 && b === 0)) ? { lat: a, lng: b } : null; };
+  let m;
+  if ((m = s.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/))) return ok(m[1], m[2]);
+  if ((m = s.match(/[?&](?:q|ll|query|destination|daddr|center|sll)=(?:loc:)?\s*(-?\d{1,2}\.\d{3,})\s*,\s*\+?(-?\d{1,3}\.\d{3,})/))) return ok(m[1], m[2]);
+  if ((m = s.match(/\/maps\/(?:search|place|dir)\/[^@]*?(-?\d{1,2}\.\d{3,}),\s*\+?(-?\d{1,3}\.\d{3,})/))) return ok(m[1], m[2]);
+  if ((m = s.match(/@(-?\d{1,2}\.\d{3,}),(-?\d{1,3}\.\d{3,})/))) return ok(m[1], m[2]);
+  if ((m = s.match(/^\s*(-?\d{1,2}\.\d{3,})\s*[,\s]\s*(-?\d{1,3}\.\d{3,})\s*$/))) return ok(m[1], m[2]);
+  return null;
+}
+const _geoCache = new Map();
+async function _geoFill(b){ try{ if(b && !(b.geo_lat && b.geo_lng) && b.map_url){ const g = await resolveMapLink(b.map_url); if(g){ b.geo_lat=g.lat; b.geo_lng=g.lng; } } }catch(_){} }
+
+async function resolveMapLink(raw) {
+  raw = String(raw || '').trim().slice(0, 1000);
+  if (!raw) return null;
+  const direct = _geoFromText(raw); if (direct) return direct;
+  const um = raw.match(/https?:\/\/[^\s"'<>]+/i); if (!um) return null;
+  let url = um[0];
+  if (_geoCache.has(url)) return _geoCache.get(url);
+  let out = null;
+  try {
+    for (let hop = 0; hop < 6 && !out; hop++) {
+      let u; try { u = new URL(url); } catch(_) { break; }
+      if (!/^https?:$/.test(u.protocol) || !_GEO_HOST.test(u.hostname)) break;
+      // صفحة الموافقة (consent) تحمل الرابط الأصلي في continue=
+      if (/^consent\./i.test(u.hostname) && u.searchParams.get('continue')) { url = u.searchParams.get('continue'); out = _geoFromText(url); continue; }
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+      let r;
+      try { r = await fetch(u.href, { redirect: 'manual', signal: ctl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1', 'Accept-Language': 'ar,en;q=0.8' } }); }
+      finally { clearTimeout(t); }
+      const loc = r.headers.get('location');
+      if (r.status >= 300 && r.status < 400 && loc) { url = new URL(loc, u.href).href; out = _geoFromText(url); continue; }
+      if (r.ok) {
+        const html = (await r.text()).slice(0, 600000);
+        out = _geoFromText(html.match(/https?:\/\/[^"'\s]*google\.[^"'\s]*\/maps\/[^"'\s]*!3d[^"'\s]*/)?.[0] || '')
+           || _geoFromText((html.match(/<meta[^>]+(?:og:url|og:image)[^>]+content="([^"]+)"/i) || [])[1] || '')
+           || _geoFromText((html.match(/center=(-?\d{1,2}\.\d+)%2C(-?\d{1,3}\.\d+)/) || []).slice(1).join(','))
+           || (() => { const a = html.match(/APP_INITIALIZATION_STATE=\[\[\[[\d.]+,(-?\d{1,3}\.\d+),(-?\d{1,2}\.\d+)\]/); return a ? _geoFromText(a[2] + ',' + a[1]) : null; })();
+      }
+      break;
+    }
+  } catch(e) { console.error('geo/resolve:', e.message); }
+  if (_geoCache.size > 500) _geoCache.clear();
+  _geoCache.set(um[0], out);
+  return out;
+}
+app.get('/api/geo/resolve', rateLimiter(30, 60000), async (req, res) => {
+  const g = await resolveMapLink(req.query.u);
+  if (!g) return res.status(422).json({ ok: false, message: 'ما قدرنا نقرأ الموقع من الرابط' });
+  res.json({ ok: true, lat: g.lat, lng: g.lng });
 });
 
 // ── رفع مرفق مباشرة (ملف خام، بدون base64) — للمخططات الكبيرة حتى 30MB ──
