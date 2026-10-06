@@ -134,6 +134,38 @@
   nav .links a:hover { color: var(--text); }
 
   .nav-btns { display: flex; gap: 12px; align-items: center; }
+  .nav-burger{display:none;width:44px;height:44px;border-radius:13px;border:1.5px solid var(--border);background:var(--card,#fff);color:var(--text);align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+  #mnav{position:fixed;inset:0;z-index:2147483000;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:translateY(-8px);transition:opacity .18s,transform .18s}
+  #mnav[hidden]{display:none}
+  #mnav.on{opacity:1;transform:none}
+  #mnav .mn-h{display:flex;align-items:center;gap:8px;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--nav-bg);backdrop-filter:blur(16px)}
+  #mnav .mn-go{margin-right:auto;padding:10px 16px}
+  #mnav .mn-x{display:flex}
+  #mnav .mn-b{padding:16px;display:flex;flex-direction:column;gap:14px;flex:1;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  #mnav .mn-q{font-size:13px;font-weight:800;color:var(--muted)}
+  #mnav .mn-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #mnav .mn-t{border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;text-decoration:none;min-height:112px;transition:transform .12s}
+  #mnav .mn-t:active{transform:scale(.97)}
+  #mnav .mn-t b{font-size:15px;font-weight:900;color:#0f2544;display:flex;align-items:center;gap:6px}
+  #mnav .mn-t small{font-size:12px;font-weight:700;color:#475569;line-height:1.5}
+  #mnav .mn-i{width:40px;height:40px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+  #mnav .t1{background:#dbeafe}#mnav .t1 .mn-i{color:#1d4ed8}
+  #mnav .t2{background:#dcfce7}#mnav .t2 .mn-i{color:#15803d}
+  #mnav .t3{background:#ede9fe}#mnav .t3 .mn-i{color:#6d28d9}
+  #mnav .t4{background:#e0f2fe}#mnav .t4 .mn-i{color:#0369a1}
+  #mnav .t5{background:#fef3c7}#mnav .t5 .mn-i{color:#b45309}
+  #mnav .t6{background:#dcfce7}#mnav .t6 .mn-i{color:#16a34a}
+  #mnav .mn-new{font-style:normal;background:#f5b301;color:#3b2a00;font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 8px}
+  #mnav .mn-app{display:flex;gap:10px;align-items:center;background:linear-gradient(135deg,#0b1f4d,#1e3a8a);border-radius:18px;padding:14px 16px;color:#fff;text-decoration:none}
+  #mnav .mn-app div{flex:1}#mnav .mn-app b{font-size:15px;display:block}#mnav .mn-app small{font-size:12px;opacity:.8}
+  #mnav .mn-app span{background:#fff;color:#0b1f4d;border-radius:11px;padding:8px 14px;font-weight:900;font-size:13px}
+  #mnav .mn-f{margin-top:auto;display:flex;gap:8px}
+  #mnav .mn-login{flex:1;border:1.5px solid var(--border);background:var(--card,#fff);color:var(--accent);border-radius:13px;font:900 15px Tajawal,sans-serif;padding:12px;cursor:pointer}
+  #mnav .mn-f .nav-burger{display:flex}
+  [data-theme="dark"] #mnav .mn-t{background:var(--card)}
+  [data-theme="dark"] #mnav .mn-t b{color:var(--text)}[data-theme="dark"] #mnav .mn-t small{color:var(--muted)}
+  [data-theme="dark"] #mnav .mn-i{background:rgba(255,255,255,.07)}
+  @media (prefers-reduced-motion:reduce){#mnav{transition:none}}
 
   .btn-ghost {
     background: none; border: 1.5px solid rgba(37,99,235,0.35);
@@ -637,6 +669,9 @@
   @media (max-width: 768px) {
     nav { padding: 0 20px; }
     nav .links { display: none; }
+    nav .nav-btns{gap:8px}
+    nav .nav-btns .btn-ghost{display:none!important}
+    .nav-burger{display:flex}
     .hero { padding: 60px 20px 50px; }
     .stats { margin: 0 20px; flex-wrap: wrap; }
     .stat-item { max-width: none; border-left: none; border-bottom: 1px solid var(--border); }
@@ -929,8 +964,26 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="btn-ghost" onclick="toggleTheme()" aria-label="الوضع الليلي" style="padding:8px 11px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
     <button class="btn-ghost" onclick="goLogin()">تسجيل الدخول</button>
     <button class="btn-primary" onclick="mnqOpenChoose(event)">ابدأ الآن</button>
+    <button class="nav-burger" type="button" onclick="mnavOpen()" aria-label="القائمة" aria-controls="mnav" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
   </div>
 </nav>
+<!-- قائمة الجوال: شاشة كاملة ببلاطات -->
+<div id="mnav" role="dialog" aria-modal="true" aria-label="القائمة" hidden>
+  <div class="mn-h"><div class="logo">مناقصة<span>.</span></div><button type="button" class="btn-primary mn-go" onclick="mnavClose(true);mnqOpenChoose(event)">ابدأ الآن</button><button type="button" class="nav-burger mn-x" onclick="mnavClose()" aria-label="إغلاق"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="mn-b">
+    <div class="mn-q">وين تبي تروح؟</div>
+    <div class="mn-g">
+      <a class="mn-t t1" href="#projects" onclick="mnavClose(true)"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span><b>المشاريع</b><small>آخر المشاريع المنشورة</small></a>
+      <a class="mn-t t2" href="#providers" onclick="mnavClose(true)"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span><b>المزوّدون</b><small>مزوّدين موثّقين بمدينتك</small></a>
+      <a class="mn-t t3" href="/b2b.html"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><b>للأعمال</b><small>حلول الشركات والمطوّرين</small></a>
+      <a class="mn-t t4" href="/app?src=mnav"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span><b>التطبيق</b><small>إشعار فوري بكل عرض</small></a>
+      <a class="mn-t t5" href="/contracts?src=mnav"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span><b>العقود <i class="mn-new">جديد</i></b><small>36 عقد مقاولات مجاناً</small></a>
+      <a class="mn-t t6" href="https://wa.me/966594011313" target="_blank" rel="noopener noreferrer"><span class="mn-i"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><b>تواصل معنا</b><small>واتساب مباشر</small></a>
+    </div>
+    <a class="mn-app" href="/app?src=mnav_card"><div><b>حمّل تطبيق مناقصة</b><small>إشعار فوري بكل عرض وكل مشروع</small></div><span>حمّل</span></a>
+    <div class="mn-f"><button type="button" class="mn-login" id="mnLogin" onclick="mnavClose(true);goLogin()">تسجيل الدخول</button><button type="button" class="nav-burger" onclick="toggleTheme()" aria-label="الوضع الليلي"><span class="theme-ic" style="display:flex"></span></button></div>
+  </div>
+</div>
 
 <!-- HERO -->
 <section id="home-personal" style="display:none"></section>
@@ -1592,6 +1645,27 @@ function syncAuthUI(){
   }catch(e){}
 }
 syncAuthUI();
+// ===== قائمة الجوال =====
+var _mnPushed=false;
+function mnavOpen(){
+  var m=document.getElementById('mnav'); if(!m)return;
+  try{ var u=getUser(), b=document.getElementById('mnLogin'); if(u&&b){ b.textContent='لوحة التحكم'; b.setAttribute('onclick',"location.href='"+(effRole(u)==='provider'?'dashboard-provider.html':(effRole(u)==='admin'?'dashboard-admin.html':'dashboard-client.html'))+"'"); } }catch(e){}
+  try{ _themeIcon(); }catch(e){}
+  m.hidden=false; requestAnimationFrame(function(){ m.classList.add('on'); });
+  document.documentElement.style.overflow='hidden';
+  var bt=document.querySelector('nav .nav-burger'); if(bt)bt.setAttribute('aria-expanded','true');
+  if(!_mnPushed){ try{ history.pushState({mnav:1},''); _mnPushed=true; }catch(e){} }
+  setTimeout(function(){ var x=m.querySelector('.mn-x'); if(x)x.focus(); },50);
+}
+function mnavClose(nav){
+  var m=document.getElementById('mnav'); if(!m||m.hidden)return;
+  m.classList.remove('on'); m.hidden=true; document.documentElement.style.overflow='';
+  var bt=document.querySelector('nav .nav-burger'); if(bt)bt.setAttribute('aria-expanded','false');
+  if(_mnPushed){ _mnPushed=false; if(!nav){ try{ history.back(); }catch(e){} } else { try{ history.replaceState(null,'',location.href); }catch(e){} } }
+}
+window.addEventListener('popstate',function(){ if(_mnPushed){ _mnPushed=false; var m=document.getElementById('mnav'); if(m&&!m.hidden){ m.classList.remove('on'); m.hidden=true; document.documentElement.style.overflow=''; } } });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape')mnavClose(); });
+window.addEventListener('resize',function(){ if(window.innerWidth>768)mnavClose(); });
 // ===== أزرار حسب الدور =====
 function _scrollTo(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function goAuthRole(role){
