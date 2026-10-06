@@ -5898,14 +5898,26 @@ function _loadAppStats(){
     (d.hits||[]).forEach(function(h){ if(h.kind==='view'){views+=h.n;vw[h.src]=(vw[h.src]||0)+h.n;} else {clicks+=h.n;cl[h.src]=(cl[h.src]||0)+h.n;} });
     var ks=Object.keys(cl).sort(function(a,b){return cl[b]-cl[a];}), mx=ks.length?cl[ks[0]]:1;
     var topView=Object.keys(vw).sort(function(a,b){return vw[b]-vw[a];})[0];
-    var rows=ks.slice(0,7).map(function(k){return '<div class="vs-br"><span class="nm">'+esc(_APP_SRC[k]||k)+'</span><span class="bar"><i style="width:'+Math.round(cl[k]/mx*100)+'%;background:#16a34a"></i></span><span class="v">'+_nClk(cl[k])+'</span></div>';}).join('');
+    var f=d.fresh||{};
+    var kp=function(lbl,v,sub,c,bar){return '<div class="ct2-k"><small>'+lbl+'</small><b style="color:'+c+'">'+v+'</b>'+(bar!=null?'<div class="ct2-bar" style="flex:none;margin:4px 0 3px"><i style="width:'+bar+'%;background:'+c+'"></i></div>':'')+'<span>'+sub+'</span></div>';};
+    var src=ks.slice(0,8).map(function(k,i){return '<div class="ct2-r"><span class="ct2-i">'+(i+1)+'</span><span class="ct2-n" title="'+esc(_APP_SRC[k]||k)+'">'+esc(_APP_SRC[k]||k)+'</span><span class="ct2-bar"><i style="width:'+Math.max(4,Math.round(cl[k]/mx*100))+'%;background:#16a34a"></i></span><b>'+fmtNum(cl[k])+'</b></div>';}).join('');
+    var os={}; (d.byOs||[]).forEach(function(x){os[x.os]=x.clicks||0;}); var tot=(os.ios||0)+(os.android||0)+(os.desktop||0);
+    var dev=tot?[['ios','🍎 آيفون','#0f172a'],['android','🤖 أندرويد','#16a34a'],['desktop','💻 كمبيوتر','#64748b']].filter(function(x){return os[x[0]];}).map(function(x){var p=Math.round(os[x[0]]/tot*100);return '<div class="ct2-r"><span class="ct2-n" style="width:30%">'+x[1]+'</span><span class="ct2-bar"><i style="width:'+p+'%;background:'+x[2]+'"></i></span><b style="width:70px">'+fmtNum(os[x[0]])+' <small style="color:var(--muted)">('+p+'%)</small></b></div>';}).join(''):'<div class="vs-s">ما فيه ضغطات</div>';
+    var dl=d.daily||[], dayH='';
+    if(dl.length>1){ var dmx=Math.max.apply(null,dl.map(function(x){return x.clicks||0;}))||1;
+      dayH='<div class="ct2-h" style="margin-top:14px">يوم بيوم</div><div style="display:flex;align-items:flex-end;gap:3px;height:90px;border-bottom:1px solid var(--border)">'+dl.map(function(x){var v=x.clicks||0;return '<div title="'+esc(x.day)+': '+v+' ضغطة" style="flex:1;min-width:3px;max-width:26px;height:'+Math.max(2,Math.round(v/dmx*100))+'%;background:#1d4ed8;border-radius:3px 3px 0 0;opacity:'+(v?1:.25)+'"></div>';}).join('')+'</div><div class="vs-s" style="display:flex;justify-content:space-between;margin-top:4px"><span>'+esc(dl[0].day.slice(5))+'</span><span>'+esc(dl[dl.length-1].day.slice(5))+'</span></div>'; }
     box.innerHTML='<div class="vs-h"><h3>📱 التطبيق</h3><a href="/app" target="_blank" rel="noopener" style="margin-inline-start:auto;font-size:12.5px;font-weight:800">manaqasa.com/app ↗</a></div>'
-      +'<div class="vs-s" style="font-size:13.5px;color:var(--text2);margin-bottom:10px">كم واحد من مستخدمينك عنده التطبيق؟ (مهم لأن الإشعارات توصل عليه لحظياً)</div>'
-      +'<div class="vs-k">'+kb('المزوّدين',o.providers_app,o.providers,'#c2410c')+kb('العملاء',o.clients_app,o.clients,'#1d4ed8')+'</div>'
-      +'<div class="vs-st" style="margin-top:6px">'+esc(R.lbl)+': '+_nClk(clicks)+' على «حمّل من المتجر»</div>'
-      +(rows?'<div class="vs-s" style="margin-bottom:4px">من وين ضغطوا:</div>'+rows:'<div class="vs-s">ما فيه ضغطات في هالفترة</div>')
-      +_appExtra(d,R)
-      +'<div class="vs-note">صفحة manaqasa.com/app انفتحت '+fmtNum(views)+' مرة'+(topView&&views?' — أغلبها من «'+esc(_APP_SRC[topView]||topView)+'» ('+vw[topView]+')':'')+'. وكثير يضغطون زر المتجر مباشرة من غير ما يفتحون الصفحة، عشان كذا الضغطات ممكن تكون أكثر من الزيارات.</div>';
+      +'<div class="ct2-kp">'
+        +kp('مزوّدين عندهم التطبيق',pc(o.providers_app,o.providers)+'%',fmtNum(o.providers_app)+' من '+fmtNum(o.providers),'#c2410c',pc(o.providers_app,o.providers))
+        +kp('عملاء عندهم التطبيق',pc(o.clients_app,o.clients)+'%',fmtNum(o.clients_app)+' من '+fmtNum(o.clients),'#1d4ed8',pc(o.clients_app,o.clients))
+        +kp('ضغطات «حمّل» · '+esc(R.lbl),fmtNum(clicks),'الصفحة انفتحت '+fmtNum(views)+' مرة','#16a34a')
+        +kp('جدد على التطبيق · '+esc(R.lbl),fmtNum((f.providers||0)+(f.clients||0)),fmtNum(f.providers||0)+' مزوّد · '+fmtNum(f.clients||0)+' عميل','#0f2544')
+      +'</div>'
+      +'<div class="ct2-g">'
+        +'<div class="ct2-c"><div class="ct2-h">من وين ضغطوا «حمّل»</div>'+(src||'<div class="vs-s">ما فيه ضغطات في هالفترة</div>')+'</div>'
+        +'<div class="ct2-c"><div class="ct2-h">حسب الجهاز</div>'+dev+dayH+'</div>'
+      +'</div>'
+      +'<div class="vs-s" style="margin-top:10px">💡 كثير يضغطون زر المتجر مباشرة بدون ما يفتحون صفحة التطبيق، عشان كذا الضغطات ممكن تكون أكثر من الزيارات.</div>';
   }).catch(function(){ box.style.display='none'; });
 }
 
