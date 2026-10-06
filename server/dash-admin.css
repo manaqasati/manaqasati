@@ -727,3 +727,8 @@ a.cu-pv:hover{border-color:#86efac}
 .ow-wab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:800;color:#166534}
 .ow-wab small{color:var(--muted);font-weight:700}
 [data-theme="dark"] .ow-wa,[data-theme="dark"] .ow-wab{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.35);color:#4ade80}
+.vsm{display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap}
+.vsm button{flex:1;min-width:150px;border:1.5px solid var(--border);background:var(--card,#fff);color:var(--muted);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;font-weight:900;cursor:pointer}
+.vsm button b{font-size:15px;margin-inline-start:4px;color:var(--text)}
+.vsm button.on{border-color:#b91c1c;background:#fef2f2;color:#b91c1c}.vsm button.on.ok{border-color:#16a34a;background:#f0fdf4;color:#15803d}
+[data-theme="dark"] .vsm button.on{background:rgba(185,28,28,.14)}[data-theme="dark"] .vsm button.on.ok{background:rgba(22,163,74,.14)}

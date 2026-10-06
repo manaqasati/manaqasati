@@ -56,7 +56,12 @@ function _vbRender(){
 // حالة إيميل التفعيل (وصل / رجع) + تنبيه لو البريد فيه غلطة إملائية
 function _vbTypo(em){ em=String(em||'').toLowerCase().trim(); var p=em.split('@'); if(p.length!==2)return '';
   var d=p[1], F={'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmai.com':'gmail.com','gmil.com':'gmail.com','gnail.com':'gmail.com','gmaill.com':'gmail.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','hotmal.com':'hotmail.com','homail.com':'hotmail.com','outlok.com':'outlook.com','outlook.co':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.co':'yahoo.com','icloud.co':'icloud.com','iclod.com':'icloud.com','icoud.com':'icloud.com'};
-  return F[d]?p[0]+'@'+F[d]:''; }
+  if(F[d])return p[0]+'@'+F[d];
+  var OK={'gmail.com':1,'hotmail.com':1,'outlook.com':1,'yahoo.com':1,'icloud.com':1,'live.com':1,'mail.com':1,'gmx.com':1,'ymail.com':1,'email.com':1,'me.com':1,'msn.com':1,'aol.com':1,'outlook.sa':1,'hotmail.co.uk':1,'yahoo.co.uk':1,'mac.com':1,'proton.me':1,'protonmail.com':1,'zoho.com':1,'yandex.com':1,'hotmail.fr':1,'windowslive.com':1};
+  if(OK[d]||d.length<6)return '';
+  var lev=function(a,b){if(Math.abs(a.length-b.length)>2)return 9;var pr=[],i,j;for(j=0;j<=b.length;j++)pr[j]=j;for(i=1;i<=a.length;i++){var c=[i];for(j=1;j<=b.length;j++)c[j]=Math.min(pr[j]+1,c[j-1]+1,pr[j-1]+(a[i-1]===b[j-1]?0:1));pr=c;}return pr[b.length];};
+  var best='',bd=3;['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','outlook.sa','hotmail.co.uk'].forEach(function(g){var x=lev(d,g);if(x<bd){bd=x;best=g;}});
+  return (bd<=2&&best)?p[0]+'@'+best:''; }
 function _vbStatus(){
   var el=document.getElementById('vb-st'); if(!el)return;
   var em=(typeof user!=='undefined'&&user&&user.email)||(typeof _me!=='undefined'&&_me&&_me.email)||'';

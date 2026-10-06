@@ -7627,7 +7627,15 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
 
 // ═══ تشخيص: ليش هالشخص ما فعّل؟ (أول سبب ينطبق) ═══
 const _MAIL_TYPO = {'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmai.com':'gmail.com','gmil.com':'gmail.com','gnail.com':'gmail.com','gmaill.com':'gmail.com','gamail.com':'gmail.com','gmeil.com':'gmail.com','gmail.om':'gmail.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','hotmal.com':'hotmail.com','homail.com':'hotmail.com','hotamil.com':'hotmail.com','outlok.com':'outlook.com','outlook.co':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.co':'yahoo.com','icloud.co':'icloud.com','iclod.com':'icloud.com','icoud.com':'icloud.com'};
-function _mailTypo(em){ const p = String(em||'').toLowerCase().trim().split('@'); if (p.length !== 2) return ''; return _MAIL_TYPO[p[1]] ? p[0] + '@' + _MAIL_TYPO[p[1]] : ''; }
+const _MAIL_BIG = ['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','outlook.sa','hotmail.co.uk'];
+const _MAIL_OK = new Set(['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','mail.com','gmx.com','ymail.com','email.com','me.com','msn.com','aol.com','outlook.sa','hotmail.co.uk','yahoo.co.uk','mac.com','proton.me','protonmail.com','zoho.com','yandex.com','hotmail.fr','windowslive.com']);
+function _lev(a, b){ const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9; let prev = Array.from({length: n + 1}, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1)); prev = cur; } return prev[n]; }
+function _mailTypo(em){ const p = String(em||'').toLowerCase().trim().split('@'); if (p.length !== 2 || !p[1]) return ''; const d = p[1];
+  if (_MAIL_TYPO[d]) return p[0] + '@' + _MAIL_TYPO[d];
+  if (_MAIL_OK.has(d) || d.length < 6) return '';
+  let best = '', bd = 3; for (const g of _MAIL_BIG) { const x = _lev(d, g); if (x < bd) { bd = x; best = g; } }
+  return (bd <= 2 && best) ? p[0] + '@' + best : ''; }
 function _vsWhy(u){
   const st = u.mail_status || '', reg = new Date(u.created_at).getTime(), seen = u.last_seen ? new Date(u.last_seen).getTime() : 0;
   const lm = u.last_mail ? new Date(u.last_mail).getTime() : 0;
@@ -7722,7 +7730,15 @@ app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, 
       ORDER BY u.created_at DESC LIMIT 1000`, LP)).rows;
     pend.forEach(u => { u.why = _vsWhy(u); });
     const allUnver = (await pool.query(`SELECT role, COUNT(*)::int AS n FROM users WHERE email_verified=false AND role IN ('client','provider') AND COALESCE(is_active,true) GROUP BY 1`)).rows;
-    res.json({ range: R, reg, via, mail, pending: pend, all_unverified: allUnver });
+    // اللي سجّلوا وفعّلوا (مرّوا بالتفعيل فعلاً — مو الحسابات القديمة)
+    const done = (await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.created_at, u.email_verified_at, COALESCE(u.email_verified_via,'other') AS via,
+        (SELECT COUNT(*) FROM requests r WHERE r.client_id=u.id)::int AS projects,
+        (SELECT COUNT(*) FROM bids b WHERE b.provider_id=u.id)::int AS bids,
+        (SELECT COUNT(*) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')::int AS sends
+      FROM users u WHERE u.email_verified=true AND u.role IN ('client','provider')
+        AND (u.email_verified_at IS NOT NULL OR EXISTS(SELECT 1 FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')) ${LR}
+      ORDER BY COALESCE(u.email_verified_at, u.created_at) DESC LIMIT 1000`, LP)).rows;
+    res.json({ range: R, reg, via, mail, pending: pend, verified: done, all_unverified: allUnver });
   } catch(e) { console.error('verify-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/users/:id/emails', requirePermission('users.view'), async (req, res) => {

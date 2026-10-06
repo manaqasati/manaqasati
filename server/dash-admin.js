@@ -6024,7 +6024,7 @@ function _vsPaint(){
   box.innerHTML=h;
 }
 // ═══ قائمة اللي ما فعّلوا: فترة خاصة + تشخيص «ليش ما فعّل» + إرسال جماعي ═══
-var _vsLP={k:'all'}, _vsW='', _vsSel={}, _vsCh={email:true,notify:true};
+var _vsLP={k:'all'}, _vsMode='pend', _vsVia='', _vsW='', _vsSel={}, _vsCh={email:true,notify:true};
 var _VSWHY={
   invalid:['✗ البريد غير صالح','#b91c1c','مكتوب بشكل خاطئ — كلّمه واتساب ياخذ بريده الصحيح أو فعّله يدوي'],
   typo:['✍️ غلطة إملائية في البريد','#b91c1c','مثل gmial بدل gmail — الإيميل ما راح يوصله. كلّمه واتساب يصحّحه'],
@@ -6049,15 +6049,37 @@ function _vsWhyTxt(u){ var w=_VSWHY[u.why]||['—','#64748b',''], t=w[0];
   if(u.why==='code_wrong')t+=' ('+u.tries+' مرات)';
   if(u.why==='gone'&&/delivered|opened/.test(u.mail_status||''))t='💤 وصله الإيميل وما رجع';
   return '<b style="color:'+w[1]+'">'+t+'</b>'; }
+function _vsMins(a,b){ var m=Math.round((new Date(b)-new Date(a))/60000); if(!(m>=0))return ''; return m<1?'أقل من دقيقة':(m<60?m+' دقيقة':(m<1440?Math.round(m/60)+' ساعة':Math.round(m/1440)+' يوم')); }
+function _vsTabs(d,LR){ var seg=[['all','الكل'],['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
+  var np=(d.pending||[]).length, nv=(d.verified||[]).length;
+  return '<div class="vsm"><button type="button" class="'+(_vsMode==='pend'?'on':'')+'" onclick="_vsMode=\'pend\';_vsF=\'all\';_vsPaint()">⏳ ما فعّلوا <b>'+fmtNum(np)+'</b></button><button type="button" class="'+(_vsMode==='done'?'on ok':'')+'" onclick="_vsMode=\'done\';_vsF=\'all\';window._vsAll=false;_vsPaint()">✓ سجّلوا وفعّلوا <b>'+fmtNum(nv)+'</b></button></div>'
+    +'<div class="vs-s" style="margin:2px 0 8px">'+(LR?'اللي سجّلوا '+esc(LR.lbl):'من كل الفترات')+(np+nv?' · نسبة التفعيل: <b style="color:#15803d">'+Math.round(nv/(np+nv)*100)+'%</b>':'')+'</div>'
+    +'<div class="vs-seg" style="margin-bottom:8px;align-self:flex-start">'+seg.map(function(x){return '<button type="button" class="'+(_vsLP.k===x[0]?'on':'')+'" onclick="_vsLSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
+    +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':''); }
+function _vsDone(d){
+  var V=d.verified||[], LR=_vsLRange();
+  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],other:['قبل التتبّع','#64748b','#f1f5f9']};
+  var base=V.filter(function(u){return _vsF==='all'||u.role===_vsF;}), L=base.filter(function(u){return !_vsVia||u.via===_vsVia;});
+  var C={}; base.forEach(function(u){C[u.via]=(C[u.via]||0)+1;});
+  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px">'+[['all','الكل',V.length],['client','عملاء',V.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',V.filter(function(u){return u.role==='provider';}).length]].map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';window._vsAll=false;_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="vs-s" style="align-self:center">فعّل عن طريق:</span>'+['','link','code','admin','other'].filter(function(k){return !k||C[k];}).map(function(k){var v=VIA[k];return '<button type="button" class="ct2-b'+(_vsVia===k?' pri':'')+'" onclick="_vsVia=\''+k+'\';window._vsAll=false;_vsPaint()">'+(k?v[0]+' '+C[k]:'الكل '+base.length)+'</button>';}).join('')+'</div>';
+  h+=(L.length?L.slice(0,window._vsAll?1000:15).map(function(u){var prov=u.role==='provider',v=VIA[u.via]||VIA.other,t=u.email_verified_at?_vsMins(u.created_at,u.email_verified_at):'';
+      return '<div class="ct2-u"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
+        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span> <span class="ct2-pl" style="background:'+v[2]+';color:'+v[1]+'">'+v[0]+'</span>'+((u.projects||u.bids)?' <span class="ct2-pl" style="background:#dcfce7;color:#15803d">'+(prov?u.bids+' عرض':u.projects+' مشروع')+'</span>':'')+'</div>'
+        +'<small class="vs-why"><b style="color:#15803d">✓ فعّل'+(u.email_verified_at?' '+_adAgo(u.email_verified_at):'')+'</b>'+(t?' · بعد '+t+' من التسجيل':'')+(u.sends>1?' · احتاج '+u.sends+' إيميلات':'')+'</small>'
+        +'<small><span dir="ltr">'+esc(u.email||'')+'</span> · سجّل '+_adAgo(u.created_at)+'</small></div></div>';}).join('')
+      +(L.length>15?'<a href="#" class="ct2-more" onclick="event.preventDefault();window._vsAll=!window._vsAll;_vsPaint()">'+(window._vsAll?'عرض أقل':'عرض الكل ('+L.length+')')+'</a>':'')
+      :'<div class="vs-s" style="padding:10px 0">ما فيه أحد فعّل في هالفترة</div>')+'</div>';
+  return h;
+}
 function _vsList(d){
+  if(_vsMode==='done')return _vsDone(d);
   var P=d.pending||[], LR=_vsLRange(), work=function(u){return u.projects||u.bids;};
   var base=P.filter(function(u){return _vsF==='all'||(_vsF==='work'?work(u):u.role===_vsF);});
   var L=base.filter(function(u){return !_vsW||u.why===_vsW;});
   var W={}; base.forEach(function(u){W[u.why]=(W[u.why]||0)+1;});
-  var seg=[['all','الكل'],['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
-  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">ما فعّلوا للحين <span style="color:var(--muted);font-weight:700">('+fmtNum(P.length)+' — '+(LR?'سجّلوا '+esc(LR.lbl):'من كل الفترات')+')</span></div>'
-    +'<div class="vs-seg" style="margin-bottom:8px;align-self:flex-start">'+seg.map(function(x){return '<button type="button" class="'+(_vsLP.k===x[0]?'on':'')+'" onclick="_vsLSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
-    +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':'');
+  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
   // وين المشكلة؟
   var wt=base.length;
   h+='<div class="vsw"><div class="vsw-h">🔍 وين المشكلة؟ <small>اضغط أي سبب يطلع لك أصحابه</small></div>'
