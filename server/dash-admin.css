@@ -721,3 +721,9 @@ a.cu-pv:hover{border-color:#86efac}
 .vs-why{white-space:normal!important}
 @media(max-width:700px){.vsw-n{width:58%}.vsw-r .ct2-bar{display:none}.vsb .ct2-b.pri{width:100%;margin:0}.ct2-u{flex-wrap:wrap}.ct2-u .ct2-acts{width:100%;padding-inline-start:26px;flex-wrap:wrap}}
 [data-theme="dark"] .vsb.on,[data-theme="dark"] .ct2-u.sel{background:rgba(29,78,216,.15)}
+/* واتساب في درج بلاغات المزوّد */
+.ow-wa{display:inline-flex;align-items:center;gap:6px;border:1.5px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:11px;padding:10px 13px;font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap}
+.ow-wa:hover{background:#dcfce7}
+.ow-wab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:13px;padding:10px 12px;font-size:13px;font-weight:800;color:#166534}
+.ow-wab small{color:var(--muted);font-weight:700}
+[data-theme="dark"] .ow-wa,[data-theme="dark"] .ow-wab{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.35);color:#4ade80}

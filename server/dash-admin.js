@@ -1512,6 +1512,15 @@ function _owLoadReports(){
   }).catch(function(){host.innerHTML=emptyState('تعذر التحميل');});
 }
 function _owHl(t){ return esc(t||'').replace(/\(([^)]{0,60})\)/g,'<mark class="ow-blank">($1)</mark>'); }
+// رسالة واتساب جاهزة للمزوّد حسب الإجراء
+function _owWaLink(u,kind){ var ph=_waNorm(u&&u.phone); if(!ph)return ''; var nm=(u.business_name||u.name||'').trim();
+  var hi='السلام عليكم '+nm+'، معك إدارة منصة مناقصة 👋\n\n', tips='\n\nعشان تزيد فرصك بالترسية:\n• اذكر تفاصيل من وصف المشروع نفسه (المساحة، المواد، المدة)\n• عبّ أي فراغ في النص قبل الإرسال\n• قدّم على المشاريع اللي في تخصصك ومدينتك بس\n• وضّح وش يشمل السعر ووش ما يشمل';
+  var M={
+    warn:hi+'وصلتنا ملاحظات من أصحاب مشاريع إن بعض عروضك عامة ومتشابهة وما تخص مشاريعهم.'+tips+'\n\nلو استمرت البلاغات، عروضك الجديدة بتنتظر مراجعة الإدارة قبل ما تظهر للعملاء.\nنتمنى لك التوفيق 🌷',
+    review:hi+'بسبب بلاغات متكررة إن عروضك عامة وما تخص المشاريع، صارت عروضك الجديدة تمر على مراجعة الإدارة قبل ما تظهر للعملاء (خلال ساعات).'+tips+'\n\nأول ما تتحسن عروضك نرفع المراجعة 👍',
+    lift:hi+'رفعنا المراجعة عن عروضك ✅ وعروضك الجديدة ترجع تظهر للعملاء مباشرة.\nشكراً على التحسين، واستمر بكتابة عرض يخص كل مشروع 🌷'
+  };
+  return M[kind]?'https://wa.me/'+ph+'?text='+encodeURIComponent(M[kind]):''; }
 function _owClose(){ var o=document.getElementById('owDr'); if(o)o.remove(); _owDetCur=null; }
 function _owRepOpen(pid){
   _owClose(); _owDetCur=pid;
@@ -1556,8 +1565,11 @@ function _owDrawer(d){
   h+='<div><div style="font-size:13px;font-weight:900;margin-bottom:8px">البلاغات</div>'
     +d.reports.map(function(r){ return '<div style="font-size:12.5px;font-weight:700;padding:7px 0;border-bottom:1px dashed var(--border);'+(r.status==='dismissed'?'opacity:.5;text-decoration:line-through':'')+'">• '+esc(r.reason_label)+' — '+esc(r.client_name||'عميل')+' على مشروع «'+esc(r.request_title||'')+'» · '+_fuAgo(r.created_at)+(r.status==='actioned'?' · <span style="color:var(--green)">تمت المعالجة</span>':'')+'</div>'; }).join('')+'</div>';
   // الإجراءات
+  var af=(window._owAfter&&window._owAfter.pid===u.id)?window._owAfter:null, waK=af?af.kind:(u.bid_review?'review':'warn');
+  if(af){ window._owAfter=null; h+='<div class="ow-wab"><span>✓ '+esc(af.msg)+' — وصله إشعار داخل المنصة.</span>'+(_owWaLink(u,af.kind)?'<a class="ow-wa" target="_blank" rel="noopener" href="'+_owWaLink(u,af.kind)+'">💬 أرسله واتساب كمان</a>':'<small>ما عنده رقم جوال صحيح للواتساب</small>')+'</div>'; }
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button style="'+gb+';color:#1d4ed8;border-color:#bfdbfe" onclick="_owAct('+u.id+',\'warn\',this)">📩 أرسل تنبيه + نصائح</button>'
+    +(!af&&_owWaLink(u,waK)?'<a class="ow-wa" target="_blank" rel="noopener" href="'+_owWaLink(u,waK)+'" title="'+(waK==='review'?'رسالة: عروضه تحت المراجعة':'رسالة: تنبيه + نصائح')+'">💬 '+(waK==='review'?'واتساب: عروضه تحت المراجعة':'التنبيه + النصائح واتساب')+'</a>':'')
     +(u.bid_review?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0" onclick="_owAct('+u.id+',\'lift\',this)">▶ رفع المراجعة</button>':'<button style="'+gb+';color:#92400e;border-color:#fde68a" onclick="_owAct('+u.id+',\'review\',this)">⏸ عروضه تنتظر موافقتي</button>')
     +(u.is_active!==false?'<button style="'+gb+';color:#dc2626;border-color:#fecaca" onclick="_owAct('+u.id+',\'suspend\',this)">⛔ إيقاف الحساب</button>':'')
     +'<button style="'+gb+'" onclick="_owAct('+u.id+',\'dismiss\',this)">✓ البلاغات غير صحيحة</button>'
@@ -1575,6 +1587,7 @@ async function _owAct(pid,act,btn){
       if(btn)btn.disabled=false;
       if(!x.ok){toast((x.d&&x.d.message)||'تعذّر التنفيذ','error');return;}
       toast((x.d&&x.d.message)||'تم ✓','success');
+      if(act==='warn'||act==='review'||act==='lift')window._owAfter={pid:pid,kind:act,msg:(x.d&&x.d.message)||'تم'};
       _owLoadCounts(); if(_owCur==='held')_owLoadHeld(); else if(_owCur!=='auto')_owLoadReports();
       if(_owDetCur===pid)_owRepOpen(pid);
     }).catch(function(){if(btn)btn.disabled=false;toast('تعذّر الاتصال','error');});
