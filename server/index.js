@@ -8502,6 +8502,26 @@ app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'
     res.json({ matches: m.rows[0].n, client_prev: prev.rows[0].n, duplicates: dup.rows });
   } catch(e) { console.error('review-info:', e.message); res.json({ matches: null, client_prev: null, duplicates: [] }); }
 });
+function _reviewWa(action, title, reason, phone){
+  const ph = normPhone(phone); if (!ph) return null;
+  const _note = String(reason||'').trim();
+  const waMsg = action==='approve'
+    ? `السلام عليكم، تم اعتماد ونشر مشروعك «${title}» في منصة مناقصة ✅${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\nستصلك عروض المنفّذين قريباً:\n${SITE_URL}/dashboard-client.html`
+    : action==='needs_edit'
+    ? `السلام عليكم، مشروعك «${title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${_note}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`
+    : `السلام عليكم، بخصوص مشروعك «${title}» في منصة مناقصة:\n${_note}`;
+  return `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
+}
+// سجل آخر المراجعات (اعتماد / تعديل / رفض) مع رابط واتساب جاهز — للتواصل لاحقاً
+app.get('/api/admin/review-history', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT l.id, l.target_id AS rid, l.details, l.created_at, l.admin_name, r.title, r.status, r.review_notes, u.name AS client_name, u.phone
+      FROM admin_logs l JOIN requests r ON r.id=l.target_id LEFT JOIN users u ON u.id=r.client_id
+      WHERE l.action='review_request' ORDER BY l.id DESC LIMIT 40`);
+    const A = { 'الموافقة على مشروع':'approve', 'طلب تعديل مشروع':'needs_edit', 'رفض مشروع':'reject' };
+    res.json(r.rows.map(x => { const act = A[x.details] || 'approve'; return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone) }; }));
+  } catch(e) { console.error('review-history:', e.message); res.json([]); }
+});
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
@@ -8534,20 +8554,8 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     }
     // عند الاعتماد: أشعر المزودين المطابقين (إشعار + إيميل) — الآن فقط، بعد المراجعة
     if (action === 'approve') { try { await notifyMatchingProviders({ id: row.id, title: row.title, category: row.category, city: row.city }); } catch(e){} }
-    // رابط واتساب جاهز للإدارة (رقم العميل + رسالة معبّأة) — لكل المسارات
-    let wa_link = null;
-    {
-      const ph = normPhone(clientInfo.rows.length ? clientInfo.rows[0].phone : null);
-      const _note = String(reason||'').trim();
-      if (ph && (action !== 'approve' || _note)) {
-        const waMsg = action==='approve'
-          ? `السلام عليكم، تم اعتماد ونشر مشروعك «${row.title}» في منصة مناقصة ✅${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\nستصلك عروض المنفّذين قريباً:\n${SITE_URL}/dashboard-client.html`
-          : action==='needs_edit'
-          ? `السلام عليكم، مشروعك «${row.title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${reason}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`
-          : `السلام عليكم، بخصوص مشروعك «${row.title}» في منصة مناقصة:\n${reason}`;
-        wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
-      }
-    }
+    // رابط واتساب جاهز للإدارة (رقم العميل + رسالة معبّأة) — لكل المسارات، حتى الاعتماد بدون ملاحظة
+    const wa_link = _reviewWa(action, row.title, reason, clientInfo.rows.length ? clientInfo.rows[0].phone : null);
     res.json({ ...row, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
