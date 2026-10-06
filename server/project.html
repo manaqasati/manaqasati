@@ -227,6 +227,11 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-cover .cover-overlay,.pj-cover .cover-bar,.pj-cover .cover-net{display:none}
 .pj-cov{position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,rgba(15,23,42,.35) 0%,rgba(15,23,42,0) 32%,rgba(15,23,42,.8) 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:16px;color:#fff;gap:6px}
 .pj-cov-t{position:absolute;top:12px;right:14px;left:14px;display:flex;gap:6px;flex-wrap:wrap}
+.pj-city{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#0b1f4d;border-radius:14px;padding:7px 12px;box-shadow:0 10px 24px -10px rgba(0,0,0,.55);max-width:100%}
+.pj-city svg{color:#16a34a;flex-shrink:0}.pj-city b{font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;line-height:1.2}
+.pj-city small{font-size:12.5px;font-weight:800;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-city.flat{box-shadow:none;border:1.5px solid #bbf7d0;background:#f0fdf4}
+.pj-cov-t{align-items:center}
 .pj-cov-h{font-family:'Cairo',sans-serif;font-size:20px;font-weight:900;line-height:1.35;text-shadow:0 2px 12px rgba(0,0,0,.4)}
 .pj-cov-m{font-size:12.5px;font-weight:700;color:#e2e8f0}
 #main-content{display:flex;flex-direction:column;gap:12px;padding-top:14px}
@@ -869,6 +874,7 @@ function _pjSimilar(){
     w.innerHTML=h;w.style.display='';
   }).catch(function(){});
 }
+function _pjCityBadge(r,flat){ if(!r||!r.city)return ''; return '<span class="pj-city'+(flat?' flat':'')+'"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><b>'+esc(r.city)+'</b>'+(r.district?'<small>· '+esc(r.district)+'</small>':'')+'</span>'; }
 var _pjEye='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 var _pjIc={doc:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',clip:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11l-9 9a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/></svg>',cam:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 8"/></svg>',pin:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>'};
 var _pjDl='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>';
@@ -1047,7 +1053,7 @@ function render(){
       coverEl.classList.add('pj-cover');coverEl.style.display='';
       var ci=document.createElement('img');ci.src=coverImg;ci.className='cover-img';ci.alt='';coverEl.appendChild(ci);
       var ov=document.createElement('div');ov.className='pj-cov';
-      ov.innerHTML='<div class="pj-cov-t"><span class="pj-pill" style="background:'+(req.status==='open'?'#16a34a':'rgba(15,23,42,.72)')+';color:#fff">'+stLine+'</span>'+(nImgs>1?'<span class="pj-pill" style="background:rgba(255,255,255,.22);color:#fff">📷 '+nImgs+' صور</span>':'')+'</div><h1 class="pj-cov-h" style="margin:0">'+esc(req.title||'مشروع')+'</h1><div class="pj-cov-m">'+catcity+' · نُشر قبل '+ago(req.created_at)+'</div>';
+      ov.innerHTML='<div class="pj-cov-t">'+_pjCityBadge(req)+'<span class="pj-pill" style="background:'+(req.status==='open'?'#16a34a':'rgba(15,23,42,.72)')+';color:#fff">'+stLine+'</span>'+(nImgs>1?'<span class="pj-pill" style="background:rgba(255,255,255,.22);color:#fff">📷 '+nImgs+' صور</span>':'')+'</div><h1 class="pj-cov-h" style="margin:0">'+esc(req.title||'مشروع')+'</h1><div class="pj-cov-m">'+catcity+' · نُشر قبل '+ago(req.created_at)+'</div>';
       coverEl.appendChild(ov);
       coverEl.onclick=function(){openViewer(coverImg);};
     } else coverEl.style.display='none';
@@ -1059,6 +1065,7 @@ function render(){
   var h='';
   if(!hasCover||isOwner){
     h+='<div class="pj-card pj-head">';
+    if(!hasCover&&req.city)h+='<div style="display:flex">'+_pjCityBadge(req,1)+'</div>';
     if(!hasCover)h+='<div style="display:flex;gap:12px;align-items:center"><span class="pj-ic">'+catSvg(req.category,26)+'</span><div style="min-width:0;flex:1"><span class="pj-pill" style="background:'+stc[0]+';color:'+stc[1]+'">'+stLine+'</span><h1 class="pj-title">'+esc(req.title||'مشروع')+'</h1><div class="pj-bs">'+catcity+(isOwner?' · #'+req.id:' · نُشر قبل '+ago(req.created_at))+'</div></div></div>';
     if(isOwner)h+=_stepper(req.status);
     h+='</div>';
