@@ -123,8 +123,9 @@ function showPage(pg,el){
   if(document.getElementById('sidebar').classList.contains('open'))toggleSide();
   if(pg==='dashboard'){loadDashboard();}
   if(pg==='analytics')loadAnalytics();
-  if(pg==='appstats'){_perMini('per-app');_loadAppStats();}
-  if(pg==='ctstats'){_perMini('per-ct');_loadCtStats();}
+  // مؤجّلة: لو فتحت الصفحة مباشرة من الرابط (#ctstats) تنفّذ قبل تعريف إعدادات الفترة
+  if(pg==='appstats')setTimeout(function(){_perMini('per-app');_loadAppStats();},0);
+  if(pg==='ctstats')setTimeout(function(){_perMini('per-ct');_loadCtStats();},0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
