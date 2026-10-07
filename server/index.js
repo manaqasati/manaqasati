@@ -2375,6 +2375,7 @@ async function runReminders(){
   try { await _claimsJob(); } catch(e){ console.error('claimsJob:', e.message); }
   try { await _unlockReviewNudge(); } catch(e){ console.error('unlockReviewNudge:', e.message); }
   try { await _silentClientJob(); } catch(e){ console.error('silentClientJob:', e.message); }
+  try { await _verifyRemindJob(); } catch(e){ console.error('verifyRemindJob:', e.message); }
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -2670,20 +2671,29 @@ async function runReminders(){
     }
 
     /* ═══ تذكيرات إضافية ═══ */
-    // ي) تذكير العميل بالرد على أسئلة المزودين
+    // ي) تذكير العميل بالرد على أسئلة المزودين — مرّتين: بعد يوم ثم بعد 3 أيام (لكل سؤال جديد)
     if((await getSetting('qa_answer_on','1'))!=='0'){
-      const qDays = Math.max(1, parseInt(await getSetting('qa_answer_days','2'))||2);
-      const qs = await pool.query(
-        `SELECT DISTINCT r.client_id, r.id AS rid, r.title, COUNT(q.id) AS cnt
-         FROM request_questions q JOIN requests r ON r.id=q.request_id
-         WHERE q.answer IS NULL AND q.created_at <= NOW() - ($1 || ' days')::interval
-           AND r.status NOT IN ('completed','cancelled','closed_auto')
-         GROUP BY r.client_id, r.id, r.title`, [String(qDays)]);
-      for(const x of qs.rows){
-        await _remindOnce(x.client_id, 'answer_q', x.rid,
-          'لديك أسئلة بانتظار ردّك ❓', `${x.cnt} سؤال على "${eEsc(x.title)}" — ردّك يساعدك تحصل على عروض أدق`,
-          'أسئلة بانتظار ردّك', `<p>وصلك <strong>${x.cnt}</strong> سؤال من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>".</p><p>الرد السريع يوضّح مشروعك ويجذب عروضاً أفضل.</p>`,
-          'الرد على الأسئلة', SITE_URL+'/dashboard-client.html');
+      const qDays = Math.max(1, parseInt(await getSetting('qa_answer_days','1'))||1);
+      for (const [kind, days] of [['answer_q', qDays], ['answer_q2', Math.max(qDays + 2, 3)]]) {
+        const qs = await pool.query(
+          `SELECT r.client_id, r.id AS rid, r.title, COUNT(q.id)::int AS cnt, MAX(q.id) AS last_q,
+             (ARRAY_AGG(q.body ORDER BY q.id))[1] AS first_body
+           FROM request_questions q JOIN requests r ON r.id=q.request_id
+           WHERE (q.answer IS NULL OR TRIM(q.answer)='') AND q.created_at <= NOW() - ($1 || ' days')::interval AND q.created_at > NOW() - INTERVAL '30 days'
+             AND r.status NOT IN ('completed','cancelled','closed_auto','closed','rejected')
+           GROUP BY r.client_id, r.id, r.title`, [String(days)]);
+        for(const x of qs.rows){
+          const second = kind === 'answer_q2';
+          if (second) { const f1 = await pool.query("SELECT 1 FROM reminders_log WHERE user_id=$1 AND kind='answer_q' AND ref_id=$2 AND sent_at < NOW() - INTERVAL '36 hours'", [x.client_id, x.last_q]); if (!f1.rows.length) continue; } // الثاني بعد الأول بيوم ونص على الأقل
+          const snip = String(x.first_body||'').slice(0, 120);
+          const link = await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.rid);
+          await _remindOnce(x.client_id, kind, x.last_q,
+            second ? 'مزوّدين ينتظرون ردّك ⏳' : 'عندك أسئلة بانتظار ردّك ❓',
+            `${x.cnt===1?'سؤال':x.cnt+' أسئلة'} على "${eEsc(x.title)}"${second?' من أيام':''} — ردّك يجيب لك عروض أدق`,
+            second ? 'المزوّدين ينتظرون ردّك على مشروعك' : 'أسئلة بانتظار ردّك',
+            `<p>وصلك <strong>${x.cnt===1?'سؤال':x.cnt+' أسئلة'}</strong> من المزوّدين على مشروعك "<strong>${eEsc(x.title)}</strong>"${second?' وما رديت للحين':''}:</p><p style="background:#f1f5f9;border-radius:10px;padding:10px 12px;color:#334155">«${eEsc(snip)}»</p><p>الرد ياخذ دقيقة، ويوضّح مشروعك ويجيب لك عروض أدق وأسعار أوضح.</p>`,
+            'ردّ على الأسئلة', link);
+        }
       }
     }
     // ك) تذكير المزوّد بعرضه المعلّق منذ مدة (متابعة)
@@ -3002,6 +3012,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE bid_reports ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
       await _mig(`CREATE TABLE IF NOT EXISTS admin_seen (admin_id INTEGER, k VARCHAR(20), seen_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(admin_id, k))`);
       await _mig(`ALTER TABLE request_questions ADD COLUMN IF NOT EXISTS admin_archived BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_reminded_at TIMESTAMP`);
       await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
@@ -6454,7 +6465,7 @@ app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
 // GET: قائمة أسئلة مشروع (عامة، بدون تسجيل دخول)
 app.get('/api/requests/:id/questions', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, COALESCE(q.admin_archived,false) AS archived, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
+    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
     res.json(r.rows);
   } catch(e) { console.error('GET /questions:', e.message); res.json([]); }
 });
@@ -7637,6 +7648,7 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
 
 
 // ═══ تشخيص: ليش هالشخص ما فعّل؟ (أول سبب ينطبق) ═══
+const _QA_ACTIVE = `(q.answer IS NULL OR TRIM(q.answer)='') AND COALESCE(q.admin_archived,false)=false AND EXISTS(SELECT 1 FROM requests rr WHERE rr.id=q.request_id AND rr.status NOT IN ('completed','cancelled','closed_auto','closed','rejected'))`; // سؤال بدون رد على مشروع لسا شغّال
 const _MAIL_TYPO = {'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.cm':'gmail.com','gmai.com':'gmail.com','gmil.com':'gmail.com','gnail.com':'gmail.com','gmaill.com':'gmail.com','gamail.com':'gmail.com','gmeil.com':'gmail.com','gmail.om':'gmail.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmail.co':'hotmail.com','hotmail.con':'hotmail.com','hotmal.com':'hotmail.com','homail.com':'hotmail.com','hotamil.com':'hotmail.com','outlok.com':'outlook.com','outlook.co':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.co':'yahoo.com','icloud.co':'icloud.com','iclod.com':'icloud.com','icoud.com':'icloud.com'};
 const _MAIL_BIG = ['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','outlook.sa','hotmail.co.uk'];
 const _MAIL_OK = new Set(['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com','live.com','mail.com','gmx.com','ymail.com','email.com','me.com','msn.com','aol.com','outlook.sa','hotmail.co.uk','yahoo.co.uk','mac.com','proton.me','protonmail.com','zoho.com','yandex.com','hotmail.fr','windowslive.com']);
@@ -7661,6 +7673,40 @@ function _vsWhy(u){
   if (seen && seen > Math.max(reg, lm) + 30 * 60000) return 'ignored';
   return 'gone';
 }
+// إيميل تفعيل (رابط + رمز) — مشترك بين الإرسال الجماعي والتذكير التلقائي
+async function _sendVerifyMail(u, reminder){
+  const vtok = jwt.sign({ id: u.id, purpose: 'verify_email', em: String(u.email).toLowerCase() }, JWT_SECRET, { expiresIn: '30d' });
+  const cd = await _verifyCode(u.id);
+  const why = u.role === 'provider' ? 'عشان تقدر تقدّم عروضك على المشاريع' : 'عشان يُنشر مشروعك ويوصلك عروض';
+  return sendEmail(u.email, 'فعّل بريدك في منصة مناقصة', emailTpl('فعّل بريدك في منصة مناقصة', '<p>هلا ' + eEsc(u.name||'') + '، ' + (reminder ? 'تذكير: ' : '') + 'باقي خطوة وحدة: فعّل بريدك ' + why + '.</p>' + _codeBox(cd), 'تفعيل البريد', SITE_URL + '/api/auth/verify-email?token=' + vtok), { uid: u.id, kind: 'verify' });
+}
+async function _notifyVerify(u){
+  const t = 'فعّل بريدك ✉️', b = 'باقي خطوة وحدة: فعّل بريدك ' + (u.email||'') + (u.role === 'provider' ? ' عشان تقدر تقدّم عروضك.' : ' عشان يُنشر مشروعك ويوصلك عروض.') + ' ما وصلك الإيميل؟ اضغط هنا وغيّر البريد أو أعد الإرسال.';
+  await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [u.id, t, b, 'verify_email', null]);
+  const url = u.role === 'provider' ? '/dashboard-provider.html' : '/dashboard-client.html';
+  sendPush(u.id, t, b, url, 'verify_email', null).catch(() => {});
+  try { wsBroadcast(u.id, { type: 'notification', notif: { title: t, body: b, ntype: 'verify_email', url, created_at: new Date().toISOString() } }); } catch(_) {}
+}
+// تذكير تلقائي: اللي ما فعّل بعد 24 ساعة من التسجيل (مرة وحدة) — إشعار + إيميل
+async function _verifyRemindJob(){
+  const rows = (await pool.query(`SELECT u.id, u.name, u.email, u.role,
+      (SELECT status FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) AS st,
+      (SELECT MAX(created_at) FROM email_log e WHERE e.user_id=u.id AND e.kind='verify') AS lm
+    FROM users u WHERE u.email_verified=false AND u.role IN ('client','provider') AND COALESCE(u.is_active,true)
+      AND u.verify_reminded_at IS NULL AND u.created_at < NOW() - INTERVAL '24 hours' AND u.created_at > NOW() - INTERVAL '7 days'
+    ORDER BY u.created_at LIMIT 60`)).rows;
+  let n = 0;
+  for (const u of rows) {
+    try {
+      await pool.query('UPDATE users SET verify_reminded_at=NOW() WHERE id=$1', [u.id]);
+      await _notifyVerify(u);
+      const bad = !u.email || _mailTypo(u.email) || /bounced|suppressed|complained/.test(u.st||'') || (u.lm && Date.now() - new Date(u.lm).getTime() < 6*3600000);
+      if (!bad) { await _sendVerifyMail(u, true); await new Promise(r => setTimeout(r, 650)); }
+      n++;
+    } catch(e) { console.warn('verify remind:', e.message); }
+  }
+  if (n) console.log('verify reminders sent:', n);
+}
 // إرسال جماعي للي ما فعّلوا: إيميل تفعيل و/أو إشعار بالتطبيق
 app.post('/api/admin/verify-bulk', requirePermission('users.edit'), async (req, res) => {
   try {
@@ -7674,16 +7720,8 @@ app.post('/api/admin/verify-bulk', requirePermission('users.edit'), async (req, 
     const out = { total: rows.length, notified: 0, emailed: 0, skip_bad: 0, skip_recent: 0, skip_typo: 0 };
     const mailQ = [];
     for (const u of rows) {
-      if (wantNote) {
-        const t = 'فعّل بريدك ✉️', b = 'باقي خطوة وحدة: فعّل بريدك ' + (u.email||'') + (u.role === 'provider' ? ' عشان تقدر تقدّم عروضك.' : ' عشان يُنشر مشروعك ويوصلك عروض.') + ' ما وصلك الإيميل؟ اضغط هنا وغيّر البريد أو أعد الإرسال.';
-        try {
-          await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [u.id, t, b, 'verify_email', null]);
-          const url = u.role === 'provider' ? '/dashboard-provider.html' : '/dashboard-client.html';
-          sendPush(u.id, t, b, url, 'verify_email', null).catch(() => {});
-          try { wsBroadcast(u.id, { type: 'notification', notif: { title: t, body: b, ntype: 'verify_email', url, created_at: new Date().toISOString() } }); } catch(_) {}
-          out.notified++;
-        } catch(_) {}
-      }
+      if (wantNote) { try { await _notifyVerify(u); out.notified++; } catch(_) {} }
+      try { await pool.query('UPDATE users SET verify_reminded_at=COALESCE(verify_reminded_at,NOW()) WHERE id=$1', [u.id]); } catch(_) {}
       if (wantMail) {
         if (!u.email) { out.skip_bad++; continue; }
         if (_mailTypo(u.email)) { out.skip_typo++; continue; }
@@ -7698,9 +7736,7 @@ app.post('/api/admin/verify-bulk', requirePermission('users.edit'), async (req, 
     (async () => {
       for (const u of mailQ) {
         try {
-          const vtok = jwt.sign({ id: u.id, purpose: 'verify_email', em: String(u.email).toLowerCase() }, JWT_SECRET, { expiresIn: '30d' });
-          const cd = await _verifyCode(u.id);
-          await sendEmail(u.email, 'فعّل بريدك في منصة مناقصة', emailTpl('فعّل بريدك في منصة مناقصة', '<p>هلا ' + eEsc(u.name||'') + '، باقي خطوة وحدة: فعّل بريدك ' + (u.role === 'provider' ? 'عشان تقدر تقدّم عروضك على المشاريع' : 'عشان يُنشر مشروعك ويوصلك عروض') + '.</p>' + _codeBox(cd), 'تفعيل البريد', SITE_URL + '/api/auth/verify-email?token=' + vtok), { uid: u.id, kind: 'verify' });
+          await _sendVerifyMail(u, false);
         } catch(e) { console.warn('verify-bulk mail:', e.message); }
         await new Promise(r => setTimeout(r, 650));
       }
@@ -7729,7 +7765,7 @@ app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, 
     const LP = (okd(req.query.lfrom) && okd(req.query.lto)) ? [req.query.lfrom, req.query.lto].sort() : [];
     const LR = LP.length ? `AND (u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2` : '';
     const pend = (await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.city, u.created_at,
-        COALESCE(u.verify_code_tries,0)::int AS tries, GREATEST(u.last_seen_at,u.last_active) AS last_seen,
+        COALESCE(u.verify_code_tries,0)::int AS tries, GREATEST(u.last_seen_at,u.last_active) AS last_seen, u.verify_reminded_at AS reminded_at,
         EXISTS(SELECT 1 FROM push_tokens pt WHERE pt.user_id=u.id) AS has_app,
         (SELECT MAX(x.created_at) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS last_mail,
         (SELECT bool_or(x.status IN ('opened','clicked')) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS ever_opened,
@@ -9180,12 +9216,12 @@ app.get('/api/admin/badge-counts', auth, adminOnly, loadAdmin, async (req, res) 
   try {
     const out = {};
     if (hasPerm(req.adminPerms, 'reports.view')) out.reports = (await pool.query(`SELECT COUNT(*)::int AS n FROM reports WHERE status='pending' OR status IS NULL`)).rows[0].n;
-    if (hasPerm(req.adminPerms, 'questions.view')) out.questions = (await pool.query(`SELECT COUNT(*)::int AS n FROM request_questions WHERE answer IS NULL OR TRIM(answer)=''`)).rows[0].n;
+    if (hasPerm(req.adminPerms, 'questions.view')) out.questions = (await pool.query(`SELECT COUNT(*)::int AS n FROM request_questions q WHERE ${_QA_ACTIVE}`)).rows[0].n;
     res.json(out);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/questions', requirePermission('questions.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, COALESCE(q.admin_archived,false) AS archived, u.name as asker_name, u.role as asker_role, rq.title as request_title, rq.status AS request_status, (rq.status NOT IN ('completed','cancelled','closed_auto','closed','rejected')) AS request_active, cu.name AS owner_name, cu.phone AS owner_phone, rq.client_id AS owner_id FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id LEFT JOIN users cu ON cu.id=rq.client_id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // إخفاء أسئلة من قائمة الإدارة (ما ينحذف السؤال من المشروع) — محدد أو الكل
@@ -9390,7 +9426,7 @@ async function getReminderCfg(){
     adminAnomalyThreshold: parseInt(await g('admin_anomaly_threshold','15'))||15,
     matchNotifyOn: (await g('match_notify_on','1'))!=='0',
     qaAnswerOn: (await g('qa_answer_on','1'))!=='0',
-    qaAnswerDays: parseInt(await g('qa_answer_days','2'))||2,
+    qaAnswerDays: parseInt(await g('qa_answer_days','1'))||1,
     bidFollowupOn: (await g('bid_followup_on','1'))!=='0',
     bidFollowupDays: parseInt(await g('bid_followup_days','7'))||7
   };
@@ -9458,7 +9494,7 @@ app.put('/api/admin/reminders', requirePermission('settings.manage'), async (req
     await setSetting('admin_anomaly_threshold', String(num(b.adminAnomalyThreshold,15)));
     await setSetting('match_notify_on', b.matchNotifyOn===false?'0':'1');
     await setSetting('qa_answer_on', b.qaAnswerOn===false?'0':'1');
-    await setSetting('qa_answer_days', String(num(b.qaAnswerDays,2)));
+    await setSetting('qa_answer_days', String(num(b.qaAnswerDays,1)));
     await setSetting('bid_followup_on', b.bidFollowupOn===false?'0':'1');
     await setSetting('bid_followup_days', String(num(b.bidFollowupDays,7)));
     await logAdmin(req, 'update_reminders', 'settings', null, 'تحديث إعدادات التذكيرات');
@@ -9662,7 +9698,7 @@ async function _adminOverview(){
         (SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review'))::int AS review,
         (SELECT MIN(created_at) FROM requests WHERE status IN ('pending_review','review')) AS review_oldest,
         (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
-        (SELECT COUNT(*) FROM request_questions WHERE answer IS NULL OR answer='')::int AS questions,
+        (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE})::int AS questions,
         (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,
         (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flag_providers,
         (SELECT COUNT(*) FROM bids WHERE hold_state='held')::int AS held_bids,
@@ -9737,15 +9773,22 @@ async function _adminFresh(aid){
   const S = (await pool.query('SELECT k, seen_at FROM admin_seen WHERE admin_id=$1', [aid])).rows.reduce((o, x) => (o[x.k] = x.seen_at, o), {});
   const since = k => S[k] || new Date(0);
   const r = (await pool.query(`SELECT
-      (SELECT COUNT(*) FROM request_questions WHERE (answer IS NULL OR TRIM(answer)='') AND COALESCE(admin_archived,false)=false AND created_at > $1)::int AS questions,
+      (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE} AND q.created_at > $1)::int AS questions,
+      (SELECT COUNT(*) FROM reports WHERE (status='pending' OR status IS NULL) AND created_at > $4)::int AS reports,
+      (SELECT COUNT(DISTINCT n.user_id) FROM notifications n WHERE n.type IN ('bid','message') AND n.is_read=false AND n.created_at > GREATEST(NOW() - INTERVAL '30 days', $5))::int AS engagement,
+      (SELECT COUNT(*) FROM users u WHERE u.email_verified=false AND u.role IN ('client','provider') AND COALESCE(u.is_active,true)
+         AND u.created_at < NOW() - INTERVAL '3 days' AND u.created_at > GREATEST(NOW() - INTERVAL '30 days', $6::timestamp - INTERVAL '3 days'))::int AS unver3,
       (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flags,
       (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flag_providers,
       (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open' AND created_at > $3)::int AS bid_report_providers`,
-    [since('questions'), since('flags'), since('bidrep')])).rows[0];
+    [since('questions'), since('flags'), since('bidrep'), since('reports'), since('engagement'), since('unver3')])).rows[0];
   return r;
 }
+app.get('/api/admin/fresh', auth, adminOnly, async (req, res) => {
+  try { res.json(await _adminFresh(req.user.id)); } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.post('/api/admin/seen', auth, adminOnly, async (req, res) => {
-  try { const k = String(req.body && req.body.k || ''); if (!['questions','flags','bidrep'].includes(k)) return res.status(400).json({ message: 'غير معروف' });
+  try { const k = String(req.body && req.body.k || ''); if (!['questions','flags','bidrep','reports','engagement','unver3'].includes(k)) return res.status(400).json({ message: 'غير معروف' });
     await pool.query('INSERT INTO admin_seen(admin_id,k,seen_at) VALUES($1,$2,NOW()) ON CONFLICT (admin_id,k) DO UPDATE SET seen_at=NOW()', [req.user.id, k]); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
