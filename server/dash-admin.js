@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -116,7 +116,7 @@ function showPage(pg,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
-  var meta={vstats:['تفعيل البريد','مين فعّل وبأي طريقة — ومين علق وتحتاج تتابعه'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={vstats:['تفعيل البريد','مين فعّل وبأي طريقة — ومين علق وتحتاج تتابعه'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -135,6 +135,7 @@ function showPage(pg,el){
   if(pg==='health')loadHealth();
   if(pg==='followup')loadFollowups();
   if(pg==='closereasons')loadCloseReasons();
+  if(pg==='deals')setTimeout(loadDeals,0);
   if(pg==='bidreasons')loadBidReasons();
   if(pg==='claims')loadClaims();
   if(pg==='admins')loadAdmins();
@@ -454,7 +455,7 @@ function _renderDash(o){
   // يحدث الآن
   var fd=document.getElementById('dash-feed');
   if(fd){
-    var FL={outside_region:'عرض خارج المنطقة',spam_speed:'عروض سريعة متتالية',contact_share:'رقم تواصل في العرض'};
+    var FL={outside_region:'عرض خارج المنطقة',out_of_scope:'عروض خارج نطاق خدمته',spam_speed:'عروض سريعة متتالية',spam_spread:'عروض في مناطق كثيرة',contact_share:'رقم تواصل في العرض'};
     var rows=(o.feed||[]).map(function(x){
       var dot={request:'#1d4ed8',bid:'#16a34a',award:'#f59e0b',flag:'#dc2626'}[x.k]||'#94a3b8', t='';
       if(x.k==='request') t='<b>'+esc(x.who)+'</b> نشر مشروع «'+esc(x.what)+'»';
@@ -463,7 +464,7 @@ function _renderDash(o){
       else t='رصد: '+esc(FL[x.what]||x.what||'مخالفة')+' — <b>'+esc(x.who)+'</b>';
       return '<div class="ad-row" onclick="gsOpenReq('+(x.rid||0)+')"><i class="ad-dot" style="background:'+dot+'"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t+'</span><span class="t">'+_adAgo(x.at)+'</span></div>';
     }).join('');
-    fd.innerHTML='<div class="ad-ch"><h3>يحدث الآن</h3><span class="ad-live"><i class="ad-dot" style="background:#16a34a"></i>آخر النشاط</span></div>'+(rows||'<div style="color:var(--muted);font-size:13px;padding:14px 0">لا يوجد نشاط بعد</div>');
+    fd.innerHTML='<div class="ad-ch"><h3>يحدث الآن</h3><a href="#" class="ad-dl-go" onclick="event.preventDefault();_niGo(\'deals\')">تابع الصفقات ←</a><span class="ad-live"><i class="ad-dot" style="background:#16a34a"></i>آخر النشاط</span></div>'+(rows||'<div style="color:var(--muted);font-size:13px;padding:14px 0">لا يوجد نشاط بعد</div>');
   }
   // أحدث المستخدمين
   var ru=document.getElementById('recent-users');
@@ -2440,7 +2441,7 @@ function _rqOpen(id){
     var ph=String(r.client_phone||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1);
     var prices=bids.filter(function(b){return (!b.price_unit||b.price_unit==='total')&&parseFloat(b.price)>0;}).map(function(b){return parseFloat(b.price);});
     var mn=prices.length?Math.min.apply(null,prices):0, av=prices.length?prices.reduce(function(a,b){return a+b;},0)/prices.length:0;
-    var FL={outside_region:'خارج المنطقة',spam_speed:'عروض سريعة',contact_share:'رقم في العرض'};
+    var FL={outside_region:'خارج المنطقة',out_of_scope:'خارج نطاقه',spam_speed:'عروض سريعة',spam_spread:'مناطق كثيرة',contact_share:'رقم في العرض'};
     var atts=[]; try{ var at=r.attachments; if(typeof at==='string')at=JSON.parse(at); if(Array.isArray(at))atts=at.filter(function(a){return a&&a.url;}); }catch(e){}
     var imgs=[]; try{ var a=r.images; if(typeof a==='string')a=JSON.parse(a); if(Array.isArray(a))imgs=a.filter(function(u){return typeof u==='string'&&u.indexOf('http')===0;}); }catch(e){}
     var h='<div class="rq-dh"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+r.id+' · نُشر '+_adAgo(r.created_at)+'</div><div style="font-size:18px;font-weight:900;line-height:1.4">'+esc(r.title||'')+'</div>'
@@ -5702,7 +5703,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -6284,3 +6285,47 @@ function _appExtra(d,R){
       +'</div><div class="vs-s" style="display:flex;justify-content:space-between;margin-top:4px"><span>'+esc(dl[0].day.slice(5))+'</span><span>'+esc(dl[dl.length-1].day.slice(5))+'</span></div>'; }
   return h;
 }
+
+// ═══ متابعة الصفقات — لوحة مراحل (النموذج 2) ═══
+var _DL=null, _dlP={k:'today'};
+try{ var _dlS=JSON.parse(localStorage.getItem('adm_dlp')||'null'); if(_dlS&&_dlS.k)_dlP=_dlS; }catch(e){}
+function _dlRange(){ var now=new Date(),t=_ymd(now),dd=function(n){return _ymd(new Date(now.getTime()-n*86400000));},k=_dlP.k;
+  if(k==='yesterday')return {from:dd(1),to:dd(1),lbl:'أمس'}; if(k==='7d')return {from:dd(6),to:t,lbl:'آخر 7 أيام'}; if(k==='month')return {from:t.slice(0,8)+'01',to:t,lbl:'هالشهر'};
+  if(k==='custom'&&_dlP.from&&_dlP.to)return {from:_dlP.from,to:_dlP.to,lbl:_dlP.from+' ← '+_dlP.to}; return {from:t,to:t,lbl:'اليوم'}; }
+function _dlSet(k){ if(k==='custom'){ var f=(document.getElementById('dl-f')||{}).value,t=(document.getElementById('dl-t')||{}).value; _dlP=(f&&t)?{k:'custom',from:f,to:t}:{k:'custom'}; } else _dlP={k:k}; try{localStorage.setItem('adm_dlp',JSON.stringify(_dlP));}catch(e){} loadDeals(); }
+function loadDeals(){ var box=document.getElementById('deals-body'); if(!box)return; var R=_dlRange();
+  if(_dlP.k==='custom'&&!(_dlP.from&&_dlP.to)){ _DL=_DL||{ask:[],chosen:[],working:[],done:[],failed:[]}; _dlPaint(); return; }
+  if(!_DL)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/deals?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(!d){box.innerHTML=emptyState('تعذر التحميل');return;} _DL=d; _dlPaint(); }).catch(function(){box.innerHTML=emptyState('تعذر التحميل');}); }
+function _dlAmt(x){ if(x.price==null)return ''; var u=x.unit==='meter'?' ر.س/م²':(x.unit&&x.unit!=='total'?' ر.س/وحدة':' ر.س'); return fmtNum(Math.round(x.price))+u; }
+function _dlWa(ph,msg,lbl){ var n=_waNorm(ph); if(!n)return ''; return '<a class="dl-wa" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="https://wa.me/'+n+'?text='+encodeURIComponent(msg)+'">'+lbl+'</a>'; }
+function _dlCard(x,col){
+  var d=Math.floor(x.age_d||0), warn='', note='', who=esc(x.client_name||'عميل')+(x.provider_name?' ← '+esc(x.provider_name):'');
+  var hi='السلام عليكم ', sig='\nمنصة مناقصة 🌷', t='«'+(x.title||'المشروع')+'»', waC='', waP='';
+  if(col==='ask'){ if(d>=3)warn='ما رد العميل من '+d+' أيام'; waC=_dlWa(x.client_phone,hi+(x.client_name||'')+'،\nالمزوّد '+(x.provider_name||'')+' يقول إنكم اتفقتوا على '+t+'.\nلو صحيح أكّد من لوحتك في المنصة، ولو ما اتفقتوا اضغط «ما اتفقنا».'+sig,'العميل'); }
+  if(col==='chosen'){ waC=_dlWa(x.client_phone,hi+(x.client_name||'')+'،\nمبروك اختيارك '+(x.provider_name||'')+' لـ'+t+' 🎉\nلو احتجت أي مساعدة أو عندك ملاحظة، كلّمنا هنا.'+sig,'العميل'); waP=_dlWa(x.provider_phone,hi+(x.provider_name||'')+'،\nمبروك، رسى عليك '+t+' 🎉\nنتمنى لك التوفيق، ولا تنسى تأكد الاكتمال من لوحتك أول ما تخلّص.'+sig,'المزوّد'); }
+  if(col==='working'){ if(d>=21)warn='من '+d+' يوم وما اكتمل'; waC=_dlWa(x.client_phone,hi+(x.client_name||'')+'،\nوش أخبار '+t+' مع '+(x.provider_name||'المزوّد')+'؟ بدأ الشغل أو خلص؟\nلو خلص أكّد الاكتمال من لوحتك عشان تقيّمه.'+sig,'العميل'); }
+  if(col==='done'){ var st=x.saai_status; if(st==='pending'||st==='deferred')warn='السعي '+(x.saai_amount?fmtNum(Math.round(x.saai_amount))+' ر.س ':'')+'مستحق'; else if(st==='submitted')note='<span class="pl" style="background:#fef3c7;color:#92400e">سدّد — بانتظار اعتمادك</span>'; else if(st==='approved')note='<span class="pl" style="background:#dcfce7;color:#15803d">✓ سدّد السعي</span>';
+    if(st==='pending'||st==='deferred')waP=_dlWa(x.provider_phone,hi+(x.provider_name||'')+'،\nمبروك اكتمال '+t+' 👏\nباقي سداد السعي'+(x.saai_amount?' ('+fmtNum(Math.round(x.saai_amount))+' ر.س)':'')+' — تقدر تسدّده من لوحتك في المنصة.'+sig,'المزوّد'); }
+  if(col==='failed'){ if(x.why==='declined'){ note='<span class="pl" style="background:#fee2e2;color:#b91c1c">العميل قال «ما اتفقنا»</span>'+(x.prov_declines>=2?' <span class="pl" style="background:#fff7ed;color:#c2410c">'+x.prov_declines+' مرات للمزوّد هالشهر</span>':''); }
+    else if(x.why==='cancelled'){ note='<span class="pl" style="background:#fee2e2;color:#b91c1c">انلغى الاتفاق بعد الاختيار</span>'+(x.note?'<div class="dl-n">«'+esc(String(x.note).slice(0,90))+'»</div>':''); }
+    else { who=esc(x.client_name||'عميل')+' قفل المشروع'; note='<span class="pl" style="background:#f1f5f9;color:#475569">'+esc(x.reason_label||'')+'</span>'+(x.bids?' <span class="pl" style="background:#eef2ff;color:#3730a3">'+x.bids+' عروض</span>':'')+(x.note?'<div class="dl-n">«'+esc(String(x.note).slice(0,90))+'»</div>':''); }
+    waC=_dlWa(x.client_phone,hi+(x.client_name||'')+'،\nشفنا إن '+t+' ما كمل. وش صار؟ نقدر نساعدك تلقى مزوّد مناسب.'+sig,'العميل'); }
+  var amt=_dlAmt(x), tm=x.at?_adAgo(x.at):'';
+  return '<div class="dl-c'+(x.fresh&&(col==='ask'||col==='chosen')?' new':'')+'" role="button" tabindex="0" onclick="_rqOpen('+x.rid+')">'
+    +'<b>'+who+'</b><span class="dl-t">'+esc(x.title||'مشروع')+(x.city?' · '+esc(x.city):'')+'</span>'
+    +'<span class="dl-r">'+(amt?'<span class="dl-amt">'+amt+'</span>':'')+(x.fresh&&col!=='working'&&col!=='done'&&col!=='failed'?'<span class="pl" style="background:#dbeafe;color:#1d4ed8">جديد</span>':'')+'<span class="dl-tm">'+tm+'</span></span>'
+    +(note?'<div class="dl-nt">'+note+'</div>':'')+(warn?'<span class="pl dl-w">'+warn+'</span>':'')
+    +((waC||waP)?'<div class="dl-acts">'+waC+waP+'</div>':'')+'</div>';
+}
+function _dlPaint(){ var box=document.getElementById('deals-body'), d=_DL; if(!box||!d)return; var R=_dlRange();
+  var seg=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
+  var COLS=[['ask','🤝 طلب اعتماد','#f59e0b','المزوّد يقول اتفقنا — بانتظار العميل'],['chosen','🏆 اختار مزوّد','#1d4ed8','آخر 7 أيام'],['working','🔨 قيد التنفيذ','#0891b2','من أكثر من أسبوع'],['done','✅ اكتمل','#16a34a',R.lbl],['failed','↩️ تعثّر / ألغي','#dc2626',R.lbl]];
+  var fr=function(a){return (a||[]).filter(function(x){return x.fresh;}).length;};
+  var h='<div class="dl-top"><div class="vs-seg">'+seg.map(function(x){return '<button type="button" class="'+(_dlP.k===x[0]?'on':'')+'" onclick="_dlSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
+    +(_dlP.k==='custom'?'<div class="vsl-cus" style="margin:0"><label>من <input type="date" id="dl-f" value="'+(_dlP.from||'')+'"></label><label>إلى <input type="date" id="dl-t" value="'+(_dlP.to||'')+'"></label><button class="ct2-b pri" onclick="_dlSet(\'custom\')">عرض</button></div>':'')
+    +'<div class="dl-sum">'+[['اختاروا',fr(d.chosen),'#1d4ed8'],['طلب اعتماد',fr(d.ask),'#b45309'],['اكتمل',(d.done||[]).length,'#15803d'],['تعثّر / ألغي',(d.failed||[]).length,'#b91c1c']].map(function(x){return '<span><b style="color:'+x[2]+'">'+x[1]+'</b> '+x[0]+'</span>';}).join('')+'<small>'+esc(R.lbl)+'</small></div></div>';
+  h+='<div class="dl-board">'+COLS.map(function(c){ var L=d[c[0]]||[], nf=(c[0]==='ask'||c[0]==='chosen')?fr(L):0;
+    return '<div class="dl-col"><div class="dl-ch"><i style="background:'+c[2]+'"></i>'+c[1]+'<b>'+L.length+'</b>'+(nf?'<span class="pl" style="background:#dbeafe;color:#1d4ed8">+'+nf+' '+esc(R.lbl)+'</span>':'')+'</div><div class="dl-cs">'+esc(c[3])+'</div>'
+      +(L.length?L.map(function(x){return _dlCard(x,c[0]);}).join(''):'<div class="dl-empty">ما فيه شي</div>')+'</div>'; }).join('')+'</div>';
+  box.innerHTML=h; }

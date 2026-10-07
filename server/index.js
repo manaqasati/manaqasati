@@ -3808,7 +3808,7 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
         (SELECT COUNT(*) FROM users u WHERE u.role<>'admin' AND ${RD('u.created_at')} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date))::int AS tracked_signups,
         (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND ${RD('created_at')})::int AS requests,
         (SELECT COUNT(*) FROM bids WHERE ${RD('created_at')})::int AS bids,
-        (SELECT COUNT(*) FROM saai_ledger WHERE ${RD('created_at')})::int AS deals,
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id IS NOT NULL AND ${RD('assigned_at')})::int AS deals,
         (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD('approved_at')})::float AS collected`, [f, t]))[0];
     const cur = await summaryFor(R.from, R.to), prev = await summaryFor(R.pfrom, R.pto);
     const pfunnel = (await q(`WITH p AS (SELECT r.id, r.status, r.assigned_provider_id FROM requests r
@@ -3826,7 +3826,7 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
         (SELECT COUNT(*) FROM users u WHERE u.role<>'admin' AND (u.created_at + INTERVAL '3 hours')::date=${d} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=${d}))::int AS ts,
         (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND (created_at + INTERVAL '3 hours')::date=${d})::int AS r,
         (SELECT COUNT(*) FROM bids WHERE (created_at + INTERVAL '3 hours')::date=${d})::int AS b,
-        (SELECT COUNT(*) FROM saai_ledger WHERE (created_at + INTERVAL '3 hours')::date=${d})::int AS dl`;
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id IS NOT NULL AND (assigned_at + INTERVAL '3 hours')::date=${d})::int AS dl`;
     const daily = (f, t) => q(`SELECT to_char(d,'YYYY-MM-DD') k, ${dayRow('d::date')} FROM generate_series($1::date, $2::date, INTERVAL '1 day') d ORDER BY 1`, [f, t]);
     const monthly = R.days > 62;
     const series = monthly ? await q(`SELECT to_char(m,'YYYY-MM') k,
@@ -3836,7 +3836,7 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
         0 AS ts,
         (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS r,
         (SELECT COUNT(*) FROM bids WHERE date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS b,
-        (SELECT COUNT(*) FROM saai_ledger WHERE date_trunc('month', created_at + INTERVAL '3 hours')=m AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS dl
+        (SELECT COUNT(*) FROM requests WHERE assigned_provider_id IS NOT NULL AND date_trunc('month', assigned_at + INTERVAL '3 hours')=m AND (assigned_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS dl
       FROM generate_series(date_trunc('month',$1::date), date_trunc('month',$2::date), INTERVAL '1 month') m ORDER BY 1`) : await daily(R.from, R.to);
     // خط صغير للبطاقات: آخر 14 يوم لين نهاية الفترة (يفيد حتى لو الفترة يوم واحد)
     const sfrom = new Date(Date.parse(R.to) - 13 * 86400000).toISOString().slice(0, 10);
@@ -7742,6 +7742,50 @@ app.post('/api/admin/verify-bulk', requirePermission('users.edit'), async (req, 
       }
     })();
   } catch(e) { console.error('verify-bulk:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// ═══ متابعة الصفقات (لوحة مراحل): طلب اعتماد ← اختار مزوّد ← قيد التنفيذ ← اكتمل / تعثّر ═══
+app.get('/api/admin/deals', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to];
+    const IN = c => `(${c} + INTERVAL '3 hours')::date BETWEEN $1 AND $2`;
+    const PROV = `COALESCE(NULLIF(pu.business_name,''),pu.name)`;
+    const q = (sql, p) => pool.query(sql, p || []).then(r => r.rows).catch(e => { console.error('deals:', e.message); return []; });
+    const amt = `(SELECT b.price FROM bids b WHERE b.request_id=r.id AND b.provider_id=pu.id LIMIT 1) AS price, (SELECT COALESCE(b.price_unit,'total') FROM bids b WHERE b.request_id=r.id AND b.provider_id=pu.id LIMIT 1) AS unit`;
+    const base = `r.id AS rid, r.title, r.city, cu.name AS client_name, cu.phone AS client_phone, ${PROV} AS provider_name, pu.phone AS provider_phone, pu.id AS provider_id`;
+    const [ask, chosen, working, done, declined, cancelled, closed] = await Promise.all([
+      q(`SELECT ${base}, ${amt}, a.created_at AS at, a.sends, (${IN('a.created_at')}) AS fresh, EXTRACT(EPOCH FROM (NOW()-a.created_at))/86400 AS age_d
+         FROM bid_accept_asks a JOIN requests r ON r.id=a.request_id JOIN users cu ON cu.id=a.client_id JOIN users pu ON pu.id=a.provider_id
+         WHERE a.status='pending' AND r.assigned_provider_id IS NULL AND r.status NOT IN ('completed','cancelled','closed_auto') ORDER BY a.created_at DESC LIMIT 80`, P),
+      q(`SELECT ${base}, ${amt}, r.assigned_at AS at, (${IN('r.assigned_at')}) AS fresh, EXTRACT(EPOCH FROM (NOW()-r.assigned_at))/86400 AS age_d
+         FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id
+         WHERE r.status='in_progress' AND r.assigned_at > NOW() - INTERVAL '7 days' ORDER BY r.assigned_at DESC LIMIT 80`, P),
+      q(`SELECT ${base}, ${amt}, r.assigned_at AS at, FALSE AS fresh, EXTRACT(EPOCH FROM (NOW()-r.assigned_at))/86400 AS age_d,
+           (SELECT s.status FROM saai_ledger s WHERE s.request_id=r.id AND s.provider_id=pu.id LIMIT 1) AS saai_status
+         FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id
+         WHERE r.status='in_progress' AND r.assigned_at <= NOW() - INTERVAL '7 days' ORDER BY r.assigned_at ASC LIMIT 120`),
+      q(`SELECT ${base}, ${amt}, r.completed_at AS at, TRUE AS fresh,
+           (SELECT s.status FROM saai_ledger s WHERE s.request_id=r.id AND s.provider_id=pu.id LIMIT 1) AS saai_status,
+           (SELECT s.saai_amount FROM saai_ledger s WHERE s.request_id=r.id AND s.provider_id=pu.id LIMIT 1)::float AS saai_amount
+         FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id
+         WHERE r.status='completed' AND r.completed_at IS NOT NULL AND ${IN('r.completed_at')} ORDER BY r.completed_at DESC LIMIT 80`, P),
+      q(`SELECT ${base}, ${amt}, a.responded_at AS at, TRUE AS fresh, 'declined' AS why,
+           (SELECT COUNT(*) FROM bid_accept_asks x WHERE x.provider_id=a.provider_id AND x.status='declined' AND x.responded_at > NOW() - INTERVAL '30 days')::int AS prov_declines
+         FROM bid_accept_asks a JOIN requests r ON r.id=a.request_id JOIN users cu ON cu.id=a.client_id JOIN users pu ON pu.id=a.provider_id
+         WHERE a.status='declined' AND a.responded_at IS NOT NULL AND ${IN('a.responded_at')} ORDER BY a.responded_at DESC LIMIT 60`, P),
+      q(`SELECT ${base}, s.contract_value::float AS price, 'total' AS unit, COALESCE(s.client_answer_at, s.defer_at, s.created_at) AS at, TRUE AS fresh, 'cancelled' AS why, s.defer_note AS note, s.defer_state
+         FROM saai_ledger s JOIN requests r ON r.id=s.request_id JOIN users pu ON pu.id=s.provider_id LEFT JOIN users cu ON cu.id=r.client_id
+         WHERE s.status='cancelled' AND ${IN('COALESCE(s.client_answer_at, s.defer_at, s.created_at)')} ORDER BY 4 DESC LIMIT 60`, P),
+      q(`SELECT r.id AS rid, r.title, r.city, cu.name AS client_name, cu.phone AS client_phone, NULL AS provider_name, NULL AS provider_phone, NULL AS provider_id, NULL::numeric AS price, NULL AS unit,
+           r.closed_at AS at, TRUE AS fresh, 'closed' AS why, r.close_reason, r.close_reason_note AS note, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids
+         FROM requests r JOIN users cu ON cu.id=r.client_id
+         WHERE r.closed_at IS NOT NULL AND r.close_reason IS NOT NULL AND r.close_reason NOT LIKE 'auto%' AND r.close_reason<>'admin_closed' AND r.assigned_provider_id IS NULL
+           AND EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id) AND ${IN('r.closed_at')} ORDER BY r.closed_at DESC LIMIT 60`, P)
+    ]);
+    const failed = [...declined, ...cancelled, ...closed].sort((a, b) => new Date(b.at) - new Date(a.at));
+    failed.forEach(x => { if (x.why === 'closed') x.reason_label = _CLOSE_REASON_AR[x.close_reason] || x.close_reason; });
+    res.json({ range: R, ask, chosen, working, done, failed });
+  } catch(e) { console.error('deals:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 // ═══ إحصائيات تفعيل البريد: مين فعّل وبأي طريقة (رابط / رمز / الإدارة) + وين علقوا ═══

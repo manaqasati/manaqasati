@@ -748,3 +748,22 @@ a.cu-pv:hover{border-color:#86efac}
 .ow-hdw .ow-ckw{background:inherit}
 [data-theme="dark"] .ow-sel,[data-theme="dark"] #questions-table tr.sel td{background:rgba(29,78,216,.14)!important}
 .ow-hdw{border-top:0;background:var(--bg)}
+/* ═══ متابعة الصفقات (لوحة مراحل) ═══ */
+.dl-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.dl-sum{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-inline-start:auto;font-size:13px;font-weight:800;color:var(--text2)}.dl-sum b{font-family:Cairo,sans-serif;font-size:18px}.dl-sum small{color:var(--muted);font-weight:700}
+.dl-board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
+.dl-col{background:var(--bg,#eef3fb);border:1px solid var(--border);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;max-height:calc(100vh - 230px);overflow:auto}
+.dl-ch{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:900;color:var(--text);flex-wrap:wrap;position:sticky;top:-10px;background:inherit;padding-top:2px}.dl-ch i{width:8px;height:8px;border-radius:50%;flex-shrink:0}.dl-ch b{margin-inline-start:auto;font-family:Cairo,sans-serif}
+.dl-cs{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:-4px}
+.dl-c{background:var(--card,#fff);border:1px solid var(--border);border-radius:13px;padding:10px 11px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:800;color:var(--text2);cursor:pointer;text-align:right}
+.dl-c:hover{border-color:#93c5fd}.dl-c.new{border-color:#1d4ed8;box-shadow:0 0 0 2px #dbeafe}
+.dl-c>b{font-size:13.5px;color:var(--text);line-height:1.5}.dl-t{color:var(--muted);font-weight:700}
+.dl-r{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.dl-amt{color:var(--text)}.dl-tm{margin-inline-start:auto;color:var(--muted);font-size:11.5px}
+.dl-nt{display:flex;flex-wrap:wrap;gap:4px;align-items:center}.dl-n{flex-basis:100%;font-size:11.5px;color:var(--muted);font-weight:700}
+.dl-w{background:#fee2e2;color:#b91c1c;align-self:flex-start}
+.dl-acts{display:flex;gap:6px;margin-top:3px}.dl-wa{border:1.5px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:9px;padding:4px 9px;font-size:11.5px;font-weight:900;text-decoration:none}.dl-wa::before{content:'واتساب ';}
+.dl-empty{font-size:12px;color:var(--muted);font-weight:700;text-align:center;padding:14px 0}
+.ad-dl-go{font-size:12.5px;font-weight:900;color:#1d4ed8;text-decoration:none;margin-inline-start:auto;margin-inline-end:10px}
+@media(max-width:1100px){.dl-board{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}.dl-col{flex:0 0 270px;scroll-snap-align:start;max-height:none}}
+[data-theme="dark"] .dl-c.new{box-shadow:0 0 0 2px rgba(59,130,246,.35)}[data-theme="dark"] .dl-wa{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.35);color:#4ade80}
+.dl-c,.dl-c>b,.dl-t{overflow-wrap:anywhere;word-break:break-word}
