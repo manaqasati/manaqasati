@@ -128,13 +128,13 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 // المصادر المسموحة (خطوط جوجل، أدوات التحليل والبكسلات، مكتبات CDN، خرائط جوجل، صور R2/Cloudinary)
 const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' wss: https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
-  "frame-src 'self' https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
+  "connect-src 'self' wss: https://accounts.google.com/gsi/ https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
+  "frame-src 'self' https://accounts.google.com https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -3013,6 +3013,8 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS admin_seen (admin_id INTEGER, k VARCHAR(20), seen_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(admin_id, k))`);
       await _mig(`ALTER TABLE request_questions ADD COLUMN IF NOT EXISTS admin_archived BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_reminded_at TIMESTAMP`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(64)`);
+      await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uq ON users(google_sub) WHERE google_sub IS NOT NULL`);
       await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
@@ -3340,8 +3342,69 @@ app.post('/api/auth/resend-verification', auth, rateLimiter(6, 3600000), async (
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
-app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
+// ═══ الدخول/التسجيل بحساب Google ═══
+// الـ Client ID مو سري (يظهر في الصفحة أصلاً) — ونقدر نغيّره من Railway بمتغيّر GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '873217154410-ngnh5tn0n22g4vqb5m0qrhtecgru5oj1.apps.googleusercontent.com';
+async function _verifyGoogleToken(idToken){
+  if (!idToken || typeof idToken !== 'string' || idToken.length > 4096) return null;
+  if (process.env.GOOGLE_TEST_TOKENS === '1' && idToken.startsWith('test:')) { try { const t = JSON.parse(idToken.slice(5)); return { sub: String(t.sub), email: String(t.email).toLowerCase(), name: t.name || '' }; } catch(_) { return null; } } // للاختبار المحلي فقط
   try {
+    const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
+    if (!r.ok) return null;
+    const t = await r.json();
+    if (t.aud !== GOOGLE_CLIENT_ID) return null;
+    if (!['accounts.google.com', 'https://accounts.google.com'].includes(t.iss)) return null;
+    if (!t.exp || parseInt(t.exp) * 1000 < Date.now()) return null;
+    if (!(t.email_verified === true || t.email_verified === 'true')) return null;
+    if (!t.sub || !t.email) return null;
+    return { sub: String(t.sub), email: String(t.email).trim().toLowerCase(), name: _cleanTxt(t.name || '', 80), picture: t.picture || null };
+  } catch(e) { console.error('google verify:', e.message); return null; }
+}
+function _loginPayload(user){
+  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+  ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub'].forEach(k => delete user[k]);
+  return { user, token };
+}
+app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CLIENT_ID }));
+// 1) يرسل الـ credential اللي رجّعه زر Google: لو عنده حساب يدخل على طول، لو جديد يرجع signup_token لخطوة «أكمل بياناتك»
+app.post('/api/auth/google', rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const g = await _verifyGoogleToken(req.body && req.body.credential);
+    if (!g) return res.status(401).json({ message: 'تعذّر التحقق من حساب Google — حاول مرة ثانية' });
+    let u = (await pool.query('SELECT * FROM users WHERE google_sub=$1 LIMIT 1', [g.sub])).rows[0];
+    if (!u) u = (await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY id LIMIT 1', [g.email])).rows[0];
+    if (u) {
+      if (u.is_active === false) return res.status(403).json({ message: 'الحساب موقوف' });
+      if (u.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور' });
+      // نربط الحساب بـ Google، ولو بريده ما تفعّل نفعّله (Google أكّد إنه صاحب البريد)
+      await pool.query(`UPDATE users SET google_sub=COALESCE(google_sub,$2), last_active=NOW(),
+          email_verified_via=CASE WHEN COALESCE(email_verified,true)=false AND LOWER(email)=LOWER($3) THEN 'google' ELSE email_verified_via END,
+          email_verified_at=CASE WHEN COALESCE(email_verified,true)=false AND LOWER(email)=LOWER($3) THEN NOW() ELSE email_verified_at END,
+          email_verified=CASE WHEN LOWER(email)=LOWER($3) THEN true ELSE email_verified END
+        WHERE id=$1`, [u.id, g.sub, g.email]);
+      const fresh = (await pool.query('SELECT * FROM users WHERE id=$1', [u.id])).rows[0];
+      return res.json(Object.assign({ ok: true, linked: !u.google_sub }, _loginPayload(fresh)));
+    }
+    const signup_token = jwt.sign({ purpose: 'google_signup', sub: g.sub, email: g.email, name: g.name }, JWT_SECRET, { expiresIn: '30m' });
+    res.json({ ok: true, need_profile: true, signup_token, email: g.email, name: g.name });
+  } catch(e) { console.error('google auth:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// 2) «أكمل بياناتك» لأول دخول: نفس حقول التسجيل العادي (الجوال إلزامي) بدون كلمة مرور، والبريد مفعّل
+app.post('/api/auth/google/complete', rateLimiter(10, 600000), async (req, res) => {
+  try {
+    let p; try { p = jwt.verify(String(req.body && req.body.signup_token || ''), JWT_SECRET); } catch(_) { p = null; }
+    if (!p || p.purpose !== 'google_signup') return res.status(401).json({ message: 'انتهت الجلسة — اضغط «المتابعة بحساب Google» مرة ثانية' });
+    if (!req.body.phone || !String(req.body.phone).trim()) return res.status(400).json({ message: 'رقم الجوال مطلوب' });
+    const dup = (await pool.query('SELECT id FROM users WHERE google_sub=$1 OR LOWER(email)=LOWER($2) LIMIT 1', [p.sub, p.email])).rows[0];
+    if (dup) return res.status(400).json({ message: 'عندك حساب بهذا البريد — ارجع واضغط «المتابعة بحساب Google» وبيدخلك عليه' });
+    req._g = { sub: p.sub, email: p.email, name: p.name };
+    return _registerHandler(req, res);
+  } catch(e) { console.error('google complete:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/auth/register', rateLimiter(5, 600000), (req, res) => _registerHandler(req, res));
+async function _registerHandler(req, res) {
+  try {
+    if (req._g) { req.body.email = req._g.email; req.body.password = require('crypto').randomBytes(18).toString('hex'); if (!req.body.name) req.body.name = req._g.name || ''; } // تسجيل عن طريق Google: البريد من Google وما يحتاج كلمة مرور
     if (req.body.name != null) req.body.name = _cleanTxt(req.body.name, 80);
     if (req.body.email != null) req.body.email = String(req.body.email).trim().toLowerCase(); // الإيميل يتخزّن بحروف صغيرة
     if (req.body.business_name) req.body.business_name = _cleanTxt(req.body.business_name, 100);
@@ -3445,6 +3508,7 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
     }catch(e){ console.error('lead match:', e.message); }
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    if (req._g) { try { await pool.query("UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via='google', google_sub=$2 WHERE id=$1", [user.id, req._g.sub]); user.email_verified = true; } catch(ge) { console.error('google link:', ge.message); } }
     try {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${eEsc(name)}!`;
@@ -3454,13 +3518,14 @@ app.post('/api/auth/register', rateLimiter(5, 600000), async (req, res) => {
       const vtok = jwt.sign({ id: user.id, purpose: 'verify_email' }, JWT_SECRET, { expiresIn: '30d' });
       const vlink = SITE_URL + '/api/auth/verify-email?token=' + vtok;
       const verifyNote = `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin:14px 0;color:#1e40af"><strong>خطوة أخيرة:</strong> فعّل بريدك لتتمكن من ${isProvider?'تقديم العروض':'نشر مشاريعك'} — اضغط الزر أدناه.</p>`;
-      await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! فعّل بريدك من الرسالة المرسلة إلى إيميلك.`, 'welcome', null);
-      const _cd = email ? await _verifyCode(user.id) : '';
-      if (email) sendEmail(email, 'فعّل بريدك في منصة مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote + _codeBox(_cd), 'تفعيل البريد', vlink), { uid: user.id, kind: 'verify' }).catch(()=>{});
+      if (req._g) { await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! حسابك جاهز.`, 'welcome', null); sendEmail(email, `أهلاً بك في منصة مناقصة`, emailTpl(welcomeTitle, welcomeBody, isProvider ? 'تصفّح المشاريع' : 'انشر مشروعك', SITE_URL + (isProvider ? '/dashboard-provider.html' : '/dashboard-client.html')), { uid: user.id, kind: 'welcome' }).catch(()=>{}); }
+      else await notify(user.id, '🎉 أهلاً بك في مناقصة', `مرحباً ${name}! فعّل بريدك من الرسالة المرسلة إلى إيميلك.`, 'welcome', null);
+      const _cd = (email && !req._g) ? await _verifyCode(user.id) : '';
+      if (email && !req._g) sendEmail(email, 'فعّل بريدك في منصة مناقصة', emailTpl(welcomeTitle, welcomeBody + verifyNote + _codeBox(_cd), 'تفعيل البريد', vlink), { uid: user.id, kind: 'verify' }).catch(()=>{});
     } catch(we) { console.error('welcome notification:', we.message); }
     res.json({ user, token });
   } catch(e) { console.error('Register:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
-});
+}
 
 // [أُزيلت] /api/direct-admin — كانت باباً خلفياً يسمح بإنشاء/اختطاف حساب أدمن عبر رابط GET
 // بكلمة سر افتراضية مكتوبة في الكود. تُدار حسابات المشرفين الآن من لوحة الإدارة (admins.manage) فقط.
