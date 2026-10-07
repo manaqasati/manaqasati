@@ -186,10 +186,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="card-head"><h3>الكشف التلقائي</h3>
           <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center">
             <span id="ow-count" style="font-size:12.5px;font-weight:700;color:var(--muted)"></span>
-            <button class="act-btn ab-default" style="padding:6px 12px;font-size:12px;color:#dc2626;border-color:#fecaca" onclick="clearOfferFlags()">🗑️ مسح القديمة</button>
           </div>
         </div>
-        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">رصد العروض المقدّمة على مشاريع <b style="color:var(--red)">خارج منطقة خدمة المزوّد</b> (نفس المنطقة = عادي، لا يُرصد — مثلاً الرياض والخرج). يُرسَل تنبيه تلقائي لحظة المخالفة. تقدر تنبّه يدوياً أو عبر واتساب.</div>
+        <div style="padding:11px 16px;font-size:12.5px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border)">القواعد (مخفّفة): <b style="color:var(--red)">خارج النطاق</b> = 3 عروض أو أكثر خلال 7 أيام في مدن ما يخدمها (نفس المنطقة عادي، واللي اختار «كل المدن» ما يُرصد) · <b>نشاط مشبوه</b> = 10 عروض خلال 10 دقائق · <b>انتشار</b> = عروض في 5 مناطق خلال 24 ساعة. كل نوع يُرصد مرة وحدة بالكثير لكل مزوّد في اليوم، ويوصله تنبيه تلقائي.</div>
+        <div class="ow-fbar" id="ow-fbar"></div>
       </div>
       <div id="offerwatch-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
       </div>
@@ -259,7 +259,8 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-questions">
       <div class="card">
         <div class="card-head"><h3>الأسئلة والتوضيحات</h3><div class="search-box"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="q-search" placeholder="ابحث في الأسئلة أو السائل أو المشروع..." oninput="renderQuestions()"></div></div>
-        <div class="filter-tabs"><button class="ftab on" onclick="filterQ('all',this)">الكل</button><button class="ftab" onclick="filterQ('pending',this)">بانتظار رد</button><button class="ftab" onclick="filterQ('answered',this)">مُجاب</button></div>
+        <div class="filter-tabs"><button class="ftab on" onclick="filterQ('all',this)">الكل</button><button class="ftab" onclick="filterQ('pending',this)">بانتظار رد</button><button class="ftab" onclick="filterQ('answered',this)">مُجاب</button><button class="ftab" onclick="filterQ('archived',this)">المخفية</button></div>
+        <div class="q-bar" id="q-bar"></div>
         <div class="card-body flush"><div class="tbl-wrap" id="questions-table"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div></div>
       </div>
     </div>

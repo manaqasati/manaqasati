@@ -3000,6 +3000,8 @@ async function setupDatabase() {
     try {
       await _mig(`CREATE TABLE IF NOT EXISTS bid_reports (id SERIAL PRIMARY KEY, bid_id INTEGER, provider_id INTEGER, client_id INTEGER, request_id INTEGER, reason VARCHAR(20) NOT NULL, status VARCHAR(20) DEFAULT 'open', created_at TIMESTAMP DEFAULT NOW(), UNIQUE(bid_id, client_id))`);
       await _mig(`ALTER TABLE bid_reports ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP`);
+      await _mig(`CREATE TABLE IF NOT EXISTS admin_seen (admin_id INTEGER, k VARCHAR(20), seen_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(admin_id, k))`);
+      await _mig(`ALTER TABLE request_questions ADD COLUMN IF NOT EXISTS admin_archived BOOLEAN DEFAULT FALSE`);
       await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
@@ -4893,17 +4895,24 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const pv = provInfo.rows[0] || {};
       const svcCities = Array.isArray(pv.service_cities) ? pv.service_cities : [];
       const inScope = pv.serves_all_cities || !reqCity || (pv.city && pv.city === reqCity) || svcCities.indexOf(reqCity) >= 0 || sameRegion(pv.city, reqCity) || svcCities.some(c => sameRegion(c, reqCity));
-      if (!inScope) {
-        const warnMsg = 'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم — لضمان وصول عروضكم للمشاريع المناسبة، وزيادة فرص اختياركم، وتجنب العروض خارج نطاق خدمتكم.';
-        await notify(req.user.id, '⚠️ عرض خارج نطاق خدمتك', warnMsg, 'bid', requestId);
-        await pool.query('INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,$6,TRUE)', [row.id, req.user.id, requestId, pv.city||null, reqCity||null, 'out_of_scope']);
+      // مخفّف: عرض أو عرضين خارج النطاق عادي — نرصد بس لو صاروا 3+ خلال 7 أيام، ومرة وحدة باليوم لكل مزوّد
+      const _inSc = c => !c || (pv.city && pv.city === c) || svcCities.indexOf(c) >= 0 || sameRegion(pv.city, c) || svcCities.some(x => sameRegion(x, c));
+      if (!inScope && !pv.serves_all_cities) {
+        const wk = await pool.query(`SELECT r.city FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.provider_id=$1 AND b.created_at > NOW() - INTERVAL '7 days'`, [req.user.id]);
+        const outN = wk.rows.filter(x => !_inSc(x.city)).length;
+        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='out_of_scope' AND created_at > NOW() - INTERVAL '24 hours' LIMIT 1", [req.user.id]);
+        if (outN >= 3 && !dup.rows.length) {
+          const warnMsg = 'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم — لضمان وصول عروضكم للمشاريع المناسبة، وزيادة فرص اختياركم. لو تخدمون مدن ثانية أضيفوها في ملفكم «مدن الخدمة».';
+          await notify(req.user.id, '⚠️ عروض خارج نطاق خدمتك', warnMsg, 'bid', requestId);
+          await pool.query('INSERT INTO offer_flags (bid_id, provider_id, request_id, provider_city, request_city, reason, auto_notified) VALUES ($1,$2,$3,$4,$5,$6,TRUE)', [row.id, req.user.id, requestId, pv.city||null, reqCity||null, 'out_of_scope']);
+        }
       }
     } catch(fe) { console.error('offer_flag:', fe.message); } }
     // رصد النشاط المشبوه (سرعة): عروض كثيرة في وقت قصير — تنبيه تلقائي مرة واحدة لكل موجة
     if (!isUpdate) { try {
-      const rc = await pool.query("SELECT COUNT(*) c FROM bids WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '5 minutes'", [req.user.id]);
-      if ((parseInt(rc.rows[0].c)||0) >= 6) {
-        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='spam_speed' AND created_at > NOW() - INTERVAL '5 minutes' LIMIT 1", [req.user.id]);
+      const rc = await pool.query("SELECT COUNT(*) c FROM bids WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '10 minutes'", [req.user.id]);
+      if ((parseInt(rc.rows[0].c)||0) >= 10) {
+        const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='spam_speed' AND created_at > NOW() - INTERVAL '6 hours' LIMIT 1", [req.user.id]);
         if (!dup.rows.length) {
           const warnMsg = 'لاحظنا تقديمكم عدداً كبيراً من العروض في وقت قصير. نرجو تقديم عروض جادّة ومدروسة بسعر وتفاصيل واضحة — النشاط غير المعتاد قد يؤدي لتقييد الحساب.';
           await notify(req.user.id, '⚠️ نشاط غير معتاد', warnMsg, 'bid', requestId);
@@ -4916,7 +4925,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const rq = await pool.query(`SELECT DISTINCT r.city FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.provider_id=$1 AND b.created_at > NOW() - INTERVAL '24 hours' AND r.city IS NOT NULL`, [req.user.id]);
       const regs = {}; for (const x of rq.rows) { const rg = cityRegion(x.city); if (rg) regs[rg] = 1; }
       const nRegions = Object.keys(regs).length;
-      if (nRegions >= 4) {
+      if (nRegions >= 5) {
         const dup = await pool.query("SELECT 1 FROM offer_flags WHERE provider_id=$1 AND reason='spam_spread' AND created_at > NOW() - INTERVAL '24 hours' LIMIT 1", [req.user.id]);
         if (!dup.rows.length) {
           const warnMsg = 'لاحظنا تقديمكم عروضاً في مناطق متعددة خلال وقت قصير. نرجو التركيز على المشاريع ضمن مناطق خدمتكم الفعلية — العروض العشوائية تُضعف فرصكم وقد تؤدي لتقييد الحساب.';
@@ -6445,7 +6454,7 @@ app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
 // GET: قائمة أسئلة مشروع (عامة، بدون تسجيل دخول)
 app.get('/api/requests/:id/questions', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
+    const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, COALESCE(q.admin_archived,false) AS archived, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
     res.json(r.rows);
   } catch(e) { console.error('GET /questions:', e.message); res.json([]); }
 });
@@ -8336,6 +8345,18 @@ app.post('/api/admin/bid-reports/provider/:id/action', requirePermission('reques
     res.json({ ok: true, message: msg });
   } catch(e) { console.error('bid-report action:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// إغلاق بلاغات من القائمة دفعة وحدة (مزوّدين محددين أو الكل) — ما يغيّر أي عقوبة
+app.post('/api/admin/bid-reports/close', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const all = !!req.body.all;
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(x => parseInt(x)).filter(x => x > 0).slice(0, 500);
+    if (!all && !ids.length) return res.status(400).json({ message: 'حدد مزوّدين' });
+    const r = all ? await pool.query(`UPDATE bid_reports SET status=CASE WHEN status='open' THEN 'actioned' ELSE status END, closed_at=NOW() WHERE closed_at IS NULL AND status<>'dismissed'`)
+                  : await pool.query(`UPDATE bid_reports SET status=CASE WHEN status='open' THEN 'actioned' ELSE status END, closed_at=NOW() WHERE closed_at IS NULL AND status<>'dismissed' AND provider_id = ANY($1::int[])`, [ids]);
+    await logAdmin(req, 'close_bid_reports', 'system', null, 'إغلاق ' + (r.rowCount||0) + ' بلاغ من القائمة');
+    res.json({ ok: true, n: r.rowCount || 0 });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // طابور العروض المعلّقة (تحت المراجعة قبل النشر)
 app.get('/api/admin/held-bids', requirePermission('requests.view'), async (req, res) => {
   try {
@@ -8397,6 +8418,15 @@ app.get('/api/admin/offer-flags', requirePermission('requests.view'), async (req
       LEFT JOIN requests r ON r.id=f.request_id
       ORDER BY f.created_at DESC LIMIT 200`);
     res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/offer-flags/delete', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(x => parseInt(x)).filter(x => x > 0).slice(0, 1000);
+    if (!ids.length) return res.status(400).json({ message: 'حدد عروض' });
+    const r = await pool.query('DELETE FROM offer_flags WHERE id = ANY($1::int[])', [ids]);
+    await logAdmin(req, 'delete_offer_flags', 'system', null, 'حذف ' + (r.rowCount||0) + ' رصد من القائمة');
+    res.json({ ok: true, n: r.rowCount || 0 });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/offer-flags/clear', requirePermission('requests.review'), async (req, res) => {
@@ -9158,6 +9188,18 @@ app.get('/api/admin/questions', requirePermission('questions.view'), async (req,
   try { const r=await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, rq.title as request_title FROM request_questions q LEFT JOIN users u ON q.asker_id=u.id LEFT JOIN requests rq ON q.request_id=rq.id ORDER BY q.created_at DESC LIMIT 300`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// إخفاء أسئلة من قائمة الإدارة (ما ينحذف السؤال من المشروع) — محدد أو الكل
+app.post('/api/admin/questions/archive', requirePermission('questions.view'), async (req, res) => {
+  try {
+    const all = !!req.body.all, undo = !!req.body.undo;
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(x => parseInt(x)).filter(x => x > 0).slice(0, 1000);
+    if (!all && !ids.length) return res.status(400).json({ message: 'حدد أسئلة' });
+    const r = all ? await pool.query('UPDATE request_questions SET admin_archived=TRUE WHERE COALESCE(admin_archived,false)=false')
+                  : await pool.query('UPDATE request_questions SET admin_archived=$2 WHERE id = ANY($1::int[])', [ids, !undo]);
+    await logAdmin(req, 'archive_questions', 'question', null, (undo ? 'إرجاع ' : 'إخفاء ') + (r.rowCount||0) + ' سؤال من القائمة');
+    res.json({ ok: true, n: r.rowCount || 0 });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.delete('/api/admin/questions/:id', requirePermission('questions.delete'), async (req, res) => {
   try { const qid=parseInt(req.params.id); const r=await pool.query('DELETE FROM request_questions WHERE id=$1',[qid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_question','question',qid,'حذف سؤال'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -9690,8 +9732,25 @@ async function _adminOverview(){
     let storage = null; try { storage = await storageStatus(); } catch(e){}
     return { needs: Object.assign({}, needs, { storage }), kpi, series, funnel, saai, feed, recent, cover };
 }
+// «جديد منذ آخر مرة فتحت القسم» — لكل مشرف لحاله
+async function _adminFresh(aid){
+  const S = (await pool.query('SELECT k, seen_at FROM admin_seen WHERE admin_id=$1', [aid])).rows.reduce((o, x) => (o[x.k] = x.seen_at, o), {});
+  const since = k => S[k] || new Date(0);
+  const r = (await pool.query(`SELECT
+      (SELECT COUNT(*) FROM request_questions WHERE (answer IS NULL OR TRIM(answer)='') AND COALESCE(admin_archived,false)=false AND created_at > $1)::int AS questions,
+      (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flags,
+      (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flag_providers,
+      (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open' AND created_at > $3)::int AS bid_report_providers`,
+    [since('questions'), since('flags'), since('bidrep')])).rows[0];
+  return r;
+}
+app.post('/api/admin/seen', auth, adminOnly, async (req, res) => {
+  try { const k = String(req.body && req.body.k || ''); if (!['questions','flags','bidrep'].includes(k)) return res.status(400).json({ message: 'غير معروف' });
+    await pool.query('INSERT INTO admin_seen(admin_id,k,seen_at) VALUES($1,$2,NOW()) ON CONFLICT (admin_id,k) DO UPDATE SET seen_at=NOW()', [req.user.id, k]); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.get('/api/admin/overview', requirePermission('dashboard.view'), async (req, res) => {
-  try { res.json(await _adminOverview()); }
+  try { const o = await _adminOverview(); try { o.fresh = await _adminFresh(req.user.id); } catch(fe) { console.error('fresh:', fe.message); } res.json(o); }
   catch(e) { console.error('overview:', e.message); res.status(500).json({ message: 'تعذّر تحميل اللوحة' }); }
 });
 
