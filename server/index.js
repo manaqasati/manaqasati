@@ -3348,7 +3348,7 @@ app.post('/api/auth/resend-verification', auth, rateLimiter(6, 3600000), async (
 // الـ Client ID مو سري (يظهر في الصفحة أصلاً) — ونقدر نغيّره من Railway بمتغيّر GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '873217154410-ngnh5tn0n22g4vqb5m0qrhtecgru5oj1.apps.googleusercontent.com';
 // التطبيق (iOS/Android) يرسل توكن موجّه لـ Client خاص فيه — نقبله مع حق الموقع (كلها عامة مو سرية)
-const GOOGLE_NATIVE_IDS = [/* iOS client ID يتحط هنا */];
+const GOOGLE_NATIVE_IDS = ['873217154410-d1anvbi9ubldj0edmd6cj6u2492c1hch.apps.googleusercontent.com']; // iOS
 const GOOGLE_AUDS = [GOOGLE_CLIENT_ID, ...GOOGLE_NATIVE_IDS, ...String(process.env.GOOGLE_EXTRA_CLIENT_IDS || '').split(',').map(x => x.trim()).filter(Boolean)];
 // Apple: التوكن موجّه لـ Bundle ID حق التطبيق (وللموقع لاحقاً Services ID)
 const APPLE_AUDS = ['com.manaqasa.app', ...String(process.env.APPLE_EXTRA_AUDS || '').split(',').map(x => x.trim()).filter(Boolean)];
