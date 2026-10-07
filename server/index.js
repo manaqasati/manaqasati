@@ -3015,6 +3015,8 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_reminded_at TIMESTAMP`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(64)`);
       await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uq ON users(google_sub) WHERE google_sub IS NOT NULL`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub VARCHAR(80)`);
+      await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS users_apple_sub_uq ON users(apple_sub) WHERE apple_sub IS NOT NULL`);
       await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
@@ -3345,6 +3347,28 @@ app.post('/api/auth/resend-verification', auth, rateLimiter(6, 3600000), async (
 // ═══ الدخول/التسجيل بحساب Google ═══
 // الـ Client ID مو سري (يظهر في الصفحة أصلاً) — ونقدر نغيّره من Railway بمتغيّر GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '873217154410-ngnh5tn0n22g4vqb5m0qrhtecgru5oj1.apps.googleusercontent.com';
+// التطبيق (iOS/Android) يرسل توكن موجّه لـ Client خاص فيه — نقبله مع حق الموقع (كلها عامة مو سرية)
+const GOOGLE_NATIVE_IDS = [/* iOS client ID يتحط هنا */];
+const GOOGLE_AUDS = [GOOGLE_CLIENT_ID, ...GOOGLE_NATIVE_IDS, ...String(process.env.GOOGLE_EXTRA_CLIENT_IDS || '').split(',').map(x => x.trim()).filter(Boolean)];
+// Apple: التوكن موجّه لـ Bundle ID حق التطبيق (وللموقع لاحقاً Services ID)
+const APPLE_AUDS = ['com.manaqasa.app', ...String(process.env.APPLE_EXTRA_AUDS || '').split(',').map(x => x.trim()).filter(Boolean)];
+let _appleKeys = { at: 0, keys: [] };
+async function _verifyAppleToken(idToken){
+  if (!idToken || typeof idToken !== 'string' || idToken.length > 4096) return null;
+  if (process.env.GOOGLE_TEST_TOKENS === '1' && idToken.startsWith('test:')) { try { const t = JSON.parse(idToken.slice(5)); return { sub: String(t.sub), email: t.email ? String(t.email).toLowerCase() : null, name: t.name || '' }; } catch(_) { return null; } }
+  try {
+    const head = JSON.parse(Buffer.from(idToken.split('.')[0], 'base64url').toString());
+    if (Date.now() - _appleKeys.at > 6 * 3600000 || !_appleKeys.keys.find(k => k.kid === head.kid)) {
+      const r = await fetch('https://appleid.apple.com/auth/keys'); const j = await r.json(); _appleKeys = { at: Date.now(), keys: (j && j.keys) || [] };
+    }
+    const jwk = _appleKeys.keys.find(k => k.kid === head.kid); if (!jwk) return null;
+    const pem = require('crypto').createPublicKey({ key: jwk, format: 'jwk' }).export({ type: 'spki', format: 'pem' });
+    const t = jwt.verify(idToken, pem, { algorithms: ['RS256'], issuer: 'https://appleid.apple.com', audience: APPLE_AUDS });
+    if (!t || !t.sub) return null;
+    const ev = t.email_verified === true || t.email_verified === 'true';
+    return { sub: String(t.sub), email: (t.email && ev) ? String(t.email).trim().toLowerCase() : null, name: '' };
+  } catch(e) { console.error('apple verify:', e.message); return null; }
+}
 async function _verifyGoogleToken(idToken){
   if (!idToken || typeof idToken !== 'string' || idToken.length > 4096) return null;
   if (process.env.GOOGLE_TEST_TOKENS === '1' && idToken.startsWith('test:')) { try { const t = JSON.parse(idToken.slice(5)); return { sub: String(t.sub), email: String(t.email).toLowerCase(), name: t.name || '' }; } catch(_) { return null; } } // للاختبار المحلي فقط
@@ -3352,7 +3376,7 @@ async function _verifyGoogleToken(idToken){
     const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
     if (!r.ok) return null;
     const t = await r.json();
-    if (t.aud !== GOOGLE_CLIENT_ID) return null;
+    if (!GOOGLE_AUDS.includes(t.aud)) return null;
     if (!['accounts.google.com', 'https://accounts.google.com'].includes(t.iss)) return null;
     if (!t.exp || parseInt(t.exp) * 1000 < Date.now()) return null;
     if (!(t.email_verified === true || t.email_verified === 'true')) return null;
@@ -3362,42 +3386,60 @@ async function _verifyGoogleToken(idToken){
 }
 function _loginPayload(user){
   const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-  ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub'].forEach(k => delete user[k]);
+  ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub'].forEach(k => delete user[k]);
   return { user, token };
 }
 app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CLIENT_ID }));
+// 1) يرسل الـ credential اللي رجّعه زر Google: لو عنده حساب يدخل على طول، لو جديد يرجع signup_token لخطوة «أكمل بياناتك»
+// دخول/تسجيل عن طريق حساب خارجي (Google / Apple) — نفس المنطق للاثنين
+async function _socialLogin(res, provider, g){
+  const col = provider === 'apple' ? 'apple_sub' : 'google_sub';
+  let u = (await pool.query(`SELECT * FROM users WHERE ${col}=$1 LIMIT 1`, [g.sub])).rows[0];
+  if (!u && g.email) u = (await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY id LIMIT 1', [g.email])).rows[0];
+  if (u) {
+    if (u.is_active === false) return res.status(403).json({ message: 'الحساب موقوف' });
+    if (u.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور' });
+    // نربط الحساب، ولو بريده ما تفعّل نفعّله (Google/Apple أكّد إنه صاحب البريد)
+    const em = g.email || '';
+    await pool.query(`UPDATE users SET ${col}=COALESCE(${col},$2), last_active=NOW(),
+        email_verified_via=CASE WHEN COALESCE(email_verified,true)=false AND $3<>'' AND LOWER(email)=LOWER($3) THEN $4 ELSE email_verified_via END,
+        email_verified_at=CASE WHEN COALESCE(email_verified,true)=false AND $3<>'' AND LOWER(email)=LOWER($3) THEN NOW() ELSE email_verified_at END,
+        email_verified=CASE WHEN $3<>'' AND LOWER(email)=LOWER($3) THEN true ELSE email_verified END
+      WHERE id=$1`, [u.id, g.sub, em, provider]);
+    const fresh = (await pool.query('SELECT * FROM users WHERE id=$1', [u.id])).rows[0];
+    return res.json(Object.assign({ ok: true, linked: !u[col] }, _loginPayload(fresh)));
+  }
+  if (!g.email) return res.status(400).json({ message: 'ما وصلنا بريدك — جرّب مرة ثانية واختر «مشاركة البريد»، أو سجّل بالبريد' });
+  const signup_token = jwt.sign({ purpose: 'social_signup', provider, sub: g.sub, email: g.email, name: g.name }, JWT_SECRET, { expiresIn: '30m' });
+  res.json({ ok: true, need_profile: true, signup_token, email: g.email, name: g.name, provider });
+}
 // 1) يرسل الـ credential اللي رجّعه زر Google: لو عنده حساب يدخل على طول، لو جديد يرجع signup_token لخطوة «أكمل بياناتك»
 app.post('/api/auth/google', rateLimiter(20, 600000), async (req, res) => {
   try {
     const g = await _verifyGoogleToken(req.body && req.body.credential);
     if (!g) return res.status(401).json({ message: 'تعذّر التحقق من حساب Google — حاول مرة ثانية' });
-    let u = (await pool.query('SELECT * FROM users WHERE google_sub=$1 LIMIT 1', [g.sub])).rows[0];
-    if (!u) u = (await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY id LIMIT 1', [g.email])).rows[0];
-    if (u) {
-      if (u.is_active === false) return res.status(403).json({ message: 'الحساب موقوف' });
-      if (u.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور' });
-      // نربط الحساب بـ Google، ولو بريده ما تفعّل نفعّله (Google أكّد إنه صاحب البريد)
-      await pool.query(`UPDATE users SET google_sub=COALESCE(google_sub,$2), last_active=NOW(),
-          email_verified_via=CASE WHEN COALESCE(email_verified,true)=false AND LOWER(email)=LOWER($3) THEN 'google' ELSE email_verified_via END,
-          email_verified_at=CASE WHEN COALESCE(email_verified,true)=false AND LOWER(email)=LOWER($3) THEN NOW() ELSE email_verified_at END,
-          email_verified=CASE WHEN LOWER(email)=LOWER($3) THEN true ELSE email_verified END
-        WHERE id=$1`, [u.id, g.sub, g.email]);
-      const fresh = (await pool.query('SELECT * FROM users WHERE id=$1', [u.id])).rows[0];
-      return res.json(Object.assign({ ok: true, linked: !u.google_sub }, _loginPayload(fresh)));
-    }
-    const signup_token = jwt.sign({ purpose: 'google_signup', sub: g.sub, email: g.email, name: g.name }, JWT_SECRET, { expiresIn: '30m' });
-    res.json({ ok: true, need_profile: true, signup_token, email: g.email, name: g.name });
+    return _socialLogin(res, 'google', g);
   } catch(e) { console.error('google auth:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// نفس الشي لـ Apple (من تطبيق الآيفون) — الاسم يجي من التطبيق أول مرة بس
+app.post('/api/auth/apple', rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const g = await _verifyAppleToken(req.body && req.body.identity_token);
+    if (!g) return res.status(401).json({ message: 'تعذّر التحقق من حساب Apple — حاول مرة ثانية' });
+    g.name = _cleanTxt(String((req.body && req.body.name) || g.name || ''), 80);
+    return _socialLogin(res, 'apple', g);
+  } catch(e) { console.error('apple auth:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 // 2) «أكمل بياناتك» لأول دخول: نفس حقول التسجيل العادي (الجوال إلزامي) بدون كلمة مرور، والبريد مفعّل
 app.post('/api/auth/google/complete', rateLimiter(10, 600000), async (req, res) => {
   try {
     let p; try { p = jwt.verify(String(req.body && req.body.signup_token || ''), JWT_SECRET); } catch(_) { p = null; }
-    if (!p || p.purpose !== 'google_signup') return res.status(401).json({ message: 'انتهت الجلسة — اضغط «المتابعة بحساب Google» مرة ثانية' });
+    if (!p || (p.purpose !== 'google_signup' && p.purpose !== 'social_signup')) return res.status(401).json({ message: 'انتهت الجلسة — ارجع واضغط زر الدخول مرة ثانية' });
+    const prov = p.provider === 'apple' ? 'apple' : 'google', pcol = prov === 'apple' ? 'apple_sub' : 'google_sub';
     if (!req.body.phone || !String(req.body.phone).trim()) return res.status(400).json({ message: 'رقم الجوال مطلوب' });
-    const dup = (await pool.query('SELECT id FROM users WHERE google_sub=$1 OR LOWER(email)=LOWER($2) LIMIT 1', [p.sub, p.email])).rows[0];
-    if (dup) return res.status(400).json({ message: 'عندك حساب بهذا البريد — ارجع واضغط «المتابعة بحساب Google» وبيدخلك عليه' });
-    req._g = { sub: p.sub, email: p.email, name: p.name };
+    const dup = (await pool.query(`SELECT id FROM users WHERE ${pcol}=$1 OR LOWER(email)=LOWER($2) LIMIT 1`, [p.sub, p.email])).rows[0];
+    if (dup) return res.status(400).json({ message: 'عندك حساب بهذا البريد — ارجع واضغط زر الدخول وبيدخلك عليه' });
+    req._g = { sub: p.sub, email: p.email, name: p.name, provider: prov };
     return _registerHandler(req, res);
   } catch(e) { console.error('google complete:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -3508,7 +3550,7 @@ async function _registerHandler(req, res) {
     }catch(e){ console.error('lead match:', e.message); }
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-    if (req._g) { try { await pool.query("UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via='google', google_sub=$2 WHERE id=$1", [user.id, req._g.sub]); user.email_verified = true; } catch(ge) { console.error('google link:', ge.message); } }
+    if (req._g) { const _pv = req._g.provider === 'apple' ? 'apple' : 'google'; try { await pool.query(`UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via=$3, ${_pv}_sub=$2 WHERE id=$1`, [user.id, req._g.sub, _pv]); user.email_verified = true; } catch(ge) { console.error('social link:', ge.message); } }
     try {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${eEsc(name)}!`;

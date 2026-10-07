@@ -6047,8 +6047,8 @@ function _vsPaint(){
   _vsSave(); var box=document.getElementById('dash-vstats'), d=_VS; if(!box||!d)return; var R=_perRange();
   var sum=function(arr,f,role){return (arr||[]).filter(function(x){return !role||x.role===role;}).reduce(function(a,x){return a+(x[f]||0);},0);};
   var reg=sum(d.reg,'n'), ver=sum(d.reg,'ver'), un=sum(d.reg,'unver');
-  var V={link:0,code:0,google:0,admin:0,other:0}, mins=[], cnt=0; (d.via||[]).forEach(function(x){V[x.via]=(V[x.via]||0)+x.n; if(x.avg_min!=null){mins.push(x.avg_min*x.n);cnt+=x.n;}});
-  var vt=V.link+V.code+V.google+V.admin+V.other, avg=cnt?Math.round(mins.reduce(function(a,b){return a+b;},0)/cnt):null;
+  var V={link:0,code:0,google:0,apple:0,admin:0,other:0}, mins=[], cnt=0; (d.via||[]).forEach(function(x){V[x.via]=(V[x.via]||0)+x.n; if(x.avg_min!=null){mins.push(x.avg_min*x.n);cnt+=x.n;}});
+  var vt=V.link+V.code+V.google+V.apple+V.admin+V.other, avg=cnt?Math.round(mins.reduce(function(a,b){return a+b;},0)/cnt):null;
   var avgT=avg==null?'—':(avg<60?avg+' دقيقة':(avg<1440?Math.round(avg/60)+' ساعة':Math.round(avg/1440)+' يوم'));
   var pc=function(a,b){return b?Math.round(a/b*100):0;};
   var M={}; (d.mail||[]).forEach(function(x){M[x.status]=x.n;});
@@ -6062,7 +6062,7 @@ function _vsPaint(){
     +'<div class="vs-s" style="margin:-6px 0 12px">ℹ️ طريقة التفعيل (رابط / رمز / إدارة) تنحسب من تاريخ هالتحديث وطالع. والحسابات القديمة اللي سجّلت قبل نظام التفعيل تنحسب مفعّلة.</div>'
     +'<div class="ct2-g">'
       +'<div class="ct2-c"><div class="ct2-h">كيف فعّلوا؟ <span style="color:var(--muted);font-weight:700">('+esc(R.lbl)+' · '+fmtNum(vt)+')</span></div>'
-        +(vt?bar('🔗 ضغطوا رابط الإيميل',V.link,vt,'#1d4ed8')+bar('🔢 كتبوا الرمز',V.code,vt,'#7c3aed')+(V.google?bar('G سجّلوا بحساب Google',V.google,vt,'#16a34a'):'')+bar('🛠️ فعّلتهم الإدارة',V.admin,vt,'#f59e0b')+(V.other?bar('قبل بدء التتبّع',V.other,vt,'#94a3b8'):''):'<div class="vs-s">ما فيه تفعيل في هالفترة</div>')
+        +(vt?bar('🔗 ضغطوا رابط الإيميل',V.link,vt,'#1d4ed8')+bar('🔢 كتبوا الرمز',V.code,vt,'#7c3aed')+(V.google?bar('G سجّلوا بحساب Google',V.google,vt,'#16a34a'):'')+(V.apple?bar(' سجّلوا بحساب Apple',V.apple,vt,'#0f172a'):'')+bar('🛠️ فعّلتهم الإدارة',V.admin,vt,'#f59e0b')+(V.other?bar('قبل بدء التتبّع',V.other,vt,'#94a3b8'):''):'<div class="vs-s">ما فيه تفعيل في هالفترة</div>')
         +'<div class="ct2-h" style="margin-top:14px">حسب النوع <span style="color:var(--muted);font-weight:700">(فعّلوا من اللي سجّلوا)</span></div>'+role('client','👤 عملاء')+role('provider','🧰 مزوّدين')
       +'</div>'
       +'<div class="ct2-c"><div class="ct2-h">وش صار لإيميلات التفعيل؟ <span style="color:var(--muted);font-weight:700">('+fmtNum(mtot)+' شخص)</span></div>'
@@ -6111,12 +6111,12 @@ function _vsTabs(d,LR){ var seg=[['all','الكل'],['today','اليوم'],['yes
     +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':''); }
 function _vsDone(d){
   var V=d.verified||[], LR=_vsLRange();
-  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],google:['G حساب Google','#15803d','#dcfce7'],other:['فعّل قبل 6 أكتوبر','#64748b','#f1f5f9']};
+  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],google:['G حساب Google','#15803d','#dcfce7'],apple:[' حساب Apple','#0f172a','#e2e8f0'],other:['فعّل قبل 6 أكتوبر','#64748b','#f1f5f9']};
   var base=V.filter(function(u){return _vsF==='all'||u.role===_vsF;}), L=base.filter(function(u){return !_vsVia||u.via===_vsVia;});
   var C={}; base.forEach(function(u){C[u.via]=(C[u.via]||0)+1;});
   var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px">'+[['all','الكل',V.length],['client','عملاء',V.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',V.filter(function(u){return u.role==='provider';}).length]].map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';window._vsAll=false;_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="vs-s" style="align-self:center">فعّل عن طريق:</span>'+['','link','code','google','admin','other'].filter(function(k){return !k||C[k];}).map(function(k){var v=VIA[k];return '<button type="button" class="ct2-b'+(_vsVia===k?' pri':'')+'" onclick="_vsVia=\''+k+'\';window._vsAll=false;_vsPaint()">'+(k?v[0]+' '+C[k]:'الكل '+base.length)+'</button>';}).join('')+'</div>';
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="vs-s" style="align-self:center">فعّل عن طريق:</span>'+['','link','code','google','apple','admin','other'].filter(function(k){return !k||C[k];}).map(function(k){var v=VIA[k];return '<button type="button" class="ct2-b'+(_vsVia===k?' pri':'')+'" onclick="_vsVia=\''+k+'\';window._vsAll=false;_vsPaint()">'+(k?v[0]+' '+C[k]:'الكل '+base.length)+'</button>';}).join('')+'</div>';
   h+=(L.length?L.slice(0,window._vsAll?1000:15).map(function(u){var prov=u.role==='provider',v=VIA[u.via]||VIA.other,t=u.email_verified_at?_vsMins(u.created_at,u.email_verified_at):'';
       return '<div class="ct2-u"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
         +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span> <span class="ct2-pl" style="background:'+v[2]+';color:'+v[1]+'">'+v[0]+'</span>'+((u.projects||u.bids)?' <span class="ct2-pl" style="background:#dcfce7;color:#15803d">'+(prov?u.bids+' عرض':u.projects+' مشروع')+'</span>':'')+'</div>'

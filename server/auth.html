@@ -199,6 +199,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .ch-note{text-align:center;font-size:12px;color:var(--muted);font-weight:700;margin-top:4px;line-height:1.6}
 .ch-back{display:flex;align-items:center;gap:6px;margin:14px 20px 0;background:none;border:0;color:var(--accent);font-family:inherit;font-weight:900;font-size:13px;cursor:pointer;padding:0}
 #ch-al:empty,#gc-al:empty{display:none}
+.nat-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border-radius:999px;padding:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+.nat-apple{background:#000;color:#fff;border:1.5px solid #000}.nat-google{background:#fff;color:#1f1f1f;border:1.5px solid #dadce0}
+.nat-google .ch-G::after{inset:4px;background:#fff}
 .gc-steps{display:flex;gap:6px;justify-content:center;margin-bottom:10px}.gc-steps i{width:28px;height:5px;border-radius:9px;background:var(--accent)}
 .gc-chip{display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:10px 12px;margin:12px 0 14px}
 .gc-chip b{display:block;font-size:13.5px;color:#14532d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}.gc-chip small{display:block;font-size:11.5px;color:#15803d;font-weight:800;margin-top:2px}
@@ -909,7 +912,8 @@ function _gFail(){ _gOK=false; var b=document.getElementById('g-btn'); if(b)b.in
 function _gInit(){
   var qs=new URLSearchParams(location.search);
   // التطبيق (Google يمنع الدخول من داخل نافذة التطبيق) + روابط خاصة (استعادة/دخول سحري/الكرت) → النموذج العادي مباشرة
-  if(_inApp()||qs.get('reset')||qs.get('magic')||qs.get('t')||qs.get('card')){ _views('form'); return; }
+  if(qs.get('reset')||qs.get('magic')||qs.get('t')||qs.get('card')){ _views('form'); return; }
+  if(_inApp()){ _nativeInit(); return; }
   var pref='ch'; try{ pref=sessionStorage.getItem('auth_view')||'ch'; }catch(e){}
   _gOK=true; _views(pref==='form'?'form':'ch');
   var to=setTimeout(function(){ if(!(window.google&&google.accounts&&google.accounts.id))_gFail(); },8000);
@@ -928,14 +932,40 @@ function _gRender(){ var b=document.getElementById('g-btn'); if(!b||!(window.goo
   var w=Math.max(220,Math.min(400,(b.clientWidth||b.parentNode.clientWidth||320)));
   b.innerHTML=''; google.accounts.id.renderButton(b,{type:'standard',theme:'outline',size:'large',shape:'pill',text:'continue_with',logo_alignment:'center',width:w,locale:'ar'}); }
 window.addEventListener('resize',function(){ clearTimeout(window._gRz); window._gRz=setTimeout(_gRender,300); });
+// ═══ داخل التطبيق: الدخول يتم من التطبيق نفسه (Google يمنعه داخل الصفحة) — النسخ القديمة من التطبيق تشوف النموذج العادي ═══
+var _NA=[];
+function _nativeInit(){
+  _NA=(window.__NATIVE_AUTH__&&window.__NATIVE_AUTH__.length)?window.__NATIVE_AUTH__:[];
+  if(!_NA.length){ _views('form'); return; }
+  _gOK=true; var ap=_NA.indexOf('apple')>=0, go=_NA.indexOf('google')>=0;
+  var t=document.querySelector('#ch-view .ch-opt.rec .ch-tx'); if(t)t.innerHTML='<b>'+(go&&ap?'بحساب Google أو Apple':(ap?'بحساب Apple':'بحساب Google'))+' <span class="ch-badge">الأسرع</span></b><small>ضغطة وحدة — وبريدك مفعّل على طول بدون رمز</small>';
+  var G=document.querySelector('#ch-view .ch-G'); if(G&&ap&&!go)G.style.display='none';
+  var b=document.getElementById('g-btn'); b.style.flexDirection='column'; b.style.gap='10px'; b.style.alignItems='stretch';
+  b.innerHTML=(ap?'<button type="button" class="nat-btn nat-apple" onclick="_nativeGo(\'apple\')"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.34-3.55zM14.18 6.13c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23z"/></svg>المتابعة باستخدام Apple</button>':'')
+    +(go?'<button type="button" class="nat-btn nat-google" onclick="_nativeGo(\'google\')"><span class="ch-G" style="width:18px;height:18px"></span>المتابعة باستخدام Google</button>':'');
+  var pref='ch'; try{ pref=sessionStorage.getItem('auth_view')||'ch'; }catch(e){}
+  _views(pref==='form'?'form':'ch');
+}
+var _natBusy=false;
+function _nativeGo(p){ if(_natBusy)return; _natBusy=true; setTimeout(function(){_natBusy=false;},4000);
+  setAl(document.getElementById('ch-al'),'جاري فتح '+(p==='apple'?'Apple':'Google')+'...','ok');
+  try{ window.ReactNativeWebView.postMessage(JSON.stringify({type:'NATIVE_SIGNIN',provider:p})); }catch(e){ setAl(document.getElementById('ch-al'),'حدّث التطبيق عشان تقدر تدخل بهالطريقة','err'); } }
+// التطبيق يرجّع النتيجة هنا
+window.__onNativeSignIn=function(r){ _natBusy=false; var al=document.getElementById('ch-al');
+  if(!r||r.cancelled){ clearAl(); if(al){al.textContent='';al.className='al';} return; }
+  if(r.error||!r.token){ setAl(al,r.error||'تعذّر الدخول — حاول مرة ثانية','err'); return; }
+  setAl(al,'جاري الدخول...','ok');
+  var isA=r.provider==='apple';
+  apiFetch(isA?'/api/auth/apple':'/api/auth/google',{method:'POST',body:JSON.stringify(isA?{identity_token:r.token,name:r.name||''}:{credential:r.token})}).then(_socialResp).catch(function(){ setAl(al,'تعذر الاتصال بالسيرفر','err'); });
+};
+function _socialResp(d){ var al=document.getElementById('ch-al');
+  if(d&&d.token){ _authDone(d,'/api/auth/social'); return; }
+  if(d&&d.need_profile){ _gcOpen(d); return; }
+  setAl(al,(d&&d.message)||'تعذّر الدخول','err'); }
 function _gCb(resp){
   var al=document.getElementById('ch-al'); if(!resp||!resp.credential){ setAl(al,'ما تم الدخول بحساب Google — حاول مرة ثانية','err'); return; }
   setAl(al,'جاري الدخول...','ok');
-  apiFetch('/api/auth/google',{method:'POST',body:JSON.stringify({credential:resp.credential})}).then(function(d){
-    if(d&&d.token){ _authDone(d,'/api/auth/google'); return; }
-    if(d&&d.need_profile){ _gcOpen(d); return; }
-    setAl(al,(d&&d.message)||'تعذّر الدخول بحساب Google','err');
-  }).catch(function(){ setAl(al,'تعذر الاتصال بالسيرفر','err'); });
+  apiFetch('/api/auth/google',{method:'POST',body:JSON.stringify({credential:resp.credential})}).then(_socialResp).catch(function(){ setAl(al,'تعذر الاتصال بالسيرفر','err'); });
 }
 // خطوة «أكمل بياناتك»
 (function(){ var s=document.getElementById('gc-city'); if(s&&typeof CITIES!=='undefined')CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o);}); })();
@@ -944,6 +974,7 @@ function _gcOpen(d){
   _gTok=d.signup_token; _gSpecs=[]; _gcFillSpecs(); _gcSpecRender();
   var nm=String(d.name||'').trim();
   document.getElementById('gc-em').textContent=d.email||'';
+  var sm=document.querySelector('.gc-chip small'); if(sm)sm.textContent='✓ بريدك مفعّل من '+(d.provider==='apple'?'Apple':'Google')+' — ما تحتاج رمز';
   document.getElementById('gc-av').textContent=(nm||d.email||'؟').charAt(0).toUpperCase();
   document.getElementById('gc-hi').textContent='أهلاً'+(nm?' '+nm.split(' ')[0]:'')+' 👋 باقي خطوة وحدة';
   document.getElementById('gc-name').value=nm;
