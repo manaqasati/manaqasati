@@ -180,6 +180,33 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .works-add{width:100%;padding:11px;background:var(--accent-light);color:var(--accent2);border:1px dashed var(--accent);border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif}
 .works-add:hover{background:var(--p-mid)}
 
+
+/* ═══ الدخول بحساب Google: شاشة الاختيار + أكمل بياناتك ═══ */
+.ch-view{padding:22px 20px 18px}
+.ch-hi{font-family:Cairo,sans-serif;font-weight:900;font-size:21px;color:var(--ink);text-align:center;line-height:1.5}
+.ch-sub{text-align:center;font-size:13px;color:var(--muted);font-weight:700;margin:4px 0 14px}
+.ch-opt{display:flex;flex-direction:column;gap:12px;width:100%;border:1.5px solid var(--border2);border-radius:18px;padding:14px;background:var(--white);margin-bottom:12px;font-family:inherit;text-align:right;color:var(--ink)}
+.ch-opt.rec{border-color:#86efac;background:#f0fdf4}
+.ch-mail{flex-direction:row;align-items:center;cursor:pointer;transition:border-color .15s}.ch-mail:hover{border-color:var(--accent)}
+.ch-top{display:flex;align-items:center;gap:12px}
+.ch-tx{flex:1;min-width:0}.ch-tx b{display:flex;align-items:center;gap:7px;font-size:15.5px;font-weight:900}.ch-tx small{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:3px;line-height:1.5}
+.ch-badge{font-size:10.5px;font-weight:900;border-radius:999px;padding:2px 9px;background:#16a34a;color:#fff}
+.ch-G{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0);position:relative}.ch-G::after{content:'';position:absolute;inset:8px;background:#f0fdf4;border-radius:50%}
+.ch-ic{width:32px;height:32px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ch-go{color:var(--hint);font-weight:900;font-size:18px}
+.g-btn{display:flex;justify-content:center;min-height:44px;align-items:center}
+.g-wait{font-size:12.5px;color:var(--muted);font-weight:700;text-align:center}
+.ch-note{text-align:center;font-size:12px;color:var(--muted);font-weight:700;margin-top:4px;line-height:1.6}
+.ch-back{display:flex;align-items:center;gap:6px;margin:14px 20px 0;background:none;border:0;color:var(--accent);font-family:inherit;font-weight:900;font-size:13px;cursor:pointer;padding:0}
+#ch-al:empty,#gc-al:empty{display:none}
+.gc-steps{display:flex;gap:6px;justify-content:center;margin-bottom:10px}.gc-steps i{width:28px;height:5px;border-radius:9px;background:var(--accent)}
+.gc-chip{display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:10px 12px;margin:12px 0 14px}
+.gc-chip b{display:block;font-size:13.5px;color:#14532d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}.gc-chip small{display:block;font-size:11.5px;color:#15803d;font-weight:800;margin-top:2px}
+.gc-av{width:38px;height:38px;border-radius:50%;background:#7c3aed;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-family:Cairo,sans-serif;flex-shrink:0}
+.gc-hint{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:5px}
+#gc-view .role{cursor:pointer}
+[data-theme="dark"] .ch-opt.rec,[data-theme="dark"] .gc-chip{background:rgba(22,163,74,.1);border-color:rgba(22,163,74,.35)}[data-theme="dark"] .ch-G::after{background:#13241b}
+[data-theme="dark"] .gc-chip b{color:#bbf7d0}
 </style>
 <script src="/track.js?v=2"></script>
 </head>
@@ -204,6 +231,49 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
     <div class="hero-tag"><div class="hero-tag-dot"></div><span id="hd-s">سجّل دخولك لمتابعة مشاريعك</span></div>
   </div>
   <div class="auth-card">
+    <!-- شاشة الاختيار: Google (الأسرع) أو البريد/الجوال -->
+    <div id="ch-view" class="ch-view" style="display:none">
+      <div class="ch-hi">أهلاً بك 👋</div>
+      <div class="ch-sub">ادخل أو سجّل حساب جديد بطريقة وحدة من هذي</div>
+      <div class="al" id="ch-al"></div>
+      <div class="ch-opt rec">
+        <div class="ch-top"><span class="ch-G" aria-hidden="true"></span><div class="ch-tx"><b>بحساب Google <span class="ch-badge">الأسرع</span></b><small>ضغطة وحدة — وبريدك مفعّل على طول بدون رمز</small></div></div>
+        <div id="g-btn" class="g-btn"><div class="g-wait">جاري تجهيز زر Google...</div></div>
+      </div>
+      <button type="button" class="ch-opt ch-mail" onclick="_chForm()">
+        <span class="ch-ic">✉️</span><span class="ch-tx"><b>بالبريد أو الجوال</b><small>الدخول أو إنشاء حساب بكلمة مرور — يوصلك رمز تفعيل</small></span><span class="ch-go">‹</span>
+      </button>
+      <div class="ch-note">عندك حساب بنفس بريد Google؟ يدخلك عليه مباشرة</div>
+    </div>
+    <!-- خطوة «أكمل بياناتك» لأول دخول بـ Google -->
+    <div id="gc-view" style="display:none">
+      <div class="auth-body">
+        <div class="gc-steps"><i></i><i></i></div>
+        <div class="ch-hi" id="gc-hi">أهلاً 👋 باقي خطوة وحدة</div>
+        <div class="al" id="gc-al"></div>
+        <div class="gc-chip"><span class="gc-av" id="gc-av">؟</span><div style="min-width:0"><b id="gc-em" dir="ltr"></b><small>✓ بريدك مفعّل من Google — ما تحتاج رمز</small></div></div>
+        <div class="fg"><label>وش تبي تسوي في مناقصة؟</label>
+          <div class="roles" style="display:grid">
+            <div class="role on" id="gc-rc-c" onclick="_gcRole('client')"><div class="role-nm">🏠 عندي مشروع</div><div class="role-ds">أنشر وأستقبل عروض</div></div>
+            <div class="role" id="gc-rc-p" onclick="_gcRole('provider')"><div class="role-nm">🧰 أنا مزوّد</div><div class="role-ds">أقدّم عروض على المشاريع</div></div>
+          </div>
+        </div>
+        <div class="fg"><label id="gc-lbl-name">الاسم الكامل <span style="color:var(--red)">*</span></label><input id="gc-name" class="fi" type="text" placeholder="محمد أحمد العمري"></div>
+        <div class="fg"><label>رقم الجوال <span style="color:var(--red)">*</span></label><input id="gc-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10"><div class="gc-hint" id="gc-ph-hint">عشان المزوّدين يتواصلون معك على مشروعك</div></div>
+        <div class="fg"><label>المدينة <span style="color:var(--red)">*</span></label><select id="gc-city" class="fi-sel"><option value="">اختر مدينتك</option></select></div>
+        <div class="specs-wrap" id="gc-specs" style="display:none">
+          <div class="specs-hd"><div class="specs-hd-t">تخصصاتك <span style="color:var(--red)">*</span></div><span class="specs-count" id="gc-specs-count">0/5</span></div>
+          <div class="specs-hint">اختر <strong>من 1 إلى 5 تخصصات</strong> — توصلك إشعارات المشاريع المطابقة</div>
+          <select id="gc-spec-sel" class="fi-sel" onchange="_gcSpecAdd()"><option value="">أضف تخصصاً...</option></select>
+          <div class="specs-grid" id="gc-spec-chips" style="margin-top:9px"></div>
+        </div>
+        <button class="btn-submit" id="gc-btn" onclick="_gcSubmit()"><span id="gc-btn-t">ابدأ الآن ←</span></button>
+        <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px;line-height:1.6">بالمتابعة توافق على <a href="terms.html" style="color:var(--gold-d);font-weight:700;text-decoration:none">شروط الاستخدام</a></p>
+        <div style="text-align:center;margin-top:6px"><button class="link-btn" onclick="_chShow()">رجوع</button></div>
+      </div>
+    </div>
+    <div id="form-view">
+    <button type="button" class="ch-back" id="ch-back" style="display:none" onclick="_chShow()">‹ الدخول بحساب Google</button>
     <div class="auth-tabs">
       <button class="auth-tab on" onclick="setMode('login')">تسجيل الدخول</button>
       <button class="auth-tab" onclick="setMode('register')">إنشاء حساب</button>
@@ -334,6 +404,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
       <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px;display:none;line-height:1.6" id="note-reg">
         بالتسجيل توافق على <a href="terms.html" style="color:var(--gold-d);font-weight:700;text-decoration:none">شروط الاستخدام</a>
       </p>
+    </div>
     </div>
     <div class="trust-row">
       <div class="trust-item"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>آمن 100%</div>
@@ -654,55 +725,7 @@ async function doSubmit(){
       var d=await apiFetch(url,{method:'POST',body:JSON.stringify(body)});
     }
     if(d.token){
-      localStorage.setItem('token',d.token);
-      localStorage.setItem('user',JSON.stringify(d.user));
-      _notifyMobileApp(d.token, d.user);
-      if(window.track && /\/register/.test(url)){
-        track(((d.user&&d.user.role)==='provider') ? 'RegisterProvider' : 'RegisterClient');
-      }
-      setAl(null,'تم بنجاح! جاري التحويل...','ok');
-      setTimeout(function(){
-        var rl=d.user.role;
-        // تحقق من redirect بعد تسجيل الدخول
-        var params=new URLSearchParams(location.search);
-        var redir=params.get('redirect');
-        var provId=params.get('provider_id');
-        if(redir==='msg' && provId){
-          try{ localStorage.setItem('pending_contact_provider', provId); }catch(e){}
-          if(rl==='client')         location.href='dashboard-client.html';
-          else if(rl==='provider')  location.href='dashboard-provider.html';
-          else                      location.href='dashboard-admin.html';
-        } else if(redir==='req'){
-          var reqId2=params.get('request_id');
-          if(reqId2) try{ localStorage.setItem('open_chat_request', reqId2); }catch(e){}
-          if(rl==='provider')    location.href='dashboard-provider.html';
-          else if(rl==='client') location.href='dashboard-client.html';
-          else                   location.href='dashboard-admin.html';
-        } else if(redir==='bid'){
-          var bidReqId=params.get('request_id');
-          if(bidReqId) try{ localStorage.setItem('mnq_auto_bid', bidReqId); localStorage.setItem('pending_bid_request', bidReqId); }catch(e){}
-          if(rl==='provider')    location.href='dashboard-provider.html';
-          else                   location.href='dashboard-client.html';
-        } else if(redir==='postdraft'){
-          // نشر الطلب المحفوظ كمسودّة (تدفّق: انشر أولاً ← سجّل ← يُرسل تلقائياً)
-          if(rl==='client')      location.href='dashboard-client.html?postdraft=1';
-          else if(rl==='provider') location.href='dashboard-provider.html';
-          else                   location.href='dashboard-admin.html';
-        } else {
-          // ارجع للصفحة السابقة إذا موجودة
-          var _back=null;
-          try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
-          if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
-            location.href=_back;
-          } else {
-            var _m=''; try{_m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'')||'';}catch(e){}
-            var _eff=(rl==='admin')?'admin':((_m==='provider'&&(rl==='provider'||(d.user&&d.user.can_provide)))?'provider':((_m==='client'&&(rl==='client'||(d.user&&d.user.can_request)))?'client':rl));
-            if(_eff==='admin') location.href='dashboard-admin.html';
-            else if(_eff==='provider') location.href='dashboard-provider.html';
-            else location.href='dashboard-client.html';
-          }
-        }
-      },900);
+      _authDone(d,url);
     } else {
       var errMsg=d.message||'البيانات غير صحيحة';
       if(METHOD==='phone'&&MODE==='login'){
@@ -732,6 +755,8 @@ document.addEventListener('keydown',function(e){
   var rp=document.getElementById('reset-pg');
   if(rp&&rp.style.display!=='none'){ doReset(); return; }  // شاشة الاستعادة → تعيين كلمة المرور
   if(_submitting)return;
+  var _gv=document.getElementById('gc-view'); if(_gv&&_gv.style.display!=='none'){ _gcSubmit(); return; }
+  var _cv=document.getElementById('ch-view'); if(_cv&&_cv.style.display!=='none')return;
   doSubmit();
 });
 
@@ -818,6 +843,141 @@ function _renderRegWorks(){
   }).join('');
 }
 function _delRegWork(i){_regWorksData.splice(i,1);_renderRegWorks();}
+</script>
+
+<script>
+// ═══ نجاح الدخول/التسجيل (مشترك بين البريد و Google) ═══
+function _curAl(){ var g=document.getElementById('gc-view'), c=document.getElementById('ch-view'); if(g&&g.style.display!=='none')return document.getElementById('gc-al'); if(c&&c.style.display!=='none')return document.getElementById('ch-al'); return document.getElementById('al'); }
+function _authDone(d,url){
+      localStorage.setItem('token',d.token);
+      localStorage.setItem('user',JSON.stringify(d.user));
+      _notifyMobileApp(d.token, d.user);
+      if(window.track && (/\/register/.test(url)||/google\/complete/.test(url))){
+        track(((d.user&&d.user.role)==='provider') ? 'RegisterProvider' : 'RegisterClient');
+      }
+      setAl(_curAl(),'تم بنجاح! جاري التحويل...','ok');
+      setTimeout(function(){
+        var rl=d.user.role;
+        // تحقق من redirect بعد تسجيل الدخول
+        var params=new URLSearchParams(location.search);
+        var redir=params.get('redirect');
+        var provId=params.get('provider_id');
+        if(redir==='msg' && provId){
+          try{ localStorage.setItem('pending_contact_provider', provId); }catch(e){}
+          if(rl==='client')         location.href='dashboard-client.html';
+          else if(rl==='provider')  location.href='dashboard-provider.html';
+          else                      location.href='dashboard-admin.html';
+        } else if(redir==='req'){
+          var reqId2=params.get('request_id');
+          if(reqId2) try{ localStorage.setItem('open_chat_request', reqId2); }catch(e){}
+          if(rl==='provider')    location.href='dashboard-provider.html';
+          else if(rl==='client') location.href='dashboard-client.html';
+          else                   location.href='dashboard-admin.html';
+        } else if(redir==='bid'){
+          var bidReqId=params.get('request_id');
+          if(bidReqId) try{ localStorage.setItem('mnq_auto_bid', bidReqId); localStorage.setItem('pending_bid_request', bidReqId); }catch(e){}
+          if(rl==='provider')    location.href='dashboard-provider.html';
+          else                   location.href='dashboard-client.html';
+        } else if(redir==='postdraft'){
+          // نشر الطلب المحفوظ كمسودّة (تدفّق: انشر أولاً ← سجّل ← يُرسل تلقائياً)
+          if(rl==='client')      location.href='dashboard-client.html?postdraft=1';
+          else if(rl==='provider') location.href='dashboard-provider.html';
+          else                   location.href='dashboard-admin.html';
+        } else {
+          // ارجع للصفحة السابقة إذا موجودة
+          var _back=null;
+          try{_back=localStorage.getItem('_after_login');localStorage.removeItem('_after_login');}catch(e){}
+          if(_back&&(_back.startsWith('/')||_back.startsWith('http'))){
+            location.href=_back;
+          } else {
+            var _m=''; try{_m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'')||'';}catch(e){}
+            var _eff=(rl==='admin')?'admin':((_m==='provider'&&(rl==='provider'||(d.user&&d.user.can_provide)))?'provider':((_m==='client'&&(rl==='client'||(d.user&&d.user.can_request)))?'client':rl));
+            if(_eff==='admin') location.href='dashboard-admin.html';
+            else if(_eff==='provider') location.href='dashboard-provider.html';
+            else location.href='dashboard-client.html';
+          }
+        }
+      },900);
+}
+// ═══ الدخول بحساب Google ═══
+var _gOK=false, _gTok=null, _gRoleV='client', _gSpecs=[];
+function _inApp(){ try{ return !!window.ReactNativeWebView || /ManaqasaApp|; wv\)/i.test(navigator.userAgent||''); }catch(e){ return false; } }
+function _views(v){ var m={ch:'ch-view',form:'form-view',gc:'gc-view'}; Object.keys(m).forEach(function(k){var e=document.getElementById(m[k]); if(e)e.style.display=(k===v)?'block':'none';}); var hb=document.getElementById('ch-back'); if(hb)hb.style.display=(v==='form'&&_gOK)?'flex':'none'; }
+function _chShow(){ if(!_gOK){ _chForm(); return; } _views('ch'); try{sessionStorage.setItem('auth_view','ch');}catch(e){} }
+function _chForm(){ _views('form'); try{sessionStorage.setItem('auth_view','form');}catch(e){} }
+function _gFail(){ _gOK=false; var b=document.getElementById('g-btn'); if(b)b.innerHTML='<div class="g-wait">زر Google ما اشتغل حالياً — استخدم البريد أو الجوال</div>'; }
+function _gInit(){
+  var qs=new URLSearchParams(location.search);
+  // التطبيق (Google يمنع الدخول من داخل نافذة التطبيق) + روابط خاصة (استعادة/دخول سحري/الكرت) → النموذج العادي مباشرة
+  if(_inApp()||qs.get('reset')||qs.get('magic')||qs.get('t')||qs.get('card')){ _views('form'); return; }
+  var pref='ch'; try{ pref=sessionStorage.getItem('auth_view')||'ch'; }catch(e){}
+  _gOK=true; _views(pref==='form'?'form':'ch');
+  var to=setTimeout(function(){ if(!(window.google&&google.accounts&&google.accounts.id))_gFail(); },8000);
+  fetch(API+'/api/auth/google/config').then(function(r){return r.json();}).then(function(c){
+    if(!c||!c.client_id){ clearTimeout(to); _gFail(); return; }
+    var sc=document.createElement('script'); sc.src='https://accounts.google.com/gsi/client'; sc.async=true; sc.defer=true;
+    sc.onload=function(){ clearTimeout(to); try{
+      google.accounts.id.initialize({ client_id:c.client_id, callback:_gCb, ux_mode:'popup', auto_select:false, cancel_on_tap_outside:true, context:'signin' });
+      _gRender();
+    }catch(e){ _gFail(); } };
+    sc.onerror=function(){ clearTimeout(to); _gFail(); };
+    document.head.appendChild(sc);
+  }).catch(function(){ clearTimeout(to); _gFail(); });
+}
+function _gRender(){ var b=document.getElementById('g-btn'); if(!b||!(window.google&&google.accounts&&google.accounts.id))return;
+  var w=Math.max(220,Math.min(400,(b.clientWidth||b.parentNode.clientWidth||320)));
+  b.innerHTML=''; google.accounts.id.renderButton(b,{type:'standard',theme:'outline',size:'large',shape:'pill',text:'continue_with',logo_alignment:'center',width:w,locale:'ar'}); }
+window.addEventListener('resize',function(){ clearTimeout(window._gRz); window._gRz=setTimeout(_gRender,300); });
+function _gCb(resp){
+  var al=document.getElementById('ch-al'); if(!resp||!resp.credential){ setAl(al,'ما تم الدخول بحساب Google — حاول مرة ثانية','err'); return; }
+  setAl(al,'جاري الدخول...','ok');
+  apiFetch('/api/auth/google',{method:'POST',body:JSON.stringify({credential:resp.credential})}).then(function(d){
+    if(d&&d.token){ _authDone(d,'/api/auth/google'); return; }
+    if(d&&d.need_profile){ _gcOpen(d); return; }
+    setAl(al,(d&&d.message)||'تعذّر الدخول بحساب Google','err');
+  }).catch(function(){ setAl(al,'تعذر الاتصال بالسيرفر','err'); });
+}
+// خطوة «أكمل بياناتك»
+(function(){ var s=document.getElementById('gc-city'); if(s&&typeof CITIES!=='undefined')CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o);}); })();
+function _gcFillSpecs(){ var s=document.getElementById('gc-spec-sel'); if(!s)return; s.innerHTML='<option value="">أضف تخصصاً...</option>'+(CATS||[]).map(function(c){return '<option>'+esc(c)+'</option>';}).join(''); }
+function _gcOpen(d){
+  _gTok=d.signup_token; _gSpecs=[]; _gcFillSpecs(); _gcSpecRender();
+  var nm=String(d.name||'').trim();
+  document.getElementById('gc-em').textContent=d.email||'';
+  document.getElementById('gc-av').textContent=(nm||d.email||'؟').charAt(0).toUpperCase();
+  document.getElementById('gc-hi').textContent='أهلاً'+(nm?' '+nm.split(' ')[0]:'')+' 👋 باقي خطوة وحدة';
+  document.getElementById('gc-name').value=nm;
+  _gcRole(typeof ROLE!=='undefined'&&ROLE==='provider'?'provider':'client');
+  _views('gc'); window.scrollTo({top:0,behavior:'smooth'});
+}
+function _gcRole(r){ _gRoleV=r; var p=r==='provider';
+  document.getElementById('gc-rc-c').classList.toggle('on',!p); document.getElementById('gc-rc-p').classList.toggle('on',p);
+  document.getElementById('gc-specs').style.display=p?'block':'none';
+  document.getElementById('gc-lbl-name').innerHTML=(p?'الاسم أو اسم النشاط التجاري':'الاسم الكامل')+' <span style="color:var(--red)">*</span>';
+  document.getElementById('gc-name').placeholder=p?'محمد العمري أو مؤسسة العمري للمقاولات':'محمد أحمد العمري';
+  document.getElementById('gc-ph-hint').textContent=p?'عشان العملاء يتواصلون معك لما يختارون عرضك':'عشان المزوّدين يتواصلون معك على مشروعك'; }
+function _gcSpecRender(){ var b=document.getElementById('gc-spec-chips'); if(b)b.innerHTML=_gSpecs.map(function(c){return '<span class="spec-pill on" style="cursor:default">'+esc(c)+' <span data-c="'+esc(c)+'" onclick="_gcSpecDel(this.getAttribute(\'data-c\'))" style="cursor:pointer;font-weight:900;margin-inline-start:4px">×</span></span>';}).join('');
+  var el=document.getElementById('gc-specs-count'); if(el){el.textContent=_gSpecs.length+'/5'; el.className=_gSpecs.length?'specs-count done':'specs-count';} }
+function _gcSpecAdd(){ var s=document.getElementById('gc-spec-sel'), c=s.value; s.value=''; if(!c)return; if(_gSpecs.length>=5){ setAl(document.getElementById('gc-al'),'الحد الأقصى 5 تخصصات','err'); return; } if(_gSpecs.indexOf(c)<0){_gSpecs.push(c);_gcSpecRender();} }
+function _gcSpecDel(c){ _gSpecs=_gSpecs.filter(function(x){return x!==c;}); _gcSpecRender(); }
+var _gcBusy=false;
+function _gcSubmit(){ if(_gcBusy)return; var al=document.getElementById('gc-al');
+  var name=getV('gc-name'), ph=getV('gc-phone'), city=getV('gc-city');
+  if(!name){ setAl(al,'اكتب اسمك','err'); return; }
+  if(!/^05\d{8}$/.test(ph.replace(/\s/g,''))){ setAl(al,'رقم الجوال لازم يبدأ بـ 05 ويكون 10 أرقام','err'); return; }
+  if(!city){ setAl(al,'اختر مدينتك','err'); return; }
+  if(_gRoleV==='provider'&&!_gSpecs.length){ setAl(al,'اختر تخصص واحد على الأقل','err'); document.getElementById('gc-specs').scrollIntoView({behavior:'smooth',block:'center'}); return; }
+  var body={signup_token:_gTok,role:_gRoleV,name:name,phone:fmtPhone(ph),city:city};
+  try{var _ref=localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
+  if(window._cardToken)body.card_token=window._cardToken;
+  if(_gRoleV==='provider'){ body.specialties=_gSpecs.slice(); body.notify_categories=_gSpecs.slice(); body.business_name=name; }
+  _gcBusy=true; var bt=document.getElementById('gc-btn'); bt.disabled=true; document.getElementById('gc-btn-t').textContent='جاري إنشاء الحساب...';
+  apiFetch('/api/auth/google/complete',{method:'POST',body:JSON.stringify(body)}).then(function(d){
+    if(d&&d.token){ _authDone(d,'/api/auth/google/complete'); return; }
+    setAl(al,(d&&d.message)||'تعذّر إنشاء الحساب','err');
+  }).catch(function(){ setAl(al,'تعذر الاتصال بالسيرفر','err'); }).finally(function(){ _gcBusy=false; bt.disabled=false; document.getElementById('gc-btn-t').textContent='ابدأ الآن ←'; });
+}
+_gInit();
 </script>
 </body>
 </html>
