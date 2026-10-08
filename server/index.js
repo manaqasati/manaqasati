@@ -128,13 +128,13 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 // المصادر المسموحة (خطوط جوجل، أدوات التحليل والبكسلات، مكتبات CDN، خرائط جوجل، صور R2/Cloudinary)
 const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client",
+  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client https://appleid.cdn-apple.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' wss: https://accounts.google.com/gsi/ https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
-  "frame-src 'self' https://accounts.google.com https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
+  "connect-src 'self' wss: https://accounts.google.com/gsi/ https://appleid.apple.com https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
+  "frame-src 'self' https://accounts.google.com https://appleid.apple.com https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -3350,8 +3350,9 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '873217154410-ngnh5tn0n
 // التطبيق (iOS/Android) يرسل توكن موجّه لـ Client خاص فيه — نقبله مع حق الموقع (كلها عامة مو سرية)
 const GOOGLE_NATIVE_IDS = ['873217154410-d1anvbi9ubldj0edmd6cj6u2492c1hch.apps.googleusercontent.com']; // iOS
 const GOOGLE_AUDS = [GOOGLE_CLIENT_ID, ...GOOGLE_NATIVE_IDS, ...String(process.env.GOOGLE_EXTRA_CLIENT_IDS || '').split(',').map(x => x.trim()).filter(Boolean)];
-// Apple: التوكن موجّه لـ Bundle ID حق التطبيق (وللموقع لاحقاً Services ID)
-const APPLE_AUDS = ['com.manaqasa.app', ...String(process.env.APPLE_EXTRA_AUDS || '').split(',').map(x => x.trim()).filter(Boolean)];
+// Apple: التوكن موجّه لـ Bundle ID حق التطبيق، أو Services ID حق الموقع
+const APPLE_WEB_ID = process.env.APPLE_WEB_ID || 'com.manaqasa.web';
+const APPLE_AUDS = ['com.manaqasa.app', APPLE_WEB_ID, ...String(process.env.APPLE_EXTRA_AUDS || '').split(',').map(x => x.trim()).filter(Boolean)];
 let _appleKeys = { at: 0, keys: [] };
 async function _verifyAppleToken(idToken){
   if (!idToken || typeof idToken !== 'string' || idToken.length > 4096) return null;
@@ -3389,7 +3390,7 @@ function _loginPayload(user){
   ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub'].forEach(k => delete user[k]);
   return { user, token };
 }
-app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CLIENT_ID }));
+app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CLIENT_ID, apple_web_id: APPLE_WEB_ID }));
 // 1) يرسل الـ credential اللي رجّعه زر Google: لو عنده حساب يدخل على طول، لو جديد يرجع signup_token لخطوة «أكمل بياناتك»
 // دخول/تسجيل عن طريق حساب خارجي (Google / Apple) — نفس المنطق للاثنين
 async function _socialLogin(res, provider, g){
