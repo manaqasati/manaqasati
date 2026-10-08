@@ -1203,7 +1203,7 @@ function deleteReq(id,e){
     .then(function(r){if(r.ok||r.id){showToast('تم الحذف','success');loadReqs();loadHome();}else showToast(r.message||'تعذر الحذف','error');})
     .catch(function(){showToast('تعذّر الحذف — تحقّق من اتصالك','error');});
 }
-function openImgFull(src){var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
+function openImgFull(src){if(window.mqGallery&&mqGallery.openFrom(null,src))return;var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
 
 // ═══════════════════════════════════
 // RATE

@@ -309,7 +309,7 @@ body{background:var(--bg)}
 <script>
 var API='https://manaqasati-production.up.railway.app';
 function getId(){var slug=location.pathname.split('/').pop();var m=slug.match(/(\d+)$/);if(m)return m[1];var q=new URLSearchParams(location.search).get('id')||'';return /^\d+$/.test(q)?q:'';}
-function oImg(s){s=_safeUrl(s);if(!s)return;document.getElementById('vi').src=s;document.getElementById('viewer').classList.add('on');document.body.style.overflow='hidden';}
+function oImg(s){s=_safeUrl(s);if(!s)return;if(window.mqGallery){var L=(window._ppPorts||[]).map(function(x){return _safeUrl(x);}).filter(Boolean);var i=L.indexOf(s);if(i<0){if(mqGallery.openFrom(null,s))return;}else if(mqGallery.open(L,i))return;}document.getElementById('vi').src=s;document.getElementById('viewer').classList.add('on');document.body.style.overflow='hidden';}
 function cImg(){document.getElementById('viewer').classList.remove('on');document.body.style.overflow='';}
 function mkStars(n,col,sz){var h='',c=col||'#F0A500',s=sz||'15px';for(var i=1;i<=5;i++)h+='<span style="color:'+(i<=Math.round(n)?c:'#E6E2D9')+';font-size:'+s+'">&#9733;</span>';return h;}
 function pill(d){var m=d?Math.floor((Date.now()-new Date(d))/60000):9999;if(m<60)return '<span class="apill a-now">&#9679; نشط الآن</span>';if(m<1440)return '<span class="apill a-rec">&#9679; نشط منذ '+Math.floor(m/60)+' ساعة</span>';return '<span class="apill a-old">&#9679; آخر نشاط منذ '+Math.floor(m/1440)+' يوم</span>';}

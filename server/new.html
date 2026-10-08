@@ -29,6 +29,7 @@ a{color:#1d4ed8}
 button,input,select,textarea{font-family:inherit}
 .top{background:#172554;color:#fff;padding:0 16px;height:54px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50}
 .top .in{max-width:560px;margin:0 auto;width:100%;display:flex;align-items:center;gap:10px}
+.top .bk{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:10px;padding:6px 10px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;min-height:36px}
 .top .lg{font-family:'Cairo',sans-serif;font-size:18px;font-weight:900;color:#fff;text-decoration:none}
 .top .tt{margin-right:auto;font-size:13px;font-weight:800;color:#c9d8ff}
 .wz{max-width:560px;margin:0 auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:12px}
@@ -94,7 +95,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
 <script src="/catpick.js?v=1" defer></script>
 </head>
 <body>
-<header class="top"><div class="in"><a class="lg" href="/">مناقصة</a><span class="tt">مشروع جديد</span></div></header>
+<header class="top"><div class="in"><button type="button" class="bk" onclick="_nwBack()" aria-label="رجوع"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>رجوع</button><a class="lg" href="/">مناقصة</a><span class="tt">مشروع جديد</span></div></header>
 
 <main class="wz">
   <div id="pv-note" class="note" style="display:none"></div>
@@ -401,6 +402,8 @@ function go(n,noPush){
   try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
 }
 window.addEventListener('popstate',function(e){ var s=(e.state&&e.state.s)||1; go(s,true); });
+// زر «رجوع» فوق: يرجّع خطوة، وفي أول خطوة يرجّع للصفحة اللي جيت منها
+function _nwBack(){ if(CUR>1){ if(history.state&&history.state.s>1){ history.back(); } else go(CUR-1); return; } var r=''; try{ r=document.referrer?new URL(document.referrer).origin:''; }catch(e){} if(r===location.origin&&history.length>1){ history.back(); return; } var t=null; try{t=localStorage.getItem('token');}catch(e){} location.href=t?'/dashboard-client.html':'/'; }
 
 // ── التحقق ──
 function fErr(id,inputId,msg){

@@ -1998,7 +1998,7 @@ function submitEditReq(){
   xhr.timeout=180000;
   xhr.send(JSON.stringify(body));
 }
-function openImgFull(src){var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
+function openImgFull(src){if(window.mqGallery&&mqGallery.openFrom(null,src))return;var v=document.getElementById('imgViewer'),i=document.getElementById('imgViewerImg');if(v&&i){i.src=src;v.style.display='flex';}}
 
 // ═══════════════════════════════════
 // RATE

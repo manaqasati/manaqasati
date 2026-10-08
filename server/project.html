@@ -1055,7 +1055,7 @@ function render(){
       var ov=document.createElement('div');ov.className='pj-cov';
       ov.innerHTML='<div class="pj-cov-t">'+_pjCityBadge(req)+'<span class="pj-pill" style="background:'+(req.status==='open'?'#16a34a':'rgba(15,23,42,.72)')+';color:#fff">'+stLine+'</span>'+(nImgs>1?'<span class="pj-pill" style="background:rgba(255,255,255,.22);color:#fff">📷 '+nImgs+' صور</span>':'')+'</div><h1 class="pj-cov-h" style="margin:0">'+esc(req.title||'مشروع')+'</h1><div class="pj-cov-m">'+catcity+' · نُشر قبل '+ago(req.created_at)+'</div>';
       coverEl.appendChild(ov);
-      coverEl.onclick=function(){openViewer(coverImg);};
+      coverEl.onclick=function(){ var L=imgs.filter(isImg); if(window.mqGallery&&L.length){ var i=L.indexOf(coverImg); if(mqGallery.open(i<0?[coverImg].concat(L):L,Math.max(0,i)))return; } openViewer(coverImg);};
     } else coverEl.style.display='none';
   }
   document.title=(req.title||'مشروع')+' | مناقصة';
@@ -1443,6 +1443,7 @@ async function sendChatMsg(){
 function openViewer(src){
   // اقبل روابط الصور الآمنة فقط (يمنع javascript: وأي حقن)
   if(!src || !/^(https?:|data:image\/)/i.test(src)) return;
+  if(window.mqGallery&&mqGallery.openFrom(null,src))return;
   document.getElementById('viewerImg').src=src;
   document.getElementById('viewer').classList.add('on');
 }

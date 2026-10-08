@@ -1070,7 +1070,7 @@ async function _submitReport(){
   catch(e){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');}
 }
 
-function openImgFull(src){var v=_el('imgViewer'),i=_el('imgViewerImg');if(!v||!i)return;i.src=src;v.style.display='flex';}
+function openImgFull(src){if(window.mqGallery&&mqGallery.openFrom(null,src))return;var v=_el('imgViewer'),i=_el('imgViewerImg');if(!v||!i)return;i.src=src;v.style.display='flex';}
 
 async function loadWorks(){
   var pg=_el('page-works');if(!pg)return;
@@ -2381,6 +2381,7 @@ function openReply(reviewId){
     .catch(function(){if(window.showToast)showToast('تعذر النشر','error');});
 }
 function _viewImg(src){
+  if(window.mqGallery&&mqGallery.openFrom(null,src))return;
   var o=document.createElement('div');
   o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer';
   o.onclick=function(){o.remove();};
