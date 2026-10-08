@@ -128,6 +128,35 @@ function pane(h){document.getElementById('ov2b').innerHTML=h;document.getElement
 var IOS=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
 function appPane(x){pane('<h3>التحميل من تطبيق مناقصة</h3><div class="t">'+esc(x.title)+'</div><p>عقود المقاولات تتحمّل مجاناً من <b>تطبيق مناقصة</b> للمسجّلين في المنصة. حمّل التطبيق، وسجّل دخولك، وافتح «عقود المقاولات» من القائمة.</p><div class="st"><a href="/app/go?os=ios&src=contracts">App Store</a><a href="/app/go?os=android&src=contracts">Google Play</a></div><p style="font-size:12.5px;color:#64748b">عندك التطبيق؟ افتحه وادخل على «عقود المقاولات».</p>');}
 function loginPane(x){pane('<h3>سجّل دخولك أول</h3><div class="t">'+esc(x.title)+'</div><p>تحميل العقود مجاني لكل المسجّلين في مناقصة. سجّل دخولك أو أنشئ حساب في أقل من دقيقة.</p><button class="go" onclick="goLogin(\''+x.slug+'\')">تسجيل الدخول / حساب جديد</button>');}
+// تفعيل البريد قبل التحميل: رمز من 6 أرقام يوصل للبريد، يكتبه هنا ويكمل التحميل على طول
+var _vSent=false;
+function _vApi(p,b){return fetch(p,{method:'POST',headers:{'Authorization':'Bearer '+tok(),'Content-Type':'application/json','X-Mnq-App':'1'},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(d){return {s:r.status,d:d};});});}
+function verifyPane(x,em){
+ pane('<h3>فعّل بريدك أول</h3><div class="t">'+esc(x.title)+'</div><p>عشان تحمّل العقد، فعّل بريدك'+(em?' <b dir="ltr" style="unicode-bidi:embed">'+esc(em)+'</b>':'')+'. أرسلنا لك رمز من 6 أرقام.</p>'
+  +'<input id="vcode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="------" dir="ltr" style="width:100%;box-sizing:border-box;text-align:center;letter-spacing:10px;font:900 24px Tajawal,sans-serif;padding:12px;border:1.5px solid #cbd5e1;border-radius:12px;margin:4px 0 10px">'
+  +'<div id="vmsg" style="font-size:13px;font-weight:700;min-height:20px;margin-bottom:8px;color:#64748b"></div>'
+  +'<button class="go" id="vgo" onclick="_vDo(\''+x.slug+'\')">تفعيل وتحميل العقد</button>'
+  +'<button type="button" id="vre" onclick="_vSend(true)" style="width:100%;margin-top:10px;background:none;border:0;color:#1d4ed8;font:800 14px Tajawal,sans-serif;cursor:pointer;padding:8px">ما وصلك؟ أرسل رمز جديد</button>'
+  +'<p style="font-size:12.5px;color:#64748b;margin-top:6px">شيّك على «البريد المزعج / Junk» لو ما لقيته. بريدك مكتوب غلط؟ <a href="'+_profUrl()+'" style="color:#1d4ed8;font-weight:800">صحّحه من حسابك</a></p>');
+ var i=document.getElementById('vcode'); if(i){ i.oninput=function(){ this.value=this.value.replace(/\D/g,'').slice(0,6); if(this.value.length===6)_vDo(x.slug); }; setTimeout(function(){try{i.focus();}catch(e){}},200); }
+ if(!_vSent)_vSend(false);
+}
+function _profUrl(){var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}return u.role==='provider'?'/dashboard-provider.html#profile':'/dashboard-client.html#profile';}
+function _vMsg(t,c){var m=document.getElementById('vmsg');if(m){m.textContent=t;m.style.color=c||'#64748b';}}
+function _vSend(manual){ var b=document.getElementById('vre'); if(b)b.disabled=true;
+ _vApi('/api/auth/resend-verification').then(function(r){ _vSent=true;
+  if(r.d&&r.d.already){ _vMsg('بريدك مفعّل ✓ — جاري التحميل…','#15803d'); return; }
+  if(r.s===200&&r.d&&r.d.ok) _vMsg(manual?'أرسلنا رمز جديد ✓':'وصلك الرمز على بريدك','#15803d');
+  else _vMsg((r.d&&r.d.message)||'تعذّر الإرسال — حاول بعد شوي','#b91c1c');
+ }).catch(function(){_vMsg('تأكد من الاتصال','#b91c1c');}).then(function(){ if(b)setTimeout(function(){b.disabled=false;},manual?30000:3000); }); }
+var _vBusy=false;
+function _vDo(slug){ if(_vBusy)return; var i=document.getElementById('vcode'), c=i?i.value.replace(/\D/g,''):''; if(c.length!==6){_vMsg('اكتب الرمز كامل (6 أرقام)','#b91c1c');return;}
+ _vBusy=true; var g=document.getElementById('vgo'); if(g){g.disabled=true;g.textContent='جاري التفعيل…';}
+ _vApi('/api/auth/verify-code',{code:c}).then(function(r){
+  if(r.s===200&&r.d&&r.d.ok){ try{var u=JSON.parse(localStorage.getItem('user')||'{}');u.email_verified=true;localStorage.setItem('user',JSON.stringify(u));}catch(e){}
+   _vMsg('تم التفعيل ✓','#15803d'); closeM(); ask(slug); var a=document.getElementById('agree'); if(a&&a.checked){ setTimeout(function(){document.getElementById('go').onclick();},150); } return; }
+  _vMsg((r.d&&r.d.message)||'الرمز غلط — جرّب مرة ثانية','#b91c1c'); if(i){i.value='';i.focus();}
+ }).catch(function(){_vMsg('تأكد من الاتصال','#b91c1c');}).then(function(){ _vBusy=false; if(g){g.disabled=false;g.textContent='تفعيل وتحميل العقد';} }); }
 function goLogin(slug){try{localStorage.setItem('_after_login','/contracts?c='+slug);}catch(e){}location.href='/auth.html';}
 function ask(slug){var x=C.filter(function(c){return c.slug===slug;})[0];if(!x)return;
  if(!INAPP)return appPane(x);
@@ -146,6 +175,7 @@ document.getElementById('go').onclick=function(){if(!pend||!document.getElementB
   var x=C.filter(function(c){return c.slug===p.slug;})[0];
   if(r.s===401){closeM();return loginPane(x);}
   if(r.d&&r.d.app_only){closeM();return appPane(x);}
+  if(r.d&&r.d.need_verify){closeM();return verifyPane(x,r.d.email);}
   if(!r.d||!r.d.url){alert((r.d&&r.d.message)||'تعذّر التحميل، حاول مرة ثانية');return;}
   closeM();try{if(window.track)track('ViewContent',{content_name:p.slug});}catch(e){}
   var opts={save:r.d.url,fileName:r.d.title+' - مناقصة',share:{title:r.d.title,text:'📄 '+r.d.title+' — نموذج عقد مجاني جاهز للتعبئة. حمّله من تطبيق مناقصة:',url:'https://manaqasa.com/contracts?c='+p.slug+'&s=1'}};

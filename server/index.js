@@ -282,6 +282,8 @@ function _ctIndex(){
 }
 app.get(['/contracts', '/contracts/'], (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
+  // نفس نسخة up.js الحالية (عارض الملفات والمعرض وزر الرجوع)
+  try { const h = require('fs').readFileSync(__dirname + '/contracts.html', 'utf8').replace(/\/up\.js\?v=\d+/, '/up.js?v=' + _UP_VER); return res.type('html').send(h); } catch(e) {}
   res.sendFile(__dirname + '/contracts.html');
 });
 // صفحة لكل عقد (/contracts/<slug>) — محتوى حقيقي من العقد عشان يطلع في بحث جوجل «عقد ...»
@@ -368,6 +370,9 @@ app.post('/api/contracts/:slug/link', rateLimiter(30, 60000), auth, async (req, 
   const c = _ctIndex().find(x => x.slug === String(req.params.slug || ''));
   if (!c) return res.status(404).json({ message: 'العقد غير موجود' });
   if (!_ctInApp(req)) return res.status(403).json({ app_only: true, message: 'تحميل العقود متاح من تطبيق مناقصة فقط' });
+  // لازم البريد يكون مفعّل
+  try { const v = (await pool.query('SELECT email, COALESCE(email_verified,true) AS ev FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (v && !v.ev) return res.status(403).json({ need_verify: true, email: v.email || '', message: 'فعّل بريدك عشان تحمّل العقد' }); } catch(e) {}
   const exp = Math.floor(Date.now() / 1000) + 900, uid = req.user.id;
   try { await pool.query('INSERT INTO contract_downloads (user_id, slug) VALUES ($1,$2)', [uid, c.slug]); } catch(e) {}
   res.json({ url: '/contracts/dl/' + c.slug + '.pdf?u=' + uid + '&e=' + exp + '&s=' + _ctSig(c.slug, exp, uid), title: c.title });
